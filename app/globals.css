@@ -104,3 +104,17 @@
 .avnBrand strong{font-weight:600;letter-spacing:.17em}
 .clinicalBrandMark{width:43px;height:43px;display:block;overflow:visible;flex:0 0 auto}
 .clinicalBrand strong{font-weight:600;letter-spacing:.08em}
+
+/* Planejamento pré-anestésico: mesma organização visual do formulário de referência */
+.planningGrid{grid-template-columns:repeat(12,minmax(0,1fr));align-items:end}
+.planningGrid .evalField.plan2{grid-column:span 2}
+.planningGrid .evalField.plan4{grid-column:span 4}
+@media(max-width:1050px){
+  .planningGrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .planningGrid .evalField.plan2{grid-column:span 1}
+  .planningGrid .evalField.plan4{grid-column:span 2}
+}
+@media(max-width:700px){
+  .planningGrid{grid-template-columns:1fr}
+  .planningGrid .evalField.plan2,.planningGrid .evalField.plan4{grid-column:span 1}
+}
