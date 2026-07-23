@@ -8,6 +8,7 @@ export function LoginForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,13 +31,18 @@ export function LoginForm() {
 
   return (
     <form className="loginForm" onSubmit={handleSubmit}>
-      <label htmlFor="email">E-mail</label>
-      <input id="email" name="email" type="email" autoComplete="email" required />
+      <label htmlFor="email">Usuário ou e-mail</label>
+      <input id="email" name="email" type="email" autoComplete="email" placeholder="seu.usuario ou e-mail" required />
       <label htmlFor="password">Senha</label>
-      <input id="password" name="password" type="password" autoComplete="current-password" required />
+      <div className="avnPasswordField">
+        <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Sua senha" required />
+        <button type="button" onClick={() => setShowPassword((value) => !value)}>
+          {showPassword ? "Ocultar" : "Mostrar"}
+        </button>
+      </div>
       {error && <p className="loginError" role="alert">{error}</p>}
-      <button className="btn btnBlue" type="submit" disabled={loading}>
-        {loading ? "ENTRANDO..." : "ENTRAR"}
+      <button className="avnLoginSubmit" type="submit" disabled={loading}>
+        {loading ? "Entrando..." : "Entrar"}
       </button>
     </form>
   );
