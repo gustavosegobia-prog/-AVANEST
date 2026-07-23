@@ -14,9 +14,11 @@ export default async function DashboardPage() {
     .single();
   if (!perfil) redirect("/login");
 
-  const [{ data: pacientes }, { data: avaliacoes }] = await Promise.all([
+  const [{ data: pacientes }, { data: avaliacoes }, { data: financeiro }, { data: pagamentos }] = await Promise.all([
     supabase.from("pacientes").select("*").order("created_at", { ascending: false }),
     supabase.from("avaliacoes").select("id,patient_id,status,updated_at,created_at,dados").order("updated_at", { ascending: false }),
+    supabase.from("financeiro_atendimentos").select("*").order("created_at", { ascending: false }),
+    supabase.from("financeiro_pagamentos").select("*").order("paid_at", { ascending: false }),
   ]);
 
   return (
@@ -24,6 +26,8 @@ export default async function DashboardPage() {
       perfil={perfil}
       pacientes={pacientes ?? []}
       avaliacoes={avaliacoes ?? []}
+      financeiro={financeiro ?? []}
+      pagamentos={pagamentos ?? []}
     />
   );
 }
