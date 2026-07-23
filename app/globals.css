@@ -142,3 +142,36 @@
   .avnOverlay{background:linear-gradient(90deg,#041626f5 0%,#041626e8 72%,#041626b8 100%)}
   .avnHeroContent{padding-top:72px}
 }
+
+/* Ajustes de enquadramento no computador; tablet e celular mantêm o fluxo responsivo */
+@media(min-width:1101px){
+  .avnHeroContent{
+    width:calc(100% - 48px);
+    margin-left:24px;
+    margin-right:24px;
+  }
+  .avnHero h1{
+    width:min(900px,calc(100vw - 300px));
+    font-size:clamp(50px,4.7vw,66px);
+  }
+  .avnLead{max-width:790px}
+  .avnBenefits{max-width:930px}
+}
+
+/* Login mais compacto apenas em telas grandes */
+@media(min-width:761px){
+  .avnLoginPage{padding:34px}
+  .avnLoginCard{
+    width:min(880px,calc(100vw - 68px));
+    min-height:410px;
+    grid-template-columns:.92fr 1.08fr;
+  }
+  .avnLoginIllustration{padding:34px 28px}
+  .avnLoginMonitor{margin:10px auto}
+  .avnLoginMonitor svg{width:165px;height:36px}
+  .avnMonitorScreen{width:215px;padding:12px 15px;gap:9px}
+  .avnLoginContent{padding:36px 34px}
+  .avnLoginContent>p{margin-bottom:20px}
+  .avnLoginContent .loginForm input{height:50px}
+  .avnLoginSubmit{padding:14px}
+}
