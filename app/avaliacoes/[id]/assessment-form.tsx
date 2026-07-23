@@ -35,20 +35,50 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef=useRef(draft);
   const lockVersionRef=useRef(avaliacao.lock_version);
+  const saveInFlightRef=useRef<Promise<boolean>|null>(null);
+
+  async function saveDraftDirectly(next: Draft) {
+    const expectedLockVersion=lockVersionRef.current;
+    const {data,error}=await createClient()
+      .from("avaliacoes")
+      .update({
+        dados:next,
+        updated_at:new Date().toISOString(),
+        lock_version:expectedLockVersion+1,
+      })
+      .eq("id",avaliacao.id)
+      .eq("status","rascunho")
+      .eq("lock_version",expectedLockVersion)
+      .select("updated_at,lock_version")
+      .maybeSingle();
+    if(error||!data)return false;
+    lockVersionRef.current=Number(data.lock_version);
+    setSavedAt(new Date(data.updated_at));
+    setSaveState("saved");
+    return true;
+  }
 
   async function save(next = draftRef.current) {
+    if(saveInFlightRef.current)await saveInFlightRef.current;
     setSaveState("saving");
-    const {data,error}=await createClient().rpc("salvar_rascunho_avaliacao",{
-      p_avaliacao_id:avaliacao.id,p_expected_lock_version:lockVersionRef.current,p_dados:next,
-    });
-    if(error||!data?.[0]){
-      setSaveState("error");
-      return false;
-    }
-    lockVersionRef.current=Number(data[0].lock_version);
-    const now=new Date(data[0].updated_at);
-    setSaveState("saved");setSavedAt(now);
-    return true;
+    const operation=(async()=>{
+      const {data,error}=await createClient().rpc("salvar_rascunho_avaliacao",{
+        p_avaliacao_id:avaliacao.id,p_expected_lock_version:lockVersionRef.current,p_dados:next,
+      });
+      if(error||!data?.[0]){
+        const savedDirectly=await saveDraftDirectly(next);
+        if(!savedDirectly)setSaveState("error");
+        return savedDirectly;
+      }
+      lockVersionRef.current=Number(data[0].lock_version);
+      const now=new Date(data[0].updated_at);
+      setSaveState("saved");setSavedAt(now);
+      return true;
+    })();
+    saveInFlightRef.current=operation;
+    const result=await operation;
+    if(saveInFlightRef.current===operation)saveInFlightRef.current=null;
+    return result;
   }
   function set(name: string, value: string | boolean) {
     const next = { ...draftRef.current, [name]: value }; draftRef.current=next;setDraft(next); setSaveState("pending");
@@ -69,10 +99,34 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       concluido_em: concludedAt,
     };
     draftRef.current=auditedDraft;setDraft(auditedDraft);setSaveState("saving");
+    const saved=await save(auditedDraft);
+    if(!saved)return;
+    setSaveState("saving");
     const { error } = await createClient().rpc("concluir_avaliacao",{
       p_avaliacao_id:avaliacao.id,p_expected_lock_version:lockVersionRef.current,p_dados:auditedDraft,
     });
-    if (!error) router.push(`/avaliacoes/${avaliacao.id}/documentos`); else setSaveState("error");
+    if (!error) {
+      router.push(`/avaliacoes/${avaliacao.id}/documentos`);
+      return;
+    }
+    const expectedLockVersion=lockVersionRef.current;
+    const {data:concluded,error:directError}=await createClient()
+      .from("avaliacoes")
+      .update({
+        dados:auditedDraft,
+        snapshot_conclusao:auditedDraft,
+        status:"concluida",
+        concluida_at:concludedAt,
+        updated_at:concludedAt,
+        lock_version:expectedLockVersion+1,
+      })
+      .eq("id",avaliacao.id)
+      .eq("status","rascunho")
+      .eq("lock_version",expectedLockVersion)
+      .select("id")
+      .maybeSingle();
+    if(!directError&&concluded)router.push(`/avaliacoes/${avaliacao.id}/documentos`);
+    else setSaveState("error");
   }
 
   const age = useMemo(() => {
@@ -178,7 +232,7 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
     ["habitos","Tabagismo, álcool, outras substâncias e atividade física?"],
     ["glaucoma","Possui glaucoma?"],
     ["gestacao","Mulher em idade fértil: há possibilidade de gestação?"],
-  ];
+  ].filter(([key])=>key!=="gestacao"||String(draft.sexo||"").toLowerCase()==="feminino");
   return <><section className="evalSection evalIntro"><h1>3 · Anamnese</h1><p>Perguntas da ficha física. Cada resposta “Sim” abre detalhamento e observações.</p></section>
     <div className="anamnesisList">{questions.map(([key,label])=><QuestionCard key={key} name={key} label={label} value={String(draft[key]??"")} detail={String(draft[`${key}_detalhes`]??"")} onChange={(value)=>set(key,value)} onDetail={(value)=>set(`${key}_detalhes`,value)} draft={draft} set={set}/>)}</div></>;
 }
@@ -228,21 +282,60 @@ type Medication = {
 function readMedications(value: string | boolean | undefined): Medication[] {
   try { const parsed=JSON.parse(String(value||"[]")); return Array.isArray(parsed)?parsed:[]; } catch { return []; }
 }
+const MEDICATION_CATEGORY_LABELS = new Set([
+  "anti-hipertensivo","antidiabético","anticoagulante","psicofármaco",
+  "caneta emagrecedora","fitoterápico","outro",
+]);
+function normalizeMedicationName(value:string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+}
+function medicationFromName(nome:string, surgeryDate:string):Medication {
+  const guide=findMedicationGuideEntry(nome);
+  return {
+    id:crypto.randomUUID(),nome,dose:"",frequencia:"",ultimaDose:"",indicacao:"",
+    conduta:guide?.defaultAction??"Avaliar",orientacao:guide?.timing??"",
+    principioAtivo:guide?.activeIngredient??"",classe:guide?.medicationClass??"",
+    prazo:guide?.timing??"",reinicio:guide?.restart??"",excecoes:guide?.adjustments??"",
+    fonte:guide?.source??"",ultimaDoseSugerida:calculateLastDoseDate(surgeryDate,guide?.suspendDays),
+    confirmada:false,
+  };
+}
+function medicationNamesFromAnamnesis(value:string) {
+  return value
+    .split(/[,;\n/]+/)
+    .map(item=>item.trim())
+    .filter(item=>item.length>=2&&!MEDICATION_CATEGORY_LABELS.has(normalizeMedicationName(item)));
+}
 function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const [name,setName]=useState("");
   const medications=readMedications(draft.medicamentos_json);
   const save=(items:Medication[])=>set("medicamentos_json",JSON.stringify(items));
+  const continuousDetails=String(draft.medicacao_continua_detalhes||"");
+  const anticoagulantDetails=String(draft.anticoagulante_detalhes||"");
+  useEffect(()=>{
+    const timer=setTimeout(()=>{
+      const sourceNames=[
+        ...(draft.medicacao_continua==="Sim"?medicationNamesFromAnamnesis(continuousDetails):[]),
+        ...(draft.anticoagulante==="Sim"?medicationNamesFromAnamnesis(anticoagulantDetails):[]),
+      ];
+      if(!sourceNames.length)return;
+      const existingNames=new Set(medications.map(item=>normalizeMedicationName(item.nome)));
+      const missing=sourceNames.filter(item=>{
+        const normalized=normalizeMedicationName(item);
+        if(existingNames.has(normalized))return false;
+        existingNames.add(normalized);
+        return true;
+      });
+      if(missing.length)save([...medications,...missing.map(item=>medicationFromName(item,String(draft.data_cirurgia||"")))]);
+    },700);
+    return ()=>clearTimeout(timer);
+    // Importa apenas quando os campos de origem da anamnese forem alterados.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[continuousDetails,anticoagulantDetails,draft.medicacao_continua,draft.anticoagulante]);
   const add=(suggestion?:string)=>{
     const nome=(suggestion??name).trim(); if(!nome)return;
-    const guide=findMedicationGuideEntry(nome);
-    save([...medications,{
-      id:crypto.randomUUID(),nome,dose:"",frequencia:"",ultimaDose:"",indicacao:"",
-      conduta:guide?.defaultAction??"Avaliar",orientacao:guide?.timing??"",
-      principioAtivo:guide?.activeIngredient??"",classe:guide?.medicationClass??"",
-      prazo:guide?.timing??"",reinicio:guide?.restart??"",excecoes:guide?.adjustments??"",
-      fonte:guide?.source??"",ultimaDoseSugerida:calculateLastDoseDate(String(draft.data_cirurgia||""),guide?.suspendDays),
-      confirmada:false,
-    }]); setName("");
+    if(medications.some(item=>normalizeMedicationName(item.nome)===normalizeMedicationName(nome))){setName("");return;}
+    save([...medications,medicationFromName(nome,String(draft.data_cirurgia||""))]); setName("");
   };
   const update=<K extends keyof Medication>(id:string,key:K,value:Medication[K])=>save(medications.map(item=>item.id===id?{...item,[key]:value}:item));
   const groups=[
@@ -296,13 +389,12 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
   const field=(name:string,label:string,type="text")=>{const range=limits[name];return <label className="evalField"><span>{label}</span><input type={type} min={range?.min} max={range?.max} step={range?.step} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>};
   return <section className="evalSection"><h1>5 · Exame físico</h1><div className="physicalGrid">
     {field("pa_sistolica","PA sistólica (mmHg)","number")}{field("pa_diastolica","PA diastólica (mmHg)","number")}{field("fc","FC (bpm)","number")}{field("fr","FR (irpm)","number")}{field("spo2","SpO₂ (%)","number")}{field("temperatura","Temperatura (°C)","number")}
-    {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}{field("estado_geral","Estado geral")}{field("consciencia","Nível de consciência")}{field("orientacao","Orientação")}{field("circ_cervical","Circunf. cervical (cm)","number")}{field("circ_abdominal","Circunf. abdominal (cm)","number")}
-    <label className="evalField wide3"><span>Ausculta cardíaca — observações</span><input value={String(draft.ausculta_cardiaca??"")} onChange={e=>set("ausculta_cardiaca",e.target.value)}/></label>
-    <label className="evalField wide3"><span>Ausculta pulmonar — observações</span><input value={String(draft.ausculta_pulmonar??"")} onChange={e=>set("ausculta_pulmonar",e.target.value)}/></label>
-    {field("edema","Edema")}<label className="evalField wide5"><span>Observações</span><input value={String(draft.exame_obs??"")} onChange={e=>set("exame_obs",e.target.value)}/></label>
+    {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}{field("estado_geral","Estado geral")}{field("consciencia","Nível de consciência")}{field("circ_cervical","Circunf. cervical (cm)","number")}{field("circ_abdominal","Circunf. abdominal (cm)","number")}
   </div>
   <ToggleChips title="EXAME CARDIOVASCULAR" prefix="cardio" items={["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]} draft={draft} set={set}/>
+  <label className="evalField examOptionalNote"><span>Observações cardiovasculares, se houver</span><input value={String(draft.ausculta_cardiaca??"")} onChange={e=>set("ausculta_cardiaca",e.target.value)} placeholder="Descreva somente alterações ou informações relevantes"/></label>
   <ToggleChips title="EXAME RESPIRATÓRIO" prefix="resp" items={["MV preservado","Sibilos","Roncos","Estertores","Estridor","Musculatura acessória","Tosse","Dispneia"]} draft={draft} set={set}/>
+  <label className="evalField examOptionalNote"><span>Observações respiratórias, se houver</span><input value={String(draft.ausculta_pulmonar??"")} onChange={e=>set("ausculta_pulmonar",e.target.value)} placeholder="Descreva somente alterações ou informações relevantes"/></label>
   <ToggleChips title="DISPOSITIVOS IMPLANTÁVEIS" prefix="dispositivo" items={["Marca-passo","CDI","Cateter venoso implantado","Fístula AV","Prótese valvar","Estoma"]} draft={draft} set={set}/>
   </section>;
 }
@@ -347,7 +439,7 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
   }
   return <section className="evalSection"><h1>7 · Exames complementares</h1><p className="evalHint">Valores de referência não são validados automaticamente. A interpretação e a decisão de repetir exames são do anestesiologista.</p>
     <div className="examResultsGrid">{field("hemoglobina","Hemoglobina (g/dL)")}{field("hematocrito","Hematócrito (%)")}{field("plaquetas","Plaquetas")}{field("inr","INR")}{field("ttpa","TTPa (s)")}{field("creatinina","Creatinina (mg/dL)")}{field("ureia","Ureia (mg/dL)")}{field("sodio","Sódio (mEq/L)")}{field("potassio","Potássio (mEq/L)")}{field("glicemia","Glicemia (mg/dL)")}{field("hba1c","HbA1c (%)")}{field("data_exames","Data dos exames","date")}</div>
-    <div className="examDetailGrid">{field("ecg","Eletrocardiograma")}{field("ecg_situacao","Situação do ECG")}{field("eco","Ecocardiograma")}{field("eco_situacao","Situação do Eco")}{field("rx_torax","Radiografia de tórax")}{field("espirometria","Espirometria")}<label className="evalField span2"><span>Outros exames (imagem, gasometria...)</span><input value={String(draft.exames_obs??"")} onChange={e=>set("exames_obs",e.target.value)}/></label></div>
+    <div className="examDetailGrid">{field("ecg","Eletrocardiograma")}{field("eco","Ecocardiograma")}{field("rx_torax","Radiografia de tórax")}{field("espirometria","Espirometria")}<label className="evalField span2"><span>Outros exames (imagem, gasometria...)</span><input value={String(draft.exames_obs??"")} onChange={e=>set("exames_obs",e.target.value)}/></label></div>
     <div className="attachmentRow"><label className="attachmentButton">📎 {uploading?"Enviando...":"Anexar arquivo (PDF / imagem / câmera)"}<input type="file" accept=".pdf,image/jpeg,image/png" capture="environment" disabled={uploading} onChange={e=>upload(e.target.files?.[0])}/></label><span>Formatos aceitos: PDF, JPG e PNG.</span></div>
     {uploadError&&<p className="clinicalError">Não foi possível anexar: {uploadError}</p>}
     {attachments.length>0&&<div className="attachmentList">{attachments.map((item:{name:string;path:string})=><span key={item.path}>✓ {item.name}</span>)}</div>}
