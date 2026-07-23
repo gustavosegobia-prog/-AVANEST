@@ -6,7 +6,7 @@ import {BrandMark} from "@/components/brand-mark";
 
 type Data=Record<string,string|boolean>;
 type Props={
-  avaliacao:{id:string;institution_id:string;patient_id:string;status:string;versao:number;dados:Data|null;created_at:string;updated_at:string;concluida_at:string|null};
+  avaliacao:{id:string;institution_id:string;patient_id:string;status:string;versao:number;dados:Data|null;snapshot_conclusao:Data|null;created_at:string;updated_at:string;concluida_at:string|null};
   paciente:{id:string;nome:string;cpf:string|null;data_nascimento:string|null;sexo:string|null;telefone:string|null;email:string|null;hospital:string|null;cirurgia:string|null;procedimento:string|null;convenio:string|null};
   perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string};
 };
@@ -38,7 +38,7 @@ const CONSENT_RISKS=[
 ];
 
 export function PrintDocuments({avaliacao,paciente,perfil}:Props){
-  const dados=avaliacao.dados||{};
+  const dados=avaliacao.snapshot_conclusao||avaliacao.dados||{};
   const [selected,setSelected]=useState({assessment:true,consent:true,guidance:true});
   const [notice,setNotice]=useState("");
   const medications=useMemo<Medication[]>(()=>{try{const v=JSON.parse(String(dados.medicamentos_json||"[]"));return Array.isArray(v)?v:[]}catch{return[]}},[dados.medicamentos_json]);
@@ -75,8 +75,10 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   async function printDocuments(){
     setNotice("");
     const entry={at:new Date().toISOString(),documents:Object.entries(selected).filter(([,v])=>v).map(([k])=>k)};
-    const previous=(()=>{try{return JSON.parse(String(dados.document_generation_log||"[]"))}catch{return[]}})();
-    await createClient().from("avaliacoes").update({dados:{...dados,document_generation_log:JSON.stringify([...previous,entry])}}).eq("id",avaliacao.id);
+    await createClient().from("auditoria").insert({
+      institution_id:avaliacao.institution_id,actor_id:perfil.id,entidade:"avaliacao",entidade_id:avaliacao.id,
+      acao:"documentos_impressos",detalhes:entry,
+    });
     window.print();
   }
   function openChannel(channel:"whatsapp"|"email"|"sms"){

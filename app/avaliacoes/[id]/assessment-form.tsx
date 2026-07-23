@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { calculateLastDoseDate, findMedicationGuideEntry } from "@/lib/medication-guide";
 import { BrandMark } from "@/components/brand-mark";
 
 const STEPS = ["Identificação", "Procedimento", "Anamnese", "Medicamentos", "Exame físico", "Via aérea", "Exames", "Escores", "Conclusão"];
 type Draft = Record<string, string | boolean>;
-type Assessment = { id: string; institution_id: string; patient_id: string; status: string; versao: number; dados: Draft | null; updated_at: string };
+type Assessment = { id: string; institution_id: string; patient_id: string; status: string; versao: number; dados: Draft | null; updated_at: string; lock_version:number };
 type Profile = { id:string; nome:string; crm:string|null; rqe:string|null; role:string };
 type Patient = {
   id:string; nome:string; cpf:string|null; rg?:string|null; data_nascimento:string|null; sexo:string|null;
@@ -32,34 +33,45 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const [saveState, setSaveState] = useState<"saved"|"pending"|"saving"|"error">("saved");
   const [savedAt, setSavedAt] = useState(() => new Date(avaliacao.updated_at));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftRef=useRef(draft);
+  const lockVersionRef=useRef(avaliacao.lock_version);
 
-  async function save(next = draft) {
+  async function save(next = draftRef.current) {
     setSaveState("saving");
-    const now = new Date();
-    const { error } = await createClient().from("avaliacoes").update({ dados: next, updated_at: now.toISOString() }).eq("id", avaliacao.id);
-    setSaveState(error ? "error" : "saved");
-    if (!error) setSavedAt(now);
+    const {data,error}=await createClient().rpc("salvar_rascunho_avaliacao",{
+      p_avaliacao_id:avaliacao.id,p_expected_lock_version:lockVersionRef.current,p_dados:next,
+    });
+    if(error||!data?.[0]){
+      setSaveState("error");
+      return false;
+    }
+    lockVersionRef.current=Number(data[0].lock_version);
+    const now=new Date(data[0].updated_at);
+    setSaveState("saved");setSavedAt(now);
+    return true;
   }
   function set(name: string, value: string | boolean) {
-    const next = { ...draft, [name]: value }; setDraft(next); setSaveState("pending");
+    const next = { ...draftRef.current, [name]: value }; draftRef.current=next;setDraft(next); setSaveState("pending");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => save(next), 900);
   }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   async function conclude() {
+    if(timer.current)clearTimeout(timer.current);
     const concludedAt = new Date().toISOString();
     const auditedDraft = {
-      ...draft,
+      ...draftRef.current,
       concluido_por_id: perfil.id,
       concluido_por_nome: perfil.nome,
       concluido_por_crm: perfil.crm ?? "",
       concluido_por_rqe: perfil.rqe ?? "",
       concluido_em: concludedAt,
     };
-    setDraft(auditedDraft);
-    await save(auditedDraft);
-    const { error } = await createClient().from("avaliacoes").update({ status:"concluida", concluida_at:concludedAt, dados:auditedDraft }).eq("id",avaliacao.id);
+    draftRef.current=auditedDraft;setDraft(auditedDraft);setSaveState("saving");
+    const { error } = await createClient().rpc("concluir_avaliacao",{
+      p_avaliacao_id:avaliacao.id,p_expected_lock_version:lockVersionRef.current,p_dados:auditedDraft,
+    });
     if (!error) router.push(`/avaliacoes/${avaliacao.id}/documentos`); else setSaveState("error");
   }
 
@@ -79,20 +91,39 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     ? idealWeight + 0.4 * (weight - idealWeight)
     : weight || idealWeight;
   const allergy = String(draft.alergias_detalhes || "");
+  const completedSteps=[
+    Boolean(paciente.nome&&paciente.data_nascimento&&age!==null),
+    Boolean(draft.cirurgia&&draft.data_cirurgia),
+    Boolean(draft.cirurgias_anteriores&&draft.alergias),
+    readMedications(draft.medicamentos_json).every(item=>item.confirmada===true),
+    Boolean(draft.pa_sistolica&&draft.pa_diastolica&&draft.fc&&draft.spo2),
+    Boolean(draft.mallampati&&draft.abertura_oral&&draft.distancia_tireo&&draft.denticao&&draft.mobilidade),
+    Boolean(draft.hemoglobina||draft.ecg||draft.exames_obs),
+    Boolean(draft.asa&&draft.asa_confirmada&&draft.capacidade_funcional),
+    Boolean(draft.conclusao&&draft.anestesiologista&&draft.crm),
+  ];
+  const progress=Math.round(completedSteps.filter(Boolean).length/completedSteps.length*100);
 
-  const input = (name:string,label:string,type="text",span="") => <label className={`evalField ${span}`}><span>{label}</span><input type={type} value={String(draft[name]??"")} onChange={(e)=>set(name,e.target.value)}/></label>;
+  const numericLimits:Record<string,{min:number;max:number;step?:number}> = {
+    peso:{min:1,max:500,step:0.1},
+    altura:{min:40,max:250,step:0.1},
+  };
+  const input = (name:string,label:string,type="text",span="") => {
+    const limits=numericLimits[name];
+    return <label className={`evalField ${span}`}><span>{label}</span><input type={type} min={limits?.min} max={limits?.max} step={limits?.step} value={String(draft[name]??"")} onChange={(e)=>set(name,e.target.value)}/></label>;
+  };
   const select = (name:string,label:string,options:string[],span="") => <label className={`evalField ${span}`}><span>{label}</span><select value={String(draft[name]??"")} onChange={(e)=>set(name,e.target.value)}><option value="">Selecione</option>{options.map(o=><option key={o}>{o}</option>)}</select></label>;
 
   return <main className="evalShell">
     <header className="evalTopbar">
-      <a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a>
+      <Link className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
       <span className={`evalSave ${saveState}`}><i/> {saveState==="saved"?`Salvo automaticamente às ${savedAt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`:saveState==="saving"?"Salvando...":saveState==="pending"?"Alterações pendentes":"Falha ao salvar"}</span>
-      <nav className="evalRoleNav"><button>◐ Escuro</button><button>Recepção</button><button className="active">Médico</button><button>Financeiro</button><button>Admin</button><b>ADMINISTRADOR</b></nav>
+      <nav className="evalRoleNav"><button type="button">◐ Escuro</button><button type="button" className="active">Médico</button><b>{perfil.role==="owner"?"ADMINISTRADOR":perfil.role.toUpperCase()}</b></nav>
     </header>
     {allergy && <div className="allergyBanner">⚠ ALERGIA: {allergy.toUpperCase()}</div>}
-    <div className="evalProgress"><i style={{width:"100%"}}/></div>
+    <div className="evalProgress" aria-label={`${progress}% da avaliação preenchida`}><i style={{width:`${progress}%`}}/></div>
     <div className="evalMain">
-      <div className="evalSteps">{STEPS.map((name,index)=><button onClick={()=>document.getElementById(`etapa-${index+1}`)?.scrollIntoView({behavior:"smooth",block:"start"})} key={name}><i className="done"/>{name}</button>)}</div>
+      <div className="evalSteps">{STEPS.map((name,index)=><button type="button" onClick={()=>document.getElementById(`etapa-${index+1}`)?.scrollIntoView({behavior:"smooth",block:"start"})} key={name}><i className={completedSteps[index]?"done":""}/>{name}</button>)}</div>
       <div className="evalControls"><button className="pauseButton">Ⅱ Pausar</button><button onClick={async()=>{await save();router.push("/dashboard")}}>↩ Salvar e voltar</button></div>
 
       <section id="etapa-1" className="evalSection">
@@ -124,12 +155,11 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       <div id="etapa-6"><Airway draft={draft} set={set}/></div>
       <div id="etapa-7"><ComplementaryExams draft={draft} set={set} avaliacao={avaliacao}/></div>
       <div id="etapa-8"><Scores draft={draft} set={set} age={age} sex={paciente.sexo} imc={imc}/></div>
-      <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} imc={imc} conclude={conclude}/></div>
+      <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} imc={imc} conclude={conclude} saveState={saveState}/></div>
     </div>
   </main>;
 }
 
-function GenericSection({title,children}:{title:string;children:React.ReactNode}) { return <section className="evalSection"><h1>{title}</h1>{children}</section>; }
 function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const questions=[
     ["cirurgias_anteriores","Já realizou alguma cirurgia?"],
@@ -174,7 +204,7 @@ function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{nam
   const chips=QUESTION_CHIPS[name]||[];
   const selected=detail.split(",").map(item=>item.trim()).filter(Boolean);
   const toggleChip=(chip:string)=>onDetail(selected.includes(chip)?selected.filter(item=>item!==chip).join(", "):[...selected,chip].join(", "));
-  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button className={value===answer?"active":""} onClick={()=>onChange(answer)} key={answer}>{answer}</button>)}</div></div>
+  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="respiratoria"){set("respiratoria_controle","");set("respiratoria_ultima_crise","");set("respiratoria_internacao","");set("respiratoria_medicacao","")}}}} key={answer}>{answer}</button>)}</div></div>
     {value==="Sim"&&<><div className="detailChips">{chips.map(chip=><button type="button" className={selected.includes(chip)?"selected":""} onClick={()=>toggleChip(chip)} key={chip}>{chip}</button>)}</div>
       {name==="respiratoria"&&<div className="conditionalDetails">
         <label><span>Controle atual</span><select value={String(draft.respiratoria_controle??"")} onChange={e=>set("respiratoria_controle",e.target.value)}><option value="">Selecione</option><option>Controlada</option><option>Parcialmente controlada</option><option>Não controlada</option><option>Não sabe</option></select></label>
@@ -226,7 +256,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     <div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina..."/><button onClick={()=>add()}>Adicionar</button></div>
     <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Metformina","Ozempic","Chá de boldo","Vitamina X"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div>
   </section>
-  {medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=><section className="medicationCard" key={item.id}>
+  {medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=>{const currentSuggested=calculateLastDoseDate(String(draft.data_cirurgia||""),findMedicationGuideEntry(item.nome)?.suspendDays);return <section className="medicationCard" key={item.id}>
     <div className="medicationTitle"><div><strong>{item.nome}</strong><small>{item.principioAtivo||"Medicamento não localizado na base — preencher manualmente"}</small></div><select value={item.conduta} onChange={e=>update(item.id,"conduta",e.target.value)}><option>Avaliar</option><option>Individualizar</option><option>Manter</option><option>Suspender</option></select><button className="removeMedication" onClick={()=>save(medications.filter(m=>m.id!==item.id))}>×</button></div>
     <div className="medicationGrid">
       <label><span>Dose</span><input value={item.dose} onChange={e=>update(item.id,"dose",e.target.value)} placeholder="Ex.: 50 mg"/></label>
@@ -238,13 +268,13 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     {(item.classe||item.prazo||item.reinicio)&&<div className="medicationGuidance">
       <div><b>Classe / princípio ativo</b><span>{item.classe||"—"} · {item.principioAtivo||"—"}</span></div>
       <div><b>Quando suspender ou ajustar</b><span>{item.prazo||"Avaliar individualmente."}</span></div>
-      <div><b>Última dose sugerida pela data da cirurgia</b><span>{item.ultimaDoseSugerida?new Date(`${item.ultimaDoseSugerida}T12:00:00`).toLocaleDateString("pt-BR"):"Não calculável — confirmar risco, função renal e técnica anestésica."}</span></div>
+      <div><b>Última dose sugerida pela data da cirurgia</b><span>{currentSuggested?new Date(`${currentSuggested}T12:00:00`).toLocaleDateString("pt-BR"):"Não calculável — confirmar risco, função renal e técnica anestésica."}</span></div>
       <div><b>Quando reiniciar</b><span>{item.reinicio||"Definir conforme evolução clínica e hemostasia."}</span></div>
       <div className="wide"><b>Ajustes, exceções e cautelas</b><span>{item.excecoes||"Sem regra automática cadastrada."}</span></div>
       <div className="wide medicationSource"><b>Fonte e versão</b><span>{item.fonte||"Não cadastrado no guia 07/2026."}</span></div>
     </div>}
     <label className="medicationConfirm"><input type="checkbox" checked={item.confirmada===true} onChange={e=>update(item.id,"confirmada",e.target.checked)}/><span>Orientação revisada e confirmada pelo anestesiologista</span></label>
-  </section>)}
+  </section>})}
   <section className="evalSection"><h2>Resumo dos medicamentos</h2><div className="medicationSummary">{groups.map(([label,items])=><div key={label}><strong>{label}</strong>{items.length?items.map(m=><span key={m.id}>• {m.nome}{m.dose?` ${m.dose}`:""}</span>):<span>— nenhum —</span>}</div>)}</div></section></>;
 }
 
@@ -252,7 +282,18 @@ function ToggleChips({title,items,draft,set,prefix}:{title:string;items:string[]
   return <div className="examChipGroup"><strong>{title}</strong><div>{items.map(item=>{const key=`${prefix}_${item.toLowerCase().replace(/\W+/g,"_")}`;return <button className={draft[key]===true?"selected":""} onClick={()=>set(key,draft[key]!==true)} key={item}>{item}</button>})}</div></div>;
 }
 function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
-  const field=(name:string,label:string,type="text")=><label className="evalField"><span>{label}</span><input type={type} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>;
+  const limits:Record<string,{min:number;max:number;step?:number}>={
+    pa_sistolica:{min:40,max:300},
+    pa_diastolica:{min:20,max:200},
+    fc:{min:20,max:250},
+    fr:{min:4,max:80},
+    spo2:{min:50,max:100},
+    temperatura:{min:30,max:45,step:0.1},
+    glicemia_capilar:{min:20,max:1000},
+    circ_cervical:{min:10,max:100,step:0.1},
+    circ_abdominal:{min:20,max:300,step:0.1},
+  };
+  const field=(name:string,label:string,type="text")=>{const range=limits[name];return <label className="evalField"><span>{label}</span><input type={type} min={range?.min} max={range?.max} step={range?.step} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>};
   return <section className="evalSection"><h1>5 · Exame físico</h1><div className="physicalGrid">
     {field("pa_sistolica","PA sistólica (mmHg)","number")}{field("pa_diastolica","PA diastólica (mmHg)","number")}{field("fc","FC (bpm)","number")}{field("fr","FR (irpm)","number")}{field("spo2","SpO₂ (%)","number")}{field("temperatura","Temperatura (°C)","number")}
     {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}{field("estado_geral","Estado geral")}{field("consciencia","Nível de consciência")}{field("orientacao","Orientação")}{field("circ_cervical","Circunf. cervical (cm)","number")}{field("circ_abdominal","Circunf. abdominal (cm)","number")}
@@ -269,7 +310,15 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
 function Airway({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const predictors=["Retrognatia/micrognatia","Macroglossia","Pescoço curto","Barba","Massa cervical","Radioterapia cervical prévia","Cirurgia cervical prévia","História de intubação difícil","Dificuldade de ventilação prévia","Traqueostomia","Apneia do sono"];
   const key=(item:string)=>`via_${item.toLowerCase().replace(/\W+/g,"_")}`;
-  const count=predictors.filter(item=>draft[key(item)]===true).length;
+  const primaryOptions: Array<[string,string[]]>=[
+    ["mallampati",["Classe III","Classe IV"]],
+    ["abertura_oral",["< 3 cm"]],
+    ["distancia_tireo",["< 6 cm"]],
+    ["mobilidade",["Reduzida","Muito reduzida"]],
+    ["denticao",["Prótese removível","Alterações dentárias"]],
+  ];
+  const primary=primaryOptions.filter(([field,values])=>values.includes(String(draft[field]))).length;
+  const count=predictors.filter(item=>draft[key(item)]===true).length+primary;
   const risk=count===0?"Baixa":count<=2?"Moderada":"Alta";
   const choice=(name:string,label:string,options:string[])=><label className="evalField"><span>{label}</span><select value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}><option value="">Selecione</option>{options.map(o=><option key={o}>{o}</option>)}</select></label>;
   return <section className="evalSection"><h1>6 · Avaliação da via aérea</h1><div className="airwayGrid">
@@ -302,6 +351,7 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
     <div className="attachmentRow"><label className="attachmentButton">📎 {uploading?"Enviando...":"Anexar arquivo (PDF / imagem / câmera)"}<input type="file" accept=".pdf,image/jpeg,image/png" capture="environment" disabled={uploading} onChange={e=>upload(e.target.files?.[0])}/></label><span>Formatos aceitos: PDF, JPG e PNG.</span></div>
     {uploadError&&<p className="clinicalError">Não foi possível anexar: {uploadError}</p>}
     {attachments.length>0&&<div className="attachmentList">{attachments.map((item:{name:string;path:string})=><span key={item.path}>✓ {item.name}</span>)}</div>}
+    <label className="medicationConfirm"><input type="checkbox" checked={draft.exames_revisados===true} onChange={e=>set("exames_revisados",e.target.checked)}/><span>Exames e anexos revisados; quando ausentes, confirmo que não foram indicados para esta avaliação.</span></label>
   </section>;
 }
 
@@ -312,8 +362,19 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   const rcri=[["rcri_alto_risco","Cirurgia de alto risco"],["rcri_coronaria","Doença arterial coronariana"],["rcri_ic","Insuficiência cardíaca"],["rcri_cerebrovascular","Doença cerebrovascular (AVC/AIT)"],["rcri_insulina","Diabetes em uso de insulina"],["rcri_creatinina","Creatinina > 2,0 mg/dL"]];
   const stop=[["stop_ronco","Ronco alto"],["stop_cansaco","Cansaço/sonolência diurna"],["stop_apneia","Apneia observada"],["stop_has","Hipertensão arterial"],["stop_pescoco","Circunf. cervical > 40 cm"],["stop_imc","IMC > 35"],["stop_idade","Idade > 50"],["stop_masculino","Sexo masculino"]];
   const apfel=[["apfel_historia","História de NVPO ou cinetose"],["apfel_opioide","Opioides pós-operatórios previstos"],["apfel_feminino","Sexo feminino"],["apfel_nao_tabagista","Não tabagista"]];
-  const score=(items:string[][])=>items.filter(([key])=>draft[key]===true).length;
-  const rcriScore=score(rcri),stopScore=score(stop),apfelScore=score(apfel);
+  const rcriScore=rcri.filter(([key])=>key==="rcri_creatinina"?Number(String(draft.creatinina||"").replace(",","."))>2:draft[key]===true).length;
+  const stopScore=stop.filter(([key])=>{
+    if(key==="stop_imc")return imc>35;
+    if(key==="stop_idade")return age!==null&&age>50;
+    if(key==="stop_masculino")return String(sex||draft.sexo).toLowerCase()==="masculino";
+    if(key==="stop_pescoco")return Number(draft.circ_cervical||0)>40;
+    return draft[key]===true;
+  }).length;
+  const apfelScore=apfel.filter(([key])=>{
+    if(key==="apfel_feminino")return String(sex||draft.sexo).toLowerCase()==="feminino";
+    if(key==="apfel_nao_tabagista")return String(draft.habitos||"")!=="Sim"||!String(draft.habitos_detalhes||"").toLowerCase().includes("tabag");
+    return draft[key]===true;
+  }).length;
   const stopRisk=stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco";
   const apfelRisk=["≈ 10%","≈ 21%","≈ 39%","≈ 61%","≈ 79%"][apfelScore];
   const asa=["ASA I","ASA II","ASA III","ASA IV","ASA V","ASA VI"];
@@ -325,7 +386,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div><p>Outros escores somente devem ser usados quando houver dados suficientes e validação clínica.</p></section></>;
 }
 
-function Conclusion({draft,set,paciente,age,imc,conclude}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;imc:number;conclude:()=>Promise<void>}) {
+function Conclusion({draft,set,paciente,age,imc,conclude,saveState}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;imc:number;conclude:()=>Promise<void>;saveState:"saved"|"pending"|"saving"|"error"}) {
   const medications=readMedications(draft.medicamentos_json);
   const airwayKeys=Object.keys(draft).filter(k=>k.startsWith("via_")&&draft[k]===true).length;
   const rcri=Object.keys(draft).filter(k=>k.startsWith("rcri_")&&draft[k]===true).length;
@@ -333,7 +394,19 @@ function Conclusion({draft,set,paciente,age,imc,conclude}:{draft:Draft;set:(name
   const apfel=Object.keys(draft).filter(k=>k.startsWith("apfel_")&&draft[k]===true).length;
   const requestsBlood=["Sim","Solicitar"].includes(String(draft.concentrado_hemacias??""));
   const conclusions=["Apto para o procedimento proposto","Apto com ressalvas","Necessita otimização clínica","Necessita exames complementares","Necessita avaliação de outra especialidade","Avaliação inconclusiva"];
-  const checklist=[["Identificação",Boolean(paciente.nome&&paciente.data_nascimento&&age!==null)],["Procedimento",Boolean(draft.cirurgia)],["Anamnese",Boolean(draft.alergias||draft.cirurgias_anteriores)],["Medicamentos",medications.length===0||medications.every(item=>item.confirmada===true)],["Exame físico",Boolean(draft.pa_sistolica&&draft.fc)],["Via aérea",Boolean(draft.mallampati)],["Exames",Boolean(draft.hemoglobina||draft.ecg)],["Escores",Boolean(draft.asa&&draft.asa_confirmada)],["Conclusão",Boolean(draft.conclusao)]];
+  const anamnesisKeys=["cirurgias_anteriores","reacao_anestesica","medicacao_continua","anticoagulante","cardiovascular","respiratoria","apneia","diabetes","neurologica","outras_doencas","doenca_aguda","dentaria","alergias","habitos","glaucoma","gestacao"];
+  const checklist=[
+    ["Identificação",Boolean(paciente.nome&&paciente.data_nascimento&&age!==null&&draft.peso&&draft.altura)],
+    ["Procedimento",Boolean(draft.cirurgia&&draft.data_cirurgia)],
+    ["Anamnese",anamnesisKeys.every(key=>Boolean(draft[key]))],
+    ["Medicamentos",draft.medicacao_continua==="Não"||(medications.length>0&&medications.every(item=>item.confirmada===true))],
+    ["Exame físico",Boolean(draft.pa_sistolica&&draft.pa_diastolica&&draft.fc&&draft.spo2)],
+    ["Via aérea",Boolean(draft.mallampati&&draft.abertura_oral&&draft.distancia_tireo&&draft.denticao&&draft.mobilidade)],
+    ["Exames",draft.exames_revisados===true],
+    ["Escores",Boolean(draft.asa&&draft.asa_confirmada&&draft.capacidade_funcional)],
+    ["Planejamento e conclusão",Boolean(draft.jejum_solidos&&draft.jejum_liquidos&&draft.tecnica&&draft.conclusao&&draft.anestesiologista&&draft.crm&&(!requestsBlood||draft.quantidade_ch))],
+  ] as const;
+  const allComplete=checklist.every(([,ok])=>ok);
   const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
   function generateText(){set("plano_anestesico",`AVALIAÇÃO PRÉ-ANESTÉSICA\nPaciente: ${paciente.nome}\nProcedimento: ${String(draft.cirurgia||"")}\nASA: ${String(draft.asa||"não definida")}\nAlergias: ${String(draft.alergias_detalhes||"não informadas")}\nCapacidade funcional: ${String(draft.capacidade_funcional||"não avaliada")}\nPlano e observações: revisar e completar pelo anestesiologista.`)}
   return <><section className="evalSection"><div className="conclusionHeading"><h1>9 · Resumo da avaliação</h1><button className="outlineClinical" onClick={generateText}>Gerar texto editável nas observações ↓</button></div><div className="summaryGrid">{summary.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
@@ -349,5 +422,5 @@ function Conclusion({draft,set,paciente,age,imc,conclude}:{draft:Draft;set:(name
     <label className="evalField plan4"><span>Técnica anestésica</span><select value={String(draft.tecnica??"")} onChange={e=>set("tecnica",e.target.value)}><option value="">—</option><option>Anestesia geral</option><option>Sedação</option><option>Raquianestesia</option><option>Raquianestesia + sedação</option><option>Peridural</option><option>Bloqueio periférico</option><option>Técnica combinada</option></select></label>
     <label className="evalField plan4"><span>Monitorização</span><select value={String(draft.monitorizacao??"")} onChange={e=>set("monitorizacao",e.target.value)}><option value="">Selecione</option><option>Padrão</option><option>Expandida</option><option>Invasiva</option><option>Conforme necessidade clínica</option></select></label>
   </div><label className="evalField"><span>Plano anestésico e observações</span><textarea rows={6} value={String(draft.plano_anestesico??"")} onChange={e=>set("plano_anestesico",e.target.value)}/></label></section>
-  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button className="finishAssessment" disabled={!draft.conclusao||!draft.anestesiologista||!draft.crm||(requestsBlood&&!draft.quantidade_ch)||age===null} onClick={conclude}>✓ Concluir avaliação</button></div><p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
+  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Complete os itens marcados com ⚠ antes de concluir. Você pode usar “Salvar e voltar” sem perder o rascunho.</p>}{saveState==="error"&&<p className="completionWarning">O rascunho não está sincronizado. Recarregue a página antes de concluir para evitar substituir alterações mais recentes.</p>}<p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
 }
