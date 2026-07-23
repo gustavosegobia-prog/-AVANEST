@@ -72,3 +72,28 @@
 @media(max-width:760px){.documentsMain{width:calc(100% - 24px);padding-top:22px}.documentsHeading{align-items:flex-start;flex-direction:column}.documentsSidebar{grid-template-columns:1fr}.printPaper{padding:20px 16px;font-size:9px;overflow:auto}.paperPatientGrid{grid-template-columns:repeat(2,1fr)}.paperPatientGrid span{border-bottom:1px solid #aaa}.paperColumns,.consentSignatures{grid-template-columns:1fr}.paperExam{grid-template-columns:1fr 1fr}.docSaved{display:none}}
 @page{size:A4;margin:10mm}
 @media print{body{background:#fff!important}.documentsTopbar,.documentsHeading,.documentInfo,.documentsSidebar{display:none!important}.documentsMain{width:100%;padding:0}.documentsLayout,.paperStack{display:block}.printPaper{display:block;width:auto;min-height:0;border:0;border-radius:0;box-shadow:none;padding:0;margin:0;color:#000;opacity:1;filter:none;break-after:page;page-break-after:always;overflow:visible}.printPaper:last-child{break-after:auto;page-break-after:auto}.printPaper.notSelected{display:none!important}.legalReview{background:#fff!important}.paperTitle,.paperTable th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+/* Fluxo clínico contínuo e campos condicionais */
+[id^="etapa-"]{scroll-margin-top:155px}
+.evalSteps{position:sticky;top:72px;z-index:25;background:#f2f6fa;border-bottom:1px solid #d6e1ea;padding:12px max(30px,calc((100vw - 1360px)/2));display:flex;gap:9px;overflow-x:auto}
+.evalSteps button{white-space:nowrap;border:1px solid #d4dfe7;background:#fff;color:#53687c;border-radius:22px;padding:9px 14px;font-weight:750;cursor:pointer}
+.evalSteps button:hover,.evalSteps button:focus-visible{border-color:#176bb5;color:#075daa}
+.fieldError{color:#b4232c;font-size:12px;font-weight:750;margin-top:7px}
+.invalidField{border-color:#cf383d!important;background:#fff1f1!important}
+.detailChips{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}
+.detailChips button{border:1px solid #d4dfe7;background:#edf2f6;color:#52687d;border-radius:20px;padding:8px 13px;cursor:pointer}
+.detailChips button.selected{border-color:#176bb5;background:#e3effa;color:#075daa}
+.conditionalDetails{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:13px 0}
+.conditionalDetails label{display:grid;gap:7px;color:#52687d;font-size:12px;font-weight:750}
+.conditionalDetails input,.conditionalDetails select{min-width:0;width:100%;height:48px;border:1px solid #cbd8e0;border-radius:9px;background:#eef3f7;padding:0 13px;font:inherit}
+.medicationGuidance{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:18px;border-top:1px solid #dec98e;background:#fffaf0}
+.medicationGuidance>div{display:grid;gap:5px}.medicationGuidance span{color:#50677d;line-height:1.45}.medicationGuidance .wide{grid-column:1/-1}
+.medicationSource{font-size:12px}.medicationConfirm{display:flex;align-items:center;gap:10px;margin:16px 20px;font-weight:750;color:#087d60}.medicationConfirm input{width:19px;height:19px;accent-color:#168365}
+.statusChip.danger{background:#fde8e8;color:#c63137}
+.receptionMain .queueRow{grid-template-columns:80px minmax(270px,1fr) auto auto auto}
+.officialConsent h3{text-align:center;font-family:Georgia,"Times New Roman",serif;font-size:14px;margin:16px 0 20px}
+.officialConsent ol{padding-left:22px}.officialConsent li{margin:10px 0;text-align:justify}
+.officialConsent ul{padding-left:18px;margin:7px 0}.officialConsent ul li{margin:4px 0}
+.officialConsent .consentAuthorization{margin-top:18px;font-weight:700}
+@media(max-width:900px){.receptionMain .queueRow{grid-template-columns:65px 1fr auto}.receptionMain .queueRow .outlineClinical{grid-column:auto}.conditionalDetails,.medicationGuidance{grid-template-columns:1fr}.medicationGuidance .wide{grid-column:auto}}
+@media(max-width:680px){.evalSteps{top:72px;padding:9px 12px}.receptionMain .queueRow{grid-template-columns:55px 1fr}.receptionMain .queueRow .statusChip,.receptionMain .queueRow .outlineClinical{grid-column:1/-1}.conditionalDetails{grid-template-columns:1fr}}

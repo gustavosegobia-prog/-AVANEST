@@ -42,10 +42,20 @@ export function DashboardClient({ perfil, pacientes, avaliacoes, financeiro, pag
     setBusy(true); setError("");
     const fd = new FormData(event.currentTarget);
     const text = (name: string) => String(fd.get(name) ?? "").trim() || null;
+    const birthDate=text("data_nascimento");
+    if(birthDate){
+      const birth=new Date(`${birthDate}T12:00:00`),todayDate=new Date();
+      const age=todayDate.getFullYear()-birth.getFullYear()-(todayDate<new Date(todayDate.getFullYear(),birth.getMonth(),birth.getDate())?1:0);
+      if(!Number.isFinite(age)||age<0||age>130){
+        setError("Data de nascimento inválida. Confira o ano antes de salvar.");
+        setBusy(false);
+        return;
+      }
+    }
     const supabase = createClient();
     const { error: insertError } = await supabase.from("pacientes").insert({
       institution_id: perfil.institution_id, created_by: perfil.id,
-      nome: text("nome"), cpf: text("cpf"), rg: text("rg"), data_nascimento: text("data_nascimento"),
+      nome: text("nome"), cpf: text("cpf"), rg: text("rg"), data_nascimento: birthDate,
       sexo: text("sexo"), telefone: text("telefone"), email: text("email"), endereco: text("endereco"),
       cidade: text("cidade"), uf: text("uf"), cep: text("cep"), hospital: text("hospital"),
       cirurgia: text("cirurgia"), especialidade: text("especialidade"), procedimento: text("procedimento"),
@@ -67,6 +77,22 @@ export function DashboardClient({ perfil, pacientes, avaliacoes, financeiro, pag
     }).select("id").single();
     if (createError || !data) { setError(createError?.message ?? "Falha ao iniciar avaliação."); setBusy(false); return; }
     router.push(`/avaliacoes/${data.id}`);
+  }
+
+  async function updateAttendance(patientId:string, agendaStatus:"presente"|"faltou") {
+    setBusy(true); setError("");
+    const existing=currentByPatient.get(patientId);
+    const supabase=createClient();
+    const nextData={...(existing?.dados||{}),agenda_status:agendaStatus,agenda_status_at:new Date().toISOString(),agenda_status_by:perfil.id};
+    const result=existing
+      ? await supabase.from("avaliacoes").update({status:agendaStatus==="faltou"?"cancelada":"rascunho",dados:nextData,updated_at:new Date().toISOString()}).eq("id",existing.id)
+      : await supabase.from("avaliacoes").insert({
+          institution_id:perfil.institution_id,patient_id:patientId,created_by:perfil.id,
+          status:agendaStatus==="faltou"?"cancelada":"rascunho",dados:nextData,
+        });
+    setBusy(false);
+    if(result.error)setError(`Não foi possível atualizar a presença: ${result.error.message}`);
+    else router.refresh();
   }
 
   async function logout() {
@@ -135,9 +161,10 @@ export function DashboardClient({ perfil, pacientes, avaliacoes, financeiro, pag
       ) : view === "recepcao" ? (
         <div className="clinicalMain receptionMain">
           <section><h1>Recepção</h1><p>Cadastro de pacientes e agenda — sem acesso a dados clínicos ou financeiros.</p><div className="quickLinks"><button onClick={() => setOpen(true)}>Novo paciente</button><button>Agenda</button><button>Pacientes</button><button>Pesquisar</button><button>Convênios</button><button>Anexar documentos</button></div></section>
-          <section className="metricGrid receptionMetrics"><Metric value={scheduledToday.length || queue.length} label="Consultas hoje" tone="blue"/><Metric value={pacientes.length} label="Consultas agendadas" tone="blue"/><Metric value={completed.length} label="Concluídas no mês" tone="green"/><Metric value={drafts.length} label="Aguardando cadastro" tone="amber"/><Metric value={0} label="Canceladas" tone="red"/></section>
+          {error&&<p className="clinicalError">{error}</p>}
+          <section className="metricGrid receptionMetrics"><Metric value={scheduledToday.length || queue.length} label="Consultas hoje" tone="blue"/><Metric value={pacientes.length} label="Consultas agendadas" tone="blue"/><Metric value={completed.length} label="Concluídas no mês" tone="green"/><Metric value={drafts.length} label="Aguardando cadastro" tone="amber"/><Metric value={avaliacoes.filter(a=>a.status==="cancelada").length} label="Faltas/canceladas" tone="red"/></section>
           <section className="clinicalPanel searchPanel"><strong>Pesquisar paciente</strong><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Nome, parte do nome, CPF ou telefone..." /><span>Pesquise antes de cadastrar — evita duplicidade</span></section>
-          <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((p,index)=><div className="queueRow" key={p.id}><time>{p.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{p.hospital||"Hospital não informado"} · {p.convenio||"Particular"}</small></div><span className="statusChip waiting">AVALIAÇÃO AGENDADA</span><button className="outlineClinical">✓ Presente</button><button className="outlineClinical red">Faltou</button></div>)}</section>
+          <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((p,index)=>{const a=currentByPatient.get(p.id);const agendaStatus=String(a?.dados?.agenda_status||"agendada");return <div className="queueRow" key={p.id}><time>{p.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{p.hospital||"Hospital não informado"} · {p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":"AVALIAÇÃO AGENDADA"}</span><button disabled={busy||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(p.id,"presente")}>✓ Presente</button><button disabled={busy||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(p.id,"faltou")}>Faltou</button></div>})}</section>
           <section className="clinicalPanel inlineRegistration"><div className="panelTitle"><strong>Novo paciente</strong></div><p>Use o cadastro completo para incluir dados pessoais, convênio, cirurgia e agendamento.</p><button className="primaryClinical" onClick={()=>setOpen(true)}>Abrir cadastro completo</button></section>
         </div>
       ) : <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} onRefresh={()=>router.refresh()}/>}
