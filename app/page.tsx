@@ -1,17 +1,10 @@
-function Logo() {
-  return (
-    <span className="avnBrand">
-      <span className="avnMark">♥</span>
-      <span><strong>AVANEST</strong><small>AVALIAÇÃO PRÉ-ANESTÉSICA</small></span>
-    </span>
-  );
-}
+import { AppLogo } from "@/components/app-logo";
 
 export default function HomePage() {
   return (
     <main className="avnLanding">
       <header className="avnNav">
-        <Logo />
+        <AppLogo />
         <nav>
           <a className="avnLogin" href="/login">♟ &nbsp; Login</a>
           <a className="avnPrimary" href="mailto:gustavosegobia@icloud.com?subject=Demonstração AVANEST">

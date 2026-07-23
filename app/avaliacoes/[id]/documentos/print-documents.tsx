@@ -2,6 +2,7 @@
 
 import {useMemo,useState} from "react";
 import {createClient} from "@/utils/supabase/client";
+import {BrandMark} from "@/components/brand-mark";
 
 type Data=Record<string,string|boolean>;
 type Props={
@@ -93,7 +94,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   }
 
   return <main className="documentsShell">
-    <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><b>AV</b><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a><span className="docSaved">● Avaliação concluída</span><nav className="roleNav"><button>◐ Escuro</button><button>Recepção</button><button>Médico</button><button>Financeiro</button><button>Admin</button><span className="roleBadge">ADMINISTRADOR</span></nav></header>
+    <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark"/><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a><span className="docSaved">● Avaliação concluída</span><nav className="roleNav"><button>◐ Escuro</button><button>Recepção</button><button>Médico</button><button>Financeiro</button><button>Admin</button><span className="roleBadge">ADMINISTRADOR</span></nav></header>
     <div className="documentsMain">
       <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}`}>← Voltar e corrigir avaliação</a></div></div>
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>

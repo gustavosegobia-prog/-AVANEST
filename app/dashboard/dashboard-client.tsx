@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { BrandMark } from "@/components/brand-mark";
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; must_reset: boolean };
 type Paciente = {
@@ -103,7 +104,7 @@ export function DashboardClient({ perfil, pacientes, avaliacoes, financeiro, pag
   return (
     <main className="clinicalShell">
       <header className="clinicalTopbar">
-        <a className="clinicalBrand" href="/"><b>AV</b><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a>
+        <a className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a>
         <nav className="roleNav">
           <button className="themePill">◐ Escuro</button>
           <button className={view === "recepcao" ? "active" : ""} onClick={() => setView("recepcao")}>Recepção</button>

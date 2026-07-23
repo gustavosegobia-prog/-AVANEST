@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { calculateLastDoseDate, findMedicationGuideEntry } from "@/lib/medication-guide";
+import { BrandMark } from "@/components/brand-mark";
 
 const STEPS = ["Identificação", "Procedimento", "Anamnese", "Medicamentos", "Exame físico", "Via aérea", "Exames", "Escores", "Conclusão"];
 type Draft = Record<string, string | boolean>;
@@ -84,7 +85,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
 
   return <main className="evalShell">
     <header className="evalTopbar">
-      <a className="clinicalBrand" href="/dashboard"><b>AV</b><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a>
+      <a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a>
       <span className={`evalSave ${saveState}`}><i/> {saveState==="saved"?`Salvo automaticamente às ${savedAt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`:saveState==="saving"?"Salvando...":saveState==="pending"?"Alterações pendentes":"Falha ao salvar"}</span>
       <nav className="evalRoleNav"><button>◐ Escuro</button><button>Recepção</button><button className="active">Médico</button><button>Financeiro</button><button>Admin</button><b>ADMINISTRADOR</b></nav>
     </header>
