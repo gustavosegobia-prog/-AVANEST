@@ -118,3 +118,27 @@
   .planningGrid{grid-template-columns:1fr}
   .planningGrid .evalField.plan2,.planningGrid .evalField.plan4{grid-column:span 1}
 }
+
+/* Hero: mostra a sala e o equipamento por inteiro, sem aproximar demais a foto */
+.avnHero{
+  min-height:max(720px,calc(100svh - 108px));
+  overflow:hidden;
+  background-color:var(--avn-navy);
+  background-image:url("/hero-bg.jpg");
+  background-repeat:no-repeat;
+  background-position:right center;
+  background-size:auto 100%;
+}
+.avnOverlay{
+  background:linear-gradient(90deg,#041626 0%,#041626f7 30%,#041626d9 48%,#0416267a 68%,#04162624 100%);
+}
+.avnHeroContent{padding-top:clamp(95px,12vh,135px)}
+@media(max-width:1100px){
+  .avnHero{background-position:65% center;background-size:cover}
+  .avnOverlay{background:linear-gradient(90deg,#041626f9 0%,#041626e8 55%,#0416267d 100%)}
+}
+@media(max-width:680px){
+  .avnHero{min-height:calc(100svh - 88px);background-position:68% center}
+  .avnOverlay{background:linear-gradient(90deg,#041626f5 0%,#041626e8 72%,#041626b8 100%)}
+  .avnHeroContent{padding-top:72px}
+}
