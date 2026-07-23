@@ -1,24 +1,29 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { DashboardClient } from "./dashboard-client";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
   const { data: perfil } = await supabase
     .from("perfis")
-    .select("nome, role, must_reset")
+    .select("id, institution_id, nome, role, must_reset")
     .eq("id", user.id)
     .single();
+  if (!perfil) redirect("/login");
+
+  const [{ data: pacientes }, { data: avaliacoes }] = await Promise.all([
+    supabase.from("pacientes").select("id,nome,cpf,data_nascimento,telefone,email,created_at").order("created_at", { ascending: false }),
+    supabase.from("avaliacoes").select("id,patient_id,status,updated_at,created_at").order("updated_at", { ascending: false }),
+  ]);
+
   return (
-    <main className="dashboardPage">
-      <section className="dashboardCard">
-        <p className="kicker"><b>✓</b> Conexão segura</p>
-        <h1>OLÁ,<br /><span>{perfil?.nome ?? "PROFISSIONAL"}.</span></h1>
-        <p>Seu login está funcionando e o perfil <strong>{perfil?.role ?? "autorizado"}</strong> foi reconhecido.</p>
-        {perfil?.must_reset && <p className="loginNotice">A troca de senha no primeiro acesso será configurada na próxima etapa.</p>}
-        <a className="btn btnYellow" href="/">VOLTAR AO SITE</a>
-      </section>
-    </main>
+    <DashboardClient
+      perfil={perfil}
+      pacientes={pacientes ?? []}
+      avaliacoes={avaliacoes ?? []}
+    />
   );
 }
