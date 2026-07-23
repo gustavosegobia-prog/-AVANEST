@@ -2,6 +2,8 @@
 
 Aplicação web da AVANEST, publicada na Vercel e conectada ao Supabase.
 
+Site oficial: https://www.avanest.com.br
+
 ## Configuração
 
 Crie as variáveis `NEXT_PUBLIC_SUPABASE_URL` e
