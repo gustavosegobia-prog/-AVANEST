@@ -36,6 +36,7 @@
 .avnLoginSubmit{width:100%;border:0;border-radius:11px;padding:16px;background:linear-gradient(135deg,#078cc5,#25c2a0);color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,119,182,.28)}.avnLoginSubmit:disabled{opacity:.65;cursor:wait}
 .avnLoginCancel{align-self:center;color:#5c6d7c;margin-top:17px;font-size:14px}.avnLoginCancel:hover{color:#1565ad}
 .avnLoginContent .loginError{border:0;border-radius:8px;background:#fbe9e9;color:#bb3535;margin:2px 0 7px;font-size:13px}
+.avnLoginContent .loginSuccess{border:0;border-radius:8px;background:#e3f5ed;color:#087d60;margin:0 0 8px;padding:11px 13px;font-size:13px}.avnForgotPassword{justify-self:end;color:#1565ad;font-size:13px;font-weight:750;margin:1px 0 7px}.avnForgotPassword:hover{text-decoration:underline}.recoveryConfirmation{background:#e3f5ed;color:#087d60;border:1px solid #adddcc;border-radius:12px;padding:18px}.recoveryConfirmation strong{display:block;font-size:18px}.recoveryConfirmation p{margin:7px 0 0!important;color:#356c5d!important;line-height:1.5}
 @media(max-width:760px){.avnLoginPage{padding:16px}.avnLoginCard{grid-template-columns:1fr}.avnLoginIllustration{min-height:260px;padding:28px}.avnLoginMonitor{display:none}.avnLoginIllustration>p{margin-top:45px}.avnLoginContent{padding:34px 25px}}
 
 /* Painel clínico e recepção */

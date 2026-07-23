@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
-export function LoginForm() {
+export function LoginForm({ passwordChanged = false }: { passwordChanged?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +31,7 @@ export function LoginForm() {
 
   return (
     <form className="loginForm" onSubmit={handleSubmit}>
+      {passwordChanged && <p className="loginSuccess" role="status">Senha alterada com sucesso. Entre usando a nova senha.</p>}
       <label htmlFor="email">Usuário ou e-mail</label>
       <input id="email" name="email" type="email" autoComplete="email" placeholder="seu.usuario ou e-mail" required />
       <label htmlFor="password">Senha</label>
@@ -41,6 +42,7 @@ export function LoginForm() {
         </button>
       </div>
       {error && <p className="loginError" role="alert">{error}</p>}
+      <a className="avnForgotPassword" href="/recuperar-senha">Esqueci minha senha</a>
       <button className="avnLoginSubmit" type="submit" disabled={loading}>
         {loading ? "Entrando..." : "Entrar"}
       </button>

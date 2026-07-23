@@ -3,7 +3,8 @@ import { LoginForm } from "./login-form";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ senha?: string }> }) {
+  const query = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect("/dashboard");
@@ -27,7 +28,7 @@ export default async function LoginPage() {
         <div className="avnLoginContent">
           <h1>Entrar no AVANEST</h1>
           <p>Acesso individual, definido pela sua conta.</p>
-          <LoginForm />
+          <LoginForm passwordChanged={query.senha === "alterada"} />
           <a className="avnLoginCancel" href="/">Cancelar</a>
         </div>
       </section>
