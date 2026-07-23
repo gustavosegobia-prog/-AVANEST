@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 
 const STEPS = ["Identificação", "Procedimento", "Anamnese", "Medicamentos", "Exame físico", "Via aérea", "Exames", "Escores", "Conclusão"];
 type Draft = Record<string, string | boolean>;
-type Assessment = { id: string; patient_id: string; status: string; versao: number; dados: Draft | null; updated_at: string };
+type Assessment = { id: string; institution_id: string; patient_id: string; status: string; versao: number; dados: Draft | null; updated_at: string };
 type Patient = {
   id:string; nome:string; cpf:string|null; rg?:string|null; data_nascimento:string|null; sexo:string|null;
   telefone:string|null; email:string|null; hospital?:string|null; cirurgia?:string|null;
@@ -96,11 +96,11 @@ export function AssessmentForm({ avaliacao, paciente }: { avaliacao: Assessment;
       {step===3 && <Medications draft={draft} set={set}/>}
       {step===4 && <PhysicalExam draft={draft} set={set}/>}
       {step===5 && <Airway draft={draft} set={set}/>}
-      {step===6 && <ComplementaryExams draft={draft} set={set}/>}
-      {step===7 && <GenericSection title="8 · Escores"><div className="evalFormGrid">{input("asa","ASA")}{input("lee","Lee/RCRI")}{input("stop_bang","STOP-Bang")}{input("apfel","Apfel")}</div><p className="evalHint">Os escores devem ser revisados e confirmados pelo anestesiologista.</p></GenericSection>}
-      {step===8 && <GenericSection title="9 · Planejamento e conclusão"><label className="evalField"><span>Plano anestésico</span><textarea rows={5} value={String(draft.plano_anestesico??"")} onChange={e=>set("plano_anestesico",e.target.value)}/></label>{select("conclusao","Conclusão",["Apto","Apto com ressalvas","Necessita otimização","Avaliação incompleta"])}</GenericSection>}
+      {step===6 && <ComplementaryExams draft={draft} set={set} avaliacao={avaliacao}/>}
+      {step===7 && <Scores draft={draft} set={set} age={age} sex={paciente.sexo} imc={imc}/>}
+      {step===8 && <Conclusion draft={draft} set={set} paciente={paciente} age={age} imc={imc} conclude={conclude}/>}
 
-      <div className="evalFooterActions"><button disabled={step===0} onClick={()=>setStep(s=>s-1)}>Anterior</button>{step<8?<button className="primaryClinical" onClick={async()=>{await save();setStep(s=>s+1);scrollTo(0,0)}}>Salvar e continuar</button>:<button className="primaryClinical" onClick={conclude}>Concluir avaliação</button>}</div>
+      <div className="evalFooterActions"><button disabled={step===0} onClick={()=>setStep(s=>s-1)}>Anterior</button>{step<8?<button className="primaryClinical" onClick={async()=>{await save();setStep(s=>s+1);scrollTo(0,0)}}>Salvar e continuar</button>:<button className="primaryClinical" onClick={()=>save()}>Salvar como incompleta</button>}</div>
     </div>
   </main>;
 }
@@ -207,7 +207,69 @@ function Airway({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=
   </section>;
 }
 
-function ComplementaryExams({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
-  const fields=[["hemoglobina","Hemoglobina (g/dL)"],["hematocrito","Hematócrito (%)"],["plaquetas","Plaquetas"],["inr","INR"],["ttpa","TTPa (s)"],["creatinina","Creatinina (mg/dL)"],["glicemia","Glicemia (mg/dL)"],["hba1c","HbA1c (%)"],["ureia","Ureia (mg/dL)"],["potassio","Potássio (mEq/L)"],["sodio","Sódio (mEq/L)"],["ecg","ECG — resumo"]];
-  return <section className="evalSection"><h1>7 · Exames complementares</h1><p className="evalHint">Valores de referência não são validados automaticamente. Registre apenas resultados conferidos e anexe os documentos correspondentes quando disponíveis.</p><div className="examResultsGrid">{fields.map(([name,label])=><label className="evalField" key={name}><span>{label}</span><input value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>)}</div><label className="evalField"><span>Outros exames e observações</span><textarea rows={5} value={String(draft.exames_obs??"")} onChange={e=>set("exames_obs",e.target.value)}/></label></section>;
+function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,value:string|boolean)=>void;avaliacao:Assessment}) {
+  const [uploading,setUploading]=useState(false);
+  const [uploadError,setUploadError]=useState("");
+  const attachments=useMemo(()=>{try{const data=JSON.parse(String(draft.exames_anexos||"[]"));return Array.isArray(data)?data:[]}catch{return []}},[draft.exames_anexos]);
+  const field=(name:string,label:string,type="text")=><label className="evalField"><span>{label}</span><input type={type} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>;
+  async function upload(file?:File) {
+    if(!file)return; setUploading(true); setUploadError("");
+    const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    const path=`${avaliacao.institution_id}/${avaliacao.id}/${crypto.randomUUID()}-${safe}`;
+    const client=createClient(); const {error}=await client.storage.from("anexos").upload(path,file,{contentType:file.type,upsert:false});
+    if(error){setUploadError(error.message)}else{set("exames_anexos",JSON.stringify([...attachments,{name:file.name,path,type:file.type,size:file.size,createdAt:new Date().toISOString()}]))}
+    setUploading(false);
+  }
+  return <section className="evalSection"><h1>7 · Exames complementares</h1><p className="evalHint">Valores de referência não são validados automaticamente. A interpretação e a decisão de repetir exames são do anestesiologista.</p>
+    <div className="examResultsGrid">{field("hemoglobina","Hemoglobina (g/dL)")}{field("hematocrito","Hematócrito (%)")}{field("plaquetas","Plaquetas")}{field("inr","INR")}{field("ttpa","TTPa (s)")}{field("creatinina","Creatinina (mg/dL)")}{field("ureia","Ureia (mg/dL)")}{field("sodio","Sódio (mEq/L)")}{field("potassio","Potássio (mEq/L)")}{field("glicemia","Glicemia (mg/dL)")}{field("hba1c","HbA1c (%)")}{field("data_exames","Data dos exames","date")}</div>
+    <div className="examDetailGrid">{field("ecg","Eletrocardiograma")}{field("ecg_situacao","Situação do ECG")}{field("eco","Ecocardiograma")}{field("eco_situacao","Situação do Eco")}{field("rx_torax","Radiografia de tórax")}{field("espirometria","Espirometria")}<label className="evalField span2"><span>Outros exames (imagem, gasometria...)</span><input value={String(draft.exames_obs??"")} onChange={e=>set("exames_obs",e.target.value)}/></label></div>
+    <div className="attachmentRow"><label className="attachmentButton">📎 {uploading?"Enviando...":"Anexar arquivo (PDF / imagem / câmera)"}<input type="file" accept=".pdf,image/jpeg,image/png" capture="environment" disabled={uploading} onChange={e=>upload(e.target.files?.[0])}/></label><span>Formatos aceitos: PDF, JPG e PNG.</span></div>
+    {uploadError&&<p className="clinicalError">Não foi possível anexar: {uploadError}</p>}
+    {attachments.length>0&&<div className="attachmentList">{attachments.map((item:{name:string;path:string})=><span key={item.path}>✓ {item.name}</span>)}</div>}
+  </section>;
+}
+
+function ScoreToggle({name,label,draft,set}:{name:string;label:string;draft:Draft;set:(name:string,value:string|boolean)=>void}) {
+  return <button className={draft[name]===true?"scoreToggle selected":"scoreToggle"} onClick={()=>set(name,draft[name]!==true)}><i>{draft[name]===true?"✓":""}</i>{label}</button>;
+}
+function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:string|boolean)=>void;age:number|null;sex:string|null;imc:number}) {
+  const rcri=[["rcri_alto_risco","Cirurgia de alto risco"],["rcri_coronaria","Doença arterial coronariana"],["rcri_ic","Insuficiência cardíaca"],["rcri_cerebrovascular","Doença cerebrovascular (AVC/AIT)"],["rcri_insulina","Diabetes em uso de insulina"],["rcri_creatinina","Creatinina > 2,0 mg/dL"]];
+  const stop=[["stop_ronco","Ronco alto"],["stop_cansaco","Cansaço/sonolência diurna"],["stop_apneia","Apneia observada"],["stop_has","Hipertensão arterial"],["stop_pescoco","Circunf. cervical > 40 cm"],["stop_imc","IMC > 35"],["stop_idade","Idade > 50"],["stop_masculino","Sexo masculino"]];
+  const apfel=[["apfel_historia","História de NVPO ou cinetose"],["apfel_opioide","Opioides pós-operatórios previstos"],["apfel_feminino","Sexo feminino"],["apfel_nao_tabagista","Não tabagista"]];
+  const score=(items:string[][])=>items.filter(([key])=>draft[key]===true).length;
+  const rcriScore=score(rcri),stopScore=score(stop),apfelScore=score(apfel);
+  const stopRisk=stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco";
+  const apfelRisk=["≈ 10%","≈ 21%","≈ 39%","≈ 61%","≈ 79%"][apfelScore];
+  const asa=["ASA I","ASA II","ASA III","ASA IV","ASA V","ASA VI"];
+  return <><div className="scoreGrid">
+    <section className="evalSection"><h1>8 · Classificação ASA</h1><p className="evalHint">Selecione e confirme a classificação médica.</p><div className="asaButtons">{asa.map(item=><button className={draft.asa===item?"selected":""} onClick={()=>set("asa",item)} key={item}>{item}</button>)}<button className={draft.asa_emergencia===true?"selected":""} onClick={()=>set("asa_emergencia",draft.asa_emergencia!==true)}>+ E (emergência)</button></div><label className="confirmScore"><input type="checkbox" checked={draft.asa_confirmada===true} onChange={e=>set("asa_confirmada",e.target.checked)}/> Classificação confirmada pelo médico</label></section>
+    <section className="evalSection"><h1>Índice de Lee (RCRI)</h1><p className="evalHint">Marque os critérios presentes.</p><div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set}/>)}</div><div className="scoreResult">Lee {rcriScore} ponto(s) · Classe {rcriScore===0?"I":rcriScore===1?"II":rcriScore===2?"III":"IV"} <small>apoio à estratificação; confirmar clinicamente</small></div></section>
+    <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={`${label}${key==="stop_imc"&&imc?` (IMC ${imc.toFixed(1)})`:key==="stop_idade"&&age?` (${age} anos)`:key==="stop_masculino"&&sex?` (${sex})`:""}`} draft={draft} set={set}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
+    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk} <small>referência de apoio; confirmar conduta</small></div></section>
+  </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div><p>Outros escores somente devem ser usados quando houver dados suficientes e validação clínica.</p></section></>;
+}
+
+function Conclusion({draft,set,paciente,age,imc,conclude}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;imc:number;conclude:()=>Promise<void>}) {
+  const medications=readMedications(draft.medicamentos_json);
+  const airwayKeys=Object.keys(draft).filter(k=>k.startsWith("via_")&&draft[k]===true).length;
+  const rcri=Object.keys(draft).filter(k=>k.startsWith("rcri_")&&draft[k]===true).length;
+  const stop=Object.keys(draft).filter(k=>k.startsWith("stop_")&&draft[k]===true).length;
+  const apfel=Object.keys(draft).filter(k=>k.startsWith("apfel_")&&draft[k]===true).length;
+  const conclusions=["Apto para o procedimento proposto","Apto com ressalvas","Necessita otimização clínica","Necessita exames complementares","Necessita avaliação de outra especialidade","Avaliação inconclusiva"];
+  const checklist=[["Identificação",Boolean(paciente.nome&&paciente.data_nascimento)],["Procedimento",Boolean(draft.cirurgia)],["Anamnese",Boolean(draft.alergias||draft.cirurgias_anteriores)],["Medicamentos",Boolean(draft.medicamentos_json)],["Exame físico",Boolean(draft.pa_sistolica&&draft.fc)],["Via aérea",Boolean(draft.mallampati)],["Exames",Boolean(draft.hemoglobina||draft.ecg)],["Escores",Boolean(draft.asa&&draft.asa_confirmada)],["Conclusão",Boolean(draft.conclusao)]];
+  const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
+  function generateText(){set("plano_anestesico",`AVALIAÇÃO PRÉ-ANESTÉSICA\nPaciente: ${paciente.nome}\nProcedimento: ${String(draft.cirurgia||"")}\nASA: ${String(draft.asa||"não definida")}\nAlergias: ${String(draft.alergias_detalhes||"não informadas")}\nCapacidade funcional: ${String(draft.capacidade_funcional||"não avaliada")}\nPlano e observações: revisar e completar pelo anestesiologista.`)}
+  return <><section className="evalSection"><div className="conclusionHeading"><h1>9 · Resumo da avaliação</h1><button className="outlineClinical" onClick={generateText}>Gerar texto editável nas observações ↓</button></div><div className="summaryGrid">{summary.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
+  <section className="evalSection"><h2>Prescrição e planejamento pré-anestésico</h2><div className="planningGrid">
+    <label className="evalField"><span>Jejum — sólidos</span><select value={String(draft.jejum_solidos??"")} onChange={e=>set("jejum_solidos",e.target.value)}><option value="">Selecione</option><option>Conforme protocolo institucional</option><option>Definir individualmente</option></select></label>
+    <label className="evalField"><span>Jejum — líquidos claros</span><select value={String(draft.jejum_liquidos??"")} onChange={e=>set("jejum_liquidos",e.target.value)}><option value="">Selecione</option><option>Conforme protocolo institucional</option><option>Definir individualmente</option></select></label>
+    <label className="evalField"><span>Horário de chegada</span><input type="time" value={String(draft.horario_chegada??"")} onChange={e=>set("horario_chegada",e.target.value)}/></label>
+    <label className="evalField"><span>Pré-medicação</span><input value={String(draft.premedicacao??"")} onChange={e=>set("premedicacao",e.target.value)}/></label>
+    <label className="evalField"><span>Leito de UTI</span><select value={String(draft.leito_uti??"")} onChange={e=>set("leito_uti",e.target.value)}><option value="">Selecione</option><option>Não</option><option>Sim</option><option>A definir</option></select></label>
+    <label className="evalField"><span>Concentrado de hemácias</span><select value={String(draft.concentrado_hemacias??"")} onChange={e=>set("concentrado_hemacias",e.target.value)}><option value="">Selecione</option><option>Não</option><option>Sim</option><option>A definir</option></select></label>
+    <label className="evalField"><span>Avaliação especializada</span><select value={String(draft.avaliacao_especializada??"")} onChange={e=>set("avaliacao_especializada",e.target.value)}><option value="">Selecione</option><option>Não</option><option>Sim</option></select></label>
+    <label className="evalField span2"><span>Técnica anestésica</span><input value={String(draft.tecnica??"")} onChange={e=>set("tecnica",e.target.value)}/></label>
+    <label className="evalField span2"><span>Monitorização</span><input value={String(draft.monitorizacao??"")} onChange={e=>set("monitorizacao",e.target.value)}/></label>
+  </div><label className="evalField"><span>Plano anestésico e observações</span><textarea rows={6} value={String(draft.plano_anestesico??"")} onChange={e=>set("plano_anestesico",e.target.value)}/></label></section>
+  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button className="finishAssessment" disabled={!draft.conclusao||!draft.anestesiologista||!draft.crm} onClick={conclude}>✓ Concluir avaliação</button></div><p className="evalHint">A conclusão registra data, hora e o profissional informado. Revise todos os dados antes de finalizar.</p></section></>;
 }
