@@ -93,10 +93,10 @@ export function AssessmentForm({ avaliacao, paciente }: { avaliacao: Assessment;
       </div><p className="evalHint">A data prevista da cirurgia é usada para organizar as orientações de medicamentos a suspender.</p></section>}
 
       {step===2 && <Anamnesis draft={draft} set={set}/>}
-      {step===3 && <GenericSection title="4 · Medicamentos"><label className="evalField"><span>Medicamentos em uso — informe nome, dose e frequência</span><textarea rows={9} value={String(draft.medicamentos??"")} onChange={e=>set("medicamentos",e.target.value)}/></label></GenericSection>}
-      {step===4 && <GenericSection title="5 · Exame físico"><div className="evalFormGrid">{input("pressao","Pressão arterial")}{input("fc","Frequência cardíaca","number")}{input("spo2","SpO₂ (%)","number")}{input("temperatura","Temperatura (°C)","number")}{input("exame_obs","Observações","text","span3")}</div></GenericSection>}
-      {step===5 && <GenericSection title="6 · Via aérea"><div className="evalFormGrid">{select("mallampati","Mallampati",["I","II","III","IV"])}{input("abertura_oral","Abertura oral")}{input("distancia_tireo","Distância tireomentoniana")}{input("circ_cervical","Circunferência cervical")}{input("denticao","Dentição")}{input("mobilidade","Mobilidade cervical")}</div></GenericSection>}
-      {step===6 && <GenericSection title="7 · Exames"><div className="evalFormGrid">{input("hemoglobina","Hemoglobina")}{input("plaquetas","Plaquetas")}{input("inr","INR")}{input("creatinina","Creatinina")}{input("glicemia","Glicemia")}{input("ecg","ECG")}</div></GenericSection>}
+      {step===3 && <Medications draft={draft} set={set}/>}
+      {step===4 && <PhysicalExam draft={draft} set={set}/>}
+      {step===5 && <Airway draft={draft} set={set}/>}
+      {step===6 && <ComplementaryExams draft={draft} set={set}/>}
       {step===7 && <GenericSection title="8 · Escores"><div className="evalFormGrid">{input("asa","ASA")}{input("lee","Lee/RCRI")}{input("stop_bang","STOP-Bang")}{input("apfel","Apfel")}</div><p className="evalHint">Os escores devem ser revisados e confirmados pelo anestesiologista.</p></GenericSection>}
       {step===8 && <GenericSection title="9 · Planejamento e conclusão"><label className="evalField"><span>Plano anestésico</span><textarea rows={5} value={String(draft.plano_anestesico??"")} onChange={e=>set("plano_anestesico",e.target.value)}/></label>{select("conclusao","Conclusão",["Apto","Apto com ressalvas","Necessita otimização","Avaliação incompleta"])}</GenericSection>}
 
@@ -122,6 +122,8 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
     ["dentaria","Usa prótese dentária removível ou tem alterações dentárias?"],
     ["alergias","Possui alergias?"],
     ["habitos","Tabagismo, álcool, outras substâncias e atividade física?"],
+    ["glaucoma","Possui glaucoma?"],
+    ["gestacao","Mulher em idade fértil: há possibilidade de gestação?"],
   ];
   return <><section className="evalSection evalIntro"><h1>3 · Anamnese</h1><p>Perguntas da ficha física. Cada resposta “Sim” abre detalhamento e observações.</p></section>
     <div className="anamnesisList">{questions.map(([key,label])=><QuestionCard key={key} name={key} label={label} value={String(draft[key]??"")} detail={String(draft[`${key}_detalhes`]??"")} onChange={(value)=>set(key,value)} onDetail={(value)=>set(`${key}_detalhes`,value)}/>)}</div></>;
@@ -131,4 +133,81 @@ function QuestionCard({name,label,value,detail,onChange,onDetail}:{name:string;l
   return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button className={value===answer?"active":""} onClick={()=>onChange(answer)} key={answer}>{answer}</button>)}</div></div>
     {value==="Sim"&&<><div className="detailChips">{chips.map(chip=><button type="button" onClick={()=>onDetail(detail?`${detail}, ${chip}`:chip)} key={chip}>{chip}</button>)}</div><input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder="Detalhes e observações"/></>}
   </section>;
+}
+
+type Medication = { id:string; nome:string; dose:string; frequencia:string; ultimaDose:string; indicacao:string; conduta:string; orientacao:string };
+function readMedications(value: string | boolean | undefined): Medication[] {
+  try { const parsed=JSON.parse(String(value||"[]")); return Array.isArray(parsed)?parsed:[]; } catch { return []; }
+}
+function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
+  const [name,setName]=useState("");
+  const medications=readMedications(draft.medicamentos_json);
+  const save=(items:Medication[])=>set("medicamentos_json",JSON.stringify(items));
+  const add=(suggestion?:string)=>{
+    const nome=(suggestion??name).trim(); if(!nome)return;
+    save([...medications,{id:crypto.randomUUID(),nome,dose:"",frequencia:"",ultimaDose:"",indicacao:"",conduta:"Avaliar",orientacao:""}]); setName("");
+  };
+  const update=(id:string,key:keyof Medication,value:string)=>save(medications.map(item=>item.id===id?{...item,[key]:value}:item));
+  const groups=[
+    ["Manter",medications.filter(m=>m.conduta==="Manter")],
+    ["Suspender",medications.filter(m=>m.conduta==="Suspender")],
+    ["Avaliar / não cadastrado",medications.filter(m=>!["Manter","Suspender"].includes(m.conduta))],
+  ] as const;
+  return <><section className="evalSection">
+    <h1>4 · Medicamentos em uso</h1>
+    <p className="evalHint">Registre nome, dose e frequência. A conduta deve ser revisada e confirmada individualmente pelo anestesiologista.</p>
+    <div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina..."/><button onClick={()=>add()}>Adicionar</button></div>
+    <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Metformina","Ozempic","Chá de boldo","Vitamina X"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div>
+  </section>
+  {medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=><section className="medicationCard" key={item.id}>
+    <div className="medicationTitle"><div><strong>{item.nome}</strong><small>Preencha e confirme a orientação clínica</small></div><select value={item.conduta} onChange={e=>update(item.id,"conduta",e.target.value)}><option>Avaliar</option><option>Manter</option><option>Suspender</option></select><button className="removeMedication" onClick={()=>save(medications.filter(m=>m.id!==item.id))}>×</button></div>
+    <div className="medicationGrid">
+      <label><span>Dose</span><input value={item.dose} onChange={e=>update(item.id,"dose",e.target.value)} placeholder="Ex.: 50 mg"/></label>
+      <label><span>Frequência</span><input value={item.frequencia} onChange={e=>update(item.id,"frequencia",e.target.value)} placeholder="Ex.: 1x/dia"/></label>
+      <label><span>Última dose tomada</span><input value={item.ultimaDose} onChange={e=>update(item.id,"ultimaDose",e.target.value)} placeholder="Data/hora"/></label>
+      <label><span>Indicação</span><input value={item.indicacao} onChange={e=>update(item.id,"indicacao",e.target.value)} placeholder="Opcional"/></label>
+      <label className="wide"><span>Orientação médica confirmada</span><input value={item.orientacao} onChange={e=>update(item.id,"orientacao",e.target.value)} placeholder="Registrar somente após avaliação individual"/></label>
+    </div>
+  </section>)}
+  <section className="evalSection"><h2>Resumo dos medicamentos</h2><div className="medicationSummary">{groups.map(([label,items])=><div key={label}><strong>{label}</strong>{items.length?items.map(m=><span key={m.id}>• {m.nome}{m.dose?` ${m.dose}`:""}</span>):<span>— nenhum —</span>}</div>)}</div></section></>;
+}
+
+function ToggleChips({title,items,draft,set,prefix}:{title:string;items:string[];draft:Draft;set:(name:string,value:string|boolean)=>void;prefix:string}) {
+  return <div className="examChipGroup"><strong>{title}</strong><div>{items.map(item=>{const key=`${prefix}_${item.toLowerCase().replace(/\W+/g,"_")}`;return <button className={draft[key]===true?"selected":""} onClick={()=>set(key,draft[key]!==true)} key={item}>{item}</button>})}</div></div>;
+}
+function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
+  const field=(name:string,label:string,type="text")=><label className="evalField"><span>{label}</span><input type={type} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>;
+  return <section className="evalSection"><h1>5 · Exame físico</h1><div className="physicalGrid">
+    {field("pa_sistolica","PA sistólica (mmHg)","number")}{field("pa_diastolica","PA diastólica (mmHg)","number")}{field("fc","FC (bpm)","number")}{field("fr","FR (irpm)","number")}{field("spo2","SpO₂ (%)","number")}{field("temperatura","Temperatura (°C)","number")}
+    {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}{field("estado_geral","Estado geral")}{field("consciencia","Nível de consciência")}{field("orientacao","Orientação")}{field("circ_cervical","Circunf. cervical (cm)","number")}{field("circ_abdominal","Circunf. abdominal (cm)","number")}
+    <label className="evalField wide3"><span>Ausculta cardíaca — observações</span><input value={String(draft.ausculta_cardiaca??"")} onChange={e=>set("ausculta_cardiaca",e.target.value)}/></label>
+    <label className="evalField wide3"><span>Ausculta pulmonar — observações</span><input value={String(draft.ausculta_pulmonar??"")} onChange={e=>set("ausculta_pulmonar",e.target.value)}/></label>
+    {field("edema","Edema")}<label className="evalField wide5"><span>Observações</span><input value={String(draft.exame_obs??"")} onChange={e=>set("exame_obs",e.target.value)}/></label>
+  </div>
+  <ToggleChips title="EXAME CARDIOVASCULAR" prefix="cardio" items={["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]} draft={draft} set={set}/>
+  <ToggleChips title="EXAME RESPIRATÓRIO" prefix="resp" items={["MV preservado","Sibilos","Roncos","Estertores","Estridor","Musculatura acessória","Tosse","Dispneia"]} draft={draft} set={set}/>
+  <ToggleChips title="DISPOSITIVOS IMPLANTÁVEIS" prefix="dispositivo" items={["Marca-passo","CDI","Cateter venoso implantado","Fístula AV","Prótese valvar","Estoma"]} draft={draft} set={set}/>
+  </section>;
+}
+
+function Airway({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
+  const predictors=["Retrognatia/micrognatia","Macroglossia","Pescoço curto","Barba","Massa cervical","Radioterapia cervical prévia","Cirurgia cervical prévia","História de intubação difícil","Dificuldade de ventilação prévia","Traqueostomia","Apneia do sono"];
+  const key=(item:string)=>`via_${item.toLowerCase().replace(/\W+/g,"_")}`;
+  const count=predictors.filter(item=>draft[key(item)]===true).length;
+  const risk=count===0?"Baixa":count<=2?"Moderada":"Alta";
+  const choice=(name:string,label:string,options:string[])=><label className="evalField"><span>{label}</span><select value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}><option value="">Selecione</option>{options.map(o=><option key={o}>{o}</option>)}</select></label>;
+  return <section className="evalSection"><h1>6 · Avaliação da via aérea</h1><div className="airwayGrid">
+    {choice("mallampati","Mallampati",["Classe I","Classe II","Classe III","Classe IV"])}
+    {choice("abertura_oral","Abertura oral",["> 4 cm","3–4 cm","< 3 cm"])}
+    {choice("distancia_tireo","Distância tireomentoniana",["> 6,5 cm","6–6,5 cm","< 6 cm"])}
+    {choice("denticao","Dentição",["Normais","Prótese removível","Prótese fixa","Edentado","Alterações dentárias"])}
+    {choice("mobilidade","Mobilidade cervical",["Normal","Reduzida","Muito reduzida"])}
+  </div><ToggleChips title="PREDITORES ADICIONAIS" prefix="via" items={predictors} draft={draft} set={set}/>
+  <div className={`airwayRisk ${risk.toLowerCase()}`}><strong>{risk} probabilidade sugerida de via aérea difícil</strong><span>{count} preditor(es) marcado(s) — sugestão de apoio, deve ser confirmada pelo anestesiologista.</span></div>
+  </section>;
+}
+
+function ComplementaryExams({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
+  const fields=[["hemoglobina","Hemoglobina (g/dL)"],["hematocrito","Hematócrito (%)"],["plaquetas","Plaquetas"],["inr","INR"],["ttpa","TTPa (s)"],["creatinina","Creatinina (mg/dL)"],["glicemia","Glicemia (mg/dL)"],["hba1c","HbA1c (%)"],["ureia","Ureia (mg/dL)"],["potassio","Potássio (mEq/L)"],["sodio","Sódio (mEq/L)"],["ecg","ECG — resumo"]];
+  return <section className="evalSection"><h1>7 · Exames complementares</h1><p className="evalHint">Valores de referência não são validados automaticamente. Registre apenas resultados conferidos e anexe os documentos correspondentes quando disponíveis.</p><div className="examResultsGrid">{fields.map(([name,label])=><label className="evalField" key={name}><span>{label}</span><input value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>)}</div><label className="evalField"><span>Outros exames e observações</span><textarea rows={5} value={String(draft.exames_obs??"")} onChange={e=>set("exames_obs",e.target.value)}/></label></section>;
 }
