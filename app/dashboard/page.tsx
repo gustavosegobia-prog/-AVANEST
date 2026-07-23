@@ -15,8 +15,8 @@ export default async function DashboardPage() {
   if (!perfil) redirect("/login");
 
   const [{ data: pacientes }, { data: avaliacoes }] = await Promise.all([
-    supabase.from("pacientes").select("id,nome,cpf,data_nascimento,telefone,email,created_at").order("created_at", { ascending: false }),
-    supabase.from("avaliacoes").select("id,patient_id,status,updated_at,created_at").order("updated_at", { ascending: false }),
+    supabase.from("pacientes").select("*").order("created_at", { ascending: false }),
+    supabase.from("avaliacoes").select("id,patient_id,status,updated_at,created_at,dados").order("updated_at", { ascending: false }),
   ]);
 
   return (

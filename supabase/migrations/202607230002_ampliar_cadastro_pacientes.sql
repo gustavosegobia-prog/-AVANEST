@@ -1,0 +1,18 @@
+alter table public.pacientes
+  add column if not exists rg text,
+  add column if not exists sexo text,
+  add column if not exists endereco text,
+  add column if not exists cidade text,
+  add column if not exists uf text,
+  add column if not exists cep text,
+  add column if not exists hospital text,
+  add column if not exists cirurgia text,
+  add column if not exists especialidade text,
+  add column if not exists procedimento text,
+  add column if not exists convenio text,
+  add column if not exists numero_carteirinha text,
+  add column if not exists validade date,
+  add column if not exists plano text,
+  add column if not exists data_consulta date,
+  add column if not exists horario time,
+  add column if not exists observacoes text;

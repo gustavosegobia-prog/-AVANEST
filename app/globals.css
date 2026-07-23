@@ -1,39 +1,167 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;900&display=swap');
-@import "tailwindcss";
-:root{--paper:#f0f0f0;--black:#121212;--red:#d02020;--blue:#1040c0;--yellow:#f0c020;--white:#fff;--muted:#e0e0e0;--border:4px solid var(--black);--shadow:8px 8px 0 var(--black)}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--black);font-family:"Outfit",Arial,sans-serif;font-weight:500}a{color:inherit;text-decoration:none}button{font:inherit}.posterSection{padding:80px max(32px,calc((100vw - 1280px)/2));border-bottom:var(--border)}
-.nav{height:88px;padding:0 max(32px,calc((100vw - 1280px)/2));display:flex;align-items:center;justify-content:space-between;background:white;border-bottom:var(--border);position:relative;z-index:20}.brand{display:flex;align-items:center;gap:13px;font-size:24px;letter-spacing:-1px}.brand strong{font-weight:900}.geoLogo{width:54px;height:28px;position:relative;display:inline-block;flex:0 0 auto}.geoLogo i{position:absolute;display:block}.geoLogo .circle{width:26px;height:26px;border-radius:50%;background:var(--red);left:0;top:1px}.geoLogo .square{width:22px;height:22px;background:var(--blue);left:21px;top:3px}.geoLogo .triangle{width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:23px solid var(--yellow);left:34px;top:2px}.nav nav{display:flex;align-items:center;gap:36px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.nav nav>a:not(.btn):hover{color:var(--red)}.btn{border:3px solid var(--black);font-weight:900;letter-spacing:.07em;text-transform:uppercase;padding:17px 22px;display:inline-flex;justify-content:space-between;align-items:center;gap:32px;box-shadow:5px 5px 0 var(--black);transition:transform .2s ease-out,box-shadow .2s ease-out}.btn:hover{transform:translateY(-3px)}.btn:active{transform:translate(3px,3px);box-shadow:none}.btn:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--yellow);outline-offset:4px}.btnSmall{padding:11px 17px;gap:18px;box-shadow:4px 4px 0 var(--black)}.btnYellow{background:var(--yellow)}.btnRed{background:var(--red);color:white}.btnBlue{background:var(--blue);color:white}.mobileMenu{display:none}
-.hero{display:grid;grid-template-columns:1fr 1fr;padding-top:0;padding-bottom:0;min-height:720px}.heroCopy{padding:72px 60px 68px 0}.kicker,.sectionHead p,.securityCopy>p:first-child,.finalCta>p:first-of-type{font-weight:700;letter-spacing:.2em;font-size:13px}.kicker b{display:inline-grid;place-items:center;width:34px;height:34px;background:var(--yellow);border:2px solid var(--black);margin-right:10px;transform:rotate(-8deg)}.hero h1{font-size:clamp(60px,6.6vw,98px);font-weight:900;line-height:.86;letter-spacing:-.065em;margin:38px 0 32px;text-transform:uppercase}.hero h1 span,.sectionHead h2 span{color:var(--red)}.heroText{font-size:19px;line-height:1.55;max-width:590px}.actions{display:flex;align-items:center;gap:30px;margin:34px 0}.underLink{font-weight:700;border-bottom:3px solid var(--black);padding-bottom:5px}.trust{list-style:none;display:flex;gap:22px;padding:0;margin:28px 0 0;font-size:12px;font-weight:700;text-transform:uppercase}.tick{width:23px;height:23px;border-radius:50%;display:inline-grid;place-items:center;background:var(--yellow);border:2px solid var(--black);font-size:13px;color:var(--black)}.trust li{display:flex;align-items:center;gap:7px}.heroArt{position:relative;min-height:720px;overflow:hidden;border-left:var(--border);background:var(--blue);display:grid;place-items:center}.bluePanel{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.55) 2px,transparent 2px);background-size:22px 22px;opacity:.35}.bigCircle{position:absolute;width:510px;height:510px;background:var(--yellow);border-radius:50%;border:var(--border);right:-120px;top:30px}.tiltedSquare{position:absolute;width:300px;height:300px;background:var(--red);border:var(--border);transform:rotate(34deg);left:-70px;bottom:-30px}.crossLine{position:absolute;width:500px;height:25px;background:var(--black);transform:rotate(-18deg)}
-.assessmentCard{position:relative;z-index:3;width:min(400px,78%);background:white;border:var(--border);padding:25px;box-shadow:var(--shadow);transition:transform .2s}.assessmentCard:hover{transform:translateY(-5px)}.cardHead{display:flex;align-items:center;gap:8px;border-bottom:3px solid var(--black);padding-bottom:17px}.cardHead .geoLogo{transform:scale(.65);transform-origin:left}.cardHead>strong{margin-left:-16px}.cardHead>span{margin-left:auto;background:var(--yellow);border:2px solid var(--black);padding:4px 7px;font-weight:900}.bar{height:12px;border:2px solid var(--black);margin:22px 0}.bar i{display:block;width:60%;height:100%;background:var(--red);border-right:2px solid var(--black)}.cardLabel{font-size:11px;font-weight:900;letter-spacing:.16em;color:var(--blue)}.assessmentCard h2{font-size:31px;line-height:1.03;text-transform:uppercase;margin:12px 0}.assessmentCard>p:not(.cardLabel){line-height:1.5}.assessmentCard button{width:100%;display:flex;justify-content:space-between;background:var(--red);color:#fff;border:2px solid var(--black);padding:13px;font-weight:900;margin-top:10px;box-shadow:3px 3px 0 var(--black)}.assessmentCard button:active{transform:translate(2px,2px);box-shadow:none}.assessmentCard button.outline{background:white;color:var(--black);justify-content:center}.savedStamp{position:absolute;z-index:5;right:25px;bottom:60px;background:var(--yellow);border:3px solid var(--black);box-shadow:5px 5px 0 var(--black);padding:10px 15px;display:flex;align-items:center;gap:10px;transform:rotate(5deg);font-size:11px;line-height:1.05}.savedStamp b{font-size:23px}
-.stats{background:var(--yellow);border-bottom:var(--border);display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr;padding:0 max(32px,calc((100vw - 1280px)/2))}.stats>div,.stats blockquote{min-height:165px;padding:28px;border-left:var(--border);margin:0}.stats>div:first-child{border-left:0}.stats>div span{display:block;font-weight:900;font-size:11px}.stats strong{display:block;font-size:38px;font-weight:900;margin:14px 0 4px}.stats small{font-size:11px;font-weight:700;letter-spacing:.08em}.stats blockquote{font-size:18px;line-height:1.25;font-weight:700;position:relative}.stats blockquote b{font-size:60px;line-height:.5;display:block}.stats cite{display:block;font-size:11px;margin-top:12px;font-style:normal;font-weight:500}
-.process{background:var(--paper)}.sectionHead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:55px}.sectionHead h2{font-size:clamp(56px,6vw,86px);line-height:.87;letter-spacing:-.055em;text-align:right;margin:0;font-weight:900}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.steps article{background:white;border:var(--border);padding:30px;box-shadow:var(--shadow);position:relative;min-height:330px;transition:transform .2s}.steps article:hover{transform:translateY(-7px)}.stepNo{width:78px;height:78px;background:var(--red);border:3px solid var(--black);transform:rotate(45deg);display:grid;place-items:center;margin:10px 0 50px}.stepNo span{transform:rotate(-45deg);font-size:34px;font-weight:900;color:white}.stepNo.blue{background:var(--blue)}.stepNo.yellow{background:var(--yellow)}.stepNo.yellow span{color:var(--black)}.steps h3{font-size:24px;line-height:1.05;margin:0 0 16px;font-weight:900;max-width:260px}.steps p{line-height:1.55;margin:0}.corner{position:absolute;right:20px;top:20px;width:16px;height:16px}.circleCorner{border-radius:50%;background:var(--red)}.squareCorner{background:var(--blue)}.triangleCorner{background:var(--yellow);clip-path:polygon(50% 0,0 100%,100% 100%)}
-.security{display:grid;grid-template-columns:1fr 1fr;min-height:660px;background:var(--red);border-bottom:var(--border);color:white}.securityArt{position:relative;overflow:hidden;border-right:var(--border)}.securityCircle{position:absolute;width:430px;height:430px;border:4px solid var(--black);border-radius:50%;background:var(--yellow);left:50%;top:50%;transform:translate(-50%,-50%)}.securitySquare{position:absolute;width:260px;height:260px;background:var(--blue);border:var(--border);left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg)}.securityKey{position:absolute;width:155px;height:155px;border-radius:50%;border:var(--border);background:white;color:var(--black);left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;font-size:65px}.securityCopy{padding:85px max(32px,calc((100vw - 1280px)/2)) 70px 70px}.securityCopy h2{font-size:clamp(52px,5.3vw,82px);line-height:.88;letter-spacing:-.05em;margin:32px 0;font-weight:900}.yellowRule{width:140px;height:14px;background:var(--yellow);border:2px solid var(--black);margin:35px 0}.bodyCopy{font-size:18px;line-height:1.6;max-width:590px}.securityCopy ul{list-style:none;padding:0;margin:35px 0 0;display:grid;gap:13px;font-size:12px;font-weight:900;letter-spacing:.08em}.securityCopy li{display:flex;align-items:center;gap:10px}
-.finalCta{min-height:600px;background:var(--yellow);border-bottom:var(--border);padding:80px 32px;text-align:center;position:relative;overflow:hidden}.finalCta h2{font-size:clamp(68px,8vw,120px);line-height:.83;letter-spacing:-.07em;margin:35px 0 25px;font-weight:900;position:relative;z-index:2}.ctaText{font-size:18px;max-width:610px;margin:0 auto 34px;position:relative;z-index:2}.finalCta .btn{position:relative;z-index:2}.finalCta small{display:block;margin-top:30px;font-size:10px;font-weight:700;position:relative;z-index:2}.ctaCircle{position:absolute;width:330px;height:330px;border-radius:50%;background:var(--red);border:var(--border);left:-100px;top:-100px;opacity:.75}.ctaSquare{position:absolute;width:280px;height:280px;background:var(--blue);border:var(--border);right:-80px;bottom:-90px;transform:rotate(35deg);opacity:.75}footer{height:125px;background:var(--black);color:white;display:flex;align-items:center;justify-content:space-between;padding:0 max(32px,calc((100vw - 1280px)/2));font-size:11px;font-weight:700;letter-spacing:.1em}footer .inverse{color:white}footer>a:last-child{border-bottom:2px solid white;padding-bottom:4px}
-@media(max-width:900px){.nav nav{display:none}.mobileMenu{display:block;position:relative}.mobileMenu summary{list-style:none;width:46px;height:42px;border:3px solid var(--black);background:var(--yellow);padding:8px;display:grid;align-content:space-between;cursor:pointer}.mobileMenu summary::-webkit-details-marker{display:none}.mobileMenu summary span{height:3px;background:var(--black)}.mobileMenu>div{position:absolute;right:0;top:52px;width:240px;background:white;border:var(--border);box-shadow:6px 6px 0 var(--black);display:grid}.mobileMenu a{padding:16px;border-bottom:2px solid var(--black);font-weight:900;text-transform:uppercase}.hero{grid-template-columns:1fr}.heroCopy{padding:60px 0}.heroArt{border-left:0;border-top:var(--border);min-height:640px}.stats{grid-template-columns:1fr 1fr}.stats>div:first-child,.stats>div:nth-child(3){border-left:0}.stats>div:nth-child(3),.stats blockquote{border-top:var(--border)}.sectionHead{display:block}.sectionHead h2{text-align:left;margin-top:30px}.steps{grid-template-columns:1fr}.security{grid-template-columns:1fr}.securityArt{min-height:540px;border-right:0;border-bottom:var(--border)}.securityCopy{padding:70px 32px}.posterSection{padding-left:32px;padding-right:32px}}
-@media(max-width:560px){:root{--border:3px solid var(--black);--shadow:5px 5px 0 var(--black)}.nav{height:76px;padding:0 18px}.brand{font-size:20px}.posterSection{padding:52px 18px}.hero{padding-top:0;padding-bottom:0}.heroCopy{padding:50px 0}.hero h1{font-size:54px}.heroText{font-size:17px}.actions{align-items:flex-start;flex-direction:column}.trust{flex-wrap:wrap;gap:12px}.heroArt{margin:0 -18px;min-height:540px}.assessmentCard{width:82%;padding:18px}.assessmentCard h2{font-size:25px}.bigCircle{width:370px;height:370px}.tiltedSquare{width:230px;height:230px}.savedStamp{right:12px;bottom:25px}.stats{grid-template-columns:1fr;padding:0}.stats>div,.stats blockquote{border-left:0;border-top:var(--border);min-height:auto}.stats>div:first-child{border-top:0}.sectionHead h2{font-size:49px}.steps article{min-height:auto}.securityArt{min-height:410px}.securityCircle{width:310px;height:310px}.securitySquare{width:190px;height:190px}.securityKey{width:120px;height:120px}.securityCopy{padding:55px 18px}.securityCopy h2{font-size:48px}.finalCta{padding:70px 18px}.finalCta h2{font-size:59px}footer{height:auto;padding:35px 18px;display:grid;gap:24px;text-align:center;justify-items:center}}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
-.loginPage,.dashboardPage{min-height:100vh;padding:40px;display:grid;place-items:center;background:var(--blue);position:relative;overflow:hidden}.loginPage:before,.dashboardPage:before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;background:var(--yellow);border:var(--border);right:-140px;top:-160px}.loginBack{position:absolute;left:32px;top:28px;color:white;font-weight:900;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid white;z-index:2}.loginCard,.dashboardCard{width:min(560px,100%);background:white;border:var(--border);box-shadow:12px 12px 0 var(--black);padding:46px;position:relative;z-index:1}.loginCard h1,.dashboardCard h1{font-size:clamp(48px,7vw,76px);line-height:.86;letter-spacing:-.055em;margin:34px 0 24px;font-weight:900}.loginCard h1 span,.dashboardCard h1 span{color:var(--red)}.loginCard>p,.dashboardCard>p{line-height:1.5}.loginForm{display:grid;gap:10px;margin-top:30px}.loginForm label{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.1em}.loginForm input{width:100%;border:3px solid var(--black);background:var(--paper);padding:15px;font:inherit;margin-bottom:8px}.loginForm input:focus{outline:4px solid var(--yellow);outline-offset:1px}.loginForm .btn{margin-top:12px;cursor:pointer}.loginForm .btn:disabled{opacity:.65;cursor:wait}.loginError{background:#ffe2e2;border:2px solid var(--red);padding:10px;font-weight:700}.loginNotice{background:var(--yellow);border:3px solid var(--black);padding:14px;margin:24px 0}.dashboardCard .btn{margin-top:20px}@media(max-width:560px){.loginPage,.dashboardPage{padding:72px 18px 30px}.loginCard,.dashboardCard{padding:28px}.loginBack{left:18px;top:22px}}
+"use client";
 
-:root{--avn-navy:#071c2f;--avn-navy2:#0d2a42;--avn-teal:#43c8b8;--avn-ink:#17242f;--avn-muted:#667888;--avn-bg:#f2f6f8;--avn-line:#dce5eb}
-.avnLanding,.avnShell{min-height:100vh;background:var(--avn-bg);color:var(--avn-ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.avnNav,.avnTopbar{background:var(--avn-navy);color:#fff;display:flex;align-items:center;justify-content:space-between}.avnNav{height:108px;padding:0 max(28px,calc((100vw - 1180px)/2));border-bottom:1px solid #ffffff2b}.avnTopbar{height:82px;padding:0 30px}.avnBrand{display:inline-flex;align-items:center;gap:14px}.avnMark{width:54px;height:54px;border:2px solid var(--avn-teal);border-radius:15px;display:grid;place-items:center;color:var(--avn-teal)}.avnBrand strong{display:block;font-size:23px;letter-spacing:.13em}.avnBrand small{display:block;margin-top:5px;color:#82a6be;font-size:9px;letter-spacing:.28em}.avnNav nav,.avnTopbarMeta{display:flex;gap:12px;align-items:center}.avnPrimary,.avnSecondary,.avnLogin,.avnButton{min-height:48px;border-radius:12px;padding:0 25px;display:inline-flex;align-items:center;justify-content:center;font-weight:750;border:0;cursor:pointer}.avnPrimary,.avnButton{background:var(--avn-teal);color:#062c2a}.avnSecondary,.avnLogin{border:1px solid #ffffff59;color:#fff;background:#ffffff0d}.avnHero{min-height:710px;position:relative;background:var(--avn-navy) url("/hero-bg.jpg") center/cover;color:#fff}.avnOverlay{position:absolute;inset:0;background:linear-gradient(90deg,#041626fa 0%,#041626e0 48%,#0416264d)}.avnHeroContent{position:relative;z-index:1;width:min(1180px,calc(100% - 56px));margin:auto;padding:130px 0 80px}.avnEyebrow{font-size:13px;font-weight:800;letter-spacing:.3em;color:var(--avn-teal)}.avnHero h1{font-size:clamp(44px,5vw,68px);line-height:1.05;letter-spacing:-.035em;margin:24px 0 28px}.avnLead{font-size:20px;line-height:1.8;color:#c5d4df;max-width:780px}.avnActions{display:flex;gap:18px;margin:38px 0}.avnBenefits{list-style:none;display:flex;flex-wrap:wrap;gap:24px 34px;margin:50px 0 0;padding:0;color:var(--avn-teal);font-weight:900}.avnBenefits span{color:#d9e5ec;margin-left:8px}.avnInfo{padding:90px max(28px,calc((100vw - 1180px)/2));background:#fff}.avnInfo>p{color:#209d90;font-size:12px;font-weight:850;letter-spacing:.28em}.avnInfo h2{font-size:42px;margin:15px 0 42px}.avnGrid,.avnStats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.avnGrid article,.avnStat,.avnPanel,.avnAssessmentCard,.avnSteps{padding:26px;border:1px solid var(--avn-line);border-radius:16px;background:#fff}.avnGrid article b{color:#209d90}.avnGrid p{line-height:1.7;color:var(--avn-muted)}
-.avnMain{width:min(1180px,calc(100% - 40px));margin:auto;padding:38px 0 80px}.avnWelcome,.avnPanelHead,.avnPatientBar,.avnActionsRow{display:flex;align-items:center;justify-content:space-between;gap:18px}.avnWelcome h1{margin:0}.avnWelcome p{color:var(--avn-muted)}.avnStats{grid-template-columns:repeat(4,1fr);margin:25px 0}.avnStat{padding:20px}.avnStat small{color:var(--avn-muted)}.avnStat strong{display:block;font-size:30px;margin-top:8px}.avnPanel{padding:0;overflow:hidden}.avnPanelHead{padding:20px 22px;border-bottom:1px solid var(--avn-line)}.avnSearch,.avnField input,.avnField select,.avnField textarea{border:1px solid #cbd8e0;border-radius:9px;padding:12px;background:#fff;font:inherit}.avnTable{width:100%;border-collapse:collapse}.avnTable th,.avnTable td{padding:15px 20px;text-align:left;border-bottom:1px solid var(--avn-line)}.avnEmpty{text-align:center;padding:50px;color:var(--avn-muted)}.avnStatus{padding:6px 9px;border-radius:99px;background:#e5f5f1;color:#187964;font-size:11px;font-weight:800}.avnFormGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.avnField{display:grid;gap:7px}.avnField.full{grid-column:1/-1}.avnModalBackdrop{position:fixed;inset:0;background:#03111db3;z-index:60;display:grid;place-items:center;padding:20px}.avnModal{width:min(650px,100%);background:#fff;border-radius:17px;padding:26px}.avnModalHead{display:flex;justify-content:space-between}.avnClose{border:0;background:none;font-size:25px}.avnError{padding:11px;background:#fdeaea;color:#9e3030}.avnAssessment{display:grid;grid-template-columns:250px 1fr;gap:24px}.avnSteps{height:max-content}.avnStep{width:100%;padding:12px;border:0;background:none;text-align:left}.avnStep.active{background:#e4f5f2;color:#137a6d;font-weight:800}.avnPatientBar{padding:17px 20px;background:var(--avn-navy2);color:#fff;border-radius:13px}.avnSaveState{color:var(--avn-teal);font-size:12px}
-.loginPage,.dashboardPage{background:linear-gradient(135deg,var(--avn-navy),#123b59)}.loginPage:before,.dashboardPage:before{background:var(--avn-teal);border:0;opacity:.14}.loginCard,.dashboardCard{border:1px solid #ffffff33;box-shadow:0 24px 80px #00000059;border-radius:18px}.loginCard h1 span,.dashboardCard h1 span{color:#209d90}.loginForm input{border:1px solid #cbd8e0;border-radius:9px}.loginForm .btnBlue{background:var(--avn-teal);color:#073330;border:0;border-radius:10px;box-shadow:none}
-@media(max-width:800px){.avnNav{height:86px;padding:0 18px}.avnNav .avnPrimary{display:none}.avnHeroContent{padding-top:90px}.avnHero h1{font-size:42px}.avnGrid,.avnStats{grid-template-columns:1fr 1fr}.avnAssessment{grid-template-columns:1fr}.avnFormGrid{grid-template-columns:1fr}.avnField.full{grid-column:auto}}@media(max-width:520px){.avnBrand small{display:none}.avnHero h1{font-size:37px}.avnActions,.avnBenefits{display:grid}.avnGrid,.avnStats{grid-template-columns:1fr}}
+import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
-/* Login fiel ao protótipo clínico do AVANEST */
-.avnLoginPage{min-height:100vh;background:#07131f;display:grid;place-items:center;padding:28px;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
-.avnLoginCard{width:min(1000px,100%);min-height:465px;display:grid;grid-template-columns:1fr 1.06fr;border:1px solid rgba(255,255,255,.1);border-radius:22px;overflow:hidden;box-shadow:0 28px 90px rgba(0,0,0,.5)}
-.avnLoginIllustration{background:linear-gradient(160deg,#0a2238 0%,#071a2b 65%,#06131f 100%);color:#eef3f7;padding:44px 34px;display:flex;flex-direction:column;justify-content:space-between}
-.avnLoginIllustration .avnBrand{align-self:flex-start}.avnLoginIllustration .avnMark{width:54px;height:54px}.avnLoginIllustration>p{font-size:14px;line-height:1.65;color:#9dbbd2;margin:0}
-.avnLoginMonitor{display:flex;flex-direction:column;align-items:center;margin:18px auto}.avnLoginMonitor svg{width:190px;height:42px}.avnLoginMonitor path{fill:none;stroke:#00b4d8;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.avnMonitorScreen{width:250px;border:1px solid rgba(0,180,216,.5);border-radius:18px 18px 13px 13px;padding:15px 18px;display:grid;gap:11px;background:rgba(238,243,247,.03)}
-.avnMonitorScreen i{height:30px;border-radius:8px;background:rgba(238,243,247,.1);border:1px solid rgba(238,243,247,.14);position:relative}.avnMonitorScreen i:after{content:"";position:absolute;width:42px;height:4px;border-radius:3px;left:50%;top:50%;transform:translate(-50%,-50%);background:#25c2a0}.avnMonitorScreen i:nth-child(2):after{background:#078ccc}.avnMonitorScreen i:nth-child(3):after{background:#00b4d8}
-.avnMonitorFeet{display:flex;gap:150px;margin-top:11px}.avnMonitorFeet i{width:20px;height:20px;border:3px solid rgba(238,243,247,.25);border-radius:50%}
-.avnLoginContent{background:#fff;padding:48px 42px;display:flex;flex-direction:column;justify-content:center;color:#17242f}.avnLoginContent h1{font-size:25px;margin:0 0 8px;font-weight:800}.avnLoginContent>p{font-size:15px;color:#5c6d7c;margin:0 0 28px}
-.avnLoginContent .loginForm{margin:0;gap:8px}.avnLoginContent .loginForm label{font-size:12px;color:#5c6d7c;letter-spacing:.07em}
-.avnLoginContent .loginForm input{height:55px;border:1.5px solid #d6e0e8;border-radius:11px;background:#eef2f6;padding:0 16px;font-size:16px;margin:0;color:#17242f}.avnLoginContent .loginForm input:focus{outline:3px solid rgba(0,180,216,.2);border-color:#00a8c8}
-.avnPasswordField{position:relative;margin-bottom:7px}.avnPasswordField input{width:100%;padding-right:90px!important}.avnPasswordField button{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#1565ad;font-weight:750;cursor:pointer;padding:8px}
-.avnLoginSubmit{width:100%;border:0;border-radius:11px;padding:16px;background:linear-gradient(135deg,#078cc5,#25c2a0);color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,119,182,.28)}.avnLoginSubmit:disabled{opacity:.65;cursor:wait}
-.avnLoginCancel{align-self:center;color:#5c6d7c;margin-top:17px;font-size:14px}.avnLoginCancel:hover{color:#1565ad}
-.avnLoginContent .loginError{border:0;border-radius:8px;background:#fbe9e9;color:#bb3535;margin:2px 0 7px;font-size:13px}
-@media(max-width:760px){.avnLoginPage{padding:16px}.avnLoginCard{grid-template-columns:1fr}.avnLoginIllustration{min-height:260px;padding:28px}.avnLoginMonitor{display:none}.avnLoginIllustration>p{margin-top:45px}.avnLoginContent{padding:34px 25px}}
+type Perfil = { id: string; institution_id: string; nome: string; role: string; must_reset: boolean };
+type Paciente = {
+  id: string; nome: string; cpf: string | null; rg?: string | null; data_nascimento: string | null;
+  sexo?: string | null; telefone: string | null; email: string | null; endereco?: string | null;
+  cidade?: string | null; uf?: string | null; cep?: string | null; hospital?: string | null;
+  cirurgia?: string | null; especialidade?: string | null; procedimento?: string | null;
+  convenio?: string | null; numero_carteirinha?: string | null; validade?: string | null;
+  plano?: string | null; data_consulta?: string | null; horario?: string | null;
+  observacoes?: string | null; created_at: string;
+};
+type Avaliacao = { id: string; patient_id: string; status: string; updated_at: string; created_at: string; dados?: Record<string, unknown> | null };
+type View = "medico" | "recepcao";
+
+const brDate = (date?: string | null) => date ? new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR") : "—";
+const initials = (name: string) => name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+
+export function DashboardClient({ perfil, pacientes, avaliacoes }: { perfil: Perfil; pacientes: Paciente[]; avaliacoes: Avaliacao[] }) {
+  const router = useRouter();
+  const [view, setView] = useState<View>(perfil.role === "recepcao" ? "recepcao" : "medico");
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
+  const currentByPatient = new Map(avaliacoes.map((a) => [a.patient_id, a]));
+  const drafts = avaliacoes.filter((a) => a.status === "rascunho");
+  const completed = avaliacoes.filter((a) => a.status === "concluida");
+  const today = new Date().toISOString().slice(0, 10);
+  const scheduledToday = pacientes.filter((p) => p.data_consulta === today);
+  const queue = scheduledToday.length ? scheduledToday : pacientes.slice(0, 3);
+
+  async function createPatient(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true); setError("");
+    const fd = new FormData(event.currentTarget);
+    const text = (name: string) => String(fd.get(name) ?? "").trim() || null;
+    const supabase = createClient();
+    const { error: insertError } = await supabase.from("pacientes").insert({
+      institution_id: perfil.institution_id, created_by: perfil.id,
+      nome: text("nome"), cpf: text("cpf"), rg: text("rg"), data_nascimento: text("data_nascimento"),
+      sexo: text("sexo"), telefone: text("telefone"), email: text("email"), endereco: text("endereco"),
+      cidade: text("cidade"), uf: text("uf"), cep: text("cep"), hospital: text("hospital"),
+      cirurgia: text("cirurgia"), especialidade: text("especialidade"), procedimento: text("procedimento"),
+      convenio: text("convenio"), numero_carteirinha: text("numero_carteirinha"), validade: text("validade"),
+      plano: text("plano"), data_consulta: text("data_consulta"), horario: text("horario"), observacoes: text("observacoes"),
+    });
+    if (insertError) { setError(`Não foi possível salvar: ${insertError.message}`); setBusy(false); return; }
+    setOpen(false); setBusy(false); router.refresh();
+  }
+
+  async function openAssessment(patientId: string) {
+    const existing = currentByPatient.get(patientId);
+    if (existing && existing.status === "rascunho") { router.push(`/avaliacoes/${existing.id}`); return; }
+    setBusy(true); setError("");
+    const supabase = createClient();
+    const { data, error: createError } = await supabase.from("avaliacoes").insert({
+      institution_id: perfil.institution_id, patient_id: patientId, created_by: perfil.id, status: "rascunho",
+    }).select("id").single();
+    if (createError || !data) { setError(createError?.message ?? "Falha ao iniciar avaliação."); setBusy(false); return; }
+    router.push(`/avaliacoes/${data.id}`);
+  }
+
+  async function logout() {
+    await createClient().auth.signOut();
+    router.push("/login"); router.refresh();
+  }
+
+  return (
+    <main className="clinicalShell">
+      <header className="clinicalTopbar">
+        <a className="clinicalBrand" href="/"><b>AV</b><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a>
+        <nav className="roleNav">
+          <button className="themePill">◐ Escuro</button>
+          <button className={view === "recepcao" ? "active" : ""} onClick={() => setView("recepcao")}>Recepção</button>
+          <button className={view === "medico" ? "active" : ""} onClick={() => setView("medico")}>Médico</button>
+          <button>Financeiro</button><button>Admin</button>
+          <span className="roleBadge">{perfil.role === "owner" ? "ADMINISTRADOR" : perfil.role.toUpperCase()}</span>
+          <button>🔒 Bloquear</button><button onClick={logout}>Sair</button>
+        </nav>
+      </header>
+
+      {view === "medico" ? (
+        <div className="clinicalMain">
+          <section className="clinicalWelcome">
+            <div><h1>Consultas pré-anestésicas agendadas</h1><p>Olá, {perfil.nome}. Acompanhe a fila e continue suas avaliações.</p></div>
+            <button className="primaryClinical" onClick={() => setOpen(true)}>+ Nova avaliação pré-anestésica</button>
+          </section>
+          {error && <p className="clinicalError">{error}</p>}
+          <section className="metricGrid">
+            <Metric value={scheduledToday.length || queue.length} label="Consultas hoje" tone="blue" />
+            <Metric value={drafts.length} label="Pendências" tone="red" />
+            <Metric value={completed.length} label="Avaliações concluídas" tone="green" />
+            <Metric value={drafts.length} label="Orientações pendentes" tone="amber" />
+            <Metric value={0} label="Pacientes ASA III+" tone="red" />
+          </section>
+          <section className="clinicalPanel">
+            <div className="panelTitle"><strong>Fila de atendimento — hoje</strong><span>prioridade → horário agendado → chegada → encaixes</span></div>
+            {queue.length ? queue.map((p, index) => {
+              const a = currentByPatient.get(p.id);
+              return <div className="queueRow" key={p.id}>
+                <time>{p.horario?.slice(0,5) || `${8 + index}:00`.padStart(5,"0")}</time>
+                <div className="queueInfo"><strong>{p.nome}</strong><small>{p.procedimento || p.cirurgia || "Procedimento não informado"} · {p.hospital || "Hospital não informado"}</small></div>
+                <span className={`statusChip ${a?.status === "rascunho" ? "paused" : "present"}`}>{a?.status === "rascunho" ? "AVALIAÇÃO PAUSADA" : "PACIENTE PRESENTE"}</span>
+                <button className="primaryClinical compact" disabled={busy} onClick={() => openAssessment(p.id)}>{a?.status === "rascunho" ? "Continuar avaliação" : "Iniciar avaliação"}</button>
+              </div>;
+            }) : <div className="emptyClinical">Cadastre um paciente para iniciar a fila.</div>}
+          </section>
+          <section className="clinicalPanel alertsPanel">
+            <div className="panelTitle"><strong>Central Operacional</strong><span>alertas da rotina baseados nas avaliações em andamento</span></div>
+            <div className="alertGrid">
+              <Alert icon="△" title="Avaliações incompletas" text={`${drafts.length} avaliação(ões) aguardando conclusão`} action="REVISAR" danger />
+              <Alert icon="!" title="Medicamentos" text="Revisar anticoagulantes e GLP-1 durante a anamnese" action="AVALIAR" />
+              <Alert icon="×" title="Exames pendentes" text="Confira exames e pareceres antes da conclusão" action="PENDÊNCIA" />
+              <Alert icon="✉" title="Orientações não enviadas" text={`${drafts.length} avaliação(ões) ainda não concluída(s)`} action="ENVIAR" />
+            </div>
+          </section>
+          <section className="clinicalPanel agendaPanel">
+            <div className="agendaHead"><strong>Agenda</strong><button className="active">Hoje</button><button>Amanhã</button><button>Semana</button><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, prontuário, procedimento, cirurgião..." /></div>
+            {filtered.slice(0, 8).map((p) => { const a = currentByPatient.get(p.id); return <button className="agendaRow" key={p.id} onClick={() => openAssessment(p.id)}>
+              <span className="avatar">{initials(p.nome)}</span><span><strong>{p.nome}</strong><small>{p.procedimento || p.cirurgia || "Procedimento não informado"} · {p.hospital || "Hospital não informado"}</small></span>
+              <time>{brDate(p.data_consulta || p.created_at.slice(0,10))}</time><span className={`statusChip ${a?.status === "concluida" ? "present" : "waiting"}`}>{a?.status === "concluida" ? "CONCLUÍDA" : a ? "EM ANDAMENTO" : "AGENDADA"}</span>
+            </button>})}
+          </section>
+          <div className="quickLinks"><button onClick={() => setOpen(true)}>+ Nova avaliação</button><button>Pesquisar paciente</button><button>Protocolos</button><button>Consulta de medicamentos</button><button>Calculadoras</button><button>PDFs</button><button>Estatísticas</button></div>
+        </div>
+      ) : (
+        <div className="clinicalMain receptionMain">
+          <section><h1>Recepção</h1><p>Cadastro de pacientes e agenda — sem acesso a dados clínicos ou financeiros.</p><div className="quickLinks"><button onClick={() => setOpen(true)}>Novo paciente</button><button>Agenda</button><button>Pacientes</button><button>Pesquisar</button><button>Convênios</button><button>Anexar documentos</button></div></section>
+          <section className="metricGrid receptionMetrics"><Metric value={scheduledToday.length || queue.length} label="Consultas hoje" tone="blue"/><Metric value={pacientes.length} label="Consultas agendadas" tone="blue"/><Metric value={completed.length} label="Concluídas no mês" tone="green"/><Metric value={drafts.length} label="Aguardando cadastro" tone="amber"/><Metric value={0} label="Canceladas" tone="red"/></section>
+          <section className="clinicalPanel searchPanel"><strong>Pesquisar paciente</strong><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Nome, parte do nome, CPF ou telefone..." /><span>Pesquise antes de cadastrar — evita duplicidade</span></section>
+          <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((p,index)=><div className="queueRow" key={p.id}><time>{p.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{p.hospital||"Hospital não informado"} · {p.convenio||"Particular"}</small></div><span className="statusChip waiting">AVALIAÇÃO AGENDADA</span><button className="outlineClinical">✓ Presente</button><button className="outlineClinical red">Faltou</button></div>)}</section>
+          <section className="clinicalPanel inlineRegistration"><div className="panelTitle"><strong>Novo paciente</strong></div><p>Use o cadastro completo para incluir dados pessoais, convênio, cirurgia e agendamento.</p><button className="primaryClinical" onClick={()=>setOpen(true)}>Abrir cadastro completo</button></section>
+        </div>
+      )}
+
+      {open && <PatientModal busy={busy} error={error} onClose={() => setOpen(false)} onSubmit={createPatient} />}
+    </main>
+  );
+}
+
+function Metric({ value, label, tone }: { value: number; label: string; tone: string }) { return <div className="metricCard"><strong className={tone}>{value}</strong><span>{label}</span></div>; }
+function Alert({ icon, title, text, action, danger=false }: { icon:string; title:string; text:string; action:string; danger?:boolean }) { return <div className="alertItem"><i className={danger?"danger":""}>{icon}</i><span><strong>{title}</strong> — {text}</span><b className={danger?"dangerText":""}>{action}</b></div>; }
+
+function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:string; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
+  return <div className="patientModalBackdrop"><form className="patientModal" onSubmit={onSubmit}>
+    <div className="patientModalHead"><div><h2>Novo paciente</h2><p>Cadastro, convênio, procedimento e agendamento.</p></div><button type="button" onClick={onClose}>×</button></div>
+    <div className="insuranceBar"><strong>Convênios/planos:</strong> Unimed · FUPS · SAS · CISCOMCAM · Humana Saúde · Bradesco Saúde · SulAmérica · Amil · Particular</div>
+    <div className="patientFormGrid">
+      <Field name="nome" label="Nome completo *" wide required/><Field name="cpf" label="CPF"/><Field name="rg" label="RG"/><Field name="data_nascimento" label="Data de nascimento" type="date"/>
+      <SelectField name="sexo" label="Sexo" options={["Feminino","Masculino","Outro","Não informado"]}/><Field name="telefone" label="Telefone / WhatsApp"/><Field name="email" label="E-mail" type="email" span2/><Field name="endereco" label="Endereço" span2/>
+      <Field name="cidade" label="Cidade"/><Field name="uf" label="UF"/><Field name="cep" label="CEP"/><Field name="hospital" label="Hospital" span2/>
+      <Field name="cirurgia" label="Cirurgia" span2/><Field name="especialidade" label="Especialidade"/><Field name="procedimento" label="Procedimento" span2/><SelectField name="convenio" label="Convênio" options={["Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde","SulAmérica","Amil","Particular"]}/>
+      <Field name="numero_carteirinha" label="Nº da carteirinha"/><Field name="validade" label="Validade" type="date"/><Field name="plano" label="Plano"/><Field name="data_consulta" label="Data da consulta" type="date"/><Field name="horario" label="Horário" type="time"/>
+      <Field name="observacoes" label="Observações" wide/>
+    </div>
+    {error && <p className="clinicalError">{error}</p>}
+    <div className="modalActions"><button type="button" className="outlineClinical" onClick={onClose}>Cancelar</button><button className="primaryClinical" disabled={busy}>{busy?"Salvando...":"SALVAR"}</button></div>
+  </form></div>;
+}
+function Field({name,label,type="text",wide=false,span2=false,required=false}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean}) { return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""}`}><span>{label}</span><input name={name} type={type} required={required}/></label>; }
+function SelectField({name,label,options}:{name:string;label:string;options:string[]}) { return <label className="clinicalField"><span>{label}</span><select name={name}>{options.map(o=><option key={o}>{o}</option>)}</select></label>; }
