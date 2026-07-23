@@ -42,7 +42,7 @@ export function AssessmentForm({ avaliacao, paciente }: { avaliacao: Assessment;
   async function conclude() {
     await save();
     const { error } = await createClient().from("avaliacoes").update({ status:"concluida", concluida_at:new Date().toISOString(), dados:draft }).eq("id",avaliacao.id);
-    if (!error) router.push("/dashboard"); else setSaveState("error");
+    if (!error) router.push(`/avaliacoes/${avaliacao.id}/documentos`); else setSaveState("error");
   }
 
   const age = useMemo(() => {

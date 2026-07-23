@@ -59,6 +59,7 @@ export function DashboardClient({ perfil, pacientes, avaliacoes, financeiro, pag
   async function openAssessment(patientId: string) {
     const existing = currentByPatient.get(patientId);
     if (existing && existing.status === "rascunho") { router.push(`/avaliacoes/${existing.id}`); return; }
+    if (existing && existing.status === "concluida") { router.push(`/avaliacoes/${existing.id}/documentos`); return; }
     setBusy(true); setError("");
     const supabase = createClient();
     const { data, error: createError } = await supabase.from("avaliacoes").insert({
