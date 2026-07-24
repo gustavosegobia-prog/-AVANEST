@@ -223,3 +223,6 @@ button:disabled{cursor:not-allowed}
   .avnBrand strong{font-size:18px}
   .avnHero{min-height:calc(100svh - 80px)}
 }
+
+.medicationQuestionHint{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:12px 14px;border-radius:10px;background:#edf6fb;color:#46647c;font-size:14px}
+@media(max-width:700px){.medicationQuestionHint{align-items:flex-start;flex-direction:column}.medicationQuestionHint .outlineClinical{width:100%}}

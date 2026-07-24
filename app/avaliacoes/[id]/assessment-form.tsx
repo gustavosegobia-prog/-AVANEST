@@ -204,7 +204,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
         {input("especialidade","Especialidade")}{input("data_cirurgia","Data prevista","date")}{input("horario_cirurgia","Horário previsto","time")}{select("lateralidade","Lateralidade",["Direita","Esquerda","Bilateral","Não se aplica"])}
         {select("carater","Caráter",["Eletiva","Urgência","Emergência"])}{select("porte","Porte cirúrgico",["Pequeno","Médio","Grande"])}{input("duracao","Duração estimada")}
         {select("regime","Regime",["Ambulatorial","Hospital-dia","Internação (1 diária)","Internação prolongada"],"span2")}{select("sangue","Necessidade provável de sangue",["Não","Sim","A definir"])}
-        {select("uti","Necessidade provável de UTI",["Não","Sim","A definir"])}{select("tecnica","Técnica anestésica planejada",["Anestesia geral","Sedação","Raquianestesia","Raquianestesia + sedação","Peridural","Bloqueio periférico"],"span2")}
+        {select("tecnica","Técnica anestésica planejada",["Anestesia geral","Sedação","Raquianestesia","Raquianestesia + sedação","Peridural","Bloqueio periférico"],"span2")}
       </div><p className="evalHint">A data prevista da cirurgia é usada para organizar as orientações de medicamentos a suspender.</p></section>
 
       <div id="etapa-3"><Anamnesis draft={draft} set={set}/></div>
@@ -274,7 +274,7 @@ function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{nam
         <label><span>Última dose</span><input type="datetime-local" value={String(draft.anticoagulante_ultima_dose??"")} onChange={e=>set("anticoagulante_ultima_dose",e.target.value)}/></label>
         <label><span>Indicação</span><input value={String(draft.anticoagulante_indicacao??"")} onChange={e=>set("anticoagulante_indicacao",e.target.value)} placeholder="Ex.: FA, TEV, stent"/></label>
       </div>}
-      <input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder="Detalhes e observações"/></>}
+      {name==="medicacao_continua" ? <div className="medicationQuestionHint"><span>Cadastre os medicamentos, dose e frequência somente no item 4.</span><button type="button" className="outlineClinical" onClick={()=>document.getElementById("etapa-4")?.scrollIntoView({behavior:"smooth",block:"start"})}>Ir para medicamentos</button></div> : <input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder="Detalhes e observações"/>}</>}
   </section>;
 }
 
@@ -441,13 +441,13 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
     if(error){setUploadError(error.message)}else{set("exames_anexos",JSON.stringify([...attachments,{name:file.name,path,type:file.type,size:file.size,createdAt:new Date().toISOString()}]))}
     setUploading(false);
   }
-  return <section className="evalSection"><h1>7 · Exames complementares</h1><p className="evalHint">Valores de referência não são validados automaticamente. A interpretação e a decisão de repetir exames são do anestesiologista.</p>
+  return <section className="evalSection"><h1>7 · Exames complementares <small className="optionalField">Opcional</small></h1><p className="evalHint">Preencha somente os exames indicados para este paciente. A ausência de exames — por exemplo, ecocardiograma sem indicação clínica — não impede a conclusão da avaliação.</p>
     <div className="examResultsGrid">{field("hemoglobina","Hemoglobina (g/dL)")}{field("hematocrito","Hematócrito (%)")}{field("plaquetas","Plaquetas")}{field("inr","INR")}{field("ttpa","TTPa (s)")}{field("creatinina","Creatinina (mg/dL)")}{field("ureia","Ureia (mg/dL)")}{field("sodio","Sódio (mEq/L)")}{field("potassio","Potássio (mEq/L)")}{field("glicemia","Glicemia (mg/dL)")}{field("hba1c","HbA1c (%)")}{field("data_exames","Data dos exames","date")}</div>
     <div className="examDetailGrid">{field("ecg","Eletrocardiograma")}{field("eco","Ecocardiograma")}{field("rx_torax","Radiografia de tórax")}{field("espirometria","Espirometria")}<label className="evalField span2"><span>Outros exames (imagem, gasometria...)</span><input value={String(draft.exames_obs??"")} onChange={e=>set("exames_obs",e.target.value)}/></label></div>
     <div className="attachmentRow"><label className="attachmentButton">📎 {uploading?"Enviando...":"Anexar arquivo (PDF / imagem / câmera)"}<input type="file" accept=".pdf,image/jpeg,image/png" capture="environment" disabled={uploading} onChange={e=>upload(e.target.files?.[0])}/></label><span>Formatos aceitos: PDF, JPG e PNG.</span></div>
     {uploadError&&<p className="clinicalError">Não foi possível anexar: {uploadError}</p>}
     {attachments.length>0&&<div className="attachmentList">{attachments.map((item:{name:string;path:string})=><span key={item.path}>✓ {item.name}</span>)}</div>}
-    <label className="medicationConfirm"><input type="checkbox" checked={draft.exames_revisados===true} onChange={e=>set("exames_revisados",e.target.checked)}/><span>Exames e anexos revisados; quando ausentes, confirmo que não foram indicados para esta avaliação.</span></label>
+    <label className="medicationConfirm"><input type="checkbox" checked={draft.exames_revisados===true} onChange={e=>set("exames_revisados",e.target.checked)}/><span>Exames e anexos revisados, quando aplicável.</span></label>
   </section>;
 }
 
@@ -491,7 +491,17 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState}:{d
   const apfel=Object.keys(draft).filter(k=>k.startsWith("apfel_")&&draft[k]===true).length;
   const requestsBlood=["Sim","Solicitar"].includes(String(draft.concentrado_hemacias??""));
   const conclusions=["Apto para o procedimento proposto","Apto com ressalvas","Necessita otimização clínica","Necessita exames complementares","Necessita avaliação de outra especialidade","Avaliação inconclusiva"];
-  const anamnesisKeys=["cirurgias_anteriores","reacao_anestesica","medicacao_continua","anticoagulante","cardiovascular","respiratoria","apneia","diabetes","neurologica","outras_doencas","doenca_aguda","dentaria","alergias","habitos","glaucoma","gestacao"];
+  // Gestação só é exibida para paciente feminina; portanto não pode bloquear
+  // indevidamente a conclusão de uma avaliação masculina.
+  const anamnesisKeys=["cirurgias_anteriores","reacao_anestesica","medicacao_continua","anticoagulante","cardiovascular","respiratoria","apneia","diabetes","neurologica","outras_doencas","doenca_aguda","dentaria","alergias","habitos","glaucoma","gestacao"].filter(key=>key!=="gestacao"||String(paciente.sexo||"").toLowerCase()==="feminino");
+  const anamnesisLabels:Record<string,string>={
+    cirurgias_anteriores:"cirurgias anteriores", reacao_anestesica:"reações anestésicas", medicacao_continua:"uso de medicação",
+    anticoagulante:"anticoagulante/antiagregante", cardiovascular:"doença cardiovascular", respiratoria:"doença respiratória",
+    apneia:"ronco ou apneia", diabetes:"diabetes", neurologica:"doença neurológica/psiquiátrica", outras_doencas:"outras doenças",
+    doenca_aguda:"doença aguda", dentaria:"alterações dentárias", alergias:"alergias", habitos:"tabagismo/álcool/substâncias",
+    glaucoma:"glaucoma", gestacao:"possibilidade de gestação",
+  };
+  const missingAnamnesis=anamnesisKeys.filter(key=>!draft[key]).map(key=>anamnesisLabels[key]);
   const checklist=[
     ["Identificação",Boolean(paciente.nome&&paciente.data_nascimento&&age!==null&&draft.peso&&draft.altura)],
     ["Procedimento",Boolean(draft.cirurgia&&draft.data_cirurgia)],
@@ -499,11 +509,12 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState}:{d
     ["Medicamentos",draft.medicacao_continua==="Não"||(medications.length>0&&medications.every(item=>item.confirmada===true))],
     ["Exame físico",Boolean(draft.pa_sistolica&&draft.pa_diastolica&&draft.fc&&draft.spo2)],
     ["Via aérea",Boolean(draft.mallampati&&draft.abertura_oral&&draft.distancia_tireo&&draft.denticao&&draft.mobilidade)],
-    ["Exames",draft.exames_revisados===true],
+    ["Exames (opcional)",true],
     ["Escores",Boolean(draft.asa&&draft.asa_confirmada&&draft.capacidade_funcional)],
     ["Planejamento e conclusão",Boolean(draft.jejum_solidos&&draft.jejum_liquidos&&draft.tecnica&&draft.conclusao&&draft.anestesiologista&&draft.crm&&(!requestsBlood||draft.quantidade_ch))],
   ] as const;
   const allComplete=checklist.every(([,ok])=>ok);
+  const missingChecklist=checklist.filter(([,ok])=>!ok).map(([label])=>label);
   const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
   const medicationOrientations=medications.map(item=>{
     const identification=[item.nome,item.dose,item.frequencia].filter(Boolean).join(" ");
@@ -540,5 +551,5 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState}:{d
     <label className="evalField plan4"><span>Técnica anestésica</span><select value={String(draft.tecnica??"")} onChange={e=>set("tecnica",e.target.value)}><option value="">—</option><option>Anestesia geral</option><option>Sedação</option><option>Raquianestesia</option><option>Raquianestesia + sedação</option><option>Peridural</option><option>Bloqueio periférico</option><option>Técnica combinada</option></select></label>
     <label className="evalField plan4"><span>Monitorização</span><select value={String(draft.monitorizacao??"")} onChange={e=>set("monitorizacao",e.target.value)}><option value="">Selecione</option><option>Padrão</option><option>Expandida</option><option>Invasiva</option><option>Conforme necessidade clínica</option></select></label>
   </div><label className="evalField"><span>Orientações finais da avaliação (preenchidas automaticamente e editáveis)</span><textarea rows={8} value={String(draft.plano_anestesico??"")} onChange={e=>set("plano_anestesico",e.target.value)}/><small>O texto acompanha as escolhas de jejum, técnica anestésica e conduta dos medicamentos. Depois de uma edição manual, use “Atualizar orientações finais automaticamente” somente se quiser reconstruí-lo.</small></label></section>
-  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Complete os itens marcados com ⚠ antes de concluir. Você pode usar “Salvar e voltar” sem perder o rascunho.</p>}{saveState==="error"&&<p className="completionWarning">Não foi possível sincronizar o rascunho agora. <button type="button" className="outlineClinical" onClick={retrySave}>Tentar salvar novamente</button></p>}<p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
+  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Ainda falta: <strong>{missingChecklist.join(", ")}.</strong>{missingAnamnesis.length>0&&<> Pergunta(s) sem resposta: <strong>{missingAnamnesis.join(", ")}.</strong></>} Complete os itens marcados com ⚠ antes de concluir.</p>}{saveState==="error"&&<p className="completionWarning">Não foi possível sincronizar o rascunho agora. <button type="button" className="outlineClinical" onClick={retrySave}>Tentar salvar novamente</button></p>}<p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
 }
