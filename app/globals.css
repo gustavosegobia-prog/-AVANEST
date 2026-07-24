@@ -121,6 +121,43 @@
 .planningGrid{grid-template-columns:repeat(12,minmax(0,1fr));align-items:end}
 .planningGrid .evalField.plan2{grid-column:span 2}
 .planningGrid .evalField.plan4{grid-column:span 4}
+
+/* Fluxos clínicos confortáveis também em tablet e celular. */
+@media(max-width:900px){
+  .clinicalTopbar{height:auto;min-height:64px;padding:10px 18px;align-items:center}
+  .roleNav{max-width:58vw;overflow-x:auto;white-space:nowrap;padding-bottom:2px}
+  .metricGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .clinicalWelcome .primaryClinical{width:100%}
+  .queueRow,.receptionMain .queueRow{grid-template-columns:62px minmax(0,1fr);gap:9px}
+  .queueRow .statusChip,.queueRow .outlineClinical,.queueRow .primaryClinical{grid-column:2;justify-self:start}
+  .agendaRow{grid-template-columns:48px minmax(0,1fr) auto}
+  .agendaRow .statusChip{display:inline-block}
+  .evalTopbar{height:auto;min-height:68px;padding:10px 18px;gap:12px}
+  .evalSave{font-size:12px;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+  .evalMain{width:calc(100% - 28px);padding-top:22px}
+  .evalSteps{justify-content:flex-start;padding-left:14px;padding-right:14px}
+}
+@media(max-width:560px){
+  .clinicalBrand strong{font-size:17px}
+  .roleNav{max-width:48vw}
+  .metricGrid{grid-template-columns:1fr 1fr;gap:10px}
+  .metricCard{min-height:84px;padding:16px}
+  .metricCard strong{font-size:26px}
+  .queueRow,.receptionMain .queueRow{padding:13px 14px}
+  .queueRow .statusChip,.queueRow .outlineClinical,.queueRow .primaryClinical{grid-column:1/-1;width:100%;box-sizing:border-box;text-align:center}
+  .agendaRow{grid-template-columns:42px minmax(0,1fr)}
+  .agendaRow .statusChip{grid-column:2;justify-self:start}
+  .evalTopbar{padding:9px 12px}
+  .evalSave{display:none}
+  .evalRoleNav{margin-left:auto}
+  .evalRoleNav b{display:none}
+  .questionHead{align-items:flex-start;flex-direction:column}
+  .answerButtons{width:100%}
+  .answerButtons button{flex:1;padding:11px 7px}
+  .evalSection,.questionCard{padding:18px 15px}
+  .evalControls{flex-wrap:wrap;margin-bottom:24px}
+  .evalControls button{flex:1}
+}
 @media(max-width:1050px){
   .planningGrid{grid-template-columns:repeat(4,minmax(0,1fr))}
   .planningGrid .evalField.plan2{grid-column:span 1}
@@ -242,3 +279,40 @@ button:disabled{cursor:not-allowed}
 /* Documento clínico e contato do paciente */
 .paperWeightSummary{display:grid;grid-template-columns:1fr 1fr;border:1px solid #222;border-top:0;font-size:10px}.paperWeightSummary span{padding:5px 7px}.paperWeightSummary span+span{border-left:1px solid #222}.guidancePaper{display:none!important}.documentsSidebar>section:first-child .docChoice:last-child{display:none}.avnInstagram{font-size:15px!important;gap:10px!important}.avnInstagram svg{width:20px;height:20px;color:var(--avn-teal);flex:none}.avnInstagram span{font-size:15px!important;color:#fff!important}
 @media(max-width:560px){.paperWeightSummary{font-size:9px}.avnInstagram{right:12px;bottom:12px;min-height:40px;padding:0 13px}}
+
+/* Fluxos clínicos confortáveis também em tablet e celular. */
+@media(max-width:900px){
+  .clinicalTopbar{height:auto;min-height:64px;padding:10px 18px;align-items:center}
+  .roleNav{max-width:58vw;overflow-x:auto;white-space:nowrap;padding-bottom:2px}
+  .metricGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .clinicalWelcome .primaryClinical{width:100%}
+  .queueRow,.receptionMain .queueRow{grid-template-columns:62px minmax(0,1fr);gap:9px}
+  .queueRow .statusChip,.queueRow .outlineClinical,.queueRow .primaryClinical{grid-column:2;justify-self:start}
+  .agendaRow{grid-template-columns:48px minmax(0,1fr) auto}
+  .agendaRow .statusChip{display:inline-block}
+  .evalTopbar{height:auto;min-height:68px;padding:10px 18px;gap:12px}
+  .evalSave{font-size:12px;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+  .evalMain{width:calc(100% - 28px);padding-top:22px}
+  .evalSteps{justify-content:flex-start;padding-left:14px;padding-right:14px}
+}
+@media(max-width:560px){
+  .clinicalBrand strong{font-size:17px}
+  .roleNav{max-width:48vw}
+  .metricGrid{grid-template-columns:1fr 1fr;gap:10px}
+  .metricCard{min-height:84px;padding:16px}
+  .metricCard strong{font-size:26px}
+  .queueRow,.receptionMain .queueRow{padding:13px 14px}
+  .queueRow .statusChip,.queueRow .outlineClinical,.queueRow .primaryClinical{grid-column:1/-1;width:100%;box-sizing:border-box;text-align:center}
+  .agendaRow{grid-template-columns:42px minmax(0,1fr)}
+  .agendaRow .statusChip{grid-column:2;justify-self:start}
+  .evalTopbar{padding:9px 12px}
+  .evalSave{display:none}
+  .evalRoleNav{margin-left:auto}
+  .evalRoleNav b{display:none}
+  .questionHead{align-items:flex-start;flex-direction:column}
+  .answerButtons{width:100%}
+  .answerButtons button{flex:1;padding:11px 7px}
+  .evalSection,.questionCard{padding:18px 15px}
+  .evalControls{flex-wrap:wrap;margin-bottom:24px}
+  .evalControls button{flex:1}
+}

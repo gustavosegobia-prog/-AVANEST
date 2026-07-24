@@ -134,7 +134,7 @@ export function DashboardClient({
         return;
       }
     }
-    const { data:created, error: insertError } = await supabase.from("pacientes").insert({
+    const patientPayload = {
       institution_id: perfil.institution_id, created_by: perfil.id,
       nome: text("nome"), cpf: cpfDigits||null, rg: text("rg"), data_nascimento: birthDate,
       sexo: text("sexo"), telefone: phoneDigits||null, email: text("email"), endereco: text("endereco"),
@@ -142,13 +142,30 @@ export function DashboardClient({
       cirurgia: text("cirurgia"), especialidade: text("especialidade"), procedimento: text("procedimento"),
       convenio: text("convenio"), numero_carteirinha: text("numero_carteirinha"), validade: text("validade"),
       plano: text("plano"), data_consulta: appointmentDate, horario: text("horario"), observacoes: text("observacoes"),
-    }).select("id").single();
+    };
+    const appointmentPayload = {
+      data: appointmentDate, horario: text("horario"), hospital: text("hospital"),
+      procedimento: text("procedimento") || text("cirurgia"), convenio: text("convenio"),
+      observacoes: text("observacoes"), created_by: perfil.id,
+    };
+    const atomic = await supabase.rpc("criar_paciente_e_agendamento", {
+      p_paciente: patientPayload, p_agendamento: appointmentPayload,
+    });
+    if (!atomic.error) {
+      setOpen(false); router.refresh();
+      return;
+    }
+    // Compatibilidade temporária até a migração de cadastro atômico ser executada no Supabase.
+    if (atomic.error.code !== "PGRST202") {
+      setError(`Não foi possível salvar paciente e consulta: ${atomic.error.message}`);
+      setBusy(false);
+      return;
+    }
+    const { data:created, error: insertError } = await supabase.from("pacientes").insert(patientPayload).select("id").single();
     if (insertError) { setError(`Não foi possível salvar: ${insertError.message}`); setBusy(false); return; }
     if(created){
       const {error:agendaError}=await supabase.from("agendamentos").insert({
-        institution_id:perfil.institution_id,patient_id:created.id,data:appointmentDate,horario:text("horario"),
-        hospital:text("hospital"),procedimento:text("procedimento")||text("cirurgia"),convenio:text("convenio"),
-        observacoes:text("observacoes"),created_by:perfil.id,
+        institution_id:perfil.institution_id,patient_id:created.id,...appointmentPayload,
       });
       if(agendaError){
         setError(`Paciente salvo, mas o agendamento não foi criado: ${agendaError.message}`);
