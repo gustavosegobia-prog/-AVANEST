@@ -516,19 +516,18 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState}:{d
   const allComplete=checklist.every(([,ok])=>ok);
   const missingChecklist=checklist.filter(([,ok])=>!ok).map(([label])=>label);
   const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
-  const medicationOrientations=medications.map(item=>{
+  const medicationOrientations=medications.filter(item=>item.confirmada===true).map(item=>{
     const identification=[item.nome,item.dose,item.frequencia].filter(Boolean).join(" ");
-    const guidance=item.orientacao.trim()||item.prazo?.trim()||"orientação a definir";
+    const guidance=item.orientacao.trim()||item.conduta||"orientação a definir";
     const restart=item.reinicio?.trim()?` Reinício: ${item.reinicio.trim()}.`:"";
-    return `- ${identification}: ${item.conduta.toUpperCase()} — ${guidance}.${restart}`;
+    return `- ${identification}: ${guidance}.${restart}`;
   });
   const automaticPlan=[
     `JEJUM: sólidos — ${String(draft.jejum_solidos||"a definir")}; líquidos claros — ${String(draft.jejum_liquidos||"a definir")}.`,
     `PLANO ANESTÉSICO: ${String(draft.tecnica||"a definir")}.`,
     medicationOrientations.length
       ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${medicationOrientations.join("\n")}`
-      :"ORIENTAÇÕES SOBRE MEDICAMENTOS: nenhum medicamento registrado.",
-    "ATO ANESTÉSICO, RISCOS ASSOCIADOS E TERMO DE CONSENTIMENTO EXPLICADOS AO PACIENTE.",
+      :"ORIENTAÇÕES SOBRE MEDICAMENTOS: nenhuma orientação específica confirmada.",
   ].join("\n");
   useEffect(()=>{
     const current=String(draft.plano_anestesico||"");

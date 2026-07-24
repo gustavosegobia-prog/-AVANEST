@@ -25,6 +25,7 @@ export default async function DashboardPage() {
     { data: perfis },
     { data: auditoria },
     { data: periodos },
+    { data: convenioValores },
   ] = await Promise.all([
     perfil.role === "financeiro"
       ? supabase.rpc("financeiro_listar_pacientes")
@@ -36,6 +37,7 @@ export default async function DashboardPage() {
     canManage ? supabase.from("perfis").select("id,institution_id,nome,email,role,status,crm,rqe,created_at,updated_at").order("nome") : Promise.resolve({ data: [] }),
     canManage ? supabase.from("auditoria").select("id,actor_id,entidade,entidade_id,acao,detalhes,created_at").order("created_at", { ascending: false }).limit(100) : Promise.resolve({ data: [] }),
     canFinance ? supabase.from("financeiro_periodos").select("*").order("periodo", { ascending: false }) : Promise.resolve({ data: [] }),
+    canFinance ? supabase.from("convenio_valores").select("*").order("convenio").order("procedimento") : Promise.resolve({ data: [] }),
   ]);
 
   return (
@@ -49,6 +51,7 @@ export default async function DashboardPage() {
       perfis={perfis ?? []}
       auditoria={auditoria ?? []}
       periodos={periodos ?? []}
+      convenioValores={convenioValores ?? []}
     />
   );
 }

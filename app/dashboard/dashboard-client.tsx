@@ -16,23 +16,24 @@ type Paciente = {
   plano?: string | null; data_consulta?: string | null; horario?: string | null;
   observacoes?: string | null; created_at: string;
 };
-type Avaliacao = { id: string; patient_id: string; status: string; versao?: number; updated_at: string; created_at: string; dados?: Record<string, unknown> | null };
+type Avaliacao = { id: string; patient_id: string; created_by?: string | null; status: string; versao?: number; updated_at: string; created_at: string; concluida_at?: string | null; dados?: Record<string, unknown> | null };
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
-type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
+type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
 type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
+type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
 type View = "medico" | "recepcao" | "financeiro" | "admin";
 
 const brDate = (date?: string | null) => date ? new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR") : "—";
 const initials = (name: string) => name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
 export function DashboardClient({
-  perfil, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos,
+  perfil, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores,
 }: {
   perfil: Perfil; pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
-  financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[];
+  financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
 }) {
   const router = useRouter();
   const allowedViews = useMemo<View[]>(() => {
@@ -46,6 +47,10 @@ export function DashboardClient({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [agendaRange, setAgendaRange] = useState<"hoje"|"amanha"|"semana">("hoje");
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyStatus, setHistoryStatus] = useState("todas");
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
   const [dark, setDark] = useState(false);
   const [busy, setBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState("");
@@ -67,6 +72,17 @@ export function DashboardClient({
   const weekLimit = new Date(); weekLimit.setDate(weekLimit.getDate()+7);
   const week = weekLimit.toISOString().slice(0,10);
   const patientMap = useMemo(() => new Map(pacientes.map((p)=>[p.id,p])), [pacientes]);
+  const professionalMap = useMemo(() => new Map(perfis.map((item)=>[item.id,item.nome])), [perfis]);
+  const historicalAssessments = useMemo(() => avaliacoes.filter((assessment) => {
+    const patient = patientMap.get(assessment.patient_id);
+    const professional = assessment.created_by ? professionalMap.get(assessment.created_by) ?? "" : "";
+    const searchable = `${patient?.nome ?? ""} ${patient?.cpf ?? ""} ${patient?.procedimento ?? ""} ${patient?.hospital ?? ""} ${professional}`.toLowerCase();
+    const referenceDate = (assessment.concluida_at || assessment.updated_at || assessment.created_at).slice(0, 10);
+    return (historyStatus === "todas" || assessment.status === historyStatus)
+      && (!historyQuery || searchable.includes(historyQuery.toLowerCase()))
+      && (!historyFrom || referenceDate >= historyFrom)
+      && (!historyTo || referenceDate <= historyTo);
+  }).sort((a,b) => (b.concluida_at || b.updated_at || b.created_at).localeCompare(a.concluida_at || a.updated_at || a.created_at)), [avaliacoes, patientMap, professionalMap, historyQuery, historyStatus, historyFrom, historyTo]);
   const scheduledToday = agendamentos.filter((a) => a.data === today && !["cancelado","reagendado"].includes(a.status));
   const queue = scheduledToday;
   const filteredAgenda = agendamentos.filter((item) => {
@@ -264,6 +280,18 @@ export function DashboardClient({
             </button>;})}
             {filteredAgenda.length===0&&<div className="emptyClinical compactEmpty">Nenhum agendamento neste período.</div>}
           </section>
+          <section className="clinicalPanel historyPanel">
+            <div className="panelTitle"><strong>Histórico de avaliações</strong><span>Encontre rascunhos e avaliações concluídas já salvas.</span></div>
+            <div className="historyFilters">
+              <input value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
+              <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)} aria-label="Filtrar por status"><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>
+              <label>De<input type="date" value={historyFrom} onChange={(event)=>setHistoryFrom(event.target.value)} /></label>
+              <label>Até<input type="date" value={historyTo} onChange={(event)=>setHistoryTo(event.target.value)} /></label>
+            </div>
+            {historicalAssessments.slice(0,50).map((assessment)=>{const patient=patientMap.get(assessment.patient_id);const date=assessment.concluida_at||assessment.updated_at||assessment.created_at;const professional=assessment.created_by?professionalMap.get(assessment.created_by):undefined;const done=assessment.status==="concluida";return <Link className="historyRow" key={assessment.id} href={done?`/avaliacoes/${assessment.id}/documentos`:`/avaliacoes/${assessment.id}`}><span className="avatar">{initials(patient?.nome||"Paciente")}</span><span><strong>{patient?.nome||"Paciente não localizado"}</strong><small>{patient?.cpf||"CPF não informado"} · {patient?.procedimento||"Procedimento não informado"}{professional?` · ${professional}`:""}</small></span><time>{new Date(date).toLocaleDateString("pt-BR")}</time><span className={`statusChip ${done?"present":assessment.status==="cancelada"?"danger":"waiting"}`}>{done?"CONCLUÍDA":assessment.status==="rascunho"?"EM ANDAMENTO":assessment.status.toUpperCase()}</span><b>{done?"Ver documentos":"Continuar"}</b></Link>;})}
+            {historicalAssessments.length===0&&<div className="emptyClinical compactEmpty">Nenhuma avaliação encontrada com estes filtros.</div>}
+            {historicalAssessments.length>50&&<div className="historyLimit">Mostrando as 50 avaliações mais recentes. Refine os filtros para ver uma lista menor.</div>}
+          </section>
           <div className="quickLinks"><button onClick={() => setOpen(true)}>+ Nova avaliação</button><button onClick={()=>searchRef.current?.focus()}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
         </div>
       ) : view === "recepcao" ? (
@@ -275,15 +303,15 @@ export function DashboardClient({
           {search&&<section className="clinicalPanel patientSearchResults">{filtered.slice(0,10).map(p=><div className="financeSetupRow" key={p.id}><span><strong>{p.nome}</strong><small>{p.cpf||"CPF não informado"} · {p.telefone||"telefone não informado"}</small></span></div>)}</section>}
           <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=attendanceOverrides[appointment.id]??appointment.status;const updating=attendanceBusy===appointment.id;return <div className="queueRow" key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{updating?"SALVANDO...":agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><button aria-busy={updating} disabled={updating||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button aria-busy={updating} disabled={updating||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>
         </div>
-      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} onRefresh={()=>router.refresh()}/>
-      : <AdminView perfil={perfil} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()}/>}
+      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
+      : <AdminView perfil={perfil} perfis={perfis} auditoria={auditoria} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>}
 
       {open && <PatientModal busy={busy} error={error} onClose={() => setOpen(false)} onSubmit={createPatient} />}
     </main>
   );
 }
 
-function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];onRefresh:()=>void}) {
+function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];onRefresh:()=>void}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const [values,setValues]=useState<Record<string,string>>({});
@@ -311,13 +339,22 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const groups=Object.entries(periodItems.reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.convenio||"Particular"]??=[]).push(item);return acc},{}));
   const lots=Object.entries(periodItems.filter(item=>item.lote).reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.lote as string]??=[]).push(item);return acc},{}));
   const periodState=periodos.find(item=>item.periodo===period);
+  const byPlan=groups.map(([convenio,items])=>({convenio,valor:items.reduce((sum,item)=>sum+Number(item.valor),0),recebido:items.reduce((sum,item)=>sum+Number(item.recebido),0)})).sort((a,b)=>b.valor-a.valor);
+  const maxPlanValue=Math.max(1,...byPlan.map(item=>item.valor));
+  const todayIso=new Date().toISOString().slice(0,10);
+  const noteAlerts=financeiro.filter(item=>{
+    if(!item.nota_fiscal||Number(item.recebido)>=Number(item.valor)||item.status==="cancelado") return false;
+    const due=item.nota_vencimento_at || (item.nota_emitida_at ? new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10) : null);
+    return Boolean(due&&due<=todayIso);
+  });
 
   async function createBilling(patient:Paciente) {
     setBusy(patient.id); setMessage("");
     const evaluation=evaluationMap.get(patient.id);
+    const price=convenioValores.find(rule=>rule.ativo&&rule.convenio=== (patient.convenio||"Particular") && (!rule.procedimento||rule.procedimento===patient.procedimento||rule.procedimento===patient.cirurgia) && (!rule.hospital||rule.hospital===patient.hospital));
     const {error}=await createClient().from("financeiro_atendimentos").insert({
       institution_id:perfil.institution_id,patient_id:patient.id,avaliacao_id:evaluation?.id??null,
-      convenio:patient.convenio||"Particular",hospital:patient.hospital||null,valor:0,status:"aguardando",
+      convenio:patient.convenio||"Particular",hospital:patient.hospital||null,valor:Number(price?.valor||0),repasse_valor:price?.repasse_percentual?Number(price.valor)*Number(price.repasse_percentual)/100:0,status:"aguardando",
       periodo:patient.data_consulta?.slice(0,7)||currentMonth,
     });
     setBusy(""); if(error)setMessage(`Não foi possível criar o lançamento: ${error.message}`);else{setMessage("Lançamento criado. Informe o valor e os dados de cobrança.");onRefresh()}
@@ -350,19 +387,29 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     if(error)setMessage(`Não foi possível conferir o período: ${error.message}`);
     else{setMessage("Período conferido e registrado na auditoria.");onRefresh()}
   }
+  async function reprogramNote(item:Financeiro){
+    const base=item.nota_vencimento_at||todayIso;
+    const due=new Date(`${base}T12:00:00`);due.setDate(due.getDate()+15);
+    await updateItem(item.id,{nota_vencimento_at:due.toISOString().slice(0,10),nota_reprogramada_at:todayIso});
+    setMessage(`Nota ${item.nota_fiscal||"sem número"} reprogramada para ${due.toLocaleDateString("pt-BR")}.`);
+  }
 
   return <div className="clinicalMain financeMain">
     <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label></section>
     {message&&<p className={message.includes("não foi")?"clinicalError":"financeSuccess"}>{message}</p>}
     <section className="metricGrid financeMetrics"><Metric value={periodItems.length} label="Atendimentos no mês" tone="blue"/><Metric value={periodItems.filter(i=>!i.nota_fiscal).length} label="Notas pendentes" tone="amber"/><MoneyMetric value={received} label="Recebido no mês" tone="green"/><Metric value={glosas.length} label="Glosas em recurso" tone="red"/></section>
 
+    <section className="clinicalPanel billingDashboard"><div className="panelTitle"><strong>Faturamento por convênio</strong><span>Valores cobrados e recebidos na competência selecionada.</span></div><div className="billingPlanGrid">{byPlan.length?byPlan.map(item=><div className="billingPlan" key={item.convenio}><div><strong>{item.convenio}</strong><span>{money(item.recebido)} recebido de {money(item.valor)}</span></div><div className="billingBar"><i style={{width:`${Math.max(3,item.valor/maxPlanValue*100)}%`}}/></div><small>{item.valor?Math.round(item.recebido/item.valor*100):0}% recebido</small></div>):<div className="emptyClinical compactEmpty">Os valores por convênio aparecerão após os lançamentos.</div>}</div></section>
+
+    <section className="clinicalPanel noteAlerts"><div className="panelTitle"><strong>Notas fiscais para acompanhamento</strong><span>Alerta após 15 dias da emissão, até receber baixa financeira.</span></div>{noteAlerts.length?noteAlerts.map(item=>{const patient=patientMap.get(item.patient_id);const due=item.nota_vencimento_at||new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10);return <div className="noteAlertRow" key={item.id}><span><strong>NF {item.nota_fiscal}</strong><small>{item.convenio} · {patient?.nome||"Paciente"} · verificar pagamento desde {brDate(due)}</small></span><button className="paymentButton" disabled={busy===item.id} onClick={()=>{document.getElementById(`recebimento-${item.id}`)?.scrollIntoView({behavior:"smooth",block:"center"});setMessage("Informe o valor recebido abaixo para confirmar a baixa da nota.")}}>Dar baixa</button><button className="outlineClinical" disabled={busy===item.id} onClick={()=>reprogramNote(item)}>+15 dias</button></div>}):<div className="emptyClinical compactEmpty">Nenhuma nota vencida para acompanhamento.</div>}</section>
+
     {pendingPatients.length>0&&<section className="clinicalPanel"><div className="panelTitle"><strong>Atendimentos aguardando lançamento</strong><span>vindos automaticamente da recepção e agenda</span></div>{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</section>}
 
-    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><section className="clinicalPanel financeGroup" key={convenio}><div className="financeGroupHead"><strong>▣ &nbsp;{convenio}</strong><span>{items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b></div>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>updateItem(item.id,{valor:Number(e.target.value.replace(",","."))||0})}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div>})}</section>)}
+    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><section className="clinicalPanel financeGroup" key={convenio}><div className="financeGroupHead"><strong>▣ &nbsp;{convenio}</strong><span>{items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b></div>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>updateItem(item.id,{valor:Number(e.target.value.replace(",","."))||0})}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div>})}</section>)}
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>📦 Lotes de cobrança</strong><span>agrupamento por convênio/hospital, sem dados clínicos</span></div>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</section>
 
-    <section className="clinicalPanel"><div className="panelTitle"><strong>💳 Recebimentos</strong><span>PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo</span></div>{financeiro.map(item=>{const patient=patientMap.get(item.patient_id);const balance=Math.max(0,Number(item.valor)-Number(item.recebido));return <div className="paymentRow" key={item.id}><span><strong>{patient?.nome||"Paciente"} ({item.convenio})</strong><small>Valor {money(item.valor)} · recebido {money(item.recebido)} · saldo {money(balance)}</small></span><input value={values[item.id]||""} onChange={e=>setValues(v=>({...v,[item.id]:e.target.value}))} placeholder="Valor R$"/><select value={methods[item.id]||"PIX"} onChange={e=>setMethods(v=>({...v,[item.id]:e.target.value}))}><option>PIX</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select><button className="paymentButton" disabled={busy===item.id||balance<=0} onClick={()=>registerPayment(item)}>Registrar pagamento</button></div>})}{financeiro.length===0&&<div className="emptyClinical compactEmpty">Crie um lançamento para registrar recebimentos.</div>}</section>
+    <section className="clinicalPanel"><div className="panelTitle"><strong>💳 Recebimentos</strong><span>PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo</span></div>{financeiro.map(item=>{const patient=patientMap.get(item.patient_id);const balance=Math.max(0,Number(item.valor)-Number(item.recebido));return <div className="paymentRow" id={`recebimento-${item.id}`} key={item.id}><span><strong>{patient?.nome||"Paciente"} ({item.convenio})</strong><small>Valor {money(item.valor)} · recebido {money(item.recebido)} · saldo {money(balance)}</small></span><input value={values[item.id]||""} onChange={e=>setValues(v=>({...v,[item.id]:e.target.value}))} placeholder="Valor R$"/><select value={methods[item.id]||"PIX"} onChange={e=>setMethods(v=>({...v,[item.id]:e.target.value}))}><option>PIX</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select><button className="paymentButton" disabled={busy===item.id||balance<=0} onClick={()=>registerPayment(item)}>Registrar pagamento</button></div>})}{financeiro.length===0&&<div className="emptyClinical compactEmpty">Crie um lançamento para registrar recebimentos.</div>}</section>
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>🩺 Repasses aos anestesiologistas</strong><span>liberação após recebimento; valores visíveis conforme as permissões do perfil</span></div>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</section>
 
@@ -371,7 +418,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   </div>
 }
 
-function AdminView({perfil,perfis,auditoria,onRefresh}:{perfil:Perfil;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void}) {
+function AdminView({perfil,perfis,auditoria,convenioValores,onRefresh}:{perfil:Perfil;perfis:PerfilGerenciado[];auditoria:Auditoria[];convenioValores:ConvenioValor[];onRefresh:()=>void}) {
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState("");
   const [editing,setEditing]=useState<Record<string,PerfilGerenciado>>(()=>Object.fromEntries(perfis.map(item=>[item.id,{...item}])));
@@ -398,6 +445,17 @@ function AdminView({perfil,perfis,auditoria,onRefresh}:{perfil:Perfil;perfis:Per
     setBusy("");
     if(!response.ok)setMessage(result.error||"Não foi possível convidar o usuário.");
     else{setMessage("Convite enviado. O novo usuário receberá um link para definir a senha.");event.currentTarget.reset();onRefresh()}
+  }
+  async function saveConvenio(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();setBusy("convenio");setMessage("");
+    const form=new FormData(event.currentTarget);
+    const valor=Number(String(form.get("valor")||"").replace(",","."));
+    if(!String(form.get("convenio")||"").trim()||!Number.isFinite(valor)||valor<0){setBusy("");setMessage("Informe convênio e um valor válido.");return}
+    const {error}=await createClient().from("convenio_valores").insert({institution_id:perfil.institution_id,convenio:String(form.get("convenio")).trim(),procedimento:String(form.get("procedimento")||"").trim()||null,hospital:String(form.get("hospital")||"").trim()||null,valor,repasse_percentual:Number(String(form.get("repasse")||""))||null,ativo:true});
+    setBusy("");if(error)setMessage(`Não foi possível salvar o valor: ${error.message}`);else{setMessage("Valor do convênio salvo. Os próximos lançamentos usarão esta referência.");event.currentTarget.reset();onRefresh()}
+  }
+  async function toggleConvenio(item:ConvenioValor){
+    setBusy(item.id);const {error}=await createClient().from("convenio_valores").update({ativo:!item.ativo,updated_at:new Date().toISOString()}).eq("id",item.id);setBusy("");if(error)setMessage(`Não foi possível atualizar: ${error.message}`);else onRefresh();
   }
 
   return <div className="clinicalMain adminMain">
@@ -428,6 +486,11 @@ function AdminView({perfil,perfis,auditoria,onRefresh}:{perfil:Perfil;perfis:Per
           <button className="outlineClinical" disabled={busy===item.id} onClick={()=>saveProfile(item)}>{busy===item.id?"Salvando...":"Salvar"}</button>
         </div>;
       })}
+    </section>
+    <section className="clinicalPanel convenioAdmin">
+      <div className="panelTitle"><strong>Gestão de valores por convênio</strong><span>Defina referência por procedimento e/ou hospital. O Financeiro sugere o valor ao criar o lançamento.</span></div>
+      <form className="convenioForm" onSubmit={saveConvenio}><label><span>Convênio *</span><input name="convenio" required placeholder="Ex.: Unimed"/></label><label><span>Procedimento</span><input name="procedimento" placeholder="Opcional"/></label><label><span>Hospital</span><input name="hospital" placeholder="Opcional"/></label><label><span>Valor R$ *</span><input name="valor" inputMode="decimal" required placeholder="0,00"/></label><label><span>Repasse %</span><input name="repasse" inputMode="decimal" placeholder="Opcional"/></label><button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando...":"Salvar referência"}</button></form>
+      {convenioValores.length?convenioValores.map(item=><div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${item.ativo?"present":"paused"}`}>{item.ativo?"ATIVO":"INATIVO"}</span><button className="outlineClinical" disabled={busy===item.id} onClick={()=>toggleConvenio(item)}>{item.ativo?"Desativar":"Ativar"}</button></div>):<div className="emptyClinical compactEmpty">Nenhuma referência de valor cadastrada ainda.</div>}
     </section>
     <section className="clinicalPanel auditPanel">
       <div className="panelTitle"><strong>Auditoria recente</strong><span>Conclusões, pagamentos, presenças e mudanças de acesso.</span></div>

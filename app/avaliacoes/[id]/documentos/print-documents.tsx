@@ -39,11 +39,14 @@ const CONSENT_RISKS=[
 
 export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   const dados=avaliacao.snapshot_conclusao||avaliacao.dados||{};
-  const [selected,setSelected]=useState({assessment:true,consent:true,guidance:true});
+  const [selected,setSelected]=useState({assessment:true,consent:true,guidance:false});
   const [notice,setNotice]=useState("");
   const medications=useMemo<Medication[]>(()=>{try{const v=JSON.parse(String(dados.medicamentos_json||"[]"));return Array.isArray(v)?v:[]}catch{return[]}},[dados.medicamentos_json]);
   const age=useMemo(()=>{if(!paciente.data_nascimento)return null;const birth=new Date(`${paciente.data_nascimento}T12:00:00`),now=new Date();return now.getFullYear()-birth.getFullYear()-(now<new Date(now.getFullYear(),birth.getMonth(),birth.getDate())?1:0)},[paciente.data_nascimento]);
   const weight=Number(dados.peso||0),height=Number(dados.altura||0),imc=weight&&height?weight/((height/100)**2):0;
+  const heightInches=height/2.54;
+  const idealWeight=height?Math.max(30,(String(dados.sexo||paciente.sexo).toLowerCase()==="masculino"?50:45.5)+2.3*(heightInches-60)):0;
+  const adjustedWeight=idealWeight&&weight>idealWeight?idealWeight+0.4*(weight-idealWeight):(weight||idealWeight);
   const questions=[
     ["Já realizou alguma cirurgia?",dados.cirurgias_anteriores,dados.cirurgias_anteriores_detalhes],
     ["Reação ou complicação anestésica?",dados.reacao_anestesica,dados.reacao_anestesica_detalhes],
@@ -71,6 +74,26 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
     ["Conclusão registrada",Boolean(dados.conclusao)],
   ] as [string,boolean][];
   const pending=checks.filter(([,ok])=>!ok).map(([label])=>label);
+  const rcriScore=["rcri_alto_risco","rcri_coronaria","rcri_ic","rcri_cerebrovascular","rcri_insulina"].filter(key=>dados[key]===true).length+(Number(String(dados.creatinina||"").replace(",","."))>2?1:0);
+  const stopScore=["stop_ronco","stop_cansaco","stop_apneia","stop_has"].filter(key=>dados[key]===true).length+
+    (Number(dados.circ_cervical||0)>40?1:0)+(imc>35?1:0)+((age??0)>50?1:0)+(String(paciente.sexo||dados.sexo).toLowerCase()==="masculino"?1:0);
+  const apfelScore=["apfel_historia","apfel_opioide"].filter(key=>dados[key]===true).length+
+    (String(paciente.sexo||dados.sexo).toLowerCase()==="feminino"?1:0)+
+    (String(dados.habitos||"")!=="Sim"||!String(dados.habitos_detalhes||"").toLowerCase().includes("tabag")?1:0);
+  const apfelRisk=["10%","21%","39%","61%","79%"][apfelScore];
+  const airwayCount=Object.keys(dados).filter(key=>key.startsWith("via_")&&dados[key]===true).length;
+  const airwayRisk=airwayCount===0?"Baixa":airwayCount<=2?"Moderada":"Alta";
+
+  const confirmedMedications=medications.filter(item=>item.confirmada===true&&String(item.orientacao||item.conduta||"").trim());
+  const guidanceMessage=[
+    `Olá, ${paciente.nome}. Seguem suas orientações pré-anestésicas.`,
+    `Cirurgia: ${text(dados.cirurgia||paciente.cirurgia||paciente.procedimento,"a confirmar")}.`,
+    `Jejum de sólidos: ${text(dados.jejum_solidos,"a confirmar")}.`,
+    `Líquidos claros: ${text(dados.jejum_liquidos,"a confirmar")}.`,
+    "Antes de entrar na sala cirúrgica, retire piercings e próteses ou dentaduras removíveis.",
+    confirmedMedications.length?`Medicamentos:\n${confirmedMedications.map(item=>`• ${item.nome}${item.dose?` ${item.dose}`:""}: ${item.orientacao||item.conduta}${item.reinicio?` Reintrodução: ${item.reinicio}.`:""}`).join("\n")}`:"",
+    "@useavanest",
+  ].filter(Boolean).join("\n");
 
   async function printDocuments(){
     setNotice("");
@@ -82,7 +105,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
     window.print();
   }
   function openChannel(channel:"whatsapp"|"email"|"sms"){
-    const message=encodeURIComponent(`Olá, ${paciente.nome}. Suas orientações pré-anestésicas do AVANEST estão disponíveis. Confirme com a equipe responsável as informações e horários do procedimento.`);
+    const message=encodeURIComponent(guidanceMessage);
     if(channel==="whatsapp"){
       const phone=(paciente.telefone||"").replace(/\D/g,""); if(!phone){setNotice("Cadastre o telefone do paciente antes de abrir o WhatsApp.");return}
       window.open(`https://wa.me/55${phone}?text=${message}`,"_blank","noopener,noreferrer");
@@ -101,13 +124,16 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
       <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}`}>← Voltar e corrigir avaliação</a></div></div>
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>
       <div className="documentsLayout"><div className="paperStack">
-        <article className={`printPaper ${selected.assessment?"":"notSelected"}`}><header><span>AVANEST — Avaliação Pré-Anestésica</span><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header><h2>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</h2>{dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
-          <div className="paperPatientGrid"><span>Nome: <b>{paciente.nome}</b></span><span>Idade: <b>{age??"—"} anos</b></span><span>Sexo: <b>{text(paciente.sexo)}</b></span><span>Peso: <b>{weight||"—"} kg</b></span><span>Altura: <b>{height||"—"} cm</b></span><span>IMC: <b>{imc?imc.toFixed(1):"—"}</b></span><span>Convênio: <b>{text(paciente.convenio)}</b></span></div>
-          <PaperTitle>PROCEDIMENTO CIRÚRGICO</PaperTitle><div className="paperColumns"><p>Cirurgia proposta: <b>{text(dados.cirurgia||paciente.cirurgia||paciente.procedimento)}</b><br/>Hospital: <b>{text(dados.hospital||paciente.hospital)}</b><br/>Caráter: <b>{text(dados.carater)}</b></p><p>Cirurgião: <b>{text(dados.cirurgiao)}</b><br/>Data: <b>{formatDate(text(dados.data_cirurgia,""))}</b><br/>Técnica planejada: <b>{text(dados.tecnica)}</b></p></div>
+        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span><b>AVANEST</b> · Avaliação Pré-Anestésica</span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
+          <div className="paperPatientGrid"><span className="patientName">Nome: <b>{paciente.nome}</b></span><span>Idade: <b>{age??"—"} anos</b></span><span>Sexo: <b>{text(paciente.sexo)}</b></span><span>Peso: <b>{weight||"—"} kg</b></span><span>Altura: <b>{height||"—"} cm</b></span><span>IMC: <b>{imc?imc.toFixed(1):"—"}</b></span><span>Convênio: <b>{text(paciente.convenio)}</b></span><span>CPF: <b>{text(paciente.cpf)}</b></span></div>
+          <div className="paperWeightSummary"><span>Peso ideal: <b>{idealWeight?`${idealWeight.toFixed(0)} kg`:"—"}</b></span><span>Peso ajustado: <b>{adjustedWeight?`${adjustedWeight.toFixed(0)} kg`:"—"}</b></span></div>
+          <PaperTitle>PROCEDIMENTO CIRÚRGICO</PaperTitle><div className="paperColumns"><p>Cirurgia proposta: <b>{text(dados.cirurgia||paciente.cirurgia||paciente.procedimento)}</b><br/>Hospital: <b>{text(dados.hospital||paciente.hospital)}</b><br/>Caráter: <b>{text(dados.carater)}</b></p><p>Cirurgião: <b>{text(dados.cirurgiao)}</b><br/>Data / horário: <b>{formatDate(text(dados.data_cirurgia,""))} · {text(dados.horario_cirurgia)}</b><br/>Técnica planejada: <b>{text(dados.tecnica)}</b></p></div>
           <PaperTitle>ANAMNESE</PaperTitle><table className="paperTable"><thead><tr><th>#</th><th>PERGUNTA / DETALHES</th><th>SIM</th><th>NÃO</th><th>?</th></tr></thead><tbody>{questions.map(([label,value,detail],i)=><tr key={String(label)}><td>{i+1}</td><td>{label} {detail&&<b>— {text(detail)}</b>}</td><td>{answer(value)}</td><td>{value==="Não"?"X":""}</td><td>{value==="Não sabe"?"X":""}</td></tr>)}</tbody></table>
-          <PaperTitle>EXAME FÍSICO E VIA AÉREA</PaperTitle><div className="paperExam"><span>PA: <b>{text(dados.pa_sistolica)}/{text(dados.pa_diastolica)} mmHg</b></span><span>FC: <b>{text(dados.fc)} bpm</b></span><span>SpO₂: <b>{text(dados.spo2)}%</b></span><span>Temperatura: <b>{text(dados.temperatura)} °C</b></span><span>Mallampati: <b>{text(dados.mallampati)}</b></span><span>Abertura oral: <b>{text(dados.abertura_oral)}</b></span></div>
-          <PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<table className="paperTable"><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome} {m.dose} {m.frequencia}</b></td><td>{m.orientacao||m.conduta||"a definir"}</td></tr>)}</tbody></table>:<p>Nenhum medicamento registrado.</p>}
-          <PaperTitle>EXAMES, ESCORES E CONCLUSÃO</PaperTitle><div className="paperColumns"><p>Hemoglobina: <b>{text(dados.hemoglobina)}</b><br/>Plaquetas: <b>{text(dados.plaquetas)}</b><br/>Creatinina: <b>{text(dados.creatinina)}</b><br/>ECG: <b>{text(dados.ecg)}</b></p><p>ASA: <b>{text(dados.asa)}</b><br/>Capacidade funcional: <b>{text(dados.capacidade_funcional)}</b><br/>Hemoderivados: <b>{text(dados.concentrado_hemacias)}{["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?` — ${text(dados.quantidade_ch)} CH`:""}</b><br/>Conclusão: <b>{text(dados.conclusao)}</b></p></div><p>Observações: {text(dados.plano_anestesico)}</p><PaperSignature dados={dados} perfil={perfil}/></article>
+          <PaperTitle>EXAME FÍSICO E VIA AÉREA</PaperTitle><div className="paperExam"><span>PA: <b>{text(dados.pa_sistolica)}/{text(dados.pa_diastolica)} mmHg</b></span><span>FC: <b>{text(dados.fc)} bpm</b></span><span>FR: <b>{text(dados.fr)} irpm</b></span><span>SpO₂: <b>{text(dados.spo2)}%</b></span><span>Temperatura: <b>{text(dados.temperatura)} °C</b></span><span>Estado geral: <b>{text(dados.estado_geral)}</b></span><span>Consciência: <b>{text(dados.consciencia)}</b></span><span>Mallampati: <b>{text(dados.mallampati)}</b></span><span>Abertura oral: <b>{text(dados.abertura_oral)}</b></span><span>Dist. tireomentoniana: <b>{text(dados.distancia_tireomentoniana)}</b></span><span>Dentição: <b>{text(dados.denticao)}</b></span><span>Mobilidade cervical: <b>{text(dados.mobilidade_cervical)}</b></span></div>
+          <PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<table className="paperTable medicationPrintTable"><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome} {m.dose} {m.frequencia}</b></td><td>{m.orientacao||m.conduta||"a definir"}</td><td>Reinício: {text(m.reinicio,"a definir")}</td></tr>)}</tbody></table>:<p className="paperEmpty">Nenhum medicamento registrado.</p>}
+          <PaperTitle>EXAMES COMPLEMENTARES</PaperTitle><div className="paperExam labPrintGrid"><span>Hb: <b>{text(dados.hemoglobina)}</b></span><span>Ht: <b>{text(dados.hematocrito)}</b></span><span>Plaquetas: <b>{text(dados.plaquetas)}</b></span><span>INR: <b>{text(dados.inr)}</b></span><span>TTPa: <b>{text(dados.ttpa)}</b></span><span>Creatinina: <b>{text(dados.creatinina)}</b></span><span>Glicemia: <b>{text(dados.glicemia)}</b></span><span>ECG: <b>{text(dados.ecg)}</b></span></div>
+          <PaperTitle>ESCORES E ESTRATIFICAÇÃO</PaperTitle><div className="paperScores"><span>ASA: <b>{text(dados.asa)}{dados.asa_emergencia===true?" + E":""}</b></span><span>Lee (RCRI): <b>{rcriScore} pt · Classe {rcriScore===0?"I":rcriScore===1?"II":rcriScore===2?"III":"IV"}</b></span><span>STOP-Bang: <b>{stopScore}/8 · {stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco"}</b></span><span>Apfel: <b>{apfelScore}/4 · NVPO {apfelRisk}</b></span><span>Capacidade funcional: <b>{text(dados.capacidade_funcional)}</b></span><span>Via aérea: <b>{airwayRisk} probabilidade ({airwayCount} preditores)</b></span></div>
+          <PaperTitle>PLANEJAMENTO E CONCLUSÃO</PaperTitle><div className="paperColumns planningPrint"><p>Jejum sólidos: <b>{text(dados.jejum_solidos)}</b><br/>Líquidos claros: <b>{text(dados.jejum_liquidos)}</b><br/>Chegada: <b>{text(dados.horario_chegada)}</b><br/>UTI: <b>{text(dados.leito_uti)}</b></p><p>Hemoderivados: <b>{text(dados.concentrado_hemacias)}{["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?` — ${text(dados.quantidade_ch)} CH`:""}</b><br/>Monitorização: <b>{text(dados.monitorizacao)}</b><br/>Conclusão: <b>{text(dados.conclusao)}</b></p></div><p className="paperObservations">Observações / plano: {text(dados.plano_anestesico)}</p><PaperSignature dados={dados} perfil={perfil}/></article>
 
         <article className={`printPaper consentPaper officialConsent ${selected.consent?"":"notSelected"}`}><header><span>INOVANEST — SERVIÇO DE ANESTESIOLOGIA DE CAMPO MOURÃO</span></header><h2>TERMO DE CONSENTIMENTO ANESTÉSICO</h2><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
           <p><b>1.</b> Por determinação explícita de minha vontade e em consideração ao meu interesse pessoal eu: <b>{paciente.nome}</b></p>
