@@ -10,9 +10,14 @@ export function BrandMark({ className = "" }: BrandMarkProps) {
       viewBox="0 0 128 128"
       role="img"
     >
-      <path d="M13 108 48 24c3-8 8-13 14-13s11 5 15 14l18 45" fill="none" stroke="#0879db" strokeLinecap="round" strokeLinejoin="round" strokeWidth="13" />
-      <path d="M15 108c20-14 36-15 49-3 9 8 18 9 25 2" fill="none" stroke="#1dc7d3" strokeLinecap="round" strokeWidth="10" />
-      <path d="M76 83h13l5-19 7 35 8-22 6 10h11" fill="none" stroke="#24d2cf" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" />
+      <defs>
+        <linearGradient id="avanest-a-gradient" x1="18" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0879c9" />
+          <stop offset=".55" stopColor="#0d8ce1" />
+          <stop offset="1" stopColor="#2bc5a8" />
+        </linearGradient>
+      </defs>
+      <path d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="url(#avanest-a-gradient)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="14" />
     </svg>
   );
 }
