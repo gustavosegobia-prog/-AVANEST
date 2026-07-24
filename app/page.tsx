@@ -16,8 +16,8 @@ export default function HomePage() {
       <section className="avnHero">
         <div className="avnOverlay" />
         <div className="avnHeroContent">
-          <p className="avnEyebrow">DO PACIENTE À SALA CIRÚRGICA</p>
-          <h1>Segurança começa<br />antes da anestesia.</h1>
+          <p className="avnEyebrow">AVALIAÇÃO PRÉ-ANESTÉSICA</p>
+          <h1>A segurança começa<br />antes da cirurgia.</h1>
           <p className="avnLead">
             O AVANEST conecta recepção e anestesiologista em uma jornada pré-operatória
             organizada, para que cada informação importante acompanhe o paciente até o
