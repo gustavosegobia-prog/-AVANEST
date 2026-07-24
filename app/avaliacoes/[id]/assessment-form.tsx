@@ -31,6 +31,8 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     };
   });
   const [saveState, setSaveState] = useState<"saved"|"pending"|"saving"|"error">("saved");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [savedAt, setSavedAt] = useState(() => new Date(avaliacao.updated_at));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef=useRef(draft);
@@ -133,6 +135,26 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     else setSaveState("error");
   }
 
+  async function deleteAssessment() {
+    if (!window.confirm("Excluir esta avaliação definitivamente? Essa ação não pode ser desfeita. O paciente continuará cadastrado.")) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const response = await fetch(`/api/avaliacoes/${avaliacao.id}`, { method: "DELETE" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setDeleteError(result.error || "Não foi possível excluir a avaliação.");
+        setDeleting(false);
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setDeleteError("Falha de conexão ao excluir a avaliação. Tente novamente.");
+      setDeleting(false);
+    }
+  }
+
   const age = useMemo(() => {
     if (!paciente.data_nascimento) return null;
     const birth = new Date(`${paciente.data_nascimento}T12:00:00`); const now = new Date();
@@ -182,7 +204,8 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     <div className="evalProgress" aria-label={`${progress}% da avaliação preenchida`}><i style={{width:`${progress}%`}}/></div>
     <div className="evalMain">
       <div className="evalSteps">{STEPS.map((name,index)=><button type="button" onClick={()=>document.getElementById(`etapa-${index+1}`)?.scrollIntoView({behavior:"smooth",block:"start"})} key={name}><i className={completedSteps[index]?"done":""}/>{name}</button>)}</div>
-      <div className="evalControls"><button className="pauseButton">Ⅱ Pausar</button><button onClick={async()=>{await save();router.push("/dashboard")}}>↩ Salvar e voltar</button></div>
+      <div className="evalControls"><button className="pauseButton">Ⅱ Pausar</button><button onClick={async()=>{await save();router.push("/dashboard")}}>↩ Salvar e voltar</button>{["admin","owner"].includes(perfil.role)&&<button type="button" className="deleteAssessmentButton" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo...":"Excluir avaliação"}</button>}</div>
+      {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
 
       <section id="etapa-1" className="evalSection">
         <h1>1 · Identificação do paciente</h1>
