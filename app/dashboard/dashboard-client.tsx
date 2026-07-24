@@ -48,6 +48,8 @@ export function DashboardClient({
   const [agendaRange, setAgendaRange] = useState<"hoje"|"amanha"|"semana">("hoje");
   const [dark, setDark] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [attendanceBusy, setAttendanceBusy] = useState("");
+  const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
@@ -81,6 +83,7 @@ export function DashboardClient({
   async function createPatient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true); setError("");
+    try {
     const fd = new FormData(event.currentTarget);
     const text = (name: string) => String(fd.get(name) ?? "").trim() || null;
     const birthDate=text("data_nascimento");
@@ -105,6 +108,7 @@ export function DashboardClient({
         return;
       }
     }
+    const appointmentDate = text("data_consulta") || new Date().toISOString().slice(0, 10);
     const supabase = createClient();
     if(cpfDigits){
       const {data:duplicate}=await supabase.from("pacientes").select("id,nome").eq("cpf",cpfDigits).maybeSingle();
@@ -121,11 +125,10 @@ export function DashboardClient({
       cidade: text("cidade"), uf: text("uf"), cep: text("cep"), hospital: text("hospital"),
       cirurgia: text("cirurgia"), especialidade: text("especialidade"), procedimento: text("procedimento"),
       convenio: text("convenio"), numero_carteirinha: text("numero_carteirinha"), validade: text("validade"),
-      plano: text("plano"), data_consulta: text("data_consulta"), horario: text("horario"), observacoes: text("observacoes"),
+      plano: text("plano"), data_consulta: appointmentDate, horario: text("horario"), observacoes: text("observacoes"),
     }).select("id").single();
     if (insertError) { setError(`Não foi possível salvar: ${insertError.message}`); setBusy(false); return; }
-    const appointmentDate=text("data_consulta");
-    if(created && appointmentDate){
+    if(created){
       const {error:agendaError}=await supabase.from("agendamentos").insert({
         institution_id:perfil.institution_id,patient_id:created.id,data:appointmentDate,horario:text("horario"),
         hospital:text("hospital"),procedimento:text("procedimento")||text("cirurgia"),convenio:text("convenio"),
@@ -137,7 +140,13 @@ export function DashboardClient({
         return;
       }
     }
-    setOpen(false); setBusy(false); router.refresh();
+    setOpen(false); router.refresh();
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Erro desconhecido ao salvar.";
+      setError(`Não foi possível salvar: ${message}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function openAssessment(patientId: string, appointmentId?:string, assessmentId?:string|null) {
@@ -158,11 +167,30 @@ export function DashboardClient({
   }
 
   async function updateAttendance(appointmentId:string, agendaStatus:"presente"|"faltou") {
-    setBusy(true); setError("");
+    const previous=agendamentos.find(item=>item.id===appointmentId)?.status;
+    setAttendanceBusy(appointmentId); setError("");
+    setAttendanceOverrides(current=>({...current,[appointmentId]:agendaStatus}));
     const supabase=createClient();
-    const result=await supabase.rpc("registrar_presenca",{p_agendamento_id:appointmentId,p_status:agendaStatus});
-    setBusy(false);
-    if(result.error)setError(`Não foi possível atualizar a presença: ${result.error.message}`);
+    // Esta função também registra a ação na auditoria. A atualização direta
+    // abaixo é mantida somente como compatibilidade com bases ainda sem a migração.
+    let result=await supabase.rpc("registrar_presenca",{
+      p_agendamento_id:appointmentId,
+      p_status:agendaStatus,
+    });
+    if(result.error){
+      const now=new Date().toISOString();
+      result=await supabase
+        .from("agendamentos")
+        .update({ status:agendaStatus, status_by:perfil.id, status_at:now, updated_at:now })
+        .eq("id",appointmentId)
+        .select("id,status")
+        .single();
+    }
+    setAttendanceBusy("");
+    if(result.error){
+      setAttendanceOverrides(current=>({...current,[appointmentId]:previous??"agendado"}));
+      setError(`Não foi possível atualizar a presença: ${result.error.message}`);
+    }
     else router.refresh();
   }
 
@@ -208,7 +236,7 @@ export function DashboardClient({
             {queue.length ? queue.map((appointment, index) => {
               const p=patientMap.get(appointment.patient_id); if(!p)return null;
               const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined;
-              const attendance=appointment.status;
+              const attendance=attendanceOverrides[appointment.id]??appointment.status;
               const statusLabel=a?.status==="concluida"?"CONCLUÍDA":a?.status==="rascunho"?"AVALIAÇÃO PAUSADA":attendance==="presente"?"PACIENTE PRESENTE":attendance==="faltou"?"FALTOU":"AGUARDANDO";
               const statusTone=a?.status==="concluida"||attendance==="presente"?"present":attendance==="faltou"?"danger":a?.status==="rascunho"?"paused":"waiting";
               return <div className="queueRow" key={appointment.id}>
@@ -245,8 +273,7 @@ export function DashboardClient({
           <section className="metricGrid receptionMetrics"><Metric value={scheduledToday.length} label="Consultas hoje" tone="blue"/><Metric value={agendamentos.filter(a=>a.data>=today&&!["cancelado","reagendado"].includes(a.status)).length} label="Consultas agendadas" tone="blue"/><Metric value={completedThisMonth.length} label="Concluídas no mês" tone="green"/><Metric value={scheduledToday.filter(a=>a.status==="agendado").length} label="Aguardando confirmação" tone="amber"/><Metric value={agendamentos.filter(a=>a.data.slice(0,7)===today.slice(0,7)&&["faltou","cancelado"].includes(a.status)).length} label="Faltas/canceladas" tone="red"/></section>
           <section className="clinicalPanel searchPanel"><strong>Pesquisar paciente</strong><input ref={searchRef} value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Nome, parte do nome, CPF ou telefone..." /><span>O CPF também é verificado ao salvar para evitar duplicidade.</span></section>
           {search&&<section className="clinicalPanel patientSearchResults">{filtered.slice(0,10).map(p=><div className="financeSetupRow" key={p.id}><span><strong>{p.nome}</strong><small>{p.cpf||"CPF não informado"} · {p.telefone||"telefone não informado"}</small></span></div>)}</section>}
-          <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=appointment.status;return <div className="queueRow" key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><button disabled={busy||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button disabled={busy||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>
-          <section className="clinicalPanel inlineRegistration"><div className="panelTitle"><strong>Novo paciente</strong></div><p>Use o cadastro completo para incluir dados pessoais, convênio, cirurgia e agendamento.</p><button className="primaryClinical" onClick={()=>setOpen(true)}>Abrir cadastro completo</button></section>
+          <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=attendanceOverrides[appointment.id]??appointment.status;const updating=attendanceBusy===appointment.id;return <div className="queueRow" key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{updating?"SALVANDO...":agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><button aria-busy={updating} disabled={updating||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button aria-busy={updating} disabled={updating||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>
         </div>
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} onRefresh={()=>router.refresh()}/>
       : <AdminView perfil={perfil} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()}/>}
@@ -267,7 +294,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const evaluationMap=new Map<string,Avaliacao>();
   for(const item of avaliacoes)if(!evaluationMap.has(item.patient_id))evaluationMap.set(item.patient_id,item);
   const billedPatients=new Set(financeiro.map(item=>item.patient_id));
-  const pendingPatients=pacientes.filter(p=>!billedPatients.has(p.id));
+  // Só chegam ao financeiro atendimentos efetivamente agendados e vinculados a um hospital.
+  // Cadastros incompletos da recepção não devem virar cobrança.
+  const pendingPatients=pacientes.filter(p=>!billedPatients.has(p.id)&&Boolean(p.data_consulta)&&Boolean(p.hospital));
   const money=(value:number)=>Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   const parseMoney=(value:string)=>{
     const normalized=value.trim().replace(/\s/g,"").replace(/^R\$/i,"");
@@ -421,12 +450,12 @@ function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:
       <SelectField name="sexo" label="Sexo" options={["Feminino","Masculino","Outro","Não informado"]}/><Field name="telefone" label="Telefone / WhatsApp"/><Field name="email" label="E-mail" type="email" span2/><Field name="endereco" label="Endereço" span2/>
       <Field name="cidade" label="Cidade"/><Field name="uf" label="UF"/><Field name="cep" label="CEP"/><Field name="hospital" label="Hospital" span2/>
       <Field name="cirurgia" label="Cirurgia" span2/><Field name="especialidade" label="Especialidade"/><Field name="procedimento" label="Procedimento" span2/><SelectField name="convenio" label="Convênio" options={["Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde","SulAmérica","Amil","Particular"]}/>
-      <Field name="numero_carteirinha" label="Nº da carteirinha"/><Field name="validade" label="Validade" type="date"/><Field name="plano" label="Plano"/><Field name="data_consulta" label="Data da consulta" type="date"/><Field name="horario" label="Horário" type="time"/>
+      <Field name="numero_carteirinha" label="Nº da carteirinha"/><Field name="validade" label="Validade" type="date"/><Field name="plano" label="Plano"/><Field name="data_consulta" label="Data da consulta *" type="date" required defaultValue={new Date().toISOString().slice(0,10)}/><Field name="horario" label="Horário" type="time"/>
       <Field name="observacoes" label="Observações" wide/>
     </div>
-    {error && <p className="clinicalError">{error}</p>}
-    <div className="modalActions"><button type="button" className="outlineClinical" onClick={onClose}>Cancelar</button><button className="primaryClinical" disabled={busy}>{busy?"Salvando...":"SALVAR"}</button></div>
+    {error && <p className="clinicalError" role="alert" aria-live="assertive">{error}</p>}
+    <div className="modalActions"><span className="saveStatus" aria-live="polite">{busy ? "Salvando no banco de dados…" : ""}</span><button type="button" className="outlineClinical" onClick={onClose}>Cancelar</button><button type="submit" className="primaryClinical" disabled={busy}>{busy?"Salvando...":"SALVAR"}</button></div>
   </form></div>;
 }
-function Field({name,label,type="text",wide=false,span2=false,required=false}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean}) { return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""}`}><span>{label}</span><input name={name} type={type} required={required}/></label>; }
+function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string}) { return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""}`}><span>{label}</span><input name={name} type={type} required={required} defaultValue={defaultValue}/></label>; }
 function SelectField({name,label,options}:{name:string;label:string;options:string[]}) { return <label className="clinicalField"><span>{label}</span><select name={name}>{options.map(o=><option key={o}>{o}</option>)}</select></label>; }

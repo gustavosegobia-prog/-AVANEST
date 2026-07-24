@@ -16,14 +16,15 @@ export default function HomePage() {
       <section className="avnHero">
         <div className="avnOverlay" />
         <div className="avnHeroContent">
-          <p className="avnEyebrow">PLATAFORMA EM DESENVOLVIMENTO E VALIDAÇÃO</p>
-          <h1>Avaliação pré-anestésica<br />organizada em um único fluxo.</h1>
+          <p className="avnEyebrow">DO PACIENTE À SALA CIRÚRGICA</p>
+          <h1>Segurança começa<br />antes da anestesia.</h1>
           <p className="avnLead">
-            O AVANEST está sendo desenvolvido para conectar paciente, recepção e
-            anestesiologista, organizando informações e etapas da jornada pré-operatória.
+            O AVANEST conecta recepção e anestesiologista em uma jornada pré-operatória
+            organizada, para que cada informação importante acompanhe o paciente até o
+            momento da cirurgia.
           </p>
           <div className="avnActions">
-            <a className="avnPrimary" href="/login">Quero conhecer o projeto</a>
+            <a className="avnPrimary" href="/login">Conheça o AVANEST</a>
             <a className="avnSecondary" href="#como-funciona">Ver como funciona</a>
           </div>
           <ul className="avnBenefits">
@@ -47,6 +48,15 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      <a
+        className="avnInstagram"
+        href="https://www.instagram.com/avanest/"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="AVANEST no Instagram"
+      >
+        <span aria-hidden="true">◎</span> @avanest
+      </a>
     </main>
   );
 }

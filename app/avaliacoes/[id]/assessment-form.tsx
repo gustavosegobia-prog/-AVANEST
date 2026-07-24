@@ -34,7 +34,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const [savedAt, setSavedAt] = useState(() => new Date(avaliacao.updated_at));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef=useRef(draft);
-  const lockVersionRef=useRef(avaliacao.lock_version);
+  const lockVersionRef=useRef(Number(avaliacao.lock_version ?? 0));
   const saveInFlightRef=useRef<Promise<boolean>|null>(null);
 
   async function saveDraftDirectly(next: Draft) {
@@ -67,7 +67,11 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       });
       if(error||!data?.[0]){
         const savedDirectly=await saveDraftDirectly(next);
-        if(!savedDirectly)setSaveState("error");
+        if(!savedDirectly){
+          // Não sobrescreve um rascunho que foi alterado em outra aba/dispositivo.
+          // A pessoa pode tentar novamente; se houver conflito real, a tela informa.
+          setSaveState("error");
+        }
         return savedDirectly;
       }
       lockVersionRef.current=Number(data[0].lock_version);
@@ -209,7 +213,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       <div id="etapa-6"><Airway draft={draft} set={set}/></div>
       <div id="etapa-7"><ComplementaryExams draft={draft} set={set} avaliacao={avaliacao}/></div>
       <div id="etapa-8"><Scores draft={draft} set={set} age={age} sex={paciente.sexo} imc={imc}/></div>
-      <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} imc={imc} conclude={conclude} saveState={saveState}/></div>
+      <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} imc={imc} conclude={conclude} retrySave={()=>void save()} saveState={saveState}/></div>
     </div>
   </main>;
 }
@@ -234,7 +238,7 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
     ["gestacao","Mulher em idade fértil: há possibilidade de gestação?"],
   ].filter(([key])=>key!=="gestacao"||String(draft.sexo||"").toLowerCase()==="feminino");
   return <><section className="evalSection evalIntro"><h1>3 · Anamnese</h1><p>Perguntas da ficha física. Cada resposta “Sim” abre detalhamento e observações.</p></section>
-    <div className="anamnesisList">{questions.map(([key,label])=><QuestionCard key={key} name={key} label={label} value={String(draft[key]??"")} detail={String(draft[`${key}_detalhes`]??"")} onChange={(value)=>set(key,value)} onDetail={(value)=>set(`${key}_detalhes`,value)} draft={draft} set={set}/>)}</div></>;
+    <div className="anamnesisList">{questions.map(([key,label])=><QuestionCard key={key} name={key} label={label} value={String(draft[key]??"")} detail={String(draft[`${key}_detalhes`]??"")} onChange={(value)=>{set(key,value);if(key==="medicacao_continua"&&value==="Sim")window.setTimeout(()=>document.getElementById("etapa-4")?.scrollIntoView({behavior:"smooth",block:"start"}),180)}} onDetail={(value)=>set(`${key}_detalhes`,value)} draft={draft} set={set}/>)}</div></>;
 }
 const QUESTION_CHIPS:Record<string,string[]>={
   cirurgias_anteriores:["Cesárea","Colecistectomia","Herniorrafia","Ortopédica","Cardíaca","Outra"],
@@ -478,8 +482,9 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div><p>Outros escores somente devem ser usados quando houver dados suficientes e validação clínica.</p></section></>;
 }
 
-function Conclusion({draft,set,paciente,age,imc,conclude,saveState}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;imc:number;conclude:()=>Promise<void>;saveState:"saved"|"pending"|"saving"|"error"}) {
+function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;imc:number;conclude:()=>Promise<void>;retrySave:()=>void;saveState:"saved"|"pending"|"saving"|"error"}) {
   const medications=readMedications(draft.medicamentos_json);
+  const lastAutomaticPlan=useRef("");
   const airwayKeys=Object.keys(draft).filter(k=>k.startsWith("via_")&&draft[k]===true).length;
   const rcri=Object.keys(draft).filter(k=>k.startsWith("rcri_")&&draft[k]===true).length;
   const stop=Object.keys(draft).filter(k=>k.startsWith("stop_")&&draft[k]===true).length;
@@ -500,8 +505,29 @@ function Conclusion({draft,set,paciente,age,imc,conclude,saveState}:{draft:Draft
   ] as const;
   const allComplete=checklist.every(([,ok])=>ok);
   const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
-  function generateText(){set("plano_anestesico",`AVALIAÇÃO PRÉ-ANESTÉSICA\nPaciente: ${paciente.nome}\nProcedimento: ${String(draft.cirurgia||"")}\nASA: ${String(draft.asa||"não definida")}\nAlergias: ${String(draft.alergias_detalhes||"não informadas")}\nCapacidade funcional: ${String(draft.capacidade_funcional||"não avaliada")}\nPlano e observações: revisar e completar pelo anestesiologista.`)}
-  return <><section className="evalSection"><div className="conclusionHeading"><h1>9 · Resumo da avaliação</h1><button className="outlineClinical" onClick={generateText}>Gerar texto editável nas observações ↓</button></div><div className="summaryGrid">{summary.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
+  const medicationOrientations=medications.map(item=>{
+    const identification=[item.nome,item.dose,item.frequencia].filter(Boolean).join(" ");
+    const guidance=item.orientacao.trim()||item.prazo?.trim()||"orientação a definir";
+    const restart=item.reinicio?.trim()?` Reinício: ${item.reinicio.trim()}.`:"";
+    return `- ${identification}: ${item.conduta.toUpperCase()} — ${guidance}.${restart}`;
+  });
+  const automaticPlan=[
+    `JEJUM: sólidos — ${String(draft.jejum_solidos||"a definir")}; líquidos claros — ${String(draft.jejum_liquidos||"a definir")}.`,
+    `PLANO ANESTÉSICO: ${String(draft.tecnica||"a definir")}.`,
+    medicationOrientations.length
+      ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${medicationOrientations.join("\n")}`
+      :"ORIENTAÇÕES SOBRE MEDICAMENTOS: nenhum medicamento registrado.",
+    "ATO ANESTÉSICO, RISCOS ASSOCIADOS E TERMO DE CONSENTIMENTO EXPLICADOS AO PACIENTE.",
+  ].join("\n");
+  useEffect(()=>{
+    const current=String(draft.plano_anestesico||"");
+    if(!current||current===lastAutomaticPlan.current){
+      lastAutomaticPlan.current=automaticPlan;
+      if(current!==automaticPlan)set("plano_anestesico",automaticPlan);
+    }
+  },[automaticPlan,draft.plano_anestesico,set]);
+  function generateText(){lastAutomaticPlan.current=automaticPlan;set("plano_anestesico",automaticPlan)}
+  return <><section className="evalSection"><div className="conclusionHeading"><h1>9 · Resumo da avaliação</h1><button className="outlineClinical" onClick={generateText}>Atualizar orientações finais automaticamente ↓</button></div><div className="summaryGrid">{summary.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
   <section className="evalSection"><h2>Prescrição e planejamento pré-anestésico</h2><div className="planningGrid">
     <label className="evalField plan4"><span>Jejum — sólidos</span><select value={String(draft.jejum_solidos??"")} onChange={e=>set("jejum_solidos",e.target.value)}><option value="">Selecione</option><option>8 horas antes</option><option>6 horas antes (refeição leve)</option><option>Protocolo especial</option></select></label>
     <label className="evalField plan4"><span>Jejum — líquidos claros</span><select value={String(draft.jejum_liquidos??"")} onChange={e=>set("jejum_liquidos",e.target.value)}><option value="">Selecione</option><option>Líquidos claros até 2 h antes</option><option>Jejum absoluto</option><option>Protocolo especial</option></select></label>
@@ -513,6 +539,6 @@ function Conclusion({draft,set,paciente,age,imc,conclude,saveState}:{draft:Draft
     <label className="evalField plan2"><span>Avaliação especializada</span><select value={String(draft.avaliacao_especializada??"")} onChange={e=>set("avaliacao_especializada",e.target.value)}><option value="">Selecione</option><option>Não</option><option>Solicitar</option><option>A definir</option></select></label>
     <label className="evalField plan4"><span>Técnica anestésica</span><select value={String(draft.tecnica??"")} onChange={e=>set("tecnica",e.target.value)}><option value="">—</option><option>Anestesia geral</option><option>Sedação</option><option>Raquianestesia</option><option>Raquianestesia + sedação</option><option>Peridural</option><option>Bloqueio periférico</option><option>Técnica combinada</option></select></label>
     <label className="evalField plan4"><span>Monitorização</span><select value={String(draft.monitorizacao??"")} onChange={e=>set("monitorizacao",e.target.value)}><option value="">Selecione</option><option>Padrão</option><option>Expandida</option><option>Invasiva</option><option>Conforme necessidade clínica</option></select></label>
-  </div><label className="evalField"><span>Plano anestésico e observações</span><textarea rows={6} value={String(draft.plano_anestesico??"")} onChange={e=>set("plano_anestesico",e.target.value)}/></label></section>
-  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Complete os itens marcados com ⚠ antes de concluir. Você pode usar “Salvar e voltar” sem perder o rascunho.</p>}{saveState==="error"&&<p className="completionWarning">O rascunho não está sincronizado. Recarregue a página antes de concluir para evitar substituir alterações mais recentes.</p>}<p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
+  </div><label className="evalField"><span>Orientações finais da avaliação (preenchidas automaticamente e editáveis)</span><textarea rows={8} value={String(draft.plano_anestesico??"")} onChange={e=>set("plano_anestesico",e.target.value)}/><small>O texto acompanha as escolhas de jejum, técnica anestésica e conduta dos medicamentos. Depois de uma edição manual, use “Atualizar orientações finais automaticamente” somente se quiser reconstruí-lo.</small></label></section>
+  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Complete os itens marcados com ⚠ antes de concluir. Você pode usar “Salvar e voltar” sem perder o rascunho.</p>}{saveState==="error"&&<p className="completionWarning">Não foi possível sincronizar o rascunho agora. <button type="button" className="outlineClinical" onClick={retrySave}>Tentar salvar novamente</button></p>}<p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
 }
