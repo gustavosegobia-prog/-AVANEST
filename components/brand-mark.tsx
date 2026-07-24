@@ -10,22 +10,9 @@ export function BrandMark({ className = "" }: BrandMarkProps) {
       viewBox="0 0 128 128"
       role="img"
     >
-      <path
-        d="M14 111 52 22c4-9 9-13 16-13 8 0 13 5 17 14l17 39"
-        fill="none"
-        stroke="#0879c9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="23"
-      />
-      <path
-        d="m102 62 22 49"
-        fill="none"
-        stroke="#2bc5a8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="23"
-      />
+      <path d="M13 108 48 24c3-8 8-13 14-13s11 5 15 14l18 45" fill="none" stroke="#0879db" strokeLinecap="round" strokeLinejoin="round" strokeWidth="13" />
+      <path d="M15 108c20-14 36-15 49-3 9 8 18 9 25 2" fill="none" stroke="#1dc7d3" strokeLinecap="round" strokeWidth="10" />
+      <path d="M76 83h13l5-19 7 35 8-22 6 10h11" fill="none" stroke="#24d2cf" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" />
     </svg>
   );
 }
