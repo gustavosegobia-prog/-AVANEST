@@ -19,9 +19,9 @@ export default function HomePage() {
           <p className="avnEyebrow">AVALIAÇÃO PRÉ-ANESTÉSICA</p>
           <h1>A segurança começa<br />antes da anestesia.</h1>
           <p className="avnLead">
-            O AVANEST conecta recepção e anestesiologista em uma jornada pré-operatória
-            organizada, para que cada informação importante acompanhe o paciente até o
-            momento da cirurgia.
+            O AVANEST conecta o paciente, desde a recepção até o anestesiologista, em uma
+            jornada pré-operatória organizada, garantindo que cada informação importante o
+            acompanhe até o momento da cirurgia.
           </p>
           <div className="avnActions">
             <a className="avnPrimary" href="/login">Conheça o AVANEST</a>
