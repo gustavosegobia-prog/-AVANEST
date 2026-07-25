@@ -27,6 +27,10 @@ function getAnamnesisKeys(sex: unknown) {
   return ANAMNESIS_KEYS.filter((key) => key !== "gestacao" || String(sex || "").toLowerCase() === "feminino");
 }
 
+function isFilled(value: unknown) {
+  return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
 export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Assessment; paciente: Patient; perfil:Profile }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => {
@@ -187,21 +191,21 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     : weight || idealWeight;
   const allergy = String(draft.alergias_detalhes || "");
   const anamnesisKeys = getAnamnesisKeys(draft.sexo || paciente.sexo);
-  const anamnesisComplete = anamnesisKeys.every((key) => Boolean(draft[key]));
+  const anamnesisComplete = anamnesisKeys.every((key) => isFilled(draft[key]));
   const medicationComplete = draft.medicacao_continua !== "Sim" || (
     readMedications(draft.medicamentos_json).length > 0 &&
     readMedications(draft.medicamentos_json).every((item) => item.confirmada === true)
   );
   const completedSteps=[
-    Boolean(paciente.nome&&paciente.data_nascimento&&age!==null),
-    Boolean(draft.cirurgia&&draft.data_cirurgia),
+    Boolean(isFilled(paciente.nome)&&isFilled(paciente.data_nascimento)&&age!==null&&isFilled(draft.peso)&&isFilled(draft.altura)),
+    Boolean(isFilled(draft.cirurgia)&&isFilled(draft.data_cirurgia)),
     anamnesisComplete,
     medicationComplete,
-    Boolean(draft.pa_sistolica&&draft.pa_diastolica&&draft.fc&&draft.spo2),
-    Boolean(draft.mallampati&&draft.abertura_oral&&draft.distancia_tireo&&draft.denticao&&draft.mobilidade),
+    Boolean(isFilled(draft.pa_sistolica)&&isFilled(draft.pa_diastolica)&&isFilled(draft.fc)&&isFilled(draft.spo2)),
+    Boolean(isFilled(draft.mallampati)&&isFilled(draft.abertura_oral)&&isFilled(draft.distancia_tireo)&&isFilled(draft.denticao)&&isFilled(draft.mobilidade)),
     true,
-    Boolean(draft.asa&&draft.asa_confirmada&&draft.capacidade_funcional),
-    Boolean(draft.conclusao&&draft.anestesiologista&&draft.crm),
+    Boolean(isFilled(draft.asa)&&draft.asa_confirmada===true&&isFilled(draft.capacidade_funcional)),
+    Boolean(isFilled(draft.jejum_solidos)&&isFilled(draft.jejum_liquidos)&&isFilled(draft.tecnica)&&isFilled(draft.conclusao)&&isFilled(draft.anestesiologista)&&isFilled(draft.crm)),
   ];
   const progress=Math.round(completedSteps.filter(Boolean).length/completedSteps.length*100);
 
@@ -248,7 +252,6 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
         {input("especialidade","Especialidade")}{input("data_cirurgia","Data prevista","date")}{input("horario_cirurgia","Horário previsto","time")}{select("lateralidade","Lateralidade",["Direita","Esquerda","Bilateral","Não se aplica"])}
         {select("carater","Caráter",["Eletiva","Urgência","Emergência"])}{select("porte","Porte cirúrgico",["Pequeno","Médio","Grande"])}{input("duracao","Duração estimada")}
         {select("regime","Regime",["Ambulatorial","Hospital-dia","Internação (1 diária)","Internação prolongada"],"span2")}{select("sangue","Necessidade provável de sangue",["Não","Sim","A definir"])}
-        {select("tecnica","Técnica anestésica planejada",["Anestesia geral","Sedação","Raquianestesia","Raquianestesia + sedação","Peridural","Bloqueio periférico"],"span2")}
       </div><p className="evalHint">A data prevista da cirurgia é usada para organizar as orientações de medicamentos a suspender.</p></section>
 
       <div id="etapa-3"><Anamnesis draft={draft} set={set}/></div>
@@ -545,20 +548,72 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     doenca_aguda:"doença aguda", dentaria:"alterações dentárias", alergias:"alergias", habitos:"tabagismo/álcool/substâncias",
     glaucoma:"glaucoma", gestacao:"possibilidade de gestação",
   };
-  const missingAnamnesis=anamnesisKeys.filter(key=>!draft[key]).map(key=>anamnesisLabels[key]);
+  const missingAnamnesis=anamnesisKeys.filter(key=>!isFilled(draft[key])).map(key=>anamnesisLabels[key]);
+  const requirementGroups = [
+    ["Identificação", [
+      [paciente.nome, "nome do paciente"],
+      [paciente.data_nascimento, "data de nascimento"],
+      [age === null ? "" : age, "data de nascimento válida"],
+      [draft.peso, "peso"],
+      [draft.altura, "altura"],
+    ]],
+    ["Procedimento", [
+      [draft.cirurgia, "cirurgia/procedimento"],
+      [draft.data_cirurgia, "data prevista"],
+    ]],
+    ["Exame físico", [
+      [draft.pa_sistolica, "pressão sistólica"],
+      [draft.pa_diastolica, "pressão diastólica"],
+      [draft.fc, "frequência cardíaca"],
+      [draft.spo2, "SpO₂"],
+    ]],
+    ["Via aérea", [
+      [draft.mallampati, "Mallampati"],
+      [draft.abertura_oral, "abertura oral"],
+      [draft.distancia_tireo, "distância tireomentoniana"],
+      [draft.denticao, "dentição"],
+      [draft.mobilidade, "mobilidade cervical"],
+    ]],
+    ["Escores", [
+      [draft.asa, "classificação ASA"],
+      [draft.asa_confirmada === true ? "confirmada" : "", "confirmação da ASA"],
+      [draft.capacidade_funcional, "capacidade funcional"],
+    ]],
+    ["Planejamento", [
+      [draft.jejum_solidos, "jejum de sólidos"],
+      [draft.jejum_liquidos, "jejum de líquidos claros"],
+      [draft.tecnica, "técnica anestésica"],
+      [!requestsBlood || isFilled(draft.quantidade_ch) ? "ok" : "", "quantidade de concentrado de hemácias"],
+    ]],
+    ["Conclusão e assinatura", [
+      [draft.conclusao, "conclusão"],
+      [draft.anestesiologista, "anestesiologista"],
+      [draft.crm, "CRM"],
+    ]],
+  ] as const;
+  const missingByGroup = Object.fromEntries(requirementGroups.map(([group, fields]) => [
+    group,
+    fields.filter(([value]) => !isFilled(value)).map(([, label]) => label),
+  ])) as Record<string, string[]>;
   const checklist=[
-    ["Identificação",Boolean(paciente.nome&&paciente.data_nascimento&&age!==null&&draft.peso&&draft.altura)],
-    ["Procedimento",Boolean(draft.cirurgia&&draft.data_cirurgia)],
-    ["Anamnese",anamnesisKeys.every(key=>Boolean(draft[key]))],
+    ["Identificação",missingByGroup["Identificação"].length===0],
+    ["Procedimento",missingByGroup["Procedimento"].length===0],
+    ["Anamnese",anamnesisKeys.every(key=>isFilled(draft[key]))],
     ["Medicamentos",draft.medicacao_continua!=="Sim"||(medications.length>0&&medications.every(item=>item.confirmada===true))],
-    ["Exame físico",Boolean(draft.pa_sistolica&&draft.pa_diastolica&&draft.fc&&draft.spo2)],
-    ["Via aérea",Boolean(draft.mallampati&&draft.abertura_oral&&draft.distancia_tireo&&draft.denticao&&draft.mobilidade)],
+    ["Exame físico",missingByGroup["Exame físico"].length===0],
+    ["Via aérea",missingByGroup["Via aérea"].length===0],
     ["Exames (opcional)",true],
-    ["Escores",Boolean(draft.asa&&draft.asa_confirmada&&draft.capacidade_funcional)],
-    ["Planejamento e conclusão",Boolean(draft.jejum_solidos&&draft.jejum_liquidos&&draft.tecnica&&draft.conclusao&&draft.anestesiologista&&draft.crm&&(!requestsBlood||draft.quantidade_ch))],
+    ["Escores",missingByGroup["Escores"].length===0],
+    ["Planejamento",missingByGroup["Planejamento"].length===0],
+    ["Conclusão e assinatura",missingByGroup["Conclusão e assinatura"].length===0],
   ] as const;
   const allComplete=checklist.every(([,ok])=>ok);
   const missingChecklist=checklist.filter(([,ok])=>!ok).map(([label])=>label);
+  const missingFields = missingChecklist.flatMap((group) => {
+    if (group === "Anamnese") return missingAnamnesis;
+    if (group === "Medicamentos") return ["medicamentos e respectivas orientações confirmadas"];
+    return missingByGroup[group] ?? [];
+  });
   const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
   const medicationOrientations=medications.filter(item=>item.confirmada===true).map(item=>{
     const identification=[item.nome,item.dose,item.frequencia].filter(Boolean).join(" ");
@@ -585,7 +640,6 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
   <section className="evalSection"><h2>Prescrição e planejamento pré-anestésico</h2><div className="planningGrid">
     <label className="evalField plan4"><span>Jejum — sólidos</span><select value={String(draft.jejum_solidos??"")} onChange={e=>set("jejum_solidos",e.target.value)}><option value="">Selecione</option><option>8 horas antes</option><option>6 horas antes (refeição leve)</option><option>Protocolo especial</option></select></label>
     <label className="evalField plan4"><span>Jejum — líquidos claros</span><select value={String(draft.jejum_liquidos??"")} onChange={e=>set("jejum_liquidos",e.target.value)}><option value="">Selecione</option><option>Líquidos claros até 2 h antes</option><option>Jejum absoluto</option><option>Protocolo especial</option></select></label>
-    <label className="evalField plan2"><span>Horário de chegada</span><input type="time" value={String(draft.horario_chegada??"")} onChange={e=>set("horario_chegada",e.target.value)}/></label>
     <label className="evalField plan2"><span>Dormonid VO (pré-medicação)</span><select value={String(draft.premedicacao??"")} onChange={e=>set("premedicacao",e.target.value)}><option value="">Selecione</option><option>Não prescrever</option><option>7,5 mg</option><option>15 mg</option></select></label>
     <label className="evalField plan2"><span>Leito de UTI</span><select value={String(draft.leito_uti??"")} onChange={e=>set("leito_uti",e.target.value)}><option value="">Selecione</option><option>Não</option><option>Solicitar</option><option>A definir</option></select></label>
     <label className="evalField plan2"><span>Concentrado de hemácias (CH)</span><select value={String(draft.concentrado_hemacias??"")} onChange={e=>{set("concentrado_hemacias",e.target.value);if(e.target.value!=="Solicitar"&&e.target.value!=="Sim")set("quantidade_ch","")}}><option value="">Selecione</option><option>Não</option><option>Solicitar</option><option>A definir</option></select></label>
@@ -594,5 +648,5 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     <label className="evalField plan4"><span>Técnica anestésica</span><select value={String(draft.tecnica??"")} onChange={e=>set("tecnica",e.target.value)}><option value="">—</option><option>Anestesia geral</option><option>Sedação</option><option>Raquianestesia</option><option>Raquianestesia + sedação</option><option>Peridural</option><option>Bloqueio periférico</option><option>Técnica combinada</option></select></label>
     <label className="evalField plan4"><span>Monitorização</span><select value={String(draft.monitorizacao??"")} onChange={e=>set("monitorizacao",e.target.value)}><option value="">Selecione</option><option>Padrão</option><option>Expandida</option><option>Invasiva</option><option>Conforme necessidade clínica</option></select></label>
   </div><label className="evalField"><span>Orientações finais da avaliação (preenchidas automaticamente e editáveis)</span><textarea rows={8} value={String(draft.plano_anestesico??"")} onChange={e=>set("plano_anestesico",e.target.value)}/><small>O texto acompanha as escolhas de jejum, técnica anestésica e conduta dos medicamentos. Depois de uma edição manual, use “Atualizar orientações finais automaticamente” somente se quiser reconstruí-lo.</small></label></section>
-  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" title={saveState==="error"?saveError:undefined} disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Ainda falta: <strong>{missingChecklist.join(", ")}.</strong>{missingAnamnesis.length>0&&<> Pergunta(s) sem resposta: <strong>{missingAnamnesis.join(", ")}.</strong></>} Complete os itens marcados com ⚠ antes de concluir.</p>}{saveState==="error"&&<p className="completionWarning">{saveError||"Não foi possível sincronizar o rascunho agora."} <button type="button" className="outlineClinical" onClick={retrySave}>Tentar salvar novamente</button></p>}<p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
+  <section className="evalSection"><h2>Checklist final</h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}>{ok?"✓":"⚠"} {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" title={saveState==="error"?saveError:undefined} disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Ainda falta preencher: <strong>{missingFields.join(", ")}.</strong> Revise somente esses campos antes de concluir.</p>}{saveState==="error"&&<p className="completionWarning">{saveError||"Não foi possível sincronizar o rascunho agora."} <button type="button" className="outlineClinical" onClick={retrySave}>Tentar salvar novamente</button></p>}<p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
 }
