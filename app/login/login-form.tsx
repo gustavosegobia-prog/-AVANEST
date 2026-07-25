@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import Link from "next/link";
 
 export function LoginForm({ passwordChanged = false }: { passwordChanged?: boolean }) {
   const router = useRouter();
@@ -25,8 +26,7 @@ export function LoginForm({ passwordChanged = false }: { passwordChanged?: boole
       setLoading(false);
       return;
     }
-    router.push("/dashboard");
-    router.refresh();
+    router.replace("/dashboard");
   }
 
   return (
@@ -42,7 +42,7 @@ export function LoginForm({ passwordChanged = false }: { passwordChanged?: boole
         </button>
       </div>
       {error && <p className="loginError" role="alert">{error}</p>}
-      <a className="avnForgotPassword" href="/recuperar-senha">Esqueci minha senha</a>
+      <Link className="avnForgotPassword" href="/recuperar-senha">Esqueci minha senha</Link>
       <button className="avnLoginSubmit" type="submit" disabled={loading}>
         {loading ? "Entrando..." : "Entrar"}
       </button>

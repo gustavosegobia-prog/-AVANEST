@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { FormEvent, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -24,26 +24,28 @@ type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:s
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
-type View = "medico" | "recepcao" | "financeiro" | "admin";
+export type DashboardView = "medico" | "recepcao" | "financeiro" | "admin";
 
 const brDate = (date?: string | null) => date ? new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR") : "—";
 const initials = (name: string) => name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
 export function DashboardClient({
-  perfil, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores,
+  perfil, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
 }: {
   perfil: Perfil; pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
+  initialView?: DashboardView;
 }) {
   const router = useRouter();
-  const allowedViews = useMemo<View[]>(() => {
+  const allowedViews = useMemo<DashboardView[]>(() => {
     if (perfil.role === "recepcao") return ["recepcao"];
     if (perfil.role === "medico") return ["medico"];
     if (perfil.role === "financeiro") return ["financeiro"];
     if (perfil.role === "admin" || perfil.role === "owner") return ["recepcao","medico","financeiro","admin"];
     return ["medico"];
   }, [perfil.role]);
-  const [view, setView] = useState<View>(allowedViews[0]);
+  const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
+  const [isAreaPending, startAreaTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [agendaRange, setAgendaRange] = useState<"hoje"|"amanha"|"semana">("hoje");
@@ -229,11 +231,15 @@ export function DashboardClient({
 
   async function logout() {
     await createClient().auth.signOut();
-    router.push("/login"); router.refresh();
+    router.replace("/login");
   }
 
   const firstDraft=drafts[0];
   const goToFirstDraft=()=>firstDraft&&router.push(`/avaliacoes/${firstDraft.id}`);
+  const changeView=(nextView:DashboardView)=>{
+    if(nextView===view)return;
+    startAreaTransition(()=>router.push(`/dashboard?area=${nextView}`,{scroll:false}));
+  };
 
   return (
     <main className={`clinicalShell ${dark?"clinicalDark":""}`}>
@@ -241,10 +247,10 @@ export function DashboardClient({
         <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
         <nav className="roleNav" aria-label="Áreas do sistema">
           <button className="themePill" onClick={()=>setDark(value=>!value)} aria-pressed={dark}>◐ {dark?"Claro":"Escuro"}</button>
-          {allowedViews.includes("recepcao")&&<button className={view === "recepcao" ? "active" : ""} onClick={() => setView("recepcao")}>Recepção</button>}
-          {allowedViews.includes("medico")&&<button className={view === "medico" ? "active" : ""} onClick={() => setView("medico")}>Médico</button>}
-          {allowedViews.includes("financeiro")&&<button className={view === "financeiro" ? "active" : ""} onClick={() => setView("financeiro")}>Financeiro</button>}
-          {allowedViews.includes("admin")&&<button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>Admin</button>}
+          {allowedViews.includes("recepcao")&&<button disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} onClick={() => changeView("recepcao")}>Recepção</button>}
+          {allowedViews.includes("medico")&&<button disabled={isAreaPending} className={view === "medico" ? "active" : ""} onClick={() => changeView("medico")}>Médico</button>}
+          {allowedViews.includes("financeiro")&&<button disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} onClick={() => changeView("financeiro")}>Financeiro</button>}
+          {allowedViews.includes("admin")&&<button disabled={isAreaPending} className={view === "admin" ? "active" : ""} onClick={() => changeView("admin")}>Admin</button>}
           <span className="roleBadge">{perfil.role === "owner" ? "ADMINISTRADOR" : perfil.role.toUpperCase()}</span>
           <button onClick={logout}>🔒 Bloquear</button><button onClick={logout}>Sair</button>
         </nav>
