@@ -450,9 +450,22 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
     circ_abdominal:{min:20,max:300,step:0.1},
   };
   const field=(name:string,label:string,type="text")=>{const range=limits[name];return <label className="evalField"><span>{label}</span><input type={type} min={range?.min} max={range?.max} step={range?.step} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>};
+  const choice=(name:string,label:string,options:string[])=>{
+    const current=String(draft[name]??"");
+    const hasLegacyValue=current!==""&&!options.includes(current);
+    return <label className="evalField"><span>{label}</span><select value={current} onChange={e=>set(name,e.target.value)}>
+      <option value="">Selecione</option>
+      {hasLegacyValue&&<option value={current}>{current} (valor anterior)</option>}
+      {options.map(option=><option key={option} value={option}>{option}</option>)}
+    </select></label>;
+  };
+  const glasgowOptions=Array.from({length:13},(_,index)=>`Glasgow ${15-index}`);
   return <section className="evalSection"><h1>5 · Exame físico</h1><div className="physicalGrid">
     {field("pa_sistolica","PA sistólica (mmHg)","number")}{field("pa_diastolica","PA diastólica (mmHg)","number")}{field("fc","FC (bpm)","number")}{field("fr","FR (irpm)","number")}{field("spo2","SpO₂ (%)","number")}{field("temperatura","Temperatura (°C)","number")}
-    {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}{field("estado_geral","Estado geral")}{field("consciencia","Nível de consciência")}{field("circ_cervical","Circunf. cervical (cm)","number")}{field("circ_abdominal","Circunf. abdominal (cm)","number")}
+    {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}
+    {choice("estado_geral","Estado geral",["Bom estado geral","Regular estado geral","Mau estado geral"])}
+    {choice("consciencia","Nível de consciência",glasgowOptions)}
+    {field("circ_cervical","Circunf. cervical (cm)","number")}{field("circ_abdominal","Circunf. abdominal (cm)","number")}
   </div>
   <ToggleChips title="EXAME CARDIOVASCULAR" prefix="cardio" items={["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]} draft={draft} set={set}/>
   <label className="evalField examOptionalNote"><span>Observações cardiovasculares, se houver</span><input value={String(draft.ausculta_cardiaca??"")} onChange={e=>set("ausculta_cardiaca",e.target.value)} placeholder="Descreva somente alterações ou informações relevantes"/></label>
