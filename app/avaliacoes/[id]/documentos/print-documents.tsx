@@ -52,10 +52,17 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   const idealWeight=height?Math.max(30,(String(dados.sexo||paciente.sexo).toLowerCase()==="masculino"?50:45.5)+2.3*(heightInches-60)):0;
   const adjustedWeight=idealWeight&&weight>idealWeight?idealWeight+0.4*(weight-idealWeight):(weight||idealWeight);
   const patientSex=String(dados.sexo||paciente.sexo||"").toLowerCase();
+  const previousSurgeryDetails=[
+    dados.cirurgias_anteriores_cirurgia||dados.cirurgias_anteriores_detalhes
+      ? `Cirurgia: ${text(dados.cirurgias_anteriores_cirurgia||dados.cirurgias_anteriores_detalhes)}`
+      : "",
+    dados.cirurgias_anteriores_anestesia
+      ? `Anestesia: ${text(dados.cirurgias_anteriores_anestesia)}`
+      : "",
+  ].filter(Boolean).join(" · ");
   const questions=[
-    ["Já realizou alguma cirurgia?",dados.cirurgias_anteriores,dados.cirurgias_anteriores_detalhes],
+    ["Já realizou alguma cirurgia?",dados.cirurgias_anteriores,previousSurgeryDetails],
     ["Reação ou complicação anestésica?",dados.reacao_anestesica,dados.reacao_anestesica_detalhes],
-    ["Medicação contínua ou eventual?",dados.medicacao_continua,dados.medicacao_continua_detalhes],
     ["Anticoagulante ou antiagregante?",dados.anticoagulante,dados.anticoagulante_detalhes],
     ["Doença cardiovascular?",dados.cardiovascular,dados.cardiovascular_detalhes],
     ["Doença respiratória?",dados.respiratoria,dados.respiratoria_detalhes],
@@ -149,7 +156,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
             <span className="paperExamWide">Dispositivos: <b>{implantedDevices.join(", ")||"nenhum informado"}</b></span>
             <span className="paperExamWide">Preditores de via aérea: <b>{airwayPredictors.join(", ")||"nenhum selecionado"}</b></span>
           </div>
-          <section className={`paperMedicationSection ${medications.length?"hasMedications":""}`}><PaperTitle>MEDICAMENTOS EM USO E ORIENTAÇÕES</PaperTitle>{medications.length?<table className="paperTable medicationPrintTable"><thead><tr><th>MEDICAMENTO / POSOLOGIA</th><th>CONDUTA CONFIRMADA</th><th>REINÍCIO</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome} {m.dose} {m.frequencia}</b></td><td>{m.confirmada?(m.orientacao||m.conduta||"a definir"):"A definir pelo anestesiologista"}</td><td>{m.confirmada?text(m.reinicio,"Conforme liberação médica"):"A definir"}</td></tr>)}</tbody></table>:<p className="paperEmpty">Nenhum medicamento registrado nesta avaliação.</p>}</section>
+          <section className={`paperMedicationSection ${medications.length?"hasMedications":""}`}><PaperTitle>MEDICAMENTOS EM USO E ORIENTAÇÕES</PaperTitle>{medications.length?<table className="paperTable medicationPrintTable"><thead><tr><th>MEDICAMENTO / POSOLOGIA</th><th>CONDUTA CONFIRMADA</th><th>REINÍCIO</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome} {m.dose} {m.frequencia}</b></td><td>{m.confirmada?(m.orientacao||m.conduta||"a definir"):"A definir pelo anestesiologista"}</td><td>{m.confirmada?text(m.reinicio,"Conforme liberação médica"):"A definir"}</td></tr>)}</tbody></table>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}</section>
           <PaperTitle>EXAMES COMPLEMENTARES (QUANDO DISPONÍVEIS)</PaperTitle><div className="paperExam labPrintGrid">
             <span>Hb: <b>{text(dados.hemoglobina)}</b></span><span>Ht: <b>{text(dados.hematocrito)}</b></span><span>Plaquetas: <b>{text(dados.plaquetas)}</b></span><span>INR: <b>{text(dados.inr)}</b></span>
             <span>TTPa: <b>{text(dados.ttpa)}</b></span><span>Creatinina: <b>{text(dados.creatinina)}</b></span><span>Ureia: <b>{text(dados.ureia)}</b></span><span>Glicemia: <b>{text(dados.glicemia)}</b></span>

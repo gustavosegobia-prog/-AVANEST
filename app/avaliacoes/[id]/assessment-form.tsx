@@ -18,7 +18,7 @@ type Patient = {
 };
 
 const ANAMNESIS_KEYS = [
-  "cirurgias_anteriores", "reacao_anestesica", "medicacao_continua", "anticoagulante",
+  "cirurgias_anteriores", "reacao_anestesica", "anticoagulante",
   "cardiovascular", "respiratoria", "apneia", "diabetes", "neurologica", "outras_doencas",
   "doenca_aguda", "dentaria", "alergias", "habitos", "glaucoma", "gestacao",
 ] as const;
@@ -192,13 +192,15 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const allergy = String(draft.alergias_detalhes || "");
   const anamnesisKeys = getAnamnesisKeys(draft.sexo || paciente.sexo);
   const anamnesisComplete = anamnesisKeys.every((key) => isFilled(draft[key]));
-  const medicationComplete = draft.medicacao_continua !== "Sim" || (
-    readMedications(draft.medicamentos_json).length > 0 &&
-    readMedications(draft.medicamentos_json).every((item) => item.confirmada === true)
+  const medicationComplete = isFilled(draft.medicacao_continua) && (
+    draft.medicacao_continua !== "Sim" || (
+      readMedications(draft.medicamentos_json).length > 0 &&
+      readMedications(draft.medicamentos_json).every((item) => item.confirmada === true)
+    )
   );
   const completedSteps=[
     Boolean(isFilled(paciente.nome)&&isFilled(paciente.data_nascimento)&&age!==null&&isFilled(draft.peso)&&isFilled(draft.altura)),
-    Boolean(isFilled(draft.cirurgia)&&isFilled(draft.data_cirurgia)),
+    Boolean(isFilled(draft.cirurgia)),
     anamnesisComplete,
     medicationComplete,
     Boolean(isFilled(draft.pa_sistolica)&&isFilled(draft.pa_diastolica)&&isFilled(draft.fc)&&isFilled(draft.spo2)),
@@ -249,10 +251,10 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
 
       <section id="etapa-2" className="evalSection"><h1>2 · Procedimento cirúrgico</h1><div className="evalFormGrid">
         {input("cirurgia","Cirurgia proposta","text","span3")}{input("diagnostico","Diagnóstico","text","span3")}{input("cirurgiao","Cirurgião","text","span2")}
-        {input("especialidade","Especialidade")}{input("data_cirurgia","Data prevista","date")}{input("horario_cirurgia","Horário previsto","time")}{select("lateralidade","Lateralidade",["Direita","Esquerda","Bilateral","Não se aplica"])}
+        {input("especialidade","Especialidade")}{select("lateralidade","Lateralidade",["Direita","Esquerda","Bilateral","Não se aplica"])}
         {select("carater","Caráter",["Eletiva","Urgência","Emergência"])}{select("porte","Porte cirúrgico",["Pequeno","Médio","Grande"])}{input("duracao","Duração estimada")}
-        {select("regime","Regime",["Ambulatorial","Hospital-dia","Internação (1 diária)","Internação prolongada"],"span2")}{select("sangue","Necessidade provável de sangue",["Não","Sim","A definir"])}
-      </div><p className="evalHint">A data prevista da cirurgia é usada para organizar as orientações de medicamentos a suspender.</p></section>
+        {select("regime","Regime",["Ambulatorial","Hospital-dia","Internação (1 diária)","Internação prolongada"],"span2")}
+      </div></section>
 
       <div id="etapa-3"><Anamnesis draft={draft} set={set}/></div>
       <div id="etapa-4"><Medications draft={draft} set={set}/></div>
@@ -269,7 +271,6 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
   const questions=[
     ["cirurgias_anteriores","Já realizou alguma cirurgia?"],
     ["reacao_anestesica","Apresentou reação ou complicação anestésica? Há casos na família?"],
-    ["medicacao_continua","Faz uso de medicação contínua ou eventual (ex.: caneta emagrecedora)?"],
     ["anticoagulante","Utiliza anticoagulante ou antiagregante?"],
     ["cardiovascular","Possui doença cardiovascular?"],
     ["respiratoria","Possui doença respiratória?"],
@@ -285,12 +286,11 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
     ["gestacao","Mulher em idade fértil: há possibilidade de gestação?"],
   ].filter(([key])=>key!=="gestacao"||String(draft.sexo||"").toLowerCase()==="feminino");
   return <><section className="evalSection evalIntro"><h1>3 · Anamnese</h1><p>Perguntas da ficha física. Cada resposta “Sim” abre detalhamento e observações.</p></section>
-    <div className="anamnesisList">{questions.map(([key,label])=><QuestionCard key={key} name={key} label={label} value={String(draft[key]??"")} detail={String(draft[`${key}_detalhes`]??"")} onChange={(value)=>{set(key,value);if(key==="medicacao_continua"&&value==="Sim")window.setTimeout(()=>document.getElementById("etapa-4")?.scrollIntoView({behavior:"smooth",block:"start"}),180)}} onDetail={(value)=>set(`${key}_detalhes`,value)} draft={draft} set={set}/>)}</div></>;
+    <div className="anamnesisList">{questions.map(([key,label])=><QuestionCard key={key} name={key} label={label} value={String(draft[key]??"")} detail={String(draft[`${key}_detalhes`]??"")} onChange={(value)=>set(key,value)} onDetail={(value)=>set(`${key}_detalhes`,value)} draft={draft} set={set}/>)}</div></>;
 }
 const QUESTION_CHIPS:Record<string,string[]>={
   cirurgias_anteriores:["Cesárea","Colecistectomia","Herniorrafia","Ortopédica","Cardíaca","Outra"],
   reacao_anestesica:["Náuseas/vômitos intensos","Intubação difícil","Dificuldade de ventilação","Alergia","Hipertermia maligna","Cefaleia pós-raqui","UTI","PCR","Outra"],
-  medicacao_continua:["Anti-hipertensivo","Antidiabético","Anticoagulante","Psicofármaco","Caneta emagrecedora","Fitoterápico","Outro"],
   anticoagulante:["AAS","Clopidogrel","Varfarina","Rivaroxabana","Apixabana","Dabigatrana","Enoxaparina","Outro"],
   cardiovascular:["Hipertensão","Coronariopatia","Infarto","Insuficiência cardíaca","Arritmia","Valvopatia","Marca-passo/CDI","AVC/AIT","Outra"],
   respiratoria:["Asma","DPOC","Bronquite","Enfisema","Fibrose pulmonar","Hipertensão pulmonar","Outra"],
@@ -306,11 +306,15 @@ const QUESTION_CHIPS:Record<string,string[]>={
   gestacao:["Atraso menstrual","Teste positivo","Amamentação"],
 };
 function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{name:string;label:string;value:string;detail:string;onChange:(v:string)=>void;onDetail:(v:string)=>void;draft:Draft;set:(name:string,value:string|boolean)=>void}) {
-  const chips=QUESTION_CHIPS[name]||[];
+  const chips=name==="cirurgias_anteriores" ? [] : QUESTION_CHIPS[name]||[];
   const selected=detail.split(",").map(item=>item.trim()).filter(Boolean);
   const toggleChip=(chip:string)=>onDetail(selected.includes(chip)?selected.filter(item=>item!==chip).join(", "):[...selected,chip].join(", "));
-  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="respiratoria"){set("respiratoria_controle","");set("respiratoria_ultima_crise","");set("respiratoria_internacao","");set("respiratoria_medicacao","")}}}} key={answer}>{answer}</button>)}</div></div>
+  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="respiratoria"){set("respiratoria_controle","");set("respiratoria_ultima_crise","");set("respiratoria_internacao","");set("respiratoria_medicacao","")}}}} key={answer}>{answer}</button>)}</div></div>
     {value==="Sim"&&<><div className="detailChips">{chips.map(chip=><button type="button" className={selected.includes(chip)?"selected":""} onClick={()=>toggleChip(chip)} key={chip}>{chip}</button>)}</div>
+      {name==="cirurgias_anteriores"&&<div className="conditionalDetails">
+        <label><span>Qual cirurgia foi realizada?</span><input value={String(draft.cirurgias_anteriores_cirurgia??detail)} onChange={e=>set("cirurgias_anteriores_cirurgia",e.target.value)} placeholder="Ex.: cesárea, colecistectomia, herniorrafia"/></label>
+        <label><span>Qual foi o tipo de anestesia utilizada?</span><input value={String(draft.cirurgias_anteriores_anestesia??"")} onChange={e=>set("cirurgias_anteriores_anestesia",e.target.value)} placeholder="Ex.: geral, raquianestesia, sedação"/></label>
+      </div>}
       {name==="respiratoria"&&<div className="conditionalDetails">
         <label><span>Controle atual</span><select value={String(draft.respiratoria_controle??"")} onChange={e=>set("respiratoria_controle",e.target.value)}><option value="">Selecione</option><option>Controlada</option><option>Parcialmente controlada</option><option>Não controlada</option><option>Não sabe</option></select></label>
         <label><span>Data da última crise</span><input type="date" value={String(draft.respiratoria_ultima_crise??"")} onChange={e=>set("respiratoria_ultima_crise",e.target.value)}/></label>
@@ -321,7 +325,7 @@ function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{nam
         <label><span>Última dose</span><input type="datetime-local" value={String(draft.anticoagulante_ultima_dose??"")} onChange={e=>set("anticoagulante_ultima_dose",e.target.value)}/></label>
         <label><span>Indicação</span><input value={String(draft.anticoagulante_indicacao??"")} onChange={e=>set("anticoagulante_indicacao",e.target.value)} placeholder="Ex.: FA, TEV, stent"/></label>
       </div>}
-      {name==="medicacao_continua" ? <div className="medicationQuestionHint"><span>Cadastre os medicamentos, dose e frequência somente no item 4.</span><button type="button" className="outlineClinical" onClick={()=>document.getElementById("etapa-4")?.scrollIntoView({behavior:"smooth",block:"start"})}>Ir para medicamentos</button></div> : <input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder="Detalhes e observações"/>}</>}
+      {name!=="cirurgias_anteriores"&&<input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder="Detalhes e observações"/>}</>}
   </section>;
 }
 
@@ -360,6 +364,8 @@ function medicationNamesFromAnamnesis(value:string) {
 function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const [name,setName]=useState("");
   const medications=readMedications(draft.medicamentos_json);
+  const medicationAnswer=String(draft.medicacao_continua??"");
+  const showMedicationForm=medicationAnswer==="Sim"||medications.length>0;
   const save=(items:Medication[])=>set("medicamentos_json",JSON.stringify(items));
   const continuousDetails=String(draft.medicacao_continua_detalhes||"");
   const anticoagulantDetails=String(draft.anticoagulante_detalhes||"");
@@ -396,11 +402,18 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
   ] as const;
   return <><section className="evalSection">
     <h1>4 · Medicamentos em uso</h1>
+    <div className="questionCard medicationUseQuestion">
+      <div className="questionHead">
+        <strong>Faz uso de medicação contínua ou eventual (ex.: caneta emagrecedora)?</strong>
+        <div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={medicationAnswer===answer?"active":""} onClick={()=>set("medicacao_continua",answer)} key={answer}>{answer}</button>)}</div>
+      </div>
+    </div>
     <p className="evalHint"><b>Base:</b> Guia Perioperatório de Medicamentos, versão 1.0, revisão 07/2026. As sugestões são apoio à decisão e devem ser revisadas e confirmadas individualmente pelo anestesiologista.</p>
-    <div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina..."/><button onClick={()=>add()}>Adicionar</button></div>
-    <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Metformina","Ozempic","Chá de boldo","Vitamina X"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div>
+    {showMedicationForm&&<><div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina..."/><button onClick={()=>add()}>Adicionar</button></div>
+    <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Metformina","Ozempic","Chá de boldo","Vitamina X"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div></>}
   </section>
-  {medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=>{const currentSuggested=calculateLastDoseDate(String(draft.data_cirurgia||""),findMedicationGuideEntry(item.nome)?.suspendDays);return <section className="medicationCard" key={item.id}>
+  {!showMedicationForm&&medicationAnswer&&<section className="emptyClinical">Resposta registrada: <b>{medicationAnswer}</b>.</section>}
+  {showMedicationForm&&(medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=>{const currentSuggested=calculateLastDoseDate(String(draft.data_cirurgia||""),findMedicationGuideEntry(item.nome)?.suspendDays);return <section className="medicationCard" key={item.id}>
     <div className="medicationTitle"><div><strong>{item.nome}</strong><small>{item.principioAtivo||"Medicamento não localizado na base — preencher manualmente"}</small></div><select value={item.conduta} onChange={e=>update(item.id,"conduta",e.target.value)}><option>Avaliar</option><option>Individualizar</option><option>Manter</option><option>Suspender</option></select><button className="removeMedication" onClick={()=>save(medications.filter(m=>m.id!==item.id))}>×</button></div>
     <div className="medicationGrid">
       <label><span>Dose</span><input value={item.dose} onChange={e=>update(item.id,"dose",e.target.value)} placeholder="Ex.: 50 mg"/></label>
@@ -418,8 +431,8 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
       <div className="wide medicationSource"><b>Fonte e versão</b><span>{item.fonte||"Não cadastrado no guia 07/2026."}</span></div>
     </div>}
     <label className="medicationConfirm"><input type="checkbox" checked={item.confirmada===true} onChange={e=>update(item.id,"confirmada",e.target.checked)}/><span>Orientação revisada e confirmada pelo anestesiologista</span></label>
-  </section>})}
-  <section className="evalSection"><h2>Resumo dos medicamentos</h2><div className="medicationSummary">{groups.map(([label,items])=><div key={label}><strong>{label}</strong>{items.length?items.map(m=><span key={m.id}>• {m.nome}{m.dose?` ${m.dose}`:""}</span>):<span>— nenhum —</span>}</div>)}</div></section></>;
+  </section>}))}
+  {showMedicationForm&&<section className="evalSection"><h2>Resumo dos medicamentos</h2><div className="medicationSummary">{groups.map(([label,items])=><div key={label}><strong>{label}</strong>{items.length?items.map(m=><span key={m.id}>• {m.nome}{m.dose?` ${m.dose}`:""}</span>):<span>— nenhum —</span>}</div>)}</div></section>}</>;
 }
 
 function ToggleChips({title,items,draft,set,prefix}:{title:string;items:string[];draft:Draft;set:(name:string,value:string|boolean)=>void;prefix:string}) {
@@ -542,7 +555,7 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
   // indevidamente a conclusão de uma avaliação masculina.
   const anamnesisKeys = getAnamnesisKeys(draft.sexo || paciente.sexo);
   const anamnesisLabels:Record<string,string>={
-    cirurgias_anteriores:"cirurgias anteriores", reacao_anestesica:"reações anestésicas", medicacao_continua:"uso de medicação",
+    cirurgias_anteriores:"cirurgias anteriores", reacao_anestesica:"reações anestésicas",
     anticoagulante:"anticoagulante/antiagregante", cardiovascular:"doença cardiovascular", respiratoria:"doença respiratória",
     apneia:"ronco ou apneia", diabetes:"diabetes", neurologica:"doença neurológica/psiquiátrica", outras_doencas:"outras doenças",
     doenca_aguda:"doença aguda", dentaria:"alterações dentárias", alergias:"alergias", habitos:"tabagismo/álcool/substâncias",
@@ -559,7 +572,6 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     ]],
     ["Procedimento", [
       [draft.cirurgia, "cirurgia/procedimento"],
-      [draft.data_cirurgia, "data prevista"],
     ]],
     ["Exame físico", [
       [draft.pa_sistolica, "pressão sistólica"],
@@ -599,7 +611,7 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     ["Identificação",missingByGroup["Identificação"].length===0],
     ["Procedimento",missingByGroup["Procedimento"].length===0],
     ["Anamnese",anamnesisKeys.every(key=>isFilled(draft[key]))],
-    ["Medicamentos",draft.medicacao_continua!=="Sim"||(medications.length>0&&medications.every(item=>item.confirmada===true))],
+    ["Medicamentos",isFilled(draft.medicacao_continua)&&(draft.medicacao_continua!=="Sim"||(medications.length>0&&medications.every(item=>item.confirmada===true)))],
     ["Exame físico",missingByGroup["Exame físico"].length===0],
     ["Via aérea",missingByGroup["Via aérea"].length===0],
     ["Exames (opcional)",true],
