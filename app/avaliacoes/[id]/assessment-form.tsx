@@ -42,6 +42,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       anestesiologista: String(saved.anestesiologista || perfil.nome),
       crm: String(saved.crm || perfil.crm || ""),
       rqe: String(saved.rqe || perfil.rqe || ""),
+      ecg: saved.ecg == null ? "Ritmo sinusal." : String(saved.ecg),
     };
   });
   const [saveState, setSaveState] = useState<"saved"|"pending"|"saving"|"error">("saved");

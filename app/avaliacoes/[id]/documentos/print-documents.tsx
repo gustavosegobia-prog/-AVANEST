@@ -15,6 +15,7 @@ type Medication={id:string;nome:string;dose:string;frequencia:string;conduta:str
 const formatDate=(value?:string|null)=>value?new Date(`${value.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR"):"—";
 const answer=(value:unknown,expected:"Sim"|"Não"|"Não sabe")=>value===expected?"X":"";
 const text=(value:unknown,fallback="—")=>String(value||fallback);
+const hasText=(value:unknown)=>String(value??"").trim().length>0;
 
 const CONSENT_ITEMS=[
   "Foi claramente exposto a mim que as condutas propostas serão conduzidas de acordo com os princípios éticos básicos de respeito pelo ser humano, da maximização de benefícios e minimização de danos ou prejuízos esperados e pela obrigação de tratamento moralmente certo e adequado, buscando sempre dar a cada um aquilo que é de direito.",
@@ -161,9 +162,11 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
             <span>Hb: <b>{text(dados.hemoglobina)}</b></span><span>Ht: <b>{text(dados.hematocrito)}</b></span><span>Plaquetas: <b>{text(dados.plaquetas)}</b></span><span>INR: <b>{text(dados.inr)}</b></span>
             <span>TTPa: <b>{text(dados.ttpa)}</b></span><span>Creatinina: <b>{text(dados.creatinina)}</b></span><span>Ureia: <b>{text(dados.ureia)}</b></span><span>Glicemia: <b>{text(dados.glicemia)}</b></span>
             <span>Sódio: <b>{text(dados.sodio)}</b></span><span>Potássio: <b>{text(dados.potassio)}</b></span><span>HbA1c: <b>{text(dados.hba1c)}</b></span><span>Data: <b>{formatDate(text(dados.data_exames,""))}</b></span>
-            <span className="paperExamWide">ECG: <b>{text(dados.ecg)}</b></span><span className="paperExamWide">Ecocardiograma: <b>{text(dados.eco)}</b></span>
-            <span className="paperExamWide">Radiografia de tórax: <b>{text(dados.rx_torax)}</b></span><span className="paperExamWide">Espirometria: <b>{text(dados.espirometria)}</b></span>
-            <span className="paperExamFull">Outros exames: <b>{text(dados.exames_obs)}</b></span>
+            {hasText(dados.ecg)&&<span className="paperExamWide">ECG: <b>{text(dados.ecg)}</b></span>}
+            {hasText(dados.eco)&&<span className="paperExamWide">Ecocardiograma: <b>{text(dados.eco)}</b></span>}
+            {hasText(dados.rx_torax)&&<span className="paperExamWide">Radiografia de tórax: <b>{text(dados.rx_torax)}</b></span>}
+            {hasText(dados.espirometria)&&<span className="paperExamWide">Espirometria: <b>{text(dados.espirometria)}</b></span>}
+            {hasText(dados.exames_obs)&&<span className="paperExamFull">Outros exames: <b>{text(dados.exames_obs)}</b></span>}
           </div>
           <PaperTitle>ESCORES E ESTRATIFICAÇÃO</PaperTitle><div className="paperScores"><span><small>ASA</small><b>{text(dados.asa)}{dados.asa_emergencia===true?" + E":""}</b></span><span><small>LEE (RCRI)</small><b>{rcriScore} pt - Classe {rcriScore===0?"I":rcriScore===1?"II":rcriScore===2?"III":"IV"}</b></span><span><small>STOP-BANG</small><b>{stopScore}/8 - {stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco"}</b></span><span><small>APFEL</small><b>{apfelScore}/4 - NVPO {apfelRisk}</b></span><span><small>CAPACIDADE FUNCIONAL</small><b>{text(dados.capacidade_funcional)}</b></span><span><small>VIA AÉREA</small><b>{airwayRisk} probabilidade ({airwayCount} preditores)</b></span></div>
           <PaperTitle>PLANEJAMENTO E CONCLUSÃO</PaperTitle><div className="paperColumns planningPrint"><p>Jejum sólidos: <b>{text(dados.jejum_solidos)}</b><br/>Líquidos claros: <b>{text(dados.jejum_liquidos)}</b><br/>UTI: <b>{text(dados.leito_uti)}</b><br/>Técnica anestésica: <b>{text(dados.tecnica)}</b></p><p>Hemoderivados: <b>{text(dados.concentrado_hemacias)}{["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?` — ${text(dados.quantidade_ch)} CH`:""}</b><br/>Monitorização: <b>{text(dados.monitorizacao)}</b><br/>Conclusão: <b>{text(dados.conclusao)}</b></p></div><p className="paperObservations">Observações / plano: {text(dados.plano_anestesico)}</p><PaperSignature dados={dados} perfil={perfil}/></article>
