@@ -418,7 +418,6 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     <div className="medicationGrid">
       <label><span>Dose</span><input value={item.dose} onChange={e=>update(item.id,"dose",e.target.value)} placeholder="Ex.: 50 mg"/></label>
       <label><span>Frequência</span><input value={item.frequencia} onChange={e=>update(item.id,"frequencia",e.target.value)} placeholder="Ex.: 1x/dia"/></label>
-      <label><span>Última dose tomada</span><input type="datetime-local" value={item.ultimaDose} onChange={e=>update(item.id,"ultimaDose",e.target.value)}/></label>
       <label><span>Indicação</span><input value={item.indicacao} onChange={e=>update(item.id,"indicacao",e.target.value)} placeholder="Opcional"/></label>
       <label className="wide"><span>Orientação médica confirmada</span><input value={item.orientacao} onChange={e=>update(item.id,"orientacao",e.target.value)} placeholder="Registrar somente após avaliação individual"/></label>
     </div>
