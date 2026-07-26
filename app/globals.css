@@ -158,6 +158,33 @@
   .evalControls{flex-wrap:wrap;margin-bottom:24px}
   .evalControls button{flex:1}
 }
+
+.postPrintActions{
+  display:grid;
+  gap:8px;
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid #d7e1e9;
+}
+.nextPatientButton,
+.postPrintMenuButton{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:48px;
+  border-radius:11px;
+  font-weight:800;
+  text-decoration:none;
+}
+.nextPatientButton{
+  background:#176bb5;
+  color:#fff;
+}
+.postPrintMenuButton{
+  border:1px solid #176bb5;
+  color:#075daa;
+  background:#fff;
+}
 @media(max-width:1050px){
   .planningGrid{grid-template-columns:repeat(4,minmax(0,1fr))}
   .planningGrid .evalField.plan2{grid-column:span 1}

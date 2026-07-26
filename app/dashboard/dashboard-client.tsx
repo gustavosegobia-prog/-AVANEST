@@ -28,13 +28,56 @@ export type DashboardView = "medico" | "recepcao" | "financeiro" | "admin";
 
 const brDate = (date?: string | null) => date ? new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR") : "—";
 const initials = (name: string) => name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+const localDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+const timeToMinutes = (time?: string | null) => {
+  const [hours, minutes] = String(time ?? "").split(":").map(Number);
+  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
+};
+const minutesToTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}:00`;
+const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamento, "horario" | "status">[], now = new Date()) => {
+  const morningStart = 8 * 60 + 30;
+  const lunchStart = 12 * 60;
+  const afternoonStart = 13 * 60 + 30;
+  const interval = 30;
+  let candidate = morningStart;
+
+  if (date === localDateKey(now)) {
+    const currentMinute = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() > 0 || now.getMilliseconds() > 0 ? 1 : 0);
+    if (currentMinute <= morningStart) candidate = morningStart;
+    else if (currentMinute < lunchStart) {
+      candidate = Math.ceil(currentMinute / interval) * interval;
+      if (candidate >= lunchStart) candidate = afternoonStart;
+    } else if (currentMinute <= afternoonStart) candidate = afternoonStart;
+    else candidate = Math.ceil(currentMinute / interval) * interval;
+  }
+
+  const occupied = new Set(
+    appointments
+      .filter((appointment) => !["cancelado", "reagendado"].includes(appointment.status))
+      .map((appointment) => timeToMinutes(appointment.horario))
+      .filter((minutes): minutes is number => minutes !== null),
+  );
+  while (occupied.has(candidate)) {
+    candidate += interval;
+    if (candidate >= lunchStart && candidate < afternoonStart) candidate = afternoonStart;
+  }
+  return minutesToTime(candidate);
+};
 
 export function DashboardClient({
   perfil, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
+  initialNewPatient = false, autoStartAssessment = false,
 }: {
   perfil: Perfil; pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
   initialView?: DashboardView;
+  initialNewPatient?: boolean;
+  autoStartAssessment?: boolean;
 }) {
   const router = useRouter();
   const allowedViews = useMemo<DashboardView[]>(() => {
@@ -46,7 +89,7 @@ export function DashboardClient({
   }, [perfil.role]);
   const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
   const [isAreaPending, startAreaTransition] = useTransition();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialNewPatient);
   const [search, setSearch] = useState("");
   const [agendaRange, setAgendaRange] = useState<"hoje"|"amanha"|"semana">("hoje");
   const [historyQuery, setHistoryQuery] = useState("");
@@ -68,11 +111,11 @@ export function DashboardClient({
   const evaluationById = useMemo(() => new Map(avaliacoes.map((a)=>[a.id,a])), [avaliacoes]);
   const drafts = avaliacoes.filter((a) => a.status === "rascunho");
   const completed = avaliacoes.filter((a) => a.status === "concluida");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate()+1);
-  const tomorrow = tomorrowDate.toISOString().slice(0,10);
+  const tomorrow = localDateKey(tomorrowDate);
   const weekLimit = new Date(); weekLimit.setDate(weekLimit.getDate()+7);
-  const week = weekLimit.toISOString().slice(0,10);
+  const week = localDateKey(weekLimit);
   const patientMap = useMemo(() => new Map(pacientes.map((p)=>[p.id,p])), [pacientes]);
   const professionalMap = useMemo(() => new Map(perfis.map((item)=>[item.id,item.nome])), [perfis]);
   const historicalAssessments = useMemo(() => avaliacoes.filter((assessment) => {
@@ -104,11 +147,29 @@ export function DashboardClient({
     try {
     const fd = new FormData(event.currentTarget);
     const text = (name: string) => String(fd.get(name) ?? "").trim() || null;
+    const patientName=text("nome");
+    const convenio=text("convenio");
+    const plano=text("plano");
     const birthDate=text("data_nascimento");
     const cpfDigits=String(text("cpf")??"").replace(/\D/g,"");
     const phoneDigits=String(text("telefone")??"").replace(/\D/g,"");
-    if(cpfDigits && cpfDigits.length!==11){
-      setError("Informe um CPF com 11 números.");
+    if(!patientName){
+      setError("Informe o nome completo do paciente.");
+      setBusy(false);
+      return;
+    }
+    if(cpfDigits.length!==11){
+      setError("Informe um CPF válido com 11 números.");
+      setBusy(false);
+      return;
+    }
+    if(!convenio){
+      setError("Selecione o convênio do paciente.");
+      setBusy(false);
+      return;
+    }
+    if(!plano){
+      setError("Informe o plano do paciente.");
       setBusy(false);
       return;
     }
@@ -126,8 +187,13 @@ export function DashboardClient({
         return;
       }
     }
-    const appointmentDate = text("data_consulta") || new Date().toISOString().slice(0, 10);
+    const appointmentDate = text("data_consulta") || localDateKey();
     const supabase = createClient();
+    if(appointmentDate < localDateKey()){
+      setError("A data da consulta não pode ser anterior à data de hoje.");
+      setBusy(false);
+      return;
+    }
     if(cpfDigits){
       const {data:duplicate}=await supabase.from("pacientes").select("id,nome").eq("cpf",cpfDigits).maybeSingle();
       if(duplicate){
@@ -136,17 +202,28 @@ export function DashboardClient({
         return;
       }
     }
+    const {data:appointmentsForDate,error:appointmentsError}=await supabase
+      .from("agendamentos")
+      .select("horario,status")
+      .eq("institution_id",perfil.institution_id)
+      .eq("data",appointmentDate);
+    if(appointmentsError){
+      setError(`Não foi possível calcular o próximo horário disponível: ${appointmentsError.message}`);
+      setBusy(false);
+      return;
+    }
+    const automaticTime=nextAutomaticAppointmentTime(appointmentDate,appointmentsForDate??[]);
     const patientPayload = {
       institution_id: perfil.institution_id, created_by: perfil.id,
-      nome: text("nome"), cpf: cpfDigits||null, rg: text("rg"), data_nascimento: birthDate,
+      nome: patientName, cpf: cpfDigits, rg: text("rg"), data_nascimento: birthDate,
       sexo: text("sexo"), telefone: phoneDigits||null, email: text("email"), endereco: text("endereco"),
       cidade: text("cidade"), uf: text("uf"), cep: text("cep"), hospital: text("hospital"),
       cirurgia: text("cirurgia"), especialidade: text("especialidade"), procedimento: text("procedimento"),
-      convenio: text("convenio"), numero_carteirinha: text("numero_carteirinha"), validade: text("validade"),
-      plano: text("plano"), data_consulta: appointmentDate, horario: text("horario"), observacoes: text("observacoes"),
+      convenio, numero_carteirinha: text("numero_carteirinha"), validade: text("validade"),
+      plano, data_consulta: appointmentDate, horario: automaticTime, observacoes: text("observacoes"),
     };
     const appointmentPayload = {
-      data: appointmentDate, horario: text("horario"), hospital: text("hospital"),
+      data: appointmentDate, horario: automaticTime, hospital: text("hospital"),
       procedimento: text("procedimento") || text("cirurgia"), convenio: text("convenio"),
       observacoes: text("observacoes"), created_by: perfil.id,
     };
@@ -154,7 +231,19 @@ export function DashboardClient({
       p_paciente: patientPayload, p_agendamento: appointmentPayload,
     });
     if (!atomic.error) {
-      setOpen(false); router.refresh();
+      if (autoStartAssessment) {
+        const result = (Array.isArray(atomic.data) ? atomic.data[0] : atomic.data) as {
+          patient_id?: string;
+          appointment_id?: string | null;
+        } | null;
+        if (!result?.patient_id) {
+          throw new Error("Paciente salvo, mas não foi possível identificar o novo cadastro.");
+        }
+        await openAssessment(result.patient_id, result.appointment_id ?? undefined);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
       return;
     }
     // Compatibilidade temporária até a migração de cadastro atômico ser executada no Supabase.
@@ -166,12 +255,16 @@ export function DashboardClient({
     const { data:created, error: insertError } = await supabase.from("pacientes").insert(patientPayload).select("id").single();
     if (insertError) { setError(`Não foi possível salvar: ${insertError.message}`); setBusy(false); return; }
     if(created){
-      const {error:agendaError}=await supabase.from("agendamentos").insert({
+      const {data:createdAppointment,error:agendaError}=await supabase.from("agendamentos").insert({
         institution_id:perfil.institution_id,patient_id:created.id,...appointmentPayload,
-      });
+      }).select("id").single();
       if(agendaError){
         setError(`Paciente salvo, mas o agendamento não foi criado: ${agendaError.message}`);
         setBusy(false);
+        return;
+      }
+      if(autoStartAssessment){
+        await openAssessment(created.id,createdAppointment?.id);
         return;
       }
     }
@@ -315,7 +408,7 @@ export function DashboardClient({
             {historicalAssessments.length===0&&<div className="emptyClinical compactEmpty">Nenhuma avaliação encontrada com estes filtros.</div>}
             {historicalAssessments.length>50&&<div className="historyLimit">Mostrando as 50 avaliações mais recentes. Refine os filtros para ver uma lista menor.</div>}
           </section>
-          <div className="quickLinks"><button onClick={() => setOpen(true)}>+ Nova avaliação</button><button onClick={()=>searchRef.current?.focus()}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
+          <div className="quickLinks"><button onClick={()=>searchRef.current?.focus()}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
         </div>
       ) : view === "recepcao" ? (
         <div className="clinicalMain receptionMain">
@@ -329,7 +422,10 @@ export function DashboardClient({
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
       : <AdminView perfil={perfil} perfis={perfis} auditoria={auditoria} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>}
 
-      {open && <PatientModal busy={busy} error={error} onClose={() => setOpen(false)} onSubmit={createPatient} />}
+      {open && <PatientModal busy={busy} error={error} onClose={() => {
+        setOpen(false);
+        if(initialNewPatient) router.replace(`/dashboard?area=${view}`);
+      }} onSubmit={createPatient} />}
     </main>
   );
 }
@@ -530,13 +626,13 @@ function Alert({ icon, title, text, action, danger=false, onClick }: { icon:stri
 function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:string; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
   return <div className="patientModalBackdrop"><form className="patientModal" onSubmit={onSubmit}>
     <div className="patientModalHead"><div><h2>Novo paciente</h2><p>Cadastro, convênio, procedimento e agendamento.</p></div><button type="button" onClick={onClose}>×</button></div>
-    <div className="insuranceBar"><strong>Convênios/planos:</strong> Unimed · FUPS · SAS · CISCOMCAM · Humana Saúde · Bradesco Saúde · SulAmérica · Amil · Particular</div>
+    <div className="insuranceBar"><strong>Convênios/planos:</strong> Unimed · FUPS · SAS · CISCOMCAM · Humana Saúde · Bradesco Saúde · SulAmérica · Amil · CASSI · SANEPAR · COPEL · Particular</div>
     <div className="patientFormGrid">
-      <Field name="nome" label="Nome completo *" wide required/><Field name="cpf" label="CPF"/><Field name="rg" label="RG"/><Field name="data_nascimento" label="Data de nascimento" type="date"/>
+      <Field name="nome" label="Nome completo *" wide required/><Field name="cpf" label="CPF *" required/><Field name="rg" label="RG"/><Field name="data_nascimento" label="Data de nascimento" type="date"/>
       <SelectField name="sexo" label="Sexo" options={["Feminino","Masculino","Outro","Não informado"]}/><Field name="telefone" label="Telefone / WhatsApp"/><Field name="email" label="E-mail" type="email" span2/><Field name="endereco" label="Endereço" span2/>
       <Field name="cidade" label="Cidade"/><Field name="uf" label="UF"/><Field name="cep" label="CEP"/><Field name="hospital" label="Hospital" span2/>
-      <Field name="cirurgia" label="Cirurgia" span2/><Field name="especialidade" label="Especialidade"/><Field name="procedimento" label="Procedimento" span2/><SelectField name="convenio" label="Convênio" options={["Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde","SulAmérica","Amil","Particular"]}/>
-      <Field name="numero_carteirinha" label="Nº da carteirinha"/><Field name="validade" label="Validade" type="date"/><Field name="plano" label="Plano"/><Field name="data_consulta" label="Data da consulta *" type="date" required defaultValue={new Date().toISOString().slice(0,10)}/><Field name="horario" label="Horário" type="time"/>
+      <Field name="cirurgia" label="Cirurgia" span2/><Field name="especialidade" label="Especialidade"/><Field name="procedimento" label="Procedimento" span2/><SelectField name="convenio" label="Convênio *" options={["Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde","SulAmérica","Amil","CASSI","SANEPAR","COPEL","Particular"]} required placeholder="Selecione"/>
+      <Field name="numero_carteirinha" label="Nº da carteirinha"/><Field name="validade" label="Validade" type="date"/><Field name="plano" label="Plano *" required/><Field name="data_consulta" label="Data da consulta *" type="date" required defaultValue={localDateKey()}/><div className="clinicalField"><span>Horário da consulta</span><small>Definido automaticamente pelo próximo horário disponível.</small></div>
       <Field name="observacoes" label="Observações" wide/>
     </div>
     {error && <p className="clinicalError" role="alert" aria-live="assertive">{error}</p>}
@@ -544,4 +640,4 @@ function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:
   </form></div>;
 }
 function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string}) { return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""}`}><span>{label}</span><input name={name} type={type} required={required} defaultValue={defaultValue}/></label>; }
-function SelectField({name,label,options}:{name:string;label:string;options:string[]}) { return <label className="clinicalField"><span>{label}</span><select name={name}>{options.map(o=><option key={o}>{o}</option>)}</select></label>; }
+function SelectField({name,label,options,required=false,placeholder}:{name:string;label:string;options:string[];required?:boolean;placeholder?:string}) { return <label className="clinicalField"><span>{label}</span><select name={name} required={required} defaultValue={placeholder?"":undefined}>{placeholder&&<option value="" disabled>{placeholder}</option>}{options.map(o=><option key={o}>{o}</option>)}</select></label>; }

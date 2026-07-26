@@ -5,9 +5,9 @@ import { DashboardClient, type DashboardView } from "./dashboard-client";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ area?: string }>;
+  searchParams: Promise<{ area?: string; novo?: string; iniciar?: string }>;
 }) {
-  const { area } = await searchParams;
+  const { area, novo, iniciar } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -81,6 +81,8 @@ export default async function DashboardPage({
       periodos={periodos ?? []}
       convenioValores={convenioValores ?? []}
       initialView={initialView}
+      initialNewPatient={novo === "1"}
+      autoStartAssessment={novo === "1" && iniciar === "1"}
     />
   );
 }

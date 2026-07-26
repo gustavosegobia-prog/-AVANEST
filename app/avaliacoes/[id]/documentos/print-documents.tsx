@@ -16,6 +16,18 @@ const formatDate=(value?:string|null)=>value?new Date(`${value.slice(0,10)}T12:0
 const answer=(value:unknown,expected:"Sim"|"Não"|"Não sabe")=>value===expected?"X":"";
 const text=(value:unknown,fallback="—")=>String(value||fallback);
 const hasText=(value:unknown)=>String(value??"").trim().length>0;
+const objectiveMedicationGuidance=(medication:Medication)=>{
+  const guidance=String(medication.orientacao||medication.conduta||"").trim()
+    .replace(/\s*(?:Reinício|Reintrodução|Mecanismo de ação|Justificativa|Fonte)\s*:.*$/i,"")
+    .replace(/^Quando a interrupção for aceita,\s*/i,"")
+    .trim();
+  if(!guidance)return "Orientação a definir pelo anestesiologista.";
+  const sentence=guidance.charAt(0).toUpperCase()+guidance.slice(1);
+  if(/^suspender\b/i.test(sentence)&&/\bantes\.?$/i.test(sentence)){
+    return `${sentence.replace(/\bantes\.?$/i,"antes do procedimento").replace(/[.;]+$/,"")}.`;
+  }
+  return /[.!?]$/.test(sentence)?sentence:`${sentence}.`;
+};
 
 const CONSENT_ITEMS=[
   "Foi claramente exposto a mim que as condutas propostas serão conduzidas de acordo com os princípios éticos básicos de respeito pelo ser humano, da maximização de benefícios e minimização de danos ou prejuízos esperados e pela obrigação de tratamento moralmente certo e adequado, buscando sempre dar a cada um aquilo que é de direito.",
@@ -46,6 +58,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   const canMedical=["medico","admin","owner"].includes(perfil.role);
   const [selected,setSelected]=useState({assessment:true,consent:true,guidance:false});
   const [notice,setNotice]=useState("");
+  const [hasPrinted,setHasPrinted]=useState(false);
   const medications=useMemo<Medication[]>(()=>{try{const v=JSON.parse(String(dados.medicamentos_json||"[]"));return Array.isArray(v)?v:[]}catch{return[]}},[dados.medicamentos_json]);
   const age=useMemo(()=>{if(!paciente.data_nascimento)return null;const birth=new Date(`${paciente.data_nascimento}T12:00:00`),now=new Date();return now.getFullYear()-birth.getFullYear()-(now<new Date(now.getFullYear(),birth.getMonth(),birth.getDate())?1:0)},[paciente.data_nascimento]);
   const weight=Number(dados.peso||0),height=Number(dados.altura||0),imc=weight&&height?weight/((height/100)**2):0;
@@ -73,7 +86,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
     ["Outras doenças?",dados.outras_doencas,dados.outras_doencas_detalhes],
     ["Doença aguda no momento?",dados.doenca_aguda,dados.doenca_aguda_detalhes],
     ["Prótese ou alterações dentárias?",dados.dentaria,dados.dentaria_detalhes],
-    ["Alergias?",dados.alergias,dados.alergias_detalhes],
+    ["Alergias?",dados.alergias,dados.alergias==="Não"?"Não relata alergias.":dados.alergias_detalhes],
     ["Tabagismo, álcool ou outras substâncias?",dados.habitos,dados.habitos_detalhes],
     ["Glaucoma?",dados.glaucoma,dados.glaucoma_detalhes],
     ["Possibilidade de gestação?",dados.gestacao,dados.gestacao_detalhes],
@@ -104,13 +117,22 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   const airwayRisk=airwayCount===0?"Baixa":airwayCount<=2?"Moderada":"Alta";
 
   const confirmedMedications=medications.filter(item=>item.confirmada===true&&String(item.orientacao||item.conduta||"").trim());
+  const printablePlan=useMemo(()=>{
+    const base=String(dados.plano_anestesico||"")
+      .replace(/\n?ORIENTAÇÕES SOBRE MEDICAMENTOS:[\s\S]*$/i,"")
+      .trim();
+    const objectiveMedications=confirmedMedications.length
+      ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${confirmedMedications.map(item=>`- ${item.nome}: ${objectiveMedicationGuidance(item)}`).join("\n")}`
+      :"";
+    return [base,objectiveMedications].filter(Boolean).join("\n");
+  },[confirmedMedications,dados.plano_anestesico]);
   const guidanceMessage=[
     `Olá, ${paciente.nome}. Seguem suas orientações pré-anestésicas.`,
     `Cirurgia: ${text(dados.cirurgia||paciente.cirurgia||paciente.procedimento,"a confirmar")}.`,
     `Jejum de sólidos: ${text(dados.jejum_solidos,"a confirmar")}.`,
     `Líquidos claros: ${text(dados.jejum_liquidos,"a confirmar")}.`,
     "Antes de entrar na sala cirúrgica, retire piercings e próteses ou dentaduras removíveis.",
-    confirmedMedications.length?`Medicamentos:\n${confirmedMedications.map(item=>`• ${item.nome}${item.dose?` ${item.dose}`:""}: ${item.orientacao||item.conduta}${item.reinicio?` Reintrodução: ${item.reinicio}.`:""}`).join("\n")}`:"",
+    confirmedMedications.length?`Medicamentos:\n${confirmedMedications.map(item=>`• ${item.nome}: ${objectiveMedicationGuidance(item)}`).join("\n")}`:"",
     "@useavanest",
   ].filter(Boolean).join("\n");
 
@@ -122,6 +144,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
       acao:"documentos_impressos",detalhes:entry,
     });
     window.print();
+    setHasPrinted(true);
   }
   function openChannel(channel:"whatsapp"|"email"|"sms"){
     const message=encodeURIComponent(guidanceMessage);
@@ -143,7 +166,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
       <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}?editar=1`}>← Voltar e corrigir avaliação</a></div></div>
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>
       <div className="documentsLayout"><div className="paperStack">
-        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span><b>AVANEST</b> · Avaliação Pré-Anestésica</span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
+        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span><b>AVANEST</b> · Avaliação Pré-Anestésica</span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
           <div className="paperPatientGrid"><span className="patientName">Nome: <b>{paciente.nome}</b></span><span>Idade: <b>{age??"—"} anos</b></span><span>Sexo: <b>{text(paciente.sexo)}</b></span><span>Peso: <b>{weight||"—"} kg</b></span><span>Altura: <b>{height||"—"} cm</b></span><span>IMC: <b>{imc?imc.toFixed(1):"—"}</b></span><span>Convênio: <b>{text(paciente.convenio)}</b></span><span>CPF: <b>{text(paciente.cpf)}</b></span></div>
           <div className="paperWeightSummary"><strong>PESOS CALCULADOS</strong><span>Peso ideal / predito: <b>{idealWeight?`${idealWeight.toFixed(0)} kg`:"—"}</b></span><span>Peso ajustado: <b>{adjustedWeight?`${adjustedWeight.toFixed(0)} kg`:"—"}</b></span><small>Estimativas para apoio clínico</small></div>
           <PaperTitle>PROCEDIMENTO CIRÚRGICO</PaperTitle><div className="paperColumns"><p>Cirurgia proposta: <b>{text(dados.cirurgia||paciente.cirurgia||paciente.procedimento)}</b><br/>Hospital: <b>{text(dados.hospital||paciente.hospital)}</b><br/>Caráter: <b>{text(dados.carater)}</b></p><p>Cirurgião: <b>{text(dados.cirurgiao)}</b><br/>Data / horário: <b>{formatDate(text(dados.data_cirurgia,""))} · {text(dados.horario_cirurgia)}</b></p></div>
@@ -157,7 +180,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
             <span className="paperExamWide">Dispositivos: <b>{implantedDevices.join(", ")||"nenhum informado"}</b></span>
             <span className="paperExamWide">Preditores de via aérea: <b>{airwayPredictors.join(", ")||"nenhum selecionado"}</b></span>
           </div>
-          <section className={`paperMedicationSection ${medications.length?"hasMedications":""}`}><PaperTitle>MEDICAMENTOS EM USO E ORIENTAÇÕES</PaperTitle>{medications.length?<table className="paperTable medicationPrintTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td>{m.confirmada?(m.orientacao||m.conduta||"A definir"):"A definir pelo anestesiologista"}</td></tr>)}</tbody></table>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}</section>
+          <section className={`paperMedicationSection ${medications.length?"hasMedications":""}`}><PaperTitle>MEDICAMENTOS EM USO E ORIENTAÇÕES</PaperTitle>{medications.length?<table className="paperTable medicationPrintTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td>{m.confirmada?objectiveMedicationGuidance(m):"A definir pelo anestesiologista"}</td></tr>)}</tbody></table>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}</section>
           <PaperTitle>EXAMES COMPLEMENTARES (QUANDO DISPONÍVEIS)</PaperTitle><div className="paperExam labPrintGrid">
             <span>Hb: <b>{text(dados.hemoglobina)}</b></span><span>Ht: <b>{text(dados.hematocrito)}</b></span><span>Plaquetas: <b>{text(dados.plaquetas)}</b></span><span>INR: <b>{text(dados.inr)}</b></span>
             <span>TTPa: <b>{text(dados.ttpa)}</b></span><span>Creatinina: <b>{text(dados.creatinina)}</b></span><span>Ureia: <b>{text(dados.ureia)}</b></span><span>Glicemia: <b>{text(dados.glicemia)}</b></span>
@@ -169,7 +192,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
             {hasText(dados.exames_obs)&&<span className="paperExamFull">Outros exames: <b>{text(dados.exames_obs)}</b></span>}
           </div>
           <PaperTitle>ESCORES E ESTRATIFICAÇÃO</PaperTitle><div className="paperScores"><span><small>ASA</small><b>{text(dados.asa)}{dados.asa_emergencia===true?" + E":""}</b></span><span><small>LEE (RCRI)</small><b>{rcriScore} pt - Classe {rcriScore===0?"I":rcriScore===1?"II":rcriScore===2?"III":"IV"}</b></span><span><small>STOP-BANG</small><b>{stopScore}/8 - {stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco"}</b></span><span><small>APFEL</small><b>{apfelScore}/4 - NVPO {apfelRisk}</b></span><span><small>CAPACIDADE FUNCIONAL</small><b>{text(dados.capacidade_funcional)}</b></span><span><small>VIA AÉREA</small><b>{airwayRisk} probabilidade ({airwayCount} preditores)</b></span></div>
-          <PaperTitle>PLANEJAMENTO E CONCLUSÃO</PaperTitle><div className="paperColumns planningPrint"><p>Jejum sólidos: <b>{text(dados.jejum_solidos)}</b><br/>Líquidos claros: <b>{text(dados.jejum_liquidos)}</b><br/>UTI: <b>{text(dados.leito_uti)}</b><br/>Técnica anestésica: <b>{text(dados.tecnica)}</b></p><p>Hemoderivados: <b>{text(dados.concentrado_hemacias)}{["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?` — ${text(dados.quantidade_ch)} CH`:""}</b><br/>Monitorização: <b>{text(dados.monitorizacao)}</b><br/>Conclusão: <b>{text(dados.conclusao)}</b></p></div><p className="paperObservations">Observações / plano: {text(dados.plano_anestesico)}</p><PaperSignature dados={dados} perfil={perfil}/></article>
+          <PaperTitle>PLANEJAMENTO E CONCLUSÃO</PaperTitle><div className="paperColumns planningPrint"><p>Jejum sólidos: <b>{text(dados.jejum_solidos)}</b><br/>Líquidos claros: <b>{text(dados.jejum_liquidos)}</b><br/>UTI: <b>{text(dados.leito_uti)}</b><br/>Técnica anestésica: <b>{text(dados.tecnica)}</b></p><p>Hemoderivados: <b>{text(dados.concentrado_hemacias)}{["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?` — ${text(dados.quantidade_ch)} CH`:""}</b><br/>Monitorização: <b>{text(dados.monitorizacao)}</b><br/>Conclusão: <b>{text(dados.conclusao)}</b></p></div><p className="paperObservations">Observações / plano: {text(printablePlan)}</p><PaperSignature dados={dados} perfil={perfil}/></article>
 
         <article className={`printPaper consentPaper officialConsent ${selected.consent?"":"notSelected"}`}><header><span>INOVANEST — SERVIÇO DE ANESTESIOLOGIA DE CAMPO MOURÃO</span></header><h2>TERMO DE CONSENTIMENTO ANESTÉSICO</h2><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
           <p><b>1.</b> Por determinação explícita de minha vontade e em consideração ao meu interesse pessoal eu: <b>{paciente.nome}</b></p>
@@ -181,11 +204,11 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
           <div className="consentSignatures"><span>PACIENTE: ___________________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span><span>TESTEMUNHA: _______________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span></div>
         </article>
 
-        <article className={`printPaper guidancePaper ${selected.guidance?"":"notSelected"}`}><header><span>AVANEST — Orientações ao paciente</span></header><h2>Orientações Pré-Anestésicas</h2><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{m.confirmada?(m.orientacao||m.conduta||"A definir"):"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}<PaperTitle>PLANEJAMENTO</PaperTitle><p>Tipo de anestesia prevista: <b>{text(dados.tecnica,"A definir pelo anestesiologista")}</b></p><p>Jejum — sólidos: <b>{text(dados.jejum_solidos,"A definir")}</b><br/>Jejum — líquidos claros: <b>{text(dados.jejum_liquidos,"A definir")}</b><br/>Pré-medicação: <b>{text(dados.premedicacao,"A definir")}</b><br/>Leito de UTI: <b>{text(dados.leito_uti,"A definir")}</b><br/>Hemoderivados: <b>{text(dados.concentrado_hemacias)}{["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?` — ${text(dados.quantidade_ch)} CH`:""}</b></p><p>Observações: {text(dados.plano_anestesico)}</p><PaperSignature dados={dados} perfil={perfil}/></article>
+        <article className={`printPaper guidancePaper ${selected.guidance?"":"notSelected"}`}><header><span>AVANEST — Orientações ao paciente</span></header><h2>Orientações Pré-Anestésicas</h2><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{m.confirmada?objectiveMedicationGuidance(m):"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}<PaperTitle>PLANEJAMENTO</PaperTitle><p>Tipo de anestesia prevista: <b>{text(dados.tecnica,"A definir pelo anestesiologista")}</b></p><p>Jejum — sólidos: <b>{text(dados.jejum_solidos,"A definir")}</b><br/>Jejum — líquidos claros: <b>{text(dados.jejum_liquidos,"A definir")}</b><br/>Pré-medicação: <b>{text(dados.premedicacao,"A definir")}</b><br/>Leito de UTI: <b>{text(dados.leito_uti,"A definir")}</b><br/>Hemoderivados: <b>{text(dados.concentrado_hemacias)}{["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?` — ${text(dados.quantidade_ch)} CH`:""}</b></p><p>Observações: {text(printablePlan)}</p><PaperSignature dados={dados} perfil={perfil}/></article>
       </div>
       <aside className="documentsSidebar"><section><h3>Selecionar documentos</h3><DocChoice checked={selected.assessment} onChange={v=>setSelected(s=>({...s,assessment:v}))} title="Ficha de Avaliação Pré-Anestésica" detail="1 cópia — prontuário"/><DocChoice checked={selected.consent} onChange={v=>setSelected(s=>({...s,consent:v}))} title="Termo de Consentimento Anestésico" detail="1 cópia — assinatura e prontuário"/><DocChoice checked={selected.guidance} onChange={v=>setSelected(s=>({...s,guidance:v}))} title="Orientações Pré-Anestésicas" detail="1 cópia — entrega ao paciente"/></section>
         <section><h3>Verificação antes da impressão</h3><div className="documentChecks">{checks.map(([label,ok])=><span className={ok?"ok":"pending"} key={label}>{ok?"✓":"⚠"} {label}{!ok?" — pendente":""}</span>)}</div>{pending.length>0&&<div className="pendingNotice">Pendências não bloqueantes: {pending.join("; ")}. O documento exibirá “a definir” quando necessário.</div>}</section>
-        <section><button className="printButton" disabled={!Object.values(selected).some(Boolean)} onClick={printDocuments}>▣ Imprimir PDF ({Object.values(selected).filter(Boolean).length} documentos)</button><p>Na janela que abrir, escolha “Salvar como PDF”. Cada documento selecionado será impresso em folha própria.</p><hr/><h4>Enviar orientações ao paciente</h4><button className="channelButton whatsapp" onClick={()=>openChannel("whatsapp")}>WhatsApp</button><button className="channelButton" onClick={()=>openChannel("email")}>E-mail</button><button className="channelButton sms" onClick={()=>openChannel("sms")}>SMS</button><p>Os atalhos abrem o aplicativo escolhido. Revise a mensagem e anexe o PDF antes de enviar.</p>{notice&&<div className="pendingNotice">{notice}</div>}</section>
+        <section><button className="printButton" disabled={!Object.values(selected).some(Boolean)} onClick={printDocuments}>▣ Imprimir PDF ({Object.values(selected).filter(Boolean).length} documentos)</button><p>Na janela que abrir, escolha “Salvar como PDF”. Cada documento selecionado será impresso em folha própria.</p>{hasPrinted&&<div className="postPrintActions"><a className="nextPatientButton" href="/dashboard?area=medico&novo=1&iniciar=1">Próximo paciente</a><a className="postPrintMenuButton" href="/dashboard?area=medico">Menu de avaliações</a></div>}<hr/><h4>Enviar orientações ao paciente</h4><button className="channelButton whatsapp" onClick={()=>openChannel("whatsapp")}>WhatsApp</button><button className="channelButton" onClick={()=>openChannel("email")}>E-mail</button><button className="channelButton sms" onClick={()=>openChannel("sms")}>SMS</button><p>Os atalhos abrem o aplicativo escolhido. Revise a mensagem e anexe o PDF antes de enviar.</p>{notice&&<div className="pendingNotice">{notice}</div>}</section>
       </aside></div>
     </div>
   </main>;
