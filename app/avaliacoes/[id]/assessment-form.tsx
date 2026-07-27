@@ -113,6 +113,14 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
+  async function createFinancialEntry() {
+    try {
+      await fetch(`/api/avaliacoes/${avaliacao.id}/faturar`, { method: "POST" });
+    } catch {
+      // A conclusão clínica não deve ser perdida por uma falha temporária no lançamento financeiro.
+    }
+  }
+
   async function conclude() {
     if(timer.current)clearTimeout(timer.current);
     const concludedAt = new Date().toISOString();
@@ -132,6 +140,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       p_avaliacao_id:avaliacao.id,p_expected_lock_version:lockVersionRef.current,p_dados:auditedDraft,
     });
     if (!error) {
+      await createFinancialEntry();
       router.push(`/avaliacoes/${avaliacao.id}/documentos`);
       return;
     }
@@ -151,8 +160,10 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       .eq("lock_version",expectedLockVersion)
       .select("id")
       .maybeSingle();
-    if(!directError&&concluded)router.push(`/avaliacoes/${avaliacao.id}/documentos`);
-    else setSaveState("error");
+    if(!directError&&concluded) {
+      await createFinancialEntry();
+      router.push(`/avaliacoes/${avaliacao.id}/documentos`);
+    } else setSaveState("error");
   }
 
   async function deleteAssessment() {
@@ -192,7 +203,8 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     : weight || idealWeight;
   const allergy = String(draft.alergias_detalhes || "");
   const anamnesisKeys = getAnamnesisKeys(draft.sexo || paciente.sexo);
-  const anamnesisComplete = anamnesisKeys.every((key) => isFilled(draft[key]));
+  const anamnesisComplete = anamnesisKeys.every((key) => isFilled(draft[key])) &&
+    (draft.alergias !== "Sim" || isFilled(draft.alergias_detalhes));
   const medicationComplete = isFilled(draft.medicacao_continua) && (
     draft.medicacao_continua !== "Sim" || (
       readMedications(draft.medicamentos_json).length > 0 &&
@@ -326,7 +338,7 @@ function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{nam
         <label><span>Última dose</span><input type="datetime-local" value={String(draft.anticoagulante_ultima_dose??"")} onChange={e=>set("anticoagulante_ultima_dose",e.target.value)}/></label>
         <label><span>Indicação</span><input value={String(draft.anticoagulante_indicacao??"")} onChange={e=>set("anticoagulante_indicacao",e.target.value)} placeholder="Ex.: FA, TEV, stent"/></label>
       </div>}
-      {name!=="cirurgias_anteriores"&&<input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder="Detalhes e observações"/>}</>}
+      {name!=="cirurgias_anteriores"&&<input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder={name==="alergias"?"Nome completo da medicação ou do agente causador — não use abreviações":"Detalhes e observações"}/>}</>}
   </section>;
 }
 
@@ -574,7 +586,12 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     doenca_aguda:"doença aguda", dentaria:"alterações dentárias", alergias:"alergias", habitos:"tabagismo/álcool/substâncias",
     glaucoma:"glaucoma", gestacao:"possibilidade de gestação",
   };
-  const missingAnamnesis=anamnesisKeys.filter(key=>!isFilled(draft[key])).map(key=>anamnesisLabels[key]);
+  const missingAnamnesis=[
+    ...anamnesisKeys.filter(key=>!isFilled(draft[key])).map(key=>anamnesisLabels[key]),
+    ...(draft.alergias==="Sim"&&!isFilled(draft.alergias_detalhes)
+      ? ["nome completo da medicação ou do agente causador da alergia"]
+      : []),
+  ];
   const requirementGroups = [
     ["Identificação", [
       [paciente.nome, "nome do paciente"],
@@ -639,7 +656,7 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     if (group === "Medicamentos") return ["medicamentos e respectivas orientações confirmadas"];
     return missingByGroup[group] ?? [];
   });
-  const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
+  const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",draft.alergias==="Não"?"Não relata alergias.":String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
   const medicationOrientations=medications.filter(item=>item.confirmada===true).map(item=>{
     const identification=[item.nome,item.dose,item.frequencia].filter(Boolean).join(" ");
     const guidance=item.orientacao.trim()||item.conduta||"orientação a definir";

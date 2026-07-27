@@ -433,17 +433,19 @@ export function DashboardClient({
 function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];onRefresh:()=>void}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
+  const [configOpen,setConfigOpen]=useState(false);
+  const [priceValues,setPriceValues]=useState<Record<string,string>>({});
   const [values,setValues]=useState<Record<string,string>>({});
   const [methods,setMethods]=useState<Record<string,string>>({});
   const currentMonth=new Date().toISOString().slice(0,7);
   const [period,setPeriod]=useState(currentMonth);
   const patientMap=new Map(pacientes.map(p=>[p.id,p]));
   const evaluationMap=new Map<string,Avaliacao>();
-  for(const item of avaliacoes)if(!evaluationMap.has(item.patient_id))evaluationMap.set(item.patient_id,item);
+  for(const item of avaliacoes)if(!evaluationMap.has(item.patient_id)||item.status==="concluida")evaluationMap.set(item.patient_id,item);
   const billedPatients=new Set(financeiro.map(item=>item.patient_id));
   // Só chegam ao financeiro atendimentos efetivamente agendados e vinculados a um hospital.
   // Cadastros incompletos da recepção não devem virar cobrança.
-  const pendingPatients=pacientes.filter(p=>!billedPatients.has(p.id)&&Boolean(p.data_consulta)&&Boolean(p.hospital));
+  const pendingPatients=pacientes.filter(p=>!billedPatients.has(p.id)&&evaluationMap.get(p.id)?.status==="concluida");
   const money=(value:number)=>Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   const parseMoney=(value:string)=>{
     const normalized=value.trim().replace(/\s/g,"").replace(/^R\$/i,"");
@@ -458,8 +460,17 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const groups=Object.entries(periodItems.reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.convenio||"Particular"]??=[]).push(item);return acc},{}));
   const lots=Object.entries(periodItems.filter(item=>item.lote).reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.lote as string]??=[]).push(item);return acc},{}));
   const periodState=periodos.find(item=>item.periodo===period);
-  const byPlan=groups.map(([convenio,items])=>({convenio,valor:items.reduce((sum,item)=>sum+Number(item.valor),0),recebido:items.reduce((sum,item)=>sum+Number(item.recebido),0)})).sort((a,b)=>b.valor-a.valor);
-  const maxPlanValue=Math.max(1,...byPlan.map(item=>item.valor));
+  const byPlan=groups.map(([convenio,items])=>{
+    const billed=items.reduce((sum,item)=>sum+Number(item.valor),0);
+    const paid=items.reduce((sum,item)=>sum+Number(item.recebido),0);
+    const defaultRule=convenioValores.find(rule=>rule.ativo&&rule.convenio===convenio&&!rule.procedimento&&!rule.hospital);
+    return {convenio,consultas:items.length,unit:Number(defaultRule?.valor||0),valor:billed,recebido:paid,pendente:Math.max(0,billed-paid)};
+  }).sort((a,b)=>b.valor-a.valor);
+  const knownConvenios=Array.from(new Set([
+    "Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde","SulAmérica","Amil","CASSI","SANEPAR","COPEL","Particular",
+    ...pacientes.map(item=>item.convenio).filter((item):item is string=>Boolean(item)),
+    ...convenioValores.map(item=>item.convenio).filter(Boolean),
+  ])).sort((a,b)=>a.localeCompare(b,"pt-BR"));
   const todayIso=new Date().toISOString().slice(0,10);
   const noteAlerts=financeiro.filter(item=>{
     if(!item.nota_fiscal||Number(item.recebido)>=Number(item.valor)||item.status==="cancelado") return false;
@@ -477,6 +488,29 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       periodo:patient.data_consulta?.slice(0,7)||currentMonth,
     });
     setBusy(""); if(error)setMessage(`Não foi possível criar o lançamento: ${error.message}`);else{setMessage("Lançamento criado. Informe o valor e os dados de cobrança.");onRefresh()}
+  }
+  function openPriceConfig(){
+    const initial:Record<string,string>={};
+    for(const convenio of knownConvenios){
+      const rule=convenioValores.find(item=>item.ativo&&item.convenio===convenio&&!item.procedimento&&!item.hospital);
+      initial[convenio]=rule?String(Number(rule.valor)):"0";
+    }
+    setPriceValues(initial);setConfigOpen(true);setMessage("");
+  }
+  async function savePrices(){
+    setBusy("prices");setMessage("");
+    const client=createClient();
+    for(const convenio of knownConvenios){
+      const amount=parseMoney(priceValues[convenio]||"0");
+      if(!Number.isFinite(amount)||amount<0){setBusy("");setMessage(`Informe um valor válido para ${convenio}.`);return}
+      const rule=convenioValores.find(item=>item.convenio===convenio&&!item.procedimento&&!item.hospital);
+      const payload={institution_id:perfil.institution_id,convenio,procedimento:null,hospital:null,valor:amount,repasse_percentual:Number(rule?.repasse_percentual||0),ativo:true,updated_at:new Date().toISOString()};
+      const result=rule
+        ? await client.from("convenio_valores").update(payload).eq("id",rule.id)
+        : await client.from("convenio_valores").insert(payload);
+      if(result.error){setBusy("");setMessage(`Não foi possível salvar ${convenio}: ${result.error.message}`);return}
+    }
+    setBusy("");setConfigOpen(false);setMessage("Valores das consultas salvos.");onRefresh();
   }
   async function updateItem(id:string,changes:Record<string,string|number|null>) {
     const item=financeiro.find(entry=>entry.id===id);
@@ -514,11 +548,11 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   }
 
   return <div className="clinicalMain financeMain">
-    <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label></section>
+    <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}</div></section>
     {message&&<p className={message.includes("não foi")?"clinicalError":"financeSuccess"}>{message}</p>}
-    <section className="metricGrid financeMetrics"><Metric value={periodItems.length} label="Atendimentos no mês" tone="blue"/><Metric value={periodItems.filter(i=>!i.nota_fiscal).length} label="Notas pendentes" tone="amber"/><MoneyMetric value={received} label="Recebido no mês" tone="green"/><Metric value={glosas.length} label="Glosas em recurso" tone="red"/></section>
+    <section className="metricGrid financeMetrics"><Metric value={periodItems.length} label="Atendimentos no mês" tone="blue"/><MoneyMetric value={total} label="Faturado no mês" tone="blue"/><Metric value={periodItems.filter(i=>!i.nota_fiscal).length} label="Notas pendentes" tone="amber"/><MoneyMetric value={received} label="Recebido no mês" tone="green"/><Metric value={glosas.length} label="Glosas em recurso" tone="red"/></section>
 
-    <section className="clinicalPanel billingDashboard"><div className="panelTitle"><strong>Faturamento por convênio</strong><span>Valores cobrados e recebidos na competência selecionada.</span></div><div className="billingPlanGrid">{byPlan.length?byPlan.map(item=><div className="billingPlan" key={item.convenio}><div><strong>{item.convenio}</strong><span>{money(item.recebido)} recebido de {money(item.valor)}</span></div><div className="billingBar"><i style={{width:`${Math.max(3,item.valor/maxPlanValue*100)}%`}}/></div><small>{item.valor?Math.round(item.recebido/item.valor*100):0}% recebido</small></div>):<div className="emptyClinical compactEmpty">Os valores por convênio aparecerão após os lançamentos.</div>}</div></section>
+    <section className="clinicalPanel billingDashboard"><div className="panelTitle"><strong>Faturamento por convênio</strong><span>Valores faturados e recebidos na competência selecionada.</span></div><div className="billingPlanTable"><table><thead><tr><th>Convênio</th><th>Consultas</th><th>Valor unitário</th><th>Faturado</th><th>Recebido</th><th>Pendente</th></tr></thead><tbody>{byPlan.map(item=><tr key={item.convenio}><td><strong>{item.convenio}</strong></td><td>{item.consultas}</td><td>{money(item.unit)}</td><td>{money(item.valor)}</td><td>{money(item.recebido)}</td><td>{money(item.pendente)}</td></tr>)}</tbody></table>{!byPlan.length&&<div className="emptyClinical compactEmpty">Os valores por convênio aparecerão após os lançamentos.</div>}</div></section>
 
     <section className="clinicalPanel noteAlerts"><div className="panelTitle"><strong>Notas fiscais para acompanhamento</strong><span>Alerta após 15 dias da emissão, até receber baixa financeira.</span></div>{noteAlerts.length?noteAlerts.map(item=>{const patient=patientMap.get(item.patient_id);const due=item.nota_vencimento_at||new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10);return <div className="noteAlertRow" key={item.id}><span><strong>NF {item.nota_fiscal}</strong><small>{item.convenio} · {patient?.nome||"Paciente"} · verificar pagamento desde {brDate(due)}</small></span><button className="paymentButton" disabled={busy===item.id} onClick={()=>{document.getElementById(`recebimento-${item.id}`)?.scrollIntoView({behavior:"smooth",block:"center"});setMessage("Informe o valor recebido abaixo para confirmar a baixa da nota.")}}>Dar baixa</button><button className="outlineClinical" disabled={busy===item.id} onClick={()=>reprogramNote(item)}>+15 dias</button></div>}):<div className="emptyClinical compactEmpty">Nenhuma nota vencida para acompanhamento.</div>}</section>
 
@@ -534,6 +568,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
 
     <section className="clinicalPanel closingPanel"><div className="panelTitle"><strong>🔒 Fechamento do período — {period.split("-").reverse().join("/")}</strong><span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span></div><div className="closingMetrics"><MoneySmall value={total} label="Total cobrado"/><MoneySmall value={received} label="Recebido" tone="green"/><MoneySmall value={pending} label="Pendente" tone="amber"/><MoneySmall value={glosas.reduce((s,i)=>s+Number(i.glosa_valor||0),0)} label="Glosas" tone="red"/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados" tone="blue"/></div><div className="closingFooter"><span>⚠ Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></section>
     <p className="financeFootnote">Pagamentos registrados: {pagamentos.length}. Valores exibidos são os lançamentos reais cadastrados para esta instituição.</p>
+    {configOpen&&<div className="patientModalBackdrop" role="presentation"><section className="financeConfigModal" role="dialog" aria-modal="true" aria-labelledby="finance-config-title"><div className="patientModalHead"><div><strong id="finance-config-title">Configurar valores das consultas</strong><span>Os convênios cadastrados aparecem automaticamente.</span></div><button type="button" onClick={()=>setConfigOpen(false)} aria-label="Fechar">×</button></div><div className="financeConfigList">{knownConvenios.map(convenio=><label key={convenio}><span>{convenio}</span><div><b>R$</b><input inputMode="decimal" value={priceValues[convenio]??"0"} onChange={event=>setPriceValues(current=>({...current,[convenio]:event.target.value}))}/></div></label>)}</div><div className="patientModalActions"><button className="outlineClinical" type="button" onClick={()=>setConfigOpen(false)}>Cancelar</button><button className="primaryClinical compact" type="button" disabled={busy==="prices"} onClick={savePrices}>{busy==="prices"?"Salvando...":"Salvar valores"}</button></div></section></div>}
   </div>
 }
 
