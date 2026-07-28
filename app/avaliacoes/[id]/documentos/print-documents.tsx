@@ -81,7 +81,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
     ["Reação ou complicação anestésica?",dados.reacao_anestesica,dados.reacao_anestesica_detalhes],
     ["Anticoagulante ou antiagregante?",dados.anticoagulante,dados.anticoagulante_detalhes],
     ["Doença cardiovascular?",dados.cardiovascular,dados.cardiovascular_detalhes],
-    ["Doença respiratória?",dados.respiratoria,dados.respiratoria_detalhes],
+    ["Doença respiratória",dados.respiratoria,dados.respiratoria_detalhes],
     ["Roncos ou apneia do sono?",dados.apneia,dados.apneia_detalhes],
     ["Diabetes?",dados.diabetes,dados.diabetes_detalhes],
     ["Doença neurológica ou psiquiátrica?",dados.neurologica,dados.neurologica_detalhes],
@@ -92,7 +92,10 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
     ["Tabagismo, álcool ou outras substâncias?",dados.habitos,dados.habitos_detalhes],
     ["Glaucoma?",dados.glaucoma,dados.glaucoma_detalhes],
     ["Possibilidade de gestação?",dados.gestacao,dados.gestacao_detalhes],
-  ].filter(([label])=>label!=="Possibilidade de gestação?"||patientSex==="feminino");
+  ].filter(([label,,detail])=>
+    (label!=="Possibilidade de gestação?"||patientSex==="feminino")&&
+    (label!=="Doença respiratória"||hasText(detail))
+  );
   const toggleKey=(prefix:string,label:string)=>`${prefix}_${label.toLowerCase().replace(/\W+/g,"_")}`;
   const selectedToggleLabels=(prefix:string,labels:string[])=>labels.filter(label=>dados[toggleKey(prefix,label)]===true);
   const cardiovascularFindings=selectedToggleLabels("cardio",["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]);
@@ -175,10 +178,11 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
           <PaperTitle>ANAMNESE</PaperTitle><table className="paperTable"><thead><tr><th>#</th><th>PERGUNTA / DETALHES</th><th>SIM</th><th>NÃO</th><th>?</th></tr></thead><tbody>{questions.map(([label,value,detail],i)=><tr key={String(label)}><td>{i+1}</td><td>{label} {detail&&<b>— {text(detail)}</b>}</td><td>{answer(value,"Sim")}</td><td>{answer(value,"Não")}</td><td>{answer(value,"Não sabe")}</td></tr>)}</tbody></table>
           <PaperTitle>EXAME FÍSICO E VIA AÉREA</PaperTitle><div className="paperExam">
             <span>PA: <b>{text(dados.pa_sistolica)}/{text(dados.pa_diastolica)} mmHg</b></span><span>FC: <b>{text(dados.fc)} bpm</b></span><span>FR: <b>{text(dados.fr)} irpm</b></span><span>SpO₂: <b>{text(dados.spo2)}%</b></span><span>Temperatura: <b>{text(dados.temperatura)} °C</b></span><span>Estado geral: <b>{text(dados.estado_geral)}</b></span>
-            <span>Consciência: <b>{text(dados.consciencia)}</b></span><span>Glicemia capilar: <b>{text(dados.glicemia_capilar)} mg/dL</b></span><span>Circ. cervical: <b>{text(dados.circ_cervical)} cm</b></span><span>Mallampati: <b>{text(dados.mallampati)}</b></span><span>Abertura oral: <b>{text(dados.abertura_oral)}</b></span><span>Dist. tireomentoniana: <b>{text(dados.distancia_tireo)}</b></span>
+            <span>Glicemia capilar: <b>{text(dados.glicemia_capilar)} mg/dL</b></span><span>Mallampati: <b>{text(dados.mallampati)}</b></span><span>Abertura oral: <b>{text(dados.abertura_oral)}</b></span><span>Dist. tireomentoniana: <b>{text(dados.distancia_tireo)}</b></span>
             <span>Dentição: <b>{text(dados.denticao)}</b></span><span>Mobilidade cervical: <b>{text(dados.mobilidade)}</b></span><span>Edema: <b>{text(dados.edema)}</b></span>
-            <span className="paperExamWide">Cardiovascular: <b>{cardiovascularFindings.join(", ")||"sem achados selecionados"}</b>{dados.ausculta_cardiaca?` — ${text(dados.ausculta_cardiaca)}`:""}</span>
-            <span className="paperExamWide">Respiratório: <b>{respiratoryFindings.join(", ")||"sem achados selecionados"}</b>{dados.ausculta_pulmonar?` — ${text(dados.ausculta_pulmonar)}`:""}</span>
+            <span className="paperExamWide">Cardiovascular: <b>{cardiovascularFindings.join(", ")||"sem achados selecionados"}</b></span>
+            <span className="paperExamWide">Respiratório: <b>{respiratoryFindings.join(", ")||"sem achados selecionados"}</b></span>
+            {hasText(dados.observacoes_exame_fisico)&&<span className="paperExamFull">Observações do exame físico: <b>{text(dados.observacoes_exame_fisico)}</b></span>}
             <span className="paperExamWide">Dispositivos: <b>{implantedDevices.join(", ")||"nenhum informado"}</b></span>
             <span className="paperExamWide">Preditores de via aérea: <b>{airwayPredictors.join(", ")||"nenhum selecionado"}</b></span>
           </div>

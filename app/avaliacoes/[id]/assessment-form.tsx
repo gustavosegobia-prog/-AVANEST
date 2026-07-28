@@ -286,7 +286,7 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
     ["reacao_anestesica","Apresentou reação ou complicação anestésica? Há casos na família?"],
     ["anticoagulante","Utiliza anticoagulante ou antiagregante?"],
     ["cardiovascular","Possui doença cardiovascular?"],
-    ["respiratoria","Possui doença respiratória?"],
+    ["respiratoria","Doença respiratória?"],
     ["apneia","Roncos ou apneia obstrutiva do sono?"],
     ["diabetes","Possui diabetes?"],
     ["neurologica","Doenças neurológicas ou psiquiátricas?"],
@@ -306,7 +306,6 @@ const QUESTION_CHIPS:Record<string,string[]>={
   reacao_anestesica:["Náuseas/vômitos intensos","Intubação difícil","Dificuldade de ventilação","Alergia","Hipertermia maligna","Cefaleia pós-raqui","UTI","PCR","Outra"],
   anticoagulante:["AAS","Clopidogrel","Varfarina","Rivaroxabana","Apixabana","Dabigatrana","Enoxaparina","Outro"],
   cardiovascular:["Hipertensão","Coronariopatia","Infarto","Insuficiência cardíaca","Arritmia","Valvopatia","Marca-passo/CDI","AVC/AIT","Outra"],
-  respiratoria:["Asma","DPOC","Bronquite","Enfisema","Fibrose pulmonar","Hipertensão pulmonar","Outra"],
   apneia:["Ronco alto","Apneia observada","CPAP","Sonolência diurna","Polissonografia"],
   diabetes:["Tipo 1","Tipo 2","Insulina","Hipoglicemia recente","Complicações"],
   neurologica:["Epilepsia","Parkinson","AVC/AIT","Demência","Depressão","Ansiedade","Transtorno bipolar","Outra"],
@@ -320,25 +319,20 @@ const QUESTION_CHIPS:Record<string,string[]>={
 };
 function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{name:string;label:string;value:string;detail:string;onChange:(v:string)=>void;onDetail:(v:string)=>void;draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const chips=name==="cirurgias_anteriores" ? [] : QUESTION_CHIPS[name]||[];
+  const answerOptions=name==="respiratoria"?["Sim","Não"]:["Sim","Não","Não sabe"];
   const selected=detail.split(",").map(item=>item.trim()).filter(Boolean);
   const toggleChip=(chip:string)=>onDetail(selected.includes(chip)?selected.filter(item=>item!==chip).join(", "):[...selected,chip].join(", "));
-  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="respiratoria"){set("respiratoria_controle","");set("respiratoria_ultima_crise","");set("respiratoria_internacao","");set("respiratoria_medicacao","")}}}} key={answer}>{answer}</button>)}</div></div>
+  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="respiratoria"){set("respiratoria_controle","");set("respiratoria_ultima_crise","");set("respiratoria_internacao","");set("respiratoria_medicacao","")}}}} key={answer}>{answer}</button>)}</div></div>
     {value==="Sim"&&<><div className="detailChips">{chips.map(chip=><button type="button" className={selected.includes(chip)?"selected":""} onClick={()=>toggleChip(chip)} key={chip}>{chip}</button>)}</div>
       {name==="cirurgias_anteriores"&&<div className="conditionalDetails">
         <label><span>Qual cirurgia foi realizada?</span><input value={String(draft.cirurgias_anteriores_cirurgia??detail)} onChange={e=>set("cirurgias_anteriores_cirurgia",e.target.value)} placeholder="Ex.: cesárea, colecistectomia, herniorrafia"/></label>
         <label><span>Qual foi o tipo de anestesia utilizada?</span><input value={String(draft.cirurgias_anteriores_anestesia??"")} onChange={e=>set("cirurgias_anteriores_anestesia",e.target.value)} placeholder="Ex.: geral, raquianestesia, sedação"/></label>
       </div>}
-      {name==="respiratoria"&&<div className="conditionalDetails">
-        <label><span>Controle atual</span><select value={String(draft.respiratoria_controle??"")} onChange={e=>set("respiratoria_controle",e.target.value)}><option value="">Selecione</option><option>Controlada</option><option>Parcialmente controlada</option><option>Não controlada</option><option>Não sabe</option></select></label>
-        <label><span>Data da última crise</span><input type="date" value={String(draft.respiratoria_ultima_crise??"")} onChange={e=>set("respiratoria_ultima_crise",e.target.value)}/></label>
-        <label><span>Internação/intubação por crise</span><select value={String(draft.respiratoria_internacao??"")} onChange={e=>set("respiratoria_internacao",e.target.value)}><option value="">Selecione</option><option>Não</option><option>Sim, internação</option><option>Sim, UTI</option><option>Sim, intubação</option></select></label>
-        <label><span>Medicação respiratória em uso</span><input value={String(draft.respiratoria_medicacao??"")} onChange={e=>set("respiratoria_medicacao",e.target.value)} placeholder="Ex.: salbutamol, corticoide inalatório"/></label>
-      </div>}
       {name==="anticoagulante"&&<div className="conditionalDetails">
         <label><span>Última dose</span><input type="datetime-local" value={String(draft.anticoagulante_ultima_dose??"")} onChange={e=>set("anticoagulante_ultima_dose",e.target.value)}/></label>
         <label><span>Indicação</span><input value={String(draft.anticoagulante_indicacao??"")} onChange={e=>set("anticoagulante_indicacao",e.target.value)} placeholder="Ex.: FA, TEV, stent"/></label>
       </div>}
-      {name!=="cirurgias_anteriores"&&<input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder={name==="alergias"?"Nome completo da medicação ou do agente causador — não use abreviações":"Detalhes e observações"}/>}</>}
+      {name!=="cirurgias_anteriores"&&<input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder={name==="alergias"?"Nome completo da medicação ou do agente causador — não use abreviações":name==="respiratoria"?"Ex.: Asma, DPOC, bronquite, rinite alérgica, uso de Aerolin, dispneia aos esforços":"Detalhes e observações"}/>}</>}
   </section>;
 }
 
@@ -459,7 +453,6 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
     spo2:{min:50,max:100},
     temperatura:{min:30,max:45,step:0.1},
     glicemia_capilar:{min:20,max:1000},
-    circ_cervical:{min:10,max:100,step:0.1},
     circ_abdominal:{min:20,max:300,step:0.1},
   };
   const field=(name:string,label:string,type="text")=>{const range=limits[name];return <label className="evalField"><span>{label}</span><input type={type} min={range?.min} max={range?.max} step={range?.step} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>};
@@ -472,18 +465,15 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
       {options.map(option=><option key={option} value={option}>{option}</option>)}
     </select></label>;
   };
-  const glasgowOptions=Array.from({length:13},(_,index)=>`Glasgow ${15-index}`);
   return <section className="evalSection"><h1>5 · Exame físico</h1><div className="physicalGrid">
     {field("pa_sistolica","PA sistólica (mmHg)","number")}{field("pa_diastolica","PA diastólica (mmHg)","number")}{field("fc","FC (bpm)","number")}{field("fr","FR (irpm)","number")}{field("spo2","SpO₂ (%)","number")}{field("temperatura","Temperatura (°C)","number")}
     {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}
     {choice("estado_geral","Estado geral",["Bom estado geral","Regular estado geral","Mau estado geral"])}
-    {choice("consciencia","Nível de consciência",glasgowOptions)}
-    {field("circ_cervical","Circunf. cervical (cm)","number")}{field("circ_abdominal","Circunf. abdominal (cm)","number")}
+    {field("circ_abdominal","Circunf. abdominal (cm)","number")}
   </div>
   <ToggleChips title="EXAME CARDIOVASCULAR" prefix="cardio" items={["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]} draft={draft} set={set}/>
-  <label className="evalField examOptionalNote"><span>Observações cardiovasculares, se houver</span><input value={String(draft.ausculta_cardiaca??"")} onChange={e=>set("ausculta_cardiaca",e.target.value)} placeholder="Descreva somente alterações ou informações relevantes"/></label>
   <ToggleChips title="EXAME RESPIRATÓRIO" prefix="resp" items={["MV preservado","Sibilos","Roncos","Estertores","Estridor","Musculatura acessória","Tosse","Dispneia"]} draft={draft} set={set}/>
-  <label className="evalField examOptionalNote"><span>Observações respiratórias, se houver</span><input value={String(draft.ausculta_pulmonar??"")} onChange={e=>set("ausculta_pulmonar",e.target.value)} placeholder="Descreva somente alterações ou informações relevantes"/></label>
+  <label className="evalField examOptionalNote"><span>Observações do exame físico</span><textarea value={String(draft.observacoes_exame_fisico??"")} onChange={e=>set("observacoes_exame_fisico",e.target.value)} placeholder="Ex.: Paciente em bom estado geral, eupneico, corado e hidratado."/></label>
   <ToggleChips title="DISPOSITIVOS IMPLANTÁVEIS" prefix="dispositivo" items={["Marca-passo","CDI","Cateter venoso implantado","Fístula AV","Prótese valvar","Estoma"]} draft={draft} set={set}/>
   </section>;
 }
