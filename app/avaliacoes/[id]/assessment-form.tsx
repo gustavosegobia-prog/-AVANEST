@@ -238,7 +238,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     <header className="evalTopbar">
       <Link className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
       <span className={`evalSave ${saveState}`}><i/> {saveState==="saved"?`Salvo automaticamente às ${savedAt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`:saveState==="saving"?"Salvando...":saveState==="pending"?"Alterações pendentes":"Falha ao salvar"}</span>
-      <nav className="evalRoleNav"><button type="button">◐ Escuro</button><button type="button" className="active">Médico</button><b>{perfil.role==="owner"?"ADMINISTRADOR":perfil.role.toUpperCase()}</b></nav>
+      <nav className="evalRoleNav"><button type="button">◐ Escuro</button><button type="button" className="active">Médico</button></nav>
     </header>
     {allergy && <div className="allergyBanner">⚠ ALERGIA: {allergy.toUpperCase()}</div>}
     <div className="evalProgress" aria-label={`${progress}% da avaliação preenchida`}><i style={{width:`${progress}%`}}/></div>

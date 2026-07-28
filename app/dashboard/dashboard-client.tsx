@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 
-type Perfil = { id: string; institution_id: string; nome: string; role: string; status?: string; must_reset: boolean };
+type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean };
 type Paciente = {
   id: string; nome: string; cpf: string | null; rg?: string | null; data_nascimento: string | null;
   sexo?: string | null; telefone: string | null; email: string | null; endereco?: string | null;
@@ -81,12 +81,12 @@ export function DashboardClient({
 }) {
   const router = useRouter();
   const allowedViews = useMemo<DashboardView[]>(() => {
-    if (perfil.role === "recepcao") return ["recepcao"];
-    if (perfil.role === "medico") return ["medico"];
-    if (perfil.role === "financeiro") return ["financeiro"];
-    if (perfil.role === "admin" || perfil.role === "owner") return ["recepcao","medico","financeiro","admin"];
-    return ["medico"];
-  }, [perfil.role]);
+    const permissionOrder: DashboardView[] = ["recepcao", "medico", "financeiro", "admin"];
+    const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
+    if (["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos")) return permissionOrder;
+    const permittedViews = permissionOrder.filter((area) => perfil.role === area || assignedPermissions.includes(area));
+    return permittedViews.length > 0 ? permittedViews : ["medico"];
+  }, [perfil.role, perfil.permissoes]);
   const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
   const [isAreaPending, startAreaTransition] = useTransition();
   const [open, setOpen] = useState(initialNewPatient);
@@ -344,7 +344,6 @@ export function DashboardClient({
           {allowedViews.includes("medico")&&<button disabled={isAreaPending} className={view === "medico" ? "active" : ""} onClick={() => changeView("medico")}>Médico</button>}
           {allowedViews.includes("financeiro")&&<button disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} onClick={() => changeView("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button disabled={isAreaPending} className={view === "admin" ? "active" : ""} onClick={() => changeView("admin")}>Admin</button>}
-          <span className="roleBadge">{perfil.role === "owner" ? "ADMINISTRADOR" : perfil.role.toUpperCase()}</span>
           <button onClick={logout}>🔒 Bloquear</button><button onClick={logout}>Sair</button>
         </nav>
       </header>

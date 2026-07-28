@@ -8,7 +8,7 @@ type Data=Record<string,string|boolean>;
 type Props={
   avaliacao:{id:string;institution_id:string;patient_id:string;status:string;versao:number;dados:Data|null;snapshot_conclusao:Data|null;created_at:string;updated_at:string;concluida_at:string|null};
   paciente:{id:string;nome:string;cpf:string|null;data_nascimento:string|null;sexo:string|null;telefone:string|null;email:string|null;hospital:string|null;cirurgia:string|null;procedimento:string|null;convenio:string|null};
-  perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string};
+  perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string;permissoes?:string[]|null};
 };
 type Medication={id:string;nome:string;dose:string;frequencia:string;conduta:string;orientacao:string;reinicio?:string;fonte?:string;confirmada?:boolean};
 
@@ -52,10 +52,12 @@ const CONSENT_RISKS=[
 
 export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   const dados=avaliacao.snapshot_conclusao||avaliacao.dados||{};
-  const canManage=["admin","owner"].includes(perfil.role);
-  const canFinance=["financeiro","admin","owner"].includes(perfil.role);
-  const canReception=["recepcao","admin","owner"].includes(perfil.role);
-  const canMedical=["medico","admin","owner"].includes(perfil.role);
+  const assignedPermissions=Array.isArray(perfil.permissoes)?perfil.permissoes:[];
+  const hasLegacyFullAccess=["admin","owner"].includes(perfil.role)||assignedPermissions.includes("todos");
+  const canManage=hasLegacyFullAccess||perfil.role==="admin"||assignedPermissions.includes("admin");
+  const canFinance=hasLegacyFullAccess||perfil.role==="financeiro"||assignedPermissions.includes("financeiro");
+  const canReception=hasLegacyFullAccess||perfil.role==="recepcao"||assignedPermissions.includes("recepcao");
+  const canMedical=hasLegacyFullAccess||perfil.role==="medico"||assignedPermissions.includes("medico");
   const [selected,setSelected]=useState({assessment:true,consent:true,guidance:false});
   const [notice,setNotice]=useState("");
   const [hasPrinted,setHasPrinted]=useState(false);
@@ -161,7 +163,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   }
 
   return <main className="documentsShell">
-    <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark"/><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a><span className="docSaved">● Avaliação concluída</span><nav className="roleNav" aria-label="Áreas do sistema">{canReception&&<a href="/dashboard?area=recepcao">Recepção</a>}{canMedical&&<a href="/dashboard?area=medico">Médico</a>}{canFinance&&<a href="/dashboard?area=financeiro">Financeiro</a>}{canManage&&<a href="/dashboard?area=admin">Admin</a>}<span className="roleBadge">{perfil.role==="owner"?"ADMINISTRADOR":perfil.role.toUpperCase()}</span></nav></header>
+    <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark"/><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a><span className="docSaved">● Avaliação concluída</span><nav className="roleNav" aria-label="Áreas do sistema">{canReception&&<a href="/dashboard?area=recepcao">Recepção</a>}{canMedical&&<a href="/dashboard?area=medico">Médico</a>}{canFinance&&<a href="/dashboard?area=financeiro">Financeiro</a>}{canManage&&<a href="/dashboard?area=admin">Admin</a>}</nav></header>
     <div className="documentsMain">
       <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}?editar=1`}>← Voltar e corrigir avaliação</a></div></div>
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>

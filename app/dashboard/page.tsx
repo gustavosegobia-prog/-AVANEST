@@ -14,19 +14,20 @@ export default async function DashboardPage({
 
   const { data: perfil } = await supabase
     .from("perfis")
-    .select("id, institution_id, nome, role, status, must_reset")
+    .select("id, institution_id, nome, role, permissoes, status, must_reset")
     .eq("id", user.id)
     .single();
   if (!perfil || perfil.status !== "ativo") redirect("/login");
 
-  const canManage = ["admin", "owner"].includes(perfil.role);
-  const canFinance = ["financeiro", "admin", "owner"].includes(perfil.role);
-  const allowedViews: DashboardView[] =
-    perfil.role === "recepcao" ? ["recepcao"]
-    : perfil.role === "medico" ? ["medico"]
-    : perfil.role === "financeiro" ? ["financeiro"]
-    : canManage ? ["recepcao", "medico", "financeiro", "admin"]
-    : ["medico"];
+  const permissionOrder: DashboardView[] = ["recepcao", "medico", "financeiro", "admin"];
+  const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
+  const hasLegacyFullAccess = ["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos");
+  const allowedViews: DashboardView[] = hasLegacyFullAccess
+    ? permissionOrder
+    : permissionOrder.filter((view) => perfil.role === view || assignedPermissions.includes(view));
+  if (allowedViews.length === 0) allowedViews.push("medico");
+  const canManage = allowedViews.includes("admin");
+  const canFinance = allowedViews.includes("financeiro");
   const requestedView = ["recepcao", "medico", "financeiro", "admin"].includes(area ?? "")
     ? area as DashboardView
     : undefined;
