@@ -1,14 +1,17 @@
 import { AppLogo } from "@/components/app-logo";
 
 export default function HomePage() {
+  const whatsappUrl =
+    "https://wa.me/5541997870810?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20conversa%20de%2015%20minutos%20sobre%20o%20AVANEST.";
+
   return (
     <main className="avnLanding">
       <header className="avnNav">
         <AppLogo />
         <nav>
-          <a className="avnLogin" href="/login">♟ &nbsp; Login</a>
-          <a className="avnPrimary" href="mailto:gustavosegobia@icloud.com?subject=Demonstração AVANEST">
-            Solicitar demonstração
+          <a className="avnLogin" href="/login">Login</a>
+          <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
+            Agendar uma conversa de 15 minutos
           </a>
         </nav>
       </header>
@@ -16,38 +19,53 @@ export default function HomePage() {
       <section className="avnHero">
         <div className="avnOverlay" />
         <div className="avnHeroContent">
-          <p className="avnEyebrow">AVALIAÇÃO PRÉ-ANESTÉSICA</p>
-          <h1>A segurança começa<br />antes da anestesia.</h1>
+          <p className="avnEyebrow">PREPARO PRÉ-OPERATÓRIO MAIS SEGURO</p>
+          <h1>
+            Cirurgias não deveriam ser suspensas por falhas no preparo.
+            <span>O AVANEST organiza o pré-operatório antes do paciente chegar à sala.</span>
+          </h1>
           <p className="avnLead">
-            O AVANEST conecta o paciente, desde a recepção até o anestesiologista, em uma
-            jornada pré-operatória organizada, garantindo que cada informação importante o
-            acompanhe até o momento da cirurgia.
+            Da recepção ao anestesiologista, o AVANEST estrutura a avaliação pré-anestésica,
+            organiza exames, orientações e documentos, e ajuda sua clínica a reduzir riscos de
+            suspensão cirúrgica por preparo incompleto.
           </p>
           <div className="avnActions">
-            <a className="avnPrimary" href="/login">Conheça o AVANEST</a>
-            <a className="avnSecondary" href="#como-funciona">Ver como funciona</a>
+            <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
+              Agendar uma conversa de 15 minutos
+            </a>
+            <a className="avnSecondary" href="#como-funciona">Ver o sistema em 90 segundos</a>
           </div>
-          <ul className="avnBenefits">
-            <li>✓ <span>Informações organizadas para apoiar o cuidado</span></li>
-            <li>✓ <span>Um fluxo mais claro para a equipe</span></li>
-            <li>✓ <span>Tecnologia para organizar a jornada pré-operatória</span></li>
-          </ul>
         </div>
       </section>
 
       <section className="avnInfo" id="como-funciona">
-        <p>UMA JORNADA INTEGRADA</p>
-        <h2>Do cadastro à conclusão da avaliação.</h2>
+        <p>UMA VISÃO CLARA DO SISTEMA</p>
+        <h2>Veja como o AVANEST organiza o pré-operatório.</h2>
         <div className="avnGrid">
           {[
-            ["01", "Recepção", "Cadastro, agenda e organização da fila sem acesso ao conteúdo clínico."],
-            ["02", "Avaliação", "Nove etapas clínicas, cálculos automáticos e salvamento contínuo."],
-            ["03", "Documentos", "Ficha, termo de consentimento e orientações organizados para impressão."],
+            [
+              "01",
+              "A recepção opera a fila sem ver conteúdo clínico",
+              "Minimização de acesso a dado sensível, conforme a LGPD, com separação de permissões por perfil.",
+            ],
+            [
+              "02",
+              "O anestesiologista recebe o caso organizado antes da cirurgia",
+              "Nove etapas clínicas, cálculos automáticos, salvamento contínuo e visão clara dos pacientes do dia.",
+            ],
+            [
+              "03",
+              "Ficha, termo e orientações saem prontos",
+              "Documentação pré-anestésica, termo de consentimento e orientações ao paciente em um fluxo mais seguro e padronizado.",
+            ],
           ].map(([n, title, text]) => (
             <article key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></article>
           ))}
         </div>
       </section>
+      <footer className="avnFooter">
+        <span>G. Segobia Serviços Médicos LTDA — CNPJ 55.965.276/0001-04</span>
+      </footer>
       <a
         className="avnInstagram"
         href="https://www.instagram.com/useavanest/"
