@@ -398,3 +398,19 @@ button:disabled{cursor:not-allowed}
 .avnHero h1{font-size:clamp(34px,3.9vw,54px);max-width:760px;margin:20px 0 24px}
 @media(max-width:900px){.avnHero h1{font-size:36px;max-width:none}}
 @media(max-width:560px){.avnHero h1{font-size:31px}}
+
+/* Primeiro acesso: escolha entre anestesiologista individual, criar grupo ou
+   aceitar convite; e o crachá da organização no topo do painel. */
+.avnOnboardingCard{max-width:960px}
+.avnOnboardingEmail{color:#5b6b7c;font-size:14px;margin:0 0 6px}
+.avnOnboardingChoices{display:grid;gap:10px;margin:6px 0 16px}
+.avnOnboardingChoices label{display:flex;align-items:flex-start;gap:12px;border:1px solid #d3dee7;border-radius:12px;padding:13px 15px;cursor:pointer;background:#f7fafc}
+.avnOnboardingChoices label.selected{border-color:#176bb5;background:#e9f2fb}
+.avnOnboardingChoices input{margin-top:3px;width:17px;height:17px;accent-color:#176bb5;flex:none}
+.avnOnboardingChoices span{display:grid;gap:3px}
+.avnOnboardingChoices small{color:#60758b;line-height:1.4}
+.avnInviteAction{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;margin-top:14px}
+.orgBadge{display:grid;gap:2px;margin-left:18px;padding-left:18px;border-left:1px solid #d7e1e9;min-width:0}
+.orgBadge strong{font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.orgBadge small{font-size:12px;color:#60758b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+@media(max-width:900px){.orgBadge{display:none}.avnOnboardingCard{max-width:none}}

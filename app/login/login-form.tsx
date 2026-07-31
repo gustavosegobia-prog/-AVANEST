@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 
-export function LoginForm({ passwordChanged = false }: { passwordChanged?: boolean }) {
+export function LoginForm({ passwordChanged = false, convite = "" }: { passwordChanged?: boolean; convite?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +26,8 @@ export function LoginForm({ passwordChanged = false }: { passwordChanged?: boole
       setLoading(false);
       return;
     }
-    router.replace("/dashboard");
+    // Quem chegou por um convite volta para a tela de aceite.
+    router.replace(convite ? `/convite/${encodeURIComponent(convite)}` : "/dashboard");
   }
 
   return (

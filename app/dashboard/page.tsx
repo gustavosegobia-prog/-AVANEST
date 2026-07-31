@@ -16,8 +16,16 @@ export default async function DashboardPage({
     .from("perfis")
     .select("id, institution_id, nome, role, permissoes, status, must_reset")
     .eq("id", user.id)
-    .single();
-  if (!perfil || perfil.status !== "ativo") redirect("/login");
+    .maybeSingle();
+  // Conta criada mas ainda sem organização: conclui o cadastro antes de entrar.
+  if (!perfil) redirect("/comecar");
+  if (perfil.status !== "ativo") redirect("/login");
+
+  const { data: instituicao } = await supabase
+    .from("instituicoes")
+    .select("nome, tipo")
+    .eq("id", perfil.institution_id)
+    .maybeSingle();
 
   const permissionOrder: DashboardView[] = ["recepcao", "medico", "financeiro", "admin"];
   const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
@@ -72,6 +80,7 @@ export default async function DashboardPage({
   return (
     <DashboardClient
       perfil={perfil}
+      organizacao={instituicao ?? null}
       pacientes={pacientes ?? []}
       avaliacoes={avaliacoes ?? []}
       agendamentos={agendamentos ?? []}
