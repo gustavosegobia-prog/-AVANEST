@@ -350,33 +350,39 @@ button:disabled{cursor:not-allowed}
    foram redistribuídos (grades mais largas, menos colunas por linha) e a ficha
    deixou de ser espremida à força em uma única página — quando o conteúdo
    clínico exige, ela flui para a página seguinte sem quebrar um bloco ao meio. */
-.assessmentPaper{font-size:11.5px;line-height:1.3}
-.assessmentPaper .assessmentHeader strong{font-size:15px}
+.assessmentPaper{font-size:13.6px;line-height:1.26}
+.assessmentPaper .assessmentHeader strong{font-size:17px}
 .assessmentPaper .assessmentHeader{padding-bottom:5px!important;margin-bottom:5px!important}
-.assessmentPaper .paperAllergy{padding:4px 8px;margin-bottom:4px;font-size:12.5px}
-.assessmentPaper .paperTitle{font-size:11px;padding:3px 7px;margin-top:4px}
+.assessmentPaper .paperAllergy{padding:5px 8px;margin-bottom:4px;font-size:14.5px}
+.assessmentPaper .paperTitle{font-size:12.5px;padding:3px 7px;margin-top:3px}
 .assessmentPaper .paperTitle:first-of-type{margin-top:2px}
-.assessmentPaper .paperExam{grid-template-columns:repeat(4,1fr);gap:4px 16px;padding:5px 8px}
+.assessmentPaper .paperExam{grid-template-columns:repeat(4,1fr);gap:4px 18px;padding:5px 9px}
 .assessmentPaper .paperExamWide{grid-column:span 2}
 .assessmentPaper .paperExamFull{grid-column:1/-1}
 .assessmentPaper .paperExam span{break-inside:avoid}
 /* Identificação: nome ocupa duas colunas e o restante preenche a largura útil. */
-.assessmentPaper .paperIdentification{grid-template-columns:repeat(6,1fr);border:1px solid #222;padding:5px 8px;margin-bottom:2px}
+.assessmentPaper .paperIdentification{grid-template-columns:repeat(6,1fr);border:1px solid #222;padding:6px 9px;margin-bottom:2px}
 .assessmentPaper .paperIdentification .paperExamWide{grid-column:span 2}
-.assessmentPaper .paperTable{font-size:10.4px;line-height:1.26}
-.assessmentPaper .paperTable th,.assessmentPaper .paperTable td{padding:2px 5px}
-.assessmentPaper .paperTable th:nth-last-child(-n+3),.assessmentPaper .paperTable td:nth-last-child(-n+3){width:32px}
+.assessmentPaper .paperTable{font-size:12.6px;line-height:1.28}
+.assessmentPaper .paperTable th,.assessmentPaper .paperTable td{padding:2px 6px}
+.assessmentPaper .paperTable th:nth-last-child(-n+3),.assessmentPaper .paperTable td:nth-last-child(-n+3){width:38px}
 .assessmentPaper .medicationPrintTable td{height:auto}
-.assessmentPaper .paperScores{grid-template-columns:repeat(5,1fr);gap:6px;padding:5px 8px}
+.assessmentPaper .paperScores{grid-template-columns:repeat(5,1fr);gap:7px;padding:6px 9px}
 .assessmentPaper .paperScores span{min-height:0;padding:5px 7px}
-.assessmentPaper .paperScores small{font-size:8.6px}
-.assessmentPaper .paperScores b{font-size:11px}
+.assessmentPaper .paperScores small{font-size:10px}
+.assessmentPaper .paperScores b{font-size:13.5px}
 .assessmentPaper .labPrintGrid{grid-template-columns:repeat(4,1fr)}
-.assessmentPaper .paperObservations{font-size:11.5px;line-height:1.38;min-height:0;padding:6px 8px;margin-top:5px}
-.assessmentPaper .paperEmpty{margin:6px 8px}
-.assessmentPaper .paperSignature{margin-top:14px;padding-top:6px}
+/* Medicamentos em uso: texto corrido separado por barra, sem conduta e sem
+   grade — ocupa o mínimo de papel. A conduta dos suspensos/individualizados é
+   escrita no bloco de observações. */
+.assessmentPaper .paperMedicationList{margin:0;padding:5px 9px}
+.assessmentPaper .paperObservations{font-size:13.6px;line-height:1.36;min-height:0;padding:7px 9px;margin-top:5px}
+.assessmentPaper .paperEmpty{margin:7px 9px}
+.assessmentPaper .paperSignature{margin-top:9px;padding-top:6px}
 @media print{
-  .assessmentPaper{display:block;height:auto;min-height:0;max-height:none;overflow:visible;font-size:11px}
+  /* Mantém o layout em coluna flex também na impressão: em display:block os nós
+     de texto entre os blocos viram linhas vazias e desperdiçam ~18px por bloco. */
+  .assessmentPaper{display:flex;flex-direction:column;height:auto;min-height:0;max-height:none;overflow:visible;font-size:13px}
   .assessmentPaper .paperTitle,.assessmentPaper .paperScores,.assessmentPaper .paperExam,
   .assessmentPaper .paperMedicationSection,.assessmentPaper .paperObservations,
   .assessmentPaper .paperIdentification{break-inside:avoid;page-break-inside:avoid}
@@ -386,3 +392,9 @@ button:disabled{cursor:not-allowed}
   .assessmentPaper .paperTable thead{display:table-header-group}
   .assessmentPaper .paperSignature{break-inside:avoid;page-break-inside:avoid}
 }
+
+/* Capa: com a chamada mais curta, o título ganha corpo menor e largura limitada
+   para não avançar sobre a imagem do produto à direita. */
+.avnHero h1{font-size:clamp(34px,3.9vw,54px);max-width:760px;margin:20px 0 24px}
+@media(max-width:900px){.avnHero h1{font-size:36px;max-width:none}}
+@media(max-width:560px){.avnHero h1{font-size:31px}}

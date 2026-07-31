@@ -21,13 +21,11 @@ export default function HomePage() {
         <div className="avnHeroContent">
           <p className="avnEyebrow">PREPARO PRÉ-OPERATÓRIO MAIS SEGURO</p>
           <h1>
-            Cirurgias não deveriam ser suspensas por falhas no preparo.
-            <span>O AVANEST organiza o pré-operatório antes do paciente chegar à sala.</span>
+            O AVANEST organiza todo o pré-operatório antes do paciente chegar ao centro cirúrgico.
           </h1>
           <p className="avnLead">
-            Da recepção ao anestesiologista, o AVANEST estrutura a avaliação pré-anestésica,
-            organiza exames, orientações e documentos, e ajuda sua clínica a reduzir riscos de
-            suspensão cirúrgica por preparo incompleto.
+            Da recepção ao anestesiologista, centralize avaliação pré-anestésica, exames,
+            documentos e orientações em um único sistema.
           </p>
           <div className="avnActions">
             <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
