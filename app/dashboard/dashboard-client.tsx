@@ -1,10 +1,16 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState, useTransition } from "react";
+import { ChangeEvent, FormEvent, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
+
+export const PRIVATE_PAY_CONVENIO = "Particular";
+export const CONVENIOS = [
+  "Particular","Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde",
+  "SulAmérica","Amil","CASSI","SANEPAR","COPEL",
+];
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean };
 type Paciente = {
@@ -163,13 +169,12 @@ export function DashboardClient({
       setBusy(false);
       return;
     }
-    if(!convenio){
-      setError("Selecione o convênio do paciente.");
-      setBusy(false);
-      return;
-    }
-    if(!plano){
-      setError("Informe o plano do paciente.");
+    // Particular não tem plano: o campo fica desabilitado no formulário e o valor
+    // é descartado aqui para não gravar lixo de preenchimento automático.
+    const isPrivatePay=convenio===PRIVATE_PAY_CONVENIO;
+    const planoFinal=isPrivatePay?null:plano;
+    if(!isPrivatePay&&!planoFinal){
+      setError("Informe o plano do paciente ou selecione o convênio Particular.");
       setBusy(false);
       return;
     }
@@ -219,12 +224,13 @@ export function DashboardClient({
       sexo: text("sexo"), telefone: phoneDigits||null, email: text("email"), endereco: text("endereco"),
       cidade: text("cidade"), uf: text("uf"), cep: text("cep"), hospital: text("hospital"),
       cirurgia: text("cirurgia"), especialidade: text("especialidade"), procedimento: text("procedimento"),
-      convenio, numero_carteirinha: text("numero_carteirinha"), validade: text("validade"),
-      plano, data_consulta: appointmentDate, horario: automaticTime, observacoes: text("observacoes"),
+      convenio: convenio ?? PRIVATE_PAY_CONVENIO,
+      numero_carteirinha: isPrivatePay?null:text("numero_carteirinha"), validade: isPrivatePay?null:text("validade"),
+      plano: planoFinal, data_consulta: appointmentDate, horario: automaticTime, observacoes: text("observacoes"),
     };
     const appointmentPayload = {
       data: appointmentDate, horario: automaticTime, hospital: text("hospital"),
-      procedimento: text("procedimento") || text("cirurgia"), convenio: text("convenio"),
+      procedimento: text("procedimento") || text("cirurgia"), convenio: convenio ?? PRIVATE_PAY_CONVENIO,
       observacoes: text("observacoes"), created_by: perfil.id,
     };
     const atomic = await supabase.rpc("criar_paciente_e_agendamento", {
@@ -466,7 +472,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     return {convenio,consultas:items.length,unit:Number(defaultRule?.valor||0),valor:billed,recebido:paid,pendente:Math.max(0,billed-paid)};
   }).sort((a,b)=>b.valor-a.valor);
   const knownConvenios=Array.from(new Set([
-    "Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde","SulAmérica","Amil","CASSI","SANEPAR","COPEL","Particular",
+    ...CONVENIOS,
     ...pacientes.map(item=>item.convenio).filter((item):item is string=>Boolean(item)),
     ...convenioValores.map(item=>item.convenio).filter(Boolean),
   ])).sort((a,b)=>a.localeCompare(b,"pt-BR"));
@@ -658,20 +664,31 @@ function MoneySmall({value,label,tone=""}:{value:number;label:string;tone?:strin
 function Alert({ icon, title, text, action, danger=false, onClick }: { icon:string; title:string; text:string; action:string; danger?:boolean; onClick?:()=>void }) { return <button type="button" className="alertItem" onClick={onClick} disabled={!onClick}><i className={danger?"danger":""}>{icon}</i><span><strong>{title}</strong> — {text}</span><b className={danger?"dangerText":""}>{action}</b></button>; }
 
 function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:string; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
+  const [convenio,setConvenio]=useState<string>(PRIVATE_PAY_CONVENIO);
+  const isPrivatePay=convenio===PRIVATE_PAY_CONVENIO;
   return <div className="patientModalBackdrop"><form className="patientModal" onSubmit={onSubmit}>
     <div className="patientModalHead"><div><h2>Novo paciente</h2><p>Cadastro, convênio, procedimento e agendamento.</p></div><button type="button" onClick={onClose}>×</button></div>
-    <div className="insuranceBar"><strong>Convênios/planos:</strong> Unimed · FUPS · SAS · CISCOMCAM · Humana Saúde · Bradesco Saúde · SulAmérica · Amil · CASSI · SANEPAR · COPEL · Particular</div>
+    <div className="insuranceBar"><strong>Convênios/planos:</strong> {CONVENIOS.join(" · ")}</div>
     <div className="patientFormGrid">
       <Field name="nome" label="Nome completo *" wide required/><Field name="cpf" label="CPF *" required/><Field name="rg" label="RG"/><Field name="data_nascimento" label="Data de nascimento" type="date"/>
       <SelectField name="sexo" label="Sexo" options={["Feminino","Masculino","Outro","Não informado"]}/><Field name="telefone" label="Telefone / WhatsApp"/><Field name="email" label="E-mail" type="email" span2/><Field name="endereco" label="Endereço" span2/>
       <Field name="cidade" label="Cidade"/><Field name="uf" label="UF"/><Field name="cep" label="CEP"/><Field name="hospital" label="Hospital" span2/>
-      <Field name="cirurgia" label="Cirurgia" span2/><Field name="especialidade" label="Especialidade"/><Field name="procedimento" label="Procedimento" span2/><SelectField name="convenio" label="Convênio *" options={["Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde","SulAmérica","Amil","CASSI","SANEPAR","COPEL","Particular"]} required placeholder="Selecione"/>
-      <Field name="numero_carteirinha" label="Nº da carteirinha"/><Field name="validade" label="Validade" type="date"/><Field name="plano" label="Plano *" required/><Field name="data_consulta" label="Data da consulta *" type="date" required defaultValue={localDateKey()}/><div className="clinicalField"><span>Horário da consulta</span><small>Definido automaticamente pelo próximo horário disponível.</small></div>
+      <Field name="cirurgia" label="Cirurgia" span2/><Field name="especialidade" label="Especialidade"/><Field name="procedimento" label="Procedimento" span2/>
+      <SelectField name="convenio" label="Convênio" options={CONVENIOS} value={convenio} onChange={setConvenio}/>
+      {!isPrivatePay&&<><Field name="numero_carteirinha" label="Nº da carteirinha"/><Field name="validade" label="Validade" type="date"/><Field name="plano" label="Plano *" required autoComplete="off"/></>}
+      <Field name="data_consulta" label="Data da consulta *" type="date" required defaultValue={localDateKey()}/><div className="clinicalField"><span>Horário da consulta</span><small>Definido automaticamente pelo próximo horário disponível.</small></div>
       <Field name="observacoes" label="Observações" wide/>
     </div>
     {error && <p className="clinicalError" role="alert" aria-live="assertive">{error}</p>}
     <div className="modalActions"><span className="saveStatus" aria-live="polite">{busy ? "Salvando no banco de dados…" : ""}</span><button type="button" className="outlineClinical" onClick={onClose}>Cancelar</button><button type="submit" className="primaryClinical" disabled={busy}>{busy?"Salvando...":"SALVAR"}</button></div>
   </form></div>;
 }
-function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string}) { return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""}`}><span>{label}</span><input name={name} type={type} required={required} defaultValue={defaultValue}/></label>; }
-function SelectField({name,label,options,required=false,placeholder}:{name:string;label:string;options:string[];required?:boolean;placeholder?:string}) { return <label className="clinicalField"><span>{label}</span><select name={name} required={required} defaultValue={placeholder?"":undefined}>{placeholder&&<option value="" disabled>{placeholder}</option>}{options.map(o=><option key={o}>{o}</option>)}</select></label>; }
+function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue,autoComplete}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string;autoComplete?:string}) { return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""}`}><span>{label}</span><input name={name} type={type} required={required} defaultValue={defaultValue} autoComplete={autoComplete}/></label>; }
+function SelectField({name,label,options,required=false,placeholder,value,onChange}:{name:string;label:string;options:string[];required?:boolean;placeholder?:string;value?:string;onChange?:(value:string)=>void}) {
+  const controlled=value!==undefined&&onChange!==undefined;
+  return <label className="clinicalField"><span>{label}</span><select
+    name={name}
+    required={required}
+    {...(controlled?{value,onChange:(event:ChangeEvent<HTMLSelectElement>)=>onChange(event.target.value)}:{defaultValue:placeholder?"":undefined})}
+  >{placeholder&&<option value="" disabled>{placeholder}</option>}{options.map(o=><option key={o}>{o}</option>)}</select></label>;
+}
