@@ -1,10 +1,15 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useMemo, useRef, useState, useTransition } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
+
+export const ROLE_LABELS: Record<string, string> = {
+  owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
+  recepcao: "Recepção", financeiro: "Financeiro",
+};
 
 export const PRIVATE_PAY_CONVENIO = "Particular";
 export const CONVENIOS = [
@@ -13,6 +18,8 @@ export const CONVENIOS = [
 ];
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean };
+type Organizacao = { nome: string; tipo?: string | null };
+type Convite = { id:string; email:string; role:string; token:string; status:string; expires_at:string; created_at:string };
 type Paciente = {
   id: string; nome: string; cpf: string | null; rg?: string | null; data_nascimento: string | null;
   sexo?: string | null; telefone: string | null; email: string | null; endereco?: string | null;
@@ -76,10 +83,11 @@ const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamen
 };
 
 export function DashboardClient({
-  perfil, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
+  perfil, organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
   initialNewPatient = false, autoStartAssessment = false,
 }: {
-  perfil: Perfil; pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
+  perfil: Perfil; organizacao?: Organizacao | null;
+  pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
   initialView?: DashboardView;
   initialNewPatient?: boolean;
@@ -344,6 +352,10 @@ export function DashboardClient({
     <main className={`clinicalShell ${dark?"clinicalDark":""}`}>
       <header className="clinicalTopbar">
         <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
+        <div className="orgBadge" title="Sua organização">
+          <strong>{organizacao?.nome ?? "Organização"}</strong>
+          <small>{perfil.nome} · {ROLE_LABELS[perfil.role] ?? perfil.role}</small>
+        </div>
         <nav className="roleNav" aria-label="Áreas do sistema">
           <button className="themePill" onClick={()=>setDark(value=>!value)} aria-pressed={dark}>◐ {dark?"Claro":"Escuro"}</button>
           {allowedViews.includes("recepcao")&&<button disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} onClick={() => changeView("recepcao")}>Recepção</button>}
@@ -425,7 +437,7 @@ export function DashboardClient({
           <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=attendanceOverrides[appointment.id]??appointment.status;const updating=attendanceBusy===appointment.id;return <div className="queueRow" key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{updating?"SALVANDO...":agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><button aria-busy={updating} disabled={updating||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button aria-busy={updating} disabled={updating||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>
         </div>
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
-      : <AdminView perfil={perfil} perfis={perfis} auditoria={auditoria} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>}
+      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>}
 
       {open && <PatientModal busy={busy} error={error} onClose={() => {
         setOpen(false);
@@ -577,7 +589,112 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   </div>
 }
 
-function AdminView({perfil,perfis,auditoria,convenioValores,onRefresh}:{perfil:Perfil;perfis:PerfilGerenciado[];auditoria:Auditoria[];convenioValores:ConvenioValor[];onRefresh:()=>void}) {
+function InvitePanel({perfil,organizacao}:{perfil:Perfil;organizacao:Organizacao|null}) {
+  const [convites,setConvites]=useState<Convite[]>([]);
+  const [versao,setVersao]=useState(0);
+  const [busy,setBusy]=useState("");
+  const [aviso,setAviso]=useState("");
+  const [copiado,setCopiado]=useState("");
+
+  // O RLS já limita a consulta aos convites da própria organização.
+  useEffect(()=>{
+    let ativo=true;
+    createClient().from("convites")
+      .select("id,email,role,token,status,expires_at,created_at")
+      .order("created_at",{ascending:false})
+      .then(({data})=>{ if(ativo) setConvites(data??[]) });
+    return ()=>{ ativo=false };
+  },[versao]);
+  const carregar=useCallback(()=>setVersao(v=>v+1),[]);
+
+  const linkDoConvite=(token:string)=>
+    `${typeof window==="undefined"?"":window.location.origin}/convite/${token}`;
+
+  async function convidar(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    setBusy("novo");setAviso("");
+    const form=new FormData(event.currentTarget);
+    const email=String(form.get("email")??"").trim().toLowerCase();
+    const role=String(form.get("role")??"");
+    const dias=Number(form.get("dias")??7);
+    if(!email){setAviso("Informe o e-mail de quem será convidado.");setBusy("");return}
+    const {error}=await createClient().from("convites").insert({
+      institution_id:perfil.institution_id, email, role, invited_by:perfil.id,
+      expires_at:new Date(Date.now()+dias*86400000).toISOString(),
+    });
+    setBusy("");
+    if(error){
+      setAviso(error.code==="23505"
+        ? "Já existe um convite pendente para este e-mail. Cancele o anterior antes de criar outro."
+        : `Não foi possível convidar: ${error.message}`);
+      return;
+    }
+    (event.target as HTMLFormElement).reset();
+    carregar();
+  }
+
+  async function revogar(id:string){
+    setBusy(id);
+    const {error}=await createClient().from("convites")
+      .update({status:"revogado"}).eq("id",id);
+    setBusy("");
+    if(error)setAviso(`Não foi possível cancelar: ${error.message}`);
+    else carregar();
+  }
+
+  async function copiar(token:string){
+    try{
+      await navigator.clipboard.writeText(linkDoConvite(token));
+      setCopiado(token);
+      setTimeout(()=>setCopiado(""),2500);
+    }catch{
+      setAviso("Não foi possível copiar. Selecione o link e copie manualmente.");
+    }
+  }
+
+  const pendentes=convites.filter(c=>c.status==="pendente");
+  const expirado=(c:Convite)=>new Date(c.expires_at)<=new Date();
+
+  return <section className="clinicalPanel">
+    <div className="panelTitle">
+      <strong>✉️ Convidar para {organizacao?.nome??"a organização"}</strong>
+      <span>quem aceitar entra somente nesta organização, com o papel definido aqui</span>
+    </div>
+    <form className="convenioForm" onSubmit={convidar}>
+      <label className="clinicalField span2"><span>E-mail do convidado *</span>
+        <input name="email" type="email" required autoComplete="off" placeholder="pessoa@exemplo.com"/></label>
+      <label className="clinicalField"><span>Função</span>
+        <select name="role" defaultValue="medico">
+          <option value="medico">Anestesiologista</option>
+          <option value="recepcao">Recepção</option>
+          <option value="financeiro">Financeiro</option>
+          <option value="admin">Administrador</option>
+        </select></label>
+      <label className="clinicalField"><span>Validade</span>
+        <select name="dias" defaultValue="7">
+          <option value="3">3 dias</option><option value="7">7 dias</option><option value="30">30 dias</option>
+        </select></label>
+      <button className="primaryClinical compact" type="submit" disabled={busy==="novo"}>
+        {busy==="novo"?"Gerando...":"Gerar convite"}</button>
+    </form>
+    {aviso&&<p className="clinicalError" role="alert">{aviso}</p>}
+    <p className="evalHint">Depois de gerar, copie o link e envie por WhatsApp ou e-mail. O convite só funciona para o e-mail informado e expira na data escolhida.</p>
+    {pendentes.length===0
+      ? <div className="emptyClinical compactEmpty">Nenhum convite pendente.</div>
+      : pendentes.map(item=><div className="convenioRow" key={item.id}>
+          <span>
+            <strong>{item.email}</strong>
+            <small>{ROLE_LABELS[item.role]??item.role} · {expirado(item)?"expirado":`válido até ${new Date(item.expires_at).toLocaleDateString("pt-BR")}`}</small>
+          </span>
+          <button type="button" className="outlineClinical" onClick={()=>copiar(item.token)}>
+            {copiado===item.token?"Link copiado ✓":"Copiar link"}</button>
+          <button type="button" className="outlineClinical" disabled={busy===item.id} onClick={()=>revogar(item.id)}>
+            {busy===item.id?"Cancelando...":"Cancelar"}</button>
+        </div>)}
+  </section>;
+}
+
+function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];convenioValores:ConvenioValor[];onRefresh:()=>void}) {
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState("");
   const [editing,setEditing]=useState<Record<string,PerfilGerenciado>>(()=>Object.fromEntries(perfis.map(item=>[item.id,{...item}])));
@@ -620,6 +737,7 @@ function AdminView({perfil,perfis,auditoria,convenioValores,onRefresh}:{perfil:P
   return <div className="clinicalMain adminMain">
     <section><h1>Administração</h1><p>Gerencie usuários, permissões profissionais e acompanhe ações importantes do sistema.</p></section>
     {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"}>{message}</p>}
+    <InvitePanel perfil={perfil} organizacao={organizacao}/>
     <section className="metricGrid adminMetrics"><Metric value={perfis.filter(item=>item.status==="ativo").length} label="Usuários ativos" tone="green"/><Metric value={perfis.filter(item=>item.role==="medico").length} label="Médicos" tone="blue"/><Metric value={perfis.filter(item=>item.status==="inativo").length} label="Acessos inativos" tone="red"/><Metric value={auditoria.length} label="Eventos recentes" tone="amber"/></section>
     <section className="clinicalPanel adminInvite">
       <div className="panelTitle"><strong>Adicionar novo acesso</strong><span>O usuário receberá um e-mail para criar a própria senha.</span></div>
