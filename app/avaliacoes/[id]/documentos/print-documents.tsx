@@ -2,6 +2,7 @@
 
 import {useMemo,useState} from "react";
 import {createClient} from "@/utils/supabase/client";
+import {MEDICATION_ORIENTATION_ACTIONS} from "@/lib/medication-guide";
 import {BrandMark} from "@/components/brand-mark";
 
 type Data=Record<string,string|boolean>;
@@ -140,7 +141,6 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   const selectedToggleLabels=(prefix:string,labels:string[])=>labels.filter(label=>dados[toggleKey(prefix,label)]===true);
   const cardiovascularFindings=selectedToggleLabels("cardio",["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]);
   const respiratoryFindings=selectedToggleLabels("resp",["MV preservado","Sibilos","Roncos","Estertores","Estridor","Musculatura acessória","Tosse","Dispneia"]);
-  const implantedDevices=selectedToggleLabels("dispositivo",["Marca-passo","CDI","Cateter venoso implantado","Fístula AV","Prótese valvar","Estoma"]);
   const airwayPredictors=selectedToggleLabels("via",["Retrognatia/micrognatia","Macroglossia","Pescoço curto","Barba","Massa cervical","Radioterapia cervical prévia","Cirurgia cervical prévia","História de intubação difícil","Dificuldade de ventilação prévia","Traqueostomia","Apneia do sono"]);
   const checks=[
     ["Paciente identificado",Boolean(paciente.nome)],
@@ -161,7 +161,9 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
   const airwayCount=Object.keys(dados).filter(key=>key.startsWith("via_")&&dados[key]===true).length;
   const airwayRisk=airwayCount===0?"Baixa":airwayCount<=2?"Moderada":"Alta";
 
-  const guidedMedications=medications.filter(item=>hasText(objectiveMedicationGuidance(item)));
+  // Na ficha, as orientações cobrem apenas os medicamentos suspensos ou
+  // individualizados; os mantidos aparecem na lista de medicamentos em uso.
+  const guidedMedications=medications.filter(item=>MEDICATION_ORIENTATION_ACTIONS.includes(item.conduta));
   const planManuallyEdited=dados.plano_anestesico_editado===true;
   const printablePlan=useMemo(()=>{
     const saved=String(dados.plano_anestesico||"").trim();
@@ -170,7 +172,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
     if(planManuallyEdited)return saved;
     const base=saved.replace(/\n?ORIENTAÇÕES SOBRE MEDICAMENTOS:[\s\S]*$/i,"").trim();
     const objectiveMedications=guidedMedications.length
-      ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${guidedMedications.map(item=>`- ${item.nome}: ${objectiveMedicationGuidance(item)}`).join("\n")}`
+      ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${guidedMedications.map(item=>`- ${item.nome}: ${item.orientacaoEditada===true?String(item.orientacao||"").trim():""}`).join("\n")}`
       :"";
     return [base,objectiveMedications].filter(Boolean).join("\n");
   },[guidedMedications,dados.plano_anestesico,planManuallyEdited]);
@@ -180,7 +182,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
     `Jejum de sólidos: ${text(dados.jejum_solidos,"a confirmar")}.`,
     `Líquidos claros: ${text(dados.jejum_liquidos,"a confirmar")}.`,
     "Antes de entrar na sala cirúrgica, retire piercings e próteses ou dentaduras removíveis.",
-    guidedMedications.length?`Medicamentos:\n${guidedMedications.map(item=>`• ${item.nome}: ${objectiveMedicationGuidance(item)}`).join("\n")}`:"",
+    guidedMedications.length?`Medicamentos:\n${guidedMedications.map(item=>{const guidance=objectiveMedicationGuidance(item);return `• ${item.nome}${guidance?`: ${guidance}`:""}`}).join("\n")}`:"",
     "@useavanest",
   ].filter(Boolean).join("\n");
 
@@ -236,7 +238,6 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
             ["Estado geral",dados.estado_geral],
             ["Cardiovascular",cardiovascularFindings.join(", "),"wide"],
             ["Respiratório",respiratoryFindings.join(", "),"wide"],
-            ["Dispositivos",implantedDevices.join(", "),"wide"],
             ["Observações",dados.observacoes_exame_fisico,"full"],
           ])}/>
           <PaperBlock title="VIA AÉREA" items={facts([
@@ -247,7 +248,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
             ["Preditores",airwayPredictors.join(", "),"wide"],
             ["Observações",dados.observacoes_via_aerea,"full"],
           ])}/>
-          <section className={`paperMedicationSection ${medications.length?"hasMedications":""}`}><PaperTitle>MEDICAMENTOS EM USO E ORIENTAÇÕES</PaperTitle>{medications.length?<table className="paperTable medicationPrintTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td>{objectiveMedicationGuidance(m)||"A definir pelo anestesiologista"}</td></tr>)}</tbody></table>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}</section>
+          <section className="paperMedicationSection"><PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<p className="paperMedicationList"><b>{medications.map(m=>[m.nome,m.dose,m.frequencia].filter(Boolean).join(" ")).join(" / ")}</b></p>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}</section>
           <PaperBlock title="EXAMES COMPLEMENTARES" className="labPrintGrid" items={facts([
             ["Hb",dados.hemoglobina],["Ht",dados.hematocrito],["Plaquetas",dados.plaquetas],["INR",dados.inr],
             ["TTPa",dados.ttpa],["Creatinina",dados.creatinina],["Ureia",dados.ureia],["Glicemia",dados.glicemia],

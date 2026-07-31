@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { calculateLastDoseDate, findMedicationGuideEntry } from "@/lib/medication-guide";
+import { calculateLastDoseDate, findMedicationGuideEntry, MEDICATION_ORIENTATION_ACTIONS } from "@/lib/medication-guide";
 import { BrandMark } from "@/components/brand-mark";
 
 const STEPS = ["Identificação", "Procedimento", "Anamnese", "Medicamentos", "Exame físico", "Via aérea", "Exames", "Escores", "Conclusão"];
@@ -496,7 +496,6 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
   <ToggleChips title="EXAME CARDIOVASCULAR" prefix="cardio" items={["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]} draft={draft} set={set}/>
   <ToggleChips title="EXAME RESPIRATÓRIO" prefix="resp" items={["MV preservado","Sibilos","Roncos","Estertores","Estridor","Musculatura acessória","Tosse","Dispneia"]} draft={draft} set={set}/>
   <label className="evalField examOptionalNote"><span>Observações do exame físico</span><textarea value={String(draft.observacoes_exame_fisico??"")} onChange={e=>set("observacoes_exame_fisico",e.target.value)} placeholder="Ex.: Paciente em bom estado geral, eupneico, corado e hidratado."/></label>
-  <ToggleChips title="DISPOSITIVOS IMPLANTÁVEIS" prefix="dispositivo" items={["Marca-passo","CDI","Cateter venoso implantado","Fístula AV","Prótese valvar","Estoma"]} draft={draft} set={set}/>
   </section>;
 }
 
@@ -646,19 +645,20 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     !isFilled(draft.jejum_solidos)||!isFilled(draft.jejum_liquidos)?"jejum":"",
   ].filter(Boolean);
   const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",draft.alergias==="Não"?"Não relata alergias.":String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
-  const medicationOrientations=medications.filter(item=>item.confirmada===true).map(item=>{
-    const identification=[item.nome,item.dose,item.frequencia].filter(Boolean).join(" ");
-    const guidance=item.orientacao.trim()||item.conduta||"orientação a definir";
-    const restart=item.reinicio?.trim()?` Reinício: ${item.reinicio.trim()}.`:"";
-    return `- ${identification}: ${guidance}.${restart}`;
-  });
+  // Só entram aqui os medicamentos que exigem decisão: suspensos ou
+  // individualizados. Os mantidos continuam listados na ficha impressa, mas não
+  // ocupam espaço nas orientações. Cada linha traz apenas o nome e o espaço para
+  // o anestesiologista escrever a conduta — o texto do guia não é reproduzido.
+  const medicationOrientations=medications
+    .filter(item=>MEDICATION_ORIENTATION_ACTIONS.includes(item.conduta))
+    .map(item=>`- ${item.nome}: ${item.orientacaoEditada===true?item.orientacao.trim():""}`);
   const automaticPlan=[
     `JEJUM: sólidos — ${String(draft.jejum_solidos||"a definir")}; líquidos claros — ${String(draft.jejum_liquidos||"a definir")}.`,
     `PLANO ANESTÉSICO: ${String(draft.tecnica||"a definir")}.`,
     medicationOrientations.length
       ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${medicationOrientations.join("\n")}`
-      :"ORIENTAÇÕES SOBRE MEDICAMENTOS: nenhuma orientação específica confirmada.",
-  ].join("\n");
+      :"",
+  ].filter(Boolean).join("\n");
   const planManuallyEdited=draft.plano_anestesico_editado===true;
   useEffect(()=>{
     // Enquanto o texto não for reescrito à mão, ele acompanha jejum, técnica e

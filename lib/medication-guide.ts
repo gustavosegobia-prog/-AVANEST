@@ -12,6 +12,14 @@ export type MedicationGuideEntry = {
   suspendDays?: number;
 };
 
+/**
+ * Condutas que exigem uma orientação escrita pelo anestesiologista.
+ * Medicamentos mantidos aparecem apenas na lista de medicamentos em uso da
+ * ficha; estes aqui também entram no bloco de orientações, com espaço para a
+ * conduta ser escrita.
+ */
+export const MEDICATION_ORIENTATION_ACTIONS = ["Suspender", "Individualizar"];
+
 const SOURCE =
   "Guia Perioperatório de Medicamentos, versão 1.0, revisão 07/2026 — SAESP 2025; Miller 7ª ed.; AHA/ACC 2024; ADA 2026; CHEST 2022; ASRA 5ª ed. 2025";
 
