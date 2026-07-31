@@ -52,10 +52,13 @@ export default async function ConvitePage({ params }: { params: Promise<{ token:
               {!user ? (
                 <>
                   <p className="avnOnboardingEmail">
-                    Entre ou crie sua conta usando <b>{convite.email}</b> para aceitar.
+                    Use o e-mail <b>{convite.email}</b> para aceitar.
                   </p>
-                  <Link className="avnLoginSubmit avnInviteAction" href={`/login?convite=${encodeURIComponent(token)}`}>
-                    Entrar e aceitar
+                  <Link className="avnLoginSubmit avnInviteAction" href={`/criar-conta?convite=${encodeURIComponent(token)}`}>
+                    Criar minha conta
+                  </Link>
+                  <Link className="avnLoginCancel" href={`/login?convite=${encodeURIComponent(token)}`}>
+                    Já tenho conta — entrar
                   </Link>
                 </>
               ) : emailDiferente ? (

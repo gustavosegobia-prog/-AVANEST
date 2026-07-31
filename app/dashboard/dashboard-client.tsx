@@ -589,8 +589,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   </div>
 }
 
-function InvitePanel({perfil,organizacao}:{perfil:Perfil;organizacao:Organizacao|null}) {
+function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;onRefresh:()=>void}) {
   const [convites,setConvites]=useState<Convite[]>([]);
+  const [meio,setMeio]=useState<"email"|"link">("email");
   const [versao,setVersao]=useState(0);
   const [busy,setBusy]=useState("");
   const [aviso,setAviso]=useState("");
@@ -612,12 +613,31 @@ function InvitePanel({perfil,organizacao}:{perfil:Perfil;organizacao:Organizacao
 
   async function convidar(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
+    const formulario=event.currentTarget;
     setBusy("novo");setAviso("");
-    const form=new FormData(event.currentTarget);
+    const form=new FormData(formulario);
     const email=String(form.get("email")??"").trim().toLowerCase();
     const role=String(form.get("role")??"");
-    const dias=Number(form.get("dias")??7);
     if(!email){setAviso("Informe o e-mail de quem será convidado.");setBusy("");return}
+
+    if(meio==="email"){
+      // O Supabase envia a mensagem e o perfil já nasce com a função escolhida.
+      const nome=String(form.get("nome")??"").trim();
+      if(!nome){setAviso("Informe o nome de quem será convidado.");setBusy("");return}
+      const resposta=await fetch("/api/admin/users",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({nome,email,role}),
+      });
+      const resultado=await resposta.json().catch(()=>({}));
+      setBusy("");
+      if(!resposta.ok){setAviso(resultado.error??"Não foi possível enviar o convite.");return}
+      formulario.reset();
+      setAviso(`Convite enviado para ${email}.`);
+      onRefresh();
+      return;
+    }
+
+    const dias=Number(form.get("dias")??7);
     const {error}=await createClient().from("convites").insert({
       institution_id:perfil.institution_id, email, role, invited_by:perfil.id,
       expires_at:new Date(Date.now()+dias*86400000).toISOString(),
@@ -629,7 +649,7 @@ function InvitePanel({perfil,organizacao}:{perfil:Perfil;organizacao:Organizacao
         : `Não foi possível convidar: ${error.message}`);
       return;
     }
-    (event.target as HTMLFormElement).reset();
+    formulario.reset();
     carregar();
   }
 
@@ -660,7 +680,15 @@ function InvitePanel({perfil,organizacao}:{perfil:Perfil;organizacao:Organizacao
       <strong>✉️ Convidar para {organizacao?.nome??"a organização"}</strong>
       <span>quem aceitar entra somente nesta organização, com o papel definido aqui</span>
     </div>
+    <div className="inviteModeSwitch" role="tablist">
+      <button type="button" role="tab" aria-selected={meio==="email"} className={meio==="email"?"active":""}
+        onClick={()=>{setMeio("email");setAviso("")}}>Enviar por e-mail</button>
+      <button type="button" role="tab" aria-selected={meio==="link"} className={meio==="link"?"active":""}
+        onClick={()=>{setMeio("link");setAviso("")}}>Gerar link</button>
+    </div>
     <form className="convenioForm" onSubmit={convidar}>
+      {meio==="email"&&<label className="clinicalField span2"><span>Nome completo *</span>
+        <input name="nome" required autoComplete="off" placeholder="Ex.: Dra. Helena Martins"/></label>}
       <label className="clinicalField span2"><span>E-mail do convidado *</span>
         <input name="email" type="email" required autoComplete="off" placeholder="pessoa@exemplo.com"/></label>
       <label className="clinicalField"><span>Função</span>
@@ -670,15 +698,17 @@ function InvitePanel({perfil,organizacao}:{perfil:Perfil;organizacao:Organizacao
           <option value="financeiro">Financeiro</option>
           <option value="admin">Administrador</option>
         </select></label>
-      <label className="clinicalField"><span>Validade</span>
+      {meio==="link"&&<label className="clinicalField"><span>Validade</span>
         <select name="dias" defaultValue="7">
           <option value="3">3 dias</option><option value="7">7 dias</option><option value="30">30 dias</option>
-        </select></label>
+        </select></label>}
       <button className="primaryClinical compact" type="submit" disabled={busy==="novo"}>
-        {busy==="novo"?"Gerando...":"Gerar convite"}</button>
+        {busy==="novo"?"Enviando...":meio==="email"?"Enviar convite":"Gerar link"}</button>
     </form>
-    {aviso&&<p className="clinicalError" role="alert">{aviso}</p>}
-    <p className="evalHint">Depois de gerar, copie o link e envie por WhatsApp ou e-mail. O convite só funciona para o e-mail informado e expira na data escolhida.</p>
+    {aviso&&<p className={aviso.startsWith("Convite enviado")?"financeSuccess":"clinicalError"} role="alert">{aviso}</p>}
+    <p className="evalHint">{meio==="email"
+      ? "O AVANEST envia um e-mail com um link para a pessoa criar a própria senha. O acesso já entra com a função escolhida."
+      : "Copie o link gerado e envie por WhatsApp ou onde preferir. Ele só funciona para o e-mail informado, expira na data escolhida e pode ser cancelado a qualquer momento."}</p>
     {pendentes.length===0
       ? <div className="emptyClinical compactEmpty">Nenhum convite pendente.</div>
       : pendentes.map(item=><div className="convenioRow" key={item.id}>
@@ -710,17 +740,13 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
     else{setMessage("Perfil atualizado e registrado na auditoria.");onRefresh()}
   }
 
-  async function invite(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();setBusy("invite");setMessage("");
-    const form=new FormData(event.currentTarget);
-    const response=await fetch("/api/admin/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-      nome:String(form.get("nome")||"").trim(),email:String(form.get("email")||"").trim(),
-      role:String(form.get("role")||"recepcao"),
-    })});
-    const result=await response.json().catch(()=>({error:"Resposta inválida do servidor."}));
+  async function removeUser(item:PerfilGerenciado){
+    if(!window.confirm(`Excluir definitivamente o acesso de ${item.nome}? Só é possível para quem ainda não registrou nada no sistema.`))return;
+    setBusy(item.id);setMessage("");
+    const {error}=await createClient().rpc("excluir_usuario",{p_perfil_id:item.id});
     setBusy("");
-    if(!response.ok)setMessage(result.error||"Não foi possível convidar o usuário.");
-    else{setMessage("Convite enviado. O novo usuário receberá um link para definir a senha.");event.currentTarget.reset();onRefresh()}
+    if(error)setMessage(error.message);
+    else{setMessage(`Acesso de ${item.nome} excluído.`);onRefresh()}
   }
   async function saveConvenio(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setBusy("convenio");setMessage("");
@@ -737,17 +763,8 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
   return <div className="clinicalMain adminMain">
     <section><h1>Administração</h1><p>Gerencie usuários, permissões profissionais e acompanhe ações importantes do sistema.</p></section>
     {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"}>{message}</p>}
-    <InvitePanel perfil={perfil} organizacao={organizacao}/>
+    <InvitePanel perfil={perfil} organizacao={organizacao} onRefresh={onRefresh}/>
     <section className="metricGrid adminMetrics"><Metric value={perfis.filter(item=>item.status==="ativo").length} label="Usuários ativos" tone="green"/><Metric value={perfis.filter(item=>item.role==="medico").length} label="Médicos" tone="blue"/><Metric value={perfis.filter(item=>item.status==="inativo").length} label="Acessos inativos" tone="red"/><Metric value={auditoria.length} label="Eventos recentes" tone="amber"/></section>
-    <section className="clinicalPanel adminInvite">
-      <div className="panelTitle"><strong>Adicionar novo acesso</strong><span>O usuário receberá um e-mail para criar a própria senha.</span></div>
-      <form onSubmit={invite}>
-        <label><span>Nome completo</span><input name="nome" required/></label>
-        <label><span>E-mail</span><input name="email" type="email" required/></label>
-        <label><span>Área de acesso</span><select name="role" defaultValue="recepcao"><option value="recepcao">Recepção</option><option value="medico">Médico</option><option value="financeiro">Financeiro</option><option value="admin">Administrador</option></select></label>
-        <button className="primaryClinical compact" disabled={busy==="invite"}>{busy==="invite"?"Enviando...":"Enviar convite"}</button>
-      </form>
-    </section>
     <section className="clinicalPanel adminUsers">
       <div className="panelTitle"><strong>Usuários e permissões</strong><span>Alterações ficam registradas na auditoria.</span></div>
       {perfis.map(source=>{
@@ -761,6 +778,9 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
           <label><span>CRM / UF</span><input value={item.crm||""} onChange={e=>setItem({crm:e.target.value})} placeholder="Somente médico"/></label>
           <label><span>RQE</span><input value={item.rqe||""} onChange={e=>setItem({rqe:e.target.value})} placeholder="Opcional"/></label>
           <button className="outlineClinical" disabled={busy===item.id} onClick={()=>saveProfile(item)}>{busy===item.id?"Salvando...":"Salvar"}</button>
+          {source.id!==perfil.id&&source.role!=="owner"&&
+            <button className="outlineClinical dangerAction" disabled={busy===item.id} onClick={()=>removeUser(source)}
+              title="Só funciona para quem ainda não registrou nada. Para os demais, use Status: Inativo.">Excluir</button>}
         </div>;
       })}
     </section>

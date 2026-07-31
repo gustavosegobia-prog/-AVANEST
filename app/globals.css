@@ -414,3 +414,10 @@ button:disabled{cursor:not-allowed}
 .orgBadge strong{font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
 .orgBadge small{font-size:12px;color:#60758b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
 @media(max-width:900px){.orgBadge{display:none}.avnOnboardingCard{max-width:none}}
+
+/* Convite: escolha entre enviar por e-mail ou gerar link copiável. */
+.inviteModeSwitch{display:flex;gap:8px;padding:0 25px 4px}
+.inviteModeSwitch button{border:1px solid #d3dee7;background:#f4f7fa;color:#3d5265;border-radius:9px;padding:8px 15px;font-weight:700;font-size:13px;cursor:pointer}
+.inviteModeSwitch button.active{border-color:#176bb5;background:#e3effa;color:#075daa}
+.adminUserRow .dangerAction{border-color:#e0b4b4;color:#a12c2c}
+.adminUserRow .dangerAction:hover:not(:disabled){background:#fdeaea}
