@@ -767,3 +767,39 @@ button:disabled{cursor:not-allowed}
 /* O corpo do modal nao pode empurrar largura: campo longo quebra dentro. */
 .patientModalCorpo,.patientFormGrid,.clinicalField{min-width:0;max-width:100%}
 .patientModal{overflow-x:hidden}
+
+/* ============================================================================
+   Administração: lista de usuários consultável
+   ----------------------------------------------------------------------------
+   Antes cada usuário era um formulário aberto com seis campos. Com nove
+   pessoas isso vira uma parede de caixas e a lista deixa de responder a
+   pergunta mais comum: quem tem acesso a que.
+   ========================================================================== */
+.adminFiltros{display:flex;gap:var(--esp-3);align-items:flex-end;padding:var(--esp-3) var(--esp-5);border-bottom:1px solid var(--cor-borda);flex-wrap:wrap}
+.adminBusca{flex:1;min-width:220px;height:var(--alt-botao-compacto);border:1px solid var(--cor-borda-forte);border-radius:var(--raio-1);background:var(--cor-superficie);padding:0 var(--esp-3);font:inherit;font-size:13.5px}
+.adminFiltros label{display:flex;flex-direction:column;gap:var(--esp-1)}
+.adminFiltros label span{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.adminFiltros select{height:var(--alt-botao-compacto);border:1px solid var(--cor-borda-forte);border-radius:var(--raio-1);background:var(--cor-superficie);padding:0 var(--esp-2);font:inherit;font-size:13.5px}
+
+.adminUserItem{border-bottom:1px solid var(--cor-borda)}
+.adminUserItem:last-child{border-bottom:0}
+.adminUserItem.expandido{background:var(--cor-fundo)}
+.adminUserResumo{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5)}
+.adminUserIdent{min-width:0}
+.adminUserIdent strong{display:block;font-size:14.5px}
+.adminUserIdent small{display:block;color:var(--cor-tinta-fraca);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adminUserEdicao{padding:0 var(--esp-5) var(--esp-5)}
+.adminUserCampos{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--esp-3)}
+.adminUserAcoes{display:flex;justify-content:flex-end;margin-top:var(--esp-4)}
+
+/* Zona de perigo: separada, explicada e nunca preenchida. */
+.adminZonaPerigo{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-4);margin-top:var(--esp-4);padding:var(--esp-3) var(--esp-4);border:1px solid var(--cor-perigo);border-radius:var(--raio-1);background:var(--cor-perigo-suave)}
+.adminZonaPerigo strong{display:block;font-size:13.5px;color:var(--cor-perigo-forte)}
+.adminZonaPerigo small{display:block;margin-top:2px;font-size:12px;color:var(--cor-tinta-fraca);max-width:62ch}
+
+@media(max-width:900px){
+  .adminUserResumo{grid-template-columns:40px minmax(0,1fr) auto;row-gap:var(--esp-2)}
+  .adminUserResumo .statusChip{grid-column:2}
+  .adminUserCampos{grid-template-columns:1fr}
+  .adminZonaPerigo{flex-direction:column;align-items:stretch}
+}
