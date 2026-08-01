@@ -652,13 +652,11 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
   const medicationOrientations=medications
     .filter(item=>MEDICATION_ORIENTATION_ACTIONS.includes(item.conduta))
     .map(item=>`- ${item.nome}: ${item.orientacaoEditada===true?item.orientacao.trim():""}`);
-  const automaticPlan=[
-    `JEJUM: sólidos — ${String(draft.jejum_solidos||"a definir")}; líquidos claros — ${String(draft.jejum_liquidos||"a definir")}.`,
-    `PLANO ANESTÉSICO: ${String(draft.tecnica||"a definir")}.`,
-    medicationOrientations.length
-      ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${medicationOrientations.join("\n")}`
-      :"",
-  ].filter(Boolean).join("\n");
+  // Jejum e técnica anestésica já saem no bloco de planejamento da ficha; repetir
+  // aqui só consumia papel. Restam as orientações de medicamentos.
+  const automaticPlan=medicationOrientations.length
+    ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${medicationOrientations.join("\n")}`
+    :"";
   const planManuallyEdited=draft.plano_anestesico_editado===true;
   useEffect(()=>{
     // Enquanto o texto não for reescrito à mão, ele acompanha jejum, técnica e

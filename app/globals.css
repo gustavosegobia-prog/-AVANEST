@@ -354,31 +354,31 @@ button:disabled{cursor:not-allowed}
 .assessmentPaper .assessmentHeader strong{font-size:17px}
 .assessmentPaper .assessmentHeader{padding-bottom:5px!important;margin-bottom:5px!important}
 .assessmentPaper .paperAllergy{padding:5px 8px;margin-bottom:4px;font-size:14.5px}
-.assessmentPaper .paperTitle{font-size:12.5px;padding:3px 7px;margin-top:3px}
+.assessmentPaper .paperTitle{font-size:12px;padding:2px 7px;margin-top:2px}
 .assessmentPaper .paperTitle:first-of-type{margin-top:2px}
-.assessmentPaper .paperExam{grid-template-columns:repeat(4,1fr);gap:4px 18px;padding:5px 9px}
+.assessmentPaper .paperExam{grid-template-columns:repeat(4,1fr);gap:3px 18px;padding:4px 9px}
 .assessmentPaper .paperExamWide{grid-column:span 2}
 .assessmentPaper .paperExamFull{grid-column:1/-1}
 .assessmentPaper .paperExam span{break-inside:avoid}
 /* Identificação: nome ocupa duas colunas e o restante preenche a largura útil. */
-.assessmentPaper .paperIdentification{grid-template-columns:repeat(6,1fr);border:1px solid #222;padding:6px 9px;margin-bottom:2px}
+.assessmentPaper .paperIdentification{grid-template-columns:repeat(6,1fr);border:1px solid #222;padding:4px 8px;margin-bottom:1px}
 .assessmentPaper .paperIdentification .paperExamWide{grid-column:span 2}
 .assessmentPaper .paperTable{font-size:12.6px;line-height:1.28}
-.assessmentPaper .paperTable th,.assessmentPaper .paperTable td{padding:2px 6px}
+.assessmentPaper .paperTable th,.assessmentPaper .paperTable td{padding:1px 6px}
 .assessmentPaper .paperTable th:nth-last-child(-n+3),.assessmentPaper .paperTable td:nth-last-child(-n+3){width:38px}
 .assessmentPaper .medicationPrintTable td{height:auto}
-.assessmentPaper .paperScores{grid-template-columns:repeat(5,1fr);gap:7px;padding:6px 9px}
-.assessmentPaper .paperScores span{min-height:0;padding:5px 7px}
-.assessmentPaper .paperScores small{font-size:10px}
-.assessmentPaper .paperScores b{font-size:13.5px}
+.assessmentPaper .paperScores{grid-template-columns:repeat(5,1fr);gap:4px;padding:4px 8px}
+.assessmentPaper .paperScores span{min-height:0;padding:3px 6px;gap:0}
+.assessmentPaper .paperScores small{font-size:9px;line-height:1.15}
+.assessmentPaper .paperScores b{font-size:12.5px;line-height:1.15}
 .assessmentPaper .labPrintGrid{grid-template-columns:repeat(4,1fr)}
 /* Medicamentos em uso: texto corrido separado por barra, sem conduta e sem
    grade — ocupa o mínimo de papel. A conduta dos suspensos/individualizados é
    escrita no bloco de observações. */
-.assessmentPaper .paperMedicationList{margin:0;padding:5px 9px}
-.assessmentPaper .paperObservations{font-size:13.6px;line-height:1.36;min-height:0;padding:7px 9px;margin-top:5px}
+.assessmentPaper .paperMedicationList{margin:0;padding:4px 9px}
+.assessmentPaper .paperObservations{font-size:13.6px;line-height:1.34;min-height:0;padding:5px 9px;margin-top:3px}
 .assessmentPaper .paperEmpty{margin:7px 9px}
-.assessmentPaper .paperSignature{margin-top:9px;padding-top:6px}
+.assessmentPaper .paperSignature{margin-top:7px;padding-top:5px}
 @media print{
   /* Mantém o layout em coluna flex também na impressão: em display:block os nós
      de texto entre os blocos viram linhas vazias e desperdiçam ~18px por bloco. */
@@ -421,3 +421,26 @@ button:disabled{cursor:not-allowed}
 .inviteModeSwitch button.active{border-color:#176bb5;background:#e3effa;color:#075daa}
 .adminUserRow .dangerAction{border-color:#e0b4b4;color:#a12c2c}
 .adminUserRow .dangerAction:hover:not(:disabled){background:#fdeaea}
+
+/* Cadastro público e envio do convite por WhatsApp. */
+.avnSignUpHint{margin:14px 0 0;text-align:center;font-size:14px;color:#5b6b7c}
+.avnSignUpHint a{color:#0879c9;font-weight:700}
+.convenioRow .whatsappAction{border-color:#7cd3a0;color:#12805a}
+.convenioRow .whatsappAction:hover:not(:disabled){background:#e8f8f0}
+
+/* Assinatura e administração da plataforma. */
+.avnPlanoResumo{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0 14px}
+.avnPlanoResumo div{border:1px solid #d3dee7;border-radius:12px;padding:12px 14px;background:#f7fafc}
+.avnPlanoResumo div.destaque{border-color:#176bb5;background:#e9f2fb}
+.avnPlanoResumo small{display:block;font-size:10px;font-weight:800;letter-spacing:.05em;color:#60758b;margin-bottom:4px}
+.avnPlanoResumo strong{font-size:22px;color:#14283a}
+.avnPlanoResumo strong span{font-size:12px;font-weight:600;color:#60758b}
+.superAdminLink{display:inline-flex;align-items:center;padding:0 13px;border-radius:9px;background:#3b1d63;color:#fff!important;font-weight:800;text-decoration:none}
+.assinaturaLink{display:inline-flex;align-items:center;padding:0 13px;border-radius:9px;border:1px solid #d2dde6;color:#34506b!important;font-weight:700;text-decoration:none}
+.orgRow{display:grid;grid-template-columns:minmax(0,1fr) 190px 130px 190px;align-items:center;gap:14px;padding:14px 25px;border-top:1px solid #e6edf3}
+.orgRow.vencida{background:#fff6f6}
+.orgRowNome strong{display:block}
+.orgRow small{display:block;color:#60758b;font-size:12px;margin-top:3px}
+.orgRowValor{text-align:right}
+.orgRowAcao{border:1px solid #d2dde6;border-radius:9px;padding:9px 11px;background:#fff;font-size:13px}
+@media(max-width:900px){.orgRow{grid-template-columns:1fr 1fr;padding:14px}.orgRowNome{grid-column:1/-1}.orgRowValor{text-align:left}.superAdminLink,.assinaturaLink{display:none}}

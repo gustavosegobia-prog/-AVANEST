@@ -14,7 +14,7 @@ export default async function DashboardPage({
 
   const { data: perfil } = await supabase
     .from("perfis")
-    .select("id, institution_id, nome, role, permissoes, status, must_reset")
+    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin")
     .eq("id", user.id)
     .maybeSingle();
   // Conta criada mas ainda sem organização: conclui o cadastro antes de entrar.
@@ -26,6 +26,12 @@ export default async function DashboardPage({
     .select("nome, tipo")
     .eq("id", perfil.institution_id)
     .maybeSingle();
+
+  // Trava comercial: assinatura vencida ou suspensa impede o uso do sistema.
+  // O isolamento entre organizações continua a cargo do RLS.
+  const { data: assinaturaData } = await supabase.rpc("minha_assinatura");
+  const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
+  if (assinatura && assinatura.liberada === false) redirect("/assinatura");
 
   const permissionOrder: DashboardView[] = ["recepcao", "medico", "financeiro", "admin"];
   const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];

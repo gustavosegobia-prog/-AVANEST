@@ -17,7 +17,7 @@ export const CONVENIOS = [
   "SulAmérica","Amil","CASSI","SANEPAR","COPEL",
 ];
 
-type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean };
+type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean };
 type Organizacao = { nome: string; tipo?: string | null };
 type Convite = { id:string; email:string; role:string; token:string; status:string; expires_at:string; created_at:string };
 type Paciente = {
@@ -362,6 +362,8 @@ export function DashboardClient({
           {allowedViews.includes("medico")&&<button disabled={isAreaPending} className={view === "medico" ? "active" : ""} onClick={() => changeView("medico")}>Médico</button>}
           {allowedViews.includes("financeiro")&&<button disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} onClick={() => changeView("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button disabled={isAreaPending} className={view === "admin" ? "active" : ""} onClick={() => changeView("admin")}>Admin</button>}
+          {["owner","admin"].includes(perfil.role)&&<Link className="assinaturaLink" href="/assinatura">Assinatura</Link>}
+          {perfil.super_admin===true&&<Link className="superAdminLink" href="/organizacoes">★ Organizações</Link>}
           <button onClick={logout}>🔒 Bloquear</button><button onClick={logout}>Sair</button>
         </nav>
       </header>
@@ -662,6 +664,20 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
     else carregar();
   }
 
+  // Abre o WhatsApp com a mensagem pronta; o contato é escolhido na hora.
+  function enviarWhatsApp(item:Convite){
+    const papel=ROLE_LABELS[item.role]??item.role;
+    const validade=new Date(item.expires_at).toLocaleDateString("pt-BR");
+    const mensagem=[
+      `Olá! Você foi convidado para o AVANEST — ${organizacao?.nome??"nossa organização"}, como ${papel}.`,
+      "",
+      `Acesse este link para criar seu acesso: ${linkDoConvite(item.token)}`,
+      "",
+      `O convite é válido até ${validade} e funciona apenas para o e-mail ${item.email}.`,
+    ].join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`,"_blank","noopener,noreferrer");
+  }
+
   async function copiar(token:string){
     try{
       await navigator.clipboard.writeText(linkDoConvite(token));
@@ -716,6 +732,7 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
             <strong>{item.email}</strong>
             <small>{ROLE_LABELS[item.role]??item.role} · {expirado(item)?"expirado":`válido até ${new Date(item.expires_at).toLocaleDateString("pt-BR")}`}</small>
           </span>
+          <button type="button" className="outlineClinical whatsappAction" onClick={()=>enviarWhatsApp(item)}>WhatsApp</button>
           <button type="button" className="outlineClinical" onClick={()=>copiar(item.token)}>
             {copiado===item.token?"Link copiado ✓":"Copiar link"}</button>
           <button type="button" className="outlineClinical" disabled={busy===item.id} onClick={()=>revogar(item.id)}>

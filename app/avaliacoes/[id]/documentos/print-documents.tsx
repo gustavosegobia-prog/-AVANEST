@@ -10,6 +10,7 @@ type Props={
   avaliacao:{id:string;institution_id:string;patient_id:string;status:string;versao:number;dados:Data|null;snapshot_conclusao:Data|null;created_at:string;updated_at:string;concluida_at:string|null};
   paciente:{id:string;nome:string;cpf:string|null;data_nascimento:string|null;sexo:string|null;telefone:string|null;email:string|null;hospital:string|null;cirurgia:string|null;procedimento:string|null;convenio:string|null};
   perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string;permissoes?:string[]|null};
+  organizacao:{nome:string;tipo:string|null;telefone:string|null}|null;
 };
 type Medication={id:string;nome:string;dose:string;frequencia:string;conduta:string;orientacao:string;reinicio?:string;fonte?:string;confirmada?:boolean;orientacaoEditada?:boolean};
 
@@ -74,7 +75,7 @@ const CONSENT_ITEMS=[
   "Reconheço que, durante o curso do ato anestésico, existem aspectos que não podem ser previamente identificados e, por isso, eventualmente necessitam procedimentos adicionais e diferentes dos inicialmente programados e combinados. Por isto estou ciente e autorizo o médico anestesiologista, bem como os seus assistentes ou os seus designados, a realizar qualquer técnica ou tratamento necessário para a condução do ato anestésico, incluindo, mas não limitando, procedimentos de remoção de urgência e terapia intensiva em outras instituições.",
   "Entendo que o médico anestesiologista e toda a sua equipe se obrigam unicamente a usar todos os meios científicos à sua disposição para tentar, com sua arte, atingir um fim desejado, porém não certo. Assim, por estar consciente que a medicina não é uma ciência exata e que é impossível prever-se resultados em quaisquer práticas anestésicas, aceito o fato de que não me podem ser dadas garantias de resultado nos procedimentos anestesiológicos propostos.",
   "Compreendo que no dia da cirurgia pode ser outro médico anestesista que vai aplicar a anestesia, diferente do que me avaliou, por motivo de agendamento ou plantão definido por escala. Se for outro anestesista, estou ciente que ele lerá esta avaliação e seguirá os preceitos éticos e profissionais para segurança anestésica.",
-  "Se minha cirurgia for realizada no Hospital Santa Casa de Campo Mourão, aceito o fato de estar recebendo meu tratamento num Hospital Escola e que pode haver contato com Médicos Residentes em Especialização auxiliando no meu tratamento, sempre sob supervisão do Médico Anestesiologista Assistente.",
+  "Se minha cirurgia for realizada em Hospital Escola, aceito o fato de que pode haver contato com Médicos Residentes em Especialização auxiliando no meu tratamento, sempre sob supervisão do Médico Anestesiologista Assistente.",
   "Concordo em cooperar com os médicos responsáveis pelo meu tratamento até o meu restabelecimento completo, aceitando e observando as determinações que me forem recomendadas, oral e/ou por escrito, pois assim não o fazendo poderei provocar a frustração dos fins desejados, pôr em perigo a minha saúde ou meu bem-estar, ou ocasionar sequelas temporárias ou permanentes.",
   "Autorizo o registro (em prontuário médico e/ou computador e/ou som, etc.) dos procedimentos necessários para a realização da anestesia proposta, sendo que todas as informações serão mantidas em estrito sigilo e divulgadas apenas àquelas que necessitam ou têm direito legal às mesmas.",
 ];
@@ -88,8 +89,16 @@ const CONSENT_RISKS=[
   "Transtornos de comportamento afetivo e de memória, na forma de ansiedade e, apesar de raro, quadros psicológicos mais complexos.",
 ];
 
-export function PrintDocuments({avaliacao,paciente,perfil}:Props){
+export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   const dados=avaliacao.snapshot_conclusao||avaliacao.dados||{};
+  // O papel que chega na mão do paciente leva o nome de quem atende, não o da
+  // plataforma. Para o anestesiologista sozinho, o nome da organização é
+  // "Fulano — Individual"; o sufixo é controle interno e não vai para o papel.
+  const clinica=organizacao
+    ?(organizacao.tipo==="individual"
+      ?organizacao.nome.replace(/\s*[—-]\s*Individual$/i,"").trim()
+      :organizacao.nome).trim()
+    :"";
   const assignedPermissions=Array.isArray(perfil.permissoes)?perfil.permissoes:[];
   const hasLegacyFullAccess=["admin","owner"].includes(perfil.role)||assignedPermissions.includes("todos");
   const canManage=hasLegacyFullAccess||perfil.role==="admin"||assignedPermissions.includes("admin");
@@ -216,7 +225,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
       <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}?editar=1`}>← Voltar e corrigir avaliação</a></div></div>
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>
       <div className="documentsLayout"><div className="paperStack">
-        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span><b>AVANEST</b> · Avaliação Pré-Anestésica</span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
+        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span><b>{clinica||"Avaliação Pré-Anestésica"}</b></span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
           <FactGrid className="paperIdentification" items={facts([
             ["Nome",paciente.nome,"wide"],["Idade",age!==null?`${age} anos`:""],["Sexo",paciente.sexo],
             ["Peso",weight?`${weight} kg`:""],["Altura",height?`${height} cm`:""],["IMC",imc?imc.toFixed(1):""],
@@ -268,9 +277,9 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
           ])}/>
           {hasText(printablePlan)&&<p className="paperObservations">{text(printablePlan)}</p>}<PaperSignature dados={dados} perfil={perfil}/></article>
 
-        <article className={`printPaper consentPaper officialConsent ${selected.consent?"":"notSelected"}`}><header><span>INOVANEST — SERVIÇO DE ANESTESIOLOGIA DE CAMPO MOURÃO</span></header><h2>TERMO DE CONSENTIMENTO ANESTÉSICO</h2><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
+        <article className={`printPaper consentPaper officialConsent ${selected.consent?"":"notSelected"}`}><header><span>{(clinica||"SERVIÇO DE ANESTESIOLOGIA").toUpperCase()}</span></header><h2>TERMO DE CONSENTIMENTO ANESTÉSICO</h2><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
           <p><b>1.</b> Por determinação explícita de minha vontade e em consideração ao meu interesse pessoal eu: <b>{paciente.nome}</b></p>
-          <p>Por este termo autorizo os anestesistas da equipe de anestesiologia INOVANEST que atuam com serviço de anestesia nos Hospitais de Campo Mourão a realizar os procedimentos anestésicos necessários para a realização da cirurgia à qual, no momento, me proponho a realizar.</p>
+          <p>Por este termo autorizo {clinica?<b>{clinica}</b>:"o serviço de anestesiologia responsável pelo meu atendimento"} e os médicos anestesiologistas de sua equipe a realizar os procedimentos anestésicos necessários para a realização da cirurgia à qual, no momento, me proponho a realizar{hasText(paciente.hospital)?<>, no <b>{text(paciente.hospital)}</b></>:null}.</p>
           <ol start={2}>{CONSENT_ITEMS.slice(0,2).map(item=><li key={item}>{item}</li>)}</ol>
           <p><b>4. Os seguintes pontos me foram esclarecidos:</b></p><ul>{CONSENT_RISKS.map(item=><li key={item}>{item}</li>)}</ul>
           <ol start={5}>{CONSENT_ITEMS.slice(2).map(item=><li key={item}>{item}</li>)}</ol>
@@ -278,7 +287,7 @@ export function PrintDocuments({avaliacao,paciente,perfil}:Props){
           <div className="consentSignatures"><span>PACIENTE: ___________________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span><span>TESTEMUNHA: _______________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span></div>
         </article>
 
-        <article className={`printPaper guidancePaper ${selected.guidance?"":"notSelected"}`}><header><span>AVANEST — Orientações ao paciente</span></header><h2>Orientações Pré-Anestésicas</h2><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{objectiveMedicationGuidance(m)||"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}
+        <article className={`printPaper guidancePaper ${selected.guidance?"":"notSelected"}`}><header><span>{clinica||"Orientações ao paciente"}</span></header><h2>Orientações Pré-Anestésicas</h2><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{objectiveMedicationGuidance(m)||"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}
           <PaperBlock title="PLANEJAMENTO" items={facts([
             ["Tipo de anestesia prevista",dados.tecnica,"wide"],
             ["Jejum — sólidos",dados.jejum_solidos],["Jejum — líquidos claros",dados.jejum_liquidos],

@@ -14,5 +14,8 @@ export default async function DocumentsPage({params}:{params:Promise<{id:string}
   if(!avaliacao)notFound();
   const {data:paciente}=await supabase.from("pacientes").select("*").eq("id",avaliacao.patient_id).single();
   if(!paciente||!perfil)notFound();
-  return <PrintDocuments avaliacao={avaliacao} paciente={paciente} perfil={perfil}/>;
+  // O papel impresso leva o nome de quem atende, não o da plataforma.
+  const {data:organizacao}=await supabase.from("instituicoes")
+    .select("nome,tipo,telefone").eq("id",avaliacao.institution_id).maybeSingle();
+  return <PrintDocuments avaliacao={avaliacao} paciente={paciente} perfil={perfil} organizacao={organizacao??null}/>;
 }
