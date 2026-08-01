@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { LoginForm } from "./login-form";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
@@ -29,7 +30,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h1>Entrar no AVANEST</h1>
           <p>Acesso individual, definido pela sua conta.</p>
           <LoginForm passwordChanged={query.senha === "alterada"} convite={query.convite ?? ""} />
-          <a className="avnLoginCancel" href="/">Cancelar</a>
+          <Link className="avnLoginCancel" href="/">Cancelar</Link>
         </div>
       </section>
     </main>

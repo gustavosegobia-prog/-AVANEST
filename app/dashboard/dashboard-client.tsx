@@ -111,6 +111,7 @@ export function DashboardClient({
   const [historyFrom, setHistoryFrom] = useState("");
   const [historyTo, setHistoryTo] = useState("");
   const [dark, setDark] = useState(false);
+  const [userMenu, setUserMenu] = useState(false);
   const [busy, setBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState("");
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
@@ -352,20 +353,55 @@ export function DashboardClient({
     <main className={`clinicalShell ${dark?"clinicalDark":""}`}>
       <header className="clinicalTopbar">
         <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
-        <div className="orgBadge" title="Sua organização">
+        <div className="orgBadge" title={organizacao?.nome ?? "Organização"}>
           <strong>{organizacao?.nome ?? "Organização"}</strong>
-          <small>{perfil.nome} · {ROLE_LABELS[perfil.role] ?? perfil.role}</small>
         </div>
+        {/* Só os módulos de trabalho ficam na barra. Tema, assinatura, bloqueio
+            e saída são utilidades: foram para o menu do usuário, senão nove
+            controles disputam a mesma faixa e nenhum se destaca. */}
         <nav className="roleNav" aria-label="Áreas do sistema">
-          <button className="themePill" onClick={()=>setDark(value=>!value)} aria-pressed={dark}>◐ {dark?"Claro":"Escuro"}</button>
-          {allowedViews.includes("recepcao")&&<button disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} onClick={() => changeView("recepcao")}>Recepção</button>}
-          {allowedViews.includes("medico")&&<button disabled={isAreaPending} className={view === "medico" ? "active" : ""} onClick={() => changeView("medico")}>Médico</button>}
-          {allowedViews.includes("financeiro")&&<button disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} onClick={() => changeView("financeiro")}>Financeiro</button>}
-          {allowedViews.includes("admin")&&<button disabled={isAreaPending} className={view === "admin" ? "active" : ""} onClick={() => changeView("admin")}>Admin</button>}
-          {["owner","admin"].includes(perfil.role)&&<Link className="assinaturaLink" href="/assinatura">Assinatura</Link>}
-          {perfil.super_admin===true&&<Link className="superAdminLink" href="/organizacoes">★ Organizações</Link>}
-          <button onClick={logout}>🔒 Bloquear</button><button onClick={logout}>Sair</button>
+          {allowedViews.includes("recepcao")&&<button disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
+          {allowedViews.includes("medico")&&<button disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
+          {allowedViews.includes("financeiro")&&<button disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
+          {allowedViews.includes("admin")&&<button disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
         </nav>
+        <div className="userMenuWrap">
+          <button
+            className="userMenuTrigger"
+            onClick={()=>setUserMenu(open=>!open)}
+            aria-expanded={userMenu}
+            aria-haspopup="menu"
+          >
+            <span className="userMenuAvatar" aria-hidden="true">{initials(perfil.nome)}</span>
+            <span className="userMenuNome">
+              <strong>{perfil.nome}</strong>
+              <small>{ROLE_LABELS[perfil.role] ?? perfil.role}</small>
+            </span>
+            <span className="userMenuSeta" aria-hidden="true">▾</span>
+          </button>
+          {userMenu&&<>
+            {/* Clique fora fecha o menu sem precisar de listener global. */}
+            <button className="userMenuFundo" aria-label="Fechar menu" onClick={()=>setUserMenu(false)}/>
+            <div className="userMenuLista" role="menu">
+              {/* menuitemcheckbox, nao menuitem: o item liga e desliga um estado
+                  e o leitor de tela precisa anunciar qual e o atual. */}
+              <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{setDark(value=>!value);setUserMenu(false)}}>
+                <span aria-hidden="true">◐</span> {dark?"Tema claro":"Tema escuro"}
+              </button>
+              {["owner","admin"].includes(perfil.role)&&
+                <Link role="menuitem" href="/assinatura" onClick={()=>setUserMenu(false)}>
+                  <span aria-hidden="true">◈</span> Assinatura
+                </Link>}
+              {perfil.super_admin===true&&
+                <Link role="menuitem" href="/organizacoes" onClick={()=>setUserMenu(false)}>
+                  <span aria-hidden="true">★</span> Organizações
+                </Link>}
+              <hr/>
+              <button role="menuitem" onClick={logout}><span aria-hidden="true">🔒</span> Bloquear tela</button>
+              <button role="menuitem" className="userMenuSair" onClick={logout}>Sair da conta</button>
+            </div>
+          </>}
+        </div>
       </header>
 
       {view === "medico" ? (
@@ -813,7 +849,12 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
   </div>;
 }
 
-function Metric({ value, label, tone }: { value: number; label: string; tone: string }) { return <div className="metricCard"><strong className={tone}>{value}</strong><span>{label}</span></div>; }
+// Zero de coisa ruim e boa noticia: nao pinta de vermelho nem de ambar. A cor
+// aqui e para comunicar, nao para enfeitar o numero.
+function Metric({ value, label, tone }: { value: number; label: string; tone: string }) {
+  const tomReal = value === 0 && ["red", "amber"].includes(tone) ? "" : tone;
+  return <div className="metricCard"><strong className={tomReal}>{value.toLocaleString("pt-BR")}</strong><span>{label}</span></div>;
+}
 function MoneyMetric({value,label,tone}:{value:number;label:string;tone:string}){return <div className="metricCard"><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
 function MoneySmall({value,label,tone=""}:{value:number;label:string;tone?:string}){return <div><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
 function Alert({ icon, title, text, action, danger=false, onClick }: { icon:string; title:string; text:string; action:string; danger?:boolean; onClick?:()=>void }) { return <button type="button" className="alertItem" onClick={onClick} disabled={!onClick}><i className={danger?"danger":""}>{icon}</i><span><strong>{title}</strong> — {text}</span><b className={danger?"dangerText":""}>{action}</b></button>; }
