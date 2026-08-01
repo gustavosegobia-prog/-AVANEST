@@ -737,3 +737,29 @@ button:disabled{cursor:not-allowed}
   .evalSteps button{flex:none}
   .evalSave{font-size:12px}
 }
+
+/* ============================================================================
+   Modal de cadastro: grupos com titulo
+   ----------------------------------------------------------------------------
+   Antes eram dezoito campos num bloco unico, precedidos por uma faixa que
+   listava todos os convenios como texto corrido. A faixa saiu: o seletor de
+   convenio ja diz quais existem.
+   ========================================================================== */
+.patientModalCorpo{overflow:auto;padding:var(--esp-2) var(--esp-6) 0;display:flex;flex-direction:column;gap:var(--esp-4)}
+.patientModalHead h2{margin:0;font-size:19px}
+.patientModalHead p{margin:var(--esp-1) 0 0;font-size:13px;color:var(--cor-tinta-fraca)}
+.patientModalHead>button{width:34px;height:34px;flex:none;border-radius:var(--raio-1);border:1px solid var(--cor-borda);background:var(--cor-superficie);font-size:20px;line-height:1;color:var(--cor-tinta-fraca);cursor:pointer}
+.patientModalHead>button:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+
+.modalGrupo{border:0;border-top:1px solid var(--cor-borda);margin:0;padding:var(--esp-4) 0 0;min-width:0}
+.modalGrupo:first-child{border-top:0;padding-top:var(--esp-2)}
+.modalGrupo legend{padding:0;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cor-marca-forte)}
+.modalGrupo .patientFormGrid{margin-top:var(--esp-3)}
+.modalGrupoAjuda{margin:var(--esp-2) 0 0;font-size:12.5px;color:var(--cor-tinta-fraca)}
+/* Campo somente leitura: parece informacao, nao campo desabilitado. */
+.modalCampoLeitura{margin:0;min-height:var(--alt-campo);display:flex;align-items:center;padding:0 var(--esp-3);border:1px dashed var(--cor-borda-forte);border-radius:var(--raio-1);background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);font-size:13px}
+
+/* O erro fica junto das acoes, onde o olho ja esta ao tentar salvar. */
+.modalErro{flex:1;margin:0;font-size:13px}
+.modalActions{display:flex;align-items:center;gap:var(--esp-3);justify-content:flex-end}
+.modalActions .saveStatus{margin-right:auto;font-size:13px;color:var(--cor-tinta-fraca)}
