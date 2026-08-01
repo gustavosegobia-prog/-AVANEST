@@ -226,7 +226,22 @@ export function DashboardClient({
       setBusy(false);
       return;
     }
-    const automaticTime=nextAutomaticAppointmentTime(appointmentDate,appointmentsForDate??[]);
+    // Horário em branco = próximo livre da agenda. Preenchido, respeita o que a
+    // recepção marcou — é comum o paciente já chegar com hora combinada.
+    const horarioEscolhido=String(text("horario")??"").trim();
+    const automaticTime=horarioEscolhido
+      ? `${horarioEscolhido}:00`.slice(0,8)
+      : nextAutomaticAppointmentTime(appointmentDate,appointmentsForDate??[]);
+    if(horarioEscolhido){
+      const jaOcupado=(appointmentsForDate??[]).some(item=>
+        !["cancelado","reagendado"].includes(item.status)&&
+        String(item.horario??"").slice(0,5)===horarioEscolhido);
+      if(jaOcupado){
+        setError(`Já existe uma consulta às ${horarioEscolhido} nesta data. Escolha outro horário ou deixe em branco para o próximo livre.`);
+        setBusy(false);
+        return;
+      }
+    }
     const patientPayload = {
       institution_id: perfil.institution_id, created_by: perfil.id,
       nome: patientName, cpf: cpfDigits, rg: text("rg"), data_nascimento: birthDate,
@@ -617,7 +632,52 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>📦 Lotes de cobrança</strong><span>agrupamento por convênio/hospital, sem dados clínicos</span></div>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</section>
 
-    <section className="clinicalPanel"><div className="panelTitle"><strong>💳 Recebimentos</strong><span>PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo</span></div>{financeiro.map(item=>{const patient=patientMap.get(item.patient_id);const balance=Math.max(0,Number(item.valor)-Number(item.recebido));return <div className="paymentRow" id={`recebimento-${item.id}`} key={item.id}><span><strong>{patient?.nome||"Paciente"} ({item.convenio})</strong><small>Valor {money(item.valor)} · recebido {money(item.recebido)} · saldo {money(balance)}</small></span><input value={values[item.id]||""} onChange={e=>setValues(v=>({...v,[item.id]:e.target.value}))} placeholder="Valor R$"/><select value={methods[item.id]||"PIX"} onChange={e=>setMethods(v=>({...v,[item.id]:e.target.value}))}><option>PIX</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select><button className="paymentButton" disabled={busy===item.id||balance<=0} onClick={()=>registerPayment(item)}>Registrar pagamento</button></div>})}{financeiro.length===0&&<div className="emptyClinical compactEmpty">Crie um lançamento para registrar recebimentos.</div>}</section>
+    <section className="clinicalPanel"><div className="panelTitle"><strong>Recebimentos</strong><span>PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo</span></div>
+      {financeiro.map(item=>{
+        const patient=patientMap.get(item.patient_id);
+        const balance=Math.max(0,Number(item.valor)-Number(item.recebido));
+        const quitado=balance<=0;
+        const parcial=!quitado&&Number(item.recebido)>0;
+        const digitado=parseMoney(values[item.id]||"");
+        // O botão só habilita quando o valor digitado é aceitável — antes ele
+        // ficava aceso e só reclamava depois do clique.
+        const valorValido=Number.isFinite(digitado)&&digitado>0&&digitado<=balance;
+        return <div className="paymentRow" id={`recebimento-${item.id}`} key={item.id}>
+          <span className="paymentQuem">
+            <strong>{patient?.nome||"Paciente"}</strong>
+            <small>{item.convenio}{item.hospital?` · ${item.hospital}`:""}</small>
+          </span>
+          <span className="paymentValores">
+            <b>{money(item.valor)}</b>
+            <small>recebido {money(item.recebido)}</small>
+          </span>
+          <span className="paymentSaldo">
+            <b className={quitado?"green":""}>{quitado?"quitado":money(balance)}</b>
+            {!quitado&&<small>em aberto</small>}
+          </span>
+          <span className={`statusChip ${quitado?"present":parcial?"waiting":"paused"}`}>{quitado?"Quitado":parcial?"Parcial":"A receber"}</span>
+          {quitado
+            ? <span className="paymentPago">Nada a registrar</span>
+            : <>
+                <input
+                  value={values[item.id]||""} onChange={e=>setValues(v=>({...v,[item.id]:e.target.value}))}
+                  placeholder="Valor R$" inputMode="decimal"
+                  aria-label={`Valor a registrar para ${patient?.nome||"paciente"}`}
+                />
+                <select value={methods[item.id]||"PIX"} onChange={e=>setMethods(v=>({...v,[item.id]:e.target.value}))} aria-label="Forma de pagamento">
+                  <option>PIX</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option>
+                </select>
+                <button className="paymentButton" disabled={busy===item.id||!valorValido} onClick={()=>registerPayment(item)}>
+                  {busy===item.id?"Registrando...":"Registrar"}
+                </button>
+              </>}
+        </div>;
+      })}
+      {financeiro.length===0&&<div className="emptyClinical">
+        <strong>Nenhum lançamento neste período.</strong>
+        Os lançamentos nascem das avaliações concluídas e faturadas. Fature um atendimento para que ele apareça aqui.
+      </div>}
+    </section>
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>🩺 Repasses aos anestesiologistas</strong><span>liberação após recebimento; valores visíveis conforme as permissões do perfil</span></div>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</section>
 
@@ -781,6 +841,12 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState("");
   const [editing,setEditing]=useState<Record<string,PerfilGerenciado>>(()=>Object.fromEntries(perfis.map(item=>[item.id,{...item}])));
+  // A edição abre sob demanda: com todas as linhas abertas, seis campos por
+  // usuário viram uma parede de caixas e a lista deixa de ser consultável.
+  const [aberto,setAberto]=useState("");
+  const [buscaUsuario,setBuscaUsuario]=useState("");
+  const [filtroPapel,setFiltroPapel]=useState("todos");
+  const [filtroStatus,setFiltroStatus]=useState("todos");
   const actorNames=new Map(perfis.map(item=>[item.id,item.nome]));
 
   async function saveProfile(item:PerfilGerenciado){
@@ -820,22 +886,77 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
     <section className="metricGrid adminMetrics"><Metric value={perfis.filter(item=>item.status==="ativo").length} label="Usuários ativos" tone="green"/><Metric value={perfis.filter(item=>item.role==="medico").length} label="Médicos" tone="blue"/><Metric value={perfis.filter(item=>item.status==="inativo").length} label="Acessos inativos" tone="red"/><Metric value={auditoria.length} label="Eventos recentes" tone="amber"/></section>
     <section className="clinicalPanel adminUsers">
       <div className="panelTitle"><strong>Usuários e permissões</strong><span>Alterações ficam registradas na auditoria.</span></div>
-      {perfis.map(source=>{
-        const item=editing[source.id]||source;
-        const setItem=(changes:Partial<PerfilGerenciado>)=>setEditing(state=>({...state,[source.id]:{...item,...changes}}));
-        return <div className="adminUserRow" key={source.id}>
-          <label><span>Nome</span><input value={item.nome} onChange={e=>setItem({nome:e.target.value})}/></label>
-          <label><span>E-mail</span><input value={item.email||""} readOnly/></label>
-          <label><span>Perfil</span><select value={item.role} disabled={source.role==="owner"&&perfil.role!=="owner"} onChange={e=>setItem({role:e.target.value})}><option value="recepcao">Recepção</option><option value="medico">Médico</option><option value="financeiro">Financeiro</option><option value="admin">Administrador</option>{perfil.role==="owner"&&<option value="owner">Proprietário</option>}</select></label>
-          <label><span>Status</span><select value={item.status} disabled={source.id===perfil.id} onChange={e=>setItem({status:e.target.value})}><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
-          <label><span>CRM / UF</span><input value={item.crm||""} onChange={e=>setItem({crm:e.target.value})} placeholder="Somente médico"/></label>
-          <label><span>RQE</span><input value={item.rqe||""} onChange={e=>setItem({rqe:e.target.value})} placeholder="Opcional"/></label>
-          <button className="outlineClinical" disabled={busy===item.id} onClick={()=>saveProfile(item)}>{busy===item.id?"Salvando...":"Salvar"}</button>
-          {source.id!==perfil.id&&source.role!=="owner"&&
-            <button className="outlineClinical dangerAction" disabled={busy===item.id} onClick={()=>removeUser(source)}
-              title="Só funciona para quem ainda não registrou nada. Para os demais, use Status: Inativo.">Excluir</button>}
+      <div className="adminFiltros">
+        <input
+          className="adminBusca" type="search" value={buscaUsuario}
+          onChange={e=>setBuscaUsuario(e.target.value)}
+          placeholder="Buscar por nome, e-mail ou CRM" aria-label="Buscar usuário"
+        />
+        <label><span>Perfil</span><select value={filtroPapel} onChange={e=>setFiltroPapel(e.target.value)}>
+          <option value="todos">Todos</option>
+          {Object.entries(ROLE_LABELS).map(([valor,rotulo])=><option key={valor} value={valor}>{rotulo}</option>)}
+        </select></label>
+        <label><span>Status</span><select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
+          <option value="todos">Todos</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option>
+        </select></label>
+      </div>
+      {(()=>{
+        const termo=buscaUsuario.trim().toLowerCase();
+        const lista=perfis.filter(item=>
+          (filtroPapel==="todos"||item.role===filtroPapel)&&
+          (filtroStatus==="todos"||item.status===filtroStatus)&&
+          (!termo||`${item.nome} ${item.email??""} ${item.crm??""}`.toLowerCase().includes(termo)));
+        if(!lista.length) return <div className="emptyClinical">
+          <strong>Nenhum usuário encontrado.</strong>
+          {perfis.length
+            ? <>Nenhum dos {perfis.length} usuários combina com a busca ou os filtros. Limpe os filtros para ver todos.</>
+            : <>Convide alguém da equipe pelo painel acima para começar.</>}
         </div>;
-      })}
+        return lista.map(source=>{
+          const item=editing[source.id]||source;
+          const setItem=(changes:Partial<PerfilGerenciado>)=>setEditing(state=>({...state,[source.id]:{...item,...changes}}));
+          const expandido=aberto===source.id;
+          const podeExcluir=source.id!==perfil.id&&source.role!=="owner";
+          return <div className={`adminUserItem ${expandido?"expandido":""}`.trim()} key={source.id}>
+            {/* Linha fechada: identidade e situação de relance. */}
+            <div className="adminUserResumo">
+              <span className="avatar" aria-hidden="true">{initials(source.nome)}</span>
+              <span className="adminUserIdent">
+                <strong>{source.nome}</strong>
+                <small>{source.email||"sem e-mail"}{source.crm?` · ${source.crm}`:""}</small>
+              </span>
+              <span className="statusChip paused">{ROLE_LABELS[source.role]??source.role}</span>
+              <span className={`statusChip ${source.status==="ativo"?"present":"waiting"}`}>{source.status==="ativo"?"Ativo":"Inativo"}</span>
+              <button
+                className="outlineClinical" aria-expanded={expandido}
+                onClick={()=>setAberto(atual=>atual===source.id?"":source.id)}
+              >{expandido?"Fechar":"Editar"}</button>
+            </div>
+            {expandido&&<div className="adminUserEdicao">
+              <div className="adminUserCampos">
+                <label className="clinicalField"><span>Nome</span><input value={item.nome} onChange={e=>setItem({nome:e.target.value})}/></label>
+                <label className="clinicalField"><span>E-mail</span><input value={item.email||""} readOnly/></label>
+                <label className="clinicalField"><span>Perfil</span><select value={item.role} disabled={source.role==="owner"&&perfil.role!=="owner"} onChange={e=>setItem({role:e.target.value})}><option value="recepcao">Recepção</option><option value="medico">Médico</option><option value="financeiro">Financeiro</option><option value="admin">Administrador</option>{perfil.role==="owner"&&<option value="owner">Proprietário</option>}</select></label>
+                <label className="clinicalField"><span>Status</span><select value={item.status} disabled={source.id===perfil.id} onChange={e=>setItem({status:e.target.value})}><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
+                <label className="clinicalField"><span>CRM / UF</span><input value={item.crm||""} onChange={e=>setItem({crm:e.target.value})} placeholder="Somente médico"/></label>
+                <label className="clinicalField"><span>RQE</span><input value={item.rqe||""} onChange={e=>setItem({rqe:e.target.value})} placeholder="Opcional"/></label>
+              </div>
+              <div className="adminUserAcoes">
+                <button className="primaryClinical compact" disabled={busy===item.id} onClick={()=>saveProfile(item)}>{busy===item.id?"Salvando...":"Salvar alterações"}</button>
+              </div>
+              {/* Excluir fica fora do fluxo, numa área separada e discreta: é
+                  irreversível e não deve competir com o botão de salvar. */}
+              {podeExcluir&&<div className="adminZonaPerigo">
+                <span>
+                  <strong>Excluir acesso</strong>
+                  <small>Só funciona para quem ainda não registrou nada no sistema. Para os demais, use Status: Inativo — o histórico clínico precisa continuar atribuído.</small>
+                </span>
+                <button className="outlineClinical red" disabled={busy===item.id} onClick={()=>removeUser(source)}>Excluir</button>
+              </div>}
+            </div>}
+          </div>;
+        });
+      })()}
     </section>
     <section className="clinicalPanel convenioAdmin">
       <div className="panelTitle"><strong>Gestão de valores por convênio</strong><span>Defina referência por procedimento e/ou hospital. O Financeiro sugere o valor ao criar o lançamento.</span></div>
@@ -923,10 +1044,8 @@ function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:
           <legend>Data e horário</legend>
           <div className="patientFormGrid">
             <Field name="data_consulta" label="Data da consulta" type="date" required defaultValue={localDateKey()} span2/>
-            <div className="clinicalField span2">
-              <span>Horário da consulta</span>
-              <p className="modalCampoLeitura">Definido automaticamente pelo próximo horário livre da agenda.</p>
-            </div>
+            <Field name="horario" label="Horário da consulta" type="time" span2/>
+            <p className="modalGrupoAjuda span2">Deixe o horário em branco para o sistema usar o próximo livre da agenda.</p>
           </div>
         </fieldset>
 
