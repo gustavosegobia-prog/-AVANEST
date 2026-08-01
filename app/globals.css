@@ -695,3 +695,45 @@ button:disabled{cursor:not-allowed}
   .roleNav::-webkit-scrollbar{display:none}
   .roleNav button{flex:none}
 }
+
+/* ============================================================================
+   Avaliação: stepper, salvamento e alerta clínico
+   ========================================================================== */
+
+/* O topo da avaliação também encolhe: 88px de barra para três controles. */
+.evalTopbar{height:60px;padding:0 var(--esp-6);gap:var(--esp-5);border-bottom:1px solid var(--cor-borda);box-shadow:var(--sombra-1)}
+
+/* Estado do salvamento: cor + palavra. Um ponto colorido sozinho não diz se
+   o rascunho está seguro. */
+.evalSave{display:inline-flex;align-items:center;gap:var(--esp-2);font-size:13px;font-weight:600}
+.evalSave i{width:8px;height:8px;flex:none;margin:0;background:currentColor}
+.evalSave.pending,.evalSave.saving{color:var(--cor-atencao)}
+.evalSave.error{color:var(--cor-perigo)}
+.evalSaveRetry{border:1px solid currentColor;background:none;color:inherit;font:inherit;font-size:12px;font-weight:700;border-radius:var(--raio-1);padding:3px 9px;cursor:pointer}
+.evalSaveRetry:hover{background:var(--cor-perigo-suave)}
+
+/* Alerta de alergia: acompanha a rolagem, mas sem ocupar a folha inteira. */
+.allergyBanner{height:auto;min-height:38px;display:flex;align-items:center;justify-content:center;gap:var(--esp-2);padding:var(--esp-2) var(--esp-5);background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);border-bottom:1px solid var(--cor-perigo);font-weight:600;letter-spacing:0;font-size:14px;text-align:center;top:60px}
+.allergyBanner b{font-weight:800}
+
+/* Stepper: estado por símbolo, cor e palavra — nunca só por cor. */
+.evalSteps{position:relative;flex-wrap:wrap;justify-content:flex-start;gap:var(--esp-2);padding:var(--esp-3) 0 var(--esp-2)}
+.evalStepsResumo{flex-basis:100%;margin:0 0 var(--esp-1);font-size:12px;font-weight:700;color:var(--cor-tinta-fraca);letter-spacing:.02em;text-transform:uppercase}
+.evalSteps button{display:inline-flex;align-items:center;gap:var(--esp-2);border-radius:var(--raio-1);padding:var(--esp-2) var(--esp-3);background:var(--cor-superficie);border:1px solid var(--cor-borda);color:var(--cor-tinta-fraca);font-weight:650;font-size:13px;transition:border-color var(--transicao),background var(--transicao)}
+.evalSteps button:hover{border-color:var(--cor-marca);color:var(--cor-tinta)}
+.evalSteps button i{width:17px;height:17px;border-radius:50%;margin:0;flex:none;display:grid;place-items:center;background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);font-size:11px;font-weight:800;font-style:normal;line-height:1}
+.evalSteps button.done{color:var(--cor-tinta)}
+.evalSteps button.done i{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.evalSteps button.atual{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.evalSteps button.atual i{background:var(--cor-marca);color:var(--cor-marca-contraste)}
+/* A palavra do estado fica para leitor de tela; na tela o símbolo já diz. */
+.evalStepSituacao{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+@media(max-width:760px){
+  .evalTopbar{height:56px;padding:0 var(--esp-3);gap:var(--esp-3)}
+  .allergyBanner{top:56px;font-size:13px;text-align:left}
+  .evalSteps{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .evalSteps::-webkit-scrollbar{display:none}
+  .evalSteps button{flex:none}
+  .evalSave{font-size:12px}
+}
