@@ -435,8 +435,11 @@ button:disabled{cursor:not-allowed}
 .avnPlanoResumo small{display:block;font-size:10px;font-weight:800;letter-spacing:.05em;color:#60758b;margin-bottom:4px}
 .avnPlanoResumo strong{font-size:22px;color:#14283a}
 .avnPlanoResumo strong span{font-size:12px;font-weight:600;color:#60758b}
-.superAdminLink{display:inline-flex;align-items:center;padding:0 13px;border-radius:9px;background:#3b1d63;color:#fff!important;font-weight:800;text-decoration:none}
-.assinaturaLink{display:inline-flex;align-items:center;padding:0 13px;border-radius:9px;border:1px solid #d2dde6;color:#34506b!important;font-weight:700;text-decoration:none}
+/* Precisa de ".roleNav" na frente: sem isso o fundo branco de ".roleNav a"
+   ganha por especificidade e o link fica branco sobre branco — invisivel. */
+.roleNav a.superAdminLink{display:inline-flex;align-items:center;padding:10px 15px;border-radius:11px;background:#3b1d63;border-color:#3b1d63;color:#fff;font-weight:800;text-decoration:none}
+.roleNav a.assinaturaLink{display:inline-flex;align-items:center;padding:10px 15px;border-radius:11px;background:#fff;border:1px solid #d2dde6;color:#34506b;font-weight:700;text-decoration:none}
+.clinicalDark .roleNav a.assinaturaLink{background:#132638;border-color:#2c465b;color:#cfe0ec}
 .orgRow{display:grid;grid-template-columns:minmax(0,1fr) 190px 130px 190px;align-items:center;gap:14px;padding:14px 25px;border-top:1px solid #e6edf3}
 .orgRow.vencida{background:#fff6f6}
 .orgRowNome strong{display:block}
