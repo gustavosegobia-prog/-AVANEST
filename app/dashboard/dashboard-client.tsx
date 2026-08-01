@@ -862,27 +862,119 @@ function Alert({ icon, title, text, action, danger=false, onClick }: { icon:stri
 function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:string; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
   const [convenio,setConvenio]=useState<string>(PRIVATE_PAY_CONVENIO);
   const isPrivatePay=convenio===PRIVATE_PAY_CONVENIO;
-  return <div className="patientModalBackdrop"><form className="patientModal" onSubmit={onSubmit}>
-    <div className="patientModalHead"><div><h2>Novo paciente</h2><p>Cadastro, convênio, procedimento e agendamento.</p></div><button type="button" onClick={onClose}>×</button></div>
-    <div className="insuranceBar"><strong>Convênios/planos:</strong> {CONVENIOS.join(" · ")}</div>
-    <div className="patientFormGrid">
-      <Field name="nome" label="Nome completo *" wide required/><Field name="cpf" label="CPF *" required/><Field name="rg" label="RG"/><Field name="data_nascimento" label="Data de nascimento" type="date"/>
-      <SelectField name="sexo" label="Sexo" options={["Feminino","Masculino","Outro","Não informado"]}/><Field name="telefone" label="Telefone / WhatsApp"/><Field name="email" label="E-mail" type="email" span2/><Field name="endereco" label="Endereço" span2/>
-      <Field name="cidade" label="Cidade"/><Field name="uf" label="UF"/><Field name="cep" label="CEP"/><Field name="hospital" label="Hospital" span2/>
-      <Field name="cirurgia" label="Cirurgia" span2/><Field name="especialidade" label="Especialidade"/><Field name="procedimento" label="Procedimento" span2/>
-      <SelectField name="convenio" label="Convênio" options={CONVENIOS} value={convenio} onChange={setConvenio}/>
-      {!isPrivatePay&&<><Field name="numero_carteirinha" label="Nº da carteirinha"/><Field name="validade" label="Validade" type="date"/><Field name="plano" label="Plano *" required autoComplete="off"/></>}
-      <Field name="data_consulta" label="Data da consulta *" type="date" required defaultValue={localDateKey()}/><div className="clinicalField"><span>Horário da consulta</span><small>Definido automaticamente pelo próximo horário disponível.</small></div>
-      <Field name="observacoes" label="Observações" wide/>
-    </div>
-    {error && <p className="clinicalError" role="alert" aria-live="assertive">{error}</p>}
-    <div className="modalActions"><span className="saveStatus" aria-live="polite">{busy ? "Salvando no banco de dados…" : ""}</span><button type="button" className="outlineClinical" onClick={onClose}>Cancelar</button><button type="submit" className="primaryClinical" disabled={busy}>{busy?"Salvando...":"SALVAR"}</button></div>
-  </form></div>;
+  // O formulário deixa de ser um bloco único de dezoito campos e passa a ter
+  // grupos com título: o preenchimento segue a ordem natural da conversa com
+  // o paciente, e o que falta fica visível sem rolar tudo.
+  return <div className="patientModalBackdrop">
+    <form className="patientModal" onSubmit={onSubmit} role="dialog" aria-modal="true" aria-labelledby="titulo-novo-paciente">
+      <div className="patientModalHead">
+        <div><h2 id="titulo-novo-paciente">Novo paciente</h2><p>Cadastro, convênio, procedimento e agendamento. Campos com <b>*</b> são obrigatórios.</p></div>
+        <button type="button" onClick={onClose} aria-label="Fechar sem salvar">×</button>
+      </div>
+
+      <div className="patientModalCorpo">
+        <fieldset className="modalGrupo">
+          <legend>Dados do paciente</legend>
+          <div className="patientFormGrid">
+            <Field name="nome" label="Nome completo" wide required autoFocus/>
+            <Field name="cpf" label="CPF" required mask="cpf" inputMode="numeric"/>
+            <Field name="rg" label="RG"/>
+            <Field name="data_nascimento" label="Data de nascimento" type="date"/>
+            <SelectField name="sexo" label="Sexo" options={["Feminino","Masculino","Outro","Não informado"]}/>
+          </div>
+        </fieldset>
+
+        <fieldset className="modalGrupo">
+          <legend>Contato e endereço</legend>
+          <div className="patientFormGrid">
+            <Field name="telefone" label="Telefone / WhatsApp" mask="telefone" inputMode="numeric" span2/>
+            <Field name="email" label="E-mail" type="email" span2/>
+            <Field name="endereco" label="Endereço" wide/>
+            <Field name="cidade" label="Cidade" span2/>
+            <Field name="uf" label="UF"/>
+            <Field name="cep" label="CEP" mask="cep" inputMode="numeric"/>
+          </div>
+        </fieldset>
+
+        <fieldset className="modalGrupo">
+          <legend>Procedimento e hospital</legend>
+          <div className="patientFormGrid">
+            <Field name="hospital" label="Hospital" span2/>
+            <Field name="cirurgia" label="Cirurgia" span2/>
+            <Field name="especialidade" label="Especialidade" span2/>
+            <Field name="procedimento" label="Procedimento" wide/>
+          </div>
+        </fieldset>
+
+        <fieldset className="modalGrupo">
+          <legend>Convênio</legend>
+          <div className="patientFormGrid">
+            <SelectField name="convenio" label="Convênio" options={CONVENIOS} value={convenio} onChange={setConvenio} span2/>
+            {!isPrivatePay&&<>
+              <Field name="numero_carteirinha" label="Nº da carteirinha" span2/>
+              <Field name="validade" label="Validade" type="date"/>
+              <Field name="plano" label="Plano" required autoComplete="off" span2/>
+            </>}
+          </div>
+          {isPrivatePay&&<p className="modalGrupoAjuda">Particular não exige carteirinha nem plano.</p>}
+        </fieldset>
+
+        <fieldset className="modalGrupo">
+          <legend>Data e horário</legend>
+          <div className="patientFormGrid">
+            <Field name="data_consulta" label="Data da consulta" type="date" required defaultValue={localDateKey()} span2/>
+            <div className="clinicalField span2">
+              <span>Horário da consulta</span>
+              <p className="modalCampoLeitura">Definido automaticamente pelo próximo horário livre da agenda.</p>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset className="modalGrupo">
+          <legend>Observações</legend>
+          <div className="patientFormGrid"><Field name="observacoes" label="Observações" wide/></div>
+        </fieldset>
+      </div>
+
+      <div className="modalActions">
+        {error
+          ? <p className="clinicalError modalErro" role="alert" aria-live="assertive">{error}</p>
+          : <span className="saveStatus" aria-live="polite">{busy ? "Salvando no banco de dados…" : ""}</span>}
+        <button type="button" className="outlineClinical" onClick={onClose}>Cancelar</button>
+        <button type="submit" className="primaryClinical" disabled={busy}>{busy?"Salvando...":"Salvar paciente"}</button>
+      </div>
+    </form>
+  </div>;
 }
-function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue,autoComplete}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string;autoComplete?:string}) { return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""}`}><span>{label}</span><input name={name} type={type} required={required} defaultValue={defaultValue} autoComplete={autoComplete}/></label>; }
-function SelectField({name,label,options,required=false,placeholder,value,onChange}:{name:string;label:string;options:string[];required?:boolean;placeholder?:string;value?:string;onChange?:(value:string)=>void}) {
+
+// Máscaras: o índice único do banco compara só os dígitos do CPF, então
+// formatar aqui não interfere na checagem de paciente duplicado.
+const MASCARAS: Record<string,(valor:string)=>string> = {
+  cpf: (valor) => valor.replace(/\D/g,"").slice(0,11)
+    .replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2"),
+  telefone: (valor) => {
+    const digitos = valor.replace(/\D/g,"").slice(0,11);
+    if (digitos.length <= 10) return digitos.replace(/(\d{2})(\d)/,"($1) $2").replace(/(\d{4})(\d)/,"$1-$2");
+    return digitos.replace(/(\d{2})(\d)/,"($1) $2").replace(/(\d{5})(\d)/,"$1-$2");
+  },
+  cep: (valor) => valor.replace(/\D/g,"").slice(0,8).replace(/(\d{5})(\d)/,"$1-$2"),
+};
+
+function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue,autoComplete,mask,inputMode,autoFocus}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string;autoComplete?:string;mask?:keyof typeof MASCARAS;inputMode?:"numeric"|"text";autoFocus?:boolean}) {
+  // Campo com máscara é controlado: o valor exibido é sempre o formatado,
+  // sem depender de reescrever o valor dentro do evento.
+  const [valor,setValor]=useState(defaultValue??"");
+  const comum={name,type,required,autoComplete,inputMode,autoFocus};
+  return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""} ${required?"obrigatorio":""}`.trim()}>
+    <span>{label}</span>
+    {mask
+      ? <input {...comum} value={valor} onChange={(evento)=>setValor(MASCARAS[mask](evento.target.value))}/>
+      : <input {...comum} defaultValue={defaultValue}/>}
+  </label>;
+}
+function SelectField({name,label,options,required=false,placeholder,value,onChange,span2=false}:{name:string;label:string;options:string[];required?:boolean;placeholder?:string;value?:string;onChange?:(value:string)=>void;span2?:boolean}) {
   const controlled=value!==undefined&&onChange!==undefined;
-  return <label className="clinicalField"><span>{label}</span><select
+  return <label className={`clinicalField ${span2?"span2":""} ${required?"obrigatorio":""}`.trim()}><span>{label}</span><select
     name={name}
     required={required}
     {...(controlled?{value,onChange:(event:ChangeEvent<HTMLSelectElement>)=>onChange(event.target.value)}:{defaultValue:placeholder?"":undefined})}
