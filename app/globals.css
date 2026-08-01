@@ -763,3 +763,7 @@ button:disabled{cursor:not-allowed}
 .modalErro{flex:1;margin:0;font-size:13px}
 .modalActions{display:flex;align-items:center;gap:var(--esp-3);justify-content:flex-end}
 .modalActions .saveStatus{margin-right:auto;font-size:13px;color:var(--cor-tinta-fraca)}
+.modalGrupoAjuda.span2{grid-column:span 2;align-self:center}
+/* O corpo do modal nao pode empurrar largura: campo longo quebra dentro. */
+.patientModalCorpo,.patientFormGrid,.clinicalField{min-width:0;max-width:100%}
+.patientModal{overflow-x:hidden}
