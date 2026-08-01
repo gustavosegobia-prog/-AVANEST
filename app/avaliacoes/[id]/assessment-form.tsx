@@ -63,6 +63,9 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [savedAt, setSavedAt] = useState(() => new Date(avaliacao.updated_at));
+  // Etapa que o anestesiologista está lendo agora, para o stepper marcar
+  // "atual" em vez de só "concluída/pendente".
+  const [etapaAtual, setEtapaAtual] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef=useRef(draft);
   const lockVersionRef=useRef(Number(avaliacao.lock_version ?? 0));
@@ -125,6 +128,26 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     timer.current = setTimeout(() => save(next), 900);
   }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  // Marca no stepper a etapa que está sob os olhos. Sem isso o profissional
+  // rola a página e perde a referência de onde está.
+  useEffect(() => {
+    const secoes = STEPS.map((_, indice) => document.getElementById(`etapa-${indice + 1}`));
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        const visivel = entradas
+          .filter((entrada) => entrada.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (!visivel) return;
+        const indice = secoes.findIndex((secao) => secao === visivel.target);
+        if (indice >= 0) setEtapaAtual(indice);
+      },
+      // A etapa passa a ser "a atual" quando cruza o terço superior da tela.
+      { rootMargin: "-72px 0px -66% 0px", threshold: 0 },
+    );
+    secoes.forEach((secao) => { if (secao) observador.observe(secao); });
+    return () => observador.disconnect();
+  }, []);
 
   async function createFinancialEntry() {
     try {
@@ -236,6 +259,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     Boolean(isFilled(draft.jejum_solidos)&&isFilled(draft.jejum_liquidos)&&isFilled(draft.tecnica)&&isFilled(draft.conclusao)&&isFilled(draft.anestesiologista)&&isFilled(draft.crm)),
   ];
   const progress=Math.round(completedSteps.filter(Boolean).length/completedSteps.length*100);
+  const concluidas=completedSteps.filter(Boolean).length;
 
   const numericLimits:Record<string,{min:number;max:number;step?:number}> = {
     peso:{min:1,max:500,step:0.1},
@@ -250,13 +274,46 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   return <main className="evalShell">
     <header className="evalTopbar">
       <Link className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
-      <span className={`evalSave ${saveState}`}><i/> {saveState==="saved"?`Salvo automaticamente às ${savedAt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`:saveState==="saving"?"Salvando...":saveState==="pending"?"Alterações pendentes":"Falha ao salvar"}</span>
-      <nav className="evalRoleNav"><button type="button">◐ Escuro</button><button type="button" className="active">Médico</button></nav>
+      {/* O estado do salvamento é dito por extenso, não só por um ponto
+          colorido. Quando falha, o botão de tentar de novo fica aqui —
+          antes o anestesiologista via o erro e não tinha o que fazer. */}
+      <span className={`evalSave ${saveState}`} role="status" aria-live="polite">
+        <i aria-hidden="true"/>
+        {saveState==="saved"?`Salvo às ${savedAt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`
+          :saveState==="saving"?"Salvando..."
+          :saveState==="pending"?"Alterações não salvas"
+          :"Não foi possível salvar"}
+        {saveState==="error"&&<button type="button" className="evalSaveRetry" onClick={()=>void save()}>Tentar de novo</button>}
+      </span>
+      <nav className="evalRoleNav"><button type="button" className="active">Médico</button></nav>
     </header>
-    {allergy && <div className="allergyBanner">⚠ ALERGIA: {allergy.toUpperCase()}</div>}
+    {/* Alergia é informação de alta prioridade: acompanha a rolagem em vez de
+        sumir na primeira etapa. Ícone, rótulo e valor — sem caixa alta no
+        texto inteiro, que atrapalha a leitura. */}
+    {allergy && <div className="allergyBanner" role="alert"><span aria-hidden="true">⚠</span> <b>Alerta de alergia:</b> {allergy}</div>}
     <div className="evalProgress" aria-label={`${progress}% da avaliação preenchida`}><i style={{width:`${progress}%`}}/></div>
     <div className="evalMain">
-      <div className="evalSteps">{STEPS.map((name,index)=><button type="button" onClick={()=>document.getElementById(`etapa-${index+1}`)?.scrollIntoView({behavior:"smooth",block:"start"})} key={name}><i className={completedSteps[index]?"done":""}/>{name}</button>)}</div>
+      <nav className="evalSteps" aria-label="Etapas da avaliação">
+        <p className="evalStepsResumo">Etapa {etapaAtual+1} de {STEPS.length} · {concluidas} concluída{concluidas===1?"":"s"}</p>
+        {STEPS.map((name,index)=>{
+          const feita=completedSteps[index];
+          const atual=index===etapaAtual;
+          const situacao=feita?"concluída":atual?"em preenchimento":"pendente";
+          return <button
+            type="button"
+            key={name}
+            className={`${feita?"done":""} ${atual?"atual":""}`.trim()}
+            aria-current={atual?"step":undefined}
+            onClick={()=>document.getElementById(`etapa-${index+1}`)?.scrollIntoView({behavior:"smooth",block:"start"})}
+          >
+            {/* O símbolo acompanha a cor: quem não distingue verde de cinza
+                continua conseguindo ler o estado. */}
+            <i aria-hidden="true">{feita?"✓":atual?"›":""}</i>
+            <span>{name}</span>
+            <small className="evalStepSituacao">{situacao}</small>
+          </button>;
+        })}
+      </nav>
       <div className="evalControls"><button className="pauseButton">Ⅱ Pausar</button><button onClick={async()=>{await save();router.push("/dashboard")}}>↩ Salvar e voltar</button>{["admin","owner"].includes(perfil.role)&&<button type="button" className="deleteAssessmentButton" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo...":"Excluir avaliação"}</button>}</div>
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
 
