@@ -490,7 +490,7 @@ export function DashboardClient({
           <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=attendanceOverrides[appointment.id]??appointment.status;const updating=attendanceBusy===appointment.id;return <div className="queueRow" key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{updating?"SALVANDO...":agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><button aria-busy={updating} disabled={updating||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button aria-busy={updating} disabled={updating||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>
         </div>
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
-      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>}
+      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()}/>}
 
       {open && <PatientModal busy={busy} error={error} onClose={() => {
         setOpen(false);
@@ -632,6 +632,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>📦 Lotes de cobrança</strong><span>agrupamento por convênio/hospital, sem dados clínicos</span></div>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</section>
 
+    <ConvenioValoresPanel perfil={perfil} convenioValores={convenioValores} onRefresh={onRefresh}/>
     <section className="clinicalPanel"><div className="panelTitle"><strong>Recebimentos</strong><span>PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo</span></div>
       {financeiro.map(item=>{
         const patient=patientMap.get(item.patient_id);
@@ -837,7 +838,7 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
   </section>;
 }
 
-function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];convenioValores:ConvenioValor[];onRefresh:()=>void}) {
+function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void}) {
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState("");
   const [editing,setEditing]=useState<Record<string,PerfilGerenciado>>(()=>Object.fromEntries(perfis.map(item=>[item.id,{...item}])));
@@ -866,17 +867,6 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
     setBusy("");
     if(error)setMessage(error.message);
     else{setMessage(`Acesso de ${item.nome} excluído.`);onRefresh()}
-  }
-  async function saveConvenio(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();setBusy("convenio");setMessage("");
-    const form=new FormData(event.currentTarget);
-    const valor=Number(String(form.get("valor")||"").replace(",","."));
-    if(!String(form.get("convenio")||"").trim()||!Number.isFinite(valor)||valor<0){setBusy("");setMessage("Informe convênio e um valor válido.");return}
-    const {error}=await createClient().from("convenio_valores").insert({institution_id:perfil.institution_id,convenio:String(form.get("convenio")).trim(),procedimento:String(form.get("procedimento")||"").trim()||null,hospital:String(form.get("hospital")||"").trim()||null,valor,repasse_percentual:Number(String(form.get("repasse")||""))||null,ativo:true});
-    setBusy("");if(error)setMessage(`Não foi possível salvar o valor: ${error.message}`);else{setMessage("Valor do convênio salvo. Os próximos lançamentos usarão esta referência.");event.currentTarget.reset();onRefresh()}
-  }
-  async function toggleConvenio(item:ConvenioValor){
-    setBusy(item.id);const {error}=await createClient().from("convenio_valores").update({ativo:!item.ativo,updated_at:new Date().toISOString()}).eq("id",item.id);setBusy("");if(error)setMessage(`Não foi possível atualizar: ${error.message}`);else onRefresh();
   }
 
   return <div className="clinicalMain adminMain">
@@ -958,20 +948,58 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
         });
       })()}
     </section>
-    <section className="clinicalPanel convenioAdmin">
-      <div className="panelTitle"><strong>Gestão de valores por convênio</strong><span>Defina referência por procedimento e/ou hospital. O Financeiro sugere o valor ao criar o lançamento.</span></div>
-      <form className="convenioForm" onSubmit={saveConvenio}><label><span>Convênio *</span><input name="convenio" required placeholder="Ex.: Unimed"/></label><label><span>Procedimento</span><input name="procedimento" placeholder="Opcional"/></label><label><span>Hospital</span><input name="hospital" placeholder="Opcional"/></label><label><span>Valor R$ *</span><input name="valor" inputMode="decimal" required placeholder="0,00"/></label><label><span>Repasse %</span><input name="repasse" inputMode="decimal" placeholder="Opcional"/></label><button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando...":"Salvar referência"}</button></form>
-      {convenioValores.length?convenioValores.map(item=><div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${item.ativo?"present":"paused"}`}>{item.ativo?"ATIVO":"INATIVO"}</span><button className="outlineClinical" disabled={busy===item.id} onClick={()=>toggleConvenio(item)}>{item.ativo?"Desativar":"Ativar"}</button></div>):<div className="emptyClinical compactEmpty">Nenhuma referência de valor cadastrada ainda.</div>}
-    </section>
-    <section className="clinicalPanel auditPanel">
-      <div className="panelTitle"><strong>Auditoria recente</strong><span>Conclusões, pagamentos, presenças e mudanças de acesso.</span></div>
+    {/* Auditoria também fica recolhida: é registro para consulta, não painel
+        de rotina, e expõe quem fez o quê a cada acesso à tela. */}
+    <details className="clinicalPanel auditPanel painelRecolhivel">
+      <summary className="panelTitle">
+        <span className="painelSeta" aria-hidden="true">▸</span>
+        <strong>Auditoria recente</strong>
+        <span>{auditoria.length} evento(s) · conclusões, pagamentos, presenças e mudanças de acesso</span>
+      </summary>
       {auditoria.length?auditoria.slice(0,50).map(item=><div className="auditRow" key={item.id}><time>{new Date(item.created_at).toLocaleString("pt-BR")}</time><span><strong>{item.acao.replaceAll("_"," ")}</strong><small>{item.entidade} · {item.actor_id?actorNames.get(item.actor_id)||"Usuário":"Sistema"}</small></span></div>):<div className="emptyClinical compactEmpty">Nenhum evento de auditoria registrado ainda.</div>}
-    </section>
+    </details>
   </div>;
 }
 
 // Zero de coisa ruim e boa noticia: nao pinta de vermelho nem de ambar. A cor
 // aqui e para comunicar, nao para enfeitar o numero.
+
+// Valores por convênio: configuração usada pelo Financeiro ao criar o
+// lançamento, então mora na tela do Financeiro. Quem grava continua sendo
+// admin ou proprietário — é o que a policy do banco permite; o financeiro
+// enxerga a referência, mas não a altera.
+function ConvenioValoresPanel({perfil,convenioValores,onRefresh}:{perfil:Perfil;convenioValores:ConvenioValor[];onRefresh:()=>void}) {
+  const [busy,setBusy]=useState("");
+  const [message,setMessage]=useState("");
+  const podeEditar=["admin","owner"].includes(perfil.role);
+  async function saveConvenio(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();setBusy("convenio");setMessage("");
+    const form=new FormData(event.currentTarget);
+    const valor=Number(String(form.get("valor")||"").replace(",","."));
+    if(!String(form.get("convenio")||"").trim()||!Number.isFinite(valor)||valor<0){setBusy("");setMessage("Informe convênio e um valor válido.");return}
+    const {error}=await createClient().from("convenio_valores").insert({institution_id:perfil.institution_id,convenio:String(form.get("convenio")).trim(),procedimento:String(form.get("procedimento")||"").trim()||null,hospital:String(form.get("hospital")||"").trim()||null,valor,repasse_percentual:Number(String(form.get("repasse")||""))||null,ativo:true});
+    setBusy("");if(error)setMessage(`Não foi possível salvar o valor: ${error.message}`);else{setMessage("Valor do convênio salvo. Os próximos lançamentos usarão esta referência.");event.currentTarget.reset();onRefresh()}
+  }
+  async function toggleConvenio(item:ConvenioValor){
+    setBusy(item.id);const {error}=await createClient().from("convenio_valores").update({ativo:!item.ativo,updated_at:new Date().toISOString()}).eq("id",item.id);setBusy("");if(error)setMessage(`Não foi possível atualizar: ${error.message}`);else onRefresh();
+  }
+
+  return <>
+    {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"}>{message}</p>}
+    {/* Recolhida por padrão: é configuração, consultada de vez em quando, e
+        aberta ocupava a tela inteira com uma linha por convênio. */}
+    <details className="clinicalPanel convenioAdmin painelRecolhivel">
+      <summary className="panelTitle">
+        <span className="painelSeta" aria-hidden="true">▸</span>
+        <strong>Valores por convênio</strong>
+        <span>{convenioValores.length} referência(s) cadastrada(s) · o Financeiro sugere o valor ao criar o lançamento</span>
+      </summary>
+      {podeEditar&&<form className="convenioForm" onSubmit={saveConvenio}><label><span>Convênio *</span><input name="convenio" required placeholder="Ex.: Unimed"/></label><label><span>Procedimento</span><input name="procedimento" placeholder="Opcional"/></label><label><span>Hospital</span><input name="hospital" placeholder="Opcional"/></label><label><span>Valor R$ *</span><input name="valor" inputMode="decimal" required placeholder="0,00"/></label><label><span>Repasse %</span><input name="repasse" inputMode="decimal" placeholder="Opcional"/></label><button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando...":"Salvar referência"}</button></form>}
+      {convenioValores.length?convenioValores.map(item=><div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${item.ativo?"present":"paused"}`}>{item.ativo?"ATIVO":"INATIVO"}</span>{podeEditar?<button className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>toggleConvenio(item)}>{item.ativo?"Desativar":"Ativar"}</button>:<span/>}</div>):<div className="emptyClinical compactEmpty">Nenhuma referência de valor cadastrada ainda.</div>}
+    </details>
+  </>;
+}
+
 function Metric({ value, label, tone }: { value: number; label: string; tone: string }) {
   const tomReal = value === 0 && ["red", "amber"].includes(tone) ? "" : tone;
   return <div className="metricCard"><strong className={tomReal}>{value.toLocaleString("pt-BR")}</strong><span>{label}</span></div>;
