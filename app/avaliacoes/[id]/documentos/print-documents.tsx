@@ -27,7 +27,9 @@ const PREGNANCY_PRINT_FIELDS:Array<[string,string]>=[
 ];
 
 const formatDate=(value?:string|null)=>value?new Date(`${value.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR"):"";
-const answer=(value:unknown,expected:"Sim"|"Não"|"Não sabe")=>value===expected?"X":"";
+// A pergunta já termina com "?" na tela; no papel ela vira rótulo de uma linha
+// só ("Doença cardiovascular: Não"), então a interrogação sai.
+const asLabel=(label:string)=>label.replace(/\s*\?\s*$/,"");
 const text=(value:unknown,fallback="")=>{const raw=String(value??"").trim();return raw||fallback};
 // Textos que representam ausência de informação: nunca vão para o papel.
 const PRINT_PLACEHOLDERS=new Set([
@@ -66,6 +68,26 @@ function FactGrid({items,className=""}:{items:Fact[];className?:string}){
 function PaperBlock({title,items,className}:{title:string;items:Fact[];className?:string}){
   if(!items.length)return null;
   return <><PaperTitle>{title}</PaperTitle><FactGrid items={items} className={className}/></>;
+}
+
+// Bloco corrido, para aproveitar a largura da folha: os campos preenchidos
+// saem numa linha só, separados por barra, e quebram sozinhos quando falta
+// espaço. Cada "linha" recebida vira um parágrafo; "extras" ficam embaixo,
+// porque são textos longos (observações) que não cabem ao lado dos demais.
+function PaperInlineBlock({title,linhas,extras=[]}:{title:string;linhas:Fact[][];extras?:Fact[]}){
+  const preenchidas=linhas.filter(linha=>linha.length);
+  if(!preenchidas.length&&!extras.length)return null;
+  return <>
+    <PaperTitle>{title}</PaperTitle>
+    <div className="paperInlineBlock">
+      {preenchidas.map((linha,indice)=>
+        <p className="paperInline" key={indice}>{linha.map((fact,posicao)=>
+          <span key={fact.label}>{posicao>0&&<em className="paperSep">|</em>}{fact.label}: <b>{fact.value}</b></span>)}
+        </p>)}
+      {extras.map(fact=>
+        <p className="paperInlineFull" key={fact.label}>{fact.label}: <b>{fact.value}</b></p>)}
+    </div>
+  </>;
 }
 
 const CONSENT_ITEMS=[
@@ -133,13 +155,13 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
     ["Reação ou complicação anestésica?",dados.reacao_anestesica,dados.reacao_anestesica_detalhes],
     ["Anticoagulante ou antiagregante?",dados.anticoagulante,dados.anticoagulante_detalhes],
     ["Doença cardiovascular?",dados.cardiovascular,dados.cardiovascular_detalhes],
-    ["Doença respiratória?",dados.respiratoria,dados.respiratoria==="Não sabe"?"Não sabe informar doença respiratória.":dados.respiratoria_detalhes],
+    ["Doença respiratória?",dados.respiratoria,dados.respiratoria_detalhes],
     ["Diabetes?",dados.diabetes,dados.diabetes_detalhes],
     ["Doença neurológica ou psiquiátrica?",dados.neurologica,dados.neurologica_detalhes],
     ["Outras doenças?",dados.outras_doencas,dados.outras_doencas_detalhes],
     ["Doença aguda no momento?",dados.doenca_aguda,dados.doenca_aguda_detalhes],
     ["Prótese ou alterações dentárias?",dados.dentaria,dados.dentaria_detalhes],
-    ["Alergias?",dados.alergias,dados.alergias==="Não"?"Não relata alergias.":dados.alergias_detalhes],
+    ["Alergias?",dados.alergias,dados.alergias_detalhes],
     ["Tabagismo, álcool ou outras substâncias?",dados.habitos,dados.habitos_detalhes],
     ["Glaucoma?",dados.glaucoma,dados.glaucoma_detalhes],
     ["Gestante?",dados.gestacao,dados.gestacao==="Sim"?pregnancyDetails:dados.gestacao_detalhes],
@@ -181,7 +203,12 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
     if(planManuallyEdited)return saved;
     const base=saved.replace(/\n?ORIENTAÇÕES SOBRE MEDICAMENTOS:[\s\S]*$/i,"").trim();
     const objectiveMedications=guidedMedications.length
-      ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${guidedMedications.map(item=>`- ${item.nome}: ${item.orientacaoEditada===true?String(item.orientacao||"").trim():""}`).join("\n")}`
+      // objectiveMedicationGuidance já respeita o texto reescrito e, quando não
+      // houve reescrita, usa a conduta do guia. Antes daqui saía o nome do
+      // medicamento seguido de nada sempre que ninguém tivesse editado à mão.
+      ?`ORIENTAÇÕES SOBRE MEDICAMENTOS:\n${guidedMedications
+          .map(item=>[item.nome,objectiveMedicationGuidance(item)].filter(Boolean).join(": "))
+          .map(linha=>`- ${linha}`).join("\n")}`
       :"";
     return [base,objectiveMedications].filter(Boolean).join("\n");
   },[guidedMedications,dados.plano_anestesico,planManuallyEdited]);
@@ -238,34 +265,52 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             ["Caráter",dados.carater],["Porte",dados.porte],["Lateralidade",dados.lateralidade],
             ["Regime",dados.regime],["Data",formatDate(text(dados.data_cirurgia))],["Horário",dados.horario_cirurgia],
           ])}/>
-          {questions.length>0&&<><PaperTitle>ANAMNESE</PaperTitle><table className="paperTable"><thead><tr><th>#</th><th>PERGUNTA / DETALHES</th><th>SIM</th><th>NÃO</th><th>?</th></tr></thead><tbody>{questions.map(([label,value,detail],i)=><tr key={String(label)}><td>{i+1}</td><td>{label} {hasText(detail)&&<b>— {text(detail)}</b>}</td><td>{answer(value,"Sim")}</td><td>{answer(value,"Não")}</td><td>{answer(value,"Não sabe")}</td></tr>)}</tbody></table></>}
-          <PaperBlock title="EXAME FÍSICO" items={facts([
-            ["PA",hasText(dados.pa_sistolica)&&hasText(dados.pa_diastolica)?`${text(dados.pa_sistolica)}/${text(dados.pa_diastolica)} mmHg`:""],
-            ["FC",hasText(dados.fc)?`${text(dados.fc)} bpm`:""],["FR",hasText(dados.fr)?`${text(dados.fr)} irpm`:""],
-            ["SpO₂",hasText(dados.spo2)?`${text(dados.spo2)}%`:""],["Temperatura",hasText(dados.temperatura)?`${text(dados.temperatura)} °C`:""],
-            ["Glicemia capilar",hasText(dados.glicemia_capilar)?`${text(dados.glicemia_capilar)} mg/dL`:""],
-            ["Estado geral",dados.estado_geral],
-            ["Cardiovascular",cardiovascularFindings.join(", "),"wide"],
-            ["Respiratório",respiratoryFindings.join(", "),"wide"],
-            ["Observações",dados.observacoes_exame_fisico,"full"],
-          ])}/>
-          <PaperBlock title="VIA AÉREA" items={facts([
-            ["Mallampati",dados.mallampati],["Abertura oral",dados.abertura_oral],
-            ["Dist. tireomentoniana",dados.distancia_tireo],["Dentição",dados.denticao],
-            ["Mobilidade cervical",dados.mobilidade],
-            ["Risco sugerido",airwayCount>0?`${airwayRisk} (${airwayCount} preditor(es))`:""],
-            ["Preditores",airwayPredictors.join(", "),"wide"],
-            ["Observações",dados.observacoes_via_aerea,"full"],
-          ])}/>
-          <section className="paperMedicationSection"><PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<p className="paperMedicationList"><b>{medications.map(m=>[m.nome,m.dose,m.frequencia].filter(Boolean).join(" ")).join(" / ")}</b></p>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}</section>
-          <PaperBlock title="EXAMES COMPLEMENTARES" className="labPrintGrid" items={facts([
-            ["Hb",dados.hemoglobina],["Ht",dados.hematocrito],["Plaquetas",dados.plaquetas],["INR",dados.inr],
-            ["TTPa",dados.ttpa],["Creatinina",dados.creatinina],["Ureia",dados.ureia],["Glicemia",dados.glicemia],
-            ["Sódio",dados.sodio],["Potássio",dados.potassio],["HbA1c",dados.hba1c],["Data",formatDate(text(dados.data_exames))],
-            ["ECG",dados.ecg,"wide"],["Ecocardiograma",dados.eco,"wide"],
-            ["Radiografia de tórax",dados.rx_torax,"wide"],["Espirometria",dados.espirometria,"wide"],
-            ["Outros exames",dados.exames_obs,"full"],
-          ])}/>
+          {questions.length>0&&<><PaperTitle>ANAMNESE</PaperTitle>
+            <div className="paperAnamnese">{questions.map(([label,value,detail])=>
+              <p key={String(label)}>{asLabel(String(label))}: <b>{text(value)}</b>{hasText(detail)&&<b> — {text(detail)}</b>}</p>)}
+            </div></>}
+          <PaperInlineBlock title="EXAME FÍSICO"
+            linhas={[
+              facts([
+                ["PA",hasText(dados.pa_sistolica)&&hasText(dados.pa_diastolica)?`${text(dados.pa_sistolica)}/${text(dados.pa_diastolica)} mmHg`:""],
+                ["FC",hasText(dados.fc)?`${text(dados.fc)} bpm`:""],["FR",hasText(dados.fr)?`${text(dados.fr)} irpm`:""],
+                ["SpO₂",hasText(dados.spo2)?`${text(dados.spo2)}%`:""],["Temperatura",hasText(dados.temperatura)?`${text(dados.temperatura)} °C`:""],
+                ["Glicemia capilar",hasText(dados.glicemia_capilar)?`${text(dados.glicemia_capilar)} mg/dL`:""],
+              ]),
+              facts([
+                ["Estado geral",dados.estado_geral],
+                ["Cardiovascular",cardiovascularFindings.join(", ")],
+                ["Respiratório",respiratoryFindings.join(", ")],
+              ]),
+            ]}
+            extras={facts([["Observações",dados.observacoes_exame_fisico]])}/>
+          <PaperInlineBlock title="VIA AÉREA"
+            linhas={[
+              facts([
+                ["Mallampati",dados.mallampati],["Abertura oral",dados.abertura_oral],
+                ["Dist. tireomentoniana",dados.distancia_tireo],["Dentição",dados.denticao],
+              ]),
+              facts([
+                ["Mobilidade cervical",dados.mobilidade],
+                ["Risco sugerido",airwayCount>0?`${airwayRisk} (${airwayCount} preditor(es))`:""],
+                ["Preditores",airwayPredictors.join(", ")],
+              ]),
+            ]}
+            extras={facts([["Observações",dados.observacoes_via_aerea]])}/>
+          <section className="paperMedicationSection"><PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<p className="paperMedicationList">{medications.map((m,i)=><span key={m.id}>{i>0&&<em className="paperSep">|</em>}<b>{[m.nome,m.dose,m.frequencia].filter(Boolean).join(" ")}</b></span>)}</p>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}</section>
+          <PaperInlineBlock title="EXAMES COMPLEMENTARES"
+            linhas={[
+              facts([
+                ["Hb",dados.hemoglobina],["Ht",dados.hematocrito],["Plaquetas",dados.plaquetas],["INR",dados.inr],
+                ["TTPa",dados.ttpa],["Creatinina",dados.creatinina],["Ureia",dados.ureia],["Glicemia",dados.glicemia],
+                ["Sódio",dados.sodio],["Potássio",dados.potassio],["HbA1c",dados.hba1c],["Data",formatDate(text(dados.data_exames))],
+              ]),
+              facts([
+                ["ECG",dados.ecg],["Ecocardiograma",dados.eco],
+                ["Radiografia de tórax",dados.rx_torax],["Espirometria",dados.espirometria],
+              ]),
+            ]}
+            extras={facts([["Outros exames",dados.exames_obs]])}/>
           <PaperTitle>ESCORES E ESTRATIFICAÇÃO</PaperTitle><div className="paperScores">{hasText(dados.asa)&&<span><small>ASA</small><b>{text(dados.asa)}{dados.asa_emergencia===true?" + E":""}</b></span>}<span><small>LEE (RCRI)</small><b>{rcriScore} pt - Classe {rcriScore===0?"I":rcriScore===1?"II":rcriScore===2?"III":"IV"}</b></span><span><small>STOP-BANG</small><b>{stopScore}/8 - {stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco"}</b></span><span><small>APFEL</small><b>{apfelScore}/4 - NVPO {apfelRisk}</b></span>{hasText(dados.capacidade_funcional)&&<span><small>CAPACIDADE FUNCIONAL</small><b>{text(dados.capacidade_funcional)}</b></span>}</div>
           <PaperBlock title="PLANEJAMENTO E CONCLUSÃO" items={facts([
             ["Jejum sólidos",dados.jejum_solidos],["Líquidos claros",dados.jejum_liquidos],
