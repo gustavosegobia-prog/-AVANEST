@@ -803,3 +803,59 @@ button:disabled{cursor:not-allowed}
   .adminUserCampos{grid-template-columns:1fr}
   .adminZonaPerigo{flex-direction:column;align-items:stretch}
 }
+
+/* ============================================================================
+   Financeiro: recebimentos alinhados e acao so quando valida
+   ========================================================================== */
+.paymentRow{display:grid;grid-template-columns:minmax(0,1.6fr) 130px 130px 110px 120px 150px auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda)}
+.paymentRow:first-of-type{border-top:0}
+.paymentQuem{min-width:0}
+.paymentQuem strong{display:block;font-size:14.5px}
+.paymentQuem small{display:block;color:var(--cor-tinta-fraca);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Dinheiro alinhado a direita e em fonte tabular: a coluna vira comparavel. */
+.paymentValores,.paymentSaldo{text-align:right;font-variant-numeric:tabular-nums}
+.paymentValores b,.paymentSaldo b{display:block;font-size:14px}
+.paymentValores small,.paymentSaldo small{display:block;color:var(--cor-tinta-fraca);font-size:11.5px}
+.paymentSaldo b.green{color:var(--cor-sucesso)}
+.paymentPago{grid-column:span 3;color:var(--cor-tinta-fraca);font-size:13px;text-align:right}
+.paymentRow input,.paymentRow select{height:var(--alt-botao-compacto);border:1px solid var(--cor-borda-forte);border-radius:var(--raio-1);background:var(--cor-superficie);padding:0 var(--esp-3);font:inherit;font-size:13.5px;min-width:0}
+.paymentButton{height:var(--alt-botao-compacto);border:0;border-radius:var(--raio-1);background:var(--cor-marca);color:var(--cor-marca-contraste);font-weight:700;padding:0 var(--esp-4);cursor:pointer;white-space:nowrap}
+.paymentButton:hover:not(:disabled){background:var(--cor-marca-forte)}
+.paymentButton:disabled{background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);cursor:not-allowed}
+
+@media(max-width:1100px){
+  .paymentRow{grid-template-columns:minmax(0,1fr) auto auto;row-gap:var(--esp-2)}
+  .paymentQuem{grid-column:1/-1}
+  .paymentValores,.paymentSaldo{text-align:left}
+  .paymentRow input,.paymentRow select,.paymentButton{grid-column:auto}
+  .paymentPago{grid-column:1/-1;text-align:left}
+}
+
+/* ============================================================================
+   Paineis recolhiveis
+   ----------------------------------------------------------------------------
+   Configuracao e auditoria sao consultadas de vez em quando. Abertas por
+   padrao empurravam o trabalho do dia para baixo e deixavam o registro de
+   quem fez o que exposto a cada abertura da tela.
+   Usa <details>: funciona por teclado e mesmo sem javascript.
+   ========================================================================== */
+.painelRecolhivel>summary{cursor:pointer;list-style:none;user-select:none}
+.painelRecolhivel>summary::-webkit-details-marker{display:none}
+.painelRecolhivel>summary:hover{background:var(--cor-superficie-suave)}
+.painelRecolhivel:not([open])>summary{border-bottom:0}
+.painelSeta{color:var(--cor-tinta-fraca);font-size:11px;transition:transform var(--transicao);display:inline-block}
+.painelRecolhivel[open] .painelSeta{transform:rotate(90deg)}
+
+/* Linha de convenio: acao compacta a direita, nao um botao de linha inteira. */
+.convenioRow{display:grid;grid-template-columns:minmax(0,1fr) 120px 100px auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda)}
+.convenioRow>b{text-align:right;font-variant-numeric:tabular-nums}
+.outlineClinical.compacto{height:32px;padding:0 var(--esp-3);font-size:13px}
+
+.auditRow{display:grid;grid-template-columns:180px minmax(0,1fr);gap:var(--esp-3);padding:var(--esp-2) var(--esp-5);border-top:1px solid var(--cor-borda);font-size:13px}
+.auditRow time{color:var(--cor-tinta-fraca);font-variant-numeric:tabular-nums}
+
+@media(max-width:760px){
+  .convenioRow{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--esp-2)}
+  .convenioRow>b{text-align:left}
+  .auditRow{grid-template-columns:1fr}
+}
