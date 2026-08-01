@@ -796,6 +796,12 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState("");
   const [editing,setEditing]=useState<Record<string,PerfilGerenciado>>(()=>Object.fromEntries(perfis.map(item=>[item.id,{...item}])));
+  // A edição abre sob demanda: com todas as linhas abertas, seis campos por
+  // usuário viram uma parede de caixas e a lista deixa de ser consultável.
+  const [aberto,setAberto]=useState("");
+  const [buscaUsuario,setBuscaUsuario]=useState("");
+  const [filtroPapel,setFiltroPapel]=useState("todos");
+  const [filtroStatus,setFiltroStatus]=useState("todos");
   const actorNames=new Map(perfis.map(item=>[item.id,item.nome]));
 
   async function saveProfile(item:PerfilGerenciado){
@@ -835,22 +841,77 @@ function AdminView({perfil,organizacao,perfis,auditoria,convenioValores,onRefres
     <section className="metricGrid adminMetrics"><Metric value={perfis.filter(item=>item.status==="ativo").length} label="Usuários ativos" tone="green"/><Metric value={perfis.filter(item=>item.role==="medico").length} label="Médicos" tone="blue"/><Metric value={perfis.filter(item=>item.status==="inativo").length} label="Acessos inativos" tone="red"/><Metric value={auditoria.length} label="Eventos recentes" tone="amber"/></section>
     <section className="clinicalPanel adminUsers">
       <div className="panelTitle"><strong>Usuários e permissões</strong><span>Alterações ficam registradas na auditoria.</span></div>
-      {perfis.map(source=>{
-        const item=editing[source.id]||source;
-        const setItem=(changes:Partial<PerfilGerenciado>)=>setEditing(state=>({...state,[source.id]:{...item,...changes}}));
-        return <div className="adminUserRow" key={source.id}>
-          <label><span>Nome</span><input value={item.nome} onChange={e=>setItem({nome:e.target.value})}/></label>
-          <label><span>E-mail</span><input value={item.email||""} readOnly/></label>
-          <label><span>Perfil</span><select value={item.role} disabled={source.role==="owner"&&perfil.role!=="owner"} onChange={e=>setItem({role:e.target.value})}><option value="recepcao">Recepção</option><option value="medico">Médico</option><option value="financeiro">Financeiro</option><option value="admin">Administrador</option>{perfil.role==="owner"&&<option value="owner">Proprietário</option>}</select></label>
-          <label><span>Status</span><select value={item.status} disabled={source.id===perfil.id} onChange={e=>setItem({status:e.target.value})}><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
-          <label><span>CRM / UF</span><input value={item.crm||""} onChange={e=>setItem({crm:e.target.value})} placeholder="Somente médico"/></label>
-          <label><span>RQE</span><input value={item.rqe||""} onChange={e=>setItem({rqe:e.target.value})} placeholder="Opcional"/></label>
-          <button className="outlineClinical" disabled={busy===item.id} onClick={()=>saveProfile(item)}>{busy===item.id?"Salvando...":"Salvar"}</button>
-          {source.id!==perfil.id&&source.role!=="owner"&&
-            <button className="outlineClinical dangerAction" disabled={busy===item.id} onClick={()=>removeUser(source)}
-              title="Só funciona para quem ainda não registrou nada. Para os demais, use Status: Inativo.">Excluir</button>}
+      <div className="adminFiltros">
+        <input
+          className="adminBusca" type="search" value={buscaUsuario}
+          onChange={e=>setBuscaUsuario(e.target.value)}
+          placeholder="Buscar por nome, e-mail ou CRM" aria-label="Buscar usuário"
+        />
+        <label><span>Perfil</span><select value={filtroPapel} onChange={e=>setFiltroPapel(e.target.value)}>
+          <option value="todos">Todos</option>
+          {Object.entries(ROLE_LABELS).map(([valor,rotulo])=><option key={valor} value={valor}>{rotulo}</option>)}
+        </select></label>
+        <label><span>Status</span><select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
+          <option value="todos">Todos</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option>
+        </select></label>
+      </div>
+      {(()=>{
+        const termo=buscaUsuario.trim().toLowerCase();
+        const lista=perfis.filter(item=>
+          (filtroPapel==="todos"||item.role===filtroPapel)&&
+          (filtroStatus==="todos"||item.status===filtroStatus)&&
+          (!termo||`${item.nome} ${item.email??""} ${item.crm??""}`.toLowerCase().includes(termo)));
+        if(!lista.length) return <div className="emptyClinical">
+          <strong>Nenhum usuário encontrado.</strong>
+          {perfis.length
+            ? <>Nenhum dos {perfis.length} usuários combina com a busca ou os filtros. Limpe os filtros para ver todos.</>
+            : <>Convide alguém da equipe pelo painel acima para começar.</>}
         </div>;
-      })}
+        return lista.map(source=>{
+          const item=editing[source.id]||source;
+          const setItem=(changes:Partial<PerfilGerenciado>)=>setEditing(state=>({...state,[source.id]:{...item,...changes}}));
+          const expandido=aberto===source.id;
+          const podeExcluir=source.id!==perfil.id&&source.role!=="owner";
+          return <div className={`adminUserItem ${expandido?"expandido":""}`.trim()} key={source.id}>
+            {/* Linha fechada: identidade e situação de relance. */}
+            <div className="adminUserResumo">
+              <span className="avatar" aria-hidden="true">{initials(source.nome)}</span>
+              <span className="adminUserIdent">
+                <strong>{source.nome}</strong>
+                <small>{source.email||"sem e-mail"}{source.crm?` · ${source.crm}`:""}</small>
+              </span>
+              <span className="statusChip paused">{ROLE_LABELS[source.role]??source.role}</span>
+              <span className={`statusChip ${source.status==="ativo"?"present":"waiting"}`}>{source.status==="ativo"?"Ativo":"Inativo"}</span>
+              <button
+                className="outlineClinical" aria-expanded={expandido}
+                onClick={()=>setAberto(atual=>atual===source.id?"":source.id)}
+              >{expandido?"Fechar":"Editar"}</button>
+            </div>
+            {expandido&&<div className="adminUserEdicao">
+              <div className="adminUserCampos">
+                <label className="clinicalField"><span>Nome</span><input value={item.nome} onChange={e=>setItem({nome:e.target.value})}/></label>
+                <label className="clinicalField"><span>E-mail</span><input value={item.email||""} readOnly/></label>
+                <label className="clinicalField"><span>Perfil</span><select value={item.role} disabled={source.role==="owner"&&perfil.role!=="owner"} onChange={e=>setItem({role:e.target.value})}><option value="recepcao">Recepção</option><option value="medico">Médico</option><option value="financeiro">Financeiro</option><option value="admin">Administrador</option>{perfil.role==="owner"&&<option value="owner">Proprietário</option>}</select></label>
+                <label className="clinicalField"><span>Status</span><select value={item.status} disabled={source.id===perfil.id} onChange={e=>setItem({status:e.target.value})}><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
+                <label className="clinicalField"><span>CRM / UF</span><input value={item.crm||""} onChange={e=>setItem({crm:e.target.value})} placeholder="Somente médico"/></label>
+                <label className="clinicalField"><span>RQE</span><input value={item.rqe||""} onChange={e=>setItem({rqe:e.target.value})} placeholder="Opcional"/></label>
+              </div>
+              <div className="adminUserAcoes">
+                <button className="primaryClinical compact" disabled={busy===item.id} onClick={()=>saveProfile(item)}>{busy===item.id?"Salvando...":"Salvar alterações"}</button>
+              </div>
+              {/* Excluir fica fora do fluxo, numa área separada e discreta: é
+                  irreversível e não deve competir com o botão de salvar. */}
+              {podeExcluir&&<div className="adminZonaPerigo">
+                <span>
+                  <strong>Excluir acesso</strong>
+                  <small>Só funciona para quem ainda não registrou nada no sistema. Para os demais, use Status: Inativo — o histórico clínico precisa continuar atribuído.</small>
+                </span>
+                <button className="outlineClinical red" disabled={busy===item.id} onClick={()=>removeUser(source)}>Excluir</button>
+              </div>}
+            </div>}
+          </div>;
+        });
+      })()}
     </section>
     <section className="clinicalPanel convenioAdmin">
       <div className="panelTitle"><strong>Gestão de valores por convênio</strong><span>Defina referência por procedimento e/ou hospital. O Financeiro sugere o valor ao criar o lançamento.</span></div>
