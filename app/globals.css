@@ -859,3 +859,33 @@ button:disabled{cursor:not-allowed}
   .convenioRow>b{text-align:left}
   .auditRow{grid-template-columns:1fr}
 }
+
+/* ============================================================================
+   Icones
+   ----------------------------------------------------------------------------
+   Desenhados em SVG, nao emoji: emoji muda de forma em cada sistema, nao
+   acompanha a cor do texto e no tema escuro alguns ficam ilegiveis.
+   ========================================================================== */
+:where(.userMenuLista,.roleNav,.outlineClinical,.primaryClinical,.pauseButton,.evalControls button,.panelTitle strong) svg{flex:none;vertical-align:-2px}
+.userMenuLista button svg,.userMenuLista a svg{color:var(--cor-tinta-fraca)}
+.allergyBanner svg{color:var(--cor-perigo)}
+
+/* Linha de convite pendente: identidade a esquerda, acoes agrupadas a
+   direita. Antes reaproveitava a grade dos convenios e o "Copiar link"
+   quebrava em duas linhas. */
+.conviteRow{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-4);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda);flex-wrap:wrap}
+.conviteQuem{min-width:0}
+.conviteQuem strong{display:block;font-size:14px}
+.conviteQuem small{display:block;color:var(--cor-tinta-fraca);font-size:12.5px}
+.conviteAcoes{display:flex;align-items:center;gap:var(--esp-2);flex-wrap:wrap}
+.conviteAcoes .outlineClinical{gap:var(--esp-2);white-space:nowrap}
+.whatsappAction{border-color:var(--cor-sucesso);color:var(--cor-sucesso)}
+.whatsappAction:hover:not(:disabled){background:var(--cor-sucesso-suave)}
+@media(max-width:680px){
+  .conviteRow{flex-direction:column;align-items:stretch}
+  .conviteAcoes .outlineClinical{flex:1;justify-content:center}
+}
+/* Os simbolos dos alertas agora sao svg dentro do quadrado colorido. */
+.alertItem i svg{display:block}
+.finalChecklist span{display:inline-flex;align-items:center;gap:var(--esp-2)}
+.closingFooter span{display:inline-flex;align-items:center;gap:var(--esp-2)}
