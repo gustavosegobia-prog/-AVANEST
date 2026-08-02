@@ -5,7 +5,7 @@ import { AppLogo } from "@/components/app-logo";
 import { Icone } from "@/components/icone";
 import { AssinarButton } from "./assinar-button";
 
-const WHATSAPP = "https://wa.me/5544998143820";
+const WHATSAPP = "https://wa.me/5541997870810";
 
 const MOTIVOS: Record<string, string> = {
   trial: "Seu período de teste terminou.",
