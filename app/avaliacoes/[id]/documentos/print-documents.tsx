@@ -265,40 +265,34 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             ["Caráter",dados.carater],["Porte",dados.porte],["Lateralidade",dados.lateralidade],
             ["Regime",dados.regime],["Data",formatDate(text(dados.data_cirurgia))],["Horário",dados.horario_cirurgia],
           ])}/>
-          {/* Resposta seca (o "Não" da maioria das perguntas) flui na mesma
-              linha da seguinte; pergunta com detalhe ocupa a linha inteira.
-              Numa anamnese normal quase tudo é "Não", e uma linha por resposta
-              gastava meia página em espaço branco — a ordem das perguntas não
-              muda, só o quanto elas ocupam. */}
-          {questions.length>0&&<><PaperTitle>ANAMNESE</PaperTitle>
-            <div className="paperAnamnese"{questions.length > 0 && (
-  <>
-    <PaperTitle>ANAMNESE</PaperTitle>
+                {questions.length > 0 && (
+            <>
+              <PaperTitle>ANAMNESE</PaperTitle>
 
-    <table className="paperAnamneseTable">
-      <tbody>
-        {questions.map(([label, value, detail]) => {
-          const comDetalhe = hasText(detail);
+              <table className="paperAnamneseTable">
+                <tbody>
+                  {questions.map(([label, value, detail]) => {
+                    const comDetalhe = hasText(detail);
 
-          return (
-            <tr key={String(label)}>
-              <td className="paperAnamnesePergunta">
-                {asLabel(String(label))}
-              </td>
+                    return (
+                      <tr key={String(label)}>
+                        <td className="paperAnamnesePergunta">
+                          {asLabel(String(label))}
+                        </td>
 
-              <td className="paperAnamneseResposta">
-                <b>
-                  {text(value)}
-                  {comDetalhe && ` — ${text(detail)}`}
-                </b>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </>
-)}
+                        <td className="paperAnamneseResposta">
+                          <b>
+                            {text(value)}
+                            {comDetalhe && ` — ${text(detail)}`}
+                          </b>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )}
           <PaperInlineBlock title="EXAME FÍSICO"
             linhas={[
               facts([
