@@ -531,11 +531,12 @@ button:disabled{cursor:not-allowed}
 @media print{
   .assessmentPaper .paperAnamneseTable{
     width:100%;
-    font-size:12.5px;
+    font-size:10.8px;
+line-height:1.1;
   }
 
   .assessmentPaper .paperAnamneseTable td{
-    padding:3px 7px;
+    padding:1px 6px;
   }
 
   .assessmentPaper .paperAnamneseTable tr{
