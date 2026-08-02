@@ -271,13 +271,34 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               gastava meia página em espaço branco — a ordem das perguntas não
               muda, só o quanto elas ocupam. */}
           {questions.length>0&&<><PaperTitle>ANAMNESE</PaperTitle>
-            <div className="paperAnamnese">{questions.map(([label,value,detail])=>{
-              const comDetalhe=hasText(detail);
-              return <p key={String(label)} className={comDetalhe?"anamneseDetalhada":undefined}>
-                {asLabel(String(label))}: <b>{text(value)}</b>{comDetalhe&&<b> — {text(detail)}</b>}
-              </p>;
-            })}
-            </div></>}
+            <div className="paperAnamnese"{questions.length > 0 && (
+  <>
+    <PaperTitle>ANAMNESE</PaperTitle>
+
+    <table className="paperAnamneseTable">
+      <tbody>
+        {questions.map(([label, value, detail]) => {
+          const comDetalhe = hasText(detail);
+
+          return (
+            <tr key={String(label)}>
+              <td className="paperAnamnesePergunta">
+                {asLabel(String(label))}
+              </td>
+
+              <td className="paperAnamneseResposta">
+                <b>
+                  {text(value)}
+                  {comDetalhe && ` — ${text(detail)}`}
+                </b>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </>
+)}
           <PaperInlineBlock title="EXAME FÍSICO"
             linhas={[
               facts([
