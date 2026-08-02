@@ -130,8 +130,8 @@ export default async function AssinaturaPage({
                   </p>
                 ) : precoDaCampanha ? (
                   <p className="avnPlanoNota sucesso">
-                    Oferta de lançamento: restam {vagas!.restantes} de {vagas!.limite} vagas
-                    com este valor travado para sempre.
+                    Promoção para os {vagas!.limite} primeiros: este valor fica
+                    travado para sempre enquanto a assinatura seguir ativa.
                   </p>
                 ) : null}
               </div>

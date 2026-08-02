@@ -38,11 +38,21 @@ insert into public.planos
 values
   ('solo','Solo','1 anestesiologista',109.00,1,1,true,false,1),
   ('equipe5','Equipe 5','Até 5 anestesiologistas',399.00,1,5,false,false,2),
-  ('equipe8','Equipe 8','Até 8 anestesiologistas',599.00,1,8,false,false,3),
-  ('grupo','Grupo','De 9 a 20 anestesiologistas',999.00,9,20,false,false,4),
+  ('grupo','Grupo','De 6 a 20 anestesiologistas',999.00,6,20,false,false,4),
   ('clinica','Clínica','Anestesiologistas ilimitados, recepção, financeiro, administração e gestão completa da clínica',1490.00,1,null,false,false,5),
   ('hospital','Hospital','Estrutura hospitalar completa, sob medida',null,1,null,false,true,6)
 on conflict (codigo) do nothing;
+
+-- A faixa intermediária (Equipe 8, R$ 599) saiu: de 6 anestesiologistas em
+-- diante já é Grupo. O ajuste vem como update além do seed porque o insert
+-- acima é "do nothing" — num banco onde a versão anterior já rodou, só o
+-- update corrige. Fica inativo em vez de apagado: instituicoes.plano_codigo
+-- referencia esta tabela, e apagar quebraria quem já tivesse contratado.
+update public.planos set ativo = false, updated_at = now()
+where codigo = 'equipe8';
+update public.planos
+set min_profissionais = 6, descricao = 'De 6 a 20 anestesiologistas', updated_at = now()
+where codigo = 'grupo';
 
 -- ----------------------------------------------------------------------------
 -- Campanha de lançamento

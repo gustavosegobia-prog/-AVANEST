@@ -941,7 +941,8 @@ button:disabled{cursor:not-allowed}
 .planosCampanha svg{flex:none;margin-top:2px;color:var(--avn-teal)}
 .planosCampanha b{color:#fff}
 
-.planosContador{max-width:420px;margin:var(--esp-7) auto 0}
+/* A barra de vagas sobrou só para a tela de administração: a vitrine deixou
+   de mostrar a contagem. Por isso não há mais o invólucro .planosContador. */
 .planosContadorBarra{
   height:9px;border-radius:var(--raio-cheio);overflow:hidden;
   background:#ffffff24;border:1px solid #ffffff2e;
@@ -950,10 +951,6 @@ button:disabled{cursor:not-allowed}
   display:block;height:100%;border-radius:var(--raio-cheio);
   background:linear-gradient(90deg,var(--avn-teal),#7fe3d6);
   transition:width var(--transicao);
-}
-.planosContador strong{
-  display:block;margin-top:var(--esp-3);
-  font-size:14px;font-weight:800;letter-spacing:.02em;color:var(--avn-teal);
 }
 
 /* Base de 300px e não 260: com 260 cabem 4 colunas em 1180px e os seis planos

@@ -103,8 +103,8 @@ export default async function PlanosPage() {
           <p className="planosCampanha">
             <Icone nome="estrela" tamanho={18} />
             <span>
-              <b>Oferta de lançamento.</b> Os {vagas!.limite} primeiros anestesiologistas
-              garantem {reais(Number(vagas!.preco))}/mês para sempre.
+              <b>Promoção para os {vagas!.limite} primeiros.</b> Garantem{" "}
+              {reais(Number(vagas!.preco))}/mês para sempre.
               {vagas!.preco_padrao != null && (
                 <> Depois: {reais(Number(vagas!.preco_padrao))}/mês.</>
               )}
@@ -117,23 +117,10 @@ export default async function PlanosPage() {
           administração. Sem taxa de instalação, sem fidelidade, cancele quando quiser.
         </p>
 
-        {campanhaVale && (
-          <div className="planosContador">
-            <div
-              className="planosContadorBarra"
-              role="progressbar"
-              aria-valuenow={vagas!.ocupadas}
-              aria-valuemin={0}
-              aria-valuemax={vagas!.limite}
-              aria-label={`${vagas!.ocupadas} de ${vagas!.limite} vagas da oferta de lançamento já preenchidas`}
-            >
-              <span style={{ width: `${Math.min(100, (vagas!.ocupadas / Math.max(1, vagas!.limite)) * 100)}%` }} />
-            </div>
-            <strong>
-              Vagas restantes: {vagas!.restantes}/{vagas!.limite}
-            </strong>
-          </div>
-        )}
+        {/* O contador de vagas saiu da vitrine a pedido: mostrar "restam 100 de
+            100" no primeiro dia denuncia que ninguém assinou ainda. A contagem
+            continua existindo no banco e na tela de administração, que é onde
+            ela serve para decidir quando encerrar a campanha. */}
       </section>
 
       <section className="planosGrade" id="planos">
