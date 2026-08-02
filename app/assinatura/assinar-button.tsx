@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 
-// Abre o checkout do Mercado Pago. O valor é decidido no servidor — aqui não
-// se manda preço, só o pedido de assinar.
-export function AssinarButton({ rotulo }: { rotulo: string }) {
+// Abre o checkout do Mercado Pago. Vai daqui qual plano se quer, nunca quanto
+// custa: o preço é decidido e congelado no banco.
+export function AssinarButton({ plano, rotulo }: { plano: string; rotulo: string }) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -12,7 +12,11 @@ export function AssinarButton({ rotulo }: { rotulo: string }) {
     setCarregando(true);
     setErro("");
     try {
-      const resposta = await fetch("/api/assinatura/checkout", { method: "POST" });
+      const resposta = await fetch("/api/assinatura/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plano }),
+      });
       const dados = await resposta.json().catch(() => null);
       if (!resposta.ok || !dados?.url) {
         setErro(dados?.error ?? "Não foi possível abrir o pagamento agora.");
