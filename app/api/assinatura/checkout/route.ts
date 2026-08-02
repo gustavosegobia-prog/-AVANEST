@@ -5,13 +5,20 @@ import { criarAssinatura, mercadoPagoConfigurado } from "@/lib/mercado-pago";
 
 // Abre o checkout da assinatura mensal.
 //
-// Quem decide o valor é o servidor, a partir do número de anestesiologistas
-// ativos: o navegador não manda preço.
+// O navegador manda qual plano quer, nunca quanto vai pagar. Quem decide o
+// preço é reservar_plano, no banco, com a campanha travada — é lá que a vaga
+// de fundador é disputada e o valor fica congelado.
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sua sessão expirou." }, { status: 401 });
+
+  const corpo = await request.json().catch(() => null) as { plano?: unknown } | null;
+  const codigo = typeof corpo?.plano === "string" ? corpo.plano.trim() : "";
+  if (!codigo) {
+    return NextResponse.json({ error: "Escolha um plano antes de continuar." }, { status: 400 });
+  }
 
   const { data: perfil } = await supabase
     .from("perfis").select("id,institution_id,role,status").eq("id", user.id).maybeSingle();
@@ -39,24 +46,39 @@ export async function POST() {
     );
   }
 
-  const { data: assinaturaData } = await supabase.rpc("minha_assinatura");
-  const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
-  if (!assinatura) return NextResponse.json({ error: "Organização não encontrada." }, { status: 404 });
+  const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 
-  const valorMensal = Number(assinatura.valor_mensal ?? 0);
+  // Reserva antes de falar com o Mercado Pago: a vaga de fundador e o preço
+  // saem daqui, e a função recusa plano inexistente, plano sob consulta e
+  // equipe maior do que o plano comporta.
+  const { data: reservaData, error: erroReserva } = await admin.rpc("reservar_plano", {
+    p_institution_id: perfil.institution_id,
+    p_codigo: codigo,
+  });
+  if (erroReserva) {
+    console.error("[assinatura/checkout] reservar", erroReserva);
+    // A mensagem da função é escrita para o cliente ler ("o plano X atende
+    // até N"), então vale mais do que um texto genérico.
+    return NextResponse.json({ error: erroReserva.message }, { status: 400 });
+  }
+  const reserva = Array.isArray(reservaData) ? reservaData[0] : reservaData;
+  const valorMensal = Number(reserva?.preco ?? 0);
   if (!(valorMensal > 0)) {
-    return NextResponse.json({
-      error: "Cadastre ao menos um anestesiologista com CRM antes de assinar.",
-    }, { status: 400 });
+    return NextResponse.json({ error: "Não foi possível calcular o valor do plano." }, { status: 500 });
   }
 
+  const { data: assinaturaData } = await supabase.rpc("minha_assinatura");
+  const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://avanest.com.br";
 
   let preapproval;
   try {
     preapproval = await criarAssinatura({
       institutionId: perfil.institution_id,
-      organizacao: String(assinatura.organizacao ?? "Organização"),
+      organizacao: String(assinatura?.organizacao ?? "Organização"),
+      plano: String(reserva?.plano_nome ?? codigo),
       emailPagador: user.email ?? "",
       valorMensal,
       retorno: `${site}/assinatura/retorno`,
@@ -75,9 +97,6 @@ export async function POST() {
 
   // Guarda o vínculo com a chave de serviço: a coluna é protegida contra
   // escrita pelo cliente, e é isso que impede alguém de se dar acesso grátis.
-  const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
   const { error } = await admin.rpc("vincular_assinatura_mp", {
     p_institution_id: perfil.institution_id,
     p_preapproval_id: preapproval.id,
