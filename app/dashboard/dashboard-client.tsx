@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
+import { Icone } from "@/components/icone";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -401,18 +402,18 @@ export function DashboardClient({
               {/* menuitemcheckbox, nao menuitem: o item liga e desliga um estado
                   e o leitor de tela precisa anunciar qual e o atual. */}
               <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{setDark(value=>!value);setUserMenu(false)}}>
-                <span aria-hidden="true">◐</span> {dark?"Tema claro":"Tema escuro"}
+                <Icone nome="tema"/> {dark?"Tema claro":"Tema escuro"}
               </button>
               {["owner","admin"].includes(perfil.role)&&
                 <Link role="menuitem" href="/assinatura" onClick={()=>setUserMenu(false)}>
-                  <span aria-hidden="true">◈</span> Assinatura
+                  <Icone nome="assinatura"/> Assinatura
                 </Link>}
               {perfil.super_admin===true&&
                 <Link role="menuitem" href="/organizacoes" onClick={()=>setUserMenu(false)}>
-                  <span aria-hidden="true">★</span> Organizações
+                  <Icone nome="estrela"/> Organizações
                 </Link>}
               <hr/>
-              <button role="menuitem" onClick={logout}><span aria-hidden="true">🔒</span> Bloquear tela</button>
+              <button role="menuitem" onClick={logout}><Icone nome="cadeado"/> Bloquear tela</button>
               <button role="menuitem" className="userMenuSair" onClick={logout}>Sair da conta</button>
             </div>
           </>}
@@ -452,10 +453,10 @@ export function DashboardClient({
           <section className="clinicalPanel alertsPanel">
             <div className="panelTitle"><strong>Central Operacional</strong><span>alertas da rotina baseados nas avaliações em andamento</span></div>
             <div className="alertGrid">
-              <Alert icon="△" title="Avaliações incompletas" text={`${drafts.length} avaliação(ões) aguardando conclusão`} action="REVISAR" danger onClick={goToFirstDraft} />
-              <Alert icon="!" title="Medicamentos" text="Revisar anticoagulantes e GLP-1 durante a anamnese" action="AVALIAR" onClick={goToFirstDraft} />
-              <Alert icon="×" title="Exames pendentes" text="Confira exames e pareceres antes da conclusão" action="PENDÊNCIA" onClick={goToFirstDraft} />
-              <Alert icon="✉" title="Orientações não enviadas" text={`${completed.filter(a=>a.dados?.orientacoes_enviadas!==true).length} documento(s) aguardando envio`} action="ENVIAR" onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)} />
+              <Alert icone="alerta" title="Avaliações incompletas" text={`${drafts.length} avaliação(ões) aguardando conclusão`} action="REVISAR" danger onClick={goToFirstDraft} />
+              <Alert icone="alerta" title="Medicamentos" text="Revisar anticoagulantes e GLP-1 durante a anamnese" action="AVALIAR" onClick={goToFirstDraft} />
+              <Alert icone="fechar" title="Exames pendentes" text="Confira exames e pareceres antes da conclusão" action="PENDÊNCIA" onClick={goToFirstDraft} />
+              <Alert icone="envelope" title="Orientações não enviadas" text={`${completed.filter(a=>a.dados?.orientacoes_enviadas!==true).length} documento(s) aguardando envio`} action="ENVIAR" onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)} />
             </div>
           </section>
           <section className="clinicalPanel agendaPanel">
@@ -628,7 +629,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
 
     {pendingPatients.length>0&&<section className="clinicalPanel"><div className="panelTitle"><strong>Atendimentos aguardando lançamento</strong><span>vindos automaticamente da recepção e agenda</span></div>{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</section>}
 
-    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><section className="clinicalPanel financeGroup" key={convenio}><div className="financeGroupHead"><strong>▣ &nbsp;{convenio}</strong><span>{items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b></div>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>updateItem(item.id,{valor:Number(e.target.value.replace(",","."))||0})}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div>})}</section>)}
+    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><section className="clinicalPanel financeGroup" key={convenio}><div className="financeGroupHead"><strong>{convenio}</strong><span>{items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b></div>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>updateItem(item.id,{valor:Number(e.target.value.replace(",","."))||0})}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div>})}</section>)}
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>📦 Lotes de cobrança</strong><span>agrupamento por convênio/hospital, sem dados clínicos</span></div>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</section>
 
@@ -682,7 +683,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>🩺 Repasses aos anestesiologistas</strong><span>liberação após recebimento; valores visíveis conforme as permissões do perfil</span></div>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</section>
 
-    <section className="clinicalPanel closingPanel"><div className="panelTitle"><strong>🔒 Fechamento do período — {period.split("-").reverse().join("/")}</strong><span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span></div><div className="closingMetrics"><MoneySmall value={total} label="Total cobrado"/><MoneySmall value={received} label="Recebido" tone="green"/><MoneySmall value={pending} label="Pendente" tone="amber"/><MoneySmall value={glosas.reduce((s,i)=>s+Number(i.glosa_valor||0),0)} label="Glosas" tone="red"/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados" tone="blue"/></div><div className="closingFooter"><span>⚠ Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></section>
+    <section className="clinicalPanel closingPanel"><div className="panelTitle"><strong><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</strong><span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span></div><div className="closingMetrics"><MoneySmall value={total} label="Total cobrado"/><MoneySmall value={received} label="Recebido" tone="green"/><MoneySmall value={pending} label="Pendente" tone="amber"/><MoneySmall value={glosas.reduce((s,i)=>s+Number(i.glosa_valor||0),0)} label="Glosas" tone="red"/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados" tone="blue"/></div><div className="closingFooter"><span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></section>
     <p className="financeFootnote">Pagamentos registrados: {pagamentos.length}. Valores exibidos são os lançamentos reais cadastrados para esta instituição.</p>
     {configOpen&&<div className="patientModalBackdrop" role="presentation"><section className="financeConfigModal" role="dialog" aria-modal="true" aria-labelledby="finance-config-title"><div className="patientModalHead"><div><strong id="finance-config-title">Configurar valores das consultas</strong><span>Os convênios cadastrados aparecem automaticamente.</span></div><button type="button" onClick={()=>setConfigOpen(false)} aria-label="Fechar">×</button></div><div className="financeConfigList">{knownConvenios.map(convenio=><label key={convenio}><span>{convenio}</span><div><b>R$</b><input inputMode="decimal" value={priceValues[convenio]??"0"} onChange={event=>setPriceValues(current=>({...current,[convenio]:event.target.value}))}/></div></label>)}</div><div className="patientModalActions"><button className="outlineClinical" type="button" onClick={()=>setConfigOpen(false)}>Cancelar</button><button className="primaryClinical compact" type="button" disabled={busy==="prices"} onClick={savePrices}>{busy==="prices"?"Salvando...":"Salvar valores"}</button></div></section></div>}
   </div>
@@ -790,7 +791,7 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
 
   return <section className="clinicalPanel">
     <div className="panelTitle">
-      <strong>✉️ Convidar para {organizacao?.nome??"a organização"}</strong>
+      <strong><Icone nome="envelope"/> Convidar para {organizacao?.nome??"a organização"}</strong>
       <span>quem aceitar entra somente nesta organização, com o papel definido aqui</span>
     </div>
     <div className="inviteModeSwitch" role="tablist">
@@ -824,16 +825,19 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
       : "Copie o link gerado e envie por WhatsApp ou onde preferir. Ele só funciona para o e-mail informado, expira na data escolhida e pode ser cancelado a qualquer momento."}</p>
     {pendentes.length===0
       ? <div className="emptyClinical compactEmpty">Nenhum convite pendente.</div>
-      : pendentes.map(item=><div className="convenioRow" key={item.id}>
-          <span>
+      : pendentes.map(item=><div className="conviteRow" key={item.id}>
+          <span className="conviteQuem">
             <strong>{item.email}</strong>
             <small>{ROLE_LABELS[item.role]??item.role} · {expirado(item)?"expirado":`válido até ${new Date(item.expires_at).toLocaleDateString("pt-BR")}`}</small>
           </span>
-          <button type="button" className="outlineClinical whatsappAction" onClick={()=>enviarWhatsApp(item)}>WhatsApp</button>
-          <button type="button" className="outlineClinical" onClick={()=>copiar(item.token)}>
-            {copiado===item.token?"Link copiado ✓":"Copiar link"}</button>
-          <button type="button" className="outlineClinical" disabled={busy===item.id} onClick={()=>revogar(item.id)}>
-            {busy===item.id?"Cancelando...":"Cancelar"}</button>
+          <div className="conviteAcoes">
+            <button type="button" className="outlineClinical compacto whatsappAction" onClick={()=>enviarWhatsApp(item)}>
+              <Icone nome="whatsapp"/> WhatsApp</button>
+            <button type="button" className="outlineClinical compacto" onClick={()=>copiar(item.token)}>
+              <Icone nome={copiado===item.token?"confirmado":"copiar"}/> {copiado===item.token?"Copiado":"Copiar link"}</button>
+            <button type="button" className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>revogar(item.id)}>
+              {busy===item.id?"Cancelando...":"Cancelar"}</button>
+          </div>
         </div>)}
   </section>;
 }
@@ -1006,7 +1010,13 @@ function Metric({ value, label, tone }: { value: number; label: string; tone: st
 }
 function MoneyMetric({value,label,tone}:{value:number;label:string;tone:string}){return <div className="metricCard"><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
 function MoneySmall({value,label,tone=""}:{value:number;label:string;tone?:string}){return <div><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
-function Alert({ icon, title, text, action, danger=false, onClick }: { icon:string; title:string; text:string; action:string; danger?:boolean; onClick?:()=>void }) { return <button type="button" className="alertItem" onClick={onClick} disabled={!onClick}><i className={danger?"danger":""}>{icon}</i><span><strong>{title}</strong> — {text}</span><b className={danger?"dangerText":""}>{action}</b></button>; }
+function Alert({ icone, title, text, action, danger=false, onClick }: { icone:Parameters<typeof Icone>[0]["nome"]; title:string; text:string; action:string; danger?:boolean; onClick?:()=>void }) {
+  return <button type="button" className="alertItem" onClick={onClick} disabled={!onClick}>
+    <i className={danger?"danger":""}><Icone nome={icone} tamanho={15}/></i>
+    <span><strong>{title}</strong> — {text}</span>
+    <b className={danger?"dangerText":""}>{action}</b>
+  </button>;
+}
 
 function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:string; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
   const [convenio,setConvenio]=useState<string>(PRIVATE_PAY_CONVENIO);
