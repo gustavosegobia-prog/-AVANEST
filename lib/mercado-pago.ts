@@ -8,8 +8,6 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 const API = "https://api.mercadopago.com";
 
-export const MP_MENSAL = 49.99;
-
 export function mercadoPagoConfigurado() {
   return Boolean(process.env.MP_ACCESS_TOKEN);
 }
@@ -60,6 +58,7 @@ export type PagamentoAutorizado = {
 export function criarAssinatura(dados: {
   institutionId: string;
   organizacao: string;
+  plano: string;
   emailPagador: string;
   valorMensal: number;
   retorno: string;
@@ -67,7 +66,9 @@ export function criarAssinatura(dados: {
   return chamar<Preapproval>("/preapproval", {
     method: "POST",
     body: JSON.stringify({
-      reason: `AVANEST — ${dados.organizacao}`,
+      // O nome do plano entra aqui porque é o texto que o cliente lê na
+      // fatura do cartão e no e-mail do Mercado Pago.
+      reason: `AVANEST ${dados.plano} — ${dados.organizacao}`,
       external_reference: dados.institutionId,
       payer_email: dados.emailPagador,
       back_url: dados.retorno,
@@ -90,7 +91,7 @@ export function buscarPagamentoAutorizado(id: string) {
   return chamar<PagamentoAutorizado>(`/authorized_payments/${encodeURIComponent(id)}`);
 }
 
-// O valor acompanha o número de anestesiologistas. Ajustar aqui vale para as
+// Alinha a cobrança recorrente ao preço contratado. Ajustar aqui vale para as
 // próximas cobranças — a que já foi feita não muda.
 export function ajustarValorMensal(preapprovalId: string, valorMensal: number) {
   return chamar<Preapproval>(`/preapproval/${encodeURIComponent(preapprovalId)}`, {
