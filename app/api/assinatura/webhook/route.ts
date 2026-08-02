@@ -126,17 +126,20 @@ async function mudancaDaAssinatura(id: string) {
   return NextResponse.json({ ok: true });
 }
 
-// O preço acompanha quantos anestesiologistas a organização tem hoje. Se o
-// número mudou, a próxima cobrança sai corrigida.
+// Mantém a cobrança recorrente igual ao preço contratado.
+//
+// Antes daqui saía uma conta por cabeça, recalculada a cada pagamento. Com a
+// tabela de planos isso passou a ser proibido: o preço de quem já assinou é
+// congelado, e um fundador que contratasse por R$ 89 veria a mensalidade subir
+// sozinha no mês seguinte. Agora só reconciliamos com preco_contratado, que
+// nenhuma rotina automática altera — na prática é um no-op, e só age se um
+// super-admin tiver mudado o valor daquele cliente de propósito.
 async function sincronizarValor(institutionId: string, preapproval: string) {
   try {
     const supabase = admin();
-    const { data: profissionais } = await supabase.rpc("contar_profissionais", {
-      p_institution_id: institutionId,
-    });
     const { data: instituicao } = await supabase
-      .from("instituicoes").select("valor_por_profissional").eq("id", institutionId).maybeSingle();
-    const valor = Number(profissionais ?? 0) * Number(instituicao?.valor_por_profissional ?? 49.99);
+      .from("instituicoes").select("preco_contratado").eq("id", institutionId).maybeSingle();
+    const valor = Number(instituicao?.preco_contratado ?? 0);
     if (!(valor > 0)) return;
 
     const atual = await buscarAssinatura(preapproval);
