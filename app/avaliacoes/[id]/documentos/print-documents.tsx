@@ -265,9 +265,18 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             ["Caráter",dados.carater],["Porte",dados.porte],["Lateralidade",dados.lateralidade],
             ["Regime",dados.regime],["Data",formatDate(text(dados.data_cirurgia))],["Horário",dados.horario_cirurgia],
           ])}/>
+          {/* Resposta seca (o "Não" da maioria das perguntas) flui na mesma
+              linha da seguinte; pergunta com detalhe ocupa a linha inteira.
+              Numa anamnese normal quase tudo é "Não", e uma linha por resposta
+              gastava meia página em espaço branco — a ordem das perguntas não
+              muda, só o quanto elas ocupam. */}
           {questions.length>0&&<><PaperTitle>ANAMNESE</PaperTitle>
-            <div className="paperAnamnese">{questions.map(([label,value,detail])=>
-              <p key={String(label)}>{asLabel(String(label))}: <b>{text(value)}</b>{hasText(detail)&&<b> — {text(detail)}</b>}</p>)}
+            <div className="paperAnamnese">{questions.map(([label,value,detail])=>{
+              const comDetalhe=hasText(detail);
+              return <p key={String(label)} className={comDetalhe?"anamneseDetalhada":undefined}>
+                {asLabel(String(label))}: <b>{text(value)}</b>{comDetalhe&&<b> — {text(detail)}</b>}
+              </p>;
+            })}
             </div></>}
           <PaperInlineBlock title="EXAME FÍSICO"
             linhas={[
