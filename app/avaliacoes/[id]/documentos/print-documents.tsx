@@ -197,7 +197,11 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   const guidedMedications=medications.filter(item=>MEDICATION_ORIENTATION_ACTIONS.includes(item.conduta));
   const planManuallyEdited=dados.plano_anestesico_editado===true;
   const printablePlan=useMemo(()=>{
-    const saved=String(dados.plano_anestesico||"").trim();
+    const saved=String(dados.plano_anestesico||"")
+  .split(/\r?\n/)
+  .filter(linha=>!/^(JEJUM|PLANO ANEST[ÉE]SICO)\s*:/i.test(linha.trim()))
+  .join("\n")
+  .trim();
     // Texto reescrito pelo anestesiologista é impresso exatamente como foi salvo.
     // O bloco automático de medicamentos só é reconstruído quando não houve edição.
     if(planManuallyEdited)return saved;
