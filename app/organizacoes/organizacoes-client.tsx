@@ -10,6 +10,9 @@ type Organizacao = {
   id: string; nome: string; tipo: string; plano: string; assinatura_ate: string | null;
   profissionais: number; usuarios: number; valor_mensal: number;
   pacientes: number; avaliacoes: number; criada_em: string;
+  plano_codigo: string | null; plano_nome: string | null;
+  preco_fundador: boolean; max_profissionais: number | null;
+  contratado_em: string | null; fundador_perdido: boolean;
 };
 
 const PLANOS: Array<[string, string]> = [
@@ -52,7 +55,10 @@ export function OrganizacoesClient({ nome, organizacoes }: { nome: string; organ
         <span><strong>AVANEST</strong><small>Administração da plataforma</small></span>
       </Link>
       <div className="orgBadge"><strong>Super-admin</strong><small>{nome}</small></div>
-      <nav className="roleNav"><Link href="/dashboard">Voltar ao sistema</Link></nav>
+      <nav className="roleNav">
+        <Link href="/organizacoes/planos">Planos e campanha</Link>
+        <Link href="/dashboard">Voltar ao sistema</Link>
+      </nav>
     </header>
 
     <div className="clinicalMain adminMain">
@@ -73,25 +79,40 @@ export function OrganizacoesClient({ nome, organizacoes }: { nome: string; organ
       <section className="clinicalPanel">
         <div className="panelTitle">
           <strong>Assinaturas</strong>
-          <span>a cobrança conta anestesiologistas ativos com CRM, a R$ 49,99 cada</span>
+          <span>cada organização paga o plano que contratou, com o preço congelado</span>
         </div>
         {organizacoes.length === 0
           ? <div className="emptyClinical compactEmpty">Nenhuma organização cadastrada.</div>
           : organizacoes.map((org) => (
             <div className={`orgRow ${vencida(org) ? "vencida" : ""}`} key={org.id}>
               <span className="orgRowNome">
-                <strong>{org.nome}</strong>
+                <strong>
+                  {org.nome}
+                  {org.preco_fundador && <em className="planoAdminTag campanha">Fundador</em>}
+                  {/* Sem isto não dá para responder "por que esse aqui paga o
+                      preço cheio se ainda sobra vaga?" — cancelou uma vez. */}
+                  {org.fundador_perdido && !org.preco_fundador && (
+                    <em className="planoAdminTag">Fora da campanha</em>
+                  )}
+                </strong>
                 <small>
                   {org.tipo === "individual" ? "Individual" : "Grupo"} ·{" "}
-                  {org.profissionais} anestesiologista(s) de {org.usuarios} usuário(s) ·{" "}
-                  {org.pacientes} paciente(s) · {org.avaliacoes} avaliação(ões)
+                  {org.profissionais} anestesiologista(s)
+                  {org.max_profissionais !== null && <> de {org.max_profissionais} do plano</>} ·{" "}
+                  {org.usuarios} usuário(s) · {org.pacientes} paciente(s) ·{" "}
+                  {org.avaliacoes} avaliação(ões)
                 </small>
               </span>
               <span className="orgRowPlano">
                 <b>{PLANOS.find(([v]) => v === org.plano)?.[1] ?? org.plano}</b>
                 <small>{vencida(org) ? "venceu em" : "até"} {data(org.assinatura_ate)}</small>
               </span>
-              <span className="orgRowValor"><b>{dinheiro(org.valor_mensal)}</b><small>por mês</small></span>
+              <span className="orgRowValor">
+                <b>{dinheiro(org.valor_mensal)}</b>
+                {/* Sem plano contratado o valor é a conta antiga, por cabeça:
+                    dizer "por mês" ali daria a entender que já foi cobrado. */}
+                <small>{org.plano_nome ? `${org.plano_nome} · por mês` : "sem plano contratado"}</small>
+              </span>
               <select
                 className="orgRowAcao"
                 value=""
