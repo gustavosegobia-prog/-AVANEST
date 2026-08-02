@@ -9,6 +9,7 @@ export default function HomePage() {
       <header className="avnNav">
         <AppLogo />
         <nav>
+          <a className="avnLogin" href="/planos">Planos</a>
           <a className="avnLogin" href="/login">Login</a>
           <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
             Agendar uma conversa de 15 minutos
@@ -31,7 +32,7 @@ export default function HomePage() {
             <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
               Agendar uma conversa de 15 minutos
             </a>
-            <a className="avnSecondary" href="#como-funciona">Ver o sistema em 90 segundos</a>
+            <a className="avnSecondary" href="/planos">Ver planos e preços</a>
           </div>
         </div>
       </section>

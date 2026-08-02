@@ -485,8 +485,13 @@ button:disabled{cursor:not-allowed}
    caixinhas. Os blocos corridos usam inline-block em cada campo: itens curtos
    ficam inteiros na linha, e so o campo que nao couber quebra por dentro, em
    vez de a folha reservar coluna fixa para campo vazio. */
-.paperAnamnese{padding:3px 9px}
+/* As respostas secas fluem lado a lado; a pergunta que tem detalhe toma a
+   linha inteira (flex-basis:100%) e fica destacada justamente por isso — que
+   é o achado clínico que importa. O column-gap largo faz as vezes de
+   separador: um "·" entre itens ficaria pendurado no fim de cada linha. */
+.paperAnamnese{display:flex;flex-wrap:wrap;column-gap:19px;row-gap:0;padding:3px 9px}
 .paperAnamnese p{margin:0;line-height:1.35;break-inside:avoid;page-break-inside:avoid}
+.paperAnamnese p.anamneseDetalhada{flex-basis:100%}
 .paperInlineBlock{padding:3px 9px}
 .paperInline,.paperInlineFull{margin:0;line-height:1.35}
 .paperInline span{display:inline-block;break-inside:avoid}
@@ -552,6 +557,18 @@ button:disabled{cursor:not-allowed}
 .avnPlanoResumo small{display:block;font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--cor-tinta-fraca);margin-bottom:4px}
 .avnPlanoResumo strong{font-size:22px;color:var(--cor-tinta)}
 .avnPlanoResumo strong span{font-size:12px;font-weight:600;color:var(--cor-tinta-fraca)}
+/* Cartão do plano em foco na tela de assinatura: nome, valor e o motivo do
+   valor. Vem antes da grade de números porque é ele que a pessoa confere
+   antes de clicar em pagar. */
+.avnPlanoEscolhido{margin:18px 0 0;padding:15px 16px;border:1px solid var(--cor-marca);border-radius:var(--raio-2);background:var(--cor-marca-suave)}
+.avnPlanoEscolhidoTopo{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-3);flex-wrap:wrap}
+.avnPlanoEscolhidoTopo strong{font-size:16px;color:var(--cor-tinta-forte)}
+.avnPlanoEscolhido small{display:block;margin-top:3px;font-size:13px;line-height:1.45;color:var(--cor-tinta-fraca)}
+.avnPlanoValor{display:flex;align-items:baseline;gap:6px;margin:10px 0 0}
+.avnPlanoValor strong{font-size:30px;font-weight:900;letter-spacing:-.03em;color:var(--cor-tinta-forte)}
+.avnPlanoValor span{font-size:14px;font-weight:600;color:var(--cor-tinta-fraca)}
+.avnPlanoNota{margin:6px 0 0;font-size:12.5px;line-height:1.45;font-weight:600}
+.avnPlanoNota.sucesso{color:var(--cor-sucesso)}
 /* Precisa de ".roleNav" na frente: sem isso o fundo branco de ".roleNav a"
    ganha por especificidade e o link fica branco sobre branco — invisivel. */
 .roleNav a.superAdminLink{display:inline-flex;align-items:center;padding:10px 15px;border-radius:11px;background:#3b1d63;border-color:#3b1d63;color:#fff;font-weight:800;text-decoration:none}
@@ -889,3 +906,212 @@ button:disabled{cursor:not-allowed}
 .alertItem i svg{display:block}
 .finalChecklist span{display:inline-flex;align-items:center;gap:var(--esp-2)}
 .closingFooter span{display:inline-flex;align-items:center;gap:var(--esp-2)}
+
+/* ============================================================================
+   Página de planos (/planos)
+   ----------------------------------------------------------------------------
+   Vitrine pública, então herda a paleta do site (--avn-*) e não a clínica.
+   A grade usa auto-fit com base de 260px: os seis planos se reacomodam
+   sozinhos de 1920 a 360 sem uma única media query de contagem de colunas.
+   ========================================================================== */
+.planosPage{padding-bottom:0}
+
+.planosHero{
+  background:linear-gradient(160deg,var(--avn-navy) 0%,#0d2a42 100%);
+  color:#fff;
+  padding:clamp(48px,7vw,88px) max(20px,calc((100vw - 1180px)/2)) clamp(40px,6vw,72px);
+  text-align:center;
+}
+.planosHero h1{
+  font-size:clamp(32px,5vw,54px);line-height:1.08;letter-spacing:-.03em;
+  margin:0 0 var(--esp-4);
+}
+.planosLead{
+  font-size:clamp(15px,1.6vw,19px);line-height:1.7;color:#c5d4df;
+  max-width:660px;margin:0 auto;
+}
+/* A tarja da campanha é a primeira coisa que a pessoa lê: fica acima do
+   título e some inteira quando a promoção acaba. */
+.planosCampanha{
+  display:inline-flex;align-items:flex-start;gap:var(--esp-3);
+  max-width:640px;margin:0 auto var(--esp-6);padding:var(--esp-3) var(--esp-5);
+  border:1px solid #43c8b859;border-radius:var(--raio-cheio);
+  background:#43c8b81f;color:#d6f5f0;font-size:14.5px;line-height:1.5;text-align:left;
+}
+.planosCampanha svg{flex:none;margin-top:2px;color:var(--avn-teal)}
+.planosCampanha b{color:#fff}
+
+.planosContador{max-width:420px;margin:var(--esp-7) auto 0}
+.planosContadorBarra{
+  height:9px;border-radius:var(--raio-cheio);overflow:hidden;
+  background:#ffffff24;border:1px solid #ffffff2e;
+}
+.planosContadorBarra span{
+  display:block;height:100%;border-radius:var(--raio-cheio);
+  background:linear-gradient(90deg,var(--avn-teal),#7fe3d6);
+  transition:width var(--transicao);
+}
+.planosContador strong{
+  display:block;margin-top:var(--esp-3);
+  font-size:14px;font-weight:800;letter-spacing:.02em;color:var(--avn-teal);
+}
+
+/* Base de 300px e não 260: com 260 cabem 4 colunas em 1180px e os seis planos
+   quebram em 4+2, que fica torto. Com 300 dá 3+3 no desktop, 2+2+2 no tablet
+   e um por linha no celular. */
+.planosGrade{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:var(--esp-5);align-items:stretch;
+  width:min(1180px,calc(100% - 40px));margin:clamp(-40px,-4vw,-28px) auto 0;
+  padding-bottom:clamp(48px,6vw,72px);position:relative;z-index:1;
+}
+
+.planoCard{
+  display:flex;flex-direction:column;
+  padding:var(--esp-6) var(--esp-5);
+  background:var(--cor-superficie);border:1px solid var(--avn-line);
+  border-radius:var(--raio-3);box-shadow:var(--sombra-2);
+}
+/* O realce é um anel de sombra, não uma borda mais grossa: borda de 2px contra
+   1px encolhe a caixa de conteúdo em 1px e os botões da linha param de
+   terminar na mesma altura. Anel não ocupa espaço nenhum. */
+.planoCard.destacado{
+  border-color:var(--avn-teal);
+  box-shadow:0 0 0 2px var(--avn-teal),var(--sombra-3);
+}
+.planoCard.sobConsulta{background:var(--cor-superficie-suave)}
+
+.planoSelos{display:flex;flex-wrap:wrap;gap:var(--esp-2);min-height:24px;margin-bottom:var(--esp-3)}
+.planoSelo{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 11px;border-radius:var(--raio-cheio);
+  font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+}
+.planoSelo.escolhido{background:var(--avn-navy);color:#fff}
+.planoSelo.fundador{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+
+.planoCard h2{font-size:23px;margin:0 0 var(--esp-1);letter-spacing:-.01em}
+.planoEquipe{margin:0;color:var(--avn-muted);font-size:14px;line-height:1.5;min-height:42px}
+
+.planoPreco{
+  display:flex;align-items:baseline;flex-wrap:wrap;gap:var(--esp-2);
+  margin:var(--esp-5) 0 0;
+}
+.planoPreco s{color:var(--avn-muted);font-size:16px;font-weight:600}
+.planoPreco strong{font-size:34px;font-weight:900;letter-spacing:-.03em;color:var(--cor-tinta-forte)}
+.planoPreco span{color:var(--avn-muted);font-size:15px;font-weight:600}
+.planoSobConsulta{
+  margin:var(--esp-5) 0 0;font-size:16px;line-height:1.5;
+  font-weight:700;color:var(--cor-tinta-forte);
+}
+.planoFundadorNota{
+  margin:var(--esp-2) 0 0;font-size:12.5px;line-height:1.45;color:var(--cor-sucesso);font-weight:600;
+}
+
+/* margin-top:auto encosta o botão no rodapé do cartão, senão os botões de
+   planos com textos de alturas diferentes ficam em degraus. O respiro mínimo
+   vem do margin-bottom de quem vem antes: quando o cartão é o mais alto da
+   linha não sobra espaço livre e o auto sozinho colaria o botão no texto. */
+.planoPreco,.planoSobConsulta,.planoFundadorNota{margin-bottom:var(--esp-6)}
+/* Quando a nota de fundador vem logo abaixo do preço os dois são o mesmo
+   bloco de leitura: o respiro grande fica só no último. */
+.planoPreco:has(+ .planoFundadorNota){margin-bottom:var(--esp-2)}
+.planoBotao{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:46px;margin-top:auto;padding:0 var(--esp-5);
+  border-radius:var(--raio-2);border:1px solid var(--avn-navy);
+  background:transparent;color:var(--avn-navy);
+  font-weight:800;font-size:15px;text-align:center;
+  transition:background var(--transicao),color var(--transicao);
+}
+.planoCard.destacado .planoBotao{background:var(--avn-navy);color:#fff}
+.planoBotao:hover{background:var(--avn-navy);color:#fff}
+
+.planosIncluso{
+  background:var(--cor-superficie);border-top:1px solid var(--avn-line);
+  padding:clamp(44px,6vw,72px) max(20px,calc((100vw - 1180px)/2));
+}
+.planosIncluso h2{font-size:clamp(22px,3vw,32px);margin:0 0 var(--esp-6);text-align:center}
+.planosIncluso ul{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:var(--esp-4) var(--esp-6);list-style:none;margin:0;padding:0;
+  max-width:940px;margin-inline:auto;
+}
+.planosIncluso li{
+  display:flex;align-items:center;gap:var(--esp-3);
+  font-size:15.5px;font-weight:600;color:var(--cor-tinta);
+}
+.planosIncluso li svg{flex:none;color:var(--cor-sucesso)}
+
+@media(max-width:680px){
+  .planosGrade{margin-top:var(--esp-6)}
+  .planosCampanha{border-radius:var(--raio-3)}
+  .planoEquipe{min-height:0}
+}
+/* Em telas estreitas o preço riscado + o preço novo + "/mês" não cabem numa
+   linha só, e quem sobrava era o "/mês", que ia sozinho para a linha de baixo.
+   Mandando o riscado para cima, o valor vigente e a unidade ficam juntos. */
+@media(max-width:420px){
+  .planoPreco s{flex-basis:100%}
+}
+
+/* ============================================================================
+   Administração de planos (/organizacoes/planos)
+   ========================================================================== */
+/* Par do .clinicalError, que já existia sozinho: confirmação precisa de cor
+   própria, senão "salvo" e "falhou" saem no mesmo vermelho. */
+.clinicalOk{
+  border-radius:var(--raio-1);border:1px solid var(--cor-sucesso);
+  background:var(--cor-sucesso-suave);color:var(--cor-sucesso);
+  padding:var(--esp-3) var(--esp-4);font-weight:600;
+}
+
+.campanhaBarraLinha{
+  display:flex;align-items:center;gap:var(--esp-4);
+  padding:var(--esp-4) var(--esp-5) 0;
+}
+.campanhaBarraLinha b{font-size:14px;color:var(--cor-tinta-fraca);white-space:nowrap}
+.campanhaBarraLinha .planosContadorBarra{flex:1}
+/* A mesma barra da vitrine, mas sobre fundo claro: lá o trilho é branco
+   translúcido e aqui sumiria. */
+.planosContadorBarra.escura{background:var(--cor-superficie-suave);border-color:var(--cor-borda)}
+
+.campanhaForm{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:var(--esp-4);align-items:end;padding:var(--esp-4) var(--esp-5);
+}
+.campanhaAcoes{display:flex;gap:var(--esp-2);flex-wrap:wrap}
+.campanhaAcoes button{flex:1;justify-content:center;white-space:nowrap}
+.campanhaAjuda{
+  margin:0;padding:0 var(--esp-5) var(--esp-5);
+  font-size:13px;line-height:1.55;color:var(--cor-tinta-fraca);
+}
+
+.planoAdminRow{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--esp-4);
+  padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda);flex-wrap:wrap;
+}
+.planoAdminRow.inativo{opacity:.6}
+.planoAdminNome{min-width:170px;flex:1}
+.planoAdminNome strong{display:flex;align-items:center;gap:var(--esp-2);flex-wrap:wrap;font-size:15px}
+.planoAdminNome small{display:block;margin-top:2px;font-size:12.5px;color:var(--cor-tinta-fraca)}
+.planoAdminTag{
+  font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  padding:3px 8px;border-radius:var(--raio-cheio);
+  background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);
+}
+.planoAdminTag.campanha{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.planoAdminPreco{display:flex;align-items:center;gap:var(--esp-2)}
+.planoAdminPreco input{
+  width:110px;height:var(--alt-botao-compacto);
+  padding:0 var(--esp-3);border:1px solid var(--cor-borda-forte);
+  border-radius:var(--raio-1);background:var(--cor-superficie);color:var(--cor-tinta);
+  font-size:14px;font-weight:700;text-align:right;
+}
+.planoAdminSobConsulta{font-size:13px;color:var(--cor-tinta-fraca);font-style:italic}
+
+@media(max-width:680px){
+  .planoAdminRow{flex-direction:column;align-items:stretch}
+  .planoAdminPreco input{flex:1;width:auto;text-align:left}
+  .planoAdminRow>button{width:100%;justify-content:center}
+}
