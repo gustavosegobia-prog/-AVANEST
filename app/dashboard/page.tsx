@@ -23,7 +23,7 @@ export default async function DashboardPage({
 
   const { data: instituicao } = await supabase
     .from("instituicoes")
-    .select("nome, tipo")
+    .select("nome, tipo, telefone, email")
     .eq("id", perfil.institution_id)
     .maybeSingle();
 

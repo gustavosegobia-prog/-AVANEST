@@ -1127,3 +1127,29 @@ button:disabled{cursor:not-allowed}
   .planoAdminPreco input{flex:1;width:auto;text-align:left}
   .planoAdminRow>button{width:100%;justify-content:center}
 }
+
+/* ── Financeiro e Admin: peças do passe de profundidade ─────────────────── */
+
+/* Filtro dos recebimentos: mesmo desenho dos chips de resposta da anamnese,
+   para a tela inteira falar uma língua só. */
+.financeChips{display:flex;gap:8px;margin:0 0 16px}
+.financeChips button{border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);border-radius:20px;padding:8px 16px;font-weight:700}
+.financeChips button.active{background:var(--cor-marca);color:#fff;border-color:var(--cor-marca)}
+
+.extratoRow{display:flex;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--cor-borda)}
+.extratoRow time{color:var(--cor-tinta-fraca);font-size:12px;white-space:nowrap;min-width:78px}
+.extratoRow>span:not(.statusChip){flex:1;display:grid;gap:2px;min-width:0}
+.extratoRow small{color:var(--cor-tinta-fraca)}
+.extratoRow b{white-space:nowrap}
+
+.orgCampos{display:grid;grid-template-columns:2fr 1fr 1.4fr;gap:14px}
+.orgAcoes{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;flex-wrap:wrap}
+.orgAcoes small{color:var(--cor-tinta-fraca)}
+.orgAcoes>div{display:flex;gap:10px;align-items:center}
+.orgAcoes .outlineClinical{display:inline-flex;align-items:center;gap:7px;text-decoration:none}
+
+@media(max-width:900px){
+  .orgCampos{grid-template-columns:1fr}
+  .extratoRow{flex-wrap:wrap}
+  .financeChips{flex-wrap:wrap}
+}

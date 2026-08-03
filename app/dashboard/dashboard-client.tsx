@@ -19,7 +19,7 @@ export const CONVENIOS = [
 ];
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean };
-type Organizacao = { nome: string; tipo?: string | null };
+type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null };
 type Convite = { id:string; email:string; role:string; token:string; status:string; expires_at:string; created_at:string };
 type Paciente = {
   id: string; nome: string; cpf: string | null; rg?: string | null; data_nascimento: string | null;
@@ -508,6 +508,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const [priceValues,setPriceValues]=useState<Record<string,string>>({});
   const [values,setValues]=useState<Record<string,string>>({});
   const [methods,setMethods]=useState<Record<string,string>>({});
+  const [filtroReceb,setFiltroReceb]=useState<"todos"|"aberto"|"quitado">("todos");
   const currentMonth=new Date().toISOString().slice(0,7);
   const [period,setPeriod]=useState(currentMonth);
   const patientMap=new Map(pacientes.map(p=>[p.id,p]));
@@ -617,9 +618,26 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     await updateItem(item.id,{nota_vencimento_at:due.toISOString().slice(0,10),nota_reprogramada_at:todayIso});
     setMessage(`Nota ${item.nota_fiscal||"sem número"} reprogramada para ${due.toLocaleDateString("pt-BR")}.`);
   }
+  function exportCsv(){
+    // Ponto e vírgula e vírgula decimal: é o que o Excel em português abre
+    // direto, sem assistente de importação. O BOM diz que é UTF-8.
+    const num=(v:number)=>String(Number(v||0).toFixed(2)).replace(".",",");
+    const linhas:string[][]=[["Paciente","Convênio","Hospital","Competência","Valor","Recebido","Saldo","Status","Nota fiscal","Emissão","Vencimento","Lote"]];
+    for(const item of periodItems){
+      const p=patientMap.get(item.patient_id);
+      linhas.push([p?.nome||"Paciente",item.convenio||"",item.hospital||p?.hospital||"",period,
+        num(Number(item.valor)),num(Number(item.recebido)),num(Math.max(0,Number(item.valor)-Number(item.recebido))),
+        item.status,item.nota_fiscal||"",item.nota_emitida_at||"",item.nota_vencimento_at||"",item.lote||""]);
+    }
+    linhas.push(["TOTAL","","",period,num(total),num(received),num(pending),"","","","",""]);
+    const csv="﻿"+linhas.map(l=>l.map(c=>`"${c.replaceAll('"','""')}"`).join(";")).join("\r\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");a.href=url;a.download=`avanest-financeiro-${period}.csv`;a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return <div className="clinicalMain financeMain">
-    <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}</div></section>
+    <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label><button className="outlineClinical" disabled={!periodItems.length} title={periodItems.length?undefined:"Sem lançamentos na competência selecionada"} onClick={exportCsv}><Icone nome="imprimir" tamanho={15}/> Exportar CSV</button>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}</div></section>
     {message&&<p className={message.includes("não foi")?"clinicalError":"financeSuccess"}>{message}</p>}
     <section className="metricGrid financeMetrics"><Metric value={periodItems.length} label="Atendimentos no mês" tone="blue"/><MoneyMetric value={total} label="Faturado no mês" tone="blue"/><Metric value={periodItems.filter(i=>!i.nota_fiscal).length} label="Notas pendentes" tone="amber"/><MoneyMetric value={received} label="Recebido no mês" tone="green"/><Metric value={glosas.length} label="Glosas em recurso" tone="red"/></section>
 
@@ -629,13 +647,30 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
 
     {pendingPatients.length>0&&<section className="clinicalPanel"><div className="panelTitle"><strong>Atendimentos aguardando lançamento</strong><span>vindos automaticamente da recepção e agenda</span></div>{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</section>}
 
-    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><section className="clinicalPanel financeGroup" key={convenio}><div className="financeGroupHead"><strong>{convenio}</strong><span>{items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b></div>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>updateItem(item.id,{valor:Number(e.target.value.replace(",","."))||0})}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div>})}</section>)}
+    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><section className="clinicalPanel financeGroup" key={convenio}><div className="financeGroupHead"><strong>{convenio}</strong><span>{items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b></div>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
+    "1.234.56", que é NaN — e o valor da consulta zerava sem aviso. */}
+<label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select>{item.status==="glosa"&&<label className="inlineMoney"><span>Glosado</span><input defaultValue={Number(item.glosa_valor)||""} placeholder="R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/></label>}<input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div>})}</section>)}
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>📦 Lotes de cobrança</strong><span>agrupamento por convênio/hospital, sem dados clínicos</span></div>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</section>
 
     <ConvenioValoresPanel perfil={perfil} convenioValores={convenioValores} onRefresh={onRefresh}/>
     <section className="clinicalPanel"><div className="panelTitle"><strong>Recebimentos</strong><span>PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo</span></div>
-      {financeiro.map(item=>{
+      <div className="financeChips" role="group" aria-label="Filtrar recebimentos">
+        {([["todos","Todos"],["aberto","Em aberto"],["quitado","Quitados"]] as const).map(([valor,rotulo])=>
+          <button type="button" key={valor} className={filtroReceb===valor?"active":""} onClick={()=>setFiltroReceb(valor)}>{rotulo}</button>)}
+      </div>
+      {financeiro
+        .filter(item=>{
+          const saldo=Math.max(0,Number(item.valor)-Number(item.recebido));
+          return filtroReceb==="todos"||(filtroReceb==="aberto"?saldo>0:saldo<=0);
+        })
+        // Em aberto primeiro: é neles que o financeiro age. Quitado é conferência.
+        .sort((a,b)=>{
+          const sa=Math.max(0,Number(a.valor)-Number(a.recebido))>0?0:1;
+          const sb=Math.max(0,Number(b.valor)-Number(b.recebido))>0?0:1;
+          return sa-sb||b.created_at.localeCompare(a.created_at);
+        })
+        .map(item=>{
         const patient=patientMap.get(item.patient_id);
         const balance=Math.max(0,Number(item.valor)-Number(item.recebido));
         const quitado=balance<=0;
@@ -683,8 +718,26 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
 
     <section className="clinicalPanel"><div className="panelTitle"><strong>🩺 Repasses aos anestesiologistas</strong><span>liberação após recebimento; valores visíveis conforme as permissões do perfil</span></div>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</section>
 
-    <section className="clinicalPanel closingPanel"><div className="panelTitle"><strong><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</strong><span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span></div><div className="closingMetrics"><MoneySmall value={total} label="Total cobrado"/><MoneySmall value={received} label="Recebido" tone="green"/><MoneySmall value={pending} label="Pendente" tone="amber"/><MoneySmall value={glosas.reduce((s,i)=>s+Number(i.glosa_valor||0),0)} label="Glosas" tone="red"/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados" tone="blue"/></div><div className="closingFooter"><span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></section>
-    <p className="financeFootnote">Pagamentos registrados: {pagamentos.length}. Valores exibidos são os lançamentos reais cadastrados para esta instituição.</p>
+    <section className="clinicalPanel closingPanel"><div className="panelTitle"><strong><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</strong><span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span></div><div className="closingMetrics"><MoneySmall value={total} label="Total cobrado"/><MoneySmall value={received} label="Recebido" tone="green"/><MoneySmall value={pending} label="Pendente" tone="amber"/><MoneySmall value={glosas.reduce((s,i)=>s+Number(i.glosa_valor||0),0)} label="Glosas" tone="red"/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados" tone="blue"/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio"/></div><div className="closingFooter"><span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></section>
+    {/* O extrato responde "quando e como entrou cada real" — antes isso era
+        uma frase de rodapé com a contagem, inútil para conferência. */}
+    <details className="clinicalPanel painelRecolhivel">
+      <summary className="panelTitle">
+        <span className="painelSeta" aria-hidden="true">▸</span>
+        <strong>Extrato de pagamentos recebidos</strong>
+        <span>{pagamentos.length} registro(s) · data, paciente, forma e valor</span>
+      </summary>
+      {pagamentos.length?pagamentos.slice(0,80).map(pg=>{
+        const atendimento=financeiro.find(f=>f.id===pg.atendimento_id);
+        const patient=atendimento?patientMap.get(atendimento.patient_id):undefined;
+        return <div className="extratoRow" key={pg.id}>
+          <time>{new Date(pg.paid_at).toLocaleDateString("pt-BR")}</time>
+          <span><strong>{patient?.nome||"Paciente"}</strong><small>{atendimento?.convenio||""}{pg.referencia?` · ${pg.referencia}`:""}</small></span>
+          <span className="statusChip paused">{pg.metodo}</span>
+          <b>{money(Number(pg.valor))}</b>
+        </div>;
+      }):<div className="emptyClinical compactEmpty">Nenhum pagamento registrado ainda.</div>}
+    </details>
     {configOpen&&<div className="patientModalBackdrop" role="presentation"><section className="financeConfigModal" role="dialog" aria-modal="true" aria-labelledby="finance-config-title"><div className="patientModalHead"><div><strong id="finance-config-title">Configurar valores das consultas</strong><span>Os convênios cadastrados aparecem automaticamente.</span></div><button type="button" onClick={()=>setConfigOpen(false)} aria-label="Fechar">×</button></div><div className="financeConfigList">{knownConvenios.map(convenio=><label key={convenio}><span>{convenio}</span><div><b>R$</b><input inputMode="decimal" value={priceValues[convenio]??"0"} onChange={event=>setPriceValues(current=>({...current,[convenio]:event.target.value}))}/></div></label>)}</div><div className="patientModalActions"><button className="outlineClinical" type="button" onClick={()=>setConfigOpen(false)}>Cancelar</button><button className="primaryClinical compact" type="button" disabled={busy==="prices"} onClick={savePrices}>{busy==="prices"?"Salvando...":"Salvar valores"}</button></div></section></div>}
   </div>
 }
@@ -842,9 +895,35 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
   </section>;
 }
 
+const ACAO_LABELS:Record<string,string>={
+  organizacao_criada:"Organização criada",
+  avaliacao_excluida:"Avaliação excluída",
+  perfil_atualizado:"Perfil atualizado",
+  usuario_excluido:"Acesso excluído",
+  pagamento_registrado:"Pagamento registrado",
+  periodo_conferido:"Período conferido",
+  convite_criado:"Convite enviado",
+  convite_aceito:"Convite aceito",
+  avaliacao_concluida:"Avaliação concluída",
+  presenca_confirmada:"Presença confirmada",
+};
+
 function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void}) {
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState("");
+  const [org,setOrg]=useState({nome:organizacao?.nome??"",telefone:organizacao?.telefone??"",email:organizacao?.email??""});
+  const orgAlterada=org.nome!==(organizacao?.nome??"")||org.telefone!==(organizacao?.telefone??"")||org.email!==(organizacao?.email??"");
+
+  async function saveOrganizacao(){
+    if(!org.nome.trim()){setMessage("Não foi possível salvar: o nome da organização não pode ficar vazio.");return}
+    setBusy("org");setMessage("");
+    const {error}=await createClient().from("instituicoes")
+      .update({nome:org.nome.trim(),telefone:org.telefone.trim()||null,email:org.email.trim()||null,updated_at:new Date().toISOString()})
+      .eq("id",perfil.institution_id);
+    setBusy("");
+    if(error)setMessage(`Não foi possível salvar os dados da organização: ${error.message}`);
+    else{setMessage("Dados da organização salvos. O nome novo passa a sair nas fichas impressas.");onRefresh()}
+  }
   const [editing,setEditing]=useState<Record<string,PerfilGerenciado>>(()=>Object.fromEntries(perfis.map(item=>[item.id,{...item}])));
   // A edição abre sob demanda: com todas as linhas abertas, seis campos por
   // usuário viram uma parede de caixas e a lista deixa de ser consultável.
@@ -876,6 +955,21 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
   return <div className="clinicalMain adminMain">
     <section><h1>Administração</h1><p>Gerencie usuários, permissões profissionais e acompanhe ações importantes do sistema.</p></section>
     {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"}>{message}</p>}
+    <section className="clinicalPanel">
+      <div className="panelTitle"><strong>Dados da organização</strong><span>O nome abaixo é o que sai impresso na ficha de anestesia e no termo de consentimento.</span></div>
+      <div className="orgCampos">
+        <label className="clinicalField"><span>Nome da organização</span><input value={org.nome} onChange={e=>setOrg(v=>({...v,nome:e.target.value}))}/></label>
+        <label className="clinicalField"><span>Telefone</span><input value={org.telefone} onChange={e=>setOrg(v=>({...v,telefone:e.target.value}))} placeholder="(00) 00000-0000"/></label>
+        <label className="clinicalField"><span>E-mail de contato</span><input value={org.email} onChange={e=>setOrg(v=>({...v,email:e.target.value}))} placeholder="contato@exemplo.com.br"/></label>
+      </div>
+      <div className="orgAcoes">
+        <small>{organizacao?.tipo==="individual"?"Cadastro individual":"Grupo"} · plano e cobrança ficam na página de assinatura.</small>
+        <div>
+          <a className="outlineClinical" href="/assinatura"><Icone nome="assinatura" tamanho={15}/> Plano e cobrança</a>
+          <button className="primaryClinical compact" disabled={busy==="org"||!orgAlterada} onClick={saveOrganizacao}>{busy==="org"?"Salvando...":"Salvar dados"}</button>
+        </div>
+      </div>
+    </section>
     <InvitePanel perfil={perfil} organizacao={organizacao} onRefresh={onRefresh}/>
     <section className="metricGrid adminMetrics"><Metric value={perfis.filter(item=>item.status==="ativo").length} label="Usuários ativos" tone="green"/><Metric value={perfis.filter(item=>item.role==="medico").length} label="Médicos" tone="blue"/><Metric value={perfis.filter(item=>item.status==="inativo").length} label="Acessos inativos" tone="red"/><Metric value={auditoria.length} label="Eventos recentes" tone="amber"/></section>
     <section className="clinicalPanel adminUsers">
@@ -920,6 +1014,9 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
                 <small>{source.email||"sem e-mail"}{source.crm?` · ${source.crm}`:""}</small>
               </span>
               <span className="statusChip paused">{ROLE_LABELS[source.role]??source.role}</span>
+              {/* CRM não é burocracia aqui: a contagem de profissionais do
+                  plano só conta médico com CRM, e a ficha sai sem assinatura. */}
+              {source.role==="medico"&&!source.crm?.trim()&&<span className="statusChip waiting" title="Médico sem CRM não entra na contagem do plano e a ficha impressa sai sem o registro.">Sem CRM</span>}
               <span className={`statusChip ${source.status==="ativo"?"present":"waiting"}`}>{source.status==="ativo"?"Ativo":"Inativo"}</span>
               <button
                 className="outlineClinical" aria-expanded={expandido}
@@ -960,7 +1057,14 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
         <strong>Auditoria recente</strong>
         <span>{auditoria.length} evento(s) · conclusões, pagamentos, presenças e mudanças de acesso</span>
       </summary>
-      {auditoria.length?auditoria.slice(0,50).map(item=><div className="auditRow" key={item.id}><time>{new Date(item.created_at).toLocaleString("pt-BR")}</time><span><strong>{item.acao.replaceAll("_"," ")}</strong><small>{item.entidade} · {item.actor_id?actorNames.get(item.actor_id)||"Usuário":"Sistema"}</small></span></div>):<div className="emptyClinical compactEmpty">Nenhum evento de auditoria registrado ainda.</div>}
+      {auditoria.length?auditoria.slice(0,50).map(item=>{
+        const detalhes=item.detalhes as {paciente?:string;excluida_por?:string;nome?:string}|null;
+        // O nome escrito no evento vale mais que o mapa de perfis: quem
+        // excluiu (ou foi excluído) pode não existir mais como perfil.
+        const quem=detalhes?.excluida_por||(item.actor_id?actorNames.get(item.actor_id):null)||"Sistema";
+        const sobre=detalhes?.paciente?`paciente ${detalhes.paciente}`:detalhes?.nome||item.entidade;
+        return <div className="auditRow" key={item.id}><time>{new Date(item.created_at).toLocaleString("pt-BR")}</time><span><strong>{ACAO_LABELS[item.acao]??item.acao.replaceAll("_"," ")}</strong><small>{sobre} · por {quem}</small></span></div>;
+      }):<div className="emptyClinical compactEmpty">Nenhum evento de auditoria registrado ainda.</div>}
     </details>
   </div>;
 }
