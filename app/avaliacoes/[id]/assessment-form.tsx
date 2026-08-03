@@ -63,6 +63,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const [saveError, setSaveError] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [savedAt, setSavedAt] = useState(() => new Date(avaliacao.updated_at));
   // Etapa que o anestesiologista está lendo agora, para o stepper marcar
   // "atual" em vez de só "concluída/pendente".
@@ -204,7 +205,6 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   }
 
   async function deleteAssessment() {
-    if (!window.confirm("Excluir esta avaliação definitivamente? Essa ação não pode ser desfeita. O paciente continuará cadastrado.")) return;
     setDeleting(true);
     setDeleteError("");
     try {
@@ -315,7 +315,14 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
           </button>;
         })}
       </nav>
-      <div className="evalControls"><button className="pauseButton"><Icone nome="pausa"/> Pausar</button><button onClick={async()=>{await save();router.push("/dashboard")}}><Icone nome="voltar"/> Salvar e voltar</button>{["admin","owner"].includes(perfil.role)&&<button type="button" className="deleteAssessmentButton" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo...":"Excluir avaliação"}</button>}</div>
+      <div className="evalControls"><button className="pauseButton"><Icone nome="pausa"/> Pausar</button><button onClick={async()=>{await save();router.push("/dashboard")}}><Icone nome="voltar"/> Salvar e voltar</button>{["medico","admin","owner"].includes(perfil.role)&&!confirmDelete&&<button type="button" className="deleteAssessmentButton" onClick={()=>setConfirmDelete(true)}>Excluir avaliação</button>}</div>
+      {confirmDelete&&<div className="deleteConfirmStrip" role="alertdialog" aria-label="Confirmar exclusão da avaliação">
+        <p><b>Tem certeza de que deseja excluir esta avaliação?</b> Esta ação não poderá ser desfeita. O cadastro do paciente será mantido.</p>
+        <div>
+          <button type="button" onClick={()=>{setConfirmDelete(false);setDeleteError("")}} disabled={deleting}>Cancelar</button>
+          <button type="button" className="perigo" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo...":"Excluir avaliação"}</button>
+        </div>
+      </div>}
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
 
       <section id="etapa-1" className="evalSection">

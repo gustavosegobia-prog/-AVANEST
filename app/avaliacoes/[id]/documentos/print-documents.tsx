@@ -130,6 +130,27 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   const [selected,setSelected]=useState({assessment:true,consent:true,guidance:false});
   const [notice,setNotice]=useState("");
   const [hasPrinted,setHasPrinted]=useState(false);
+  const [confirmDelete,setConfirmDelete]=useState(false);
+  const [deleting,setDeleting]=useState(false);
+  const [deleteError,setDeleteError]=useState("");
+
+  async function deleteAssessment(){
+    setDeleting(true);
+    setDeleteError("");
+    try{
+      const response=await fetch(`/api/avaliacoes/${avaliacao.id}`,{method:"DELETE"});
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok){
+        setDeleteError(result.error||"Não foi possível excluir a avaliação.");
+        setDeleting(false);
+        return;
+      }
+      window.location.href="/dashboard?area=medico";
+    }catch{
+      setDeleteError("Falha de conexão ao excluir a avaliação. Tente novamente.");
+      setDeleting(false);
+    }
+  }
   const medications=useMemo<Medication[]>(()=>{try{const v=JSON.parse(String(dados.medicamentos_json||"[]"));return Array.isArray(v)?v:[]}catch{return[]}},[dados.medicamentos_json]);
   const age=useMemo(()=>{if(!paciente.data_nascimento)return null;const birth=new Date(`${paciente.data_nascimento}T12:00:00`),now=new Date();return now.getFullYear()-birth.getFullYear()-(now<new Date(now.getFullYear(),birth.getMonth(),birth.getDate())?1:0)},[paciente.data_nascimento]);
   const weight=Number(dados.peso||0),height=Number(dados.altura||0),imc=weight&&height?weight/((height/100)**2):0;
@@ -197,11 +218,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   const guidedMedications=medications.filter(item=>MEDICATION_ORIENTATION_ACTIONS.includes(item.conduta));
   const planManuallyEdited=dados.plano_anestesico_editado===true;
   const printablePlan=useMemo(()=>{
-    const saved=String(dados.plano_anestesico||"")
-  .split(/\r?\n/)
-  .filter(linha=>!/^(JEJUM|PLANO ANEST[ÉE]SICO)\s*:/i.test(linha.trim()))
-  .join("\n")
-  .trim();
+    const saved=String(dados.plano_anestesico||"").trim();
     // Texto reescrito pelo anestesiologista é impresso exatamente como foi salvo.
     // O bloco automático de medicamentos só é reconstruído quando não houve edição.
     if(planManuallyEdited)return saved;
@@ -253,7 +270,17 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   return <main className="documentsShell">
     <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark"/><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></a><span className="docSaved">● Avaliação concluída</span><nav className="roleNav" aria-label="Áreas do sistema">{canReception&&<a href="/dashboard?area=recepcao">Recepção</a>}{canMedical&&<a href="/dashboard?area=medico">Médico</a>}{canFinance&&<a href="/dashboard?area=financeiro">Financeiro</a>}{canManage&&<a href="/dashboard?area=admin">Admin</a>}</nav></header>
     <div className="documentsMain">
-      <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}?editar=1`}>← Voltar e corrigir avaliação</a></div></div>
+      <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}?editar=1`}>← Voltar e corrigir avaliação</a>{/* A concluída só abre nesta tela, então excluir precisa existir aqui —
+        era por isso que a opção "sumia" depois da conclusão. */}
+      {["medico","admin","owner"].includes(perfil.role)&&!confirmDelete&&<button type="button" className="deleteAssessmentButton" onClick={()=>setConfirmDelete(true)}>Excluir avaliação</button>}</div></div>
+      {confirmDelete&&<div className="deleteConfirmStrip" role="alertdialog" aria-label="Confirmar exclusão da avaliação">
+        <p><b>Tem certeza de que deseja excluir esta avaliação?</b> Esta ação não poderá ser desfeita. O cadastro do paciente será mantido.</p>
+        <div>
+          <button type="button" onClick={()=>{setConfirmDelete(false);setDeleteError("")}} disabled={deleting}>Cancelar</button>
+          <button type="button" className="perigo" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo...":"Excluir avaliação"}</button>
+        </div>
+      </div>}
+      {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>
       <div className="documentsLayout"><div className="paperStack">
         <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span><b>{clinica||"Avaliação Pré-Anestésica"}</b></span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
@@ -269,34 +296,19 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             ["Caráter",dados.carater],["Porte",dados.porte],["Lateralidade",dados.lateralidade],
             ["Regime",dados.regime],["Data",formatDate(text(dados.data_cirurgia))],["Horário",dados.horario_cirurgia],
           ])}/>
-                {questions.length > 0 && (
-            <>
-              <PaperTitle>ANAMNESE</PaperTitle>
-
-              <table className="paperAnamneseTable">
-                <tbody>
-                  {questions.map(([label, value, detail]) => {
-                    const comDetalhe = hasText(detail);
-
-                    return (
-                      <tr key={String(label)}>
-                        <td className="paperAnamnesePergunta">
-                          {asLabel(String(label))}
-                        </td>
-
-                        <td className="paperAnamneseResposta">
-                          <b>
-                            {text(value)}
-                            {comDetalhe && ` — ${text(detail)}`}
-                          </b>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </>
-          )}
+          {/* Resposta seca (o "Não" da maioria das perguntas) flui na mesma
+              linha da seguinte; pergunta com detalhe ocupa a linha inteira.
+              Numa anamnese normal quase tudo é "Não", e uma linha por resposta
+              gastava meia página em espaço branco — a ordem das perguntas não
+              muda, só o quanto elas ocupam. */}
+          {questions.length>0&&<><PaperTitle>ANAMNESE</PaperTitle>
+            <div className="paperAnamnese">{questions.map(([label,value,detail])=>{
+              const comDetalhe=hasText(detail);
+              return <p key={String(label)} className={comDetalhe?"anamneseDetalhada":undefined}>
+                {asLabel(String(label))}: <b>{text(value)}</b>{comDetalhe&&<b> — {text(detail)}</b>}
+              </p>;
+            })}
+            </div></>}
           <PaperInlineBlock title="EXAME FÍSICO"
             linhas={[
               facts([

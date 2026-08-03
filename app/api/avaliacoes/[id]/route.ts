@@ -13,12 +13,12 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
 
   const { data: actor } = await supabase
     .from("perfis")
-    .select("id,institution_id,role,status")
+    .select("id,institution_id,role,status,nome")
     .eq("id", user.id)
     .single();
 
-  if (!actor || actor.status !== "ativo" || !["admin", "owner"].includes(actor.role)) {
-    return NextResponse.json({ error: "Somente administrador ou proprietário pode excluir uma avaliação." }, { status: 403 });
+  if (!actor || actor.status !== "ativo" || !["medico", "admin", "owner"].includes(actor.role)) {
+    return NextResponse.json({ error: "Somente médico ou administrador pode excluir uma avaliação." }, { status: 403 });
   }
 
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -31,12 +31,24 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   });
   const { data: assessment } = await admin
     .from("avaliacoes")
-    .select("id,patient_id,status")
+    .select("id,patient_id,status,concluida_at,pacientes(nome)")
     .eq("id", id)
     .eq("institution_id", actor.institution_id)
     .maybeSingle();
 
   if (!assessment) return NextResponse.json({ error: "Avaliação não encontrada ou já removida." }, { status: 404 });
+
+  // O grosso dos registros clínicos cai em cascata, e agendamento e
+  // financeiro apenas se desligam, preservando a agenda e o caixa. Duas
+  // amarras não caem sozinhas e travariam a exclusão da concluída:
+  // os documentos gerados e a referência "avaliação anterior" de uma
+  // reavaliação posterior.
+  await admin.from("documentos").delete().eq("assessment_id", assessment.id);
+  await admin
+    .from("avaliacoes")
+    .update({ avaliacao_anterior_id: null })
+    .eq("avaliacao_anterior_id", assessment.id)
+    .eq("institution_id", actor.institution_id);
 
   const { error: deleteError } = await admin
     .from("avaliacoes")
@@ -45,13 +57,24 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
     .eq("institution_id", actor.institution_id);
   if (deleteError) return NextResponse.json({ error: "Não foi possível excluir a avaliação. Tente novamente." }, { status: 500 });
 
+  // O histórico responde "quem apagou o quê, e de quem era": o nome entra
+  // por escrito porque o perfil do autor pode ser excluído depois, e aí o
+  // id sozinho não contaria a história.
+  const pacienteNome = (assessment as { pacientes?: { nome?: string } | null }).pacientes?.nome ?? null;
   await admin.from("auditoria").insert({
     institution_id: actor.institution_id,
     actor_id: actor.id,
+    user_id: actor.id,
     entidade: "avaliacao",
     entidade_id: assessment.id,
     acao: "avaliacao_excluida",
-    detalhes: { patient_id: assessment.patient_id, status: assessment.status },
+    detalhes: {
+      patient_id: assessment.patient_id,
+      paciente: pacienteNome,
+      status: assessment.status,
+      concluida_at: assessment.concluida_at,
+      excluida_por: actor.nome,
+    },
   });
 
   return NextResponse.json({ ok: true });
