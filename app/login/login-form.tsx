@@ -27,7 +27,19 @@ export function LoginForm({ passwordChanged = false, convite = "" }: { passwordC
       return;
     }
     // Quem chegou por um convite volta para a tela de aceite.
-    router.replace(convite ? `/convite/${encodeURIComponent(convite)}` : "/dashboard");
+    if (convite) {
+      router.replace(`/convite/${encodeURIComponent(convite)}`);
+      return;
+    }
+    // Quem ainda não contratou entra pela tela de assinatura, não pelo painel:
+    // é ali que está o pagamento, e o "Voltar ao sistema" continua disponível
+    // para quem só quer usar o trial. Cortesia e plano pago vão direto ao
+    // painel. Se a consulta falhar, o painel é o destino seguro — ele já
+    // barra sozinho quem está vencido.
+    const { data } = await supabase.rpc("minha_assinatura");
+    const assinatura = Array.isArray(data) ? data[0] : data;
+    const precisaContratar = ["trial", "cancelado"].includes(String(assinatura?.plano ?? ""));
+    router.replace(precisaContratar ? "/assinatura" : "/dashboard");
   }
 
   return (

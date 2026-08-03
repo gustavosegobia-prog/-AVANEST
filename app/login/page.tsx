@@ -8,7 +8,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const query = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect(query.convite ? `/convite/${encodeURIComponent(query.convite)}` : "/dashboard");
+  if (user) {
+    if (query.convite) redirect(`/convite/${encodeURIComponent(query.convite)}`);
+    // Mesma regra do formulário: sem contrato, a porta de entrada é a tela
+    // de assinatura; cortesia e plano pago seguem para o painel.
+    const { data } = await supabase.rpc("minha_assinatura");
+    const assinatura = Array.isArray(data) ? data[0] : data;
+    const precisaContratar = ["trial", "cancelado"].includes(String(assinatura?.plano ?? ""));
+    redirect(precisaContratar ? "/assinatura" : "/dashboard");
+  }
 
   return (
     <main className="avnLoginPage">
