@@ -31,14 +31,17 @@ function getAnamnesisKeys(sex: unknown) {
 // Campos abertos automaticamente quando a paciente é gestante.
 export const PREGNANCY_FIELDS: Array<[string, string]> = [
   ["gestacao_idade_gestacional", "Idade gestacional"],
-  ["gestacao_dheg", "DHEG"],
-  ["gestacao_diabetes", "Diabetes gestacional"],
   ["gestacao_historia_obstetrica", "História obstétrica"],
-  ["gestacao_numero_gestacoes", "Número de gestações"],
-  ["gestacao_partos_normais", "Partos normais"],
-  ["gestacao_cesarianas", "Cesarianas"],
-  ["gestacao_abortos", "Abortos"],
   ["gestacao_intercorrencias", "Outras intercorrências gestacionais"],
+];
+
+// Campos que saíram da tela. Continuam listados só para serem apagados
+// junto quando a resposta vira "Não": sem isso, uma avaliação antiga já
+// preenchida guardaria DHEG ou cesarianas numa ficha que afirma não haver
+// gestação — e a impressão, que lê o dado salvo, mostraria a contradição.
+const PREGNANCY_LEGACY_FIELDS = [
+  "gestacao_dheg", "gestacao_diabetes", "gestacao_numero_gestacoes",
+  "gestacao_partos_normais", "gestacao_cesarianas", "gestacao_abortos",
 ];
 
 function isFilled(value: unknown) {
@@ -398,7 +401,7 @@ function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{nam
   const answerOptions=name==="gestacao"?["Sim","Não"]:["Sim","Não","Não sabe"];
   const selected=detail.split(",").map(item=>item.trim()).filter(Boolean);
   const toggleChip=(chip:string)=>onDetail(selected.includes(chip)?selected.filter(item=>item!==chip).join(", "):[...selected,chip].join(", "));
-  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="gestacao"){for(const [field] of PREGNANCY_FIELDS)set(field,"")}}}} key={answer}>{answer}</button>)}</div></div>
+  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="gestacao"){for(const field of [...PREGNANCY_FIELDS.map(([f])=>f),...PREGNANCY_LEGACY_FIELDS])set(field,"")}}}} key={answer}>{answer}</button>)}</div></div>
     {value==="Sim"&&<><div className="detailChips">{chips.map(chip=><button type="button" className={selected.includes(chip)?"selected":""} onClick={()=>toggleChip(chip)} key={chip}>{chip}</button>)}</div>
       {name==="cirurgias_anteriores"&&<div className="conditionalDetails">
         <label><span>Qual cirurgia foi realizada?</span><input value={String(draft.cirurgias_anteriores_cirurgia??detail)} onChange={e=>set("cirurgias_anteriores_cirurgia",e.target.value)} placeholder="Ex.: cesárea, colecistectomia, herniorrafia"/></label>

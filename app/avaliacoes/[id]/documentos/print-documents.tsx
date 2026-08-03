@@ -14,16 +14,21 @@ type Props={
 };
 type Medication={id:string;nome:string;dose:string;frequencia:string;conduta:string;orientacao:string;reinicio?:string;fonte?:string;confirmada?:boolean;orientacaoEditada?:boolean};
 
+// Os três primeiros são os que a tela pergunta hoje. Os demais saíram do
+// formulário, mas continuam sendo impressos quando têm conteúdo: avaliações
+// já concluídas os têm preenchidos, e a ficha delas precisa seguir mostrando
+// o que o anestesiologista de fato registrou. Em avaliação nova eles nascem
+// vazios e o filtro de conteúdo os descarta sozinho.
 const PREGNANCY_PRINT_FIELDS:Array<[string,string]>=[
   ["gestacao_idade_gestacional","Idade gestacional"],
+  ["gestacao_historia_obstetrica","História obstétrica"],
+  ["gestacao_intercorrencias","Intercorrências"],
   ["gestacao_dheg","DHEG"],
   ["gestacao_diabetes","Diabetes gestacional"],
-  ["gestacao_historia_obstetrica","História obstétrica"],
   ["gestacao_numero_gestacoes","Gestações"],
   ["gestacao_partos_normais","Partos normais"],
   ["gestacao_cesarianas","Cesarianas"],
   ["gestacao_abortos","Abortos"],
-  ["gestacao_intercorrencias","Intercorrências"],
 ];
 
 const formatDate=(value?:string|null)=>value?new Date(`${value.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR"):"";
