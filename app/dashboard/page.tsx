@@ -80,7 +80,9 @@ export default async function DashboardPage({
     needsProfiles ? supabase.from("perfis").select("id,institution_id,nome,email,role,status,crm,rqe,created_at,updated_at").order("nome") : Promise.resolve({ data: [] }),
     needsAdminData ? supabase.from("auditoria").select("id,actor_id,entidade,entidade_id,acao,detalhes,created_at").order("created_at", { ascending: false }).limit(100) : Promise.resolve({ data: [] }),
     needsFinanceData ? supabase.from("financeiro_periodos").select("*").order("periodo", { ascending: false }) : Promise.resolve({ data: [] }),
-    needsFinanceData || needsAdminData ? supabase.from("convenio_valores").select("*").order("convenio").order("procedimento") : Promise.resolve({ data: [] }),
+    // A recepção também precisa: é a lista de convênios do cadastro do
+    // paciente, e um convênio adicionado no financeiro tem de aparecer lá.
+    needsClinicalData || needsFinanceData || needsAdminData ? supabase.from("convenio_valores").select("*").order("convenio").order("procedimento") : Promise.resolve({ data: [] }),
   ]);
 
   return (

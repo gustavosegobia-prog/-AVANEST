@@ -206,7 +206,7 @@
 .receptionMain .queueRow{grid-template-columns:80px minmax(270px,1fr) auto auto auto}
 .alertItem{width:100%;border-top:0;border-left:0;background:#fff;text-align:left;font:inherit;cursor:pointer}.alertItem:disabled{cursor:default}.alertItem:not(:disabled):hover{background:#f6f9fb}.alertItem:focus-visible{outline:3px solid var(--cor-marca);outline-offset:-3px}
 .financeHeading{display:flex;align-items:end;justify-content:space-between;gap:20px}.financeHeading label{display:grid;gap:6px;color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}.financeHeading input{height:44px;border:1px solid var(--cor-borda);background:#fff;border-radius:9px;padding:0 12px;font:inherit}
-.financeHeadingActions{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}.financeConfigModal{width:min(760px,calc(100vw - 32px));max-height:90vh;overflow:auto;background:#fff;border-radius:24px;padding:24px}.financeConfigList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}.financeConfigList label{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 14px;border:1px solid #d7e1ec;border-radius:12px}.financeConfigList label>div{display:flex;align-items:center;gap:6px}.financeConfigList input{width:120px;padding:10px 12px;border:1px solid #cbd8e6;border-radius:10px}.billingPlanTable{overflow-x:auto;padding:0 24px 24px}.billingPlanTable table{width:100%;border-collapse:collapse;min-width:720px}.billingPlanTable th,.billingPlanTable td{text-align:left;padding:13px;border-bottom:1px solid #dce5ee}.billingPlanTable th{font-size:.78rem;text-transform:uppercase;color:#5a6d82}
+.financeHeadingActions{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}.financeConfigModal{width:min(760px,calc(100vw - 32px));max-height:90vh;overflow:auto;background:#fff;border-radius:24px;padding:24px}.financeConfigList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}.financeConfigItem{display:flex;align-items:center;gap:8px}.financeConfigItem>label{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 14px;border:1px solid #d7e1ec;border-radius:12px}.financeConfigList label>div{display:flex;align-items:center;gap:6px}.financeConfigList input{width:120px;padding:10px 12px;border:1px solid #cbd8e6;border-radius:10px}.billingPlanTable{overflow-x:auto;padding:0 24px 24px}.billingPlanTable table{width:100%;border-collapse:collapse;min-width:720px}.billingPlanTable th,.billingPlanTable td{text-align:left;padding:13px;border-bottom:1px solid #dce5ee}.billingPlanTable th{font-size:.78rem;text-transform:uppercase;color:#5a6d82}
 .completionWarning{background:var(--cor-atencao-suave);color:#835500;border-radius:10px;padding:12px 15px;font-weight:750}
 .adminMain>section:first-child h1{font-size:29px;margin:0 0 5px}.adminMain>section:first-child p{color:var(--cor-tinta-fraca);margin:0}.adminMetrics{grid-template-columns:repeat(4,1fr)}
 .adminInvite form{display:grid;grid-template-columns:1.2fr 1.2fr .8fr auto;gap:14px;align-items:end;padding:20px 25px}.adminInvite label,.adminUserRow label{display:grid;gap:6px}.adminInvite label span,.adminUserRow label span{font-size:11px;color:#5b7084;font-weight:750}.adminInvite input,.adminInvite select,.adminUserRow input,.adminUserRow select{height:44px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 11px;font:inherit;min-width:0}.adminUserRow{display:grid;grid-template-columns:1.35fr 1.3fr .8fr .7fr .8fr .7fr auto;gap:12px;align-items:end;padding:16px 25px;border-bottom:1px solid var(--cor-borda)}.adminUserRow:last-child{border-bottom:0}.adminUserRow input[readonly]{color:#6b7d8e}.auditRow{display:grid;grid-template-columns:180px 1fr;gap:18px;padding:14px 25px;border-bottom:1px solid var(--cor-borda)}.auditRow time{color:#5b7185;font-size:12px}.auditRow strong{display:block;text-transform:capitalize}.auditRow small{display:block;color:var(--cor-tinta-fraca);margin-top:3px}
@@ -816,7 +816,12 @@ button:disabled{cursor:not-allowed}
 .adminUserItem{border-bottom:1px solid var(--cor-borda)}
 .adminUserItem:last-child{border-bottom:0}
 .adminUserItem.expandido{background:var(--cor-fundo)}
-.adminUserResumo{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5)}
+/* Flex, não grid de colunas contadas: a etiqueta "Sem CRM" só aparece em
+   algumas linhas, e com colunas fixas ela empurrava o Editar para a linha
+   de baixo — as linhas ficavam com alturas diferentes. */
+.adminUserResumo{display:flex;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5)}
+.adminUserResumo .adminUserIdent{flex:1;min-width:0}
+.adminUserResumo .statusChip,.adminUserResumo>button{flex:none}
 .adminUserIdent{min-width:0}
 .adminUserIdent strong{display:block;font-size:14.5px}
 .adminUserIdent small{display:block;color:var(--cor-tinta-fraca);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -830,8 +835,8 @@ button:disabled{cursor:not-allowed}
 .adminZonaPerigo small{display:block;margin-top:2px;font-size:12px;color:var(--cor-tinta-fraca);max-width:62ch}
 
 @media(max-width:900px){
-  .adminUserResumo{grid-template-columns:40px minmax(0,1fr) auto;row-gap:var(--esp-2)}
-  .adminUserResumo .statusChip{grid-column:2}
+  .adminUserResumo{flex-wrap:wrap;row-gap:var(--esp-2)}
+  .adminUserResumo .adminUserIdent{flex:1 1 calc(100% - 52px)}
   .adminUserCampos{grid-template-columns:1fr}
   .adminZonaPerigo{flex-direction:column;align-items:stretch}
 }
@@ -1152,4 +1157,28 @@ button:disabled{cursor:not-allowed}
   .orgCampos{grid-template-columns:1fr}
   .extratoRow{flex-wrap:wrap}
   .financeChips{flex-wrap:wrap}
+}
+
+/* Cabeçalho do modal do financeiro: strong e span são inline, então saíam
+   grudados ("...consultasOs convênios..."). O do paciente usa h2/p e por
+   isso nunca teve o problema. */
+.patientModalHead>div>strong{display:block;font-size:19px}
+.patientModalHead>div>span{display:block;margin-top:var(--esp-1);font-size:13px;color:var(--cor-tinta-fraca)}
+
+.financeConfigModal .clinicalError,.financeConfigModal .financeSuccess{margin:16px 0 0}
+.financeConfigNovo{display:flex;align-items:flex-end;gap:10px;margin-top:18px;padding:14px;border:1px dashed #cbd8e6;border-radius:12px}
+.financeConfigNovo label{flex:1;display:grid;gap:6px;min-width:0}
+.financeConfigNovo span{font-size:12px;font-weight:750;color:var(--cor-tinta-fraca)}
+.financeConfigNovo input{width:100%;height:44px;padding:0 12px;border:1px solid #cbd8e6;border-radius:10px;font:inherit}
+.financeConfigNovo button{height:44px;white-space:nowrap}
+
+/* Contorno cinza, não vermelho: remover da lista é reversível (o convênio
+   volta ao ser adicionado de novo), então não merece peso de ação destrutiva. */
+.financeConfigRemover{flex:none;width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--cor-borda);background:var(--cor-superficie);border-radius:var(--raio-1);color:var(--cor-tinta-fraca);cursor:pointer}
+.financeConfigRemover:hover:not(:disabled){border-color:var(--cor-perigo);color:var(--cor-perigo)}
+.financeConfigRemover:disabled{opacity:.35;cursor:not-allowed}
+
+@media(max-width:640px){
+  .financeConfigNovo{flex-direction:column;align-items:stretch}
+  .financeConfigNovo button{width:100%}
 }

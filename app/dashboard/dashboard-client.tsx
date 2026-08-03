@@ -40,6 +40,23 @@ type Periodo = { id:string; periodo:string; status:string; conferido_at:string|n
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
 export type DashboardView = "medico" | "recepcao" | "financeiro" | "admin";
 
+// A lista de convênios é a mesma no cadastro do paciente e no financeiro:
+// os padrão, mais os que a organização cadastrou, menos os que ela removeu.
+//
+// "Remover" é uma regra com ativo=false, não um DELETE: os nomes padrão vêm
+// de uma constante do código e não há como apagá-los por organização. E um
+// convênio que algum paciente usa nunca some da lista — sumir deixaria o
+// cadastro dele apontando para uma opção inexistente.
+function listarConvenios(regras:ConvenioValor[],pacientes:{convenio?:string|null}[]){
+  const emUso=new Set(pacientes.map(p=>p.convenio).filter((v):v is string=>Boolean(v)));
+  const base=regras.filter(r=>!r.procedimento&&!r.hospital);
+  const ocultos=new Set(base.filter(r=>!r.ativo).map(r=>r.convenio));
+  const todos=new Set<string>([...CONVENIOS,...emUso,...base.filter(r=>r.ativo).map(r=>r.convenio)]);
+  return Array.from(todos)
+    .filter(c=>emUso.has(c)||!ocultos.has(c))
+    .sort((a,b)=>a.localeCompare(b,"pt-BR"));
+}
+
 const brDate = (date?: string | null) => date ? new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR") : "—";
 const initials = (name: string) => name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 const localDateKey = (date = new Date()) => {
@@ -493,7 +510,7 @@ export function DashboardClient({
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()}/>}
 
-      {open && <PatientModal busy={busy} error={error} onClose={() => {
+      {open && <PatientModal busy={busy} error={error} convenios={listarConvenios(convenioValores,pacientes)} onClose={() => {
         setOpen(false);
         if(initialNewPatient) router.replace(`/dashboard?area=${view}`);
       }} onSubmit={createPatient} />}
@@ -509,6 +526,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const [values,setValues]=useState<Record<string,string>>({});
   const [methods,setMethods]=useState<Record<string,string>>({});
   const [filtroReceb,setFiltroReceb]=useState<"todos"|"aberto"|"quitado">("todos");
+  const [novoConvenio,setNovoConvenio]=useState("");
   const currentMonth=new Date().toISOString().slice(0,7);
   const [period,setPeriod]=useState(currentMonth);
   const patientMap=new Map(pacientes.map(p=>[p.id,p]));
@@ -538,11 +556,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     const defaultRule=convenioValores.find(rule=>rule.ativo&&rule.convenio===convenio&&!rule.procedimento&&!rule.hospital);
     return {convenio,consultas:items.length,unit:Number(defaultRule?.valor||0),valor:billed,recebido:paid,pendente:Math.max(0,billed-paid)};
   }).sort((a,b)=>b.valor-a.valor);
-  const knownConvenios=Array.from(new Set([
-    ...CONVENIOS,
-    ...pacientes.map(item=>item.convenio).filter((item):item is string=>Boolean(item)),
-    ...convenioValores.map(item=>item.convenio).filter(Boolean),
-  ])).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  const knownConvenios=listarConvenios(convenioValores,pacientes);
   const todayIso=new Date().toISOString().slice(0,10);
   const noteAlerts=financeiro.filter(item=>{
     if(!item.nota_fiscal||Number(item.recebido)>=Number(item.valor)||item.status==="cancelado") return false;
@@ -568,6 +582,39 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       initial[convenio]=rule?String(Number(rule.valor)):"0";
     }
     setPriceValues(initial);setConfigOpen(true);setMessage("");
+  }
+  async function addConvenio(){
+    const nome=novoConvenio.trim();
+    if(!nome){setMessage("Informe o nome do convênio antes de adicionar.");return}
+    if(knownConvenios.some(c=>c.localeCompare(nome,"pt-BR",{sensitivity:"base"})===0)){
+      setMessage(`${nome} já está na lista.`);return;
+    }
+    setBusy("novoConvenio");setMessage("");
+    // Pode existir uma regra desativada com esse nome (foi removido antes):
+    // nesse caso religa, em vez de criar uma segunda linha para o mesmo nome.
+    const antiga=convenioValores.find(r=>!r.procedimento&&!r.hospital&&r.convenio.localeCompare(nome,"pt-BR",{sensitivity:"base"})===0);
+    const client=createClient();
+    const agora=new Date().toISOString();
+    const resultado=antiga
+      ? await client.from("convenio_valores").update({ativo:true,updated_at:agora}).eq("id",antiga.id)
+      : await client.from("convenio_valores").insert({institution_id:perfil.institution_id,convenio:nome,procedimento:null,hospital:null,valor:0,repasse_percentual:0,ativo:true,updated_at:agora});
+    setBusy("");
+    if(resultado.error)setMessage(`Não foi possível adicionar ${nome}: ${resultado.error.message}`);
+    else{setNovoConvenio("");setPriceValues(v=>({...v,[nome]:"0"}));setMessage(`${nome} adicionado. Informe o valor e salve.`);onRefresh()}
+  }
+  async function removeConvenio(nome:string){
+    const emUso=pacientes.filter(p=>p.convenio===nome).length;
+    if(emUso){setMessage(`Não foi possível remover ${nome}: ${emUso} paciente(s) cadastrado(s) com esse convênio.`);return}
+    setBusy(`remover-${nome}`);setMessage("");
+    const regra=convenioValores.find(r=>r.convenio===nome&&!r.procedimento&&!r.hospital);
+    const client=createClient();
+    const agora=new Date().toISOString();
+    const resultado=regra
+      ? await client.from("convenio_valores").update({ativo:false,updated_at:agora}).eq("id",regra.id)
+      : await client.from("convenio_valores").insert({institution_id:perfil.institution_id,convenio:nome,procedimento:null,hospital:null,valor:0,repasse_percentual:0,ativo:false,updated_at:agora});
+    setBusy("");
+    if(resultado.error)setMessage(`Não foi possível remover ${nome}: ${resultado.error.message}`);
+    else{setMessage(`${nome} saiu da lista. Para trazer de volta, basta adicionar de novo.`);onRefresh()}
   }
   async function savePrices(){
     setBusy("prices");setMessage("");
@@ -738,7 +785,28 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         </div>;
       }):<div className="emptyClinical compactEmpty">Nenhum pagamento registrado ainda.</div>}
     </details>
-    {configOpen&&<div className="patientModalBackdrop" role="presentation"><section className="financeConfigModal" role="dialog" aria-modal="true" aria-labelledby="finance-config-title"><div className="patientModalHead"><div><strong id="finance-config-title">Configurar valores das consultas</strong><span>Os convênios cadastrados aparecem automaticamente.</span></div><button type="button" onClick={()=>setConfigOpen(false)} aria-label="Fechar">×</button></div><div className="financeConfigList">{knownConvenios.map(convenio=><label key={convenio}><span>{convenio}</span><div><b>R$</b><input inputMode="decimal" value={priceValues[convenio]??"0"} onChange={event=>setPriceValues(current=>({...current,[convenio]:event.target.value}))}/></div></label>)}</div><div className="patientModalActions"><button className="outlineClinical" type="button" onClick={()=>setConfigOpen(false)}>Cancelar</button><button className="primaryClinical compact" type="button" disabled={busy==="prices"} onClick={savePrices}>{busy==="prices"?"Salvando...":"Salvar valores"}</button></div></section></div>}
+    {configOpen&&<div className="patientModalBackdrop" role="presentation"><section className="financeConfigModal" role="dialog" aria-modal="true" aria-labelledby="finance-config-title">
+      <div className="patientModalHead"><div><strong id="finance-config-title">Configurar valores das consultas</strong><span>Adicione os convênios que você atende e remova os que não usa.</span></div><button type="button" onClick={()=>setConfigOpen(false)} aria-label="Fechar">×</button></div>
+      {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"} role="status">{message}</p>}
+      <form className="financeConfigNovo" onSubmit={e=>{e.preventDefault();void addConvenio()}}>
+        <label><span>Adicionar convênio</span><input value={novoConvenio} onChange={e=>setNovoConvenio(e.target.value)} placeholder="Ex.: Cassems, Unimed Regional..."/></label>
+        <button className="outlineClinical" type="submit" disabled={busy==="novoConvenio"||!novoConvenio.trim()}>{busy==="novoConvenio"?"Adicionando...":"Adicionar"}</button>
+      </form>
+      <div className="financeConfigList">{knownConvenios.map(convenio=>{
+        const usos=pacientes.filter(p=>p.convenio===convenio).length;
+        return <div className="financeConfigItem" key={convenio}>
+          <label><span>{convenio}</span><div><b>R$</b><input inputMode="decimal" value={priceValues[convenio]??"0"} onChange={event=>setPriceValues(current=>({...current,[convenio]:event.target.value}))} aria-label={`Valor da consulta ${convenio}`}/></div></label>
+          <button
+            type="button" className="financeConfigRemover"
+            disabled={busy===`remover-${convenio}`||usos>0}
+            title={usos>0?`${usos} paciente(s) usam ${convenio} — não dá para remover.`:`Remover ${convenio} da lista`}
+            aria-label={`Remover ${convenio}`}
+            onClick={()=>removeConvenio(convenio)}
+          ><Icone nome="fechar" tamanho={14}/></button>
+        </div>;
+      })}</div>
+      <div className="patientModalActions"><button className="outlineClinical" type="button" onClick={()=>setConfigOpen(false)}>Fechar</button><button className="primaryClinical compact" type="button" disabled={busy==="prices"} onClick={savePrices}>{busy==="prices"?"Salvando...":"Salvar valores"}</button></div>
+    </section></div>}
   </div>
 }
 
@@ -1122,7 +1190,7 @@ function Alert({ icone, title, text, action, danger=false, onClick }: { icone:Pa
   </button>;
 }
 
-function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:string; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
+function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:boolean; error:string; convenios:string[]; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
   const [convenio,setConvenio]=useState<string>(PRIVATE_PAY_CONVENIO);
   const isPrivatePay=convenio===PRIVATE_PAY_CONVENIO;
   // O formulário deixa de ser um bloco único de dezoito campos e passa a ter
@@ -1172,7 +1240,7 @@ function PatientModal({ busy, error, onClose, onSubmit }: { busy:boolean; error:
         <fieldset className="modalGrupo">
           <legend>Convênio</legend>
           <div className="patientFormGrid">
-            <SelectField name="convenio" label="Convênio" options={CONVENIOS} value={convenio} onChange={setConvenio} span2/>
+            <SelectField name="convenio" label="Convênio" options={convenios} value={convenio} onChange={setConvenio} span2/>
             {!isPrivatePay&&<>
               <Field name="numero_carteirinha" label="Nº da carteirinha" span2/>
               <Field name="validade" label="Validade" type="date"/>
