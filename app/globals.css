@@ -1182,3 +1182,38 @@ button:disabled{cursor:not-allowed}
   .financeConfigNovo{flex-direction:column;align-items:stretch}
   .financeConfigNovo button{width:100%}
 }
+
+/* Saída da avaliação. Fica no grupo da direita com rótulo por extenso: a
+   marca no canto esquerdo já leva ao painel, mas ninguém lê um logotipo
+   como "voltar". O ícone sozinho também não bastaria. */
+.evalRoleNav .evalVoltar{display:inline-flex;align-items:center;gap:7px;border-color:var(--cor-marca);color:var(--cor-marca);background:var(--cor-superficie)}
+.evalRoleNav .evalVoltar:hover:not(:disabled){background:var(--cor-marca-suave)}
+.evalRoleNav .evalVoltar:disabled{opacity:.6;cursor:progress}
+/* Em tela estreita o rótulo "Médico" some (regra de 1100px), mas o voltar
+   precisa continuar: é a única saída visível ali. */
+@media(max-width:1100px){.evalRoleNav .evalVoltar{display:inline-flex}}
+@media(max-width:700px){.evalRoleNav .evalVoltar{padding:10px 12px}}
+
+/* Minha conta. Estreito de propósito: são três leituras e três campos, e
+   um modal largo faria o formulário de senha parecer maior do que é. */
+.contaModal{width:min(520px,calc(100vw - 32px));max-height:90vh;overflow:auto;background:var(--cor-superficie);border-radius:var(--raio-3);padding-bottom:var(--esp-6)}
+.contaDados{margin:var(--esp-5) var(--esp-6) 0;display:grid;gap:var(--esp-3)}
+.contaDados>div{display:flex;justify-content:space-between;gap:var(--esp-4);padding-bottom:var(--esp-3);border-bottom:1px solid var(--cor-borda)}
+.contaDados dt{color:var(--cor-tinta-fraca);font-size:13px}
+.contaDados dd{margin:0;font-weight:700;text-align:right;word-break:break-word}
+.contaNota{margin:var(--esp-3) var(--esp-6) 0;font-size:12.5px;color:var(--cor-tinta-fraca)}
+.contaSenha{margin:var(--esp-5) var(--esp-6) 0;display:grid;gap:var(--esp-4)}
+.contaSenha h3{margin:0;font-size:15px}
+.contaSenha .patientModalActions{margin-top:var(--esp-2);padding:0}
+
+/* Parecer do cardiologista, dentro do bloco do Lee. Separado por um traço
+   acima para ler como "o índice, e ao lado o que o especialista disse" —
+   e não como mais um critério que soma ponto. */
+.cardioParecer{margin-top:var(--esp-4);padding-top:var(--esp-4);border-top:1px dashed var(--cor-borda);display:grid;gap:var(--esp-3)}
+.cardioParecer>strong{font-size:13px;color:var(--cor-tinta-fraca);letter-spacing:.02em}
+.cardioAlerta{display:flex;align-items:center;gap:7px;margin:0;padding:10px 13px;border-radius:var(--raio-1);background:var(--cor-atencao-suave);color:var(--cor-atencao);font-size:13px;font-weight:700}
+.cardioAlerta.grave{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
+
+/* Saída do login para quem ainda não tem conta. */
+.avnLoginAlt{margin:var(--esp-3) 0 0;font-size:13.5px;color:var(--cor-tinta-fraca);text-align:center}
+.avnLoginAlt a{color:var(--cor-marca);font-weight:700}

@@ -101,10 +101,10 @@ const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamen
 };
 
 export function DashboardClient({
-  perfil, organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
+  perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
   initialNewPatient = false, autoStartAssessment = false,
 }: {
-  perfil: Perfil; organizacao?: Organizacao | null;
+  perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
   initialView?: DashboardView;
@@ -130,6 +130,10 @@ export function DashboardClient({
   const [historyTo, setHistoryTo] = useState("");
   const [dark, setDark] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
+  const [contaAberta, setContaAberta] = useState(false);
+  const [senha, setSenha] = useState({atual:"",nova:"",confirma:""});
+  const [senhaMsg, setSenhaMsg] = useState("");
+  const [senhaBusy, setSenhaBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState("");
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
@@ -421,6 +425,12 @@ export function DashboardClient({
               <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{setDark(value=>!value);setUserMenu(false)}}>
                 <Icone nome="tema"/> {dark?"Tema claro":"Tema escuro"}
               </button>
+              <button role="menuitem" onClick={()=>{
+                setUserMenu(false);setContaAberta(true);setSenhaMsg("");
+                setSenha({atual:"",nova:"",confirma:""});
+              }}>
+                <Icone nome="pessoa"/> Minha conta e senha
+              </button>
               {["owner","admin"].includes(perfil.role)&&
                 <Link role="menuitem" href="/assinatura" onClick={()=>setUserMenu(false)}>
                   <Icone nome="assinatura"/> Assinatura
@@ -509,6 +519,55 @@ export function DashboardClient({
         </div>
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()}/>}
+
+      {contaAberta&&<div className="patientModalBackdrop" role="presentation">
+        <section className="contaModal" role="dialog" aria-modal="true" aria-labelledby="conta-titulo">
+          <div className="patientModalHead">
+            <div><strong id="conta-titulo">Minha conta</strong><span>Seus dados de acesso ao AVANEST.</span></div>
+            <button type="button" onClick={()=>setContaAberta(false)} aria-label="Fechar">×</button>
+          </div>
+          <dl className="contaDados">
+            <div><dt>Nome</dt><dd>{perfil.nome}</dd></div>
+            <div><dt>E-mail de acesso</dt><dd>{email||"—"}</dd></div>
+            <div><dt>Perfil</dt><dd>{ROLE_LABELS[perfil.role]??perfil.role}</dd></div>
+          </dl>
+          <p className="contaNota">
+            Nome e perfil são alterados pelo administrador da organização, em Admin → Usuários e permissões.
+          </p>
+          <form className="contaSenha" onSubmit={async event=>{
+            event.preventDefault();
+            setSenhaMsg("");
+            if(senha.nova.length<8){setSenhaMsg("A nova senha precisa ter pelo menos 8 caracteres.");return}
+            if(senha.nova!==senha.confirma){setSenhaMsg("A confirmação não confere com a nova senha.");return}
+            if(senha.nova===senha.atual){setSenhaMsg("A nova senha precisa ser diferente da atual.");return}
+            setSenhaBusy(true);
+            const cliente=createClient();
+            // Confere a senha atual antes de trocar. Sem isso, quem sentasse
+            // numa tela destravada assumiria a conta alheia em dois cliques —
+            // e o dono perderia o acesso sem nunca saber por quê.
+            const {error:erroAtual}=await cliente.auth.signInWithPassword({email,password:senha.atual});
+            if(erroAtual){setSenhaBusy(false);setSenhaMsg("A senha atual não confere.");return}
+            const {error}=await cliente.auth.updateUser({password:senha.nova});
+            setSenhaBusy(false);
+            if(error){setSenhaMsg(`Não foi possível alterar: ${error.message}`);return}
+            setSenha({atual:"",nova:"",confirma:""});
+            setSenhaMsg("Senha alterada. Use a nova no próximo acesso.");
+          }}>
+            <h3>Alterar senha</h3>
+            <label className="clinicalField"><span>Senha atual</span>
+              <input type="password" autoComplete="current-password" value={senha.atual} onChange={e=>setSenha(s=>({...s,atual:e.target.value}))} required/></label>
+            <label className="clinicalField"><span>Nova senha</span>
+              <input type="password" autoComplete="new-password" value={senha.nova} onChange={e=>setSenha(s=>({...s,nova:e.target.value}))} required minLength={8} placeholder="Mínimo de 8 caracteres"/></label>
+            <label className="clinicalField"><span>Repita a nova senha</span>
+              <input type="password" autoComplete="new-password" value={senha.confirma} onChange={e=>setSenha(s=>({...s,confirma:e.target.value}))} required/></label>
+            {senhaMsg&&<p className={senhaMsg.startsWith("Senha alterada")?"financeSuccess":"clinicalError"} role="status">{senhaMsg}</p>}
+            <div className="patientModalActions">
+              <button type="button" className="outlineClinical" onClick={()=>setContaAberta(false)}>Fechar</button>
+              <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
+            </div>
+          </form>
+        </section>
+      </div>}
 
       {open && <PatientModal busy={busy} error={error} convenios={listarConvenios(convenioValores,pacientes)} onClose={() => {
         setOpen(false);

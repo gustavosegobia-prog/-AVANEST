@@ -12,14 +12,58 @@ const PAPEIS: Record<string, string> = {
 export default async function CriarContaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ convite?: string }>;
+  searchParams: Promise<{ convite?: string; plano?: string }>;
 }) {
-  const { convite: token } = await searchParams;
+  const { convite: token, plano } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect(token ? `/convite/${encodeURIComponent(token)}` : "/dashboard");
+  if (user) {
+    if (token) redirect(`/convite/${encodeURIComponent(token)}`);
+    redirect(plano ? `/comecar?plano=${encodeURIComponent(plano)}` : "/dashboard");
+  }
 
-  // Sem convite não há cadastro aberto: as contas nascem de um convite.
+  // Quem vem da vitrine com um plano escolhido cria a conta aqui mesmo. Antes
+  // esse caminho não existia: o visitante clicava em Assinar, caía no login e
+  // não tinha como seguir. O plano viaja junto até o checkout.
+  if (!token && plano) {
+    const { data: planoData } = await supabase
+      .from("planos").select("nome,preco_mensal")
+      .eq("codigo", plano).eq("ativo", true).maybeSingle();
+    const { data: vagasData } = await supabase.rpc("vagas_fundador");
+    const vagas = Array.isArray(vagasData) ? vagasData[0] : vagasData;
+    const naCampanha = vagas?.ativa === true && Number(vagas?.restantes ?? 0) > 0
+      && vagas?.plano_codigo === plano;
+    const reais = (valor: number) =>
+      Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+    return (
+      <main className="avnLoginPage">
+        <section className="avnLoginCard avnOnboardingCard">
+          <div className="avnLoginIllustration">
+            <AppLogo />
+            <p>Sua organização nasce com seus próprios pacientes e documentos, sem acesso aos dados de ninguém.</p>
+          </div>
+          <div className="avnLoginContent">
+            <h1>Criar sua conta</h1>
+            {planoData ? (
+              <p>
+                Plano <b>{planoData.nome}</b> por{" "}
+                <b>{reais(naCampanha ? Number(vagas.preco) : Number(planoData.preco_mensal))}/mês</b>
+                {naCampanha && <> — preço de fundador, garantido enquanto a assinatura seguir ativa</>}.
+                {" "}Depois de criar a conta você escolhe individual ou grupo e conclui o pagamento.
+              </p>
+            ) : (
+              <p>Crie sua conta para escolher o plano e concluir a assinatura.</p>
+            )}
+            <SignUpForm token="" email="" plano={plano} />
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // Sem convite e sem plano não há cadastro aberto: as contas nascem de um
+  // convite ou da escolha de um plano na vitrine.
   if (!token) {
     return (
       <main className="avnLoginPage">

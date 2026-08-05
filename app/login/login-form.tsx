@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 
-export function LoginForm({ passwordChanged = false, convite = "" }: { passwordChanged?: boolean; convite?: string }) {
+export function LoginForm({ passwordChanged = false, convite = "", plano = "" }: { passwordChanged?: boolean; convite?: string; plano?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,6 +29,11 @@ export function LoginForm({ passwordChanged = false, convite = "" }: { passwordC
     // Quem chegou por um convite volta para a tela de aceite.
     if (convite) {
       router.replace(`/convite/${encodeURIComponent(convite)}`);
+      return;
+    }
+    // Quem veio da vitrine para contratar segue para o plano escolhido.
+    if (plano) {
+      router.replace(`/comecar?plano=${encodeURIComponent(plano)}`);
       return;
     }
     // Quem ainda não contratou entra pela tela de assinatura, não pelo painel:

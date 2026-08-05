@@ -88,6 +88,10 @@ export default async function DashboardPage({
   return (
     <DashboardClient
       perfil={perfil}
+      // Vem do servidor, que já tem a sessão. Buscar no navegador deixaria a
+      // tela "carregando..." — e o botão de trocar senha travado — sempre que
+      // a chamada demorasse ou falhasse.
+      email={user.email ?? ""}
       organizacao={instituicao ?? null}
       pacientes={pacientes ?? []}
       avaliacoes={avaliacoes ?? []}

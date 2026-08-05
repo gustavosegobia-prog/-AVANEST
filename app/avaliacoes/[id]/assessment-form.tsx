@@ -64,6 +64,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   });
   const [saveState, setSaveState] = useState<"saved"|"pending"|"saving"|"error">("saved");
   const [saveError, setSaveError] = useState("");
+  const [saindo, setSaindo] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -126,6 +127,21 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     const result=await operation;
     if(saveInFlightRef.current===operation)saveInFlightRef.current=null;
     return result;
+  }
+  // Sair sem perder o que foi digitado. O rascunho só é gravado 900 ms depois
+  // da última tecla, então clicar em voltar durante essa janela levaria o
+  // último campo embora. Aqui o timer é cancelado, a gravação acontece na
+  // hora, e a navegação só ocorre se ela der certo — se falhar, a pessoa fica
+  // na tela vendo o erro e o botão de tentar de novo.
+  async function voltarAoPainel() {
+    if (saindo) return;
+    setSaindo(true);
+    if (timer.current) clearTimeout(timer.current);
+    if (saveState === "pending" || saveState === "error") {
+      const gravou = await save();
+      if (!gravou) { setSaindo(false); return; }
+    }
+    router.push("/dashboard");
   }
   function set(name: string, value: string | boolean) {
     const next = { ...draftRef.current, [name]: value }; draftRef.current=next;setDraft(next); setSaveState("pending"); setSaveError("");
@@ -289,7 +305,13 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
           :"Não foi possível salvar"}
         {saveState==="error"&&<button type="button" className="evalSaveRetry" onClick={()=>void save()}>Tentar de novo</button>}
       </span>
-      <nav className="evalRoleNav"><button type="button" className="active">Médico</button></nav>
+      <nav className="evalRoleNav">
+        <button type="button" className="evalVoltar" onClick={()=>void voltarAoPainel()} disabled={saindo}>
+          <Icone nome="voltar" tamanho={16}/>
+          {saindo?"Salvando...":"Voltar ao painel"}
+        </button>
+        <button type="button" className="active">Médico</button>
+      </nav>
     </header>
     {/* Alergia é informação de alta prioridade: acompanha a rolagem em vez de
         sumir na primeira etapa. Ícone, rótulo e valor — sem caixa alta no
@@ -619,6 +641,13 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
 function ScoreToggle({name,label,draft,set}:{name:string;label:string;draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   return <button className={draft[name]===true?"scoreToggle selected":"scoreToggle"} onClick={()=>set(name,draft[name]!==true)}><i>{draft[name]===true?"✓":""}</i>{label}</button>;
 }
+const LEE_CLASSES = ["I", "II", "III", "IV"];
+// Taxas de evento cardíaco maior da derivação original (Lee et al., Circulation
+// 1999). São as que acompanham o índice na literatura; trocá-las por outra
+// coorte mudaria o número que o anestesiologista lê ao lado da classe.
+const LEE_RISCO = ["0,4%", "0,9%", "6,6%", "11%"];
+const PARECER_CARDIO = ["Sem avaliação", "Liberado sem restrições", "Liberado com ressalvas", "Não liberado"];
+
 function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:string|boolean)=>void;age:number|null;sex:string|null;imc:number}) {
   const rcri=[["rcri_alto_risco","Cirurgia de alto risco"],["rcri_coronaria","Doença arterial coronariana"],["rcri_ic","Insuficiência cardíaca"],["rcri_cerebrovascular","Doença cerebrovascular (AVC/AIT)"],["rcri_insulina","Diabetes em uso de insulina"],["rcri_creatinina","Creatinina > 2,0 mg/dL"]];
   const stop=[["stop_ronco","Ronco alto"],["stop_cansaco","Cansaço/sonolência diurna"],["stop_apneia","Apneia observada"],["stop_has","Hipertensão arterial"],["stop_pescoco","Circunf. cervical > 40 cm"],["stop_imc","IMC > 35"],["stop_idade","Idade > 50"],["stop_masculino","Sexo masculino"]];
@@ -641,7 +670,34 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   const asa=["ASA I","ASA II","ASA III","ASA IV","ASA V","ASA VI"];
   return <><div className="scoreGrid">
     <section className="evalSection"><h1>8 · Classificação ASA</h1><p className="evalHint">Selecione e confirme a classificação médica.</p><div className="asaButtons">{asa.map(item=><button className={draft.asa===item?"selected":""} onClick={()=>set("asa",item)} key={item}>{item}</button>)}<button className={draft.asa_emergencia===true?"selected":""} onClick={()=>set("asa_emergencia",draft.asa_emergencia!==true)}>+ E (emergência)</button></div><label className="confirmScore"><input type="checkbox" checked={draft.asa_confirmada===true} onChange={e=>set("asa_confirmada",e.target.checked)}/> Classificação confirmada pelo médico</label></section>
-    <section className="evalSection"><h1>Índice de Lee (RCRI)</h1><p className="evalHint">Marque os critérios presentes.</p><div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set}/>)}</div><div className="scoreResult">Lee {rcriScore} ponto(s) · Classe {rcriScore===0?"I":rcriScore===1?"II":rcriScore===2?"III":"IV"} <small>apoio à estratificação; confirmar clinicamente</small></div></section>
+    <section className="evalSection"><h1>Índice de Lee (RCRI)</h1><p className="evalHint">Marque os critérios presentes.</p>
+      <div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set}/>)}</div>
+      <div className={`scoreResult ${rcriScore>=2?"warning":""}`}>
+        Lee {rcriScore} ponto(s) · Classe {LEE_CLASSES[Math.min(rcriScore,3)]} · evento cardíaco maior ≈ {LEE_RISCO[Math.min(rcriScore,3)]}
+        <small>Lee et al., 1999. Apoio à estratificação; confirmar clinicamente.</small>
+      </div>
+      {/* O parecer do cardiologista entra como registro ao lado do índice, e
+          não como pontos. O RCRI é um escore fechado de seis critérios — somar
+          ou descontar por causa do parecer inventaria um número que não existe
+          em lugar nenhum. Quem decide continua sendo o anestesiologista. */}
+      <div className="cardioParecer">
+        <strong>Avaliação do cardiologista</strong>
+        <div className="asaButtons">
+          {PARECER_CARDIO.map(item=>
+            <button key={item} className={draft.cardio_parecer===item?"selected":""}
+              onClick={()=>set("cardio_parecer",draft.cardio_parecer===item?"":item)}>{item}</button>)}
+        </div>
+        {draft.cardio_parecer&&draft.cardio_parecer!=="Sem avaliação"&&
+          <label className="clinicalField"><span>Conduta recomendada / ressalvas</span>
+            <input className="detailInput" value={String(draft.cardio_conduta??"")}
+              onChange={e=>set("cardio_conduta",e.target.value)}
+              placeholder="Ex.: manter betabloqueador, ecocardiograma em 6 meses"/></label>}
+        {rcriScore>=2&&!draft.cardio_parecer&&
+          <p className="cardioAlerta"><Icone nome="alerta" tamanho={15}/> Classe {LEE_CLASSES[Math.min(rcriScore,3)]} sem parecer cardiológico registrado.</p>}
+        {draft.cardio_parecer==="Não liberado"&&
+          <p className="cardioAlerta grave"><Icone nome="alerta" tamanho={15}/> Cardiologista não liberou o procedimento.</p>}
+      </div>
+    </section>
     <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={`${label}${key==="stop_imc"&&imc?` (IMC ${imc.toFixed(1)})`:key==="stop_idade"&&age?` (${age} anos)`:key==="stop_masculino"&&sex?` (${sex})`:""}`} draft={draft} set={set}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
     <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk} <small>referência de apoio; confirmar conduta</small></div></section>
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div><p>Outros escores somente devem ser usados quando houver dados suficientes e validação clínica.</p></section></>;

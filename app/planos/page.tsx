@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 // A página mostra contagem de vagas: cachear daria número velho.
 export const dynamic = "force-dynamic";
 
-const WHATSAPP = "https://wa.me/5541997870810?text=";
+const WHATSAPP = "https://wa.me/5544998143820?text=";
 const propostaHospital =
   WHATSAPP + encodeURIComponent("Olá! Gostaria de uma proposta do AVANEST para a minha estrutura hospitalar.");
 // O cadastro do AVANEST é por convite, não por autoatendimento. Quem ainda não
@@ -73,12 +73,18 @@ export default async function PlanosPage() {
     supabase.auth.getUser(),
   ]);
 
-  // Só quem responde pela organização consegue contratar; para os demais o
-  // botão vira conversa, que é o caminho real de quem ainda não é cliente.
   const { data: perfil } = user
     ? await supabase.from("perfis").select("role").eq("id", user.id).maybeSingle()
     : { data: null };
+  // Quem responde pela organização contrata direto. Visitante sem conta vai
+  // criar a dele levando o plano escolhido — antes esse caminho terminava no
+  // login sem saída, e quem quis pagar não tinha como. Quem já está logado
+  // mas não responde pela organização continua caindo na conversa: mudar o
+  // plano do grupo não é decisão de quem só usa o sistema.
   const podeContratar = ["owner", "admin"].includes(String(perfil?.role ?? ""));
+  const visitante = !user;
+  const destinoDoPlano = (codigo: string) =>
+    podeContratar ? `/assinatura?plano=${codigo}` : `/criar-conta?plano=${codigo}`;
 
   const planos = (planosData ?? []) as Plano[];
   const vagas = (Array.isArray(vagasData) ? vagasData[0] : vagasData) as Vagas | null;
@@ -171,8 +177,8 @@ export default async function PlanosPage() {
                 <a className="planoBotao" href={propostaHospital} target="_blank" rel="noreferrer">
                   Solicitar proposta
                 </a>
-              ) : podeContratar ? (
-                <Link className="planoBotao" href={`/assinatura?plano=${plano.codigo}`}>
+              ) : podeContratar || visitante ? (
+                <Link className="planoBotao" href={destinoDoPlano(plano.codigo)}>
                   Assinar {plano.nome}
                 </Link>
               ) : (

@@ -15,7 +15,7 @@ const OPCOES: Array<{ valor: Escolha; titulo: string; descricao: string }> = [
     descricao: "Já faço parte de um grupo e tenho um link ou código." },
 ];
 
-export function OnboardingForm({ email }: { email: string }) {
+export function OnboardingForm({ email, plano = "" }: { email: string; plano?: string }) {
   const router = useRouter();
   const [escolha, setEscolha] = useState<Escolha>("individual");
   const [busy, setBusy] = useState(false);
@@ -45,7 +45,10 @@ export function OnboardingForm({ email }: { email: string }) {
       p_rqe: texto("rqe") || null,
     });
     if (error) { setErro(error.message); setBusy(false); return; }
-    router.replace("/dashboard");
+    // Quem chegou da vitrine com um plano segue direto para o pagamento; os
+    // demais entram no trial e decidem depois. Sem isso, quem acabou de
+    // escolher um plano cairia no painel e teria de procurar onde pagar.
+    router.replace(plano ? `/assinatura?plano=${encodeURIComponent(plano)}` : "/dashboard");
     router.refresh();
   }
 
@@ -90,7 +93,10 @@ export function OnboardingForm({ email }: { email: string }) {
 
       {erro && <p className="loginError" role="alert">{erro}</p>}
       <button className="avnLoginSubmit" type="submit" disabled={busy}>
-        {busy ? "Criando..." : escolha === "convite" ? "Continuar" : "Criar organização e entrar"}
+        {busy ? "Criando..."
+          : escolha === "convite" ? "Continuar"
+          : plano ? "Criar organização e ir para o pagamento"
+          : "Criar organização e entrar"}
       </button>
     </form>
   );
