@@ -47,6 +47,19 @@ export async function POST(request: Request) {
     );
   }
 
+  // Quem já tem assinatura ativa não abre outra. Duas assinaturas na mesma
+  // organização cobrariam duas vezes, e a segunda passaria a mandar no
+  // vínculo — a renovação da primeira chegaria sem dono. Trocar de plano ou
+  // encerrar é pelo painel do Mercado Pago.
+  const { data: atual } = await supabase
+    .from("instituicoes").select("plano,mp_assinatura_id")
+    .eq("id", perfil.institution_id).maybeSingle();
+  if (atual?.plano === "ativo" && atual.mp_assinatura_id) {
+    return NextResponse.json({
+      error: "Esta organização já tem uma assinatura ativa. Para trocar de plano ou encerrar, use o painel do Mercado Pago.",
+    }, { status: 409 });
+  }
+
   if (!mercadoPagoConfigurado()) {
     return NextResponse.json(
       { error: "O pagamento online ainda não foi habilitado. Fale com o AVANEST pelo WhatsApp." },
