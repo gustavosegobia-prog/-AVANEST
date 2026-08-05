@@ -11,7 +11,7 @@ export default function PrivacidadePage() {
     <PaginaLegal
       titulo="Política de Privacidade"
       resumo="Como o AVANEST trata dados pessoais, em especial dados de saúde, conforme a Lei nº 13.709/2018 (LGPD)."
-      vigencia="3 de agosto de 2026"
+      vigencia="5 de agosto de 2026"
     >
       <h2>1. Quem responde pelo quê</h2>
       <p>

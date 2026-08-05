@@ -11,7 +11,7 @@ export default function TermosPage() {
     <PaginaLegal
       titulo="Termos de Uso"
       resumo="Estas condições regem o uso do AVANEST. Ao criar uma conta ou usar o sistema, você concorda com elas."
-      vigencia="3 de agosto de 2026"
+      vigencia="5 de agosto de 2026"
     >
       <h2>1. Quem somos</h2>
       <p>
