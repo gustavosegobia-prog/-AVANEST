@@ -638,21 +638,126 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
   </section>;
 }
 
-function ScoreToggle({name,label,draft,set}:{name:string;label:string;draft:Draft;set:(name:string,value:string|boolean)=>void}) {
-  return <button className={draft[name]===true?"scoreToggle selected":"scoreToggle"} onClick={()=>set(name,draft[name]!==true)}><i>{draft[name]===true?"✓":""}</i>{label}</button>;
+function ScoreToggle({name,label,draft,set,motivo,onAlternar}:{name:string;label:string;draft:Draft;set:(name:string,value:string|boolean)=>void;motivo?:string;onAlternar?:(nome:string,ligado:boolean)=>void}) {
+  const ligado=draft[name]===true;
+  return <button
+    className={`scoreToggle${ligado?" selected":""}${motivo?" sugerido":""}`}
+    onClick={()=>{const proximo=!ligado;set(name,proximo);onAlternar?.(name,proximo)}}
+    title={motivo?`Sugerido pelo que já foi preenchido — ${motivo}`:undefined}
+  >
+    <i>{ligado?"✓":""}</i>
+    <span>{label}{motivo&&<small className="scoreMotivo">{motivo}</small>}</span>
+  </button>;
 }
+// Sugestões de escore a partir do que já foi respondido.
+//
+// Cada uma carrega o motivo, e o motivo é sempre um trecho do que a pessoa
+// escreveu. Escore marcado sozinho, sem dizer por quê, é pior do que escore
+// vazio: o médico assina um risco que ele não conferiu e não tem como
+// rastrear de onde saiu.
+//
+// O que depende de perguntar ao paciente — ronco, sonolência, apneia
+// observada, opioide previsto — fica de fora. Não há como deduzir isso da
+// ficha, e chutar seria inventar dado clínico.
+
+const texto = (valor: unknown) => String(valor ?? "").toLowerCase();
+const contem = (valor: unknown, termos: string[]) =>
+  termos.some((termo) => texto(valor).includes(termo));
+
+// Cirurgias de alto risco cardíaco do próprio RCRI: intraperitoneal,
+// intratorácica e vascular suprainguinal.
+const CIRURGIA_ALTO_RISCO = [
+  "laparotomia", "gastrectomia", "colectomia", "colecistectomia", "hepatectomia",
+  "pancreat", "esofag", "intraperitone", "abdominal",
+  "toracotomia", "lobectomia", "pneumonectomia", "torác", "torac",
+  "aneurisma", "aorta", "aórtic", "aortic", "revascularização de membro",
+  "femoro", "fêmoro", "endarterectomia", "vascular",
+];
+
+type Sugestao = { valor: true; motivo: string };
+
+function sugerirEscores(draft: Draft, medicamentos: Medication[]): Record<string, Sugestao> {
+  const s: Record<string, Sugestao> = {};
+  const marcar = (chave: string, motivo: string) => { if (!s[chave]) s[chave] = { valor: true, motivo }; };
+
+  const cardio = draft.cardiovascular === "Sim" ? draft.cardiovascular_detalhes : "";
+  const neuro = draft.neurologica === "Sim" ? draft.neurologica_detalhes : "";
+  const outras = draft.outras_doencas === "Sim" ? draft.outras_doencas_detalhes : "";
+
+  // ── Índice de Lee ────────────────────────────────────────────────────────
+  if (contem(cardio, ["coronar", "infarto", "iam", "angina", "stent", "revasculariz", "ponte de safena"]))
+    marcar("rcri_coronaria", `Cardiovascular: ${draft.cardiovascular_detalhes}`);
+
+  if (contem(cardio, ["insuficiência cardíaca", "insuficiencia cardiaca", "icc", " ic ", "fração de ejeção", "fracao de ejecao"]))
+    marcar("rcri_ic", `Cardiovascular: ${draft.cardiovascular_detalhes}`);
+
+  if (contem(neuro, ["avc", "ait", "derrame", "isquemia cerebral", "acidente vascular"]))
+    marcar("rcri_cerebrovascular", `Neurológica: ${draft.neurologica_detalhes}`);
+
+  const usaInsulina = medicamentos.some((m) => contem(m.nome, ["insulina", "lantus", "novorapid", "humalog", "tresiba", "glargina", "nph"]));
+  if (draft.diabetes === "Sim" && (usaInsulina || contem(draft.diabetes_detalhes, ["insulina"])))
+    marcar("rcri_insulina", usaInsulina ? "Insulina na lista de medicamentos" : `Diabetes: ${draft.diabetes_detalhes}`);
+
+  if (contem(draft.cirurgia, CIRURGIA_ALTO_RISCO))
+    marcar("rcri_alto_risco", `Cirurgia: ${draft.cirurgia}`);
+
+  // ── STOP-Bang ────────────────────────────────────────────────────────────
+  if (contem(cardio, ["hipertens", "has ", "pressão alta", "pressao alta"]) || contem(outras, ["hipertens"]))
+    marcar("stop_has", `Cardiovascular: ${draft.cardiovascular_detalhes || draft.outras_doencas_detalhes}`);
+
+  // ── Apfel ────────────────────────────────────────────────────────────────
+  const reacao = draft.reacao_anestesica === "Sim" ? draft.reacao_anestesica_detalhes : "";
+  if (contem(reacao, ["náusea", "nausea", "vômito", "vomito", "nvpo", "enjoo"]) ||
+      contem(outras, ["cinetose", "enjoo de viagem"]))
+    marcar("apfel_historia", `Reação anestésica: ${draft.reacao_anestesica_detalhes || draft.outras_doencas_detalhes}`);
+
+  return s;
+}
+
 const LEE_CLASSES = ["I", "II", "III", "IV"];
 // Taxas de evento cardíaco maior da derivação original (Lee et al., Circulation
 // 1999). São as que acompanham o índice na literatura; trocá-las por outra
 // coorte mudaria o número que o anestesiologista lê ao lado da classe.
 const LEE_RISCO = ["0,4%", "0,9%", "6,6%", "11%"];
-const PARECER_CARDIO = ["Sem avaliação", "Liberado sem restrições", "Liberado com ressalvas", "Não liberado"];
+// Rótulo curto na tela, valor por extenso no que é gravado e impresso. Os
+// quatro cabem numa linha só com o texto curto; a ficha continua dizendo
+// "Liberado sem restrições", que é o que o leitor do papel precisa ler.
+const PARECER_CARDIO: Array<[string, string]> = [
+  ["Sem avaliação", "Sem avaliação"],
+  ["Liberado sem restrições", "Liberado"],
+  ["Liberado com ressalvas", "Com ressalvas"],
+  ["Não liberado", "Não liberado"],
+];
 
 function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:string|boolean)=>void;age:number|null;sex:string|null;imc:number}) {
   const rcri=[["rcri_alto_risco","Cirurgia de alto risco"],["rcri_coronaria","Doença arterial coronariana"],["rcri_ic","Insuficiência cardíaca"],["rcri_cerebrovascular","Doença cerebrovascular (AVC/AIT)"],["rcri_insulina","Diabetes em uso de insulina"],["rcri_creatinina","Creatinina > 2,0 mg/dL"]];
   const stop=[["stop_ronco","Ronco alto"],["stop_cansaco","Cansaço/sonolência diurna"],["stop_apneia","Apneia observada"],["stop_has","Hipertensão arterial"],["stop_pescoco","Circunf. cervical > 40 cm"],["stop_imc","IMC > 35"],["stop_idade","Idade > 50"],["stop_masculino","Sexo masculino"]];
   const apfel=[["apfel_historia","História de NVPO ou cinetose"],["apfel_opioide","Opioides pós-operatórios previstos"],["apfel_feminino","Sexo feminino"],["apfel_nao_tabagista","Não tabagista"]];
   const rcriScore=rcri.filter(([key])=>key==="rcri_creatinina"?Number(String(draft.creatinina||"").replace(",","."))>2:draft[key]===true).length;
+
+  // Preenchimento automático dos escores.
+  //
+  // Aplica o que a anamnese e os exames já indicam, mas guarda o que o médico
+  // desmarcou: se ele tirou "insuficiência cardíaca", não vale a tela remarcar
+  // na próxima visita. Quem decide é ele; o automático só evita redigitar o
+  // que já está na ficha.
+  const sugestoes=useMemo(()=>sugerirEscores(draft,readMedications(draft.medicamentos_json)),[draft]);
+  const recusados=String(draft.escores_recusados||"").split(",").filter(Boolean);
+  const pendentes=Object.keys(sugestoes).filter(chave=>draft[chave]!==true&&!recusados.includes(chave));
+  const aplicados=Object.keys(sugestoes).filter(chave=>draft[chave]===true);
+
+  useEffect(()=>{
+    if(!pendentes.length) return;
+    for(const chave of pendentes) set(chave,true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[pendentes.join(",")]);
+
+  function registrarAlternancia(nome:string,ligado:boolean){
+    if(!sugestoes[nome]) return;
+    const lista=new Set(recusados);
+    if(ligado) lista.delete(nome); else lista.add(nome);
+    set("escores_recusados",Array.from(lista).join(","));
+  }
   const stopScore=stop.filter(([key])=>{
     if(key==="stop_imc")return imc>35;
     if(key==="stop_idade")return age!==null&&age>50;
@@ -671,7 +776,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   return <><div className="scoreGrid">
     <section className="evalSection"><h1>8 · Classificação ASA</h1><p className="evalHint">Selecione e confirme a classificação médica.</p><div className="asaButtons">{asa.map(item=><button className={draft.asa===item?"selected":""} onClick={()=>set("asa",item)} key={item}>{item}</button>)}<button className={draft.asa_emergencia===true?"selected":""} onClick={()=>set("asa_emergencia",draft.asa_emergencia!==true)}>+ E (emergência)</button></div><label className="confirmScore"><input type="checkbox" checked={draft.asa_confirmada===true} onChange={e=>set("asa_confirmada",e.target.checked)}/> Classificação confirmada pelo médico</label></section>
     <section className="evalSection"><h1>Índice de Lee (RCRI)</h1><p className="evalHint">Marque os critérios presentes.</p>
-      <div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set}/>)}</div>
+      <div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div>
       <div className={`scoreResult ${rcriScore>=2?"warning":""}`}>
         Lee {rcriScore} ponto(s) · Classe {LEE_CLASSES[Math.min(rcriScore,3)]} · evento cardíaco maior ≈ {LEE_RISCO[Math.min(rcriScore,3)]}
         <small>Lee et al., 1999. Apoio à estratificação; confirmar clinicamente.</small>
@@ -682,24 +787,26 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
           em lugar nenhum. Quem decide continua sendo o anestesiologista. */}
       <div className="cardioParecer">
         <strong>Avaliação do cardiologista</strong>
-        <div className="asaButtons">
-          {PARECER_CARDIO.map(item=>
-            <button key={item} className={draft.cardio_parecer===item?"selected":""}
-              onClick={()=>set("cardio_parecer",draft.cardio_parecer===item?"":item)}>{item}</button>)}
+        <div className="cardioOpcoes">
+          {PARECER_CARDIO.map(([valor,curto])=>
+            <button key={valor} className={draft.cardio_parecer===valor?"selected":""} title={valor}
+              onClick={()=>set("cardio_parecer",draft.cardio_parecer===valor?"":valor)}>{curto}</button>)}
         </div>
-        {draft.cardio_parecer&&draft.cardio_parecer!=="Sem avaliação"&&
-          <label className="clinicalField"><span>Conduta recomendada / ressalvas</span>
-            <input className="detailInput" value={String(draft.cardio_conduta??"")}
-              onChange={e=>set("cardio_conduta",e.target.value)}
-              placeholder="Ex.: manter betabloqueador, ecocardiograma em 6 meses"/></label>}
+        {/* A observação fica sempre visível: o cardiologista costuma escrever
+            algo mesmo quando libera sem restrição, e esconder o campo até
+            escolher um parecer fazia perder essa anotação. */}
+        <label className="clinicalField"><span>Observação do cardiologista</span>
+          <textarea className="detailInput cardioObs" rows={2} value={String(draft.cardio_conduta??"")}
+            onChange={e=>set("cardio_conduta",e.target.value)}
+            placeholder="Ex.: manter betabloqueador no dia da cirurgia; ecocardiograma em 6 meses"/></label>
         {rcriScore>=2&&!draft.cardio_parecer&&
           <p className="cardioAlerta"><Icone nome="alerta" tamanho={15}/> Classe {LEE_CLASSES[Math.min(rcriScore,3)]} sem parecer cardiológico registrado.</p>}
         {draft.cardio_parecer==="Não liberado"&&
           <p className="cardioAlerta grave"><Icone nome="alerta" tamanho={15}/> Cardiologista não liberou o procedimento.</p>}
       </div>
     </section>
-    <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={`${label}${key==="stop_imc"&&imc?` (IMC ${imc.toFixed(1)})`:key==="stop_idade"&&age?` (${age} anos)`:key==="stop_masculino"&&sex?` (${sex})`:""}`} draft={draft} set={set}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
-    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk} <small>referência de apoio; confirmar conduta</small></div></section>
+    <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={`${label}${key==="stop_imc"&&imc?` (IMC ${imc.toFixed(1)})`:key==="stop_idade"&&age?` (${age} anos)`:key==="stop_masculino"&&sex?` (${sex})`:""}`} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
+    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk} <small>referência de apoio; confirmar conduta</small></div></section>
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div><p>Outros escores somente devem ser usados quando houver dados suficientes e validação clínica.</p></section></>;
 }
 
