@@ -61,6 +61,10 @@ export default function HomePage() {
       </section>
       <footer className="avnFooter">
         <span>G. Segobia Serviços Médicos LTDA — CNPJ 55.965.276/0001-04</span>
+        <nav className="avnFooterLinks">
+          <a href="/termos">Termos de Uso</a>
+          <a href="/privacidade">Política de Privacidade</a>
+        </nav>
       </footer>
       <a
         className="avnInstagram"

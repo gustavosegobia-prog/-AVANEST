@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
-// Abre o checkout do Mercado Pago. Vai daqui qual plano se quer, nunca quanto
-// custa: o preço é decidido e congelado no banco.
+// Abre o checkout do Mercado Pago. Vai daqui qual plano se quer e o aceite dos
+// documentos, nunca quanto custa: o preço é decidido e congelado no banco.
+//
+// O botão só acende com a caixa marcada, mas quem recusa de verdade é o
+// servidor — a trava da tela é conveniência, não garantia.
 export function AssinarButton({ plano, rotulo }: { plano: string; rotulo: string }) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+  const [aceite, setAceite] = useState(false);
 
   async function assinar() {
     setCarregando(true);
@@ -15,7 +20,7 @@ export function AssinarButton({ plano, rotulo }: { plano: string; rotulo: string
       const resposta = await fetch("/api/assinatura/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plano }),
+        body: JSON.stringify({ plano, aceite }),
       });
       const dados = await resposta.json().catch(() => null);
       if (!resposta.ok || !dados?.url) {
@@ -33,7 +38,18 @@ export function AssinarButton({ plano, rotulo }: { plano: string; rotulo: string
   return (
     <>
       {erro && <p className="clinicalError" role="alert">{erro}</p>}
-      <button className="avnLoginSubmit" onClick={assinar} disabled={carregando}>
+      <label className="aceiteTermos">
+        <input
+          type="checkbox"
+          checked={aceite}
+          onChange={(evento) => { setAceite(evento.target.checked); setErro(""); }}
+        />
+        <span>
+          Li e concordo com os <Link href="/termos" target="_blank">Termos de Uso</Link> e a{" "}
+          <Link href="/privacidade" target="_blank">Política de Privacidade</Link>.
+        </span>
+      </label>
+      <button className="avnLoginSubmit" onClick={assinar} disabled={carregando || !aceite}>
         {carregando ? "Abrindo o Mercado Pago..." : rotulo}
       </button>
     </>

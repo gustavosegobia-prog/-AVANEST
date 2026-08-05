@@ -3,6 +3,12 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { criarAssinatura, mercadoPagoConfigurado } from "@/lib/mercado-pago";
 
+// A data de vigência dos documentos publicados. Fica junto do código que
+// grava o aceite para não sair de sincronia com o texto: mudou /termos ou
+// /privacidade, muda aqui, e os aceites novos passam a apontar para a versão
+// nova sem mexer nos antigos.
+const VERSAO_DOCUMENTOS = "2026-08-03";
+
 // Abre o checkout da assinatura mensal.
 //
 // O navegador manda qual plano quer, nunca quanto vai pagar. Quem decide o
@@ -14,10 +20,19 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sua sessão expirou." }, { status: 401 });
 
-  const corpo = await request.json().catch(() => null) as { plano?: unknown } | null;
+  const corpo = await request.json().catch(() => null) as { plano?: unknown; aceite?: unknown } | null;
   const codigo = typeof corpo?.plano === "string" ? corpo.plano.trim() : "";
   if (!codigo) {
     return NextResponse.json({ error: "Escolha um plano antes de continuar." }, { status: 400 });
+  }
+  // O aceite é conferido aqui, e não só na tela: caixa marcada no navegador
+  // não é prova de nada, e quem chamar esta rota por fora também precisa
+  // passar por ela. Sem aceite, não abre pagamento.
+  if (corpo?.aceite !== true) {
+    return NextResponse.json(
+      { error: "É preciso aceitar os Termos de Uso e a Política de Privacidade antes de assinar." },
+      { status: 400 },
+    );
   }
 
   const { data: perfil } = await supabase
@@ -67,6 +82,19 @@ export async function POST(request: Request) {
   const valorMensal = Number(reserva?.preco ?? 0);
   if (!(valorMensal > 0)) {
     return NextResponse.json({ error: "Não foi possível calcular o valor do plano." }, { status: 500 });
+  }
+
+  // Carimba o aceite antes de falar com o Mercado Pago. A função só preenche
+  // se ainda estiver vazio, então o registro guarda a primeira vez — que é a
+  // que importa — e não a última tentativa de checkout.
+  const { error: erroAceite } = await admin.rpc("registrar_aceite_termos", {
+    p_institution_id: perfil.institution_id,
+    p_perfil_id: perfil.id,
+    p_versao: VERSAO_DOCUMENTOS,
+  });
+  if (erroAceite) {
+    console.error("[assinatura/checkout] aceite", erroAceite);
+    return NextResponse.json({ error: "Não foi possível registrar o aceite dos termos." }, { status: 500 });
   }
 
   const { data: assinaturaData } = await supabase.rpc("minha_assinatura");

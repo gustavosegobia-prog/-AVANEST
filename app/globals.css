@@ -1217,3 +1217,39 @@ button:disabled{cursor:not-allowed}
 /* Saída do login para quem ainda não tem conta. */
 .avnLoginAlt{margin:var(--esp-3) 0 0;font-size:13.5px;color:var(--cor-tinta-fraca);text-align:center}
 .avnLoginAlt a{color:var(--cor-marca);font-weight:700}
+
+/* ── Páginas legais: termos e privacidade ──────────────────────────────── */
+
+.legalPage{min-height:100vh;background:var(--cor-fundo);color:var(--cor-tinta);display:flex;flex-direction:column}
+.legalCorpo{flex:1;width:min(720px,calc(100% - 40px));margin:0 auto;padding:48px 0 64px;font-size:13.5px;line-height:1.62}
+.legalCorpo h1{font-size:26px;line-height:1.2;margin:0 0 var(--esp-3)}
+.legalResumo{margin:0;font-size:14px;color:var(--cor-tinta-fraca)}
+.legalVigencia{margin:var(--esp-2) 0 var(--esp-6);font-size:11.5px;color:var(--cor-tinta-fraca)}
+/* Espaço generoso antes do título e curto depois: agrupa cada seção com o
+   próprio texto, em vez de deixar as seções flutuando à mesma distância. */
+.legalCorpo h2{font-size:15px;margin:var(--esp-6) 0 var(--esp-3);padding-top:var(--esp-4);border-top:1px solid var(--cor-borda)}
+.legalCorpo p{margin:0 0 var(--esp-3)}
+/* O reset global zera list-style; aqui o marcador precisa voltar, senão as
+   enumerações da lei viram parágrafos indentados e some a contagem visual. */
+.legalCorpo ul{margin:0 0 var(--esp-4);padding-left:1.35em;list-style:disc}
+.legalCorpo li::marker{color:var(--cor-tinta-fraca)}
+.legalCorpo li{margin-bottom:6px}
+.legalCorpo a{color:var(--cor-marca);font-weight:650}
+.legalDestaque{padding:var(--esp-3) var(--esp-4);border-left:3px solid var(--cor-atencao);background:var(--cor-atencao-suave);border-radius:0 var(--raio-1) var(--raio-1) 0}
+.legalOutros{display:flex;gap:var(--esp-5);flex-wrap:wrap;margin-top:var(--esp-8);padding-top:var(--esp-5);border-top:1px solid var(--cor-borda)}
+.legalOutros a{color:var(--cor-marca);font-weight:700;text-decoration:none}
+
+.avnFooterLinks{display:flex;gap:var(--esp-5);flex-wrap:wrap}
+.avnFooterLinks a{color:inherit;opacity:.85;text-decoration:none}
+.avnFooterLinks a:hover{opacity:1;text-decoration:underline}
+
+/* Aceite dos documentos: caixa e texto alinhados pelo topo, porque o texto
+   quebra em duas linhas e um checkbox centralizado ficaria solto no meio. */
+.aceiteTermos{display:flex;align-items:flex-start;gap:9px;margin:var(--esp-3) 0 0;font-size:12.5px;line-height:1.5;color:var(--cor-tinta-fraca);cursor:pointer}
+.aceiteTermos input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--cor-marca);cursor:pointer}
+.aceiteTermos a{color:var(--cor-marca);font-weight:650}
+
+@media(max-width:640px){
+  .legalCorpo{padding:36px 0 56px}
+  .legalCorpo h1{font-size:22px}
+}

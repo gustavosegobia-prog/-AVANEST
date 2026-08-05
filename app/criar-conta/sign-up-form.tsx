@@ -14,6 +14,7 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
   const [erro, setErro] = useState("");
   const [confirmeEmail, setConfirmeEmail] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [aceite, setAceite] = useState(false);
   const porConvite = Boolean(token);
   const destino = porConvite
     ? `/convite/${encodeURIComponent(token)}`
@@ -99,7 +100,17 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
         minLength={8} required autoComplete="new-password" />
 
       {erro && <p className="loginError" role="alert">{erro}</p>}
-      <button className="avnLoginSubmit" type="submit" disabled={busy}>
+      {/* Caixa de marcar, não aviso passivo: o aceite tem de ser um ato. O
+          registro com data e versão é gravado no servidor na hora de abrir o
+          pagamento — aqui a pessoa já sabe com o que está concordando. */}
+      <label className="aceiteTermos">
+        <input type="checkbox" checked={aceite} onChange={e=>setAceite(e.target.checked)} required />
+        <span>
+          Li e concordo com os <Link href="/termos" target="_blank">Termos de Uso</Link> e a{" "}
+          <Link href="/privacidade" target="_blank">Política de Privacidade</Link>.
+        </span>
+      </label>
+      <button className="avnLoginSubmit" type="submit" disabled={busy || !aceite}>
         {busy ? "Criando..." : "Criar conta e continuar"}
       </button>
       <Link className="avnLoginCancel" href={porConvite

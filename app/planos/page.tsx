@@ -205,6 +205,10 @@ export default async function PlanosPage() {
 
       <footer className="avnFooter">
         <span>G. Segobia Serviços Médicos LTDA — CNPJ 55.965.276/0001-04</span>
+        <nav className="avnFooterLinks">
+          <Link href="/termos">Termos de Uso</Link>
+          <Link href="/privacidade">Política de Privacidade</Link>
+        </nav>
       </footer>
     </main>
   );
