@@ -339,6 +339,13 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               </p>;
             })}
             </div></>}
+          <section className="paperMedicationSection"><PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<p className="paperMedicationList">{medications.map((m,i)=><span key={m.id}>{i>0&&<em className="paperSep">|</em>}<b>{[m.nome,m.dose,m.frequencia].filter(Boolean).join(" ")}</b></span>)}</p>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}
+            {/* Sai junto dos medicamentos, e não na anamnese, porque quem lê
+                este bloco antes da indução está decidindo jejum: com GLP-1 em
+                uso, a data da última dose é o dado que muda a conduta. */}
+            {hasText(dados.glp1)&&<p className="paperGlp1">Caneta emagrecedora (GLP-1): <b>{text(dados.glp1)}</b>
+              {hasText(dados.glp1_detalhes)&&<> · <b>{text(dados.glp1_detalhes)}</b></>}
+              {hasText(dados.glp1_ultima_dose)&&<> · Última dose: <b>{formatDate(text(dados.glp1_ultima_dose))}</b></>}</p>}</section>
           <PaperInlineBlock title="EXAME FÍSICO"
             linhas={[
               facts([
@@ -369,13 +376,6 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               ]),
             ]}
             extras={facts([["Observações",dados.observacoes_via_aerea]])}/>
-          <section className="paperMedicationSection"><PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<p className="paperMedicationList">{medications.map((m,i)=><span key={m.id}>{i>0&&<em className="paperSep">|</em>}<b>{[m.nome,m.dose,m.frequencia].filter(Boolean).join(" ")}</b></span>)}</p>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}
-            {/* Sai junto dos medicamentos, e não na anamnese, porque quem lê
-                este bloco antes da indução está decidindo jejum: com GLP-1 em
-                uso, a data da última dose é o dado que muda a conduta. */}
-            {hasText(dados.glp1)&&<p className="paperGlp1">Caneta emagrecedora (GLP-1): <b>{text(dados.glp1)}</b>
-              {hasText(dados.glp1_detalhes)&&<> · <b>{text(dados.glp1_detalhes)}</b></>}
-              {hasText(dados.glp1_ultima_dose)&&<> · Última dose: <b>{formatDate(text(dados.glp1_ultima_dose))}</b></>}</p>}</section>
           <PaperInlineBlock title="EXAMES COMPLEMENTARES"
             linhas={[
               facts([
