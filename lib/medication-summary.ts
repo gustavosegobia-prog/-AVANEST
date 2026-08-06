@@ -23,3 +23,22 @@ export function suspensionSummary(name: string) {
   if (days === 1) return "Suspender 1 dia antes da cirurgia.";
   return `Suspender ${days} dias antes da cirurgia.`;
 }
+
+/**
+ * O texto que o sistema propõe para a conduta escolhida.
+ *
+ * É a mesma frase nos dois lugares: a que aparece no campo editável da
+ * avaliação e a que sai na ficha. O anestesiologista precisa ler na tela
+ * exatamente o que vai ser impresso — se ele discordar do prazo, reescreve ali
+ * e a versão dele passa a valer.
+ *
+ * Suspender vira o prazo resumido. As demais condutas ficam com o texto do
+ * guia, porque ali a decisão ainda depende do caso e não há o que encurtar.
+ */
+export function orientacaoSugerida(name: string, conduta: string, prazoDoGuia: string) {
+  if (conduta.trim().toLowerCase() === "suspender") {
+    const resumo = suspensionSummary(name);
+    if (resumo) return resumo;
+  }
+  return prazoDoGuia;
+}
