@@ -550,9 +550,26 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     <h1>4 · Medicamentos em uso</h1>
     <div className="questionCard medicationUseQuestion">
       <div className="questionHead">
-        <strong>Faz uso de medicação contínua ou eventual (ex.: caneta emagrecedora)?</strong>
+        <strong>Medicamentos em uso — orais, injetáveis ou adesivos?</strong>
         <div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={medicationAnswer===answer?"active":""} onClick={()=>set("medicacao_continua",answer)} key={answer}>{answer}</button>)}</div>
       </div>
+    </div>
+    {/* Pergunta separada porque a resposta muda a conduta, não só a lista: o
+        GLP-1 atrasa o esvaziamento gástrico, e é a data da última dose que
+        define o jejum e o risco de broncoaspiração. Perguntado junto com os
+        demais medicamentos, o paciente costuma não lembrar de citar — ele não
+        pensa na caneta como remédio. */}
+    <div className="questionCard medicationUseQuestion">
+      <div className="questionHead">
+        <strong>Usa Ozempic, Mounjaro, Saxenda, Rybelsus ou outra caneta emagrecedora?</strong>
+        <div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={String(draft.glp1??"")===answer?"active":""} onClick={()=>set("glp1",answer)} key={answer}>{answer}</button>)}</div>
+      </div>
+      {draft.glp1==="Sim"&&<div className="conditionalDetails">
+        <label><span>Dia da última dose</span>
+          <input type="date" value={String(draft.glp1_ultima_dose??"")} onChange={e=>set("glp1_ultima_dose",e.target.value)}/></label>
+        <label><span>Qual caneta e dose</span>
+          <input value={String(draft.glp1_detalhes??"")} onChange={e=>set("glp1_detalhes",e.target.value)} placeholder="Ex.: Ozempic 1 mg, semanal"/></label>
+      </div>}
     </div>
     <p className="evalHint"><b>Base:</b> Guia Perioperatório de Medicamentos, versão 1.0, revisão 07/2026. As sugestões são apoio à decisão e devem ser revisadas e confirmadas individualmente pelo anestesiologista.</p>
     {showMedicationForm&&<><div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina..."/><button onClick={()=>add()}>Adicionar</button></div>
