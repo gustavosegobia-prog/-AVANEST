@@ -46,6 +46,13 @@ const hasText=(value:unknown)=>{
   const raw=String(value??"").trim();
   return raw.length>0&&!PRINT_PLACEHOLDERS.has(raw.toLowerCase());
 };
+// Número e unidade grudados por espaço inseparável. Com espaço comum, "31 kg"
+// quebra no fim da célula e o "kg" desce sozinho para a linha de baixo, o que
+// num papel clínico chega a parecer outro campo.
+// Escrito como \u00A0, e não como o caractere em si: invisível no editor, ele
+// viraria espaço comum sem ninguém perceber, no primeiro copiar e colar.
+const comUnidade=(value:unknown,unidade:string)=>
+  hasText(value)?`${String(value).trim()}\u00A0${unidade}`:"";
 const objectiveMedicationGuidance=(medication:Medication)=>{
   const written=String(medication.orientacao||"").trim();
   // O anestesiologista reescreveu a orientação: o papel reproduz exatamente o
@@ -304,9 +311,9 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             ?<img className="paperLogo" src={logo} alt={clinica||"Logo da organização"}/>
             :<b>{clinica||"Avaliação Pré-Anestésica"}</b>}</span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
           <FactGrid className="paperIdentification" items={facts([
-            ["Nome",paciente.nome,"wide"],["Idade",age!==null?`${age} anos`:""],["Sexo",paciente.sexo],
-            ["Peso",weight?`${weight} kg`:""],["Altura",height?`${height} cm`:""],["IMC",imc?imc.toFixed(1):""],
-            ["Peso ideal",idealWeight?`${idealWeight.toFixed(0)} kg`:""],["Peso ajustado",adjustedWeight?`${adjustedWeight.toFixed(0)} kg`:""],
+            ["Nome",paciente.nome,"wide"],["Idade",comUnidade(age,"anos")],["Sexo",paciente.sexo],
+            ["Peso",comUnidade(weight||"","kg")],["Altura",comUnidade(height||"","cm")],["IMC",imc?imc.toFixed(1):""],
+            ["Peso ideal",comUnidade(idealWeight?idealWeight.toFixed(0):"","kg")],["Peso ajustado",comUnidade(adjustedWeight?adjustedWeight.toFixed(0):"","kg")],
             ["Convênio",paciente.convenio],["CPF",paciente.cpf],
           ])}/>
           <PaperBlock title="PROCEDIMENTO CIRÚRGICO" items={facts([
@@ -335,10 +342,10 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           <PaperInlineBlock title="EXAME FÍSICO"
             linhas={[
               facts([
-                ["PA",hasText(dados.pa_sistolica)&&hasText(dados.pa_diastolica)?`${text(dados.pa_sistolica)}/${text(dados.pa_diastolica)} mmHg`:""],
-                ["FC",hasText(dados.fc)?`${text(dados.fc)} bpm`:""],["FR",hasText(dados.fr)?`${text(dados.fr)} irpm`:""],
-                ["SpO₂",hasText(dados.spo2)?`${text(dados.spo2)}%`:""],["Temperatura",hasText(dados.temperatura)?`${text(dados.temperatura)} °C`:""],
-                ["Glicemia capilar",hasText(dados.glicemia_capilar)?`${text(dados.glicemia_capilar)} mg/dL`:""],
+                ["PA",hasText(dados.pa_sistolica)&&hasText(dados.pa_diastolica)?comUnidade(`${text(dados.pa_sistolica)}/${text(dados.pa_diastolica)}`,"mmHg"):""],
+                ["FC",comUnidade(dados.fc,"bpm")],["FR",comUnidade(dados.fr,"irpm")],
+                ["SpO₂",hasText(dados.spo2)?`${text(dados.spo2)}%`:""],["Temperatura",comUnidade(dados.temperatura,"°C")],
+                ["Glicemia capilar",comUnidade(dados.glicemia_capilar,"mg/dL")],
               ]),
               facts([
                 ["Estado geral",dados.estado_geral],
@@ -387,7 +394,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             ["Jejum sólidos",dados.jejum_solidos],["Líquidos claros",dados.jejum_liquidos],
             ["Técnica anestésica",dados.tecnica],["Monitorização",dados.monitorizacao],
             ["Pré-medicação",dados.premedicacao],["UTI",dados.leito_uti],
-            ["Hemoderivados",["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?`${text(dados.concentrado_hemacias)}${hasText(dados.quantidade_ch)?` — ${text(dados.quantidade_ch)} CH`:""}`:dados.concentrado_hemacias],
+            ["Hemoderivados",["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?`${text(dados.concentrado_hemacias)}${hasText(dados.quantidade_ch)?` — ${comUnidade(dados.quantidade_ch,"CH")}`:""}`:dados.concentrado_hemacias],
             ["Avaliação especializada",dados.avaliacao_especializada,"wide"],
             ["Conclusão",dados.conclusao,"wide"],
           ])}/>
@@ -408,7 +415,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             ["Tipo de anestesia prevista",dados.tecnica,"wide"],
             ["Jejum — sólidos",dados.jejum_solidos],["Jejum — líquidos claros",dados.jejum_liquidos],
             ["Pré-medicação",dados.premedicacao],["Leito de UTI",dados.leito_uti],
-            ["Hemoderivados",["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?`${text(dados.concentrado_hemacias)}${hasText(dados.quantidade_ch)?` — ${text(dados.quantidade_ch)} CH`:""}`:""],
+            ["Hemoderivados",["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?`${text(dados.concentrado_hemacias)}${hasText(dados.quantidade_ch)?` — ${comUnidade(dados.quantidade_ch,"CH")}`:""}`:""],
           ])}/>
           {hasText(printablePlan)&&<p>{text(printablePlan)}</p>}<PaperSignature dados={dados} perfil={perfil}/></article>
       </div>
