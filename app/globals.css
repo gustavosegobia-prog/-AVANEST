@@ -505,7 +505,24 @@ button:disabled{cursor:not-allowed}
    caixinhas. Os blocos corridos usam inline-block em cada campo: itens curtos
    ficam inteiros na linha, e so o campo que nao couber quebra por dentro, em
    vez de a folha reservar coluna fixa para campo vazio. */
-/* As respostas secas fluem lado a lado; a pergunta que tem detalhe toma a
+/* Uma pergunta por linha: quem confere a anamnese no centro cirúrgico lê de
+   cima para baixo, e resposta emendada na anterior passa batido.
+   O corpo da letra é o que segura a ficha em uma folha só. Ele subiu, e o
+   entrelinhas apertou na mesma medida para o bloco não crescer em troca —
+   com 14 linhas, cada décimo de entrelinhas vale milímetros de papel.
+   A pergunta que tem detalhe fica maior de propósito: ali está o achado
+   clínico, e é ela que precisa saltar aos olhos entre as respostas secas. */
+.paperAnamnese{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:14px;row-gap:0;padding:2px 9px;font-size:12.6px;line-height:1.18}
+/* display:contents dissolve o parágrafo e entrega pergunta e resposta direto
+   à grade: as duas colunas passam a valer para o bloco inteiro, e não para
+   cada linha isolada. É o que alinha todos os Sim/Não na mesma vertical sem
+   ninguém precisar medir a pergunta mais longa e chutar uma largura fixa. */
+.paperAnamnese p{display:contents}
+.paperAnamnese p>span,.paperAnamnese p>b{break-inside:avoid}
+.paperAnamnese p.anamneseDetalhada>span,.paperAnamnese p.anamneseDetalhada>b{font-size:14.6px;line-height:1.26}
+/* GLP-1 fecha o bloco de medicamentos com um respiro acima: é a linha que o
+   anestesiologista procura antes de liberar o jejum. */
+.paperGlp1{margin:3px 7px 4px;break-inside:avoid;page-break-inside:avoid}
    linha inteira (flex-basis:100%) e fica destacada justamente por isso — que
    é o achado clínico que importa. O column-gap largo faz as vezes de
    separador: um "·" entre itens ficaria pendurado no fim de cada linha. */
