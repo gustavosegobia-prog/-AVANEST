@@ -343,13 +343,15 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               ]),
             ]}
             extras={facts([["Observações",dados.observacoes_exame_fisico]])}/>
+          {/* Uma linha só. Separado em duas, "Mobilidade cervical" descia
+              sozinho e gastava uma linha inteira da folha mesmo quando não
+              havia preditor nenhum a registrar. Junto, os campos fluem e só
+              quebram quando de fato não couberem. */}
           <PaperInlineBlock title="VIA AÉREA"
             linhas={[
               facts([
                 ["Mallampati",dados.mallampati],["Abertura oral",dados.abertura_oral],
                 ["Dist. tireomentoniana",dados.distancia_tireo],["Dentição",dados.denticao],
-              ]),
-              facts([
                 ["Mobilidade cervical",dados.mobilidade],
                 ["Risco sugerido",airwayCount>0?`${airwayRisk} (${airwayCount} preditor(es))`:""],
                 ["Preditores",airwayPredictors.join(", ")],
@@ -409,5 +411,15 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
 }
 
 function PaperTitle({children}:{children:React.ReactNode}){return <h3 className="paperTitle">{children}</h3>}
-function PaperSignature({dados,perfil}:{dados:Data;perfil:Props["perfil"]}){return <div className="paperSignature"><span>________________________________________<br/><b>{text(dados.anestesiologista,perfil.nome)}</b> — {text(dados.crm,perfil.crm||"CRM não informado")}<br/>Anestesiologista</span></div>}
+function PaperSignature({dados,perfil}:{dados:Data;perfil:Props["perfil"]}){
+  // O RQE é o registro da especialidade: sai na assinatura de quem o tem
+  // cadastrado, e some para quem não tem, sem deixar rótulo órfão no papel.
+  // O prefixo não é repetido quando quem preencheu já escreveu "RQE" junto
+  // do número — o campo aceita as duas formas.
+  const rqeBruto=String(dados.rqe??"").trim()||String(perfil.rqe??"").trim();
+  const rqe=hasText(rqeBruto)?(/^rqe\b/i.test(rqeBruto)?rqeBruto:`RQE ${rqeBruto}`):"";
+  return <div className="paperSignature"><span>________________________________________<br/>
+    <b>{text(dados.anestesiologista,perfil.nome)}</b> — {text(dados.crm,perfil.crm||"CRM não informado")}{rqe?` · ${rqe}`:""}<br/>
+    Anestesiologista</span></div>;
+}
 function DocChoice({checked,onChange,title,detail}:{checked:boolean;onChange:(v:boolean)=>void;title:string;detail:string}){return <label className={`docChoice ${checked?"selected":""}`}><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)}/><span><b>{title}</b><small>{detail}</small></span></label>}
