@@ -547,9 +547,20 @@ export function DashboardClient({
             // e o dono perderia o acesso sem nunca saber por quê.
             const {error:erroAtual}=await cliente.auth.signInWithPassword({email,password:senha.atual});
             if(erroAtual){setSenhaBusy(false);setSenhaMsg("A senha atual não confere.");return}
-            const {error}=await cliente.auth.updateUser({password:senha.nova});
+            // A senha atual vai junto da nova, e não só na conferência acima: o
+            // Supabase deste projeto exige as duas na mesma chamada, e sem ela
+            // recusava a troca com uma mensagem em inglês.
+            const {error}=await cliente.auth.updateUser({current_password:senha.atual,password:senha.nova});
             setSenhaBusy(false);
-            if(error){setSenhaMsg(`Não foi possível alterar: ${error.message}`);return}
+            if(error){
+              // A recusa mais comum é senha atual errada — que a conferência
+              // acima já pega, mas o servidor confere de novo por conta dele.
+              const recusouSenha=/current password|invalid|credential/i.test(error.message);
+              setSenhaMsg(recusouSenha
+                ?"A senha atual não confere."
+                :`Não foi possível alterar: ${error.message}`);
+              return;
+            }
             setSenha({atual:"",nova:"",confirma:""});
             setSenhaMsg("Senha alterada. Use a nova no próximo acesso.");
           }}>
