@@ -509,9 +509,9 @@ button:disabled{cursor:not-allowed}
    linha inteira (flex-basis:100%) e fica destacada justamente por isso — que
    é o achado clínico que importa. O column-gap largo faz as vezes de
    separador: um "·" entre itens ficaria pendurado no fim de cada linha. */
-.paperAnamnese{display:flex;flex-wrap:wrap;column-gap:19px;row-gap:0;padding:3px 9px}
-.paperAnamnese p{margin:0;line-height:1.35;break-inside:avoid;page-break-inside:avoid}
-.paperAnamnese p.anamneseDetalhada{flex-basis:100%}
+.paperAnamnese{display:flex;flex-direction:column;row-gap:0;padding:3px 9px;font-size:10.2px}
+.paperAnamnese p{margin:0;line-height:1.24;break-inside:avoid;page-break-inside:avoid}
+.paperAnamnese p.anamneseDetalhada{font-size:13.6px;line-height:1.3}
 .paperInlineBlock{padding:3px 9px}
 .paperInline,.paperInlineFull{margin:0;line-height:1.35}
 .paperInline span{display:inline-block;break-inside:avoid}
