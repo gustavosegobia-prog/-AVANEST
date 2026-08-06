@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { calculateLastDoseDate, findMedicationGuideEntry, MEDICATION_ORIENTATION_ACTIONS } from "@/lib/medication-guide";
+import { orientacaoSugerida } from "@/lib/medication-summary";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
 
@@ -469,7 +470,12 @@ function medicationFromName(nome:string, surgeryDate:string):Medication {
   const guide=findMedicationGuideEntry(nome);
   return {
     id:crypto.randomUUID(),nome,dose:"",frequencia:"",ultimaDose:"",indicacao:"",
-    conduta:guide?.defaultAction??"Avaliar",orientacao:guide?.timing??"",
+    conduta:guide?.defaultAction??"Avaliar",
+    // Nasce com a frase que a ficha vai imprimir, e não com o texto longo do
+    // guia: o campo é editável justamente para o anestesiologista discordar do
+    // prazo antes de imprimir. O raciocínio completo continua logo abaixo, em
+    // "Quando suspender ou ajustar".
+    orientacao:orientacaoSugerida(nome,guide?.defaultAction??"Avaliar",guide?.timing??""),
     principioAtivo:guide?.activeIngredient??"",classe:guide?.medicationClass??"",
     prazo:guide?.timing??"",reinicio:guide?.restart??"",excecoes:guide?.adjustments??"",
     fonte:guide?.source??"",ultimaDoseSugerida:calculateLastDoseDate(surgeryDate,guide?.suspendDays),
@@ -519,8 +525,20 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     if(item.id!==id)return item;
     const next={...item,[key]:value};
     // Uma orientação reescrita à mão passa a ser a versão oficial: o PDF deixa de
-    // reconstruir o texto padrão do guia para esse medicamento.
-    if(key==="orientacao")next.orientacaoEditada=String(value??"").trim()!==String(item.prazo??"").trim();
+    // reconstruir o texto padrão do guia para esse medicamento. A comparação é
+    // contra a frase sugerida, não contra o texto do guia — senão quem apagasse
+    // a sugestão e digitasse de volta o parágrafo do guia veria a ficha ignorar
+    // o que ele escreveu.
+    if(key==="orientacao"){
+      const sugerida=orientacaoSugerida(item.nome,String(next.conduta??""),String(item.prazo??""));
+      next.orientacaoEditada=String(value??"").trim()!==sugerida.trim();
+    }
+    // Trocar a conduta troca a frase sugerida junto: quem muda de Manter para
+    // Suspender espera ver o prazo aparecer. Só que orientação escrita à mão é
+    // decisão registrada do anestesiologista, e essa não se sobrescreve sozinha.
+    if(key==="conduta"&&item.orientacaoEditada!==true){
+      next.orientacao=orientacaoSugerida(item.nome,String(value??""),String(item.prazo??""));
+    }
     return next;
   }));
   const groups=[
@@ -885,11 +903,13 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
   const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",draft.alergias==="Não"?"Não relata alergias.":String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
   // Só entram aqui os medicamentos que exigem decisão: suspensos ou
   // individualizados. Os mantidos continuam listados na ficha impressa, mas não
-  // ocupam espaço nas orientações. Cada linha traz apenas o nome e o espaço para
-  // o anestesiologista escrever a conduta — o texto do guia não é reproduzido.
+  // ocupam espaço nas orientações. Cada linha traz a orientação que está no
+  // campo do medicamento, que é a mesma que a ficha vai imprimir — antes daqui
+  // saía o nome seguido de nada até alguém reescrever a orientação à mão, e o
+  // anestesiologista não tinha como conferir na tela o que iria para o papel.
   const medicationOrientations=medications
     .filter(item=>MEDICATION_ORIENTATION_ACTIONS.includes(item.conduta))
-    .map(item=>`- ${item.nome}: ${item.orientacaoEditada===true?item.orientacao.trim():""}`);
+    .map(item=>`- ${item.nome}: ${String(item.orientacao||"").trim()}`);
   // Jejum e técnica anestésica já saem no bloco de planejamento da ficha; repetir
   // aqui só consumia papel. Restam as orientações de medicamentos.
   const automaticPlan=medicationOrientations.length
