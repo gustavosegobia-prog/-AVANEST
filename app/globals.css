@@ -523,22 +523,6 @@ button:disabled{cursor:not-allowed}
 /* GLP-1 fecha o bloco de medicamentos com um respiro acima: é a linha que o
    anestesiologista procura antes de liberar o jejum. */
 .paperGlp1{margin:3px 7px 4px;break-inside:avoid;page-break-inside:avoid}
-   linha inteira (flex-basis:100%) e fica destacada justamente por isso — que
-   é o achado clínico que importa. O column-gap largo faz as vezes de
-   separador: um "·" entre itens ficaria pendurado no fim de cada linha. */
-.paperAnamnese{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:14px;row-gap:0;padding:2px 9px;font-size:11.4px;line-height:1.18}
-.paperAnamnese p{display:contents}
-.paperAnamnese p>span,.paperAnamnese p>b{break-inside:avoid}
-.paperAnamnese p.anamneseDetalhada>span,.paperAnamnese p.anamneseDetalhada>b{font-size:13.6px;line-height:1.26}
-.paperGlp1{margin:3px 7px 4px;break-inside:avoid;page-break-inside:avoid}
-.paperAnamnese p{margin:0;line-height:1.18;break-inside:avoid;page-break-inside:avoid}
-.paperAnamnese p.anamneseDetalhada{font-size:13.6px;line-height:1.26}
-/* GLP-1 fecha o bloco de medicamentos com um respiro acima: é a linha que o
-   anestesiologista procura antes de liberar o jejum. */
-.paperGlp1{margin:3px 7px 4px;break-inside:avoid;page-break-inside:avoid}
-/* GLP-1 fecha o bloco de medicamentos com um respiro acima: é a linha que o
-   anestesiologista procura antes de liberar o jejum. */
-.paperGlp1{margin:3px 7px 4px;break-inside:avoid;page-break-inside:avoid}
 .paperInlineBlock{padding:3px 9px}
 .paperInline,.paperInlineFull{margin:0;line-height:1.35}
 .paperInline span{display:inline-block;break-inside:avoid}
