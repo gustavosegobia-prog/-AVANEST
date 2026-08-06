@@ -139,7 +139,7 @@ export function DashboardClient({
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
-  const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
+  const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.cirurgia ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
   const currentByPatient = useMemo(() => {
     const result = new Map<string,Avaliacao>();
     for (const item of avaliacoes) if (!result.has(item.patient_id)) result.set(item.patient_id, item);
@@ -158,7 +158,7 @@ export function DashboardClient({
   const historicalAssessments = useMemo(() => avaliacoes.filter((assessment) => {
     const patient = patientMap.get(assessment.patient_id);
     const professional = assessment.created_by ? professionalMap.get(assessment.created_by) ?? "" : "";
-    const searchable = `${patient?.nome ?? ""} ${patient?.cpf ?? ""} ${patient?.procedimento ?? ""} ${patient?.hospital ?? ""} ${professional}`.toLowerCase();
+    const searchable = `${patient?.nome ?? ""} ${patient?.cpf ?? ""} ${patient?.cirurgia ?? ""} ${patient?.procedimento ?? ""} ${patient?.hospital ?? ""} ${professional}`.toLowerCase();
     const referenceDate = (assessment.concluida_at || assessment.updated_at || assessment.created_at).slice(0, 10);
     return (historyStatus === "todas" || assessment.status === historyStatus)
       && (!historyQuery || searchable.includes(historyQuery.toLowerCase()))
@@ -173,7 +173,7 @@ export function DashboardClient({
     return item.data >= today && item.data <= week;
   }).filter((item) => {
     const p=patientMap.get(item.patient_id);
-    return `${p?.nome??""} ${p?.cpf??""} ${p?.procedimento??""} ${item.procedimento??""}`.toLowerCase().includes(search.toLowerCase());
+    return `${p?.nome??""} ${p?.cpf??""} ${p?.cirurgia??""} ${p?.procedimento??""} ${item.procedimento??""}`.toLowerCase().includes(search.toLowerCase());
   });
   const completedThisMonth = completed.filter((a)=>a.updated_at.slice(0,7)===today.slice(0,7));
   const asaHigh = completed.filter((a)=>["ASA III","ASA IV","ASA V","ASA VI"].includes(String(a.dados?.asa??""))).length;
@@ -202,13 +202,11 @@ export function DashboardClient({
     }
     // Particular não tem plano: o campo fica desabilitado no formulário e o valor
     // é descartado aqui para não gravar lixo de preenchimento automático.
+    // Nos demais convênios o plano é opcional — a recepção nem sempre tem a
+    // carteirinha em mãos na hora de agendar, e travar o cadastro por causa
+    // disso só empurrava o atendimento para o papel.
     const isPrivatePay=convenio===PRIVATE_PAY_CONVENIO;
-    const planoFinal=isPrivatePay?null:plano;
-    if(!isPrivatePay&&!planoFinal){
-      setError("Informe o plano do paciente ou selecione o convênio Particular.");
-      setBusy(false);
-      return;
-    }
+    const planoFinal=isPrivatePay?null:(plano||null);
     if(phoneDigits && (phoneDigits.length<10 || phoneDigits.length>11)){
       setError("Informe um telefone com DDD.");
       setBusy(false);
@@ -269,14 +267,14 @@ export function DashboardClient({
       nome: patientName, cpf: cpfDigits, rg: text("rg"), data_nascimento: birthDate,
       sexo: text("sexo"), telefone: phoneDigits||null, email: text("email"), endereco: text("endereco"),
       cidade: text("cidade"), uf: text("uf"), cep: text("cep"), hospital: text("hospital"),
-      cirurgia: text("cirurgia"), especialidade: text("especialidade"), procedimento: text("procedimento"),
+      cirurgia: text("cirurgia"), especialidade: text("especialidade"),
       convenio: convenio ?? PRIVATE_PAY_CONVENIO,
       numero_carteirinha: isPrivatePay?null:text("numero_carteirinha"), validade: isPrivatePay?null:text("validade"),
       plano: planoFinal, data_consulta: appointmentDate, horario: automaticTime, observacoes: text("observacoes"),
     };
     const appointmentPayload = {
       data: appointmentDate, horario: automaticTime, hospital: text("hospital"),
-      procedimento: text("procedimento") || text("cirurgia"), convenio: convenio ?? PRIVATE_PAY_CONVENIO,
+      procedimento: text("cirurgia"), convenio: convenio ?? PRIVATE_PAY_CONVENIO,
       observacoes: text("observacoes"), created_by: perfil.id,
     };
     const atomic = await supabase.rpc("criar_paciente_e_agendamento", {
@@ -1303,7 +1301,6 @@ function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:bool
             <Field name="hospital" label="Hospital" span2/>
             <Field name="cirurgia" label="Cirurgia" span2/>
             <Field name="especialidade" label="Especialidade" span2/>
-            <Field name="procedimento" label="Procedimento" wide/>
           </div>
         </fieldset>
 
@@ -1314,7 +1311,7 @@ function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:bool
             {!isPrivatePay&&<>
               <Field name="numero_carteirinha" label="Nº da carteirinha" span2/>
               <Field name="validade" label="Validade" type="date"/>
-              <Field name="plano" label="Plano" required autoComplete="off" span2/>
+              <Field name="plano" label="Plano" autoComplete="off" span2/>
             </>}
           </div>
           {isPrivatePay&&<p className="modalGrupoAjuda">Particular não exige carteirinha nem plano.</p>}
