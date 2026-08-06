@@ -470,6 +470,11 @@ button:disabled{cursor:not-allowed}
 .assessmentPaper{font-size:13.6px;line-height:1.26}
 .assessmentPaper .assessmentHeader strong{font-size:17px}
 .assessmentPaper .assessmentHeader{padding-bottom:5px!important;margin-bottom:5px!important}
+/* Marca da organização, à esquerda do título. A altura é limitada para não
+   competir com o título e a largura acompanha sozinha, preservando a proporção
+   do arquivo enviado — nada de recorte, moldura ou fundo. print-color-adjust
+   impede o navegador de lavar as cores na hora de imprimir. */
+.assessmentPaper .assessmentHeader .paperLogo{display:block;width:auto;height:auto;max-height:40px;max-width:190px;object-fit:contain;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .assessmentPaper .paperAllergy{padding:5px 8px;margin-bottom:4px;font-size:14.5px}
 .assessmentPaper .paperTitle{font-size:12px;padding:2px 7px;margin-top:2px}
 .assessmentPaper .paperTitle:first-of-type{margin-top:2px}
