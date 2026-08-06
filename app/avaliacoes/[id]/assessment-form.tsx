@@ -292,6 +292,12 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const select = (name:string,label:string,options:string[],span="") => <label className={`evalField ${span}`}><span>{label}</span><select value={String(draft[name]??"")} onChange={(e)=>set(name,e.target.value)}><option value="">Selecione</option>{options.map(o=><option key={o}>{o}</option>)}</select></label>;
 
   return <main className="evalShell">
+    {/* Cabeçalho, tarja de alergia e barra de progresso grudam juntos, como um
+        bloco só. Antes cada um tinha seu próprio "top" em pixels, e bastava a
+        altura do cabeçalho mudar para a barra de progresso passar a flutuar no
+        meio do formulário. Empilhados aqui, não há conta a manter — e a tarja
+        pode aparecer, sumir ou quebrar em duas linhas sem quebrar nada. */}
+    <div className="evalFixo">
     <header className="evalTopbar">
       <Link className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
       {/* O estado do salvamento é dito por extenso, não só por um ponto
@@ -318,6 +324,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
         texto inteiro, que atrapalha a leitura. */}
     {allergy && <div className="allergyBanner" role="alert"><Icone nome="alerta" tamanho={17}/> <b>Alerta de alergia:</b> {allergy}</div>}
     <div className="evalProgress" aria-label={`${progress}% da avaliação preenchida`}><i style={{width:`${progress}%`}}/></div>
+    </div>
     <div className="evalMain">
       <nav className="evalSteps" aria-label="Etapas da avaliação">
         <p className="evalStepsResumo">Etapa {etapaAtual+1} de {STEPS.length} · {concluidas} concluída{concluidas===1?"":"s"}</p>

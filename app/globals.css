@@ -1256,10 +1256,10 @@ button:disabled{cursor:not-allowed}
 
 /* Parecer do cardiologista numa linha só, com a observação logo abaixo. */
 .cardioOpcoes{display:flex;gap:8px;flex-wrap:wrap}
-.cardioOpcoes button{flex:1 1 auto;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);border-radius:10px;padding:11px 12px;font-weight:750;font-size:13px}
+.cardioOpcoes button{flex:1 1 0;min-width:0;white-space:nowrap;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);border-radius:10px;padding:11px 10px;font-weight:750;font-size:13.5px}
 .cardioOpcoes button.selected{background:var(--cor-marca);color:#fff;border-color:var(--cor-marca)}
 .cardioObs{height:auto;min-height:62px;padding:11px 13px;resize:vertical;font:inherit}
-@media(max-width:760px){.cardioOpcoes button{flex:1 1 46%}}
+@media(max-width:760px){.cardioOpcoes button{flex:1 1 46%;white-space:normal}}
 
 /* Escore preenchido a partir da anamnese: contorno pontilhado e a origem em
    letra miúda. O médico precisa ver que veio de algum lugar — e de onde —
@@ -1268,3 +1268,11 @@ button:disabled{cursor:not-allowed}
 .scoreToggle.sugerido.selected{border-style:solid}
 .scoreToggle>span{display:block;text-align:left}
 .scoreMotivo{display:block;margin-top:3px;font-size:11px;font-weight:600;opacity:.75;line-height:1.35;overflow-wrap:anywhere}
+
+/* Bloco fixo da avaliação: cabeçalho + tarja de alergia + barra de progresso.
+   Gruda como uma peça só. Os três tinham "top" próprio em pixels — 0, 88 e
+   131 — e quando o cabeçalho passou de 88 para 60 a barra de progresso ficou
+   parando 71px abaixo dele, atravessando o formulário. Aqui não há conta a
+   manter: eles empilham sozinhos, com ou sem a tarja. */
+.evalFixo{position:sticky;top:0;z-index:50}
+.evalFixo .evalTopbar,.evalFixo .allergyBanner,.evalFixo .evalProgress{position:static;top:auto}
