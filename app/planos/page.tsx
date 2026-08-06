@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 // A página mostra contagem de vagas: cachear daria número velho.
 export const dynamic = "force-dynamic";
 
-const WHATSAPP = "https://wa.me/5544998143820?text=";
+const WHATSAPP = "https://wa.me/5541997870810?text=";
 const propostaHospital =
   WHATSAPP + encodeURIComponent("Olá! Gostaria de uma proposta do AVANEST para a minha estrutura hospitalar.");
 // O cadastro do AVANEST é por convite, não por autoatendimento. Quem ainda não
