@@ -11,7 +11,7 @@ type Props={
   avaliacao:{id:string;institution_id:string;patient_id:string;status:string;versao:number;dados:Data|null;snapshot_conclusao:Data|null;created_at:string;updated_at:string;concluida_at:string|null};
   paciente:{id:string;nome:string;cpf:string|null;data_nascimento:string|null;sexo:string|null;telefone:string|null;email:string|null;hospital:string|null;cirurgia:string|null;procedimento:string|null;convenio:string|null};
   perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string;permissoes?:string[]|null};
-  organizacao:{nome:string;tipo:string|null;telefone:string|null}|null;
+  organizacao:{nome:string;tipo:string|null;telefone:string|null;logo_url?:string|null}|null;
 };
 type Medication={id:string;nome:string;dose:string;frequencia:string;conduta:string;orientacao:string;reinicio?:string;fonte?:string;confirmada?:boolean;orientacaoEditada?:boolean};
 
@@ -134,6 +134,9 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
       ?organizacao.nome.replace(/\s*[—-]\s*Individual$/i,"").trim()
       :organizacao.nome).trim()
     :"";
+  // Organização com marca cadastrada imprime a marca; sem ela, o cabeçalho
+  // segue com o nome em texto, como sempre foi.
+  const logo=String(organizacao?.logo_url||"").trim();
   const assignedPermissions=Array.isArray(perfil.permissoes)?perfil.permissoes:[];
   const hasLegacyFullAccess=["admin","owner"].includes(perfil.role)||assignedPermissions.includes("todos");
   const canManage=hasLegacyFullAccess||perfil.role==="admin"||assignedPermissions.includes("admin");
@@ -296,7 +299,10 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>
       <div className="documentsLayout"><div className="paperStack">
-        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span><b>{clinica||"Avaliação Pré-Anestésica"}</b></span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
+        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span>{logo
+            // eslint-disable-next-line @next/next/no-img-element -- papel impresso: a imagem precisa sair no tamanho original, sem otimização nem carregamento tardio.
+            ?<img className="paperLogo" src={logo} alt={clinica||"Logo da organização"}/>
+            :<b>{clinica||"Avaliação Pré-Anestésica"}</b>}</span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
           <FactGrid className="paperIdentification" items={facts([
             ["Nome",paciente.nome,"wide"],["Idade",age!==null?`${age} anos`:""],["Sexo",paciente.sexo],
             ["Peso",weight?`${weight} kg`:""],["Altura",height?`${height} cm`:""],["IMC",imc?imc.toFixed(1):""],
