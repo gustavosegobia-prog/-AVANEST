@@ -389,7 +389,12 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               ]),
             ]}
             extras={facts([["Outros exames",dados.exames_obs]])}/>
-          <PaperTitle>ESCORES E ESTRATIFICAÇÃO</PaperTitle><div className="paperScores">{hasText(dados.asa)&&<span><small>ASA</small><b>{text(dados.asa)}{dados.asa_emergencia===true?" + E":""}</b></span>}<span><small>LEE (RCRI)</small><b>{rcriScore} pt - Classe {["I","II","III","IV"][Math.min(rcriScore,3)]} - evento cardíaco maior ~{["0,4%","0,9%","6,6%","11%"][Math.min(rcriScore,3)]}</b></span>{hasText(dados.cardio_parecer)&&dados.cardio_parecer!=="Sem avaliação"&&<span><small>CARDIOLOGISTA</small><b>{text(dados.cardio_parecer)}{hasText(dados.cardio_conduta)?` - ${text(dados.cardio_conduta)}`:""}</b></span>}<span><small>STOP-BANG</small><b>{stopScore}/8 - {stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco"}</b></span><span><small>APFEL</small><b>{apfelScore}/4 - NVPO {apfelRisk}</b></span>{hasText(dados.capacidade_funcional)&&<span><small>CAPACIDADE FUNCIONAL</small><b>{text(dados.capacidade_funcional)}</b></span>}</div>
+          <PaperTitle>ESCORES E ESTRATIFICAÇÃO</PaperTitle><div className="paperScores">{hasText(dados.asa)&&<span><small>ASA</small><b>{text(dados.asa)}{dados.asa_emergencia===true?" + E":""}</b></span>}<span><small>LEE (RCRI)</small><b>{rcriScore} pt - Classe {["I","II","III","IV"][Math.min(rcriScore,3)]} - evento cardíaco maior ~{["0,4%","0,9%","6,6%","11%"][Math.min(rcriScore,3)]}</b></span><span><small>STOP-BANG</small><b>{stopScore}/8 - {stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco"}</b></span><span><small>APFEL</small><b>{apfelScore}/4 - NVPO {apfelRisk}</b></span>{hasText(dados.capacidade_funcional)&&<span><small>CAPACIDADE FUNCIONAL</small><b>{text(dados.capacidade_funcional)}</b></span>}</div>
+          {/* O parecer do cardiologista e frase, nao escore: dentro da grade
+              ele esticava a caixa dele e, por tabela, a altura de toda a
+              linha. Embaixo, corrido, ocupa so o que precisa. */}
+          {hasText(dados.cardio_parecer)&&dados.cardio_parecer!=="Sem avaliação"&&
+            <p className="paperCardioNota">Cardiologista: <b>{text(dados.cardio_parecer)}{hasText(dados.cardio_conduta)?` — ${text(dados.cardio_conduta)}`:""}</b></p>}
           <PaperBlock title="PLANEJAMENTO E CONCLUSÃO" items={facts([
             ["Jejum sólidos",dados.jejum_solidos],["Líquidos claros",dados.jejum_liquidos],
             ["Técnica anestésica",dados.tecnica],["Monitorização",dados.monitorizacao],
