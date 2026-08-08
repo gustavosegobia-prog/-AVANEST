@@ -16,6 +16,7 @@ import {
   DOSES_SISTEMICAS,
   escreverFaixa,
   FARMACOS,
+  FONTE_MULTIMODAL,
   MONITORIZACAO,
   NAO_INFERIR,
   porPeso,
@@ -100,7 +101,13 @@ export function Pca({ dados, set }: { dados: Compartilhado; set: (c: string, v: 
   const concentracaoUsada = programacao.concentracao ?? preparo?.concentracao;
   const volumeBolo = volumeDaDose(programacao.demanda, concentracaoUsada);
 
-  const algoPreenchido = conferencias.length > 0 || avisos.length > 0;
+  /**
+   * O lembrete do limite por janela nasce sempre, mesmo com a tela em branco —
+   * então contar alertas deixaria o botão eternamente ligado e a dica de
+   * "preencha alguma coisa" nunca apareceria. O que habilita é o que a pessoa
+   * de fato informou.
+   */
+  const algoPreenchido = conferencias.length > 0 || Object.values(perfil).some((v) => v !== undefined);
   const marcar = (chave: Marcador, valor: boolean) => setPerfil((v) => ({ ...v, [chave]: valor }));
   const escrever = (chave: string, valor: string) => setProg((v) => ({ ...v, [chave]: valor }));
 
@@ -350,6 +357,7 @@ export function Pca({ dados, set }: { dados: Compartilhado; set: (c: string, v: 
               {REGISTRO_MULTIMODAL.map((r) => <li key={r}>{r}</li>)}
             </ul>
             <p className={estilos.aviso}>{AVISO_MULTIMODAL}</p>
+            <p className={estilos.fonte}>{citar(FONTE_MULTIMODAL)}</p>
           </div>
         </div>
       )}
