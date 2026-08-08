@@ -198,3 +198,35 @@
   border: 1px solid var(--cor-borda-forte, #c3d0da); border-radius: 9px;
   background: var(--cor-superficie-suave, #f7fafc); padding: 0 10px;
 }
+
+/* PCA. Duas famílias de bloco convivem aqui e não podem se parecer:
+   o que veio do livro (blocoFonte, com a citação embaixo) e o que a pessoa
+   digitou. Confundir os dois é exatamente o erro que o módulo existe para
+   evitar, então a diferença é de cor e de borda, não só de texto. */
+.blocoFonte { background: #eef4f9; border-color: #cfe0ee; }
+.blocoOk { background: #eef7f0; border-color: #c7e3ce; }
+.blocoAtencao { background: #fff6e5; border-color: #f0d9a8; }
+.blocoAtencao strong { color: #8a5a12; }
+.fonte {
+  margin: 0; font-size: 12px; font-style: italic; color: var(--cor-tinta-fraca, #5b6c7a);
+}
+.lista { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 14px; line-height: 1.45; }
+
+.opcoes { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.opcao {
+  display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; padding: 7px 0;
+}
+.opcao input { width: 20px; height: 20px; accent-color: var(--cor-marca, #1b6ca8); cursor: pointer; }
+
+/* Sim / Não / vazio: três estados, porque "não perguntei" não é "não". */
+.tres { display: grid; gap: 5px; }
+.tres > span { font-size: 13px; font-weight: 700; color: var(--cor-tinta-fraca, #5b6c7a); }
+.tres > div { display: flex; gap: 6px; }
+.tresBotao, .tresAtivo {
+  font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; border-radius: 8px;
+  padding: 8px 16px; border: 1px solid var(--cor-borda, #dce4ea);
+}
+.tresBotao { background: #fff; color: var(--cor-tinta-fraca, #5b6c7a); }
+.tresBotao:hover { border-color: var(--cor-marca, #1b6ca8); }
+.tresAtivo { background: var(--cor-marca, #1b6ca8); border-color: var(--cor-marca, #1b6ca8); color: #fff; }
