@@ -5,8 +5,10 @@ import {
   alertas,
   conferir,
   DOSES_SISTEMICAS,
+  citar,
   escreverFaixa,
   FARMACOS,
+  IDADE_LEMBRETE,
   NAO_INFERIR,
   porPeso,
   prepararSolucao,
@@ -174,4 +176,17 @@ test("a lista do que não se infere continua completa", () => {
   assert.equal(NAO_INFERIR.length, 7);
   assert.ok(NAO_INFERIR.some((x) => x.campo.includes("pediátrica")));
   assert.ok(NAO_INFERIR.some((x) => x.conduta.includes("bloqueada")));
+});
+
+test("o corte de idade é declarado como escolha do AVANEST, não da fonte", () => {
+  const a = alertas("morfina", { idade: IDADE_LEMBRETE }, {});
+  const idoso = a.find((x) => x.titulo === "Idoso")!;
+  assert.match(idoso.texto, /é do AVANEST/);
+  assert.equal(alertas("morfina", { idade: IDADE_LEMBRETE - 1 }, {}).some((x) => x.titulo === "Idoso"), false);
+});
+
+test("todo texto de fonte tem obra e página juntas", () => {
+  for (const a of alertas("morfina", { obesidade: true, funcaoRenalAlterada: true, idade: 80 }, { basal: 1 })) {
+    if (a.fonte) assert.match(citar(a.fonte), /^(SAESP|Miller).+p{1,2}\. \d/);
+  }
 });
