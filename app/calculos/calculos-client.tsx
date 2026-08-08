@@ -22,6 +22,7 @@ import {
 import { AVISO_LEITURA, lerGasometria } from "@/lib/calculos/gasometria-leitura";
 import { Eletrolitos, Fick, GapOsmolar, type Compartilhado } from "./modulos-extras";
 import { Pca } from "./modulo-pca";
+import { Rotem } from "./modulo-rotem";
 import {
   AVISO_CLINICO,
   profundidadeOral,
@@ -36,7 +37,7 @@ import {
 // Ponto de extensão da aba: um módulo novo é uma entrada em MODULOS e um
 // componente próprio. "teg", "rotem", "doses" entram assim, sem tocar nos que
 // já existem.
-type Modulo = "hub" | "gasometria" | "tubo" | "eletrolitos" | "osmolar" | "fick" | "pca";
+type Modulo = "hub" | "gasometria" | "tubo" | "eletrolitos" | "osmolar" | "fick" | "pca" | "rotem";
 
 const MODULOS: Array<{ id: Exclude<Modulo, "hub">; icone: string; nome: string; descricao: string }> = [
   { id: "gasometria", icone: "🩸", nome: "Gasometria", descricao: "Foto ou digitação, interpretação ácido-base e orientações." },
@@ -45,6 +46,7 @@ const MODULOS: Array<{ id: Exclude<Modulo, "hub">; icone: string; nome: string; 
   { id: "osmolar", icone: "💧", nome: "Gap osmolar", descricao: "Osmolalidade calculada, com divisor certo para ureia ou BUN." },
   { id: "fick", icone: "❤️", nome: "Débito cardíaco", descricao: "Fick, com CaO2, CvO2, débito e índice cardíaco." },
   { id: "pca", icone: "💉", nome: "PCA", descricao: "Confere a programação da bomba contra as faixas do SAESP e do Miller." },
+  { id: "rotem", icone: "🩹", nome: "ROTEM", descricao: "Leitura cruzada entre EXTEM, INTEM, FIBTEM, APTEM e HEPTEM." },
 ];
 
 const CAMPOS_GASO: Array<{ chave: keyof Gasometria; rotulo: string; passo?: string }> = [
@@ -122,6 +124,7 @@ export function CalculosClient() {
         {modulo === "osmolar" && <GapOsmolar dados={dados} set={set} />}
         {modulo === "fick" && <Fick dados={dados} set={set} />}
         {modulo === "pca" && <Pca dados={dados} set={set} />}
+        {modulo === "rotem" && <Rotem />}
       </div>
     </main>
   );
