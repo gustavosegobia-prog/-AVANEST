@@ -256,3 +256,15 @@
   .parametroBotoes { margin-left: 0; width: 100%; }
   .parametroBotoes button { flex: 1 1 auto; }
 }
+
+/* Pergunta do Passo 0: enunciado à esquerda, Sim/Não à direita, e a
+   consequência do "não" só aparece quando ele é marcado — dizer antes o que
+   acontece se a resposta for negativa é ruído em cima de quem ainda nem
+   respondeu. */
+.pergunta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  padding: 10px 0; border-top: 1px solid var(--cor-borda, #dce4ea);
+}
+.perguntaTexto { display: grid; gap: 3px; flex: 1 1 260px; min-width: 0; }
+.perguntaTexto b { font-size: 15px; }
+.perguntaTexto small { font-size: 13px; line-height: 1.4; color: #8a5a12; }
