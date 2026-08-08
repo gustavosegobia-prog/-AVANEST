@@ -171,3 +171,30 @@
   border: 1px dashed var(--cor-marca, #1b6ca8); color: var(--cor-marca-forte, #0f4c75);
   background: #fff;
 }
+.foto input { display: none; }
+.foto:hover { background: var(--cor-marca-suave, #eaf3fa); }
+.confira {
+  margin: 0; font-size: 14px; font-weight: 600; line-height: 1.45;
+  background: #fff6e5; border: 1px solid #f0d9a8; color: #6b4708;
+  border-radius: 9px; padding: 11px 14px;
+}
+
+/* Barra de troca rápida entre calculadoras. Rola na horizontal no celular,
+   que é onde trocar de ferramenta sem voltar ao hub mais importa. */
+.barra {
+  display: flex; gap: 8px; overflow-x: auto; padding: 10px max(20px, calc((100vw - 1100px) / 2));
+  background: #fff; border-bottom: 1px solid var(--cor-borda, #dce4ea);
+  position: sticky; top: 59px; z-index: 9; scrollbar-width: thin;
+}
+.aba {
+  flex: 0 0 auto; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer;
+  border: 1px solid var(--cor-borda, #dce4ea); background: #fff; color: var(--cor-tinta-fraca, #5b6c7a);
+  border-radius: 20px; padding: 8px 15px; white-space: nowrap;
+}
+.aba:hover { border-color: var(--cor-marca, #1b6ca8); }
+.abaAtiva { background: var(--cor-marca, #1b6ca8); border-color: var(--cor-marca, #1b6ca8); color: #fff; }
+.seletor {
+  height: 46px; font: inherit; font-size: 15px; font-weight: 600; color: #142536;
+  border: 1px solid var(--cor-borda-forte, #c3d0da); border-radius: 9px;
+  background: var(--cor-superficie-suave, #f7fafc); padding: 0 10px;
+}
