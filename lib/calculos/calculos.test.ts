@@ -23,8 +23,16 @@ import {
   interpretar,
   lerCompensacaoMetabolica,
   relacaoPF,
+  REFERENCIAS,
   winter,
 } from "./gasometria.ts";
+
+import {
+  deficitBicarbonato,
+  frequenciaParaAlvo,
+  orientacoes,
+  ventilacaoParaAlvo,
+} from "./gasometria-orientacoes.ts";
 
 import {
   calibreMaisProximo,
@@ -236,5 +244,62 @@ describe("via aérea pediátrica — profundidade", () => {
     const p = profundidadeOral({ idadeMeses: 6 }, 3.5);
     assert.equal(p?.pelaIdade, undefined);
     assert.equal(p?.peloTubo, 10.5);
+  });
+});
+
+describe("orientações da gasometria", () => {
+  const caso = { ph: 7.25, paco2: 30, hco3: 14, na: 140, cl: 104, lactato: 5, pao2: 74, fio2: 40 };
+
+  it("com AG aumentado, lista as causas de AG aumentado e não as hiperclorêmicas", () => {
+    const r = interpretar(caso);
+    const o = orientacoes(caso, r, REFERENCIAS);
+    const causas = o.find((b) => b.titulo.includes("Causas"));
+    assert.ok(causas!.itens.some((i) => /cetoacidose/i.test(i)));
+    assert.ok(!causas!.itens.some((i) => /diarreia/i.test(i)));
+  });
+
+  it("com AG normal, troca a lista para as causas hiperclorêmicas", () => {
+    const g = { ph: 7.3, paco2: 32, hco3: 17, na: 140, cl: 111 };
+    const causas = orientacoes(g, interpretar(g), REFERENCIAS).find((b) => b.titulo.includes("Causas"));
+    assert.ok(causas!.itens.some((i) => /diarreia/i.test(i)));
+  });
+
+  it("lactato alto entra em atenção imediata", () => {
+    const o = orientacoes(caso, interpretar(caso), REFERENCIAS);
+    assert.equal(o[0].tom, "critico");
+    assert.ok(o[0].itens.some((i) => /Lactato/.test(i)));
+  });
+
+  it("classifica a P/F e lembra da exigência de PEEP", () => {
+    const bloco = orientacoes(caso, interpretar(caso), REFERENCIAS).find((b) => b.titulo === "Oxigenação");
+    assert.ok(bloco!.itens.some((i) => /moderada/.test(i)));
+    assert.ok(bloco!.itens.some((i) => /PEEP/.test(i)));
+  });
+
+  it("gasometria normal não gera orientação nenhuma", () => {
+    const g = { ph: 7.4, paco2: 40, hco3: 24 };
+    assert.equal(orientacoes(g, interpretar(g), REFERENCIAS).length, 0);
+  });
+});
+
+describe("correções com alvo definido por quem usa", () => {
+  it("déficit de bicarbonato de 70 kg, de 14 para 20, é 126 mEq", () => {
+    assert.equal(deficitBicarbonato(70, 14, 20), 126);
+  });
+
+  it("não devolve déficit quando o alvo é menor que o medido", () => {
+    assert.equal(deficitBicarbonato(70, 20, 14), undefined);
+  });
+
+  it("ventilação para baixar PaCO2 de 60 para 40 sobe de 6 para 9 L/min", () => {
+    assert.equal(ventilacaoParaAlvo(6, 60, 40), 9);
+  });
+
+  it("frequência acompanha a mesma relação", () => {
+    assert.equal(frequenciaParaAlvo(12, 60, 40), 18);
+  });
+
+  it("alvo zerado não divide por zero", () => {
+    assert.equal(ventilacaoParaAlvo(6, 60, 0), undefined);
   });
 });
