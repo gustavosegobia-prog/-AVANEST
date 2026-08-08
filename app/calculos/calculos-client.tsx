@@ -46,7 +46,7 @@ const MODULOS: Array<{ id: Exclude<Modulo, "hub">; icone: string; nome: string; 
   { id: "osmolar", icone: "💧", nome: "Gap osmolar", descricao: "Osmolalidade calculada, com divisor certo para ureia ou BUN." },
   { id: "fick", icone: "❤️", nome: "Débito cardíaco", descricao: "Fick, com CaO2, CvO2, débito e índice cardíaco." },
   { id: "pca", icone: "💉", nome: "PCA", descricao: "Confere a programação da bomba contra as faixas do SAESP e do Miller." },
-  { id: "rotem", icone: "🩹", nome: "ROTEM", descricao: "Leitura cruzada entre EXTEM, INTEM, FIBTEM, APTEM e HEPTEM." },
+  { id: "rotem", icone: "🩹", nome: "ROTEM", descricao: "Leitura cruzada entre os ensaios, com o fenótipo e as verificações que ele exige." },
 ];
 
 const CAMPOS_GASO: Array<{ chave: keyof Gasometria; rotulo: string; passo?: string }> = [
