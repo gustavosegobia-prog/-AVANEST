@@ -134,6 +134,8 @@ export function compensacaoAlcaloseMetabolica(hco3: number): FaixaEsperada {
 export type LeituraCompensacao = {
   medida: number;
   esperada: FaixaEsperada;
+  /** Medida menos esperada. Negativo é PaCO2 abaixo do previsto. */
+  diferenca: number;
   situacao: "adequada" | "abaixo" | "acima";
   texto: string;
 };
@@ -160,7 +162,7 @@ export function lerCompensacaoMetabolica(
     if (situacao === "abaixo") texto = "Alcalose metabólica + alcalose respiratória associada";
   }
 
-  return { medida: paco2, esperada, situacao, texto };
+  return { medida: paco2, esperada, diferenca: arredonda(paco2 - esperada.esperada), situacao, texto };
 }
 
 export type HipoteseTemporal = { agudo: number; cronico: number; compativel: "agudo" | "crônico" | "intermediário" };
@@ -329,4 +331,74 @@ export function interpretar(g: Gasometria, ref = REFERENCIAS): Interpretacao {
   }
 
   return resultado;
+}
+
+/* ------------------------------------------------------------------ */
+/* Indicadores rápidos                                                  */
+/* ------------------------------------------------------------------ */
+
+export type Estado = "normal" | "alterado" | "alerta";
+export type Indicador = { rotulo: string; valor: string; estado: Estado };
+
+/**
+ * Cinco leituras de relance, para quem não vai ler o texto inteiro agora.
+ *
+ * "alterado" é fora da faixa; "alerta" é fora a ponto de mudar a ordem das
+ * coisas. A distinção existe porque um pH de 7,33 e um de 7,05 não podem
+ * pintar da mesma cor — se tudo que está fora da faixa vira vermelho, o
+ * vermelho para de significar alguma coisa.
+ *
+ * O que não tem dado não vira indicador cinza: fica de fora. Indicador vazio
+ * ocupa espaço e não informa.
+ */
+export function indicadores(g: Gasometria, r: Interpretacao, ref = REFERENCIAS): Indicador[] {
+  const lista: Indicador[] = [];
+
+  if (informado(g.ph)) {
+    const estado: Estado =
+      g.ph < 7.2 || g.ph > 7.55 ? "alerta"
+      : g.ph < ref.phMin || g.ph > ref.phMax ? "alterado"
+      : "normal";
+    lista.push({ rotulo: "pH", valor: g.ph.toFixed(2), estado });
+  }
+
+  if (informado(g.hco3)) {
+    const estado: Estado =
+      g.hco3 < 15 || g.hco3 > 35 ? "alerta"
+      : g.hco3 < ref.hco3Min || g.hco3 > ref.hco3Max ? "alterado"
+      : "normal";
+    lista.push({ rotulo: "Metabolismo", valor: `HCO3 ${g.hco3}`, estado });
+  }
+
+  if (informado(g.paco2)) {
+    const estado: Estado =
+      g.paco2 < 25 || g.paco2 > 60 ? "alerta"
+      : g.paco2 < ref.paco2Min || g.paco2 > ref.paco2Max ? "alterado"
+      : "normal";
+    lista.push({ rotulo: "Ventilação", valor: `PaCO2 ${g.paco2}`, estado });
+  }
+
+  if (r.compensacao) {
+    lista.push({
+      rotulo: "Compensação",
+      valor: r.compensacao.situacao === "adequada" ? "adequada" : "não fecha",
+      estado: r.compensacao.situacao === "adequada" ? "normal" : "alerta",
+    });
+  } else if (r.respiratorio) {
+    lista.push({
+      rotulo: "Compensação",
+      valor: r.respiratorio.alertaMetabolico ? "não fecha" : r.respiratorio.hipotese.compativel,
+      estado: r.respiratorio.alertaMetabolico ? "alerta" : "normal",
+    });
+  }
+
+  if (informado(r.relacaoPF)) {
+    const estado: Estado = r.relacaoPF <= 200 ? "alerta" : r.relacaoPF <= 300 ? "alterado" : "normal";
+    lista.push({ rotulo: "Oxigenação", valor: `P/F ${r.relacaoPF}`, estado });
+  } else if (informado(g.sao2)) {
+    const estado: Estado = g.sao2 < 90 ? "alerta" : g.sao2 < 94 ? "alterado" : "normal";
+    lista.push({ rotulo: "Oxigenação", valor: `SaO2 ${g.sao2}%`, estado });
+  }
+
+  return lista;
 }
