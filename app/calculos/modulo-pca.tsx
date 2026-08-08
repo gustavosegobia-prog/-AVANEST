@@ -92,10 +92,7 @@ export function Pca({ dados, set }: { dados: Compartilhado; set: (c: string, v: 
   );
 
   /** As linhas do SAESP que falam deste fármaco — as únicas publicadas por quilo. */
-  const sistemicasDoFarmaco = useMemo(
-    () => DOSES_SISTEMICAS.filter((s) => s.farmaco === farmaco.nome),
-    [farmaco.nome],
-  );
+  const sistemicasDoFarmaco = DOSES_SISTEMICAS.filter((s) => s.farmaco === farmaco.nome);
 
   const conferencias = useMemo(() => conferir(farmacoId, programacao), [farmacoId, programacao]);
   const teto = useMemo(() => tetoPorHora(farmacoId, programacao), [farmacoId, programacao]);
