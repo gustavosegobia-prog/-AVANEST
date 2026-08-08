@@ -91,6 +91,12 @@ export function Pca({ dados, set }: { dados: Compartilhado; set: (c: string, v: 
     [perfil, pesoKg, dados.idade],
   );
 
+  /** As linhas do SAESP que falam deste fármaco — as únicas publicadas por quilo. */
+  const sistemicasDoFarmaco = useMemo(
+    () => DOSES_SISTEMICAS.filter((s) => s.farmaco === farmaco.nome),
+    [farmaco.nome],
+  );
+
   const conferencias = useMemo(() => conferir(farmacoId, programacao), [farmacoId, programacao]);
   const teto = useMemo(() => tetoPorHora(farmacoId, programacao), [farmacoId, programacao]);
   const avisos = useMemo(() => alertas(farmacoId, perfilCompleto, programacao), [farmacoId, perfilCompleto, programacao]);
@@ -187,6 +193,35 @@ export function Pca({ dados, set }: { dados: Compartilhado; set: (c: string, v: 
             <strong>Recomendação do SAESP</strong>
             <p>{farmaco.saesp.texto}</p>
             <p className={estilos.fonte}>{citar(farmaco.saesp.fonte)}</p>
+          </div>
+        )}
+
+        {/* O peso precisa mostrar serviço na hora em que é digitado. Escondê-lo
+            atrás de um "ver mais" fazia o campo parecer decorativo — e o que
+            ele responde primeiro é justamente por que a faixa de demanda NÃO
+            muda com o peso. */}
+        {pesoKg !== undefined && pesoKg > 0 && (
+          <div className={estilos.bloco}>
+            <strong>O que o peso de {virgula(pesoKg)} kg muda aqui</strong>
+            <p>
+              A faixa de demanda acima <b>não muda</b>. Ela é publicada como faixa fixa
+              para adulto de 70 kg, não por quilo, e as fontes não autorizam escalá-la
+              pelo peso do paciente.
+            </p>
+            {sistemicasDoFarmaco.length > 0 ? (
+              <>
+                <p>O peso entra nas doses sistêmicas do SAESP, que essas sim vêm por quilo:</p>
+                {sistemicasDoFarmaco.map((s, i) => (
+                  <div key={i} className={estilos.linha}>
+                    <span>{s.dose} — {s.via}</span>
+                    <b>{porPeso(s, pesoKg)}</b>
+                  </div>
+                ))}
+                <p className={estilos.confira}>{AVISO_SISTEMICAS}</p>
+              </>
+            ) : (
+              <p>O SAESP não publica dose sistêmica de {farmaco.nome.toLowerCase()} neste guia.</p>
+            )}
           </div>
         )}
       </section>
