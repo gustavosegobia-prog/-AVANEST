@@ -230,3 +230,29 @@
 .tresBotao { background: #fff; color: var(--cor-tinta-fraca, #5b6c7a); }
 .tresBotao:hover { border-color: var(--cor-marca, #1b6ca8); }
 .tresAtivo { background: var(--cor-marca, #1b6ca8); border-color: var(--cor-marca, #1b6ca8); color: #fff; }
+
+/* ROTEM: uma linha por parâmetro. Sigla e valor ficam à esquerda e as três
+   classificações à direita, então a coluna de botões alinha de cima a baixo e
+   o olho desce por ela sem reler nome de parâmetro. No celular tudo empilha. */
+.parametro {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 9px 0; border-top: 1px solid var(--cor-borda, #dce4ea);
+}
+/* Largura fixa, e não min-width: com o nome longo do MCF empurrando, cada
+   linha punha a caixa de valor num lugar diferente e a coluna deixava de ser
+   coluna. */
+.parametroNome { display: grid; gap: 1px; flex: 0 0 218px; min-width: 0; }
+.parametroNome b { font-size: 16px; }
+.parametroNome small { font-size: 12px; color: var(--cor-tinta-fraca, #5b6c7a); }
+.parametroValor {
+  width: 92px; height: 40px; font: inherit; font-size: 15px; font-weight: 600; color: #142536;
+  border: 1px solid var(--cor-borda-forte, #c3d0da); border-radius: 8px;
+  background: var(--cor-superficie-suave, #f7fafc); padding: 0 10px;
+}
+.parametroValor:focus { outline: 2px solid var(--cor-marca, #1b6ca8); outline-offset: -1px; }
+.parametroBotoes { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.parametroBotoes button { padding: 8px 13px; font-size: 13.5px; }
+@media (max-width: 600px) {
+  .parametroBotoes { margin-left: 0; width: 100%; }
+  .parametroBotoes button { flex: 1 1 auto; }
+}
