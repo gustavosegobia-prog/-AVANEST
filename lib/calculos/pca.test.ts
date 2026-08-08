@@ -190,3 +190,16 @@ test("todo texto de fonte tem obra e página juntas", () => {
     if (a.fonte) assert.match(citar(a.fonte), /^(SAESP|Miller).+p{1,2}\. \d/);
   }
 });
+
+test("as doses por quilo do SAESP casam com o nome dos fármacos da PCA", () => {
+  const porFarmaco = (nome: string) => DOSES_SISTEMICAS.filter((d) => d.farmaco === nome);
+  assert.equal(porFarmaco("Morfina").length, 2);
+  assert.equal(porFarmaco("Fentanil").length, 2);
+  assert.equal(porFarmaco("Sufentanil").length, 1);
+  // Hidromorfona não tem dose sistêmica no guia: a tela precisa dizer isso,
+  // e não cair num bloco vazio.
+  assert.equal(porFarmaco("Hidromorfona").length, 0);
+  for (const f of FARMACOS) {
+    for (const d of porFarmaco(f.nome)) assert.ok(d.porKg, `${f.nome}: dose sem valor por quilo`);
+  }
+});
