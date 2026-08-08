@@ -34,6 +34,8 @@ import {
   ventilacaoParaAlvo,
 } from "./gasometria-orientacoes.ts";
 
+import { lerGasometria } from "./gasometria-leitura.ts";
+
 import {
   calibreMaisProximo,
   idadeEmMeses,
@@ -301,5 +303,62 @@ describe("correções com alvo definido por quem usa", () => {
 
   it("alvo zerado não divide por zero", () => {
     assert.equal(ventilacaoParaAlvo(6, 60, 0), undefined);
+  });
+});
+
+describe("leitura da gasometria por foto", () => {
+  // Laudo em coluna, como a maioria dos aparelhos imprime.
+  const laudo = `
+    GASOMETRIA ARTERIAL
+    pH        7,25
+    pCO2      30,1 mmHg
+    pO2       74 mmHg
+    HCO3-     14,2 mmol/L
+    BE        -11,5
+    Na+       140
+    K+        4,1
+    Cl-       104
+    Lactato   4,2 mmol/L
+    FiO2      40 %
+    sO2       92 %
+  `;
+
+  it("lê o laudo inteiro, com vírgula e unidade junto", () => {
+    const { valores } = lerGasometria(laudo);
+    assert.equal(valores.ph, 7.25);
+    assert.equal(valores.paco2, 30.1);
+    assert.equal(valores.pao2, 74);
+    assert.equal(valores.hco3, 14.2);
+    assert.equal(valores.be, -11.5);
+    assert.equal(valores.na, 140);
+    assert.equal(valores.k, 4.1);
+    assert.equal(valores.cl, 104);
+    assert.equal(valores.lactato, 4.2);
+    assert.equal(valores.fio2, 40);
+    assert.equal(valores.sao2, 92);
+  });
+
+  it("prefere paco2 a pco2 quando os dois aparecem", () => {
+    assert.equal(lerGasometria("PaCO2 45 pCO2 99").valores.paco2, 45);
+  });
+
+  it("descarta valor fora da faixa em vez de preencher errado", () => {
+    const { valores, descartados } = lerGasometria("pH 725");
+    assert.equal(valores.ph, undefined);
+    assert.ok(descartados.includes("ph"));
+  });
+
+  it("não confunde palavra que contém a letra do rótulo", () => {
+    assert.equal(lerGasometria("Katz 99 sem potassio").valores.k, undefined);
+  });
+
+  it("aceita o laudo sem acento e em caixa alta", () => {
+    assert.equal(lerGasometria("SODIO: 138 POTASSIO: 3,9").valores.na, 138);
+  });
+
+  it("texto sem nada reconhecível devolve vazio, e não lixo", () => {
+    const { valores, descartados } = lerGasometria("relatorio do paciente");
+    assert.deepEqual(valores, {});
+    assert.deepEqual(descartados, []);
   });
 });
