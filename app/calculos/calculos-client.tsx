@@ -55,7 +55,12 @@ export function CalculosClient() {
           <BrandMark className={estilos.marcaIcone} />
           <span><strong>AVANEST</strong><small>Cálculos extras</small></span>
         </Link>
-        {modulo !== "hub" && (
+        {/* O botão nunca some: do módulo ele volta ao hub, e do hub volta ao
+            painel. Antes, quem chegasse ao hub só saía clicando na marca — e
+            ninguém adivinha que a marca é um link. */}
+        {modulo === "hub" ? (
+          <Link className={estilos.voltar} href="/dashboard">← Voltar ao painel</Link>
+        ) : (
           <button type="button" className={estilos.voltar} onClick={() => setModulo("hub")}>
             ← Cálculos extras
           </button>
