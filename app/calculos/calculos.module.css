@@ -137,3 +137,13 @@
   .disturbio { font-size: 20px; }
   .conteudo { padding-top: 20px; }
 }
+
+/* Orientações e correções: blocos de leitura, não de números soltos. */
+.bloco { display: grid; gap: 6px; padding: 12px 14px; border-radius: 9px; background: var(--cor-superficie-suave, #f7fafc); border: 1px solid var(--cor-borda, #dce4ea); }
+.bloco strong { font-size: 14px; }
+.bloco ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.bloco li { font-size: 14px; line-height: 1.45; }
+.blocoCritico { background: #fdece8; border-color: #f0c4b6; }
+.blocoCritico strong { color: #9c3a20; }
+.correcao { display: grid; gap: 10px; padding: 14px; border-radius: 9px; border: 1px solid var(--cor-borda, #dce4ea); }
+.correcao > strong { font-size: 15px; }
