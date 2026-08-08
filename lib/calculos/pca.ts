@@ -213,6 +213,15 @@ export type Programacao = {
 
 const preenchido = (v?: number): v is number => typeof v === "number" && Number.isFinite(v);
 
+/**
+ * A partir de que idade o lembrete de "doses menores em idosos" aparece.
+ *
+ * Este 65 é do AVANEST, não dos livros: as duas fontes falam em idoso sem
+ * fixar corte. Fica isolado aqui, e o próprio texto do alerta avisa quem o
+ * escolheu — um número meu não pode passar por número de fonte.
+ */
+export const IDADE_LEMBRETE = 65;
+
 export function conferir(farmacoId: FarmacoId, p: Programacao): Conferencia[] {
   const f = acharFarmaco(farmacoId);
   const d = f?.diretriz;
@@ -391,10 +400,10 @@ export function alertas(farmacoId: FarmacoId, perfil: Perfil, p: Programacao): A
     });
   }
 
-  if (preenchido(perfil.idade) && perfil.idade >= 65) {
+  if (preenchido(perfil.idade) && perfil.idade >= IDADE_LEMBRETE) {
     lista.push({
       gravidade: "atencao", titulo: "Idoso",
-      texto: "As necessidades variam amplamente, e doses menores são típicas em idosos ou pacientes comprometidos.",
+      texto: `As necessidades variam amplamente, e doses menores são típicas em idosos ou pacientes comprometidos. O corte de ${IDADE_LEMBRETE} anos que faz este lembrete aparecer é do AVANEST: as fontes falam em idoso sem fixar idade.`,
       fonte: MILLER("PDF p. 1167"),
     });
   }
@@ -494,3 +503,5 @@ export const AVISO_MODULO =
 
 export const AVISO_MULTIMODAL =
   "O SAESP define analgesia multimodal como associação de fármacos com mecanismos diferentes, em doses menores, para melhorar o controle da dor e poupar opioides; AINEs, quando possíveis, reduzem consumo de opioides, náuseas, vômitos e sedação. A PCA entra num plano multimodal, não como módulo isolado.";
+
+export const FONTE_MULTIMODAL = SAESP("PDF pp. 1094 e 3078-3095");
