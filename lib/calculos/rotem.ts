@@ -1,72 +1,168 @@
 /**
- * ROTEM — estrutura dos ensaios e leitura cruzada entre canais.
+ * ROTEM — interpretação estruturada e classes de conduta.
  *
- * Escopo deliberado: este módulo não fecha algoritmo terapêutico. Ele diz qual
- * componente da hemostasia o traçado implica, e para aí. Produto, dose e
- * gatilho de transfusão são do protocolo do serviço, e protocolo não está aqui.
+ * Transcrição do guia clínico AVANEST de hemostasia viscoelástica, que se
+ * apoia em SAESP, Miller e na diretriz europeia de trauma de 2023. Como no
+ * módulo de PCA, o que a fonte não afirma fica ausente: nenhum gatilho
+ * numérico foi inventado, e não há faixa de normalidade cadastrada.
  *
- * Também não traz faixa de normalidade. Os valores de referência do ROTEM
- * dependem do analisador (delta, sigma) e do reagente, e variam entre
- * laboratórios — cravar número aqui seria inventar fonte. Quem classifica cada
- * parâmetro é quem está lendo o exame, com a referência do próprio laudo; o
- * módulo trabalha em cima dessa classificação.
+ * A faixa de referência é do laboratório. Ela muda com a plataforma, o
+ * reagente e a população, e o próprio guia registra que nenhum dos trechos
+ * revistos fornece um intervalo universal. Quem classifica cada parâmetro é
+ * quem está lendo o exame, com a referência do próprio laudo.
  *
- * O que o módulo sabe de verdade, e por isso pode afirmar, é como cada ensaio
- * é montado: FIBTEM é EXTEM com a plaqueta bloqueada, APTEM é EXTEM com a
- * fibrinólise bloqueada, HEPTEM é INTEM com a heparina degradada. A leitura
- * cruzada sai dessa construção, não de opinião clínica.
+ * Duas separações que o módulo mantém de pé:
+ *   1. interpretação do traçado  ×  protocolo terapêutico aprovado;
+ *   2. classe de intervenção a considerar  ×  produto, dose e limiar.
+ * A segunda camada de cada par não está aqui, e é de propósito.
+ *
+ * Fontes:
+ *   SAESP, Tratado de Anestesiologia — PDF pp. 5430-5431, 5791.
+ *   Miller, Bases da Anestesia, 7ª ed. (2019) — PDF pp. 629-633.
+ *   Rossaint R et al. The European guideline on management of major bleeding
+ *   and coagulopathy following trauma: sixth edition. Crit Care 2023;27:80.
  */
 
-export type EnsaioId = "extem" | "intem" | "fibtem" | "aptem" | "heptem";
-export type ParametroId = "ct" | "cft" | "alfa" | "a5" | "a10" | "mcf" | "ml";
+export type Fonte = { obra: string; local: string };
 
-/** Como o parâmetro está, em relação à referência do laudo de quem está lendo. */
-export type Situacao = "abaixo" | "normal" | "acima";
+export const SAESP = (p: string): Fonte => ({ obra: "SAESP, Tratado de Anestesiologia", local: p });
+export const MILLER = (p: string): Fonte => ({ obra: "Miller, Bases da Anestesia, 7ª ed.", local: p });
+export const EUROPEIA: Fonte = {
+  obra: "Diretriz europeia de trauma, 6ª edição",
+  local: "Rossaint R et al., Crit Care 2023;27:80",
+};
+
+export const citar = (f: Fonte) => `${f.obra} — ${f.local}`;
+
+/* ------------------------------------------------------------------ *
+ * Passo 0 — o contexto vem antes do traçado.
+ *
+ * O guia é explícito: a interface mostra primeiro se há sangramento e se a
+ * fonte está controlada. Um ROTEM alterado sem sangramento não indica
+ * hemocomponente, e ler o traçado antes disso inverte a ordem da decisão.
+ * ------------------------------------------------------------------ */
+
+export type Contexto = {
+  sangramentoAtivo?: boolean;
+  fonteControlada?: boolean;
+  fisiologiaCorrigida?: boolean;
+  cenario?: CenarioId;
+};
+
+export const PASSO_ZERO: Array<{ chave: keyof Contexto & string; pergunta: string; seNao: string }> = [
+  {
+    chave: "sangramentoAtivo",
+    pergunta: "Há sangramento clinicamente relevante?",
+    seNao: "Resultado alterado sem sangramento não é indicação automática de hemocomponente ou concentrado de fator.",
+  },
+  {
+    chave: "fonteControlada",
+    pergunta: "A fonte do sangramento está controlada?",
+    seNao: "O ROTEM não localiza sangramento cirúrgico. Controle da fonte corre em paralelo, não depois do exame.",
+  },
+  {
+    chave: "fisiologiaCorrigida",
+    pergunta: "Temperatura, pH, cálcio iônico e perfusão estão aceitáveis?",
+    seNao: "Corrigir junto com a hemostasia. Hipotermia, acidose e hipocalcemia alteram a coagulação e podem não aparecer no ensaio.",
+  },
+];
+
+export const AVISO_PASSO_ZERO =
+  "Interpretar somente diante do contexto: sangramento ativo, fase da cirurgia, anticoagulantes, transfusões e tratamento já realizado.";
+
+/* ------------------------------------------------------------------ *
+ * Cenários
+ * ------------------------------------------------------------------ */
+
+export type CenarioId = "trauma" | "cardiaca" | "hepatico" | "obstetricia" | "sepse" | "queimado";
+
+export const CENARIOS: Array<{ id: CenarioId; nome: string; utilidade: string; limite: string }> = [
+  {
+    id: "trauma", nome: "Trauma ou hemorragia maciça",
+    utilidade: "Monitorização precoce e repetida, com estratégia dirigida por metas.",
+    limite: "Algoritmos e limiares são locais. Controlar sangramento e ressuscitação ao mesmo tempo.",
+  },
+  {
+    id: "cardiaca", nome: "Cirurgia cardíaca e CEC",
+    utilidade: "Diagnóstico rápido de coagulopatia, efeito de heparina e orientação da terapia após a CEC.",
+    limite: "Temperatura, hemodiluição, protamina e disfunção plaquetária alteram a interpretação.",
+  },
+  {
+    id: "hepatico", nome: "Transplante hepático",
+    utilidade: "Avalia força do coágulo, fibrinólise e resposta; ajuda a reduzir hemocomponentes.",
+    limite: "Hemostasia rebalanceada: resultado anormal sem sangramento não exige correção.",
+  },
+  {
+    id: "obstetricia", nome: "Obstetrícia",
+    utilidade: "Pode identificar queda do fibrinogênio funcional e orientar a hemorragia pós-parto.",
+    limite: "Valores e decisões diferem de trauma e de cardiopatia. Usar protocolo obstétrico.",
+  },
+  {
+    id: "sepse", nome: "Sepse e CIVD",
+    utilidade: "Fornece panorama global e tendência.",
+    limite: "Pode haver transição entre hipo e hipercoagulabilidade. Não substitui critérios diagnósticos.",
+  },
+  {
+    id: "queimado", nome: "Queimados",
+    utilidade: "Pode apoiar a detecção de fibrinólise e a decisão sobre antifibrinolítico.",
+    limite: "Evidência e momento clínico específicos.",
+  },
+];
+
+export const acharCenario = (id: CenarioId) => CENARIOS.find((c) => c.id === id);
+
+/* ------------------------------------------------------------------ *
+ * Parâmetros e ensaios
+ * ------------------------------------------------------------------ */
+
+export type ParametroId = "ct" | "cft" | "alfa" | "a5" | "a10" | "mcf" | "ml";
+export type EnsaioId = "extem" | "intem" | "fibtem" | "aptem" | "heptem" | "natem";
 
 export type Parametro = {
   id: ParametroId;
   sigla: string;
   nome: string;
   unidade: string;
-  mede: string;
-  /** Rótulos de "abaixo" e "acima" que fazem sentido para este parâmetro. */
+  fase: string;
+  pergunta: string;
   rotulos: { abaixo: string; acima: string };
 };
 
+/** Fase e pergunta clínica vêm da tabela do guia. [Miller, PDF pp. 629-633] */
 export const PARAMETROS: Record<ParametroId, Parametro> = {
   ct: {
-    id: "ct", sigla: "CT", nome: "Tempo de coagulação", unidade: "s",
-    mede: "Do início até o coágulo atingir 2 mm de amplitude. É a fase de iniciação — geração de trombina.",
+    id: "ct", sigla: "CT", nome: "Tempo de coagulação", unidade: "s", fase: "Iniciação",
+    pergunta: "Quanto tempo até o início mensurável do coágulo? Há deficiência de fatores, anticoagulante ou heparina?",
     rotulos: { abaixo: "Encurtado", acima: "Prolongado" },
   },
   cft: {
-    id: "cft", sigla: "CFT", nome: "Tempo de formação do coágulo", unidade: "s",
-    mede: "De 2 mm até 20 mm de amplitude. É a velocidade de propagação.",
+    id: "cft", sigla: "CFT", nome: "Tempo de formação do coágulo", unidade: "s", fase: "Propagação",
+    pergunta: "Com que velocidade o coágulo ganha firmeza?",
     rotulos: { abaixo: "Encurtado", acima: "Prolongado" },
   },
   alfa: {
-    id: "alfa", sigla: "α", nome: "Ângulo alfa", unidade: "°",
-    mede: "Inclinação da curva na subida. Mesma informação cinética do CFT, vista pelo outro lado.",
+    id: "alfa", sigla: "α", nome: "Ângulo alfa", unidade: "°", fase: "Propagação",
+    pergunta: "Com que velocidade o coágulo ganha firmeza?",
     rotulos: { abaixo: "Reduzido", acima: "Aumentado" },
   },
   a5: {
-    id: "a5", sigla: "A5", nome: "Amplitude aos 5 min", unidade: "mm",
-    mede: "Firmeza precoce do coágulo. É o que permite decidir sem esperar a MCF.",
+    id: "a5", sigla: "A5", nome: "Amplitude aos 5 min", unidade: "mm", fase: "Firmeza precoce",
+    pergunta: "Qual a amplitude aos 5 minutos? Permite decisão precoce conforme protocolo validado.",
     rotulos: { abaixo: "Reduzida", acima: "Aumentada" },
   },
   a10: {
-    id: "a10", sigla: "A10", nome: "Amplitude aos 10 min", unidade: "mm",
-    mede: "Firmeza aos 10 minutos. Antecipa bem a MCF e é o parâmetro mais usado à beira do leito.",
+    id: "a10", sigla: "A10", nome: "Amplitude aos 10 min", unidade: "mm", fase: "Firmeza precoce",
+    pergunta: "Qual a amplitude aos 10 minutos? Permite decisão precoce conforme protocolo validado.",
     rotulos: { abaixo: "Reduzida", acima: "Aumentada" },
   },
   mcf: {
-    id: "mcf", sigla: "MCF", nome: "Firmeza máxima do coágulo", unidade: "mm",
-    mede: "Pico de firmeza. Soma plaqueta, fibrinogênio e fator XIII.",
+    id: "mcf", sigla: "MCF", nome: "Firmeza máxima do coágulo", unidade: "mm", fase: "Firmeza máxima",
+    pergunta: "Qual a resistência máxima do coágulo, resultado de fibrina, plaquetas e outros componentes?",
     rotulos: { abaixo: "Reduzida", acima: "Aumentada" },
   },
   ml: {
-    id: "ml", sigla: "ML", nome: "Lise máxima", unidade: "%",
-    mede: "Quanto o coágulo perdeu de firmeza depois do pico. É a leitura da fibrinólise.",
+    id: "ml", sigla: "ML", nome: "Lise máxima", unidade: "%", fase: "Lise",
+    pergunta: "O coágulo permanece estável ou ocorre fibrinólise?",
     rotulos: { abaixo: "Reduzida", acima: "Aumentada" },
   },
 };
@@ -74,53 +170,77 @@ export const PARAMETROS: Record<ParametroId, Parametro> = {
 export type Ensaio = {
   id: EnsaioId;
   sigla: string;
-  montagem: string;
-  isola: string;
+  ativacao: string;
+  uso: string;
   parametros: ParametroId[];
 };
 
-/**
- * A ordem importa na tela: EXTEM e INTEM primeiro porque são os dois traçados
- * de base; os outros três só significam alguma coisa comparados a eles.
- */
 export const ENSAIOS: Ensaio[] = [
   {
     id: "extem", sigla: "EXTEM",
-    montagem: "Ativado por fator tecidual.",
-    isola: "Via extrínseca e comum. É o traçado de base da maior parte das decisões.",
+    ativacao: "Ativação pela via do fator tecidual.",
+    uso: "Visão global extrínseca: iniciação, propagação, firmeza e lise. Base para comparação com FIBTEM e APTEM.",
     parametros: ["ct", "cft", "alfa", "a5", "a10", "mcf", "ml"],
   },
   {
     id: "intem", sigla: "INTEM",
-    montagem: "Ativado por ácido elágico.",
-    isola: "Via intrínseca e comum.",
+    ativacao: "Ativação de contato.",
+    uso: "Visão global intrínseca, sensível à heparina entre outros determinantes. Comparar com HEPTEM.",
     parametros: ["ct", "cft", "alfa", "a5", "a10", "mcf", "ml"],
   },
   {
     id: "fibtem", sigla: "FIBTEM",
-    montagem: "EXTEM com a plaqueta bloqueada (citocalasina D).",
-    isola: "A contribuição do fibrinogênio e da fibrina para a firmeza, sem a plaqueta.",
+    ativacao: "EXTEM com inibição da contribuição plaquetária.",
+    uso: "Estima o componente fibrínico da firmeza do coágulo.",
     parametros: ["a5", "a10", "mcf"],
   },
   {
     id: "aptem", sigla: "APTEM",
-    montagem: "EXTEM com a fibrinólise bloqueada (aprotinina).",
-    isola: "Serve para comparar com o EXTEM: se o traçado melhora, a lise era fibrinólise.",
+    ativacao: "Semelhante ao EXTEM, com inibição da fibrinólise.",
+    uso: "Se a curva melhora em relação ao EXTEM, sustenta participação de hiperfibrinólise.",
     parametros: ["a10", "mcf", "ml"],
   },
   {
     id: "heptem", sigla: "HEPTEM",
-    montagem: "INTEM com a heparina degradada (heparinase).",
-    isola: "Serve para comparar com o INTEM: se o CT normaliza, o prolongamento era heparina.",
+    ativacao: "Semelhante ao INTEM, com heparinase.",
+    uso: "Correção do CT em relação ao INTEM sustenta efeito de heparina.",
     parametros: ["ct"],
+  },
+  {
+    id: "natem", sigla: "NATEM",
+    ativacao: "Ensaio não ativado ou minimamente ativado.",
+    uso: "Uso depende da plataforma e do protocolo. Leva mais tempo até o resultado.",
+    parametros: ["ct", "cft", "a10", "mcf", "ml"],
   },
 ];
 
 export const acharEnsaio = (id: EnsaioId) => ENSAIOS.find((e) => e.id === id);
 
+/** As três comparações que geram informação, com o cuidado que cada uma pede. */
+export const COMPARACOES: Array<{ par: string; inferencia: string; cuidado: string }> = [
+  {
+    par: "EXTEM × FIBTEM",
+    inferencia: "Firmeza baixa nos dois: componente fibrínico pode estar reduzido. EXTEM baixo com FIBTEM preservado: a contribuição plaquetária ganha importância.",
+    cuidado: "Não separa contagem de função plaquetária. Conferir hemograma e contexto.",
+  },
+  {
+    par: "INTEM × HEPTEM",
+    inferencia: "Melhora ou correção no HEPTEM sugere efeito de heparina.",
+    cuidado: "Confirmar exposição, fase da CEC e dose de protamina já administrada.",
+  },
+  {
+    par: "EXTEM × APTEM",
+    inferencia: "Melhora da lise ou da estabilidade no APTEM sugere hiperfibrinólise.",
+    cuidado: "Não atrasar o antifibrinolítico quando há indicação clínica independente e o tempo é crítico.",
+  },
+];
+
 /* ------------------------------------------------------------------ *
  * Leitura
  * ------------------------------------------------------------------ */
+
+/** Como o parâmetro está, em relação à referência do laudo de quem lê. */
+export type Situacao = "abaixo" | "normal" | "acima";
 
 /** Chave "extem.ct", "fibtem.a10". Só entra o que foi classificado. */
 export type Leitura = Record<string, Situacao | undefined>;
@@ -129,23 +249,27 @@ export const chave = (ensaio: EnsaioId, parametro: ParametroId) => `${ensaio}.${
 
 const ler = (l: Leitura, e: EnsaioId, p: ParametroId) => l[chave(e, p)];
 
-/** Amplitude reduzida em qualquer um dos três parâmetros de firmeza. */
+const FIRMEZA: ParametroId[] = ["a5", "a10", "mcf"];
+
 function firmezaBaixa(l: Leitura, e: EnsaioId): boolean {
-  return (["a5", "a10", "mcf"] as ParametroId[]).some((p) => ler(l, e, p) === "abaixo");
+  return FIRMEZA.some((p) => ler(l, e, p) === "abaixo");
 }
 
-/** Firmeza classificada e não reduzida — normal ou alta, mas classificada. */
 function firmezaPreservada(l: Leitura, e: EnsaioId): boolean {
-  const vistos = (["a5", "a10", "mcf"] as ParametroId[]).map((p) => ler(l, e, p)).filter(Boolean);
+  const vistos = FIRMEZA.map((p) => ler(l, e, p)).filter(Boolean);
   return vistos.length > 0 && vistos.every((s) => s !== "abaixo");
 }
 
+export type FenotipoId = "iniciacao" | "fibrina" | "plaquetas" | "fibrinolise" | "heparina" | "semCoagulopatia";
+
 export type Achado = {
   titulo: string;
-  /** O componente implicado. Nunca um produto, nunca uma dose. */
-  componente: string;
+  /** A hipótese prioritária. Nunca um produto, nunca uma dose. */
+  hipotese: string;
   /** Por que a construção do ensaio permite dizer isso. */
   base: string;
+  /** Liga o achado às classes de conduta, quando o guia mapeia o fenótipo. */
+  fenotipo?: FenotipoId;
   /** O que ainda falta olhar, quando o padrão não fecha sozinho. */
   aSeguir?: string;
 };
@@ -153,11 +277,12 @@ export type Achado = {
 /**
  * Leitura cruzada entre canais.
  *
- * Cada achado abaixo sai de como o ensaio é montado, e não de julgamento
- * clínico: FIBTEM baixo com EXTEM baixo aponta fibrinogênio porque o FIBTEM é
- * justamente o EXTEM sem a plaqueta. Nenhum achado indica produto ou dose.
+ * Os padrões abaixo são os "padrões resumidos" do guia. Saem de como cada
+ * ensaio é montado — o FIBTEM é o EXTEM sem a plaqueta, o APTEM é o EXTEM sem
+ * a fibrinólise, o HEPTEM é o INTEM sem a heparina — e não de julgamento
+ * clínico. Nenhum indica produto ou dose.
  */
-export function achados(l: Leitura): Achado[] {
+export function achados(l: Leitura, contexto: Contexto = {}): Achado[] {
   const saida: Achado[] = [];
 
   const intemCt = ler(l, "intem", "ct");
@@ -169,24 +294,27 @@ export function achados(l: Leitura): Achado[] {
   if (intemCt === "acima" && heptemCt === "normal") {
     saida.push({
       titulo: "CT do INTEM prolongado, HEPTEM normal",
-      componente: "Efeito heparínico",
-      base: "O HEPTEM é o INTEM com heparinase. Se o CT normaliza quando a heparina é degradada, o prolongamento vinha dela.",
+      hipotese: "Efeito de heparina",
+      base: "O HEPTEM é o INTEM com heparinase. A correção do CT quando a heparina é degradada é o que sustenta a inferência.",
+      fenotipo: "heparina",
+      aSeguir: "Confirmar exposição, fase da CEC e dose de protamina já administrada.",
     });
   }
 
   if (intemCt === "acima" && heptemCt === "acima") {
     saida.push({
       titulo: "CT prolongado no INTEM e no HEPTEM",
-      componente: "Iniciação pela via intrínseca, sem explicação pela heparina",
+      hipotese: "Iniciação pela via intrínseca, sem explicação pela heparina",
       base: "Degradar a heparina não corrigiu o CT, então o prolongamento não é atribuível a ela.",
-      aSeguir: "Comparar com o CT do EXTEM para separar deficit restrito à via intrínseca de deficit da via comum.",
+      fenotipo: "iniciacao",
+      aSeguir: "Comparar com o CT do EXTEM. O traçado não identifica sozinho qual fator está deficiente.",
     });
   }
 
   if (intemCt === "acima" && heptemCt === undefined) {
     saida.push({
       titulo: "CT do INTEM prolongado, sem HEPTEM",
-      componente: "Indefinido — falta o canal que separa heparina do resto",
+      hipotese: "Indefinido — falta o canal que separa heparina do resto",
       base: "Sem o HEPTEM não dá para dizer se o prolongamento é heparina ou deficit de fatores.",
       aSeguir: "Classificar o CT do HEPTEM.",
     });
@@ -195,91 +323,246 @@ export function achados(l: Leitura): Achado[] {
   if (extemCt === "acima" && firmezaPreservada(l, "fibtem")) {
     saida.push({
       titulo: "CT do EXTEM prolongado com FIBTEM preservado",
-      componente: "Fase de iniciação — geração de trombina pela via extrínseca e comum",
-      base: "A firmeza sustentada pelo fibrinogênio está preservada, então o achado está na iniciação, não no substrato do coágulo.",
-      aSeguir: "Considerar anticoagulação oral, deficit de fatores e hepatopatia no contexto do caso.",
+      hipotese: "Iniciação lenta: deficit de fatores ou anticoagulante, conforme o contexto",
+      base: "A firmeza sustentada pela fibrina está preservada, então o achado está na iniciação, não no substrato do coágulo.",
+      fenotipo: "iniciacao",
+      aSeguir: "O CT prolongado não identifica automaticamente qual fator está deficiente. Rever anticoagulante, INR e função hepática.",
     });
   }
 
   if (firmezaBaixa(l, "extem") && firmezaBaixa(l, "fibtem")) {
     saida.push({
       titulo: "Firmeza reduzida no EXTEM e no FIBTEM",
-      componente: "Contribuição do fibrinogênio e da fibrina",
-      base: "O FIBTEM mede a firmeza com a plaqueta bloqueada. Cair nos dois canais aponta o componente que sobra: fibrinogênio.",
+      hipotese: "Baixa contribuição fibrínica — hipofibrinogenemia funcional",
+      base: "O FIBTEM mede a firmeza com a plaqueta inibida. Cair nos dois canais aponta o componente que sobra.",
+      fenotipo: "fibrina",
+      aSeguir: "Confirmar com fibrinogênio de Clauss e com o contexto.",
     });
   }
 
   if (firmezaBaixa(l, "extem") && firmezaPreservada(l, "fibtem")) {
     saida.push({
       titulo: "Firmeza reduzida no EXTEM com FIBTEM preservado",
-      componente: "Contribuição plaquetária",
-      base: "A parte da firmeza que vem do fibrinogênio está preservada, e a queda aparece só onde a plaqueta entra.",
-      aSeguir: "A contagem de plaquetas distingue número de função. O ROTEM sozinho não separa os dois: contagem baixa e função ruim deixam o mesmo traçado.",
+      hipotese: "Baixa contribuição plaquetária",
+      base: "A parte da firmeza que vem da fibrina está preservada, e a queda aparece só onde a plaqueta entra.",
+      fenotipo: "plaquetas",
+      aSeguir: "Correlacionar com contagem e função. O ROTEM não separa os dois, e pode não detectar disfunção por antiagregantes ou doença de von Willebrand.",
     });
   }
 
   if (extemMl === "acima" && aptemMl === "normal") {
     saida.push({
       titulo: "Lise no EXTEM que o APTEM corrige",
-      componente: "Hiperfibrinólise",
-      base: "O APTEM é o EXTEM com a fibrinólise bloqueada. A lise sumir quando ela é bloqueada é o que confirma a origem fibrinolítica.",
+      hipotese: "Hiperfibrinólise",
+      base: "O APTEM é o EXTEM com a fibrinólise inibida. A lise sumir quando ela é inibida é o que sustenta a inferência.",
+      fenotipo: "fibrinolise",
+      aSeguir: "Não atrasar o antifibrinolítico quando há indicação clínica independente e o tempo é crítico.",
     });
   }
 
   if (extemMl === "acima" && aptemMl === "acima") {
     saida.push({
       titulo: "Lise no EXTEM que o APTEM não corrige",
-      componente: "Perda de firmeza não explicada por fibrinólise",
-      base: "Bloquear a fibrinólise não mudou o traçado, então a queda de amplitude tem outra origem.",
-      aSeguir: "Rever a qualidade da amostra e a firmeza de base antes de tratar como fibrinólise.",
+      hipotese: "Perda de firmeza não explicada por fibrinólise",
+      base: "Inibir a fibrinólise não mudou o traçado, então a queda de amplitude tem outra origem.",
+      aSeguir: "Rever qualidade da amostra e condições pré-analíticas antes de tratar como fibrinólise.",
     });
   }
 
   if (extemMl === "acima" && aptemMl === undefined) {
     saida.push({
       titulo: "Lise no EXTEM, sem APTEM",
-      componente: "Indefinido — falta o canal que confirma fibrinólise",
+      hipotese: "Indefinido — falta o canal que confirma fibrinólise",
       base: "Sem o APTEM não dá para dizer se a lise observada é fibrinolítica.",
       aSeguir: "Classificar o ML do APTEM.",
+    });
+  }
+
+  /**
+   * Traçado sem defeito e sangramento que continua é um padrão da tabela, não
+   * a ausência de padrão — e é dos mais importantes, porque manda parar de
+   * procurar coagulopatia e ir atrás da fonte.
+   */
+  if (saida.length === 0 && contexto.sangramentoAtivo === true && tudoNormal(l)) {
+    saida.push({
+      titulo: "ROTEM sem defeito relevante, sangramento persistente",
+      hipotese: "Procurar fonte cirúrgica, fármacos ou defeitos não captados pelo ensaio",
+      base: "Resultado normal não exclui causa anatômica. O ensaio também não detecta bem disfunção plaquetária por antiagregantes nem o efeito do fator de von Willebrand.",
+      fenotipo: "semCoagulopatia",
+      aSeguir: "Rever campo operatório, antiagregantes, von Willebrand e erro pré-analítico.",
     });
   }
 
   return saida;
 }
 
-/** Quantos parâmetros a pessoa já classificou. Zero = nada a interpretar. */
+/** Tudo que foi classificado está normal, e algo foi classificado. */
+export function tudoNormal(l: Leitura): boolean {
+  const vistos = Object.values(l).filter(Boolean);
+  return vistos.length > 0 && vistos.every((s) => s === "normal");
+}
+
 export const quantosClassificados = (l: Leitura) =>
   Object.values(l).filter((s) => s !== undefined).length;
 
 /* ------------------------------------------------------------------ *
- * Limites declarados
+ * Da interpretação à conduta.
+ *
+ * Classes de intervenção, e nada além disso: o guia diz, com todas as letras,
+ * que esta tabela não prescreve produto, dose ou limiar. Por isso cada classe
+ * vem grudada nas verificações obrigatórias, e a tela só a mostra quando há
+ * sangramento — que é a condição que a própria fonte exige.
  * ------------------------------------------------------------------ */
 
-export const NAO_CONCLUI: Array<{ item: string; motivo: string }> = [
+export type Conduta = {
+  fenotipo: FenotipoId;
+  nome: string;
+  considerar: string;
+  verificar: string;
+};
+
+export const CONDUTAS: Record<FenotipoId, Conduta> = {
+  iniciacao: {
+    fenotipo: "iniciacao", nome: "Iniciação lenta / fatores",
+    considerar: "Plasma ou concentrado de complexo protrombínico, conforme a causa e o protocolo.",
+    verificar: "Anticoagulante, INR e TP, heparina, risco de trombose, função hepática e reposição prévia.",
+  },
+  fibrina: {
+    fenotipo: "fibrina", nome: "Fibrina insuficiente",
+    considerar: "Concentrado de fibrinogênio ou crioprecipitado, conforme disponibilidade e protocolo.",
+    verificar: "FIBTEM, fibrinogênio de Clauss, dose prévia e alvo específico do cenário.",
+  },
+  plaquetas: {
+    fenotipo: "plaquetas", nome: "Contribuição plaquetária baixa",
+    considerar: "Concentrado de plaquetas quando houver sangramento e indicação.",
+    verificar: "Contagem, antiagregantes, CEC, função plaquetária e FIBTEM.",
+  },
+  fibrinolise: {
+    fenotipo: "fibrinolise", nome: "Hiperfibrinólise",
+    considerar: "Antifibrinolítico quando indicado.",
+    verificar: "Tempo desde o trauma ou a cirurgia, contraindicações, dose já recebida e padrão do APTEM.",
+  },
+  heparina: {
+    fenotipo: "heparina", nome: "Efeito de heparina",
+    considerar: "Protamina conforme a exposição e o protocolo.",
+    verificar: "Dose cumulativa de heparina, tempo, CEC, INTEM e HEPTEM, e risco de excesso de protamina.",
+  },
+  semCoagulopatia: {
+    fenotipo: "semCoagulopatia", nome: "Sem coagulopatia mensurável",
+    considerar: "Controle cirúrgico e busca de causas não captadas pelo ensaio.",
+    verificar: "Campo operatório, fármacos, von Willebrand, antiagregação e erro pré-analítico.",
+  },
+};
+
+export const BARREIRA =
+  "Não sugerir plasma, plaquetas, fibrinogênio, complexo protrombínico, protamina ou antifibrinolítico apenas porque um campo está fora da referência. Exigir sangramento e contexto, padrão coerente e ausência de contraindicação.";
+
+export const AVISO_CONDUTA =
+  "Classes de intervenção a considerar, não prescrição. Produto, dose e limiar exigem protocolo institucional por população e cenário.";
+
+/** As classes só aparecem quando a própria fonte permite: com sangramento. */
+export function condutasAplicaveis(lista: Achado[], contexto: Contexto): Conduta[] {
+  if (contexto.sangramentoAtivo !== true) return [];
+  const vistos = new Set<FenotipoId>();
+  const saida: Conduta[] = [];
+  for (const a of lista) {
+    if (a.fenotipo && !vistos.has(a.fenotipo)) {
+      vistos.add(a.fenotipo);
+      saida.push(CONDUTAS[a.fenotipo]);
+    }
+  }
+  return saida;
+}
+
+/* ------------------------------------------------------------------ *
+ * Sequência, pré-analítico e limites declarados
+ * ------------------------------------------------------------------ */
+
+export const SEQUENCIA: Array<{ etapa: string; pergunta: string; decisao: string }> = [
   {
-    item: "Faixa de normalidade",
-    motivo: "Depende do analisador (delta, sigma) e do reagente, e varia entre laboratórios. Use a referência impressa no seu laudo.",
+    etapa: "1. Qualidade",
+    pergunta: "Amostra, horário, cartucho, temperatura e identificação estão corretos?",
+    decisao: "Repetir se houver erro pré-analítico ou curva incompatível.",
   },
   {
-    item: "Gatilho de transfusão",
-    motivo: "É decisão de protocolo institucional, ligada ao contexto cirúrgico e ao sangramento observado — não sai do traçado sozinho.",
+    etapa: "2. Iniciação",
+    pergunta: "O CT está prolongado no ensaio pertinente?",
+    decisao: "Rever anticoagulante e heparina; comparar INTEM com HEPTEM; considerar deficiência global só dentro do protocolo.",
   },
   {
-    item: "Produto e dose",
-    motivo: "Concentrado de fibrinogênio, crioprecipitado, plaquetas, complexo protrombínico e antifibrinolítico não são indicados aqui. Este módulo aponta componente, não terapia.",
+    etapa: "3. Fibrina",
+    pergunta: "O FIBTEM A5, A10 ou MCF está reduzido?",
+    decisao: "Considerar deficiência funcional de fibrinogênio e confirmar contexto e laboratório.",
   },
   {
-    item: "Algoritmo terapêutico fechado",
-    motivo: "Ainda não implementado, de propósito. Entra quando houver protocolo do serviço para ancorá-lo.",
+    etapa: "4. Plaquetas",
+    pergunta: "O EXTEM está fraco com o FIBTEM relativamente preservado?",
+    decisao: "Avaliar contagem e função plaquetária. Não inferir dose automaticamente.",
   },
   {
-    item: "Número de plaquetas",
-    motivo: "O ROTEM mede a contribuição da plaqueta para a firmeza, não a contagem. Contagem baixa e função ruim aparecem iguais no traçado.",
+    etapa: "5. Lise",
+    pergunta: "Há perda acelerada da firmeza? O APTEM corrige?",
+    decisao: "Sustenta hiperfibrinólise. Avaliar antifibrinolítico e contraindicações.",
+  },
+  {
+    etapa: "6. Resposta",
+    pergunta: "O sangramento e o traçado melhoraram depois da intervenção?",
+    decisao: "Repetir ROTEM e laboratório. Evitar tratamento cumulativo cego.",
+  },
+];
+
+export const PRE_ANALITICO: string[] = [
+  "Tempo entre coleta e início, proporção citrato-sangue, contaminação por heparina, transporte e identificação.",
+  "Hipotermia: documentar a temperatura real e a configuração do analisador.",
+  "Acidose, hipocalcemia, hemodiluição e anemia alteram a hemostasia e podem não ser reproduzidas no ensaio.",
+  "Tratamento administrado enquanto o teste corre pode deixar o traçado antigo em relação ao paciente.",
+];
+
+export const NAO_DEFINIDO: Array<{ campo: string; situacao: string; conduta: string }> = [
+  {
+    campo: "Faixas normais universais",
+    situacao: "Não há uma única faixa válida para toda plataforma, reagente e população.",
+    conduta: "Importar o intervalo validado pelo laboratório local e guardar a versão.",
+  },
+  {
+    campo: "Gatilho de CT no EXTEM",
+    situacao: "Não explicitado como regra geral única nos trechos revistos.",
+    conduta: "Nulo até haver protocolo institucional por cenário.",
+  },
+  {
+    campo: "Gatilho de A5, A10 ou MCF no FIBTEM",
+    situacao: "Não explicitado como regra universal nos livros.",
+    conduta: "Não converter valor em dose automática de fibrinogênio.",
+  },
+  {
+    campo: "Gatilho de plaquetas",
+    situacao: "O ROTEM não separa contagem de função, e o limiar depende do cenário.",
+    conduta: "Exigir hemograma, sangramento e protocolo.",
+  },
+  {
+    campo: "Critério numérico de hiperfibrinólise",
+    situacao: "As fontes sustentam a detecção de lise, sem limiar geral único.",
+    conduta: "Usar referência local e a comparação entre EXTEM e APTEM.",
+  },
+  {
+    campo: "Dose de produto ou fator",
+    situacao: "Não deve ser derivada apenas do traçado.",
+    conduta: "Cadastrar em módulo separado, com fonte e governança.",
+  },
+  {
+    campo: "Momento universal de repetição",
+    situacao: "Depende da intervenção, do sangramento e da logística.",
+    conduta: "Registrar o evento gatilho e o horário, não um intervalo fixo global.",
   },
 ];
 
 export const AVISO_MODULO =
-  "Estrutura de leitura do ROTEM. Aponta qual componente da hemostasia o traçado implica e para aí: não indica produto, dose nem gatilho de transfusão. A conduta é do protocolo do serviço, junto com o sangramento observado e o contexto cirúrgico.";
+  "O ROTEM identifica fenótipos, mas não localiza sangramento cirúrgico e não mede adequadamente todas as disfunções plaquetárias, o efeito do fator de von Willebrand ou todos os anticoagulantes. Terapia pró-hemostática inadequada pode causar trombose.";
 
 export const AVISO_REFERENCIA =
-  "Classifique cada parâmetro pela referência do seu próprio laudo. O AVANEST não cadastra faixa de normalidade porque ela muda com o analisador e o reagente.";
+  "Classifique cada parâmetro pela referência do seu próprio laudo. O AVANEST não cadastra faixa de normalidade porque ela muda com a plataforma, o reagente e a população.";
+
+export const SEM_CONSENSO = {
+  texto: "Protocolos orientados por testes viscoelásticos podem reduzir sangramento, transfusões e morbimortalidade, mas ainda não há consenso entre os algoritmos transfusionais — muitos deles foram desenvolvidos em centros individuais.",
+  fontes: [SAESP("PDF pp. 5430-5431"), MILLER("PDF pp. 629-632"), EUROPEIA],
+};
