@@ -171,10 +171,3 @@
   border: 1px dashed var(--cor-marca, #1b6ca8); color: var(--cor-marca-forte, #0f4c75);
   background: #fff;
 }
-.foto input { display: none; }
-.foto:hover { background: var(--cor-marca-suave, #eaf3fa); }
-.confira {
-  margin: 0; font-size: 14px; font-weight: 600; line-height: 1.45;
-  background: #fff6e5; border: 1px solid #f0d9a8; color: #6b4708;
-  border-radius: 9px; padding: 11px 14px;
-}
