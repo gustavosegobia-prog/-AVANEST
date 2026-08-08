@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
 import estilos from "./calculos.module.css";
 import {
+  indicadores,
   interpretar,
   REFERENCIAS,
   type Gasometria,
@@ -18,6 +19,7 @@ import {
   orientacoes,
   ventilacaoParaAlvo,
 } from "@/lib/calculos/gasometria-orientacoes";
+import { AVISO_LEITURA, lerGasometria } from "@/lib/calculos/gasometria-leitura";
 import {
   AVISO_CLINICO,
   profundidadeOral,
@@ -29,6 +31,9 @@ import {
 // o que a pessoa digitou e sai o que aquelas funções devolveram — é o que
 // permite corrigir uma fórmula sem mexer em tela, e o contrário também.
 
+// Ponto de extensão da aba: um módulo novo é uma entrada aqui, um cartão no
+// hub e um componente próprio. "doses" (Doses por Peso) entra assim, na etapa
+// seguinte, sem tocar nos dois que já existem.
 type Modulo = "hub" | "gasometria" | "tubo";
 
 const CAMPOS_GASO: Array<{ chave: keyof Gasometria; rotulo: string; passo?: string }> = [
@@ -109,6 +114,41 @@ function Gaso() {
   const [bruto, setBruto] = useState<Record<string, string>>({});
   const [resultado, setResultado] = useState<Interpretacao | null>(null);
   const [completa, setCompleta] = useState(false);
+  const [lendo, setLendo] = useState(false);
+  const [avisoFoto, setAvisoFoto] = useState("");
+  const [erroFoto, setErroFoto] = useState("");
+
+  /**
+   * A imagem é lida no próprio aparelho e descartada ao fim: nada é enviado
+   * para servidor nenhum, e nada fica guardado. O motor de reconhecimento
+   * entra por import dinâmico — se ele não carregar, a tela continua servindo
+   * para digitar, em vez de quebrar inteira.
+   */
+  async function lerFoto(arquivo?: File) {
+    if (!arquivo) return;
+    setLendo(true); setErroFoto(""); setAvisoFoto(""); setResultado(null);
+    try {
+      const { default: Tesseract } = await import("tesseract.js");
+      const { data } = await Tesseract.recognize(arquivo, "por");
+      const { valores, descartados } = lerGasometria(data.text);
+
+      const preenchidos = Object.entries(valores);
+      if (!preenchidos.length) {
+        setErroFoto("Não reconheci nenhum valor nesta imagem. Tente uma foto mais próxima e sem reflexo, ou digite os valores.");
+        return;
+      }
+      setBruto((b) => ({ ...b, ...Object.fromEntries(preenchidos.map(([k, v]) => [k, String(v)])) }));
+      setAvisoFoto(
+        descartados.length
+          ? `${AVISO_LEITURA} Não usei o que li em: ${descartados.join(", ")} — valor fora do plausível.`
+          : AVISO_LEITURA,
+      );
+    } catch {
+      setErroFoto("Não consegui carregar o leitor de imagem. Digite os valores.");
+    } finally {
+      setLendo(false);
+    }
+  }
 
   const valores = useMemo<Gasometria>(() => {
     const g: Gasometria = {};
@@ -127,6 +167,17 @@ function Gaso() {
       <p className={estilos.subtitulo}>
         Preencha o que tiver. O que não for informado apenas deixa de fora os cálculos que dependem dele.
       </p>
+
+      <div className={estilos.acoes}>
+        <label className={estilos.foto}>
+          {lendo ? "Lendo a imagem..." : "Fotografar gasometria"}
+          <input type="file" accept="image/*" capture="environment" disabled={lendo}
+            onChange={(e) => { lerFoto(e.target.files?.[0]); e.target.value = ""; }} />
+        </label>
+        <span className={estilos.dica}>A foto é lida no próprio aparelho e não fica guardada.</span>
+      </div>
+      {avisoFoto && <p className={estilos.confira} role="status">{avisoFoto}</p>}
+      {erroFoto && <p className={estilos.dica} role="alert">{erroFoto}</p>}
 
       <div className={estilos.grade}>
         {CAMPOS_GASO.map(({ chave, rotulo, passo }) => (
@@ -148,27 +199,36 @@ function Gaso() {
           type="button"
           className={estilos.primario}
           disabled={!podeCalcular}
-          onClick={() => { setResultado(interpretar(valores)); setCompleta(false); }}
+          onClick={() => { setResultado(interpretar(valores)); setCompleta(false); setAvisoFoto(""); }}
         >
-          Calcular
+          {avisoFoto ? "Confirmar dados e calcular" : "Calcular"}
         </button>
-        <button type="button" className={estilos.secundario} onClick={() => { setBruto({}); setResultado(null); }}>
+        <button type="button" className={estilos.secundario} onClick={() => { setBruto({}); setResultado(null); setAvisoFoto(""); setErroFoto(""); }}>
           Limpar
         </button>
         {!podeCalcular && <span className={estilos.dica}>Informe ao menos o pH.</span>}
       </div>
 
-      {resultado && <ResultadoGaso r={resultado} completa={completa} alternar={() => setCompleta((v) => !v)} />}
+      {resultado && <ResultadoGaso r={{ ...resultado, indicadores: indicadores(valores, resultado) }} completa={completa} alternar={() => setCompleta((v) => !v)} />}
       {resultado && <Orientacoes blocos={orientacoes(valores, resultado, REFERENCIAS)} />}
       {resultado && <Correcoes g={valores} />}
     </>
   );
 }
 
-function ResultadoGaso({ r, completa, alternar }: { r: Interpretacao; completa: boolean; alternar: () => void }) {
+function ResultadoGaso({ r, completa, alternar }: { r: Interpretacao & { indicadores: ReturnType<typeof indicadores> }; completa: boolean; alternar: () => void }) {
   return (
     <section className={estilos.resultado} aria-live="polite">
       <h2 className={estilos.resultadoTitulo}>Interpretação</h2>
+      {r.indicadores.length > 0 && (
+        <div className={estilos.indicadores}>
+          {r.indicadores.map((i) => (
+            <span key={i.rotulo} className={`${estilos.indicador} ${estilos[i.estado]}`}>
+              <small>{i.rotulo}</small><b>{i.valor}</b>
+            </span>
+          ))}
+        </div>
+      )}
       <p className={estilos.disturbio}>
         {r.disturbio.charAt(0).toUpperCase() + r.disturbio.slice(1)}
         {r.misto && <em className={estilos.selo}>distúrbio misto</em>}
@@ -179,6 +239,8 @@ function ResultadoGaso({ r, completa, alternar }: { r: Interpretacao; completa: 
           <span>PaCO2 medida</span><b>{r.compensacao.medida} mmHg</b>
           <span>PaCO2 esperada</span>
           <b>{r.compensacao.esperada.min}–{r.compensacao.esperada.max} mmHg</b>
+          <span>Diferença</span>
+          <b>{r.compensacao.diferenca > 0 ? "+" : ""}{r.compensacao.diferenca} mmHg</b>
         </div>
       )}
       {r.compensacao && <p className={estilos.veredito}>{r.compensacao.texto}</p>}
