@@ -11,6 +11,14 @@ import {
   type Interpretacao,
 } from "@/lib/calculos/gasometria";
 import {
+  AVISO_CORRECOES,
+  AVISO_ORIENTACOES,
+  deficitBicarbonato,
+  frequenciaParaAlvo,
+  orientacoes,
+  ventilacaoParaAlvo,
+} from "@/lib/calculos/gasometria-orientacoes";
+import {
   AVISO_CLINICO,
   profundidadeOral,
   sugerirTubo,
@@ -151,6 +159,8 @@ function Gaso() {
       </div>
 
       {resultado && <ResultadoGaso r={resultado} completa={completa} alternar={() => setCompleta((v) => !v)} />}
+      {resultado && <Orientacoes blocos={orientacoes(valores, resultado, REFERENCIAS)} />}
+      {resultado && <Correcoes g={valores} />}
     </>
   );
 }
@@ -219,6 +229,79 @@ function ResultadoGaso({ r, completa, alternar }: { r: Interpretacao; completa: 
           </p>
         </div>
       )}
+    </section>
+  );
+}
+
+function Orientacoes({ blocos }: { blocos: ReturnType<typeof orientacoes> }) {
+  if (!blocos.length) return null;
+  return (
+    <section className={estilos.resultado}>
+      <h2 className={estilos.resultadoTitulo}>Orientações</h2>
+      {blocos.map((bloco) => (
+        <div key={bloco.titulo} className={bloco.tom === "critico" ? `${estilos.bloco} ${estilos.blocoCritico}` : estilos.bloco}>
+          <strong>{bloco.titulo}</strong>
+          <ul>{bloco.itens.map((item) => <li key={item}>{item}</li>)}</ul>
+        </div>
+      ))}
+      <p className={estilos.aviso}>{AVISO_ORIENTACOES}</p>
+    </section>
+  );
+}
+
+// O alvo é sempre digitado aqui. Nenhum campo vem preenchido com um valor que
+// o sistema "acha" bom: escolher para onde levar o paciente é decisão clínica,
+// e um campo pré-preenchido é uma sugestão disfarçada.
+function Correcoes({ g }: { g: Gasometria }) {
+  const [c, setC] = useState<Record<string, string>>({});
+  const peso = numero(c.peso ?? "");
+  const hco3Alvo = numero(c.hco3Alvo ?? "");
+  const veAtual = numero(c.veAtual ?? "");
+  const frAtual = numero(c.frAtual ?? "");
+  const paco2Alvo = numero(c.paco2Alvo ?? "");
+
+  const bic = peso !== undefined && hco3Alvo !== undefined && g.hco3 !== undefined
+    ? deficitBicarbonato(peso, g.hco3, hco3Alvo) : undefined;
+  const ve = veAtual !== undefined && paco2Alvo !== undefined && g.paco2 !== undefined
+    ? ventilacaoParaAlvo(veAtual, g.paco2, paco2Alvo) : undefined;
+  const fr = frAtual !== undefined && paco2Alvo !== undefined && g.paco2 !== undefined
+    ? frequenciaParaAlvo(frAtual, g.paco2, paco2Alvo) : undefined;
+
+  const campo = (chave: string, rotulo: string, passo = "1") => (
+    <label className={estilos.campo}><span>{rotulo}</span>
+      <input type="number" inputMode="decimal" step={passo} value={c[chave] ?? ""}
+        onChange={(e) => setC((v) => ({ ...v, [chave]: e.target.value }))} /></label>
+  );
+
+  return (
+    <section className={estilos.resultado}>
+      <h2 className={estilos.resultadoTitulo}>Correções — você define o alvo</h2>
+
+      {g.hco3 !== undefined && (
+        <div className={estilos.correcao}>
+          <strong>Déficit de bicarbonato</strong>
+          <div className={estilos.gradeCurta}>
+            {campo("peso", "Peso (kg)", "0.1")}
+            {campo("hco3Alvo", "HCO3 alvo (mEq/L)", "0.1")}
+          </div>
+          {bic !== undefined && <p className={estilos.veredito}>≈ <b>{bic} mEq</b> para ir de {g.hco3} a {hco3Alvo} mEq/L</p>}
+        </div>
+      )}
+
+      {g.paco2 !== undefined && (
+        <div className={estilos.correcao}>
+          <strong>Ventilação para uma PaCO2 alvo</strong>
+          <div className={estilos.gradeCurta}>
+            {campo("paco2Alvo", "PaCO2 alvo (mmHg)")}
+            {campo("veAtual", "VE atual (L/min)", "0.1")}
+            {campo("frAtual", "FR atual (irpm)")}
+          </div>
+          {ve !== undefined && <p className={estilos.veredito}>VE necessária: <b>{ve} L/min</b></p>}
+          {fr !== undefined && <p className={estilos.veredito}>FR equivalente, com volume corrente mantido: <b>{fr} irpm</b></p>}
+        </div>
+      )}
+
+      <p className={estilos.aviso}>{AVISO_CORRECOES}</p>
     </section>
   );
 }
