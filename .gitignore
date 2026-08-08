@@ -11,3 +11,7 @@ coverage/
 .DS_Store
 # Cache do TypeScript
 *.tsbuildinfo
+
+# O projeto nunca versionou lockfile, e a Vercel resolve pelo package.json.
+# Versionar agora significaria manter 5 mil linhas em dia por copiar e colar.
+package-lock.json
