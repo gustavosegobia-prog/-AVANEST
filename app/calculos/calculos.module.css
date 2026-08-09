@@ -282,3 +282,40 @@
   display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
   scrollbar-width: thin;
 }
+
+/* Calculadora de doses. O volume é o número grande porque é ele que se
+   aspira; a dose e a apresentação ficam menores, do tamanho de quem confere
+   contra a ampola. */
+.acordeao {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  font: inherit; font-size: 15px; font-weight: 700; color: #142536;
+  background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+}
+.acordeao small {
+  margin-left: auto; font-size: 12px; font-weight: 700; color: var(--cor-tinta-fraca, #5b6c7a);
+  background: var(--cor-superficie-suave, #f7fafc); border: 1px solid var(--cor-borda, #dce4ea);
+  border-radius: 20px; padding: 2px 9px;
+}
+.remedio {
+  display: grid; gap: 6px; padding: 13px 15px; border-radius: 10px;
+  background: #fff; border: 1px solid var(--cor-borda, #dce4ea);
+}
+.remedioTopo { display: flex; align-items: center; gap: 10px; }
+.remedioTopo strong { font-size: 16px; }
+.remedioVia { font-size: 12px; color: var(--cor-tinta-fraca, #5b6c7a); }
+.estrela {
+  margin-left: auto; font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
+  background: none; border: 0; padding: 2px 4px; color: #c9a227;
+}
+.doses { display: flex; flex-wrap: wrap; gap: 10px; }
+.dose {
+  display: grid; gap: 2px; flex: 1 1 190px; min-width: 0; padding: 10px 13px; border-radius: 9px;
+  background: var(--cor-superficie-suave, #f7fafc); border: 1px solid var(--cor-borda, #dce4ea);
+}
+.doseNivel {
+  font-size: 10.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--cor-tinta-fraca, #5b6c7a);
+}
+.volume { font-size: 25px; font-weight: 760; line-height: 1.15; color: var(--cor-marca-forte, #0f4c75); }
+.dose small { font-size: 12px; color: var(--cor-tinta-fraca, #5b6c7a); line-height: 1.4; }
+.limitada { color: #8a5a12; font-weight: 650; }
