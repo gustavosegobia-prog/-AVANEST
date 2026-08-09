@@ -38,9 +38,14 @@ import { lerGasometria } from "./gasometria-leitura.ts";
 
 import {
   calibreMaisProximo,
+  ehPediatrico,
   idadeEmMeses,
+  idadeEmMesesPorNascimento,
+  IDADE_MAX_PEDIATRICA_ANOS,
+  opcoesDeTubo,
   profundidadeOral,
   sugerirTubo,
+  textoDoTubo,
 } from "./via-aerea-pediatrica.ts";
 
 describe("gasometria — distúrbio principal", () => {
@@ -239,7 +244,7 @@ describe("via aérea pediátrica — profundidade", () => {
     const p = profundidadeOral({ idadeAnos: 4 }, 4.5);
     assert.equal(p?.pelaIdade, 14);
     assert.equal(p?.peloTubo, 13.5);
-    assert.equal(p?.sugerida, "13.5–14 cm");
+    assert.equal(p?.sugerida, "13,5–14 cm");
   });
 
   it("abaixo de 2 anos não aplica a fórmula da idade", () => {
@@ -361,4 +366,52 @@ describe("leitura da gasometria por foto", () => {
     assert.deepEqual(valores, {});
     assert.deepEqual(descartados, []);
   });
+});
+
+describe("sugestão de tubo dentro da ficha pré-anestésica", () => {
+
+it("idade em meses sai da data de nascimento, e não dos anos inteiros", () => {
+  const hoje = new Date("2026-08-09T12:00:00");
+  assert.equal(idadeEmMesesPorNascimento("2025-12-09", hoje), 8);
+  assert.equal(idadeEmMesesPorNascimento("2020-08-09", hoje), 72);
+  assert.equal(idadeEmMesesPorNascimento("2026-08-20", hoje), undefined, "nascimento no futuro");
+  assert.equal(idadeEmMesesPorNascimento(null, hoje), undefined);
+  assert.equal(idadeEmMesesPorNascimento("data ruim", hoje), undefined);
+});
+
+it("o corte pediátrico é do AVANEST e está isolado", () => {
+  assert.equal(IDADE_MAX_PEDIATRICA_ANOS, 12);
+  assert.equal(ehPediatrico(12 * 12), true);
+  assert.equal(ehPediatrico(12 * 12 + 1), false);
+  assert.equal(ehPediatrico(undefined), false);
+});
+
+it("a linha do tubo junta calibre e profundidade, com vírgula", () => {
+  const crianca = { idadeAnos: 4, pesoKg: 16 };
+  assert.equal(textoDoTubo(crianca, "comCuff"), "Tubo 4,5 com cuff · profundidade 13,5–14 cm");
+  assert.equal(textoDoTubo(crianca, "semCuff"), "Tubo 5 sem cuff · profundidade 14–15 cm");
+});
+
+it("abaixo de 1 ano o calibre vem do peso, e só existe sem cuff", () => {
+  const lactente = { idadeMeses: 8, pesoKg: 7 };
+  const opcoes = opcoesDeTubo(lactente);
+  assert.equal(opcoes.length, 1);
+  assert.equal(opcoes[0].tipo, "semCuff");
+  assert.match(opcoes[0].texto, /^Tubo 3,5 sem cuff/);
+  assert.equal(textoDoTubo(lactente, "comCuff"), undefined);
+});
+
+it("a faixa da tabela neonatal sai como faixa, não como número único", () => {
+  const recem = { idadeMeses: 1, pesoKg: 2.5 };
+  assert.match(textoDoTubo(recem, "semCuff")!, /^Tubo 3–3,5 sem cuff/);
+});
+
+it("sem peso e sem idade não há opção nenhuma", () => {
+  assert.deepEqual(opcoesDeTubo({}), []);
+  assert.deepEqual(opcoesDeTubo({ pesoKg: 12 }).map((o) => o.tipo), ["semCuff"]);
+});
+
+it("criança maior traz as duas opções", () => {
+  assert.deepEqual(opcoesDeTubo({ idadeAnos: 6 }).map((o) => o.tipo), ["comCuff", "semCuff"]);
+});
 });
