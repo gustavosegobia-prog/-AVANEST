@@ -638,7 +638,10 @@ button:disabled{cursor:not-allowed}
 /* Navegacao: um estado ativo evidente, os demais discretos. Antes todos os
    botoes tinham o mesmo peso e competiam pela atencao. */
 .roleNav{gap:var(--esp-1)}
-.roleNav button,.roleNav a{height:var(--alt-botao-compacto);padding:0 var(--esp-3);border-radius:var(--raio-1);border-color:transparent;background:transparent;color:var(--cor-tinta-fraca);font-weight:600;transition:background var(--transicao),color var(--transicao)}
+/* inline-flex nos dois: com height fixa e sem padding vertical, o <button>
+   centraliza o texto por conta propria e o <a> encosta no topo da caixa. Eram
+   os 5px que deixavam "Calculos" fora da linha dos outros. */
+.roleNav button,.roleNav a{display:inline-flex;align-items:center;justify-content:center;height:var(--alt-botao-compacto);padding:0 var(--esp-3);border-radius:var(--raio-1);border-color:transparent;background:transparent;color:var(--cor-tinta-fraca);font-weight:600;transition:background var(--transicao),color var(--transicao)}
 .roleNav button:hover,.roleNav a:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
 .roleNav button.active{background:var(--cor-marca);color:var(--cor-marca-contraste);border-color:var(--cor-marca);font-weight:700}
 .roleNav .themePill{background:transparent;color:var(--cor-tinta-fraca)}
