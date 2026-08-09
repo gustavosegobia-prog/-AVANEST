@@ -119,10 +119,89 @@ export function profundidadeOral(p: Paciente, diMm?: number): Profundidade | und
   const valores = [pelaIdade, peloTubo].filter((v): v is number => v !== undefined);
   const menor = Math.min(...valores);
   const maior = Math.max(...valores);
-  const sugerida = menor === maior ? `${arredonda(menor)} cm` : `${arredonda(menor)}–${arredonda(maior)} cm`;
+  // Vírgula, não ponto: "13.5 cm" numa ficha em português é erro de leitura
+  // esperando acontecer.
+  const escrever = (v: number) => String(arredonda(v)).replace(".", ",");
+  const sugerida = menor === maior ? `${escrever(menor)} cm` : `${escrever(menor)}–${escrever(maior)} cm`;
 
   return { pelaIdade, peloTubo, sugerida };
 }
 
 export const AVISO_CLINICO =
   "Valor estimado. Confirmar tamanho e posição do tubo clinicamente, por capnografia, ausculta e demais métodos disponíveis.";
+
+/* ------------------------------------------------------------------ *
+ * Uso dentro da ficha pré-anestésica.
+ *
+ * A ficha já tem peso e data de nascimento; a sugestão aparece ali, no
+ * planejamento, em vez de obrigar a trocar de tela no meio da indução.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Até que idade a ficha oferece a sugestão de tubo pediátrico.
+ *
+ * Este 12 é do AVANEST, não de fonte: é o corte a partir do qual a fórmula da
+ * idade deixa de ser a referência prática para a maioria dos serviços. Fica
+ * isolado aqui para o serviço trocar sem caçar pelo código.
+ */
+export const IDADE_MAX_PEDIATRICA_ANOS = 12;
+
+/**
+ * Idade em meses a partir da data de nascimento.
+ *
+ * A ficha calcula idade em anos inteiros, e para tubo isso não serve: um
+ * lactente de 8 meses viraria "0 ano", e abaixo de 1 ano o calibre vem da
+ * tabela por peso, não da fórmula.
+ */
+export function idadeEmMesesPorNascimento(dataIso?: string | null, hoje = new Date()): number | undefined {
+  if (!dataIso) return undefined;
+  const nascimento = new Date(`${dataIso}T12:00:00`);
+  if (Number.isNaN(nascimento.getTime())) return undefined;
+  const meses =
+    (hoje.getFullYear() - nascimento.getFullYear()) * 12 +
+    (hoje.getMonth() - nascimento.getMonth()) -
+    (hoje.getDate() < nascimento.getDate() ? 1 : 0);
+  if (!Number.isFinite(meses) || meses < 0 || meses > 130 * 12) return undefined;
+  return meses;
+}
+
+export const ehPediatrico = (meses?: number): boolean =>
+  meses !== undefined && meses <= IDADE_MAX_PEDIATRICA_ANOS * 12;
+
+const comVirgula = (v: number) => String(v).replace(".", ",");
+
+export type TipoTubo = "comCuff" | "semCuff";
+
+/**
+ * A linha que vai para a ficha, quando o anestesiologista escolhe uma das
+ * opções. Curta de propósito: é uma linha de planejamento impressa, não um
+ * parágrafo.
+ */
+export function textoDoTubo(p: Paciente, tipo: TipoTubo): string | undefined {
+  const s = sugerirTubo(p);
+  const opcao = s?.[tipo];
+  if (!s || !opcao) return undefined;
+
+  const calibre =
+    tipo === "semCuff" && s.faixaNeonatal
+      ? `${comVirgula(s.faixaNeonatal.de)}–${comVirgula(s.faixaNeonatal.ate)}`
+      : comVirgula(opcao.sugerido);
+
+  const profundidade = profundidadeOral(p, opcao.sugerido);
+  const rotulo = tipo === "comCuff" ? "com cuff" : "sem cuff";
+  const base = `Tubo ${calibre} ${rotulo}`;
+  return profundidade ? `${base} · profundidade ${profundidade.sugerida}` : base;
+}
+
+/** As opções que a ficha mostra lado a lado. Vazio quando não há o que sugerir. */
+export function opcoesDeTubo(p: Paciente): Array<{ tipo: TipoTubo; texto: string }> {
+  const s = sugerirTubo(p);
+  if (!s) return [];
+  const saida: Array<{ tipo: TipoTubo; texto: string }> = [];
+  for (const tipo of ["comCuff", "semCuff"] as TipoTubo[]) {
+    if (!s[tipo]) continue;
+    const texto = textoDoTubo(p, tipo);
+    if (texto) saida.push({ tipo, texto });
+  }
+  return saida;
+}
