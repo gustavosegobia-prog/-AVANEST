@@ -28,6 +28,18 @@ const ok = (v?: number): v is number => typeof v === "number" && Number.isFinite
 
 const SAESP = (contexto: string): Fonte => ({ obra: "SAESP, Tratado de Anestesiologia", local: contexto });
 
+/**
+ * A tabela do adulto veio do responsável técnico, não de um livro.
+ *
+ * Ela não é assinada como SAESP, e isso é de propósito: cadastrar como SAESP
+ * um número que não foi localizado no SAESP é inventar uma referência. Quem
+ * abrir o cartão vê de onde o valor veio e pode discordar dele.
+ */
+const SERVICO: Fonte = {
+  obra: "Tabela de doses do adulto do serviço",
+  local: "revisada pelo responsável técnico do AVANEST",
+};
+
 /* ------------------------------------------------------------------ *
  * Unidades
  * ------------------------------------------------------------------ */
@@ -118,9 +130,11 @@ export type Nivel = "minima" | "usual" | "maxima";
 export const ROTULO_NIVEL: Record<Nivel, string> = { minima: "Mínima", usual: "Usual", maxima: "Máxima" };
 
 /** Como a dose é expressa: bolo, por hora, ou por minuto (bomba). */
-export type Por = "kg" | "kg/h" | "kg/min";
+export type Por = "kg" | "kg/h" | "kg/min" | "fixa";
 
-export const ESCREVER_POR: Record<Por, string> = { kg: "/kg", "kg/h": "/kg/h", "kg/min": "/kg/min" };
+export const ESCREVER_POR: Record<Por, string> = {
+  kg: "/kg", "kg/h": "/kg/h", "kg/min": "/kg/min", fixa: " (dose fixa)",
+};
 
 export type DosePorKg = { min?: number; usual?: number; max?: number; unidade: Unidade; por: Por };
 
@@ -160,7 +174,9 @@ export function calcularNivel(
 ): Calculo | undefined {
   if (!ok(dosePorKg) || !ok(pesoKg) || pesoKg <= 0 || dosePorKg <= 0) return undefined;
 
-  const bruta = dosePorKg * pesoKg;
+  // Dose fixa não vê o peso. Multiplicar 4 mg de ondansetrona por 70 kg
+  // daria 280 mg, e é o tipo de erro que uma calculadora não pode oferecer.
+  const bruta = dose.por === "fixa" ? dosePorKg : dosePorKg * pesoKg;
   let doseTotal = bruta;
   let limitada = false;
 
@@ -290,6 +306,12 @@ export type Medicamento = {
   observacao?: string;
   /** Aviso forte, mostrado em destaque no cartão. */
   alerta?: string;
+  /** Fármaco que se titula: a tela mostra a faixa e não um "fazer" único. */
+  titulavel?: boolean;
+  /** Regra condicional que a tela resolve com peso, idade e comorbidade. */
+  regra?: "cefazolina" | "cetorolaco" | "neostigmina";
+  /** Sai da lista principal: aparece dentro do cartão de outro. */
+  oculto?: boolean;
   situacao: SituacaoDose;
   revisao?: string;
 };
@@ -692,39 +714,229 @@ export const CATALOGO: Medicamento[] = [
     fonte: SAESP("conteúdo adulto"), contextoFonte: "No contexto de analgesia pós-operatória",
     situacao: "validado", revisao: REVISAO,
   },
+
+  /* ---------------- Adulto — indução ---------------- */
+  {
+    id: "propofol-adulto", nome: "Propofol — indução", grupo: "inducao", populacoes: ["adulto"], via: "IV",
+    indicacao: "Adulto hígido",
+    dose: { min: 2, max: 2.5, unidade: "mg", por: "kg" }, apresentacoes: [mgml(10)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+  },
+  {
+    id: "propofol-adulto-reduzido", nome: "Propofol — indução com dose reduzida", grupo: "inducao",
+    populacoes: ["adulto"], via: "IV", indicacao: "Idoso, debilitado ou ASA III–IV",
+    dose: { min: 1, max: 1.5, unidade: "mg", por: "kg" }, apresentacoes: [mgml(10)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    alerta: "Faixa reduzida por condição do paciente, não por peso. Titular contra a resposta clínica.",
+  },
+  {
+    id: "etomidato-adulto", nome: "Etomidato", grupo: "inducao", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.2, usual: 0.3, max: 0.6, unidade: "mg", por: "kg" }, apresentacoes: [mgml(2)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    observacao: "Dose habitual de 0,3 mg/kg dentro da faixa de 0,2 a 0,6 mg/kg.",
+  },
+  {
+    id: "cetamina-adulto-inducao", nome: "Cetamina — indução", grupo: "inducao", populacoes: ["adulto"], via: "IV",
+    dose: { min: 1, max: 2, unidade: "mg", por: "kg" }, apresentacoes: [mgml(50), mgml(10)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    observacao: "Dose de indução. As doses de analgesia multimodal são muito menores e estão em cartão próprio.",
+  },
+
+  /* ---------------- Adulto — opioides ---------------- */
+  {
+    id: "fentanil-adulto", nome: "Fentanil — indução", grupo: "opioides", populacoes: ["adulto"], via: "IV",
+    dose: { min: 2, max: 5, unidade: "mcg", por: "kg" }, apresentacoes: [mcgml(50)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+  },
+  {
+    id: "sufentanil-adulto", nome: "Sufentanil — indução", grupo: "opioides", populacoes: ["adulto"], via: "IV",
+    dose: { min: 1, max: 2, unidade: "mcg", por: "kg" }, apresentacoes: [mcgml(5)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO, titulavel: true,
+    alerta: "Dose total do procedimento, não um bolus único. Fracionar e titular contra a resposta.",
+  },
+
+  /* ---------------- Adulto — bloqueadores ---------------- */
+  {
+    id: "succinilcolina-adulto", nome: "Succinilcolina", grupo: "bloqueadores", populacoes: ["adulto"], via: "IV",
+    indicacao: "Dose habitual",
+    dose: { min: 0.3, usual: 0.6, max: 1.1, unidade: "mg", por: "kg" }, apresentacoes: [mgml(50)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    observacao: "Dose habitual de 0,6 mg/kg dentro da faixa de 0,3 a 1,1 mg/kg. A dose de sequência rápida é outra e está em cartão próprio.",
+  },
+  {
+    id: "succinilcolina-adulto-rsi", nome: "Succinilcolina — sequência rápida", grupo: "bloqueadores",
+    populacoes: ["adulto"], via: "IV", indicacao: "Sequência rápida",
+    dose: { min: 1, max: 1.5, unidade: "mg", por: "kg" }, apresentacoes: [mgml(50)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+  },
+  {
+    id: "cisatracurio-adulto", nome: "Cisatracúrio", grupo: "bloqueadores", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.15, max: 0.2, unidade: "mg", por: "kg" }, apresentacoes: [mgml(2)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+  },
+  {
+    id: "vecuronio-adulto", nome: "Vecurônio", grupo: "bloqueadores", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.08, max: 0.1, unidade: "mg", por: "kg" },
+    apresentacoes: [mgml(2, "4 mg em 2 mL (2 mg/mL)"), mgml(1, "10 mg em 10 mL (1 mg/mL)")],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    observacao: "Pó liofilizado: a concentração depende do volume de reconstituição. Toque na apresentação para trocar.",
+  },
+  {
+    id: "pancuronio-adulto", nome: "Pancurônio", grupo: "bloqueadores", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.06, max: 0.1, unidade: "mg", por: "kg" }, apresentacoes: [mgml(2)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+  },
+
+  /* ---------------- Adulto — reversão ---------------- */
+  {
+    id: "neostigmina-adulto", nome: "Neostigmina", grupo: "reversao", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.03, max: 0.07, unidade: "mg", por: "kg" },
+    tetoAbsoluto: { valor: 5, unidade: "mg" }, apresentacoes: [mgml(0.5)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO, regra: "neostigmina",
+    alerta: "A reversão se guia por monitorização neuromuscular. Peso e idade não escolhem a dose sozinhos — informe a profundidade do bloqueio.",
+    observacao: "Máximo absoluto de 5 mg, independente do peso. A atropina de reversão é calculada junto, dentro deste cartão.",
+  },
+  {
+    id: "atropina-reversao-adulto", nome: "Atropina — associada à neostigmina", grupo: "reversao",
+    populacoes: ["adulto"], via: "IV", indicacao: "Associada à reversão",
+    dose: { usual: 0.015, unidade: "mg", por: "kg" }, apresentacoes: [mgml(0.25)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO, oculto: true,
+    observacao: "Calculada junto à neostigmina. Não é um reversor independente.",
+  },
+
+  /* ---------------- Adulto — antieméticos e profilaxia ---------------- */
+  {
+    id: "ondansetrona-adulto", nome: "Ondansetrona", grupo: "antiemeticos", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 4, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(2)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    observacao: "Dose fixa. Não se multiplica pelo peso.",
+  },
+  {
+    id: "dexametasona-adulto", nome: "Dexametasona", grupo: "antiemeticos", populacoes: ["adulto"], via: "IV",
+    dose: { min: 4, max: 8, unidade: "mg", por: "fixa" },
+    apresentacoes: [mgml(4), mgml(2)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    observacao: "Dose fixa. Não se multiplica pelo peso.",
+  },
+
+  /* ---------------- Adulto — analgesia ---------------- */
+  {
+    id: "cetorolaco-adulto", nome: "Cetorolaco", grupo: "analgesia", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 30, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(30)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO, regra: "cetorolaco",
+    alerta: "Confira função renal, sangramento, úlcera péptica e alergia a AINE antes de indicar. A dose cai para 15 mg em idoso, em baixo peso ou com comprometimento renal.",
+  },
+  {
+    id: "tramadol-adulto", nome: "Tramadol", grupo: "analgesia", populacoes: ["adulto"], via: "IV",
+    dose: { min: 50, max: 100, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(50)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO, titulavel: true,
+    observacao: "Dose fixa, titulável dentro da faixa. Não se multiplica pelo peso.",
+  },
+  {
+    id: "nalbufina-adulto", nome: "Nalbufina", grupo: "analgesia", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 10, max: 20, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(10)],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO, titulavel: true,
+    observacao: "Dose fixa de 10 mg, máxima habitual de 20 mg. Titulável, não se multiplica pelo peso.",
+  },
+
+  /* ---------------- Adulto — antibiótico ---------------- */
+  {
+    id: "cefazolina-adulto", nome: "Cefazolina — profilaxia", grupo: "antibioticos", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 2, unidade: "g", por: "fixa" },
+    apresentacoes: [{ rotulo: "1 g reconstituído em 10 mL", quantidade: 1, unidade: "g", mL: 10 }],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO, regra: "cefazolina",
+    observacao: "Dose fixa de 2 g; 3 g acima de 120 kg. Não se multiplica pelo peso.",
+  },
+
+  /* ---------------- Adulto — corticoide de estresse ---------------- */
+  {
+    id: "hidrocortisona-inducao", nome: "Hidrocortisona — indução", grupo: "adjuvantes", populacoes: ["adulto"],
+    via: "IV", indicacao: "Cobertura de estresse / corticoterapia crônica",
+    dose: { usual: 100, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(50, "100 mg em 2 mL (50 mg/mL)")],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    alerta: "Não é profilaxia de rotina. Só entra em cobertura de estresse ou corticoterapia crônica.",
+  },
+  {
+    id: "hidrocortisona-manutencao", nome: "Hidrocortisona — manutenção 24 h", grupo: "adjuvantes",
+    populacoes: ["adulto"], via: "IV, infusão contínua",
+    indicacao: "Cobertura de estresse / corticoterapia crônica",
+    dose: { usual: 200, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(50, "100 mg em 2 mL (50 mg/mL)")],
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    observacao: "200 mg em 24 h por bomba. Alternativa descrita: 50 mg IV a cada 6 horas.",
+    alerta: "Não é profilaxia de rotina. Só entra em cobertura de estresse ou corticoterapia crônica.",
+  },
 ];
 
 /* ------------------------------------------------------------------ *
- * Pendentes de fonte.
+ * Regras condicionais do adulto
  *
- * Estavam na tabela antiga e não foram confirmados no material do SAESP
- * disponível. Aparecem na tela, pelo nome, para que a ausência seja visível —
- * mas não calculam, e não recebem a etiqueta do SAESP.
+ * Três fármacos não têm uma dose só: ela depende de peso, idade ou função
+ * renal. A conta continua no motor — o que muda é qual dose entra nele. As
+ * funções abaixo escolhem, e devolvem junto o motivo da escolha, para o
+ * cartão poder dizer por que aquele número apareceu.
  * ------------------------------------------------------------------ */
 
-export const PENDENTES: Array<{ nome: string; nota?: string }> = [
-  { nome: "Propofol — dose geral de indução do adulto", nota: "A tabela antiga trazia 1,5–3 mg/kg como valor universal." },
-  { nome: "Fentanil — dose geral de indução do adulto", nota: "A tabela antiga trazia 3–5 mcg/kg." },
-  { nome: "Sufentanil adulto" },
-  { nome: "Etomidato adulto" },
-  { nome: "Cetamina adulto para indução" },
-  { nome: "Succinilcolina adulto" },
-  { nome: "Cisatracúrio adulto" },
-  { nome: "Vecurônio adulto" },
-  { nome: "Pancurônio adulto" },
-  { nome: "Neostigmina adulto" },
-  { nome: "Atropina para reversão" },
-  { nome: "Ondansetrona" },
-  { nome: "Dexametasona antiemética" },
-  { nome: "Cetorolaco" },
-  { nome: "Cefazolina" },
-  { nome: "Hidrocortisona" },
-  { nome: "Tramadol" },
-  { nome: "Nalbufina" },
-];
+export const PESO_CEFAZOLINA_MAIOR = 120;
 
-export const AVISO_PENDENTES =
-  "Estes estavam na tabela antiga e não foram confirmados no material do SAESP disponível. Não recebem a etiqueta da fonte nem calculam: entram quando a referência específica for incluída.";
+export function doseCefazolina(pesoKg?: number): { dose: DosePorKg; motivo: string } {
+  if (ok(pesoKg) && pesoKg > PESO_CEFAZOLINA_MAIOR) {
+    return {
+      dose: { usual: 3, unidade: "g", por: "fixa" },
+      motivo: `Peso acima de ${PESO_CEFAZOLINA_MAIOR} kg: 3 g.`,
+    };
+  }
+  return { dose: { usual: 2, unidade: "g", por: "fixa" }, motivo: "Dose padrão: 2 g." };
+}
+
+export const IDADE_CETOROLACO_REDUZIDO = 65;
+export const PESO_CETOROLACO_REDUZIDO = 50;
+
+export function doseCetorolaco(a: {
+  idadeAnos?: number; pesoKg?: number; comprometimentoRenal?: boolean;
+}): { dose: DosePorKg; motivo: string } {
+  const razoes: string[] = [];
+  if (ok(a.idadeAnos) && a.idadeAnos >= IDADE_CETOROLACO_REDUZIDO) razoes.push(`idade ≥ ${IDADE_CETOROLACO_REDUZIDO} anos`);
+  if (ok(a.pesoKg) && a.pesoKg < PESO_CETOROLACO_REDUZIDO) razoes.push(`peso < ${PESO_CETOROLACO_REDUZIDO} kg`);
+  if (a.comprometimentoRenal) razoes.push("comprometimento renal");
+
+  if (razoes.length > 0) {
+    return {
+      dose: { usual: 15, unidade: "mg", por: "fixa" },
+      motivo: `Dose reduzida para 15 mg por ${razoes.join(", ")}.`,
+    };
+  }
+  return {
+    dose: { usual: 30, unidade: "mg", por: "fixa" },
+    motivo: `30 mg: menos de ${IDADE_CETOROLACO_REDUZIDO} anos, ${PESO_CETOROLACO_REDUZIDO} kg ou mais e sem comprometimento renal informado.`,
+  };
+}
+
+/**
+ * A atropina que acompanha a neostigmina.
+ *
+ * Ela não aparece na lista sozinha de propósito: fora da reversão, esta dose
+ * não quer dizer nada.
+ */
+export const ID_ATROPINA_REVERSAO = "atropina-reversao-adulto";
+
+export const AVISO_NEOSTIGMINA =
+  "A dose de reversão se escolhe pela profundidade do bloqueio, medida com monitorização neuromuscular — não pelo peso isolado. O valor abaixo é a faixa por quilo, com o teto absoluto de 5 mg já aplicado.";
+
+/**
+ * A trava é do AVANEST, não da tabela.
+ *
+ * A tabela dá uma faixa por quilo e um teto. Ela não diz qual ponto da faixa
+ * corresponde a qual grau de recuperação, e inventar esse mapeamento seria
+ * criar uma referência que não existe. O que dá para fazer com honestidade é
+ * exigir que a recuperação tenha sido avaliada antes de mostrar qualquer
+ * número — e dizer que essa exigência é nossa.
+ */
+export const NEOSTIGMINA_SEM_MONITORIZACAO =
+  "Sem monitorização neuromuscular, ou com bloqueio ainda profundo, o AVANEST não calcula a dose. Esta trava é do próprio AVANEST e não um número da tabela: a escolha dentro da faixa depende da recuperação do bloqueio, e o peso sozinho não a informa.";
+
+export const AVISO_TITULAVEL =
+  "Dose titulável: o número é o total previsto, para ser fracionado e ajustado contra a resposta — não um bolus único.";
+
 
 /* ------------------------------------------------------------------ *
  * Raquianestesia pediátrica
@@ -758,7 +970,7 @@ export const acharMedicamento = (id: string) => CATALOGO.find((m) => m.id === id
 export function disponiveis(populacao: Populacao): Medicamento[] {
   const ordem = GRUPOS.map((g) => g.id);
   return CATALOGO
-    .filter((m) => m.populacoes.includes(populacao))
+    .filter((m) => m.populacoes.includes(populacao) && !m.oculto)
     .sort((a, b) => ordem.indexOf(a.grupo) - ordem.indexOf(b.grupo) || a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
