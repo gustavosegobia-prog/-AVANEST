@@ -8,6 +8,12 @@ import { calculateLastDoseDate, findMedicationGuideEntry, MEDICATION_ORIENTATION
 import { orientacaoSugerida } from "@/lib/medication-summary";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
+import {
+  AVISO_CLINICO,
+  ehPediatrico,
+  idadeEmMesesPorNascimento,
+  opcoesDeTubo,
+} from "@/lib/calculos/via-aerea-pediatrica";
 
 const STEPS = ["Identificação", "Procedimento", "Anamnese", "Medicamentos", "Exame físico", "Via aérea", "Exames", "Escores", "Conclusão"];
 type Draft = Record<string, string | boolean>;
@@ -855,6 +861,16 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
 function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,saveError}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;imc:number;conclude:()=>Promise<void>;retrySave:()=>void;saveState:"saved"|"pending"|"saving"|"error";saveError:string}) {
   const medications=readMedications(draft.medicamentos_json);
   const lastAutomaticPlan=useRef("");
+  /* Tubo pediátrico no planejamento: peso e data de nascimento já estão na
+     ficha, e trocar de tela no meio da indução é o que se quer evitar.
+     A idade em anos inteiros não serve — abaixo de 1 ano o calibre vem do
+     peso, e um lactente de 8 meses apareceria como "0 ano". */
+  const idadeMeses=idadeEmMesesPorNascimento(paciente.data_nascimento);
+  const pesoKg=Number(draft.peso||0)||undefined;
+  const usaTubo=["Anestesia geral","Técnica combinada"].includes(String(draft.tecnica??""));
+  const opcoesTubo=usaTubo&&ehPediatrico(idadeMeses)
+    ?opcoesDeTubo({idadeMeses,pesoKg})
+    :[];
   const airwayKeys=Object.keys(draft).filter(k=>k.startsWith("via_")&&draft[k]===true).length;
   const rcri=Object.keys(draft).filter(k=>k.startsWith("rcri_")&&draft[k]===true).length;
   const stop=Object.keys(draft).filter(k=>k.startsWith("stop_")&&draft[k]===true).length;
@@ -955,6 +971,14 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     <label className="evalField plan4"><span>Avaliação especializada</span><input value={String(draft.avaliacao_especializada??"")} onChange={e=>set("avaliacao_especializada",e.target.value)}/></label>
     <label className="evalField plan4"><span>Técnica anestésica</span><select value={String(draft.tecnica??"")} onChange={e=>set("tecnica",e.target.value)}><option value="">—</option><option>Anestesia geral</option><option>Sedação</option><option>Raquianestesia</option><option>Raquianestesia + sedação</option><option>Peridural</option><option>Bloqueio periférico</option><option>Técnica combinada</option></select></label>
     <label className="evalField plan4"><span>Monitorização</span><select value={String(draft.monitorizacao??"")} onChange={e=>set("monitorizacao",e.target.value)}><option value="">Selecione</option><option>Padrão</option><option>Expandida</option><option>Invasiva</option><option>Conforme necessidade clínica</option></select></label>
-  </div><label className="evalField"><span>Orientações finais da avaliação (preenchidas automaticamente e editáveis)</span><textarea rows={8} value={String(draft.plano_anestesico??"")} onChange={e=>{set("plano_anestesico",e.target.value);set("plano_anestesico_editado",true)}}/><small>{planManuallyEdited?"Texto editado manualmente — será impresso exatamente como está. Use “Atualizar orientações finais automaticamente” para reconstruí-lo.":"O texto acompanha as escolhas de jejum, técnica anestésica e conduta dos medicamentos. Depois de uma edição manual, ele passa a ser impresso exatamente como você escreveu."}</small></label></section>
+  </div>{opcoesTubo.length>0&&<div className="pediatricTube">
+    <strong>Via aérea pediátrica — sugestão pelo peso e pela idade</strong>
+    {/* Aparece calculado, mas so entra na ficha quando o anestesiologista
+        toca. E, uma vez tocado, o campo e dele: nada aqui sobrescreve o que
+        ele escrever ou apagar depois. */}
+    <div className="conclusionOptions">{opcoesTubo.map(o=><button type="button" key={o.tipo} className={draft.tubo_traqueal===o.texto?"selected":""} onClick={()=>set("tubo_traqueal",o.texto)}>{o.texto}</button>)}</div>
+    <label className="evalField"><span>Tubo e profundidade (sai na ficha impressa)</span><input value={String(draft.tubo_traqueal??"")} onChange={e=>set("tubo_traqueal",e.target.value)} placeholder="Toque numa opção acima ou escreva"/></label>
+    <p className="evalHint">{AVISO_CLINICO}</p>
+  </div>}<label className="evalField"><span>Orientações finais da avaliação (preenchidas automaticamente e editáveis)</span><textarea rows={8} value={String(draft.plano_anestesico??"")} onChange={e=>{set("plano_anestesico",e.target.value);set("plano_anestesico_editado",true)}}/><small>{planManuallyEdited?"Texto editado manualmente — será impresso exatamente como está. Use “Atualizar orientações finais automaticamente” para reconstruí-lo.":"O texto acompanha as escolhas de jejum, técnica anestésica e conduta dos medicamentos. Depois de uma edição manual, ele passa a ser impresso exatamente como você escreveu."}</small></label></section>
   <section className="evalSection"><h2>Checklist final <small className="optionalField">Somente estes campos são obrigatórios</small></h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}><Icone nome={ok?"confirmado":"alerta"} tamanho={14}/> {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" title={saveState==="error"?saveError:undefined} disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Ainda falta preencher: <strong>{missingFields.join(", ")}.</strong> Revise somente esses campos antes de concluir.</p>}{allComplete&&optionalReminders.length>0&&<p className="evalHint">Opcionais em branco (não impedem a conclusão e não serão impressos): {optionalReminders.join(", ")}.</p>}{saveState==="error"&&<p className="completionWarning">{saveError||"Não foi possível sincronizar o rascunho agora."} <button type="button" className="outlineClinical" onClick={retrySave}>Tentar salvar novamente</button></p>}<p className="evalHint">Os campos são preenchidos com o perfil conectado e continuam editáveis. Para auditoria, o sistema também grava separadamente o usuário autenticado, seus dados cadastrais, a data e a hora da conclusão.</p></section></>;
 }
