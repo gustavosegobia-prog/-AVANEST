@@ -6,21 +6,26 @@ import { Campo, numero, type Compartilhado } from "./modulos-extras";
 import {
   AVISO_AVULSO,
   AVISO_MODULO,
-  AVISO_PENDENTES,
+  AVISO_NEOSTIGMINA,
+  AVISO_TITULAVEL,
   AVISO_VIA,
   buscar,
   bupivacainaIntratecal,
   calcular,
   citar,
   dePercentual,
+  acharMedicamento,
   disponiveis,
+  doseCefazolina,
+  doseCetorolaco,
   emMeses,
   escreverApresentacao,
   ESCREVER_POR,
   FAIXA_GERAL_BUPIVACAINA_IT,
   faixaEtaria,
   GRUPOS,
-  PENDENTES,
+  ID_ATROPINA_REVERSAO,
+  NEOSTIGMINA_SEM_MONITORIZACAO,
   RAQUI_REMOVIDA,
   ROTULO_NIVEL,
   ROTULO_POPULACAO,
@@ -28,8 +33,8 @@ import {
   type Apresentacao,
   type Calculo,
   type GrupoId,
+  type DosePorKg,
   type Medicamento,
-  type Populacao,
   type Unidade
 } from "@/lib/calculos/doses";
 
@@ -41,10 +46,13 @@ import {
  * da dose por quilo e da apresentação usada, que é o que se confere contra a
  * ampola.
  *
- * O catálogo ainda é curto de propósito: só tem o que já tem fonte citada
- * dentro do AVANEST. Enquanto a tabela do serviço não chega, o cálculo avulso
- * resolve qualquer fármaco — e ele é honesto sobre o que faz, que é a regra de
- * três e a conferência de unidade, não a validação da dose.
+ * Cada cartão diz de onde o número veio. Os do adulto vêm da tabela do
+ * serviço, não do SAESP, e o cartão escreve isso — assinar como SAESP o que
+ * não foi localizado no SAESP seria inventar uma referência.
+ *
+ * Para o que não está no catálogo existe o cálculo avulso, e ele é honesto
+ * sobre o que faz: a regra de três e a conferência de unidade, não a
+ * validação da dose.
  */
 
 const FAVORITOS_CHAVE = "avanest.doses.favoritos";
@@ -97,7 +105,7 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
   const apresentacaoDe = (m: Medicamento) => m.apresentacoes[apresentacaoEscolhida[m.id] ?? 0];
 
   const cartao = (m: Medicamento) => (
-    <Cartao key={m.id} m={m} peso={peso!}
+    <Cartao key={m.id} m={m} peso={peso!} idadeAnos={meses !== undefined ? meses / 12 : undefined}
       apresentacao={apresentacaoDe(m)}
       aoTrocarApresentacao={(i) => setApresentacaoEscolhida((v) => ({ ...v, [m.id]: i }))}
       favorito={favoritos.includes(m.id)} aoFavoritar={() => alternarFavorito(m.id)} />
@@ -170,7 +178,6 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
           {lista.length > 0 && <p className={estilos.aviso}>{AVISO_VIA}</p>}
 
           {populacao !== "adulto" && <Raqui peso={peso!} />}
-          <Pendentes />
           <Avulso peso={peso!} />
         </>
       )}
@@ -180,14 +187,38 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * Um cartão por dose.
+ *
+ * Três fármacos não têm uma dose só. A cefazolina depende do peso, e a tela
+ * resolve sozinha. O cetorolaco depende de idade, peso e rim — idade e peso a
+ * tela já tem, o rim ela pergunta. A neostigmina depende da recuperação do
+ * bloqueio, que nenhuma conta adivinha: ali a tela não mostra número nenhum
+ * antes de a recuperação ser confirmada.
+ */
 function Cartao({
-  m, peso, apresentacao, aoTrocarApresentacao, favorito, aoFavoritar,
+  m, peso, idadeAnos, apresentacao, aoTrocarApresentacao, favorito, aoFavoritar,
 }: {
-  m: Medicamento; peso: number;
+  m: Medicamento; peso: number; idadeAnos?: number;
   apresentacao?: Apresentacao; aoTrocarApresentacao: (i: number) => void;
   favorito: boolean; aoFavoritar: () => void;
 }) {
-  const contas = calcular(m.dose!, peso, apresentacao, m.tetoAbsoluto);
+  const [renal, setRenal] = useState(false);
+  const [recuperado, setRecuperado] = useState(false);
+
+  // A regra escolhe qual dose entra no motor; a conta continua sendo a mesma.
+  let dose: DosePorKg = m.dose!;
+  let motivo: string | undefined;
+  if (m.regra === "cefazolina") ({ dose, motivo } = doseCefazolina(peso));
+  if (m.regra === "cetorolaco") ({ dose, motivo } = doseCetorolaco({ idadeAnos, pesoKg: peso, comprometimentoRenal: renal }));
+
+  const travado = m.regra === "neostigmina" && !recuperado;
+  const contas = travado ? [] : calcular(dose, peso, apresentacao, m.tetoAbsoluto);
+
+  const atropina = m.regra === "neostigmina" && recuperado ? acharMedicamento(ID_ATROPINA_REVERSAO) : undefined;
+  const contaAtropina = atropina
+    ? calcular(atropina.dose!, peso, atropina.apresentacoes[0])[0]
+    : undefined;
 
   return (
     <div className={estilos.remedio}>
@@ -203,9 +234,39 @@ function Cartao({
 
       {m.alerta && <p className={estilos.confira}>{m.alerta}</p>}
 
+      {m.regra === "cetorolaco" && (
+        <label className={estilos.marcador}>
+          <input type="checkbox" checked={renal} onChange={(e) => setRenal(e.target.checked)} />
+          <span>Comprometimento renal</span>
+        </label>
+      )}
+
+      {m.regra === "neostigmina" && (
+        <>
+          <p className={estilos.aviso}>{AVISO_NEOSTIGMINA}</p>
+          <label className={estilos.marcador}>
+            <input type="checkbox" checked={recuperado} onChange={(e) => setRecuperado(e.target.checked)} />
+            <span>Recuperação do bloqueio avaliada com monitorização neuromuscular</span>
+          </label>
+          {travado && <p className={estilos.confira}>{NEOSTIGMINA_SEM_MONITORIZACAO}</p>}
+        </>
+      )}
+
+      {motivo && <p className={estilos.veredito}>{motivo}</p>}
+      {m.titulavel && <p className={estilos.aviso}>{AVISO_TITULAVEL}</p>}
+
       <div className={estilos.doses}>
         {contas.map((c) => <Dose key={c.nivel} c={c} unico={contas.length === 1} />)}
       </div>
+
+      {atropina && contaAtropina && (
+        <div className={estilos.junto}>
+          <small className={estilos.remedioVia}>
+            {atropina.nome} · {virgula(atropina.dose!.usual!)} mg/kg · {atropina.apresentacoes[0].rotulo}
+          </small>
+          <div className={estilos.doses}><Dose c={contaAtropina} unico /></div>
+        </div>
+      )}
 
       {m.apresentacoes.length > 1 ? (
         <div className={estilos.parametroBotoes}>
@@ -397,41 +458,6 @@ function Raqui({ peso }: { peso: number }) {
       </div>
 
       <p className={estilos.confira}>{RAQUI_REMOVIDA}</p>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-
-/**
- * O que a tabela antiga tinha e a fonte não confirmou.
- *
- * Aparece pelo nome, sem número e sem cálculo. Deixar a ausência visível vale
- * mais do que esconder: quem procura cefazolina precisa saber que ela não
- * está ali de propósito, e não que o sistema esqueceu.
- */
-function Pendentes() {
-  const [aberto, setAberto] = useState(false);
-  return (
-    <section className={estilos.correcao}>
-      <button type="button" className={estilos.acordeao} aria-expanded={aberto}
-        onClick={() => setAberto((v) => !v)}>
-        <span aria-hidden="true">{aberto ? "▼" : "▶"}</span> 🟡 Aguardando fonte
-        <small>{PENDENTES.length}</small>
-      </button>
-      {aberto && (
-        <>
-          <p className={estilos.confira}>{AVISO_PENDENTES}</p>
-          <ul className={estilos.lista}>
-            {PENDENTES.map((p) => (
-              <li key={p.nome}>
-                {p.nome}
-                {p.nota && <small className={estilos.remedioVia}> — {p.nota}</small>}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
     </section>
   );
 }
