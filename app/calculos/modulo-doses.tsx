@@ -6,25 +6,31 @@ import { Campo, numero, type Compartilhado } from "./modulos-extras";
 import {
   AVISO_AVULSO,
   AVISO_MODULO,
-  AVISO_TITULAVEL,
+  AVISO_PENDENTES,
+  AVISO_VIA,
   buscar,
+  bupivacainaIntratecal,
   calcular,
-  CATALOGO_INCOMPLETO,
   citar,
   dePercentual,
   disponiveis,
-  doseDe,
+  emMeses,
   escreverApresentacao,
+  ESCREVER_POR,
+  FAIXA_GERAL_BUPIVACAINA_IT,
+  faixaEtaria,
   GRUPOS,
-  IDADE_ADULTO_ANOS,
-  populacaoPor,
+  PENDENTES,
+  RAQUI_REMOVIDA,
   ROTULO_NIVEL,
+  ROTULO_POPULACAO,
   virgula,
   type Apresentacao,
   type Calculo,
   type GrupoId,
   type Medicamento,
-  type Unidade,
+  type Populacao,
+  type Unidade
 } from "@/lib/calculos/doses";
 
 /**
@@ -77,9 +83,9 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
       return novo;
     });
 
-  const idade = numero(dados.idade ?? "");
+  const meses = emMeses(numero(dados.idade ?? ""), numero(dados.idadeMeses ?? ""));
   const peso = numero(dados.peso ?? "");
-  const populacao = populacaoPor(idade);
+  const populacao = faixaEtaria(meses);
   const pronto = populacao !== undefined && peso !== undefined && peso > 0;
 
   const lista = useMemo(
@@ -91,7 +97,7 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
   const apresentacaoDe = (m: Medicamento) => m.apresentacoes[apresentacaoEscolhida[m.id] ?? 0];
 
   const cartao = (m: Medicamento) => (
-    <Cartao key={m.id} m={m} peso={peso!} populacao={populacao!}
+    <Cartao key={m.id} m={m} peso={peso!}
       apresentacao={apresentacaoDe(m)}
       aoTrocarApresentacao={(i) => setApresentacaoEscolhida((v) => ({ ...v, [m.id]: i }))}
       favorito={favoritos.includes(m.id)} aoFavoritar={() => alternarFavorito(m.id)} />
@@ -109,16 +115,16 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
       <section className={estilos.correcao}>
         <div className={estilos.gradeCurta}>
           <Campo chave="idade" rotulo="Idade (anos)" valor={dados.idade ?? ""} aoMudar={set} />
+          <Campo chave="idadeMeses" rotulo="Meses" valor={dados.idadeMeses ?? ""} aoMudar={set} />
           <Campo chave="peso" rotulo="Peso (kg)" passo="0.1" valor={dados.peso ?? ""} aoMudar={set} />
         </div>
         <div className={estilos.acoes}>
           <button type="button" className={estilos.primario} disabled={!pronto}
             onClick={() => setCalculado(true)}>Calcular doses</button>
-          {!pronto && <span className={estilos.dica}>Informe idade e peso.</span>}
+          {!pronto && <span className={estilos.dica}>Informe idade e peso. Abaixo de 1 ano, use o campo de meses.</span>}
           {pronto && (
-            <span className={estilos.dica}>
-              {populacao === "adulto" ? "Adulto" : "Pediátrico"} — a partir de {IDADE_ADULTO_ANOS} anos
-              o AVANEST carrega a tabela de adulto. Esse corte é nosso, não de fonte.
+            <span className={estilos.faixa}>
+              {ROTULO_POPULACAO[populacao]} — a tabela é escolhida pela idade, e as faixas não emprestam dose umas das outras.
             </span>
           )}
         </div>
@@ -158,13 +164,13 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
 
           {lista.length === 0 && (
             <p className={estilos.confira}>
-              {termo.trim()
-                ? `Nada com “${termo}” no catálogo${populacao === "pediatrico" ? " pediátrico" : ""}. Use o cálculo avulso abaixo.`
-                : CATALOGO_INCOMPLETO}
+              Nada com “{termo}” na tabela de {ROTULO_POPULACAO[populacao].toLowerCase()}. Use o cálculo avulso abaixo.
             </p>
           )}
-          {lista.length > 0 && <p className={estilos.aviso}>{CATALOGO_INCOMPLETO}</p>}
+          {lista.length > 0 && <p className={estilos.aviso}>{AVISO_VIA}</p>}
 
+          {populacao !== "adulto" && <Raqui peso={peso!} />}
+          <Pendentes />
           <Avulso peso={peso!} />
         </>
       )}
@@ -175,14 +181,13 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
 /* ------------------------------------------------------------------ */
 
 function Cartao({
-  m, peso, populacao, apresentacao, aoTrocarApresentacao, favorito, aoFavoritar,
+  m, peso, apresentacao, aoTrocarApresentacao, favorito, aoFavoritar,
 }: {
-  m: Medicamento; peso: number; populacao: "adulto" | "pediatrico";
+  m: Medicamento; peso: number;
   apresentacao?: Apresentacao; aoTrocarApresentacao: (i: number) => void;
   favorito: boolean; aoFavoritar: () => void;
 }) {
-  const dose = doseDe(m, populacao)!;
-  const contas = calcular(dose, peso, apresentacao, m.tetoAbsoluto);
+  const contas = calcular(m.dose!, peso, apresentacao, m.tetoAbsoluto);
 
   return (
     <div className={estilos.remedio}>
@@ -192,9 +197,11 @@ function Cartao({
           aria-label={favorito ? `Tirar ${m.nome} dos favoritos` : `Marcar ${m.nome} como favorito`}
           onClick={aoFavoritar}>{favorito ? "★" : "☆"}</button>
       </div>
-      <small className={estilos.remedioVia}>{m.via}</small>
+      <small className={estilos.remedioVia}>
+        {m.via}{m.indicacao ? ` · ${m.indicacao}` : ""}
+      </small>
 
-      {m.titulavel && <p className={estilos.confira}>{AVISO_TITULAVEL}</p>}
+      {m.alerta && <p className={estilos.confira}>{m.alerta}</p>}
 
       <div className={estilos.doses}>
         {contas.map((c) => <Dose key={c.nivel} c={c} unico={contas.length === 1} />)}
@@ -213,21 +220,24 @@ function Cartao({
       )}
 
       {m.observacao && <p className={estilos.aviso}>{m.observacao}</p>}
+      {m.contextoFonte && <p className={estilos.aviso}>Contexto da fonte: {m.contextoFonte}</p>}
       {m.fonte && <p className={estilos.fonte}>{citar(m.fonte)} · revisão {m.revisao}</p>}
     </div>
   );
 }
 
 function Dose({ c, unico }: { c: Calculo; unico: boolean }) {
-  const porHora = c.por === "kg/h" ? "/h" : "";
+  const periodo = c.por === "kg/min" ? "/min" : c.por === "kg/h" ? "/h" : "";
   return (
     <div className={c.limitada ? `${estilos.dose} ${estilos.blocoAtencao}` : estilos.dose}>
       {!unico && <small className={estilos.doseNivel}>{ROTULO_NIVEL[c.nivel]}</small>}
-      {c.volumeMl !== undefined
-        ? <b className={estilos.volume}>{virgula(c.volumeMl)} mL{porHora}</b>
-        : <b className={estilos.volume}>{virgula(c.doseTotal)} {c.unidadeDose}{porHora}</b>}
+      {c.volume !== undefined
+        ? <b className={estilos.volume}>{virgula(c.volume)} {c.unidadeVolume}</b>
+        : <b className={estilos.volume}>{virgula(c.doseTotal)} {c.unidadeDose}{periodo}</b>}
       <small>
-        {virgula(c.doseTotal)} {c.unidadeDose}{porHora} · {virgula(c.dosePorKg)} {c.unidadeDose}/{c.por}
+        {virgula(c.doseTotal)} {c.unidadeDose}{periodo}
+        {c.dosePorHora !== undefined && c.por === "kg/min" ? ` · ${virgula(c.dosePorHora)} ${c.unidadeDose}/h` : ""}
+        {" · "}{virgula(c.dosePorKg)} {c.unidadeDose}{ESCREVER_POR[c.por]}
       </small>
       {c.limitada && (
         <small className={estilos.limitada}>
@@ -340,3 +350,90 @@ function Avulso({ peso }: { peso: number }) {
     </section>
   );
 }
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Raquianestesia pediátrica.
+ *
+ * Fica em bloco próprio porque a dose sai do peso por faixa, e não de uma
+ * dose por quilo única. A regra antiga de 3 mg/kg até 1 ano foi removida da
+ * base, e a tela diz isso — apagar em silêncio deixaria quem a conhecia
+ * achando que o sistema esqueceu.
+ */
+function Raqui({ peso }: { peso: number }) {
+  const faixa = bupivacainaIntratecal(peso);
+  const pesada = dePercentual(0.5, "Bupivacaína pesada 0,5%")!;
+  const conta = faixa
+    ? calcular({ usual: faixa.mgPorKg, unidade: "mg", por: "kg" }, peso, pesada)[0]
+    : undefined;
+  const geral = calcular(FAIXA_GERAL_BUPIVACAINA_IT, peso, pesada);
+
+  return (
+    <section className={estilos.correcao}>
+      <strong>🩺 Raquianestesia pediátrica</strong>
+      <p className={estilos.dica}>
+        Bupivacaína pesada 0,5% — {escreverApresentacao(pesada)}.
+      </p>
+
+      {conta ? (
+        <div className={estilos.remedio}>
+          <div className={estilos.remedioTopo}><strong>Referência por peso</strong></div>
+          <small className={estilos.remedioVia}>
+            Faixa de {faixa!.pesoMin} a {faixa!.pesoMax} kg · {virgula(faixa!.mgPorKg)} mg/kg
+          </small>
+          <div className={estilos.doses}><Dose c={conta} unico /></div>
+        </div>
+      ) : (
+        <p className={estilos.dica}>
+          Peso de {virgula(peso)} kg fora das faixas descritas (3 a 40 kg). Use a faixa geral abaixo.
+        </p>
+      )}
+
+      <div className={estilos.remedio}>
+        <div className={estilos.remedioTopo}><strong>Faixa geral descrita</strong></div>
+        <small className={estilos.remedioVia}>0,3 a 1 mg/kg</small>
+        <div className={estilos.doses}>{geral.map((c) => <Dose key={c.nivel} c={c} unico={false} />)}</div>
+      </div>
+
+      <p className={estilos.confira}>{RAQUI_REMOVIDA}</p>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * O que a tabela antiga tinha e a fonte não confirmou.
+ *
+ * Aparece pelo nome, sem número e sem cálculo. Deixar a ausência visível vale
+ * mais do que esconder: quem procura cefazolina precisa saber que ela não
+ * está ali de propósito, e não que o sistema esqueceu.
+ */
+function Pendentes() {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <section className={estilos.correcao}>
+      <button type="button" className={estilos.acordeao} aria-expanded={aberto}
+        onClick={() => setAberto((v) => !v)}>
+        <span aria-hidden="true">{aberto ? "▼" : "▶"}</span> 🟡 Aguardando fonte
+        <small>{PENDENTES.length}</small>
+      </button>
+      {aberto && (
+        <>
+          <p className={estilos.confira}>{AVISO_PENDENTES}</p>
+          <ul className={estilos.lista}>
+            {PENDENTES.map((p) => (
+              <li key={p.nome}>
+                {p.nome}
+                {p.nota && <small className={estilos.remedioVia}> — {p.nota}</small>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+Passo 4
+Substituir o arquivo inteiro
