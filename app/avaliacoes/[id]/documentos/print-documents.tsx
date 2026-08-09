@@ -398,6 +398,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           <PaperBlock title="PLANEJAMENTO E CONCLUSÃO" items={facts([
             ["Jejum sólidos",dados.jejum_solidos],["Líquidos claros",dados.jejum_liquidos],
             ["Técnica anestésica",dados.tecnica],["Monitorização",dados.monitorizacao],
+            ["Tubo traqueal",dados.tubo_traqueal,"wide"],
             ["Pré-medicação",dados.premedicacao],["UTI",dados.leito_uti],
             ["Hemoderivados",["Sim","Solicitar"].includes(text(dados.concentrado_hemacias))?`${text(dados.concentrado_hemacias)}${hasText(dados.quantidade_ch)?` — ${comUnidade(dados.quantidade_ch,"CH")}`:""}`:dados.concentrado_hemacias],
             ["Avaliação especializada",dados.avaliacao_especializada,"wide"],
