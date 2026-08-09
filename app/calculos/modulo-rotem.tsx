@@ -5,6 +5,17 @@ import estilos from "./calculos.module.css";
 import {
   achados,
   acharCenario,
+  acharPlataforma,
+  CARTUCHOS_DIFERENTES,
+  classificar,
+  ensaiosDa,
+  escreverFaixa,
+  faixaDe,
+  fonteDaPlataforma,
+  ML_SIGMA,
+  PLATAFORMAS,
+  REFERENCIA_NAO_E_GATILHO,
+  SEM_PLATAFORMA,
   AVISO_CONDUTA,
   AVISO_MODULO,
   AVISO_PASSO_ZERO,
@@ -15,7 +26,6 @@ import {
   citar,
   COMPARACOES,
   condutasAplicaveis,
-  ENSAIOS,
   NAO_DEFINIDO,
   PARAMETROS,
   PASSO_ZERO,
@@ -27,6 +37,7 @@ import {
   type Contexto,
   type EnsaioId,
   type Leitura,
+  type Plataforma,
   type ParametroId,
   type Situacao,
 } from "@/lib/calculos/rotem";
@@ -48,23 +59,49 @@ import {
 const SITUACOES: Situacao[] = ["abaixo", "normal", "acima"];
 
 export function Rotem() {
+  const [plataforma, setPlataforma] = useState<Plataforma | undefined>();
   const [contexto, setContexto] = useState<Contexto>({});
-  const [leitura, setLeitura] = useState<Leitura>({});
+  const [manual, setManual] = useState<Leitura>({});
   const [valores, setValores] = useState<Record<string, string>>({});
   const [referencia, setReferencia] = useState(false);
+
+  const ensaios = useMemo(() => (plataforma ? ensaiosDa(plataforma) : []), [plataforma]);
+
+  /**
+   * O número digitado classifica sozinho quando existe intervalo publicado
+   * para aquela plataforma. A marcação manual continua valendo por cima: quem
+   * está com o laudo na mão sabe da faixa do próprio laboratório, e o guia
+   * manda que ela prevaleça.
+   */
+  const leitura = useMemo<Leitura>(() => {
+    const automatica: Leitura = {};
+    for (const e of ensaios) {
+      for (const p of e.parametros) {
+        const k = chave(e.id, p);
+        const bruto = (valores[k] ?? "").replace(",", ".").trim();
+        const numero = bruto === "" ? undefined : Number(bruto);
+        const situacao = classificar(plataforma, e.id, p, Number.isFinite(numero) ? numero : undefined);
+        if (situacao) automatica[k] = situacao;
+      }
+    }
+    return { ...automatica, ...Object.fromEntries(Object.entries(manual).filter(([, v]) => v !== undefined)) };
+  }, [ensaios, valores, manual, plataforma]);
 
   const resultado = useMemo(() => achados(leitura, contexto), [leitura, contexto]);
   const condutas = useMemo(() => condutasAplicaveis(resultado, contexto), [resultado, contexto]);
   const classificados = quantosClassificados(leitura);
   const cenario = contexto.cenario ? acharCenario(contexto.cenario) : undefined;
 
-  const classificar = (e: EnsaioId, p: ParametroId, s: Situacao) =>
-    setLeitura((v) => {
+  const marcar = (e: EnsaioId, p: ParametroId, s: Situacao) =>
+    setManual((v) => {
       const k = chave(e, p);
       // Clicar de novo no mesmo botão desmarca: dá para desfazer uma
       // classificação errada sem recarregar a tela.
       return { ...v, [k]: v[k] === s ? undefined : s };
     });
+
+  /** Só o que a pessoa mudou à mão fica em destaque como decisão dela. */
+  const ehManual = (k: string) => manual[k] !== undefined;
 
   const responder = (campo: keyof Contexto, valor: boolean) =>
     setContexto((c) => ({ ...c, [campo]: c[campo] === valor ? undefined : valor }));
@@ -77,6 +114,33 @@ export function Rotem() {
         entre os canais e aponta o fenótipo. A conduta continua sendo do seu protocolo.
       </p>
       <p className={estilos.confira}>{AVISO_MODULO}</p>
+
+      {/* A plataforma vem antes até do Passo 0: sem ela, nenhum número tem
+          contra o que ser comparado, e o guia proíbe transportar intervalo de
+          uma para a outra. */}
+      <section className={estilos.correcao}>
+        <strong>Primeiro passo — plataforma</strong>
+        <div className={estilos.parametroBotoes}>
+          {PLATAFORMAS.map((pl) => (
+            <button key={pl.id} type="button" aria-pressed={plataforma === pl.id}
+              className={plataforma === pl.id ? estilos.tresAtivo : estilos.tresBotao}
+              onClick={() => setPlataforma(plataforma === pl.id ? undefined : pl.id)}>{pl.nome}</button>
+          ))}
+        </div>
+        {plataforma ? (
+          <div className={`${estilos.bloco} ${estilos.blocoFonte}`}>
+            <strong>{acharPlataforma(plataforma)!.nome}</strong>
+            <p>{acharPlataforma(plataforma)!.operacao} {acharPlataforma(plataforma)!.cartuchos}</p>
+            <p className={estilos.aviso}>{acharPlataforma(plataforma)!.valoresPrecoces}</p>
+            <p className={estilos.aviso}>{acharPlataforma(plataforma)!.regraLocal}</p>
+            <p className={estilos.fonte}>{citar(fonteDaPlataforma(plataforma))}</p>
+          </div>
+        ) : (
+          <p className={estilos.confira}>{SEM_PLATAFORMA}</p>
+        )}
+        {plataforma && <p className={estilos.confira}>{REFERENCIA_NAO_E_GATILHO}</p>}
+        {plataforma === "sigma" && <p className={estilos.aviso}>{CARTUCHOS_DIFERENTES} {ML_SIGMA}</p>}
+      </section>
 
       {/* Passo 0 — antes do traçado, sempre. */}
       <section className={estilos.correcao}>
@@ -123,7 +187,7 @@ export function Rotem() {
 
       <p className={estilos.aviso}>{AVISO_REFERENCIA}</p>
 
-      {ENSAIOS.map((e) => (
+      {ensaios.map((e) => (
         <section key={e.id} className={estilos.correcao}>
           <strong>{e.sigla}</strong>
           <p className={estilos.dica}>{e.ativacao} {e.uso}</p>
@@ -135,7 +199,10 @@ export function Rotem() {
               <div key={p} className={estilos.parametro}>
                 <div className={estilos.parametroNome}>
                   <b>{par.sigla}</b>
-                  <small>{par.nome} ({par.unidade})</small>
+                  <small>
+                    {escreverFaixa(faixaDe(plataforma!, e.id, p), par.unidade) ?? `${par.nome} (${par.unidade})`}
+                    {ehManual(k) ? " · marcado por você" : ""}
+                  </small>
                 </div>
                 <input className={estilos.parametroValor} type="number" inputMode="decimal"
                   placeholder="valor" value={valores[k] ?? ""}
@@ -146,7 +213,7 @@ export function Rotem() {
                     <button key={s} type="button"
                       className={leitura[k] === s ? estilos.tresAtivo : estilos.tresBotao}
                       aria-pressed={leitura[k] === s}
-                      onClick={() => classificar(e.id, p, s)}>
+                      onClick={() => marcar(e.id, p, s)}>
                       {s === "normal" ? "Normal" : s === "abaixo" ? par.rotulos.abaixo : par.rotulos.acima}
                     </button>
                   ))}
