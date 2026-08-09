@@ -323,3 +323,17 @@
   font-size: 13.5px; font-weight: 700; color: var(--cor-marca-forte, #0f4c75);
   background: var(--cor-marca-suave, #eaf3fa); border-radius: 20px; padding: 6px 13px;
 }
+
+/* Escolha que muda a dose: rim do cetorolaco, recuperação da neostigmina. */
+.marcador {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0; font-size: 14px; line-height: 1.35; cursor: pointer;
+}
+.marcador input { width: 16px; height: 16px; flex: none; accent-color: var(--cor-primaria); }
+
+/* A atropina que sai junto da neostigmina, dentro do mesmo cartão. */
+.junto {
+  border-top: 1px dashed var(--cor-borda);
+  margin-top: 12px; padding-top: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
