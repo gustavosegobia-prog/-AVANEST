@@ -24,6 +24,7 @@ import { Fick, GapOsmolar, type Compartilhado } from "./modulos-extras";
 import { Eletrolitos } from "./modulo-eletrolitos";
 import { Pca } from "./modulo-pca";
 import { Rotem } from "./modulo-rotem";
+import { Doses } from "./modulo-doses";
 
 // A interface não faz conta nenhuma: tudo vem de lib/calculos. Aqui só entra
 // o que a pessoa digitou e sai o que aquelas funções devolveram — é o que
@@ -32,7 +33,7 @@ import { Rotem } from "./modulo-rotem";
 // Ponto de extensão da aba: um módulo novo é uma entrada em MODULOS e um
 // componente próprio. "teg", "rotem", "doses" entram assim, sem tocar nos que
 // já existem.
-type Modulo = "hub" | "gasometria" | "eletrolitos" | "osmolar" | "fick" | "pca" | "rotem";
+type Modulo = "hub" | "gasometria" | "eletrolitos" | "osmolar" | "fick" | "pca" | "rotem" | "doses";
 
 const MODULOS: Array<{ id: Exclude<Modulo, "hub">; icone: string; nome: string; descricao: string }> = [
   { id: "gasometria", icone: "🩸", nome: "Gasometria", descricao: "Foto ou digitação, interpretação ácido-base e orientações." },
@@ -41,6 +42,7 @@ const MODULOS: Array<{ id: Exclude<Modulo, "hub">; icone: string; nome: string; 
   { id: "fick", icone: "❤️", nome: "Débito cardíaco", descricao: "Fick, com CaO2, CvO2, débito e índice cardíaco." },
   { id: "pca", icone: "💉", nome: "PCA", descricao: "Confere a programação da bomba contra as faixas do SAESP e do Miller." },
   { id: "rotem", icone: "🩹", nome: "ROTEM", descricao: "Leitura cruzada entre os ensaios, com o fenótipo e as verificações que ele exige." },
+  { id: "doses", icone: "💉", nome: "Doses", descricao: "Idade e peso, e a lista sai em dose e em mililitros. O volume é o número grande." },
 ];
 
 const CAMPOS_GASO: Array<{ chave: keyof Gasometria; rotulo: string; passo?: string }> = [
@@ -118,6 +120,7 @@ export function CalculosClient() {
         {modulo === "fick" && <Fick dados={dados} set={set} />}
         {modulo === "pca" && <Pca dados={dados} set={set} />}
         {modulo === "rotem" && <Rotem />}
+        {modulo === "doses" && <Doses dados={dados} set={set} />}
       </div>
     </main>
   );
