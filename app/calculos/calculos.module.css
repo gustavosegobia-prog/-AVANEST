@@ -58,7 +58,13 @@
 .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .gradeCurta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; max-width: 620px; }
 
-.campo { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: var(--cor-tinta-fraca, #5b6c7a); }
+/* align-content prende a caixa ao pé do campo. Sem isso, um rótulo que quebra
+   em duas linhas empurra só a sua caixa para baixo, e a fileira inteira perde
+   a linha de base — "Osmolalidade medida (mOsm/kg)" desalinhava as três. */
+.campo {
+  display: grid; gap: 6px; align-content: space-between;
+  font-size: 13px; font-weight: 700; color: var(--cor-tinta-fraca, #5b6c7a);
+}
 .campo input {
   width: 100%; min-width: 0; height: 46px; font: inherit; font-size: 16px; font-weight: 600; color: #142536;
   border: 1px solid var(--cor-borda-forte, #c3d0da); border-radius: 9px;
