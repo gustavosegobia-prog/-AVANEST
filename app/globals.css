@@ -750,7 +750,10 @@ button:disabled{cursor:not-allowed}
      polegar, sem esconder nada atras de menu. */
   .roleNav{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;justify-content:flex-start}
   .roleNav::-webkit-scrollbar{display:none}
-  .roleNav button{flex:none}
+  /* O link precisa do flex:none tanto quanto os botoes: sem ele, o <a> e o unico
+   item encolhivel da barra e absorve sozinho toda a compressao quando o nome
+   da organizacao e o menu do usuario disputam a mesma faixa. */
+.roleNav button,.roleNav a{flex:none}
 }
 
 /* ============================================================================
