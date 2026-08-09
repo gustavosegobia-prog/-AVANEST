@@ -418,14 +418,16 @@ export function DashboardClient({
             {/* Clique fora fecha o menu sem precisar de listener global. */}
             <button className="userMenuFundo" aria-label="Fechar menu" onClick={()=>setUserMenu(false)}/>
             <div className="userMenuLista" role="menu">
-              {/* Ferramentas de apoio saem da barra e vem para ca: nao mexem em
-                  paciente nenhum, e a barra e das areas de trabalho. Ficam no
-                  topo do menu, separadas dos ajustes de conta, porque sao o
-                  unico item daqui que leva a outra tela. */}
-              <Link role="menuitem" href="/calculos" onClick={()=>setUserMenu(false)}>
-                <Icone nome="calculadora"/> Cálculos extras
-              </Link>
-              <hr/>
+              {/* Ferramentas de apoio: nao mexem em paciente nenhum, e por isso
+                  saem da barra das areas de trabalho. Enquanto os modulos
+                  amadurecem, so o super-admin ve — a pagina tambem recusa
+                  quem nao e, porque menu escondido nao e restricao. */}
+              {perfil.super_admin===true&&<>
+                <Link role="menuitem" href="/calculos" onClick={()=>setUserMenu(false)}>
+                  <Icone nome="calculadora"/> Cálculos extras
+                </Link>
+                <hr/>
+              </>}
               {/* menuitemcheckbox, nao menuitem: o item liga e desliga um estado
                   e o leitor de tela precisa anunciar qual e o atual. */}
               <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{setDark(value=>!value);setUserMenu(false)}}>
