@@ -13,6 +13,7 @@ import {
 } from "@/lib/calculos/eletrolitos";
 import { calcularOsmolar, type TipoNitrogenio } from "@/lib/calculos/osmolar";
 import { calcularFick, FORMULA_FICK } from "@/lib/calculos/fick";
+import { AVISO_FAIXAS, PROCEDENCIA_CALCIO_CORRIGIDO } from "@/lib/calculos/eletrolitos-correcoes";
 
 // Nenhuma conta aqui: tudo vem de lib/calculos. Estes componentes só juntam o
 // que a pessoa digitou, chamam a função e desenham o que ela devolveu.
@@ -80,7 +81,13 @@ const CAMPOS_ELETROLITOS: Array<[string, string, string]> = [
   ["ureia", "Ureia (mg/dL)", "1"],
 ];
 
-export function Eletrolitos({ dados, set }: { dados: Compartilhado; set: (c: string, v: string) => void }) {
+export function Eletrolitos({
+  dados, set, semTitulo,
+}: {
+  dados: Compartilhado; set: (c: string, v: string) => void;
+  /** O módulo de eletrólitos já põe o próprio cabeçalho antes das abas. */
+  semTitulo?: boolean;
+}) {
   const [calculado, setCalculado] = useState(false);
 
   const v = (c: string) => numero(dados[c] ?? "");
@@ -97,8 +104,11 @@ export function Eletrolitos({ dados, set }: { dados: Compartilhado; set: (c: str
 
   return (
     <>
-      <h1 className={estilos.titulo}>Eletrólitos</h1>
-      <p className={estilos.subtitulo}>Eletrólitos, glicose e hemoglobina. Preencha o que tiver.</p>
+      {!semTitulo && <>
+        <h1 className={estilos.titulo}>Eletrólitos</h1>
+        <p className={estilos.subtitulo}>Eletrólitos, glicose e hemoglobina. Preencha o que tiver.</p>
+      </>}
+      <p className={estilos.aviso}>{AVISO_FAIXAS}</p>
 
       <div className={estilos.grade}>
         {CAMPOS_ELETROLITOS.map(([c, rotulo, passo]) => (
@@ -151,6 +161,7 @@ export function Eletrolitos({ dados, set }: { dados: Compartilhado; set: (c: str
                 <span>Cálcio corrigido</span><b>{caCorrigido} mg/dL</b>
               </div>
               <p className={estilos.aviso}>{AVISO_CALCIO}</p>
+              <p className={estilos.confira}>{PROCEDENCIA_CALCIO_CORRIGIDO}</p>
               <Detalhes formula={FORMULA_CALCIO} />
             </div>
           )}
