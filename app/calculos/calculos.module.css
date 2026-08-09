@@ -274,3 +274,11 @@
 .perguntaTexto { display: grid; gap: 3px; flex: 1 1 260px; min-width: 0; }
 .perguntaTexto b { font-size: 15px; }
 .perguntaTexto small { font-size: 13px; line-height: 1.4; color: #8a5a12; }
+
+/* Abas de dentro de um módulo. Mesma linguagem da barra de cima, sem grudar
+   no topo: quem está no meio de uma conta não precisa dela perseguindo a
+   rolagem. */
+.barraInterna {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+  scrollbar-width: thin;
+}
