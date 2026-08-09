@@ -18,6 +18,17 @@ import {
   SEM_CONSENSO,
   SEQUENCIA,
   tudoNormal,
+  acharPlataforma,
+  CARTUCHOS_DIFERENTES,
+  classificar,
+  ensaiosDa,
+  escreverFaixa,
+  faixaDe,
+  fonteDaPlataforma,
+  PLATAFORMAS,
+  REFERENCIA_NAO_E_GATILHO,
+  REFERENCIAS,
+  SEM_PLATAFORMA,
   type Leitura,
 } from "./rotem.ts";
 
@@ -227,4 +238,102 @@ test("a barreira e a falta de consenso ficam ditas, com as três fontes", () => 
   assert.match(SEM_CONSENSO.texto, /ainda não há consenso/);
   assert.equal(SEM_CONSENSO.fontes.length, 3);
   for (const f of SEM_CONSENSO.fontes) assert.ok(f.obra && f.local, "fonte incompleta");
+});
+
+/* Plataforma e intervalos de referência. Os números abaixo são os do guia:
+   se um deles mudar, ou o manual mudou ou alguém digitou errado. */
+
+test("as duas plataformas existem, com fonte própria", () => {
+  assert.equal(PLATAFORMAS.length, 2);
+  assert.ok(acharPlataforma("delta"));
+  assert.ok(acharPlataforma("sigma"));
+  assert.match(fonteDaPlataforma("delta").local, /2005;16\(4\):301-310/);
+  assert.match(fonteDaPlataforma("sigma").local, /pp\. 119 e 127/);
+});
+
+test("os intervalos do delta são os de Lang et al.", () => {
+  assert.deepEqual(faixaDe("delta", "extem", "ct"), { min: 42, max: 74 });
+  assert.deepEqual(faixaDe("delta", "extem", "cft"), { min: 46, max: 148 });
+  assert.deepEqual(faixaDe("delta", "extem", "mcf"), { min: 49, max: 71 });
+  assert.deepEqual(faixaDe("delta", "intem", "ct"), { min: 137, max: 246 });
+  assert.deepEqual(faixaDe("delta", "intem", "cft"), { min: 40, max: 100 });
+  assert.deepEqual(faixaDe("delta", "intem", "mcf"), { min: 52, max: 72 });
+  assert.deepEqual(faixaDe("delta", "fibtem", "mcf"), { min: 9, max: 25 });
+  assert.equal(faixaDe("delta", "aptem", "mcf"), "local");
+  assert.equal(faixaDe("delta", "heptem", "ct"), "local");
+});
+
+test("no delta o A10 não tem intervalo publicado, e isso não vira chute", () => {
+  assert.equal(faixaDe("delta", "extem", "a10"), undefined);
+  assert.equal(classificar("delta", "extem", "a10", 40), undefined);
+});
+
+test("os valores esperados do sigma são os do manual", () => {
+  assert.deepEqual(faixaDe("sigma", "intem", "ct"), { min: 139, max: 202 });
+  assert.deepEqual(faixaDe("sigma", "extem", "ct"), { min: 48, max: 72 });
+  assert.deepEqual(faixaDe("sigma", "heptem", "ct"), { min: 141, max: 215 });
+  assert.deepEqual(faixaDe("sigma", "aptem", "ct"), { min: 50, max: 73 });
+  assert.deepEqual(faixaDe("sigma", "fibtem", "a5"), { min: 5, max: 14 });
+  assert.deepEqual(faixaDe("sigma", "fibtem", "mcf"), { min: 5, max: 17 });
+  assert.deepEqual(faixaDe("sigma", "extem", "a20"), { min: 53, max: 68 });
+  assert.deepEqual(faixaDe("sigma", "extem", "li60"), { min: 94, max: 100 });
+  assert.deepEqual(faixaDe("sigma", "extem", "ml"), { min: 0, max: 6 });
+  assert.equal(faixaDe("sigma", "fibtem", "ct"), undefined, "FIBTEM C não tem CT");
+});
+
+test("os intervalos das duas plataformas não se misturam", () => {
+  const delta = REFERENCIAS.delta.extem!.ct as { min: number };
+  const sigma = REFERENCIAS.sigma.extem!.ct as { min: number };
+  assert.notEqual(delta.min, sigma.min);
+  assert.equal(REFERENCIAS.delta.extem!.a20, undefined, "A20 é do sigma");
+  assert.equal(REFERENCIAS.sigma.extem!.cft, undefined, "CFT publicado é do delta");
+});
+
+test("sem plataforma escolhida, nada é classificado", () => {
+  assert.equal(classificar(undefined, "extem", "ct", 200), undefined);
+  assert.match(SEM_PLATAFORMA, /não classifica valor nenhum/);
+});
+
+test("classificar compara o número com o intervalo da plataforma certa", () => {
+  assert.equal(classificar("delta", "extem", "ct", 60), "normal");
+  assert.equal(classificar("delta", "extem", "ct", 30), "abaixo");
+  assert.equal(classificar("delta", "extem", "ct", 90), "acima");
+  // 60 s é normal no EXTEM do delta e baixo no INTEM: por isso não se troca de tabela.
+  assert.equal(classificar("delta", "intem", "ct", 60), "abaixo");
+  assert.equal(classificar("sigma", "extem", "ct", 60), "normal");
+});
+
+test("faixa do laboratório não classifica sozinha", () => {
+  assert.equal(classificar("delta", "aptem", "mcf", 55), undefined);
+  assert.equal(escreverFaixa("local", "mm"), "faixa do laboratório");
+});
+
+test("os limites contam como normais", () => {
+  assert.equal(classificar("delta", "extem", "ct", 42), "normal");
+  assert.equal(classificar("delta", "extem", "ct", 74), "normal");
+  assert.equal(classificar("sigma", "fibtem", "ml", 0), "normal");
+});
+
+test("a lista de ensaios muda com a plataforma", () => {
+  const delta = ensaiosDa("delta");
+  const sigma = ensaiosDa("sigma");
+  assert.ok(delta.some((e) => e.sigla === "NATEM"), "delta tem NATEM");
+  assert.ok(!sigma.some((e) => e.id === "natem"), "sigma não tem NATEM");
+  assert.ok(sigma.every((e) => e.sigla.endsWith(" C")), "no sigma as siglas levam C");
+  assert.equal(sigma.find((e) => e.id === "fibtem")!.parametros.includes("ct"), false);
+  assert.ok(sigma.find((e) => e.id === "extem")!.parametros.includes("a20"));
+  assert.ok(!delta.find((e) => e.id === "extem")!.parametros.includes("a20"));
+  assert.equal(delta.find((e) => e.id === "heptem")!.parametros.length, 1);
+});
+
+test("a escrita da faixa leva a unidade junto", () => {
+  assert.equal(escreverFaixa({ min: 42, max: 74 }, "s"), "42–74 s");
+  assert.equal(escreverFaixa({ min: 100, max: 100 }, "%"), "100 %");
+  assert.equal(escreverFaixa(undefined, "mm"), undefined);
+});
+
+test("referência não é gatilho, e os cartuchos do sigma são diferentes", () => {
+  assert.match(REFERENCIA_NAO_E_GATILHO, /não é sinônimo de gatilho transfusional/);
+  assert.match(REFERENCIA_NAO_E_GATILHO, /nunca vira dose/);
+  assert.match(CARTUCHOS_DIFERENTES, /complete \+ hep/);
 });
