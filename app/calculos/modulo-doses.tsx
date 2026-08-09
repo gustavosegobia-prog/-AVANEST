@@ -435,5 +435,3 @@ function Pendentes() {
     </section>
   );
 }
-Passo 4
-Substituir o arquivo inteiro
