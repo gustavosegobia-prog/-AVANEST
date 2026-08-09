@@ -31,6 +31,7 @@ const TRACOS = {
   whatsapp: <><path d="M20 12a8 8 0 0 1-11.9 7L4 20l1.1-4A8 8 0 1 1 20 12Z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.4-2-1-.9.9a4.6 4.6 0 0 1-2.1-2.1l.9-.9-1-2z" fill="currentColor" stroke="none"/></>,
   busca: <><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></>,
   pessoa: <><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></>,
+  calculadora: <><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7.5h7"/><path d="M9 12v.1"/><path d="M12 12v.1"/><path d="M15 12v.1"/><path d="M9 16.5v.1"/><path d="M12 16.5v.1"/><path d="M15 16.5v.1"/></>,
 } as const;
 
 export function Icone({ nome, tamanho = 16, rotulo, className }: Props) {
