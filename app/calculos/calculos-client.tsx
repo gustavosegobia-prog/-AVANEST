@@ -24,12 +24,6 @@ import { Fick, GapOsmolar, type Compartilhado } from "./modulos-extras";
 import { Eletrolitos } from "./modulo-eletrolitos";
 import { Pca } from "./modulo-pca";
 import { Rotem } from "./modulo-rotem";
-import {
-  AVISO_CLINICO,
-  profundidadeOral,
-  sugerirTubo,
-  type Paciente,
-} from "@/lib/calculos/via-aerea-pediatrica";
 
 // A interface não faz conta nenhuma: tudo vem de lib/calculos. Aqui só entra
 // o que a pessoa digitou e sai o que aquelas funções devolveram — é o que
@@ -38,11 +32,10 @@ import {
 // Ponto de extensão da aba: um módulo novo é uma entrada em MODULOS e um
 // componente próprio. "teg", "rotem", "doses" entram assim, sem tocar nos que
 // já existem.
-type Modulo = "hub" | "gasometria" | "tubo" | "eletrolitos" | "osmolar" | "fick" | "pca" | "rotem";
+type Modulo = "hub" | "gasometria" | "eletrolitos" | "osmolar" | "fick" | "pca" | "rotem";
 
 const MODULOS: Array<{ id: Exclude<Modulo, "hub">; icone: string; nome: string; descricao: string }> = [
   { id: "gasometria", icone: "🩸", nome: "Gasometria", descricao: "Foto ou digitação, interpretação ácido-base e orientações." },
-  { id: "tubo", icone: "👶", nome: "Tubo pediátrico", descricao: "Tamanho do tubo, opção acima e abaixo, e profundidade." },
   { id: "eletrolitos", icone: "⚡", nome: "Eletrólitos", descricao: "Valores, correção de sódio e potássio, hipercalemia e bicarbonato." },
   { id: "osmolar", icone: "💧", nome: "Gap osmolar", descricao: "Osmolalidade calculada, com divisor certo para ureia ou BUN." },
   { id: "fick", icone: "❤️", nome: "Débito cardíaco", descricao: "Fick, com CaO2, CvO2, débito e índice cardíaco." },
@@ -120,7 +113,6 @@ export function CalculosClient() {
       <div className={estilos.conteudo}>
         {modulo === "hub" && <Hub aoEscolher={setModulo} />}
         {modulo === "gasometria" && <Gaso dados={dados} set={set} />}
-        {modulo === "tubo" && <TuboPediatrico />}
         {modulo === "eletrolitos" && <Eletrolitos dados={dados} set={set} />}
         {modulo === "osmolar" && <GapOsmolar dados={dados} set={set} />}
         {modulo === "fick" && <Fick dados={dados} set={set} />}
@@ -426,68 +418,6 @@ function Numero({ rotulo, valor, alerta }: { rotulo: string; valor: string; aler
     <span className={alerta ? `${estilos.numero} ${estilos.numeroAlerta}` : estilos.numero}>
       <small>{rotulo}</small><b>{valor}</b>
     </span>
-  );
-}
-
-function TuboPediatrico() {
-  const [p, setP] = useState<Record<string, string>>({});
-
-  const paciente = useMemo<Paciente>(() => ({
-    idadeAnos: numero(p.anos ?? ""),
-    idadeMeses: numero(p.meses ?? ""),
-    pesoKg: numero(p.peso ?? ""),
-  }), [p]);
-
-  const tubo = useMemo(() => sugerirTubo(paciente), [paciente]);
-  const di = tubo?.comCuff?.sugerido ?? tubo?.semCuff?.sugerido;
-  const prof = useMemo(() => profundidadeOral(paciente, di), [paciente, di]);
-
-  return (
-    <>
-      <h1 className={estilos.titulo}>Tubo pediátrico</h1>
-      <p className={estilos.subtitulo}>
-        Abaixo de 1 ano o calibre vem do peso, e não da idade — recém-nascido não segue a fórmula da criança maior.
-      </p>
-
-      <div className={estilos.gradeCurta}>
-        <label className={estilos.campo}><span>Idade (anos)</span>
-          <input type="number" inputMode="numeric" min="0" value={p.anos ?? ""} onChange={(e) => setP((v) => ({ ...v, anos: e.target.value }))} /></label>
-        <label className={estilos.campo}><span>Idade (meses)</span>
-          <input type="number" inputMode="numeric" min="0" value={p.meses ?? ""} onChange={(e) => setP((v) => ({ ...v, meses: e.target.value }))} /></label>
-        <label className={estilos.campo}><span>Peso (kg)</span>
-          <input type="number" inputMode="decimal" step="0.1" min="0" value={p.peso ?? ""} onChange={(e) => setP((v) => ({ ...v, peso: e.target.value }))} /></label>
-      </div>
-
-      {tubo?.aviso && <p className={estilos.dica}>{tubo.aviso}</p>}
-
-      {tubo && !tubo.aviso && (
-        <section className={estilos.resultado} aria-live="polite">
-          <h2 className={estilos.resultadoTitulo}>Tubo sugerido</h2>
-          <p className={estilos.origem}>Calculado pela {tubo.origem}.</p>
-
-          {tubo.comCuff && <Escada titulo="Com cuff" opcao={tubo.comCuff} />}
-          {tubo.semCuff && <Escada titulo="Sem cuff" opcao={tubo.semCuff} />}
-          {tubo.faixaNeonatal && (
-            <p className={estilos.veredito}>
-              Faixa de referência para este peso: <b>{tubo.faixaNeonatal.de}–{tubo.faixaNeonatal.ate} mm</b>
-            </p>
-          )}
-
-          {prof && (
-            <>
-              <h2 className={estilos.resultadoTitulo}>Profundidade oral</h2>
-              <div className={estilos.linha}>
-                {prof.pelaIdade !== undefined && <><span>Pela idade</span><b>{prof.pelaIdade} cm</b></>}
-                {prof.peloTubo !== undefined && <><span>Pelo diâmetro do tubo</span><b>{prof.peloTubo} cm</b></>}
-              </div>
-              <p className={estilos.veredito}>Profundidade inicial estimada: <b>{prof.sugerida}</b></p>
-            </>
-          )}
-
-          <p className={estilos.aviso}>{AVISO_CLINICO}</p>
-        </section>
-      )}
-    </>
   );
 }
 
