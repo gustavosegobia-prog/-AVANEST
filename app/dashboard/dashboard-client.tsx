@@ -399,8 +399,6 @@ export function DashboardClient({
           {allowedViews.includes("medico")&&<button disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
           {allowedViews.includes("financeiro")&&<button disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
-          {/* Ferramentas de apoio: sai do painel porque nao mexe em paciente nenhum. */}
-          <a href="/calculos">Cálculos</a>
         </nav>
         <div className="userMenuWrap">
           <button
@@ -420,6 +418,14 @@ export function DashboardClient({
             {/* Clique fora fecha o menu sem precisar de listener global. */}
             <button className="userMenuFundo" aria-label="Fechar menu" onClick={()=>setUserMenu(false)}/>
             <div className="userMenuLista" role="menu">
+              {/* Ferramentas de apoio saem da barra e vem para ca: nao mexem em
+                  paciente nenhum, e a barra e das areas de trabalho. Ficam no
+                  topo do menu, separadas dos ajustes de conta, porque sao o
+                  unico item daqui que leva a outra tela. */}
+              <Link role="menuitem" href="/calculos" onClick={()=>setUserMenu(false)}>
+                <Icone nome="calculadora"/> Cálculos extras
+              </Link>
+              <hr/>
               {/* menuitemcheckbox, nao menuitem: o item liga e desliga um estado
                   e o leitor de tela precisa anunciar qual e o atual. */}
               <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{setDark(value=>!value);setUserMenu(false)}}>
