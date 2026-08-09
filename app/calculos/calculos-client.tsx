@@ -20,7 +20,8 @@ import {
   ventilacaoParaAlvo,
 } from "@/lib/calculos/gasometria-orientacoes";
 import { AVISO_LEITURA, lerGasometria } from "@/lib/calculos/gasometria-leitura";
-import { Eletrolitos, Fick, GapOsmolar, type Compartilhado } from "./modulos-extras";
+import { Fick, GapOsmolar, type Compartilhado } from "./modulos-extras";
+import { Eletrolitos } from "./modulo-eletrolitos";
 import { Pca } from "./modulo-pca";
 import { Rotem } from "./modulo-rotem";
 import {
@@ -42,7 +43,7 @@ type Modulo = "hub" | "gasometria" | "tubo" | "eletrolitos" | "osmolar" | "fick"
 const MODULOS: Array<{ id: Exclude<Modulo, "hub">; icone: string; nome: string; descricao: string }> = [
   { id: "gasometria", icone: "🩸", nome: "Gasometria", descricao: "Foto ou digitação, interpretação ácido-base e orientações." },
   { id: "tubo", icone: "👶", nome: "Tubo pediátrico", descricao: "Tamanho do tubo, opção acima e abaixo, e profundidade." },
-  { id: "eletrolitos", icone: "⚡", nome: "Eletrólitos", descricao: "Eletrólitos, glicose e hemoglobina, com sódio e cálcio corrigidos." },
+  { id: "eletrolitos", icone: "⚡", nome: "Eletrólitos", descricao: "Valores, correção de sódio e potássio, hipercalemia e bicarbonato." },
   { id: "osmolar", icone: "💧", nome: "Gap osmolar", descricao: "Osmolalidade calculada, com divisor certo para ureia ou BUN." },
   { id: "fick", icone: "❤️", nome: "Débito cardíaco", descricao: "Fick, com CaO2, CvO2, débito e índice cardíaco." },
   { id: "pca", icone: "💉", nome: "PCA", descricao: "Confere a programação da bomba contra as faixas do SAESP e do Miller." },
