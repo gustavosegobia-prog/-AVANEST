@@ -2,14 +2,19 @@
  * ROTEM — interpretação estruturada e classes de conduta.
  *
  * Transcrição do guia clínico AVANEST de hemostasia viscoelástica, que se
- * apoia em SAESP, Miller e na diretriz europeia de trauma de 2023. Como no
- * módulo de PCA, o que a fonte não afirma fica ausente: nenhum gatilho
- * numérico foi inventado, e não há faixa de normalidade cadastrada.
+ * apoia em SAESP, Miller, na diretriz europeia de trauma de 2023 e nas fontes
+ * de referência de cada plataforma. Como no módulo de PCA, o que a fonte não
+ * afirma fica ausente: nenhum gatilho numérico foi inventado.
  *
- * A faixa de referência é do laboratório. Ela muda com a plataforma, o
- * reagente e a população, e o próprio guia registra que nenhum dos trechos
- * revistos fornece um intervalo universal. Quem classifica cada parâmetro é
- * quem está lendo o exame, com a referência do próprio laudo.
+ * Há intervalos de referência, e eles são por plataforma. Delta e sigma têm
+ * ensaios, cartuchos e faixas diferentes, e o guia proíbe transportar um
+ * intervalo de uma para a outra — por isso a plataforma é o primeiro campo, e
+ * sem ela nenhum número é classificado. Onde a fonte não publicou intervalo,
+ * não há classificação automática, e a faixa validada pelo laboratório local
+ * prevalece sempre sobre a publicada.
+ *
+ * Intervalo de referência não é gatilho de transfusão. São camadas
+ * diferentes, e o módulo nunca deixa uma virar a outra.
  *
  * Duas separações que o módulo mantém de pé:
  *   1. interpretação do traçado  ×  protocolo terapêutico aprovado;
@@ -115,7 +120,7 @@ export const acharCenario = (id: CenarioId) => CENARIOS.find((c) => c.id === id)
  * Parâmetros e ensaios
  * ------------------------------------------------------------------ */
 
-export type ParametroId = "ct" | "cft" | "alfa" | "a5" | "a10" | "mcf" | "ml";
+export type ParametroId = "ct" | "cft" | "alfa" | "a5" | "a10" | "a20" | "mcf" | "li60" | "ml";
 export type EnsaioId = "extem" | "intem" | "fibtem" | "aptem" | "heptem" | "natem";
 
 export type Parametro = {
@@ -155,10 +160,20 @@ export const PARAMETROS: Record<ParametroId, Parametro> = {
     pergunta: "Qual a amplitude aos 10 minutos? Permite decisão precoce conforme protocolo validado.",
     rotulos: { abaixo: "Reduzida", acima: "Aumentada" },
   },
+  a20: {
+    id: "a20", sigla: "A20", nome: "Amplitude aos 20 min", unidade: "mm", fase: "Firmeza precoce",
+    pergunta: "Qual a amplitude aos 20 minutos?",
+    rotulos: { abaixo: "Reduzida", acima: "Aumentada" },
+  },
   mcf: {
     id: "mcf", sigla: "MCF", nome: "Firmeza máxima do coágulo", unidade: "mm", fase: "Firmeza máxima",
     pergunta: "Qual a resistência máxima do coágulo, resultado de fibrina, plaquetas e outros componentes?",
     rotulos: { abaixo: "Reduzida", acima: "Aumentada" },
+  },
+  li60: {
+    id: "li60", sigla: "LI60", nome: "Índice de lise aos 60 min", unidade: "%", fase: "Lise",
+    pergunta: "Quanto da firmeza permanece 60 minutos depois? Valor baixo é mais lise.",
+    rotulos: { abaixo: "Reduzido", acima: "Aumentado" },
   },
   ml: {
     id: "ml", sigla: "ML", nome: "Lise máxima", unidade: "%", fase: "Lise",
@@ -215,6 +230,166 @@ export const ENSAIOS: Ensaio[] = [
 ];
 
 export const acharEnsaio = (id: EnsaioId) => ENSAIOS.find((e) => e.id === id);
+
+/* ------------------------------------------------------------------ *
+ * Plataforma: delta ou sigma.
+ *
+ * Primeiro passo, e obrigatório. As duas plataformas têm ensaios, cartuchos e
+ * intervalos diferentes, e o guia é taxativo: não transportar automaticamente
+ * um intervalo de uma para a outra. Sem plataforma escolhida, o módulo não
+ * classifica número nenhum — fica só a classificação manual.
+ * ------------------------------------------------------------------ */
+
+export type Plataforma = "delta" | "sigma";
+
+export const PLATAFORMAS: Array<{
+  id: Plataforma; nome: string; operacao: string; cartuchos: string;
+  valoresPrecoces: string; referencia: string; regraLocal: string;
+}> = [
+  {
+    id: "delta", nome: "ROTEM delta",
+    operacao: "Pipetagem manual e reagentes líquidos, com maior dependência do operador.",
+    cartuchos: "INTEM, EXTEM, FIBTEM, APTEM e HEPTEM.",
+    valoresPrecoces: "Muitos protocolos históricos usam A10.",
+    referencia: "Estudo multicêntrico em adultos saudáveis (Lang et al.).",
+    regraLocal: "Validar laboratório, reagente e lote.",
+  },
+  {
+    id: "sigma", nome: "ROTEM sigma",
+    operacao: "Cartuchos automatizados.",
+    cartuchos: "complete, ou complete + hep. INTEM C, EXTEM C, FIBTEM C e APTEM C ou HEPTEM C.",
+    valoresPrecoces: "A5 é disponibilizado. Não converter diretamente os gatilhos do delta.",
+    referencia: "Manual do fabricante, com 120 doadores saudáveis.",
+    regraLocal: "Validar laboratório, cartucho e lote.",
+  },
+];
+
+export const acharPlataforma = (id?: Plataforma) => PLATAFORMAS.find((p) => p.id === id);
+
+export const FONTE_DELTA: Fonte = {
+  obra: "Lang T et al., Multi-centre investigation on reference ranges for ROTEM thromboelastometry",
+  local: "Blood Coagul Fibrinolysis. 2005;16(4):301-310",
+};
+
+export const FONTE_SIGMA: Fonte = {
+  obra: "ROTEM sigma User Manual (Tem Innovations / Werfen)",
+  local: "P/N 000600370 Rev 00, Appendix — Expected values, pp. 119 e 127",
+};
+
+export const fonteDaPlataforma = (p: Plataforma) => (p === "delta" ? FONTE_DELTA : FONTE_SIGMA);
+
+/** Intervalo publicado, ou "local" quando a fonte manda usar a faixa do laboratório. */
+export type Faixa = { min: number; max: number };
+export type Referencia = Faixa | "local";
+
+/**
+ * Intervalos de referência por plataforma.
+ *
+ * São intervalos de normalidade, e não gatilhos de transfusão — o guia separa
+ * as duas coisas em letras garrafais, e o módulo separa também. O que não está
+ * aqui não foi publicado na fonte: fica sem classificação automática em vez de
+ * herdar o número da outra plataforma.
+ */
+export const REFERENCIAS: Record<Plataforma, Partial<Record<EnsaioId, Partial<Record<ParametroId, Referencia>>>>> = {
+  delta: {
+    extem: { ct: { min: 42, max: 74 }, cft: { min: 46, max: 148 }, mcf: { min: 49, max: 71 } },
+    intem: { ct: { min: 137, max: 246 }, cft: { min: 40, max: 100 }, mcf: { min: 52, max: 72 } },
+    fibtem: { mcf: { min: 9, max: 25 } },
+    aptem: { ct: "local", cft: "local", mcf: "local" },
+    heptem: { ct: "local", cft: "local", mcf: "local" },
+  },
+  sigma: {
+    intem: {
+      ct: { min: 139, max: 202 }, a5: { min: 37, max: 55 }, a10: { min: 47, max: 64 },
+      a20: { min: 54, max: 70 }, mcf: { min: 55, max: 71 }, li60: { min: 93, max: 100 }, ml: { min: 0, max: 7 },
+    },
+    extem: {
+      ct: { min: 48, max: 72 }, a5: { min: 33, max: 51 }, a10: { min: 44, max: 61 },
+      a20: { min: 53, max: 68 }, mcf: { min: 54, max: 70 }, li60: { min: 94, max: 100 }, ml: { min: 0, max: 6 },
+    },
+    fibtem: {
+      a5: { min: 5, max: 14 }, a10: { min: 5, max: 15 },
+      a20: { min: 5, max: 16 }, mcf: { min: 5, max: 17 }, li60: { min: 100, max: 100 }, ml: { min: 0, max: 0 },
+    },
+    aptem: {
+      ct: { min: 50, max: 73 }, a5: { min: 30, max: 49 }, a10: { min: 41, max: 59 },
+      a20: { min: 49, max: 66 }, mcf: { min: 52, max: 68 }, li60: { min: 95, max: 100 }, ml: { min: 0, max: 5 },
+    },
+    heptem: {
+      ct: { min: 141, max: 215 }, a5: { min: 33, max: 51 }, a10: { min: 44, max: 61 },
+      a20: { min: 52, max: 67 }, mcf: { min: 54, max: 69 }, li60: { min: 94, max: 100 }, ml: { min: 0, max: 6 },
+    },
+  },
+};
+
+/** Quais parâmetros cada ensaio expõe, por plataforma. */
+const PARAMETROS_POR_PLATAFORMA: Record<Plataforma, Partial<Record<EnsaioId, ParametroId[]>>> = {
+  delta: {
+    extem: ["ct", "cft", "alfa", "a5", "a10", "mcf", "ml"],
+    intem: ["ct", "cft", "alfa", "a5", "a10", "mcf", "ml"],
+    fibtem: ["a5", "a10", "mcf"],
+    aptem: ["a10", "mcf", "ml"],
+    heptem: ["ct"],
+    natem: ["ct", "cft", "a10", "mcf", "ml"],
+  },
+  sigma: {
+    // FIBTEM C não traz CT: o manual marca N/A.
+    extem: ["ct", "a5", "a10", "a20", "mcf", "li60", "ml"],
+    intem: ["ct", "a5", "a10", "a20", "mcf", "li60", "ml"],
+    fibtem: ["a5", "a10", "a20", "mcf", "li60", "ml"],
+    aptem: ["ct", "a5", "a10", "a20", "mcf", "li60", "ml"],
+    heptem: ["ct", "a5", "a10", "a20", "mcf", "li60", "ml"],
+  },
+};
+
+/** Os ensaios daquela plataforma, com a sigla e os parâmetros que ela usa. */
+export function ensaiosDa(plataforma: Plataforma): Ensaio[] {
+  const mapa = PARAMETROS_POR_PLATAFORMA[plataforma];
+  return ENSAIOS.filter((e) => mapa[e.id]).map((e) => ({
+    ...e,
+    sigla: plataforma === "sigma" ? `${e.sigla} C` : e.sigla,
+    parametros: mapa[e.id]!,
+  }));
+}
+
+export const faixaDe = (plataforma: Plataforma, ensaio: EnsaioId, parametro: ParametroId): Referencia | undefined =>
+  REFERENCIAS[plataforma]?.[ensaio]?.[parametro];
+
+export function escreverFaixa(f: Referencia | undefined, unidade: string): string | undefined {
+  if (!f) return undefined;
+  if (f === "local") return "faixa do laboratório";
+  return f.min === f.max ? `${f.min} ${unidade}` : `${f.min}–${f.max} ${unidade}`;
+}
+
+/**
+ * Classifica um valor digitado contra o intervalo publicado.
+ *
+ * Devolve undefined quando não há intervalo — sem plataforma, sem faixa
+ * publicada, ou quando a fonte manda usar a do laboratório. Nesses casos a
+ * classificação continua sendo de quem lê o exame.
+ */
+export function classificar(
+  plataforma: Plataforma | undefined, ensaio: EnsaioId, parametro: ParametroId, valor?: number,
+): Situacao | undefined {
+  if (!plataforma || valor === undefined || !Number.isFinite(valor)) return undefined;
+  const faixa = faixaDe(plataforma, ensaio, parametro);
+  if (!faixa || faixa === "local") return undefined;
+  if (valor < faixa.min) return "abaixo";
+  if (valor > faixa.max) return "acima";
+  return "normal";
+}
+
+export const SEM_PLATAFORMA =
+  "Escolha a plataforma antes de interpretar qualquer número. Sem ela, o AVANEST não classifica valor nenhum — as duas têm ensaios, cartuchos e intervalos diferentes, e transportar um intervalo de uma para a outra é erro.";
+
+export const REFERENCIA_NAO_E_GATILHO =
+  "Intervalo de referência não é sinônimo de gatilho transfusional. A decisão terapêutica exige sangramento, cenário e algoritmo institucional validado. E o limite da faixa normal nunca vira dose.";
+
+export const CARTUCHOS_DIFERENTES =
+  "No sigma, APTEM C e HEPTEM C pertencem a cartuchos diferentes — complete e complete + hep. Os dois não saem da mesma corrida.";
+
+export const ML_SIGMA = "No sigma, a ML é calculada 60 minutos após o CT.";
+
 
 /** As três comparações que geram informação, com o cuidado que cada uma pede. */
 export const COMPARACOES: Array<{ par: string; inferencia: string; cuidado: string }> = [
@@ -560,7 +735,7 @@ export const AVISO_MODULO =
   "O ROTEM identifica fenótipos, mas não localiza sangramento cirúrgico e não mede adequadamente todas as disfunções plaquetárias, o efeito do fator de von Willebrand ou todos os anticoagulantes. Terapia pró-hemostática inadequada pode causar trombose.";
 
 export const AVISO_REFERENCIA =
-  "Classifique cada parâmetro pela referência do seu próprio laudo. O AVANEST não cadastra faixa de normalidade porque ela muda com a plataforma, o reagente e a população.";
+  "Os intervalos exibidos são os publicados para a plataforma escolhida, e valem como orientação. A faixa validada pelo seu laboratório prevalece sempre: onde ela divergir, marque a situação à mão — a marcação manual vence a automática.";
 
 export const SEM_CONSENSO = {
   texto: "Protocolos orientados por testes viscoelásticos podem reduzir sangramento, transfusões e morbimortalidade, mas ainda não há consenso entre os algoritmos transfusionais — muitos deles foram desenvolvidos em centros individuais.",
