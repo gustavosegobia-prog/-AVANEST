@@ -13,14 +13,16 @@ import {
   converter,
   dePercentual,
   disponiveis,
+  doseCefazolina,
+  doseCetorolaco,
   emMeses,
   escreverApresentacao,
   faixaEtaria,
   FAIXA_GERAL_BUPIVACAINA_IT,
   GRUPOS,
+  ID_ATROPINA_REVERSAO,
   MESES_ADULTO,
   MESES_LACTENTE,
-  PENDENTES,
   porMl,
   RAQUI_REMOVIDA,
   virgula,
@@ -288,27 +290,21 @@ test("nenhuma apresentação de anestésico local passa da barreira", () => {
   }
 });
 
-test("os pendentes são só nomes, e dizem por que estão pendentes", () => {
-  assert.equal(PENDENTES.length, 18);
-  assert.ok(PENDENTES.some((p) => /Propofol/.test(p.nome)));
-  assert.ok(PENDENTES.some((p) => /Cefazolina/.test(p.nome)));
-  // Nenhum pendente entrou no catálogo por engano.
-  for (const p of PENDENTES) {
-    const igual = CATALOGO.find((m) => m.nome.toLowerCase() === p.nome.toLowerCase());
-    assert.equal(igual, undefined, `${p.nome} está no catálogo e deveria estar pendente`);
+test("nada do adulto foi assinado como SAESP sem estar no SAESP", () => {
+  const doServico = CATALOGO.filter((m) => m.fonte?.obra === "Tabela de doses do adulto do serviço");
+  assert.ok(doServico.length >= 18, `esperado ao menos 18, veio ${doServico.length}`);
+  for (const m of doServico) {
+    assert.equal(/SAESP/i.test(m.fonte!.obra), false, `${m.nome} assinado como SAESP`);
+    assert.ok(m.revisao, `${m.nome} sem data de revisão`);
   }
 });
 
-test("o valor da tabela antiga não virou dose do SAESP", () => {
+test("o valor da tabela antiga não virou dose do adulto", () => {
   const propofolAdulto = CATALOGO.filter((m) => m.populacoes.includes("adulto") && /propofol/i.test(m.nome));
   for (const m of propofolAdulto) {
-    const geral = m.dose!.unidade === "mg" && m.dose!.por === "kg" && m.dose!.max === 3;
-    assert.equal(geral, false, "1,5–3 mg/kg é o valor pendente, não pode estar cadastrado");
+    const antigo = m.dose!.unidade === "mg" && m.dose!.por === "kg" && m.dose!.max === 3;
+    assert.equal(antigo, false, "1,5–3 mg/kg é o valor da tabela antiga, não pode estar cadastrado");
   }
-  // O único propofol de bolo do adulto é o de técnica específica, e ele leva contexto.
-  const bolo = propofolAdulto.filter((m) => m.dose!.por === "kg");
-  assert.equal(bolo.length, 1);
-  assert.ok(bolo[0].contextoFonte);
 });
 
 test("o que a fonte descreve em técnica específica carrega o contexto e o alerta", () => {
@@ -370,4 +366,117 @@ test("peso ausente, zero ou negativo não calcula nada", () => {
   assert.equal(calcularNivel("usual", 2, dose, 0, mg10()), undefined);
   assert.equal(calcularNivel("usual", 2, dose, -5, mg10()), undefined);
   assert.equal(calcular(dose, Number.NaN, mg10()).length, 0);
+});
+
+/* ---------------- dose fixa ---------------- */
+
+test("dose fixa não enxerga o peso", () => {
+  const fixa: DosePorKg = { usual: 4, unidade: "mg", por: "fixa" };
+  const magro = calcularNivel("usual", 4, fixa, 45, mg10())!;
+  const pesado = calcularNivel("usual", 4, fixa, 130, mg10())!;
+  assert.equal(magro.doseTotal, 4);
+  assert.equal(pesado.doseTotal, 4);
+  assert.equal(magro.volume, pesado.volume);
+});
+
+test("dose por quilo continua enxergando o peso", () => {
+  const porKg: DosePorKg = { usual: 4, unidade: "mg", por: "kg" };
+  assert.equal(calcularNivel("usual", 4, porKg, 45, mg10())!.doseTotal, 180);
+});
+
+test("ondansetrona e dexametasona são fixas; nenhuma multiplica por quilo", () => {
+  for (const id of ["ondansetrona-adulto", "dexametasona-adulto", "cetorolaco-adulto", "cefazolina-adulto", "tramadol-adulto", "nalbufina-adulto", "hidrocortisona-inducao", "hidrocortisona-manutencao"]) {
+    assert.equal(acharMedicamento(id)!.dose!.por, "fixa", id);
+  }
+  const onda = acharMedicamento("ondansetrona-adulto")!;
+  const c = calcular(onda.dose!, 70, onda.apresentacoes[0]);
+  assert.equal(c.length, 1);
+  assert.equal(c[0].doseTotal, 4);
+  assert.equal(c[0].volume, 2); // 4 mg ÷ 2 mg/mL
+});
+
+/* ---------------- valores do adulto, conferidos a 70 kg ---------------- */
+
+test("a 70 kg os números batem com a tabela do adulto", () => {
+  const conta = (id: string) => {
+    const m = acharMedicamento(id)!;
+    return calcular(m.dose!, 70, m.apresentacoes[0]).map((c) => [c.nivel, c.doseTotal, c.volume]);
+  };
+
+  assert.deepEqual(conta("propofol-adulto"), [["minima", 140, 14], ["maxima", 175, 17.5]]);
+  assert.deepEqual(conta("fentanil-adulto"), [["minima", 140, 2.8], ["maxima", 350, 7]]);
+  assert.deepEqual(conta("cisatracurio-adulto"), [["minima", 10.5, 5.25], ["maxima", 14, 7]]);
+
+  const etomidato = conta("etomidato-adulto");
+  assert.deepEqual(etomidato[1], ["usual", 21, 10.5]);
+
+  const cetamina = conta("cetamina-adulto-inducao");
+  assert.deepEqual([cetamina[0][1], cetamina[1][1]], [70, 140]);
+});
+
+test("succinilcolina mostra habitual e sequência rápida em cartões separados", () => {
+  const habitual = acharMedicamento("succinilcolina-adulto")!;
+  const rsi = acharMedicamento("succinilcolina-adulto-rsi")!;
+  assert.deepEqual([habitual.dose!.min, habitual.dose!.usual, habitual.dose!.max], [0.3, 0.6, 1.1]);
+  assert.deepEqual([rsi.dose!.min, rsi.dose!.max], [1, 1.5]);
+});
+
+test("sufentanil do adulto é titulável e avisa que não é bolus único", () => {
+  const m = acharMedicamento("sufentanil-adulto")!;
+  assert.equal(m.titulavel, true);
+  assert.match(m.alerta!, /não um bolus único/i);
+});
+
+/* ---------------- regras condicionais ---------------- */
+
+test("cefazolina sobe para 3 g acima de 120 kg", () => {
+  assert.equal(doseCefazolina(70).dose.usual, 2);
+  assert.equal(doseCefazolina(120).dose.usual, 2);
+  assert.equal(doseCefazolina(121).dose.usual, 3);
+  assert.match(doseCefazolina(130).motivo, /120 kg/);
+  assert.equal(doseCefazolina(undefined).dose.usual, 2);
+});
+
+test("cetorolaco cai para 15 mg por idade, por peso ou por rim", () => {
+  assert.equal(doseCetorolaco({ idadeAnos: 40, pesoKg: 70 }).dose.usual, 30);
+  assert.equal(doseCetorolaco({ idadeAnos: 65, pesoKg: 70 }).dose.usual, 15);
+  assert.equal(doseCetorolaco({ idadeAnos: 40, pesoKg: 49 }).dose.usual, 15);
+  assert.equal(doseCetorolaco({ idadeAnos: 40, pesoKg: 70, comprometimentoRenal: true }).dose.usual, 15);
+  assert.match(doseCetorolaco({ idadeAnos: 70, pesoKg: 45 }).motivo, /idade.*peso|peso.*idade/);
+  assert.match(acharMedicamento("cetorolaco-adulto")!.alerta!, /renal/i);
+});
+
+test("neostigmina tem teto de 5 mg e exige monitorização", () => {
+  const m = acharMedicamento("neostigmina-adulto")!;
+  assert.deepEqual(m.tetoAbsoluto, { valor: 5, unidade: "mg" });
+  assert.equal(m.regra, "neostigmina");
+  assert.match(m.alerta!, /monitoriza/i);
+
+  // 100 kg × 0,07 daria 7 mg; o teto corta em 5 mg.
+  const maxima = calcular(m.dose!, 100, m.apresentacoes[0], m.tetoAbsoluto)
+    .find((c) => c.nivel === "maxima")!;
+  assert.equal(maxima.doseTotal, 5);
+  assert.equal(maxima.limitada, true);
+  assert.equal(maxima.doseAntesDoTeto, 7);
+});
+
+test("a atropina de reversão não aparece sozinha na lista", () => {
+  const atropina = acharMedicamento(ID_ATROPINA_REVERSAO)!;
+  assert.equal(atropina.oculto, true);
+  assert.equal(atropina.dose!.usual, 0.015);
+  assert.equal(disponiveis("adulto").some((m) => m.id === ID_ATROPINA_REVERSAO), false);
+});
+
+test("hidrocortisona não é rotina", () => {
+  for (const id of ["hidrocortisona-inducao", "hidrocortisona-manutencao"]) {
+    assert.match(acharMedicamento(id)!.alerta!, /não é profilaxia de rotina/i);
+  }
+  assert.match(acharMedicamento("hidrocortisona-manutencao")!.observacao!, /6 horas/);
+});
+
+test("cefazolina em grama converte certo para volume", () => {
+  const m = acharMedicamento("cefazolina-adulto")!;
+  const c = calcular(m.dose!, 70, m.apresentacoes[0])[0];
+  assert.equal(c.doseTotal, 2);        // 2 g
+  assert.equal(c.volume, 20);          // 2 g ÷ 0,1 g/mL
 });
