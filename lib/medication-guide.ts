@@ -14,11 +14,25 @@ export type MedicationGuideEntry = {
 
 /**
  * Condutas que exigem uma orientação escrita pelo anestesiologista.
- * Medicamentos mantidos aparecem apenas na lista de medicamentos em uso da
- * ficha; estes aqui também entram no bloco de orientações, com espaço para a
- * conduta ser escrita.
+ *
+ * A regra é uma só: tudo que não for "Manter" entra nas orientações finais.
+ * Manter é a única conduta que não pede nada de ninguém — o paciente toma o
+ * remédio como sempre tomou, e basta aparecer na lista de medicamentos em uso.
+ *
+ * A lista existia antes com "Suspender" e "Individualizar" apenas, e "Avaliar"
+ * ficava de fora. Só que "Avaliar" é o valor com que todo medicamento nasce
+ * quando o guia não o conhece, e é justamente a decisão que ainda não foi
+ * tomada: era o caso que mais precisava aparecer no papel e o único que
+ * sumia dele.
  */
-export const MEDICATION_ORIENTATION_ACTIONS = ["Suspender", "Individualizar"];
+export const CONDUTA_SEM_ORIENTACAO = "manter";
+
+export function exigeOrientacao(conduta: string) {
+  return String(conduta || "").trim().toLowerCase() !== CONDUTA_SEM_ORIENTACAO;
+}
+
+/** Mantido para leitura; a decisão real é a de `exigeOrientacao`. */
+export const MEDICATION_ORIENTATION_ACTIONS = ["Suspender", "Individualizar", "Avaliar"];
 
 const SOURCE =
   "Guia Perioperatório de Medicamentos, versão 1.0, revisão 07/2026 — SAESP 2025; Miller 7ª ed.; AHA/ACC 2024; ADA 2026; CHEST 2022; ASRA 5ª ed. 2025";
@@ -798,4 +812,29 @@ export function calculateLastDoseDate(surgeryDate: string, suspendDays?: number)
   if (Number.isNaN(date.getTime())) return "";
   date.setDate(date.getDate() - suspendDays);
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * As classes que respondem "usa anticoagulante ou antiagregante?".
+ *
+ * A pergunta da anamnese deixou de ter lista de remédio própria: quem digita
+ * Xarelto no item de medicamentos não deve ter que digitar Xarelto de novo
+ * três telas depois. A resposta passa a sair daqui, da classe que o próprio
+ * guia já atribuiu ao fármaco.
+ *
+ * A lista é de classes e não de nomes de propósito — cadastrar um antiagregante
+ * novo no guia já o faz aparecer na anamnese, sem ninguém lembrar de mexer aqui.
+ */
+export const CLASSES_ANTITROMBOTICAS = new Set([
+  "Antiagregante plaquetário",
+  "Antiagregante P2Y12",
+  "Antagonista da vitamina K",
+  "DOAC (anti-Xa)",
+  "DOAC (anti-IIa)",
+  "HBPM",
+]);
+
+export function ehAntitrombotico(nome: string) {
+  const classe = findMedicationGuideEntry(nome)?.medicationClass;
+  return classe !== undefined && CLASSES_ANTITROMBOTICAS.has(classe);
 }
