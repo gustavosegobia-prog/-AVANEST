@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { calculateLastDoseDate, findMedicationGuideEntry, MEDICATION_ORIENTATION_ACTIONS } from "@/lib/medication-guide";
+import { calculateLastDoseDate, ehAntitrombotico, exigeOrientacao, findMedicationGuideEntry } from "@/lib/medication-guide";
 import { orientacaoSugerida } from "@/lib/medication-summary";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
@@ -25,8 +25,11 @@ type Patient = {
   especialidade?:string|null; procedimento?:string|null; convenio?:string|null; data_consulta?:string|null; horario?:string|null;
 };
 
+// O anticoagulante saiu daqui: a pergunta mora no item 4, junto das outras
+// duas perguntas de medicamento. Quem toma anticoagulante toma um
+// medicamento, e a pergunta pertence ao bloco que tem a lista.
 const ANAMNESIS_KEYS = [
-  "cirurgias_anteriores", "reacao_anestesica", "anticoagulante",
+  "cirurgias_anteriores", "reacao_anestesica",
   "cardiovascular", "respiratoria", "diabetes", "neurologica", "outras_doencas",
   "doenca_aguda", "dentaria", "alergias", "habitos", "glaucoma", "gestacao",
 ] as const;
@@ -268,7 +271,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const anamnesisKeys = getAnamnesisKeys(draft.sexo || paciente.sexo);
   const anamnesisComplete = anamnesisKeys.every((key) => isFilled(draft[key])) &&
     (draft.alergias !== "Sim" || isFilled(draft.alergias_detalhes));
-  const medicationComplete = isFilled(draft.medicacao_continua) && (
+  const medicationComplete = isFilled(draft.medicacao_continua) && isFilled(draft.anticoagulante) && (
     draft.medicacao_continua !== "Sim" || (
       readMedications(draft.medicamentos_json).length > 0 &&
       readMedications(draft.medicamentos_json).every((item) => item.confirmada === true)
@@ -277,6 +280,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
   const completedSteps=[
     Boolean(isFilled(paciente.nome)&&isFilled(paciente.data_nascimento)&&age!==null&&isFilled(draft.peso)&&isFilled(draft.altura)),
     Boolean(isFilled(draft.cirurgia)),
+    // A ordem acompanha STEPS: anamnese é a etapa 3, medicamentos a 4.
     anamnesisComplete,
     medicationComplete,
     Boolean(isFilled(draft.pa_sistolica)&&isFilled(draft.pa_diastolica)&&isFilled(draft.fc)&&isFilled(draft.spo2)),
@@ -401,7 +405,6 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
   const questions=[
     ["cirurgias_anteriores","Histórico cirúrgico / Cirurgias prévias"],
     ["reacao_anestesica","Apresentou reação ou complicação anestésica? Há casos na família?"],
-    ["anticoagulante","Utiliza anticoagulante ou antiagregante?"],
     ["cardiovascular","Possui doença cardiovascular?"],
     ["respiratoria","Doença respiratória?"],
     ["diabetes","Possui diabetes?"],
@@ -420,7 +423,7 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
 const QUESTION_CHIPS:Record<string,string[]>={
   cirurgias_anteriores:["Cesárea","Colecistectomia","Herniorrafia","Ortopédica","Cardíaca","Outra"],
   reacao_anestesica:["Náuseas/vômitos intensos","Intubação difícil","Dificuldade de ventilação","Alergia","Hipertermia maligna","Cefaleia pós-raqui","UTI","PCR","Outra"],
-  anticoagulante:["AAS","Clopidogrel","Varfarina","Rivaroxabana","Apixabana","Dabigatrana","Enoxaparina","Outro"],
+  respiratoria:["DPOC","Asma","Enfisema pulmonar","CA de pulmão","Apneia do sono","Tabagismo","Outra"],
   cardiovascular:["Hipertensão","Coronariopatia","Infarto","Insuficiência cardíaca","Arritmia","Valvopatia","Marca-passo/CDI","AVC/AIT","Outra"],
   diabetes:["Tipo 1","Tipo 2","Insulina","Hipoglicemia recente","Complicações"],
   neurologica:["Epilepsia","Parkinson","AVC/AIT","Demência","Depressão","Ansiedade","Transtorno bipolar","Outra"],
@@ -432,26 +435,103 @@ const QUESTION_CHIPS:Record<string,string[]>={
   glaucoma:["Ângulo aberto","Ângulo fechado","Colírio em uso"],
   gestacao:[],
 };
+/**
+ * Quais doenças respiratórias pedem data da última crise.
+ *
+ * DPOC e asma são as que cursam com exacerbação, e é a exacerbação recente —
+ * não o diagnóstico — que muda a conduta: crise nas últimas semanas costuma
+ * adiar cirurgia eletiva. Enfisema e neoplasia entram na lista de botões
+ * porque são o que mais se digita ali, mas não abrem esses campos: não é
+ * "crise" que se pergunta a respeito deles.
+ */
+export const RESPIRATORIAS_COM_CRISE = ["DPOC", "Asma"];
+const abreCrise = (selecionados: string[]) =>
+  selecionados.some((item) => RESPIRATORIAS_COM_CRISE.includes(item));
+
 function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{name:string;label:string;value:string;detail:string;onChange:(v:string)=>void;onDetail:(v:string)=>void;draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const chips=name==="cirurgias_anteriores" ? [] : QUESTION_CHIPS[name]||[];
   const answerOptions=name==="gestacao"?["Sim","Não"]:["Sim","Não","Não sabe"];
   const selected=detail.split(",").map(item=>item.trim()).filter(Boolean);
   const toggleChip=(chip:string)=>onDetail(selected.includes(chip)?selected.filter(item=>item!==chip).join(", "):[...selected,chip].join(", "));
-  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="gestacao"){for(const field of [...PREGNANCY_FIELDS.map(([f])=>f),...PREGNANCY_LEGACY_FIELDS])set(field,"")}}}} key={answer}>{answer}</button>)}</div></div>
+  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="respiratoria"){set("respiratoria_ultima_crise","");set("respiratoria_controle","")}if(name==="gestacao"){for(const field of [...PREGNANCY_FIELDS.map(([f])=>f),...PREGNANCY_LEGACY_FIELDS])set(field,"")}}}} key={answer}>{answer}</button>)}</div></div>
     {value==="Sim"&&<><div className="detailChips">{chips.map(chip=><button type="button" className={selected.includes(chip)?"selected":""} onClick={()=>toggleChip(chip)} key={chip}>{chip}</button>)}</div>
       {name==="cirurgias_anteriores"&&<div className="conditionalDetails">
         <label><span>Qual cirurgia foi realizada?</span><input value={String(draft.cirurgias_anteriores_cirurgia??detail)} onChange={e=>set("cirurgias_anteriores_cirurgia",e.target.value)} placeholder="Ex.: cesárea, colecistectomia, herniorrafia"/></label>
         <label><span>Qual foi o tipo de anestesia utilizada?</span><input value={String(draft.cirurgias_anteriores_anestesia??"")} onChange={e=>set("cirurgias_anteriores_anestesia",e.target.value)} placeholder="Ex.: geral, raquianestesia, sedação"/></label>
       </div>}
-      {name==="anticoagulante"&&<div className="conditionalDetails">
-        <label><span>Última dose</span><input type="datetime-local" value={String(draft.anticoagulante_ultima_dose??"")} onChange={e=>set("anticoagulante_ultima_dose",e.target.value)}/></label>
-        <label><span>Indicação</span><input value={String(draft.anticoagulante_indicacao??"")} onChange={e=>set("anticoagulante_indicacao",e.target.value)} placeholder="Ex.: FA, TEV, stent"/></label>
+      {name==="respiratoria"&&abreCrise(selected)&&<div className="conditionalDetails">
+        <label><span>Quando foi a última crise?</span><input value={String(draft.respiratoria_ultima_crise??"")} onChange={e=>set("respiratoria_ultima_crise",e.target.value)} placeholder="Ex.: há 3 meses, março/2026, nunca teve"/></label>
+        <label><span>Está controlada?</span><select value={String(draft.respiratoria_controle??"")} onChange={e=>set("respiratoria_controle",e.target.value)}>
+          <option value="">Selecione</option>
+          <option>Controlada</option>
+          <option>Parcialmente controlada</option>
+          <option>Não controlada</option>
+        </select></label>
       </div>}
       {name==="gestacao"&&<div className="conditionalDetails pregnancyDetails">
         {PREGNANCY_FIELDS.map(([field,fieldLabel])=><label key={field}><span>{fieldLabel}</span><input value={String(draft[field]??"")} onChange={e=>set(field,e.target.value)}/></label>)}
       </div>}
-      {!["cirurgias_anteriores","gestacao"].includes(name)&&<input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder={name==="alergias"?"Nome completo da medicação ou do agente causador — não use abreviações":name==="respiratoria"?"Descreva a doença respiratória":"Detalhes e observações"}/>}</>}
+      {!["cirurgias_anteriores","gestacao"].includes(name)&&<input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder={name==="alergias"?"Nome completo da medicação ou do agente causador — não use abreviações":name==="respiratoria"?"Detalhes: gravidade, medicação em uso, internações":"Detalhes e observações"}/>}</>}
   </section>;
+}
+
+/**
+ * A pergunta do anticoagulante não tem mais lista de remédio própria.
+ *
+ * Antes ela morava na anamnese e repetia AAS, Clopidogrel, Varfarina e mais
+ * cinco — os mesmos nomes que a lista de medicamentos já oferece, e lá com
+ * dose, última dose, conduta, prazo de suspensão e data de reinício. Escrever o
+ * remédio duas vezes é o jeito de perder a segunda: a lista ficava com
+ * "Xarelto" e a anamnese com "Rivaroxabana", e quem lia a ficha não sabia qual
+ * das duas o anestesiologista tinha de fato revisado.
+ *
+ * Agora a pergunta mora no mesmo bloco da lista e lê dela. O que aparece aqui é
+ * reflexo, não digitação — por isso não há campo nenhum para editar.
+ *
+ * Os campos antigos de última dose e indicação continuam sendo mostrados quando
+ * a avaliação já os tiver preenchido: apagá-los da tela esconderia dado clínico
+ * de ficha antiga sem avisar ninguém.
+ */
+function Antitromboticos({draft,resposta}:{draft:Draft;resposta:string}) {
+  const encontrados=readMedications(draft.medicamentos_json).filter(item=>ehAntitrombotico(item.nome));
+  const legadoDose=String(draft.anticoagulante_ultima_dose??"");
+  const legadoIndicacao=String(draft.anticoagulante_indicacao??"");
+  const irParaMedicamentos=()=>document.querySelector(".medicationAdd")?.scrollIntoView({behavior:"smooth",block:"center"});
+
+  // Lista vazia e resposta "Não": nada a dizer. É o caso mais comum.
+  if(!encontrados.length&&resposta!=="Sim"&&!legadoDose&&!legadoIndicacao)return null;
+
+  return <div className="antithromboticBox">
+    {encontrados.length>0&&resposta!==""&&resposta!=="Sim"&&
+      <p className="antithromboticWarn">A resposta é <b>{resposta}</b>, mas a lista abaixo tem {encontrados.length===1?"um medicamento que afina o sangue":"medicamentos que afinam o sangue"}. Confira antes de concluir.</p>}
+
+    {encontrados.length>0
+      ? <>
+          <strong>Da lista de medicamentos</strong>
+          <ul>{encontrados.map(item=><li key={item.id}>
+            <b>{item.nome}</b>
+            {item.classe?<small>{item.classe}</small>:null}
+            <span>{[item.dose,item.frequencia,item.ultimaDose?`última dose ${formatarQuando(item.ultimaDose)}`:"",item.indicacao].filter(Boolean).join(" · ")||"Sem dose, última dose ou indicação preenchidas — completar na lista abaixo."}</span>
+            <span className="antithromboticAction">Conduta: <b>{item.conduta}</b></span>
+          </li>)}</ul>
+        </>
+      : resposta==="Sim"&&<p className="antithromboticEmpty">Nenhum medicamento que afine o sangue está na lista abaixo. Cadastre lá — é de onde saem a dose, a última dose, o prazo de suspensão e a data de reinício.</p>}
+
+    <button type="button" onClick={irParaMedicamentos}>{encontrados.length?"Editar na lista abaixo":"Ir para a lista de medicamentos"}</button>
+
+    {(legadoDose||legadoIndicacao)&&<p className="antithromboticLegacy">
+      Registrado em versão anterior desta ficha: {[legadoDose?`última dose ${formatarQuando(legadoDose)}`:"",legadoIndicacao?`indicação ${legadoIndicacao}`:""].filter(Boolean).join(" · ")}.
+    </p>}
+  </div>;
+}
+
+/** Aceita tanto "2026-08-09" quanto "2026-08-09T14:30". */
+function formatarQuando(valor:string) {
+  const data=new Date(valor.length<=10?`${valor}T12:00:00`:valor);
+  if(Number.isNaN(data.getTime()))return valor;
+  return valor.length<=10
+    ? data.toLocaleDateString("pt-BR")
+    : data.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 }
 
 type Medication = {
@@ -499,7 +579,14 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
   const medications=readMedications(draft.medicamentos_json);
   const medicationAnswer=String(draft.medicacao_continua??"");
   const showMedicationForm=medicationAnswer==="Sim"||medications.length>0;
-  const save=(items:Medication[])=>set("medicamentos_json",JSON.stringify(items));
+  const save=(items:Medication[])=>{
+    set("medicamentos_json",JSON.stringify(items));
+    // Cadastrar um antitrombótico responde a pergunta logo acima — é
+    // justamente para não digitar o remédio duas vezes. Só preenche resposta
+    // em branco: quem respondeu "Não" de propósito recebe um aviso de
+    // divergência, e não uma resposta trocada pelas suas costas.
+    if(!String(draft.anticoagulante??"").trim()&&items.some(item=>ehAntitrombotico(item.nome)))set("anticoagulante","Sim");
+  };
   const continuousDetails=String(draft.medicacao_continua_detalhes||"");
   const anticoagulantDetails=String(draft.anticoagulante_detalhes||"");
   useEffect(()=>{
@@ -556,7 +643,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     <h1>4 · Medicamentos em uso</h1>
     <div className="questionCard medicationUseQuestion">
       <div className="questionHead">
-        <strong>Medicamentos em uso — orais, injetáveis ou adesivos?</strong>
+        <strong>Utiliza alguma medicação de uso contínuo, canetas emagrecedoras, anticoagulantes?</strong>
         <div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={medicationAnswer===answer?"active":""} onClick={()=>set("medicacao_continua",answer)} key={answer}>{answer}</button>)}</div>
       </div>
     </div>
@@ -577,9 +664,20 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
           <input value={String(draft.glp1_detalhes??"")} onChange={e=>set("glp1_detalhes",e.target.value)} placeholder="Ex.: Ozempic 1 mg, semanal"/></label>
       </div>}
     </div>
+    {/* Terceira pergunta do bloco, e não da anamnese: anticoagulante é
+        medicamento. Aqui ela fica ao lado da lista de onde tira a resposta —
+        e do outro lado da tela ninguém precisa escrever o remédio de novo. */}
+    <div className="questionCard medicationUseQuestion">
+      <div className="questionHead">
+        <strong>Usa anticoagulante ou antiagregante? (afina o sangue)</strong>
+        <div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={String(draft.anticoagulante??"")===answer?"active":""} onClick={()=>{set("anticoagulante",answer);if(answer!=="Sim")set("anticoagulante_detalhes","")}} key={answer}>{answer}</button>)}</div>
+      </div>
+      <Antitromboticos draft={draft} resposta={String(draft.anticoagulante??"")}/>
+      {draft.anticoagulante==="Sim"&&<input className="detailInput" value={String(draft.anticoagulante_detalhes??"")} onChange={e=>set("anticoagulante_detalhes",e.target.value)} placeholder="Observações: ponte, indicação, conduta combinada com o cardiologista"/>}
+    </div>
     <p className="evalHint"><b>Base:</b> Guia Perioperatório de Medicamentos, versão 1.0, revisão 07/2026. As sugestões são apoio à decisão e devem ser revisadas e confirmadas individualmente pelo anestesiologista.</p>
     {showMedicationForm&&<><div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina..."/><button onClick={()=>add()}>Adicionar</button></div>
-    <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","Enalapril","Anlodipino","Hidroclorotiazida","Metoprolol","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Eliquis","Varfarina","Metformina","Ozempic","Dapagliflozina","Insulina NPH","Levotiroxina","Sinvastatina","Omeprazol","Sertralina"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div></>}
+    <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","Enalapril","Anlodipino","Hidroclorotiazida","Metoprolol","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Eliquis","Varfarina","Dabigatrana","Enoxaparina","Metformina","Ozempic","Dapagliflozina","Insulina NPH","Levotiroxina","Sinvastatina","Omeprazol","Sertralina"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div></>}
   </section>
   {!showMedicationForm&&medicationAnswer&&<section className="emptyClinical">Resposta registrada: <b>{medicationAnswer}</b>.</section>}
   {showMedicationForm&&(medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=>{const currentSuggested=calculateLastDoseDate(String(draft.data_cirurgia||""),findMedicationGuideEntry(item.nome)?.suspendDays);return <section className="medicationCard" key={item.id}>
@@ -587,7 +685,8 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     <div className="medicationGrid">
       <label><span>Dose</span><input value={item.dose} onChange={e=>update(item.id,"dose",e.target.value)} placeholder="Ex.: 50 mg"/></label>
       <label><span>Frequência</span><input value={item.frequencia} onChange={e=>update(item.id,"frequencia",e.target.value)} placeholder="Ex.: 1x/dia"/></label>
-      <label><span>Indicação</span><input value={item.indicacao} onChange={e=>update(item.id,"indicacao",e.target.value)} placeholder="Opcional"/></label>
+      <label><span>Última dose</span><input type="datetime-local" value={item.ultimaDose} onChange={e=>update(item.id,"ultimaDose",e.target.value)}/></label>
+      <label><span>Indicação</span><input value={item.indicacao} onChange={e=>update(item.id,"indicacao",e.target.value)} placeholder="Ex.: FA, TEV, stent"/></label>
       <label className="wide"><span>Orientação médica confirmada</span><input value={item.orientacao} onChange={e=>update(item.id,"orientacao",e.target.value)} placeholder="Registrar somente após avaliação individual"/></label>
     </div>
     {(item.classe||item.prazo||item.reinicio)&&<div className="medicationGuidance">
@@ -882,7 +981,7 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
   const anamnesisKeys = getAnamnesisKeys(draft.sexo || paciente.sexo);
   const anamnesisLabels:Record<string,string>={
     cirurgias_anteriores:"histórico cirúrgico", reacao_anestesica:"reações anestésicas",
-    anticoagulante:"anticoagulante/antiagregante", cardiovascular:"doença cardiovascular", respiratoria:"doença respiratória",
+    cardiovascular:"doença cardiovascular", respiratoria:"doença respiratória",
     diabetes:"diabetes", neurologica:"doença neurológica/psiquiátrica", outras_doencas:"outras doenças",
     doenca_aguda:"doença aguda", dentaria:"alterações dentárias", alergias:"alergias", habitos:"tabagismo/álcool/substâncias",
     glaucoma:"glaucoma", gestacao:"gestante",
@@ -928,21 +1027,23 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
     !isFilled(draft.peso)||!isFilled(draft.altura)?"peso e altura":"",
     missingAnamnesis.length?`anamnese (${missingAnamnesis.length} item(ns))`:"",
     isFilled(draft.medicacao_continua)?"":"uso de medicação contínua",
+    isFilled(draft.anticoagulante)?"":"uso de anticoagulante ou antiagregante",
     medications.some(item=>item.confirmada!==true)?"confirmação das orientações de medicamentos":"",
     !isFilled(draft.pa_sistolica)||!isFilled(draft.fc)?"sinais vitais":"",
     !isFilled(draft.mallampati)?"via aérea":"",
     !isFilled(draft.jejum_solidos)||!isFilled(draft.jejum_liquidos)?"jejum":"",
   ].filter(Boolean);
   const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",draft.alergias==="Não"?"Não relata alergias.":String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
-  // Só entram aqui os medicamentos que exigem decisão: suspensos ou
-  // individualizados. Os mantidos continuam listados na ficha impressa, mas não
-  // ocupam espaço nas orientações. Cada linha traz a orientação que está no
-  // campo do medicamento, que é a mesma que a ficha vai imprimir — antes daqui
-  // saía o nome seguido de nada até alguém reescrever a orientação à mão, e o
-  // anestesiologista não tinha como conferir na tela o que iria para o papel.
+  // Entra tudo que não for "Manter". Suspender, individualizar e avaliar são
+  // decisões que alguém precisa ler no papel; manter é a única que não pede
+  // nada. Antes daqui "Avaliar" ficava de fora, e era o pior lugar para uma
+  // omissão: é o valor com que nasce todo medicamento que o guia não conhece.
+  //
+  // Sem orientação escrita, a linha leva a própria conduta em vez de terminar
+  // em dois-pontos e nada — assim a pendência aparece na ficha em vez de sumir.
   const medicationOrientations=medications
-    .filter(item=>MEDICATION_ORIENTATION_ACTIONS.includes(item.conduta))
-    .map(item=>`- ${item.nome}: ${String(item.orientacao||"").trim()}`);
+    .filter(item=>exigeOrientacao(item.conduta))
+    .map(item=>`- ${item.nome}: ${String(item.orientacao||"").trim()||String(item.conduta||"").trim()}`);
   // Jejum e técnica anestésica já saem no bloco de planejamento da ficha; repetir
   // aqui só consumia papel. Restam as orientações de medicamentos.
   const automaticPlan=medicationOrientations.length
