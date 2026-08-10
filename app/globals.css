@@ -1327,3 +1327,9 @@ button:disabled{cursor:not-allowed}
    manter: eles empilham sozinhos, com ou sem a tarja. */
 .evalFixo{position:sticky;top:0;z-index:50}
 .evalFixo .evalTopbar,.evalFixo .allergyBanner,.evalFixo .evalProgress{position:static;top:auto}
+
+/* A conclusão do anestesiologista sobre a via aérea: fica logo abaixo da
+   probabilidade sugerida, e não dentro dela, porque uma é conta e a outra é
+   decisão. */
+.airwayVerdict{margin-top:12px}
+.airwayVerdict small{display:block;margin-top:8px;color:var(--cor-tinta-fraca);font-size:13px}
