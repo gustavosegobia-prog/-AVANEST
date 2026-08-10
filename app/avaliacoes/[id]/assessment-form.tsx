@@ -759,6 +759,17 @@ function Airway({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=
   </div><ToggleChips title="PREDITORES ADICIONAIS" prefix="via" items={predictors} draft={draft} set={set}/>
   <label className="evalField examOptionalNote"><span>Observações da via aérea</span><textarea value={String(draft.observacoes_via_aerea??"")} onChange={e=>set("observacoes_via_aerea",e.target.value)}/></label>
   <div className={`airwayRisk ${risk.toLowerCase()}`}><strong>{risk} probabilidade sugerida de via aérea difícil</strong><span>{count} preditor(es) marcado(s) — sugestão de apoio, deve ser confirmada pelo anestesiologista.</span></div>
+  {/* A conta acima é sugestão; esta linha é a decisão. São coisas diferentes e
+      por isso ficam em campos diferentes: contar preditor não substitui o
+      julgamento de quem vai intubar, e quem lê a ficha depois precisa saber
+      qual das duas está vendo. */}
+  <div className="questionCard airwayVerdict">
+    <div className="questionHead">
+      <strong>Via aérea difícil?</strong>
+      <div className="answerButtons">{["Sim","Não"].map(answer=><button type="button" className={String(draft.via_aerea_dificil??"")===answer?"active":""} onClick={()=>set("via_aerea_dificil",answer)} key={answer}>{answer}</button>)}</div>
+    </div>
+    <small>Conclusão do anestesiologista. A probabilidade acima é apoio, não resposta.</small>
+  </div>
   </section>;
 }
 
