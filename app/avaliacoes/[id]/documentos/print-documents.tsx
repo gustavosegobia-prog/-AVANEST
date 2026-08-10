@@ -2,7 +2,7 @@
 
 import {useMemo,useState} from "react";
 import {createClient} from "@/utils/supabase/client";
-import {MEDICATION_ORIENTATION_ACTIONS} from "@/lib/medication-guide";
+import {ehAntitrombotico,exigeOrientacao} from "@/lib/medication-guide";
 import {suspensionSummary} from "@/lib/medication-summary";
 import {BrandMark} from "@/components/brand-mark";
 
@@ -13,7 +13,17 @@ type Props={
   perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string;permissoes?:string[]|null};
   organizacao:{nome:string;tipo:string|null;telefone:string|null;logo_url?:string|null}|null;
 };
-type Medication={id:string;nome:string;dose:string;frequencia:string;conduta:string;orientacao:string;reinicio?:string;fonte?:string;confirmada?:boolean;orientacaoEditada?:boolean};
+const normalizar=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim().toLowerCase();
+
+/** Aceita tanto "2026-08-09" quanto "2026-08-09T14:30". */
+function formatarQuando(valor:string){
+  const data=new Date(valor.length<=10?`${valor}T12:00:00`:valor);
+  if(Number.isNaN(data.getTime()))return valor;
+  return valor.length<=10
+    ? data.toLocaleDateString("pt-BR")
+    : data.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+type Medication={id:string;nome:string;dose:string;frequencia:string;ultimaDose?:string;indicacao?:string;conduta:string;orientacao:string;reinicio?:string;fonte?:string;confirmada?:boolean;orientacaoEditada?:boolean};
 
 // Os três primeiros são os que a tela pergunta hoje. Os demais saíram do
 // formulário, mas continuam sendo impressos quando têm conteúdo: avaliações
@@ -189,17 +199,47 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
       ? `Anestesia: ${text(dados.cirurgias_anteriores_anestesia)}`
       : "",
   ].filter(Boolean).join(" · ");
+  /* Numa DPOC ou asma, o dado que muda a conduta é a última crise e o
+     controle — não o diagnóstico, que já está na resposta. Eles saem colados
+     ao detalhe da pergunta em vez de virar linha própria: a anamnese impressa
+     é compacta de propósito. */
+  const respiratoryDetails=[
+    text(dados.respiratoria_detalhes),
+    hasText(dados.respiratoria_ultima_crise)?`última crise ${text(dados.respiratoria_ultima_crise)}`:"",
+    text(dados.respiratoria_controle),
+  ].filter(Boolean).join(" · ");
   const pregnancyDetails=PREGNANCY_PRINT_FIELDS
     .filter(([field])=>hasText(dados[field]))
     .map(([field,label])=>`${label}: ${text(dados[field])}`)
     .join(" · ");
+  /* O detalhe do anticoagulante vem da lista de medicamentos, que é onde o
+     remédio é escrito uma vez só. O texto antigo da anamnese continua entrando
+     quando existir: ficha preenchida antes desta mudança não pode imprimir
+     menos do que imprimia. */
+  const antithrombotics=medications.filter(item=>ehAntitrombotico(item.nome));
+  const antithromboticDetails=[
+    ...antithrombotics.map(item=>{
+      // "Xarelto 20 mg" com a dose repetida atrás vira "Xarelto 20 mg · 20 mg".
+      // Quando o nome já traz a dose, ela não entra de novo.
+      const dose=hasText(item.dose)&&!normalizar(item.nome).includes(normalizar(String(item.dose)))?String(item.dose):"";
+      return [item.nome,dose,item.ultimaDose?`última dose ${formatarQuando(item.ultimaDose)}`:"",item.indicacao,item.conduta]
+        .filter(Boolean).join(" · ");
+    }),
+    text(dados.anticoagulante_detalhes),
+    hasText(dados.anticoagulante_ultima_dose)?`última dose ${formatarQuando(text(dados.anticoagulante_ultima_dose))}`:"",
+    hasText(dados.anticoagulante_indicacao)?`indicação ${text(dados.anticoagulante_indicacao)}`:"",
+  ].filter(Boolean).join(" · ");
+  /* "Não" com antiagregante na lista é contradição, e ficha que emenda as duas
+     coisas numa linha só ("Não · Clopidogrel · Suspender") lê como erro de
+     digitação. A ficha diz que há divergência, em vez de escondê-la ou de
+     fingir que o "Não" resolve. */
+  const antithromboticConflict=antithrombotics.length>0&&hasText(dados.anticoagulante)&&text(dados.anticoagulante)!=="Sim";
   // Só entram na ficha as perguntas efetivamente respondidas.
   const questions=([
     ["Histórico cirúrgico / cirurgias prévias",dados.cirurgias_anteriores,previousSurgeryDetails],
     ["Reação ou complicação anestésica?",dados.reacao_anestesica,dados.reacao_anestesica_detalhes],
-    ["Anticoagulante ou antiagregante?",dados.anticoagulante,dados.anticoagulante_detalhes],
     ["Doença cardiovascular?",dados.cardiovascular,dados.cardiovascular_detalhes],
-    ["Doença respiratória?",dados.respiratoria,dados.respiratoria_detalhes],
+    ["Doença respiratória?",dados.respiratoria,respiratoryDetails],
     ["Diabetes?",dados.diabetes,dados.diabetes_detalhes],
     ["Doença neurológica ou psiquiátrica?",dados.neurologica,dados.neurologica_detalhes],
     ["Outras doenças?",dados.outras_doencas,dados.outras_doencas_detalhes],
@@ -236,9 +276,10 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   const airwayCount=Object.keys(dados).filter(key=>key.startsWith("via_")&&dados[key]===true).length;
   const airwayRisk=airwayCount===0?"Baixa":airwayCount<=2?"Moderada":"Alta";
 
-  // Na ficha, as orientações cobrem apenas os medicamentos suspensos ou
-  // individualizados; os mantidos aparecem na lista de medicamentos em uso.
-  const guidedMedications=medications.filter(item=>MEDICATION_ORIENTATION_ACTIONS.includes(item.conduta));
+  // Na ficha, as orientações cobrem tudo que não for "Manter" — inclusive o que
+  // ficou em "Avaliar", que é decisão pendente e precisa aparecer. Os mantidos
+  // seguem só na lista de medicamentos em uso.
+  const guidedMedications=medications.filter(item=>exigeOrientacao(item.conduta));
   const planManuallyEdited=dados.plano_anestesico_editado===true;
   const printablePlan=useMemo(()=>{
     const saved=String(dados.plano_anestesico||"").trim();
@@ -339,10 +380,13 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               </p>;
             })}
             </div></>}
-          <section className="paperMedicationSection"><PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<p className="paperMedicationList">{medications.map((m,i)=><span key={m.id}>{i>0&&<em className="paperSep">|</em>}<b>{[m.nome,m.dose,m.frequencia].filter(Boolean).join(" ")}</b></span>)}</p>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}
+          <section className="paperMedicationSection"><PaperTitle>MEDICAMENTOS EM USO</PaperTitle>{medications.length?<p className="paperMedicationList">{medications.map((m,i)=><span key={m.id}>{i>0&&<em className="paperSep">|</em>}<b>{[m.nome,normalizar(m.nome).includes(normalizar(String(m.dose||"")))?"":m.dose,m.frequencia].filter(Boolean).join(" ")}</b></span>)}</p>:<p className="paperEmpty">{dados.medicacao_continua==="Não"?"Paciente informa não fazer uso de medicação contínua ou eventual.":dados.medicacao_continua==="Não sabe"?"Uso de medicação não informado pelo paciente.":"Nenhum medicamento registrado nesta avaliação."}</p>}
             {/* Sai junto dos medicamentos, e não na anamnese, porque quem lê
                 este bloco antes da indução está decidindo jejum: com GLP-1 em
                 uso, a data da última dose é o dado que muda a conduta. */}
+            {hasText(dados.anticoagulante)&&<p className="paperGlp1">Anticoagulante ou antiagregante: <b>{text(dados.anticoagulante)}</b>
+              {antithromboticConflict&&<> · <b>conferir — a lista acima tem: {antithromboticDetails}</b></>}
+              {!antithromboticConflict&&hasText(antithromboticDetails)&&<> · <b>{antithromboticDetails}</b></>}</p>}
             {hasText(dados.glp1)&&<p className="paperGlp1">Caneta emagrecedora (GLP-1): <b>{text(dados.glp1)}</b>
               {hasText(dados.glp1_detalhes)&&<> · <b>{text(dados.glp1_detalhes)}</b></>}
               {hasText(dados.glp1_ultima_dose)&&<> · Última dose: <b>{formatDate(text(dados.glp1_ultima_dose))}</b></>}</p>}</section>
