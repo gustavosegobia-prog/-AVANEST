@@ -415,6 +415,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
                 ["Mallampati",dados.mallampati],["Abertura oral",dados.abertura_oral],
                 ["Dist. tireomentoniana",dados.distancia_tireo],["Dentição",dados.denticao],
                 ["Mobilidade cervical",dados.mobilidade],
+                ["Via aérea difícil",dados.via_aerea_dificil],
                 ["Risco sugerido",airwayCount>0?`${airwayRisk} (${airwayCount} preditor(es))`:""],
                 ["Preditores",airwayPredictors.join(", ")],
               ]),
