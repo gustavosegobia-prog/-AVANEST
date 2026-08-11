@@ -1,6 +1,6 @@
 "use client";
 
-import {useMemo,useState} from "react";
+import {Fragment,useMemo,useState} from "react";
 import {createClient} from "@/utils/supabase/client";
 import {ehAntitrombotico,exigeOrientacao} from "@/lib/medication-guide";
 import {suspensionSummary} from "@/lib/medication-summary";
@@ -61,6 +61,14 @@ const hasText=(value:unknown)=>{
 // num papel clínico chega a parecer outro campo.
 // Escrito como \u00A0, e não como o caractere em si: invisível no editor, ele
 // viraria espaço comum sem ninguém perceber, no primeiro copiar e colar.
+/* Numa faixa de identificação, "feminino" por extenso ocupa o espaço de dois
+   outros campos e não informa mais do que FEM. */
+const sexoCurto=(v:unknown)=>{
+  const t=String(v??"").trim().toLowerCase();
+  if(t.startsWith("f"))return "FEM";
+  if(t.startsWith("m"))return "MASC";
+  return String(v??"");
+};
 const comUnidade=(value:unknown,unidade:string)=>
   hasText(value)?`${String(value).trim()}\u00A0${unidade}`:"";
 const objectiveMedicationGuidance=(medication:Medication)=>{
@@ -92,8 +100,14 @@ const facts=(items:Array<[string,unknown]|[string,unknown,"wide"|"full"]>):Fact[
   items.filter(([,value])=>hasText(value)).map(([label,value,span])=>({label,value:text(value),span}));
 function FactGrid({items,className=""}:{items:Fact[];className?:string}){
   if(!items.length)return null;
-  return <div className={`paperExam ${className}`.trim()}>{items.map(fact=>
-    <span key={fact.label} className={fact.span==="full"?"paperExamFull":fact.span==="wide"?"paperExamWide":undefined}>{fact.label}: <b>{fact.value}</b></span>)}</div>;
+  // O espaço entre um campo e outro não é enfeite: sem ele o navegador não tem
+  // onde quebrar a linha, e o texto sai da folha em vez de passar para a linha
+  // seguinte. Numa caixa com overflow escondido isso vira dado sumido — o CPF
+  // saía 95 px fora do papel e ninguém via.
+  return <div className={`paperExam ${className}`.trim()}>{items.map((fact,indice)=>
+    <Fragment key={fact.label}>{indice>0?" ":""}
+      <span className={fact.span==="full"?"paperExamFull":fact.span==="wide"?"paperExamWide":undefined}>{fact.label}: <b>{fact.value}</b></span>
+    </Fragment>)}</div>;
 }
 function PaperBlock({title,items,className}:{title:string;items:Fact[];className?:string}){
   if(!items.length)return null;
@@ -104,12 +118,12 @@ function PaperBlock({title,items,className}:{title:string;items:Fact[];className
 // saem numa linha só, separados por barra, e quebram sozinhos quando falta
 // espaço. Cada "linha" recebida vira um parágrafo; "extras" ficam embaixo,
 // porque são textos longos (observações) que não cabem ao lado dos demais.
-function PaperInlineBlock({title,linhas,extras=[]}:{title:string;linhas:Fact[][];extras?:Fact[]}){
+function PaperInlineBlock({title,linhas,extras=[],classe}:{title?:string;linhas:Fact[][];extras?:Fact[];classe?:string}){
   const preenchidas=linhas.filter(linha=>linha.length);
   if(!preenchidas.length&&!extras.length)return null;
   return <>
-    <PaperTitle>{title}</PaperTitle>
-    <div className="paperInlineBlock">
+    {title&&<PaperTitle>{title}</PaperTitle>}
+    <div className={classe?`paperInlineBlock ${classe}`:"paperInlineBlock"}>
       {preenchidas.map((linha,indice)=>
         <p className="paperInline" key={indice}>{linha.map((fact,posicao)=>
           <span key={fact.label}>{posicao>0&&<em className="paperSep">|</em>}{fact.label}: <b>{fact.value}</b></span>)}
@@ -351,12 +365,23 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             // eslint-disable-next-line @next/next/no-img-element -- papel impresso: a imagem precisa sair no tamanho original, sem otimização nem carregamento tardio.
             ?<img className="paperLogo" src={logo} alt={clinica||"Logo da organização"}/>
             :<b>{clinica||"Avaliação Pré-Anestésica"}</b>}</span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
-          <FactGrid className="paperIdentification" items={facts([
-            ["Nome",paciente.nome,"wide"],["Idade",comUnidade(age,"anos")],["Sexo",paciente.sexo],
-            ["Peso",comUnidade(weight||"","kg")],["Altura",comUnidade(height||"","cm")],["IMC",imc?imc.toFixed(1):""],
-            ["Peso ideal",comUnidade(idealWeight?idealWeight.toFixed(0):"","kg")],["Peso ajustado",comUnidade(adjustedWeight?adjustedWeight.toFixed(0):"","kg")],
-            ["Convênio",paciente.convenio],["CPF",paciente.cpf],
-          ])}/>
+          {/* Duas linhas, e a divisão é de propósito: em cima quem é o
+              paciente — nome, CPF, idade, sexo —, embaixo as medidas e o
+              convênio. Deixar a quebra por conta do acaso jogava o CPF para
+              o fim da segunda linha, longe do nome que ele identifica. */}
+          <PaperInlineBlock classe="paperIdentification"
+            linhas={[
+              facts([
+                ["Nome",paciente.nome],["CPF",paciente.cpf],
+                ["Idade",comUnidade(age,"anos")],["Sexo",sexoCurto(paciente.sexo)],
+              ]),
+              facts([
+                ["Peso",comUnidade(weight||"","kg")],["Altura",comUnidade(height||"","cm")],["IMC",imc?imc.toFixed(1):""],
+                ["Peso ideal",comUnidade(idealWeight?idealWeight.toFixed(0):"","kg")],
+                ["Peso ajustado",comUnidade(adjustedWeight?adjustedWeight.toFixed(0):"","kg")],
+                ["Convênio",paciente.convenio],
+              ]),
+            ]}/>
           <PaperBlock title="PROCEDIMENTO CIRÚRGICO" items={facts([
             ["Cirurgia proposta",dados.cirurgia||paciente.cirurgia||paciente.procedimento,"wide"],
             ["Cirurgião",dados.cirurgiao],["Hospital",dados.hospital||paciente.hospital],
@@ -409,13 +434,13 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               sozinho e gastava uma linha inteira da folha mesmo quando não
               havia preditor nenhum a registrar. Junto, os campos fluem e só
               quebram quando de fato não couberem. */}
-          <PaperInlineBlock title="VIA AÉREA"
+          <PaperInlineBlock title="VIA AÉREA" classe="paperViaAerea"
             linhas={[
               facts([
-                ["Mallampati",dados.mallampati],["Abertura oral",dados.abertura_oral],
-                ["Dist. tireomentoniana",dados.distancia_tireo],["Dentição",dados.denticao],
-                ["Mobilidade cervical",dados.mobilidade],
                 ["Via aérea difícil",dados.via_aerea_dificil],
+                ["Mallampati",dados.mallampati],["Abertura oral",dados.abertura_oral],
+                ["Dist. tireoment.",dados.distancia_tireo],["Dentição",dados.denticao],
+                ["Mobilidade cervical",dados.mobilidade],
                 ["Risco sugerido",airwayCount>0?`${airwayRisk} (${airwayCount} preditor(es))`:""],
                 ["Preditores",airwayPredictors.join(", ")],
               ]),
