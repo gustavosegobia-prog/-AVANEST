@@ -12,6 +12,24 @@ export const ROLE_LABELS: Record<string, string> = {
   recepcao: "Recepção", financeiro: "Financeiro",
 };
 
+/**
+ * As áreas que uma pessoa pode acumular além do próprio perfil.
+ *
+ * O perfil continua sendo um só — é o que a pessoa é. As áreas extras são o
+ * que ela também faz: a recepcionista que fecha o caixa, o anestesiologista
+ * que confere o faturamento. Antes isso só existia no banco, e para conceder
+ * era preciso abrir o SQL.
+ *
+ * Administrador e proprietário não aparecem com caixas para marcar: eles já
+ * enxergam tudo, e marcar áreas para quem já tem todas só confundiria.
+ */
+export const AREAS_EXTRAS = ["recepcao", "medico", "financeiro", "admin"] as const;
+export const VE_TUDO = ["admin", "owner"];
+export const areasExtras = (p: { role: string; permissoes?: string[] | null }) =>
+  (Array.isArray(p.permissoes) ? p.permissoes : []).filter(
+    (area) => area !== p.role && (AREAS_EXTRAS as readonly string[]).includes(area),
+  );
+
 export const PRIVATE_PAY_CONVENIO = "Particular";
 export const CONVENIOS = [
   "Particular","Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde",
@@ -34,7 +52,7 @@ type Avaliacao = { id: string; patient_id: string; created_by?: string | null; s
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
 type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
-type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; created_at:string; updated_at:string };
+type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
@@ -1083,6 +1101,10 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
     setBusy(item.id);setMessage("");
     const {error}=await createClient().rpc("admin_atualizar_perfil",{
       p_perfil_id:item.id,p_role:item.role,p_status:item.status,p_nome:item.nome,p_crm:item.crm||null,p_rqe:item.rqe||null,
+      // Sempre uma lista, nunca nulo: nulo quer dizer "não mexa", e aqui a
+      // tela está justamente dizendo quais áreas devem valer. Desmarcar todas
+      // precisa apagar as que havia.
+      p_permissoes:areasExtras(item),
     });
     setBusy("");
     if(error)setMessage(`Não foi possível atualizar o acesso: ${error.message}`);
@@ -1160,6 +1182,9 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
                 <small>{source.email||"sem e-mail"}{source.crm?` · ${source.crm}`:""}</small>
               </span>
               <span className="statusChip paused">{ROLE_LABELS[source.role]??source.role}</span>
+              {/* Quem acumula área aparece acumulando: sem isso, a lista mostra
+                  "Financeiro" para alguém que também abre a recepção. */}
+              {areasExtras(source).map(area=><span className="statusChip present" key={area} title="Área extra concedida">+ {ROLE_LABELS[area]??area}</span>)}
               {/* CRM não é burocracia aqui: a contagem de profissionais do
                   plano só conta médico com CRM, e a ficha sai sem assinatura. */}
               {source.role==="medico"&&!source.crm?.trim()&&<span className="statusChip waiting" title="Médico sem CRM não entra na contagem do plano e a ficha impressa sai sem o registro.">Sem CRM</span>}
@@ -1177,6 +1202,24 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
                 <label className="clinicalField"><span>Status</span><select value={item.status} disabled={source.id===perfil.id} onChange={e=>setItem({status:e.target.value})}><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
                 <label className="clinicalField"><span>CRM / UF</span><input value={item.crm||""} onChange={e=>setItem({crm:e.target.value})} placeholder="Somente médico"/></label>
                 <label className="clinicalField"><span>RQE</span><input value={item.rqe||""} onChange={e=>setItem({rqe:e.target.value})} placeholder="Opcional"/></label>
+              </div>
+              <div className="adminAreasExtras">
+                <strong>Áreas extras</strong>
+                {VE_TUDO.includes(item.role)
+                  ? <small>{ROLE_LABELS[item.role]} já enxerga todas as áreas.</small>
+                  : <>
+                      <small>Além de {ROLE_LABELS[item.role]?.toLowerCase()??item.role}, esta pessoa também acessa:</small>
+                      <div>{AREAS_EXTRAS.filter(area=>area!==item.role).map(area=>{
+                        const marcada=areasExtras(item).includes(area);
+                        return <label key={area}>
+                          <input type="checkbox" checked={marcada}
+                            onChange={()=>setItem({permissoes:marcada
+                              ? areasExtras(item).filter(x=>x!==area)
+                              : [...areasExtras(item),area]})}/>
+                          <span>{ROLE_LABELS[area]??area}</span>
+                        </label>;
+                      })}</div>
+                    </>}
               </div>
               <div className="adminUserAcoes">
                 <button className="primaryClinical compact" disabled={busy===item.id} onClick={()=>saveProfile(item)}>{busy===item.id?"Salvando...":"Salvar alterações"}</button>
