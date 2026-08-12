@@ -61,6 +61,17 @@ const hasText=(value:unknown)=>{
 // num papel clínico chega a parecer outro campo.
 // Escrito como \u00A0, e não como o caractere em si: invisível no editor, ele
 // viraria espaço comum sem ninguém perceber, no primeiro copiar e colar.
+/* O cadastro tem máscara, mas quem foi gravado antes dela — ou por importação —
+   está no banco só com dígitos. Formatar na impressão resolve os dois casos sem
+   mexer no que está salvo.
+   Só pontua com 11 dígitos exatos: cadastro incompleto ou documento estrangeiro
+   sai como está, em vez de virar um número que parece CPF e não é. */
+const cpfPontuado=(v:unknown)=>{
+  const digitos=String(v??"").replace(/\D/g,"");
+  if(digitos.length!==11)return String(v??"");
+  return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4");
+};
+
 /* Numa faixa de identificação, "feminino" por extenso ocupa o espaço de dois
    outros campos e não informa mais do que FEM. */
 const sexoCurto=(v:unknown)=>{
@@ -376,7 +387,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           <PaperInlineBlock classe="paperIdentification"
             linhas={[
               facts([
-                ["Nome",paciente.nome,"nome"],["CPF",paciente.cpf],
+                ["Nome",paciente.nome,"nome"],["CPF",cpfPontuado(paciente.cpf)],
                 ["Idade",comUnidade(age,"anos")],["Sexo",sexoCurto(paciente.sexo)],
               ]),
               facts([
