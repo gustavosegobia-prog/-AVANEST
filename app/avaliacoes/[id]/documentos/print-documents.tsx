@@ -95,8 +95,8 @@ const objectiveMedicationGuidance=(medication:Medication)=>{
   return /[.!?]$/.test(sentence)?sentence:`${sentence}.`;
 };
 
-type Fact={label:string;value:string;span?:"wide"|"full"};
-const facts=(items:Array<[string,unknown]|[string,unknown,"wide"|"full"]>):Fact[]=>
+type Fact={label:string;value:string;span?:"wide"|"full"|"nome"|"direita"};
+const facts=(items:Array<[string,unknown]|[string,unknown,Fact["span"]]>):Fact[]=>
   items.filter(([,value])=>hasText(value)).map(([label,value,span])=>({label,value:text(value),span}));
 function FactGrid({items,className=""}:{items:Fact[];className?:string}){
   if(!items.length)return null;
@@ -126,7 +126,11 @@ function PaperInlineBlock({title,linhas,extras=[],classe}:{title?:string;linhas:
     <div className={classe?`paperInlineBlock ${classe}`:"paperInlineBlock"}>
       {preenchidas.map((linha,indice)=>
         <p className="paperInline" key={indice}>{linha.map((fact,posicao)=>
-          <span key={fact.label}>{posicao>0&&<em className="paperSep">|</em>}{fact.label}: <b>{fact.value}</b></span>)}
+          // "direita" vai para a extremidade da linha e dispensa o separador:
+          // quem está encostado na borda não precisa de barra para se separar
+          // do vizinho.
+          <span key={fact.label} className={fact.span==="nome"?"nomePaciente":fact.span==="direita"?"aoDireita":undefined}>
+            {posicao>0&&fact.span!=="direita"&&<em className="paperSep">|</em>}{fact.label}: <b>{fact.value}</b></span>)}
         </p>)}
       {extras.map(fact=>
         <p className="paperInlineFull" key={fact.label}>{fact.label}: <b>{fact.value}</b></p>)}
@@ -372,14 +376,14 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           <PaperInlineBlock classe="paperIdentification"
             linhas={[
               facts([
-                ["Nome",paciente.nome],["CPF",paciente.cpf],
+                ["Nome",paciente.nome,"nome"],["CPF",paciente.cpf],
                 ["Idade",comUnidade(age,"anos")],["Sexo",sexoCurto(paciente.sexo)],
               ]),
               facts([
                 ["Peso",comUnidade(weight||"","kg")],["Altura",comUnidade(height||"","cm")],["IMC",imc?imc.toFixed(1):""],
                 ["Peso ideal",comUnidade(idealWeight?idealWeight.toFixed(0):"","kg")],
                 ["Peso ajustado",comUnidade(adjustedWeight?adjustedWeight.toFixed(0):"","kg")],
-                ["Convênio",paciente.convenio],
+                ["Convênio",paciente.convenio,"direita"],
               ]),
             ]}/>
           <PaperBlock title="PROCEDIMENTO CIRÚRGICO" items={facts([
@@ -449,7 +453,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           <PaperInlineBlock title="EXAMES COMPLEMENTARES"
             linhas={[
               facts([
-                ["Hb",dados.hemoglobina],["Ht",dados.hematocrito],["Plaquetas",dados.plaquetas],["INR",dados.inr],
+                ["Hb",dados.hemoglobina],["Ht",dados.hematocrito],["Plaquetas",dados.plaquetas],["TAP",dados.tap],["INR",dados.inr],
                 ["TTPa",dados.ttpa],["Creatinina",dados.creatinina],["Ureia",dados.ureia],["Glicemia",dados.glicemia],
                 ["Sódio",dados.sodio],["Potássio",dados.potassio],["HbA1c",dados.hba1c],["Data",formatDate(text(dados.data_exames))],
               ]),
