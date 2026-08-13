@@ -643,7 +643,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     <h1>4 · Medicamentos em uso</h1>
     <div className="questionCard medicationUseQuestion">
       <div className="questionHead">
-        <strong>Utiliza alguma medicação de uso contínuo, canetas emagrecedoras, anticoagulantes?</strong>
+        <strong>Utiliza alguma medicação de uso contínuo?</strong>
         <div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={medicationAnswer===answer?"active":""} onClick={()=>set("medicacao_continua",answer)} key={answer}>{answer}</button>)}</div>
       </div>
     </div>
