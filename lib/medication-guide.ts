@@ -838,3 +838,16 @@ export function ehAntitrombotico(nome: string) {
   const classe = findMedicationGuideEntry(nome)?.medicationClass;
   return classe !== undefined && CLASSES_ANTITROMBOTICAS.has(classe);
 }
+
+/**
+ * A caneta emagrecedora, pela classe do guia.
+ *
+ * Vale para o nome comercial e para o princípio ativo: quem digita "Mounjaro",
+ * "tirzepatida" ou "semaglutida" cai no mesmo lugar. É o que permite a lista de
+ * medicamentos e a pergunta da caneta responderem uma pela outra.
+ */
+export const CLASSE_GLP1 = "GLP-1 / GIP-GLP-1";
+
+export function ehGlp1(nome: string) {
+  return findMedicationGuideEntry(nome)?.medicationClass === CLASSE_GLP1;
+}
