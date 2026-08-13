@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { calculateLastDoseDate, ehAntitrombotico, exigeOrientacao, findMedicationGuideEntry } from "@/lib/medication-guide";
+import { calculateLastDoseDate, ehAntitrombotico, ehGlp1, exigeOrientacao, findMedicationGuideEntry } from "@/lib/medication-guide";
 import { orientacaoSugerida } from "@/lib/medication-summary";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
@@ -586,14 +586,20 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     // em branco: quem respondeu "Não" de propósito recebe um aviso de
     // divergência, e não uma resposta trocada pelas suas costas.
     if(!String(draft.anticoagulante??"").trim()&&items.some(item=>ehAntitrombotico(item.nome)))set("anticoagulante","Sim");
+    if(!String(draft.glp1??"").trim()&&items.some(item=>ehGlp1(item.nome)))set("glp1","Sim");
   };
   const continuousDetails=String(draft.medicacao_continua_detalhes||"");
   const anticoagulantDetails=String(draft.anticoagulante_detalhes||"");
+  const glp1Details=String(draft.glp1_detalhes||"");
   useEffect(()=>{
     const timer=setTimeout(()=>{
       const sourceNames=[
         ...(draft.medicacao_continua==="Sim"?medicationNamesFromAnamnesis(continuousDetails):[]),
         ...(draft.anticoagulante==="Sim"?medicationNamesFromAnamnesis(anticoagulantDetails):[]),
+        // A caneta é o fármaco cuja conduta decide o jejum. Quem escreveu
+        // "tirzepatida 15 mg" ali em cima já disse o que toma — não precisa
+        // digitar de novo na lista para ver o prazo de suspensão.
+        ...(draft.glp1==="Sim"?medicationNamesFromAnamnesis(glp1Details):[]),
       ];
       if(!sourceNames.length)return;
       const existingNames=new Set(medications.map(item=>normalizeMedicationName(item.nome)));
@@ -608,7 +614,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     return ()=>clearTimeout(timer);
     // Importa apenas quando os campos de origem da anamnese forem alterados.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[continuousDetails,anticoagulantDetails,draft.medicacao_continua,draft.anticoagulante]);
+  },[continuousDetails,anticoagulantDetails,glp1Details,draft.medicacao_continua,draft.anticoagulante,draft.glp1]);
   const add=(suggestion?:string)=>{
     const nome=(suggestion??name).trim(); if(!nome)return;
     if(medications.some(item=>normalizeMedicationName(item.nome)===normalizeMedicationName(nome))){setName("");return;}
