@@ -10,6 +10,10 @@ import type { MetadataRoute } from "next";
  * O ícone é o mesmo Λ da marca sobre fundo branco. Fundo cheio, e não
  * transparente, porque o iOS não respeita transparência: ele compõe o que
  * estiver de fora sobre preto, e o desenho ficaria numa moldura escura.
+ *
+ * Os arquivos moram em /public com esses nomes exatos. Não seguem a convenção
+ * de nome do Next de propósito: o caminho declarado aqui vale para qualquer
+ * nome, e evita depender de um arquivo chamar-se exatamente "apple-icon.png".
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -23,8 +27,8 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#0879c9",
     lang: "pt-BR",
     icons: [
-      { src: "/icone-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icone-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icone192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icone512.png", sizes: "512x512", type: "image/png", purpose: "any" },
     ],
   };
 }
