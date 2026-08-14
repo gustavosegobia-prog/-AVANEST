@@ -33,7 +33,11 @@ export default async function DashboardPage({
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   if (assinatura && assinatura.liberada === false) redirect("/assinatura");
 
-  const permissionOrder: DashboardView[] = ["recepcao", "medico", "financeiro", "admin"];
+  // Médico primeiro: é a área de trabalho do anestesiologista, e a ordem daqui
+  // decide tanto os botões da barra quanto em qual área o sistema abre. Quem
+  // não tem Médico continua abrindo na própria área — a lista é filtrada pelo
+  // que a pessoa pode ver, então nunca sobra ninguém sem aba.
+  const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin"];
   const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
   const hasLegacyFullAccess = ["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos");
   const allowedViews: DashboardView[] = hasLegacyFullAccess
