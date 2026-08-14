@@ -1,4 +1,5 @@
 import { AppLogo } from "@/components/app-logo";
+import { AbrirNoLogin } from "@/components/abrir-no-login";
 
 export default function HomePage() {
   const whatsappUrl =
@@ -6,6 +7,8 @@ export default function HomePage() {
 
   return (
     <main className="avnLanding">
+      {/* Aberto pelo atalho da tela de início, vai direto para o login. */}
+      <AbrirNoLogin />
       <header className="avnNav">
         <AppLogo />
         <nav>
