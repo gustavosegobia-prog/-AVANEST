@@ -21,7 +21,11 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "AVANEST",
     description:
       "Antes da cirurgia, segurança. Avaliação pré-anestésica digital, simples e orientada.",
-    start_url: "/",
+    // Abre no login, não na página de vendas. Quem instalou o atalho já
+    // conhece o produto — e a tela de login manda quem já está autenticado
+    // direto para o painel, então na prática o app abre no trabalho.
+    start_url: "/login",
+    scope: "/",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#0879c9",
