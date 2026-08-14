@@ -1459,3 +1459,92 @@ button:disabled{cursor:not-allowed}
   .evalSaveRetry{flex:none}
   .anamnesisList .detailChips button{font-size:13px;padding:7px 12px}
 }
+
+/* ===========================================================================
+   O balão de conversas do canto
+   ===========================================================================
+   Fica por cima de tudo, mas abaixo dos modais: um diálogo que exige resposta
+   não pode ser tapado por um balão de recado. Daí z-index 60, entre a barra
+   do topo (40) e o fundo escuro dos modais (80). */
+.chatBolha{position:fixed;right:20px;bottom:20px;z-index:60;width:56px;height:56px;border:0;border-radius:50%;background:var(--cor-marca);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 22px rgba(9,42,71,.28)}
+.chatBolha:hover{filter:brightness(1.07)}
+.chatBolha:focus-visible{outline:3px solid var(--cor-marca-forte);outline-offset:3px}
+/* O contador some quando o painel está aberto: com a conversa à vista, o
+   número deixa de informar e passa a ser só um enfeite que pisca. */
+.chatContador{position:absolute;top:-3px;right:-3px;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:var(--cor-perigo);color:#fff;font-size:11px;font-weight:850;display:grid;place-items:center;border:2px solid var(--cor-fundo)}
+@keyframes chatPulsa{0%,100%{box-shadow:0 8px 22px rgba(9,42,71,.28)}50%{box-shadow:0 8px 22px rgba(9,42,71,.28),0 0 0 8px rgba(211,47,47,.16)}}
+.chatBolha.temNovidade{animation:chatPulsa 2.4s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.chatBolha.temNovidade{animation:none}}
+
+.chatPainel{position:fixed;right:20px;bottom:88px;z-index:60;width:min(390px,calc(100vw - 40px));height:min(560px,calc(100vh - 130px));background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:16px;box-shadow:0 18px 48px rgba(9,42,71,.22);display:flex;flex-direction:column;overflow:hidden}
+
+.chatAbas{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--cor-borda);flex:none}
+.chatAbas button{position:relative;border:0;border-bottom:2px solid transparent;background:none;color:var(--cor-tinta-fraca);font:inherit;font-size:13px;font-weight:700;padding:13px 8px;cursor:pointer}
+.chatAbas button.ativa{color:var(--cor-marca);border-bottom-color:var(--cor-marca)}
+.chatAbas button>b{margin-left:6px;background:var(--cor-perigo);color:#fff;border-radius:99px;padding:1px 6px;font-size:10px}
+
+.chatErro{margin:0;padding:9px 14px;background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);font-size:13px;flex:none}
+
+/* min-height:0 é o que faz a rolagem existir: sem ele o filho cresce e empurra
+   a caixa de escrever para fora do painel, em vez de rolar por dentro. */
+.chatCorpo{flex:1;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.chatVazio{margin:auto;padding:0 12px;text-align:center;color:var(--cor-tinta-fraca);font-size:13.5px;line-height:1.5}
+
+.chatLinha{display:flex;flex-direction:column;align-items:flex-start;max-width:86%}
+.chatLinha.minha{align-self:flex-end;align-items:flex-end}
+.chatAutor{font-size:11px;font-weight:800;color:var(--cor-tinta-fraca);margin-bottom:3px}
+.chatAutor small{font-weight:600;opacity:.75}
+.chatAutor small::before{content:" · "}
+.chatBalao{margin:0;padding:9px 12px;border-radius:13px;background:var(--cor-superficie-suave);border:1px solid var(--cor-borda);font-size:14px;line-height:1.42;white-space:pre-wrap;overflow-wrap:anywhere}
+.chatLinha.minha .chatBalao{background:var(--cor-marca-suave);border-color:var(--cor-marca-clara)}
+.chatBalao.doSuporte{background:var(--cor-sucesso-suave);border-color:var(--cor-sucesso)}
+.chatHora{display:flex;gap:8px;align-items:center;font-size:10.5px;color:var(--cor-tinta-fraca);margin-top:3px}
+.chatHora button{border:0;background:none;color:var(--cor-tinta-fraca);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+
+.chatEnviar{flex:none;display:flex;align-items:flex-end;gap:8px;padding:10px;border-top:1px solid var(--cor-borda)}
+/* 16px não é gosto: abaixo disso o iPhone dá zoom sozinho ao tocar no campo, e
+   a tela inteira sai do lugar no meio de uma frase. */
+.chatEnviar textarea{flex:1;min-width:0;resize:none;max-height:110px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:11px;padding:10px 12px;font:inherit;font-size:16px;line-height:1.4}
+.chatEnviar button{flex:none;width:42px;height:42px;border:0;border-radius:11px;background:var(--cor-marca);color:#fff;display:grid;place-items:center;cursor:pointer}
+.chatEnviar button:disabled{opacity:.5}
+
+.chatRelatoItem{width:100%;text-align:left;border:1px solid var(--cor-borda);background:var(--cor-superficie);border-radius:12px;padding:11px 13px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 10px;color:inherit;font:inherit}
+.chatRelatoItem:hover{border-color:var(--cor-marca)}
+.chatRelatoItem strong{font-size:14px}
+.chatRelatoItem small{grid-column:1;color:var(--cor-tinta-fraca);font-size:11.5px}
+/* A coluna e a linha vão declaradas: sem elas o posicionamento automático
+   encaixa o selo na primeira vaga livre — que é antes do título — e ele
+   ainda estica pela célula inteira. */
+.chatRelatoItem>b{grid-column:2;grid-row:1/3;align-self:center;justify-self:end;background:var(--cor-perigo);color:#fff;border-radius:99px;padding:2px 8px;font-size:11px;line-height:1.5}
+/* A faixa da esquerda dá o estado antes da leitura: vermelho espera resposta,
+   verde já foi respondido, cinza está encerrado. */
+.chatRelatoItem.estado-aberto{border-left:3px solid var(--cor-perigo)}
+.chatRelatoItem.estado-respondido{border-left:3px solid var(--cor-sucesso)}
+.chatRelatoItem.estado-resolvido{border-left:3px solid var(--cor-borda-forte);opacity:.7}
+
+.chatCabecaRelato{flex:none;display:grid;gap:3px;padding:11px 14px;border-bottom:1px solid var(--cor-borda)}
+.chatCabecaRelato strong{font-size:14.5px;line-height:1.3}
+.chatCabecaRelato small{color:var(--cor-tinta-fraca);font-size:11.5px}
+.chatVoltar{justify-self:start;border:0;background:none;color:var(--cor-marca);font:inherit;font-size:12px;font-weight:700;padding:0;cursor:pointer;display:flex;align-items:center;gap:4px}
+.chatResolver{justify-self:start;margin-top:5px;border:1px solid var(--cor-sucesso);color:var(--cor-sucesso);background:none;border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+
+.chatRelato{flex:1;min-height:0;overflow-y:auto;padding:14px;display:grid;gap:12px;align-content:start}
+.chatRelato label{display:grid;gap:5px}
+.chatRelato label>span{font-size:12px;font-weight:750;color:var(--cor-tinta-fraca)}
+.chatRelato input,.chatRelato textarea{border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:10px;padding:10px 12px;font:inherit;font-size:16px;resize:vertical}
+.chatRelatoAcoes,.chatRodape{display:flex;gap:9px;justify-content:flex-end}
+.chatRodape{flex:none;padding:11px 14px;border-top:1px solid var(--cor-borda)}
+.chatRelatoAcoes button,.chatRodape button{border:1px solid var(--cor-borda);background:var(--cor-superficie);color:var(--cor-tinta);border-radius:10px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer}
+.chatRelatoAcoes button.principal,.chatRodape button.principal{border-color:var(--cor-marca);background:var(--cor-marca);color:#fff}
+.chatRodape button.principal{width:100%}
+.chatRelatoAcoes button:disabled{opacity:.55}
+
+/* No celular o painel toma a tela toda menos uma faixa: uma janelinha de 390px
+   num aparelho de 390px é a tela toda com bordas tortas. */
+@media(max-width:520px){
+  .chatBolha{right:14px;bottom:14px;width:50px;height:50px}
+  .chatPainel{right:8px;left:8px;bottom:74px;width:auto;height:min(74vh,calc(100vh - 110px))}
+}
+
+/* Na impressão o balão não existe: ele não faz parte da ficha do paciente. */
+@media print{.chatBolha,.chatPainel{display:none !important}}
