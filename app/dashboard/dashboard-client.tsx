@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
+import { ChatFlutuante } from "@/components/chat-flutuante";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -671,6 +672,12 @@ export function DashboardClient({
         setOpen(false);
         if(initialNewPatient) router.replace(`/dashboard?area=${view}`);
       }} onSubmit={createPatient} />}
+
+      {/* Vale para todas as áreas: a recepção avisa que a paciente chegou e o
+          anestesista lê sem trocar de tela. Fica por último no HTML porque é
+          um apoio — quem navega pelo teclado passa por ele depois do trabalho,
+          e não antes. */}
+      <ChatFlutuante perfil={perfil} />
     </main>
   );
 }
