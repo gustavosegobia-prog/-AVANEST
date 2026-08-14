@@ -20,6 +20,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="pt-BR">
       <head>
+        {/* O rótulo que fica embaixo do ícone na tela de início do iPhone. Sem
+            ele o iOS usa o <title> inteiro e corta no meio, virando
+            "AvaNEST|Avaliaç...". O ícone em si vem de app/apple-icon.png. */}
+        <meta name="apple-mobile-web-app-title" content="AVANEST" />
+        <meta name="theme-color" content="#0879c9" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
