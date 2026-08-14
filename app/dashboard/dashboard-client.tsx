@@ -131,7 +131,11 @@ export function DashboardClient({
 }) {
   const router = useRouter();
   const allowedViews = useMemo<DashboardView[]>(() => {
-    const permissionOrder: DashboardView[] = ["recepcao", "medico", "financeiro", "admin"];
+    // Médico primeiro: é a área de trabalho do anestesiologista, e a ordem daqui
+  // decide tanto os botões da barra quanto em qual área o sistema abre. Quem
+  // não tem Médico continua abrindo na própria área — a lista é filtrada pelo
+  // que a pessoa pode ver, então nunca sobra ninguém sem aba.
+  const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin"];
     const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
     if (["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos")) return permissionOrder;
     const permittedViews = permissionOrder.filter((area) => perfil.role === area || assignedPermissions.includes(area));
@@ -412,11 +416,15 @@ export function DashboardClient({
         {/* Só os módulos de trabalho ficam na barra. Tema, assinatura, bloqueio
             e saída são utilidades: foram para o menu do usuário, senão nove
             controles disputam a mesma faixa e nenhum se destaca. */}
-        <nav className="roleNav" aria-label="Áreas do sistema">
-          {allowedViews.includes("recepcao")&&<button disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
-          {allowedViews.includes("medico")&&<button disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
-          {allowedViews.includes("financeiro")&&<button disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
-          {allowedViews.includes("admin")&&<button disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
+        {/* No celular a barra mostra só o Médico — é onde se cadastra o
+            paciente e se faz a avaliação, e as outras áreas não cabem sem
+            rolar. A marca `temMedico` é o que autoriza esse recorte: quem não
+            é médico não tem nada escondido, senão ficaria sem aba nenhuma. */}
+        <nav className={allowedViews.includes("medico")?"roleNav temMedico":"roleNav"} aria-label="Áreas do sistema">
+          {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
+          {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
+          {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
+          {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
         </nav>
         <div className="userMenuWrap">
           <button
