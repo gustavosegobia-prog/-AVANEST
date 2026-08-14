@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
 import { ChatFlutuante } from "@/components/chat-flutuante";
+import { PainelRecolhivel } from "@/components/painel-recolhivel";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -30,47 +31,6 @@ export const areasExtras = (p: { role: string; permissoes?: string[] | null }) =
   (Array.isArray(p.permissoes) ? p.permissoes : []).filter(
     (area) => area !== p.role && (AREAS_EXTRAS as readonly string[]).includes(area),
   );
-
-/**
- * A Central Operacional recolhida, e a escolha guardada no navegador.
- *
- * Ela é um painel de apoio, não a tela de trabalho: dois dos quatro alertas
- * são lembretes fixos da rotina, que a mesma pessoa lê todo dia. Quem já
- * conhece a lista quer o espaço de volta para a fila de atendimento — e não
- * quer reabrir o painel a cada visita, então a escolha fica salva.
- *
- * O padrão é aberto: quem abre o AVANEST pela primeira vez precisa ver o que
- * existe ali antes de poder decidir que não quer ver.
- */
-const CENTRAL_FECHADA = "avanest:central-operacional-fechada";
-
-/**
- * Aplica a escolha salva antes da pintura.
- *
- * É uma função de ref, e não um efeito, de propósito: a de ref roda no commit,
- * antes de o navegador desenhar, então o painel já nasce no estado certo. Um
- * useEffect abriria e fecharia à vista, e um useLayoutEffect reclamaria na
- * renderização do servidor. Fica no escopo do módulo para a identidade não
- * mudar entre renderizações — assim roda uma vez, na montagem.
- */
-function lembrarCentral(elemento: HTMLDetailsElement | null) {
-  if (!elemento) return;
-  try {
-    elemento.open = window.localStorage.getItem(CENTRAL_FECHADA) !== "sim";
-  } catch {
-    // Navegador com armazenamento bloqueado (aba privada, política do
-    // aparelho): o painel fica aberto, que é o padrão. Não vale derrubar o
-    // painel inteiro por causa da memória de uma preferência de layout.
-  }
-}
-
-function guardarCentral(evento: { currentTarget: HTMLDetailsElement }) {
-  try {
-    window.localStorage.setItem(CENTRAL_FECHADA, evento.currentTarget.open ? "nao" : "sim");
-  } catch {
-    // Mesmo caso: sem onde guardar, a escolha vale só para esta visita.
-  }
-}
 
 export const PRIVATE_PAY_CONVENIO = "Particular";
 export const CONVENIOS = [
@@ -558,22 +518,22 @@ export function DashboardClient({
               </div>;
             }) : <div className="emptyClinical">Nenhuma consulta agendada para hoje.</div>}
           </section>
-          <details className="clinicalPanel alertsPanel" ref={lembrarCentral} onToggle={guardarCentral}>
-            <summary className="panelTitle">
-              <strong>Central Operacional</strong>
-              <span>alertas da rotina baseados nas avaliações em andamento</span>
-              {pendenciasCentral > 0 && (
-                <em className="centralResumo">{pendenciasCentral} pendência{pendenciasCentral > 1 ? "s" : ""}</em>
-              )}
-              <Icone nome="seta" className="centralSeta" />
-            </summary>
+          <PainelRecolhivel
+            className="alertsPanel"
+            chave="central-operacional"
+            titulo="Central Operacional"
+            legenda="alertas da rotina baseados nas avaliações em andamento"
+            extra={pendenciasCentral > 0 ? (
+              <em className="centralResumo">{pendenciasCentral} pendência{pendenciasCentral > 1 ? "s" : ""}</em>
+            ) : undefined}
+          >
             <div className="alertGrid">
               <Alert icone="alerta" title="Avaliações incompletas" text={`${drafts.length} avaliação(ões) aguardando conclusão`} action="REVISAR" danger onClick={goToFirstDraft} />
               <Alert icone="alerta" title="Medicamentos" text="Revisar anticoagulantes e GLP-1 durante a anamnese" action="AVALIAR" onClick={goToFirstDraft} />
               <Alert icone="fechar" title="Exames pendentes" text="Confira exames e pareceres antes da conclusão" action="PENDÊNCIA" onClick={goToFirstDraft} />
               <Alert icone="envelope" title="Orientações não enviadas" text={`${orientacoesPendentes.length} documento(s) aguardando envio`} action="ENVIAR" onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)} />
             </div>
-          </details>
+          </PainelRecolhivel>
           <section className="clinicalPanel agendaPanel">
             <div className="agendaHead"><strong>Agenda</strong><button className={agendaRange==="hoje"?"active":""} onClick={()=>setAgendaRange("hoje")}>Hoje</button><button className={agendaRange==="amanha"?"active":""} onClick={()=>setAgendaRange("amanha")}>Amanhã</button><button className={agendaRange==="semana"?"active":""} onClick={()=>setAgendaRange("semana")}>Semana</button><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, procedimento..." /></div>
             {filteredAgenda.slice(0,20).map((appointment) => { const p=patientMap.get(appointment.patient_id); if(!p)return null; const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined; return <button className="agendaRow" key={appointment.id} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>
@@ -852,20 +812,20 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     {message&&<p className={message.includes("não foi")?"clinicalError":"financeSuccess"}>{message}</p>}
     <section className="metricGrid financeMetrics"><Metric value={periodItems.length} label="Atendimentos no mês" tone="blue"/><MoneyMetric value={total} label="Faturado no mês" tone="blue"/><Metric value={periodItems.filter(i=>!i.nota_fiscal).length} label="Notas pendentes" tone="amber"/><MoneyMetric value={received} label="Recebido no mês" tone="green"/><Metric value={glosas.length} label="Glosas em recurso" tone="red"/></section>
 
-    <section className="clinicalPanel billingDashboard"><div className="panelTitle"><strong>Faturamento por convênio</strong><span>Valores faturados e recebidos na competência selecionada.</span></div><div className="billingPlanTable"><table><thead><tr><th>Convênio</th><th>Consultas</th><th>Valor unitário</th><th>Faturado</th><th>Recebido</th><th>Pendente</th></tr></thead><tbody>{byPlan.map(item=><tr key={item.convenio}><td><strong>{item.convenio}</strong></td><td>{item.consultas}</td><td>{money(item.unit)}</td><td>{money(item.valor)}</td><td>{money(item.recebido)}</td><td>{money(item.pendente)}</td></tr>)}</tbody></table>{!byPlan.length&&<div className="emptyClinical compactEmpty">Os valores por convênio aparecerão após os lançamentos.</div>}</div></section>
+    <PainelRecolhivel chave="fin-faturamento" className="billingDashboard" titulo="Faturamento por convênio" legenda="Valores faturados e recebidos na competência selecionada."><div className="billingPlanTable"><table><thead><tr><th>Convênio</th><th>Consultas</th><th>Valor unitário</th><th>Faturado</th><th>Recebido</th><th>Pendente</th></tr></thead><tbody>{byPlan.map(item=><tr key={item.convenio}><td><strong>{item.convenio}</strong></td><td>{item.consultas}</td><td>{money(item.unit)}</td><td>{money(item.valor)}</td><td>{money(item.recebido)}</td><td>{money(item.pendente)}</td></tr>)}</tbody></table>{!byPlan.length&&<div className="emptyClinical compactEmpty">Os valores por convênio aparecerão após os lançamentos.</div>}</div></PainelRecolhivel>
 
-    <section className="clinicalPanel noteAlerts"><div className="panelTitle"><strong>Notas fiscais para acompanhamento</strong><span>Alerta após 15 dias da emissão, até receber baixa financeira.</span></div>{noteAlerts.length?noteAlerts.map(item=>{const patient=patientMap.get(item.patient_id);const due=item.nota_vencimento_at||new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10);return <div className="noteAlertRow" key={item.id}><span><strong>NF {item.nota_fiscal}</strong><small>{item.convenio} · {patient?.nome||"Paciente"} · verificar pagamento desde {brDate(due)}</small></span><button className="paymentButton" disabled={busy===item.id} onClick={()=>{document.getElementById(`recebimento-${item.id}`)?.scrollIntoView({behavior:"smooth",block:"center"});setMessage("Informe o valor recebido abaixo para confirmar a baixa da nota.")}}>Dar baixa</button><button className="outlineClinical" disabled={busy===item.id} onClick={()=>reprogramNote(item)}>+15 dias</button></div>}):<div className="emptyClinical compactEmpty">Nenhuma nota vencida para acompanhamento.</div>}</section>
+    <PainelRecolhivel chave="fin-notas" className="noteAlerts" titulo="Notas fiscais para acompanhamento" legenda="Alerta após 15 dias da emissão, até receber baixa financeira." abrePadrao={noteAlerts.length>0}>{noteAlerts.length?noteAlerts.map(item=>{const patient=patientMap.get(item.patient_id);const due=item.nota_vencimento_at||new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10);return <div className="noteAlertRow" key={item.id}><span><strong>NF {item.nota_fiscal}</strong><small>{item.convenio} · {patient?.nome||"Paciente"} · verificar pagamento desde {brDate(due)}</small></span><button className="paymentButton" disabled={busy===item.id} onClick={()=>{document.getElementById(`recebimento-${item.id}`)?.scrollIntoView({behavior:"smooth",block:"center"});setMessage("Informe o valor recebido abaixo para confirmar a baixa da nota.")}}>Dar baixa</button><button className="outlineClinical" disabled={busy===item.id} onClick={()=>reprogramNote(item)}>+15 dias</button></div>}):<div className="emptyClinical compactEmpty">Nenhuma nota vencida para acompanhamento.</div>}</PainelRecolhivel>
 
-    {pendingPatients.length>0&&<section className="clinicalPanel"><div className="panelTitle"><strong>Atendimentos aguardando lançamento</strong><span>vindos automaticamente da recepção e agenda</span></div>{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</section>}
+    {pendingPatients.length>0&&<PainelRecolhivel chave="fin-aguardando" titulo="Atendimentos aguardando lançamento" legenda="vindos automaticamente da recepção e agenda">{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</PainelRecolhivel>}
 
-    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><section className="clinicalPanel financeGroup" key={convenio}><div className="financeGroupHead"><strong>{convenio}</strong><span>{items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b></div>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
+    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><PainelRecolhivel className="financeGroup" key={convenio} chave={`fin-grupo-${convenio}`} classeCabecalho="financeGroupHead" titulo={convenio} legenda={`${items.length} atendimento(s)`} extra={<b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b>}>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
     "1.234.56", que é NaN — e o valor da consulta zerava sem aviso. */}
-<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select>{item.status==="glosa"&&<label className="inlineMoney"><span>Glosado</span><input defaultValue={Number(item.glosa_valor)||""} placeholder="R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/></label>}<input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div></div>})}</section>)}
+<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select>{item.status==="glosa"&&<label className="inlineMoney"><span>Glosado</span><input defaultValue={Number(item.glosa_valor)||""} placeholder="R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/></label>}<input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div></div>})}</PainelRecolhivel>)}
 
-    <section className="clinicalPanel"><div className="panelTitle"><strong>📦 Lotes de cobrança</strong><span>agrupamento por convênio/hospital, sem dados clínicos</span></div>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</section>
+    <PainelRecolhivel chave="fin-lotes" titulo="📦 Lotes de cobrança" legenda="agrupamento por convênio/hospital, sem dados clínicos" abrePadrao={false}>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</PainelRecolhivel>
 
     <ConvenioValoresPanel perfil={perfil} convenioValores={convenioValores} onRefresh={onRefresh}/>
-    <section className="clinicalPanel"><div className="panelTitle"><strong>Recebimentos</strong><span>PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo</span></div>
+    <PainelRecolhivel chave="fin-recebimentos" titulo="Recebimentos" legenda="PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo">
       <div className="financeChips" role="group" aria-label="Filtrar recebimentos">
         {([["todos","Todos"],["aberto","Em aberto"],["quitado","Quitados"]] as const).map(([valor,rotulo])=>
           <button type="button" key={valor} className={filtroReceb===valor?"active":""} onClick={()=>setFiltroReceb(valor)}>{rotulo}</button>)}
@@ -925,19 +885,19 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         <strong>Nenhum lançamento neste período.</strong>
         Os lançamentos nascem das avaliações concluídas e faturadas. Fature um atendimento para que ele apareça aqui.
       </div>}
-    </section>
+    </PainelRecolhivel>
 
-    <section className="clinicalPanel"><div className="panelTitle"><strong>🩺 Repasses aos anestesiologistas</strong><span>liberação após recebimento; valores visíveis conforme as permissões do perfil</span></div>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</section>
+    <PainelRecolhivel chave="fin-repasses" titulo="🩺 Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao={false}>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</PainelRecolhivel>
 
-    <section className="clinicalPanel closingPanel"><div className="panelTitle"><strong><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</strong><span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span></div><div className="closingMetrics"><MoneySmall value={total} label="Total cobrado"/><MoneySmall value={received} label="Recebido" tone="green"/><MoneySmall value={pending} label="Pendente" tone="amber"/><MoneySmall value={glosas.reduce((s,i)=>s+Number(i.glosa_valor||0),0)} label="Glosas" tone="red"/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados" tone="blue"/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio"/></div><div className="closingFooter"><span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></section>
+    <PainelRecolhivel className="closingPanel" chave="fin-fechamento" titulo={<><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</>} extra={<span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span>}><div className="closingMetrics"><MoneySmall value={total} label="Total cobrado"/><MoneySmall value={received} label="Recebido" tone="green"/><MoneySmall value={pending} label="Pendente" tone="amber"/><MoneySmall value={glosas.reduce((s,i)=>s+Number(i.glosa_valor||0),0)} label="Glosas" tone="red"/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados" tone="blue"/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio"/></div><div className="closingFooter"><span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></PainelRecolhivel>
     {/* O extrato responde "quando e como entrou cada real" — antes isso era
         uma frase de rodapé com a contagem, inútil para conferência. */}
-    <details className="clinicalPanel painelRecolhivel">
-      <summary className="panelTitle">
-        <span className="painelSeta" aria-hidden="true">▸</span>
-        <strong>Extrato de pagamentos recebidos</strong>
-        <span>{pagamentos.length} registro(s) · data, paciente, forma e valor</span>
-      </summary>
+    <PainelRecolhivel
+      chave="fin-extrato"
+      abrePadrao={false}
+      titulo="Extrato de pagamentos recebidos"
+      legenda={`${pagamentos.length} registro(s) · data, paciente, forma e valor`}
+    >
       {pagamentos.length?pagamentos.slice(0,80).map(pg=>{
         const atendimento=financeiro.find(f=>f.id===pg.atendimento_id);
         const patient=atendimento?patientMap.get(atendimento.patient_id):undefined;
@@ -948,7 +908,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           <b>{money(Number(pg.valor))}</b>
         </div>;
       }):<div className="emptyClinical compactEmpty">Nenhum pagamento registrado ainda.</div>}
-    </details>
+    </PainelRecolhivel>
     {configOpen&&<div className="patientModalBackdrop" role="presentation"><section className="financeConfigModal" role="dialog" aria-modal="true" aria-labelledby="finance-config-title">
       <div className="patientModalHead"><div><strong id="finance-config-title">Configurar valores das consultas</strong><span>Adicione os convênios que você atende e remova os que não usa.</span></div><button type="button" onClick={()=>setConfigOpen(false)} aria-label="Fechar">×</button></div>
       {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"} role="status">{message}</p>}
@@ -1308,12 +1268,13 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
     </section>
     {/* Auditoria também fica recolhida: é registro para consulta, não painel
         de rotina, e expõe quem fez o quê a cada acesso à tela. */}
-    <details className="clinicalPanel auditPanel painelRecolhivel">
-      <summary className="panelTitle">
-        <span className="painelSeta" aria-hidden="true">▸</span>
-        <strong>Auditoria recente</strong>
-        <span>{auditoria.length} evento(s) · conclusões, pagamentos, presenças e mudanças de acesso</span>
-      </summary>
+    <PainelRecolhivel
+      className="auditPanel"
+      chave="adm-auditoria"
+      abrePadrao={false}
+      titulo="Auditoria recente"
+      legenda={`${auditoria.length} evento(s) · conclusões, pagamentos, presenças e mudanças de acesso`}
+    >
       {auditoria.length?auditoria.slice(0,50).map(item=>{
         const detalhes=item.detalhes as {paciente?:string;excluida_por?:string;nome?:string}|null;
         // O nome escrito no evento vale mais que o mapa de perfis: quem
@@ -1322,7 +1283,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
         const sobre=detalhes?.paciente?`paciente ${detalhes.paciente}`:detalhes?.nome||item.entidade;
         return <div className="auditRow" key={item.id}><time>{new Date(item.created_at).toLocaleString("pt-BR")}</time><span><strong>{ACAO_LABELS[item.acao]??item.acao.replaceAll("_"," ")}</strong><small>{sobre} · por {quem}</small></span></div>;
       }):<div className="emptyClinical compactEmpty">Nenhum evento de auditoria registrado ainda.</div>}
-    </details>
+    </PainelRecolhivel>
   </div>;
 }
 
@@ -1353,15 +1314,16 @@ function ConvenioValoresPanel({perfil,convenioValores,onRefresh}:{perfil:Perfil;
     {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"}>{message}</p>}
     {/* Recolhida por padrão: é configuração, consultada de vez em quando, e
         aberta ocupava a tela inteira com uma linha por convênio. */}
-    <details className="clinicalPanel convenioAdmin painelRecolhivel">
-      <summary className="panelTitle">
-        <span className="painelSeta" aria-hidden="true">▸</span>
-        <strong>Valores por convênio</strong>
-        <span>{convenioValores.length} referência(s) cadastrada(s) · o Financeiro sugere o valor ao criar o lançamento</span>
-      </summary>
+    <PainelRecolhivel
+      className="convenioAdmin"
+      chave="convenio-valores"
+      abrePadrao={false}
+      titulo="Valores por convênio"
+      legenda={`${convenioValores.length} referência(s) cadastrada(s) · o Financeiro sugere o valor ao criar o lançamento`}
+    >
       {podeEditar&&<form className="convenioForm" onSubmit={saveConvenio}><label><span>Convênio *</span><input name="convenio" required placeholder="Ex.: Unimed"/></label><label><span>Procedimento</span><input name="procedimento" placeholder="Opcional"/></label><label><span>Hospital</span><input name="hospital" placeholder="Opcional"/></label><label><span>Valor R$ *</span><input name="valor" inputMode="decimal" required placeholder="0,00"/></label><label><span>Repasse %</span><input name="repasse" inputMode="decimal" placeholder="Opcional"/></label><button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando...":"Salvar referência"}</button></form>}
       {convenioValores.length?convenioValores.map(item=><div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${item.ativo?"present":"paused"}`}>{item.ativo?"ATIVO":"INATIVO"}</span>{podeEditar?<button className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>toggleConvenio(item)}>{item.ativo?"Desativar":"Ativar"}</button>:<span/>}</div>):<div className="emptyClinical compactEmpty">Nenhuma referência de valor cadastrada ainda.</div>}
-    </details>
+    </PainelRecolhivel>
   </>;
 }
 
