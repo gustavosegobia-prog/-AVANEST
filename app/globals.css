@@ -790,6 +790,17 @@ button:disabled{cursor:not-allowed}
   .roleNav{max-width:none;min-width:0}
 }
 
+/* No celular, a barra fica só com o Médico: é lá que se cadastra o paciente e
+   se faz a avaliação, e as outras áreas exigiriam rolar a faixa para aparecer.
+   Recepção, Financeiro e Admin continuam a um toque de distância no iPad e no
+   computador, onde há largura para todas.
+   O recorte só vale quando a pessoa tem a área Médico — daí a marca temMedico
+   no elemento. Sem essa trava, uma recepcionista abriria o celular sem aba
+   nenhuma para tocar. */
+@media(max-width:700px){
+  .roleNav.temMedico button:not([data-area="medico"]){display:none}
+}
+
 /* No celular estreito, o Λ sozinho identifica a marca — ele é o mesmo desenho
    do ícone na tela de início. As letras ao lado custavam 90 px, que valem mais
    como área de trabalho visível na faixa. */
@@ -1369,3 +1380,38 @@ button:disabled{cursor:not-allowed}
 .adminAreasExtras label{display:flex;align-items:center;gap:8px;border:1px solid var(--cor-borda);border-radius:999px;padding:9px 16px;cursor:pointer;background:var(--cor-fundo)}
 .adminAreasExtras label:has(input:checked){border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-weight:700}
 .adminAreasExtras input{width:16px;height:16px;flex:none;accent-color:var(--cor-marca)}
+
+/* ============================================================================
+   Avaliação no celular
+   ========================================================================== */
+@media(max-width:700px){
+  /* O deslocamento de 72px era de quando a barra de etapas grudava no topo.
+     Ela passou a ser estática e o deslocamento ficou: empurrava a barra para
+     baixo sem reservar espaço, o que abria um vão acima dela e fazia com que
+     ela cobrisse a linha de botões logo abaixo. */
+  .evalSteps{top:auto}
+
+  /* "Etapa 1 de 9" sai da fila que rola. Como item da fila ela ficava com
+     90 px e quebrava em três linhas; fora do fluxo, ocupa uma linha só e os
+     passos rolam embaixo dela. */
+  .evalSteps{padding-top:24px}
+  .evalStepsResumo{position:absolute;top:2px;left:0;margin:0;white-space:nowrap}
+
+  /* Corpo menor onde dá. Campo de digitação fica de fora de propósito: abaixo
+     de 16 px o iPhone dá zoom sozinho ao tocar, e a tela inteira sai do lugar
+     — o remédio seria pior que a doença. */
+  .evalSection h1{font-size:19px;line-height:1.25}
+  .evalSection h2{font-size:16px}
+  .evalSection>p{font-size:13.5px}
+  .evalField>span,.evalFormGrid label>span{font-size:11.5px;letter-spacing:.01em}
+  .questionCard .questionHead strong{font-size:15px}
+
+  /* Quando o salvamento falha, a mensagem ganha um botão ao lado e a barra
+     deixa de caber: o "Tentar de novo" ficava cortado na borda, e é justamente
+     ele que resolve o problema. Nesse estado a faixa passa para a linha de
+     baixo, inteira. */
+  .evalTopbar{flex-wrap:wrap}
+  .evalSave.error{order:3;flex-basis:100%;margin-left:0;white-space:normal}
+  .evalSaveRetry{flex:none}
+  .anamnesisList .detailChips button{font-size:13px;padding:7px 12px}
+}
