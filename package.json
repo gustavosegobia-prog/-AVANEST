@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node --experimental-strip-types --test lib/calculos/*.test.ts"
+    "test": "node --experimental-strip-types --test lib/*.test.ts lib/calculos/*.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
