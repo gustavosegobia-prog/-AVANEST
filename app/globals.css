@@ -140,21 +140,26 @@
    aberta — nada disso precisaria ser reescrito à mão, e à mão sairia pior.
    A descrição cresce para ocupar o vão: é ela que empurra o resumo e a seta
    para a direita, com ou sem pendência, aberta ou fechada. */
-.alertsPanel>summary{cursor:pointer;list-style:none;-webkit-user-select:none;user-select:none}
-.alertsPanel>summary::-webkit-details-marker{display:none}
-.alertsPanel>summary>span{flex:1;min-width:0}
-.alertsPanel>summary:hover{background:var(--cor-fundo)}
-.alertsPanel>summary:focus-visible{outline:2px solid var(--cor-marca);outline-offset:-2px}
-/* Fechada, a linha de baixo não separa nada — só deixaria um risco solto. */
-.alertsPanel:not([open])>summary{border-bottom:0}
-/* Recolhida, o painel ainda precisa dizer se há trabalho parado: sem esta
+/* A barra de qualquer painel recolhível. O <summary> vira a barra inteira:
+   clique, Enter, Espaço e o anúncio de recolhido/expandido vêm do elemento —
+   nada disso precisaria ser reescrito à mão, e à mão sairia pior.
+   A caixa .painelExtra tem margem automática, e é ela que empurra o conteúdo
+   da direita — com a seta atrás — até a borda, tenha ou não algo dentro. */
+.painelRecolhivel>summary{cursor:pointer;list-style:none;-webkit-user-select:none;user-select:none}
+.painelRecolhivel>summary::-webkit-details-marker{display:none}
+.painelRecolhivel>summary:hover{background:var(--cor-superficie-suave)}
+.painelRecolhivel>summary:focus-visible{outline:2px solid var(--cor-marca);outline-offset:-2px}
+/* Fechado, a linha de baixo não separa nada — só deixaria um risco solto. */
+.painelRecolhivel:not([open])>summary{border-bottom:0}
+.painelRecolhivel>summary>.painelExtra{margin-left:auto;display:flex;align-items:center;gap:var(--esp-2)}
+.painelSeta{flex:none;color:var(--cor-tinta-fraca);transition:transform .18s ease}
+.painelRecolhivel[open]>summary .painelSeta{transform:rotate(180deg)}
+@media(prefers-reduced-motion:reduce){.painelSeta{transition:none}}
+/* Recolhida, a Central ainda precisa dizer se há trabalho parado: sem esta
    contagem, minimizar viraria esconder. Aberta ela some, porque aí os
    próprios cartões já mostram os números, um por um. */
 .centralResumo{font-style:normal;font-size:12px;font-weight:850;background:var(--cor-atencao-suave);color:var(--cor-atencao);border-radius:99px;padding:6px 12px;white-space:nowrap}
 .alertsPanel[open] .centralResumo{display:none}
-.centralSeta{color:var(--cor-tinta-fraca);transition:transform .18s ease}
-.alertsPanel[open] .centralSeta{transform:rotate(180deg)}
-@media(prefers-reduced-motion:reduce){.centralSeta{transition:none}}
 .alertGrid{display:grid;grid-template-columns:1fr 1fr}.alertItem{min-height:72px;border-bottom:1px solid var(--cor-borda);padding:14px 25px;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:12px;color:var(--cor-tinta-fraca)}.alertItem:nth-child(odd){border-right:1px solid var(--cor-borda)}.alertItem i{width:33px;height:33px;border-radius:10px;background:var(--cor-atencao-suave);color:var(--cor-atencao);display:grid;place-items:center;font-style:normal;font-weight:850}.alertItem i.danger{background:var(--cor-perigo-suave);color:var(--cor-perigo)}.alertItem span strong{color:var(--cor-tinta)}.alertItem>b{font-size:12px;color:var(--cor-atencao)}.alertItem>b.dangerText{color:var(--cor-perigo)}.agendaHead{display:flex;align-items:center;gap:15px;padding:20px 25px;border-bottom:1px solid var(--cor-borda)}.agendaHead strong{font-size:18px;margin-right:5px}.agendaHead input,.searchPanel input{flex:1;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:10px;padding:13px 16px;font:inherit}.agendaRow{width:100%;border:0;border-bottom:1px solid var(--cor-borda);background:#fff;display:grid;grid-template-columns:52px 1fr auto auto;align-items:center;gap:16px;text-align:left;padding:18px 25px;cursor:pointer;color:inherit}.agendaRow:hover{background:var(--cor-fundo)}.avatar{width:47px;height:47px;border-radius:50%;background:var(--cor-marca-suave);color:var(--cor-marca);display:grid;place-items:center;font-weight:800}.agendaRow time{color:var(--cor-tinta-fraca)}.quickLinks{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}.quickLinks button{padding:11px 20px;background:#fff}.receptionMain>section:first-child{margin-bottom:15px}.receptionMetrics{margin-top:20px}.searchPanel{display:flex;align-items:center;gap:16px;padding:18px 25px}.searchPanel>span{color:var(--cor-tinta-fraca);font-size:13px}.outlineClinical{border:1px solid var(--cor-marca);color:var(--cor-marca);background:#fff;border-radius:9px;padding:9px 14px;font-weight:700;cursor:pointer}.outlineClinical.red{border-color:var(--cor-perigo);color:var(--cor-perigo)}.inlineRegistration{padding-bottom:24px}.inlineRegistration>p,.inlineRegistration>.primaryClinical{margin-left:25px}.clinicalError{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);border-radius:10px;padding:12px 16px}.patientModalBackdrop{position:fixed;inset:0;background:rgba(5,19,32,.74);z-index:80;display:grid;place-items:center;padding:20px}.patientModal{width:min(1280px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:28px}.patientModalHead{display:flex;justify-content:space-between;align-items:start}.patientModalHead h2{margin:0}.patientModalHead p{color:var(--cor-tinta-fraca)}.patientModalHead>button{border:0;background:none;font-size:29px}.insuranceBar{background:var(--cor-superficie-suave);border:1px solid var(--cor-borda);border-radius:12px;padding:17px;margin:15px 0 20px}.patientFormGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:17px}.clinicalField{display:grid;gap:7px}.clinicalField.wide{grid-column:span 3}.clinicalField.span2{grid-column:span 2}.clinicalField span{font-size:12px;color:var(--cor-tinta-fraca);font-weight:750}.clinicalField input,.clinicalField select{min-width:0;width:100%;height:52px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 13px;font:inherit}.modalActions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}
 @media(max-width:1050px){.roleBadge{display:none}.metricGrid{grid-template-columns:repeat(3,1fr)}.patientFormGrid{grid-template-columns:repeat(2,1fr)}.clinicalField.wide,.clinicalField.span2{grid-column:auto}.queueRow{grid-template-columns:65px 1fr auto}.queueRow .statusChip{display:none}.alertGrid{grid-template-columns:1fr}.alertItem:nth-child(odd){border-right:0}.agendaHead{flex-wrap:wrap}.agendaHead input{flex-basis:100%}}
 @media(max-width:680px){.clinicalTopbar{padding:0 14px}.clinicalBrand small{display:none}.roleNav .themePill{display:none}.clinicalMain{width:calc(100% - 24px);padding-top:24px}.clinicalWelcome{align-items:flex-start;flex-direction:column}.metricGrid{grid-template-columns:1fr 1fr}.queueRow{grid-template-columns:55px 1fr;padding:13px}.queueRow .primaryClinical{grid-column:1/-1}.agendaRow{grid-template-columns:45px 1fr}.agendaRow time,.agendaRow .statusChip{display:none}.searchPanel{align-items:flex-start;flex-direction:column}.searchPanel input{width:100%}.patientFormGrid{grid-template-columns:1fr}.metricCard{padding:18px}.clinicalWelcome h1,.receptionMain h1{font-size:24px}}
@@ -200,7 +205,11 @@
 @media(max-width:700px){.examDetailGrid,.summaryGrid,.planningGrid,.signatureGrid,.finalChecklist{grid-template-columns:1fr}.examDetailGrid .evalField:nth-child(1),.examDetailGrid .evalField:nth-child(2),.examDetailGrid .evalField:nth-child(3),.examDetailGrid .evalField:nth-child(4),.examDetailGrid .evalField.span2{grid-column:span 1}.summaryGrid>div{grid-template-columns:1fr;gap:4px}.conclusionHeading{align-items:flex-start;flex-direction:column}}
 
 /* Módulo financeiro */
-.financeMain>section:first-child h1{font-size:29px;margin:0 0 5px}.financeMain>section:first-child p{color:var(--cor-tinta-fraca);margin:0}.financeSuccess{background:var(--cor-sucesso-suave);color:var(--cor-sucesso);border-radius:10px;padding:12px 16px}.financeMetrics{grid-template-columns:repeat(5,1fr)}.financeGroupHead{min-height:57px;padding:0 25px;display:grid;grid-template-columns:auto 1fr auto;gap:15px;align-items:center;border-bottom:1px solid var(--cor-borda)}.financeGroupHead span{color:var(--cor-tinta-fraca)}.financeGroupHead b{color:var(--cor-sucesso)}.financeItemRow{min-height:90px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,1.7fr);gap:15px;align-items:center}.financeItemRow:last-child{border-bottom:0}.financeItemRow strong,.financeSetupRow strong,.paymentRow strong,.repasseRow strong{display:block}.financeItemRow small,.financeSetupRow small,.paymentRow small,.repasseRow small{display:block;color:var(--cor-tinta-fraca);margin-top:5px}.financeItemRow select,.financeSmallInput,.paymentRow input,.paymentRow select,.repasseRow select,.inlineMoney input{height:43px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 11px;font:inherit;min-width:0;width:100%}.financeItemFields{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:12px;align-items:end}.inlineMoney{display:grid;gap:3px}.inlineMoney span{font-size:10px;color:var(--cor-tinta-fraca)}.financeSetupRow{padding:16px 25px;border-bottom:1px solid var(--cor-borda);display:flex;justify-content:space-between;align-items:center;gap:20px}.financeLotRow{min-height:70px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:180px 1fr 140px 120px;gap:15px;align-items:center}.paymentRow{min-height:84px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:1fr 140px 175px 195px;gap:17px;align-items:center}.paymentButton{height:43px;border:0;border-radius:9px;background:var(--cor-sucesso);color:#fff;font-weight:800}.paymentButton:disabled{opacity:.45}.repasseRow{min-height:76px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:1fr 150px 230px;gap:17px;align-items:center}.compactEmpty{padding:25px}.closingPanel .panelTitle{justify-content:space-between}.closingMetrics{display:grid;grid-template-columns:repeat(5,1fr)}.closingMetrics>div{padding:18px 25px;border-right:1px solid var(--cor-borda)}.closingMetrics>div:last-child{border-right:0}.closingMetrics strong{display:block;font-size:20px}.closingMetrics span{color:var(--cor-tinta-fraca);font-size:12px}.closingMetrics .green{color:var(--cor-sucesso)}.closingMetrics .amber{color:var(--cor-atencao)}.closingMetrics .red{color:var(--cor-perigo)}.closingMetrics .blue{color:var(--cor-marca)}.closingFooter{padding:15px 25px;border-top:1px solid var(--cor-borda);display:flex;justify-content:space-between;align-items:center;color:var(--cor-atencao);font-weight:700}.financeFootnote{color:var(--cor-tinta-fraca);font-size:12px}
+.financeMain>section:first-child h1{font-size:29px;margin:0 0 5px}.financeMain>section:first-child p{color:var(--cor-tinta-fraca);margin:0}.financeSuccess{background:var(--cor-sucesso-suave);color:var(--cor-sucesso);border-radius:10px;padding:12px 16px}.financeMetrics{grid-template-columns:repeat(5,1fr)}/* auto 1fr auto auto: convênio, contagem, total e seta. As duas últimas
+   colunas entraram quando o grupo passou a recolher. */
+.financeGroupHead{min-height:57px;padding:0 25px;display:grid;grid-template-columns:auto 1fr auto auto;gap:15px;align-items:center;border-bottom:1px solid var(--cor-borda)}
+/* Em grade a margem automática não empurra nada — quem alinha é a coluna. */
+.financeGroupHead>.painelExtra{margin-left:0}.financeGroupHead span{color:var(--cor-tinta-fraca)}.financeGroupHead b{color:var(--cor-sucesso)}.financeItemRow{min-height:90px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,1.7fr);gap:15px;align-items:center}.financeItemRow:last-child{border-bottom:0}.financeItemRow strong,.financeSetupRow strong,.paymentRow strong,.repasseRow strong{display:block}.financeItemRow small,.financeSetupRow small,.paymentRow small,.repasseRow small{display:block;color:var(--cor-tinta-fraca);margin-top:5px}.financeItemRow select,.financeSmallInput,.paymentRow input,.paymentRow select,.repasseRow select,.inlineMoney input{height:43px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 11px;font:inherit;min-width:0;width:100%}.financeItemFields{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:12px;align-items:end}.inlineMoney{display:grid;gap:3px}.inlineMoney span{font-size:10px;color:var(--cor-tinta-fraca)}.financeSetupRow{padding:16px 25px;border-bottom:1px solid var(--cor-borda);display:flex;justify-content:space-between;align-items:center;gap:20px}.financeLotRow{min-height:70px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:180px 1fr 140px 120px;gap:15px;align-items:center}.paymentRow{min-height:84px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:1fr 140px 175px 195px;gap:17px;align-items:center}.paymentButton{height:43px;border:0;border-radius:9px;background:var(--cor-sucesso);color:#fff;font-weight:800}.paymentButton:disabled{opacity:.45}.repasseRow{min-height:76px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:1fr 150px 230px;gap:17px;align-items:center}.compactEmpty{padding:25px}.closingMetrics{display:grid;grid-template-columns:repeat(5,1fr)}.closingMetrics>div{padding:18px 25px;border-right:1px solid var(--cor-borda)}.closingMetrics>div:last-child{border-right:0}.closingMetrics strong{display:block;font-size:20px}.closingMetrics span{color:var(--cor-tinta-fraca);font-size:12px}.closingMetrics .green{color:var(--cor-sucesso)}.closingMetrics .amber{color:var(--cor-atencao)}.closingMetrics .red{color:var(--cor-perigo)}.closingMetrics .blue{color:var(--cor-marca)}.closingFooter{padding:15px 25px;border-top:1px solid var(--cor-borda);display:flex;justify-content:space-between;align-items:center;color:var(--cor-atencao);font-weight:700}.financeFootnote{color:var(--cor-tinta-fraca);font-size:12px}
 @media(max-width:1100px){.financeItemRow{grid-template-columns:1fr}.paymentRow{grid-template-columns:1fr 130px 160px}.paymentButton{grid-column:1/-1}.closingMetrics{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.financeMetrics{grid-template-columns:1fr 1fr}.financeGroupHead{grid-template-columns:1fr auto}.financeGroupHead span{grid-column:1/-1}.financeItemRow,.financeLotRow,.paymentRow,.repasseRow{grid-template-columns:1fr;padding:18px}.financeItemRow .financeSmallInput{grid-column:auto}.financeSetupRow,.closingFooter{align-items:flex-start;flex-direction:column}.closingMetrics{grid-template-columns:1fr 1fr}.closingMetrics>div{border-bottom:1px solid var(--cor-borda)}.closingFooter button{width:100%}}
 
@@ -813,17 +822,32 @@ button:disabled{cursor:not-allowed}
      não cabe ao lado do título e quebra em uma palavra por linha — a barra
      do painel virava um parágrafo de pé. Vale para todos os painéis. */
   .panelTitle{flex-wrap:wrap;gap:2px var(--esp-3)}
-  .panelTitle>span{flex-basis:100%}
+  /* :not(.painelExtra) porque a caixa da direita também é um <span>: sem a
+     ressalva ela tomava a linha inteira e empurrava a seta para uma
+     terceira, encostada na margem esquerda. */
+  .panelTitle>span:not(.painelExtra){flex-basis:100%}
 
-  /* Na Central, a primeira linha carrega o título com o selo e a seta à
-     direita; a legenda desce inteira para a segunda. E some quando o painel
-     está recolhido: uma barra minimizada que ocupa duas linhas não minimizou
-     grande coisa — o número de pendências já diz o que precisa ser dito. */
-  .alertsPanel>summary>strong{flex:1}
-  /* order manda a legenda para o fim da fila. Sem isso ela quebra a linha no
-     meio do caminho e leva o selo e a seta junto, para uma terceira linha. */
-  .alertsPanel>summary>span{order:1;flex:0 0 100%}
-  .alertsPanel:not([open])>summary>span{display:none}
+  /* Em qualquer painel recolhível a primeira linha carrega o título, o que
+     vier à direita e a seta; a legenda desce inteira para a segunda.
+     order manda a legenda para o fim da fila — sem isso ela quebra a linha
+     no meio do caminho e leva o selo e a seta junto, para uma terceira. */
+  .painelRecolhivel>summary>strong{flex:1}
+  .painelRecolhivel>summary>span:not(.painelExtra){order:1;flex:0 0 100%}
+  /* Só na Central a legenda some ao recolher: lá o selo de pendências já diz
+     o que precisa ser dito, e uma barra minimizada de duas linhas não
+     minimizou grande coisa. Nos outros a legenda carrega a contagem, que é
+     justamente o que se quer ler sem abrir. */
+  .alertsPanel:not([open])>summary>span:not(.painelExtra){display:none}
+
+  /* O grupo por convênio no celular: convênio em cima, contagem embaixo, e o
+     total com a seta encostados à direita, centrados entre as duas linhas.
+     Com as quatro colunas do computador, cada uma virava uma linha e a barra
+     do grupo ficava mais alta que o primeiro atendimento dentro dele. */
+  .financeGroupHead{grid-template-columns:minmax(0,1fr) auto auto;gap:2px 10px;padding:10px 16px}
+  .financeGroupHead>strong{grid-area:1/1}
+  .financeGroupHead>span{grid-area:2/1}
+  .financeGroupHead>.painelExtra{grid-area:1/2/3/3;align-self:center}
+  .financeGroupHead>.painelSeta{grid-area:1/3/3/4;align-self:center}
 
   /* O cartão desce para duas colunas e o rótulo da ação vai para baixo do
      texto. Com os três na mesma linha sobravam menos de 190px para o texto,
@@ -1008,12 +1032,6 @@ button:disabled{cursor:not-allowed}
    quem fez o que exposto a cada abertura da tela.
    Usa <details>: funciona por teclado e mesmo sem javascript.
    ========================================================================== */
-.painelRecolhivel>summary{cursor:pointer;list-style:none;user-select:none}
-.painelRecolhivel>summary::-webkit-details-marker{display:none}
-.painelRecolhivel>summary:hover{background:var(--cor-superficie-suave)}
-.painelRecolhivel:not([open])>summary{border-bottom:0}
-.painelSeta{color:var(--cor-tinta-fraca);font-size:11px;transition:transform var(--transicao);display:inline-block}
-.painelRecolhivel[open] .painelSeta{transform:rotate(90deg)}
 
 /* Linha de convenio: acao compacta a direita, nao um botao de linha inteira. */
 .convenioRow{display:grid;grid-template-columns:minmax(0,1fr) 120px 100px auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda)}
