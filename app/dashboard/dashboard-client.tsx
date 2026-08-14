@@ -1411,4 +1411,29 @@ const MASCARAS: Record<string,(valor:string)=>string> = {
     .replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2"),
   telefone: (valor) => {
     const digitos = valor.replace(/\D/g,"").slice(0,11);
-    if (digito
+    if (digitos.length <= 10) return digitos.replace(/(\d{2})(\d)/,"($1) $2").replace(/(\d{4})(\d)/,"$1-$2");
+    return digitos.replace(/(\d{2})(\d)/,"($1) $2").replace(/(\d{5})(\d)/,"$1-$2");
+  },
+  cep: (valor) => valor.replace(/\D/g,"").slice(0,8).replace(/(\d{5})(\d)/,"$1-$2"),
+};
+
+function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue,autoComplete,mask,inputMode,autoFocus}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string;autoComplete?:string;mask?:keyof typeof MASCARAS;inputMode?:"numeric"|"text";autoFocus?:boolean}) {
+  // Campo com máscara é controlado: o valor exibido é sempre o formatado,
+  // sem depender de reescrever o valor dentro do evento.
+  const [valor,setValor]=useState(defaultValue??"");
+  const comum={name,type,required,autoComplete,inputMode,autoFocus};
+  return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""} ${required?"obrigatorio":""}`.trim()}>
+    <span>{label}</span>
+    {mask
+      ? <input {...comum} value={valor} onChange={(evento)=>setValor(MASCARAS[mask](evento.target.value))}/>
+      : <input {...comum} defaultValue={defaultValue}/>}
+  </label>;
+}
+function SelectField({name,label,options,required=false,placeholder,value,onChange,span2=false}:{name:string;label:string;options:string[];required?:boolean;placeholder?:string;value?:string;onChange?:(value:string)=>void;span2?:boolean}) {
+  const controlled=value!==undefined&&onChange!==undefined;
+  return <label className={`clinicalField ${span2?"span2":""} ${required?"obrigatorio":""}`.trim()}><span>{label}</span><select
+    name={name}
+    required={required}
+    {...(controlled?{value,onChange:(event:ChangeEvent<HTMLSelectElement>)=>onChange(event.target.value)}:{defaultValue:placeholder?"":undefined})}
+  >{placeholder&&<option value="" disabled>{placeholder}</option>}{options.map(o=><option key={o}>{o}</option>)}</select></label>;
+}
