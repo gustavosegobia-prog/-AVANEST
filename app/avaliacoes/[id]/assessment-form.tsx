@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { calculateLastDoseDate, ehAntitrombotico, ehGlp1, exigeOrientacao, findMedicationGuideEntry } from "@/lib/medication-guide";
 import { orientacaoSugerida } from "@/lib/medication-summary";
+import { diaParaMomento, lerMedicamentosEscritos, lerUmMedicamento, mesmoMedicamento } from "@/lib/medicamentos-escritos";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
 import {
@@ -545,17 +546,10 @@ type Medication = {
 function readMedications(value: string | boolean | undefined): Medication[] {
   try { const parsed=JSON.parse(String(value||"[]")); return Array.isArray(parsed)?parsed:[]; } catch { return []; }
 }
-const MEDICATION_CATEGORY_LABELS = new Set([
-  "anti-hipertensivo","antidiabético","anticoagulante","psicofármaco",
-  "caneta emagrecedora","fitoterápico","outro",
-]);
-function normalizeMedicationName(value:string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
-}
-function medicationFromName(nome:string, surgeryDate:string):Medication {
+function medicationFromName(nome:string, surgeryDate:string, dose="", frequencia="", ultimaDose=""):Medication {
   const guide=findMedicationGuideEntry(nome);
   return {
-    id:crypto.randomUUID(),nome,dose:"",frequencia:"",ultimaDose:"",indicacao:"",
+    id:crypto.randomUUID(),nome,dose,frequencia,ultimaDose,indicacao:"",
     conduta:guide?.defaultAction??"Avaliar",
     // Nasce com a frase que a ficha vai imprimir, e não com o texto longo do
     // guia: o campo é editável justamente para o anestesiologista discordar do
@@ -567,12 +561,6 @@ function medicationFromName(nome:string, surgeryDate:string):Medication {
     fonte:guide?.source??"",ultimaDoseSugerida:calculateLastDoseDate(surgeryDate,guide?.suspendDays),
     confirmada:false,orientacaoEditada:false,
   };
-}
-function medicationNamesFromAnamnesis(value:string) {
-  return value
-    .split(/[,;\n/]+/)
-    .map(item=>item.trim())
-    .filter(item=>item.length>=2&&!MEDICATION_CATEGORY_LABELS.has(normalizeMedicationName(item)));
 }
 function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const [name,setName]=useState("");
@@ -591,34 +579,62 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
   const continuousDetails=String(draft.medicacao_continua_detalhes||"");
   const anticoagulantDetails=String(draft.anticoagulante_detalhes||"");
   const glp1Details=String(draft.glp1_detalhes||"");
+  const glp1UltimaDose=String(draft.glp1_ultima_dose||"");
   useEffect(()=>{
     const timer=setTimeout(()=>{
-      const sourceNames=[
-        ...(draft.medicacao_continua==="Sim"?medicationNamesFromAnamnesis(continuousDetails):[]),
-        ...(draft.anticoagulante==="Sim"?medicationNamesFromAnamnesis(anticoagulantDetails):[]),
+      // A data da última dose só acompanha o que foi escrito na pergunta da
+      // caneta — é lá que ela é perguntada. Os outros campos não têm data.
+      const escritos=[
+        ...(draft.medicacao_continua==="Sim"?lerMedicamentosEscritos(continuousDetails):[])
+          .map(item=>({...item,ultimaDose:""})),
+        ...(draft.anticoagulante==="Sim"?lerMedicamentosEscritos(anticoagulantDetails):[])
+          .map(item=>({...item,ultimaDose:""})),
         // A caneta é o fármaco cuja conduta decide o jejum. Quem escreveu
-        // "tirzepatida 15 mg" ali em cima já disse o que toma — não precisa
-        // digitar de novo na lista para ver o prazo de suspensão.
-        ...(draft.glp1==="Sim"?medicationNamesFromAnamnesis(glp1Details):[]),
+        // "Ozempic 1 mg" e a data ali em cima já disse tudo — não precisa
+        // repetir dose nem data na lista para ver o prazo de suspensão.
+        ...(draft.glp1==="Sim"?lerMedicamentosEscritos(glp1Details):[])
+          .map(item=>({...item,ultimaDose:diaParaMomento(glp1UltimaDose)})),
       ];
-      if(!sourceNames.length)return;
-      const existingNames=new Set(medications.map(item=>normalizeMedicationName(item.nome)));
-      const missing=sourceNames.filter(item=>{
-        const normalized=normalizeMedicationName(item);
-        if(existingNames.has(normalized))return false;
-        existingNames.add(normalized);
-        return true;
-      });
-      if(missing.length)save([...medications,...missing.map(item=>medicationFromName(item,String(draft.data_cirurgia||"")))]);
+      if(!escritos.length)return;
+
+      const atuais=[...medications];
+      let mudou=false;
+      for(const escrito of escritos){
+        const existente=atuais.find(item=>mesmoMedicamento(item.nome,escrito.nome));
+        if(!existente){
+          atuais.push(medicationFromName(
+            escrito.nome,String(draft.data_cirurgia||""),
+            escrito.dose,escrito.frequencia,escrito.ultimaDose,
+          ));
+          mudou=true;
+          continue;
+        }
+        // Já cadastrado: completa só o que está em branco. Quem corrigiu a
+        // dose no cartão corrigiu por algum motivo, e o texto da pergunta não
+        // desfaz isso pelas costas.
+        for(const campo of ["dose","frequencia","ultimaDose"] as const){
+          if(escrito[campo]&&!String(existente[campo]||"").trim()){
+            existente[campo]=escrito[campo];
+            mudou=true;
+          }
+        }
+      }
+      if(mudou)save(atuais);
     },700);
     return ()=>clearTimeout(timer);
     // Importa apenas quando os campos de origem da anamnese forem alterados.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[continuousDetails,anticoagulantDetails,glp1Details,draft.medicacao_continua,draft.anticoagulante,draft.glp1]);
+  },[continuousDetails,anticoagulantDetails,glp1Details,glp1UltimaDose,draft.medicacao_continua,draft.anticoagulante,draft.glp1]);
   const add=(suggestion?:string)=>{
-    const nome=(suggestion??name).trim(); if(!nome)return;
-    if(medications.some(item=>normalizeMedicationName(item.nome)===normalizeMedicationName(nome))){setName("");return;}
-    save([...medications,medicationFromName(nome,String(draft.data_cirurgia||""))]); setName("");
+    // Passa pela mesma leitura da anamnese: quem digita "Xarelto 20 mg" — ou
+    // clica no botão rápido, que vem escrito assim — cadastra o remédio com a
+    // dose no campo de dose, e não grudada no nome.
+    const escrito=lerUmMedicamento(suggestion??name);
+    if(!escrito)return;
+    if(medications.some(item=>mesmoMedicamento(item.nome,escrito.nome))){setName("");return;}
+    save([...medications,medicationFromName(
+      escrito.nome,String(draft.data_cirurgia||""),escrito.dose,escrito.frequencia,
+    )]); setName("");
   };
   const update=<K extends keyof Medication>(id:string,key:K,value:Medication[K])=>save(medications.map(item=>{
     if(item.id!==id)return item;
