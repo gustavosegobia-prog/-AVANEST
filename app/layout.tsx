@@ -24,6 +24,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             ele o iOS usa o <title> inteiro e corta no meio, virando
             "AvaNEST|Avaliaç...". O ícone em si vem de app/apple-icon.png. */}
         <meta name="apple-mobile-web-app-title" content="AVANEST" />
+        {/* Declarado à mão, apontando para /public, em vez de depender do
+            arquivo chamar-se exatamente "apple-icon.png" na pasta app. O
+            caminho explícito funciona com qualquer nome de arquivo. */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/icone192.png" />
         <meta name="theme-color" content="#0879c9" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
