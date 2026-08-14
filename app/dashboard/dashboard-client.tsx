@@ -30,6 +30,47 @@ export const areasExtras = (p: { role: string; permissoes?: string[] | null }) =
     (area) => area !== p.role && (AREAS_EXTRAS as readonly string[]).includes(area),
   );
 
+/**
+ * A Central Operacional recolhida, e a escolha guardada no navegador.
+ *
+ * Ela é um painel de apoio, não a tela de trabalho: dois dos quatro alertas
+ * são lembretes fixos da rotina, que a mesma pessoa lê todo dia. Quem já
+ * conhece a lista quer o espaço de volta para a fila de atendimento — e não
+ * quer reabrir o painel a cada visita, então a escolha fica salva.
+ *
+ * O padrão é aberto: quem abre o AVANEST pela primeira vez precisa ver o que
+ * existe ali antes de poder decidir que não quer ver.
+ */
+const CENTRAL_FECHADA = "avanest:central-operacional-fechada";
+
+/**
+ * Aplica a escolha salva antes da pintura.
+ *
+ * É uma função de ref, e não um efeito, de propósito: a de ref roda no commit,
+ * antes de o navegador desenhar, então o painel já nasce no estado certo. Um
+ * useEffect abriria e fecharia à vista, e um useLayoutEffect reclamaria na
+ * renderização do servidor. Fica no escopo do módulo para a identidade não
+ * mudar entre renderizações — assim roda uma vez, na montagem.
+ */
+function lembrarCentral(elemento: HTMLDetailsElement | null) {
+  if (!elemento) return;
+  try {
+    elemento.open = window.localStorage.getItem(CENTRAL_FECHADA) !== "sim";
+  } catch {
+    // Navegador com armazenamento bloqueado (aba privada, política do
+    // aparelho): o painel fica aberto, que é o padrão. Não vale derrubar o
+    // painel inteiro por causa da memória de uma preferência de layout.
+  }
+}
+
+function guardarCentral(evento: { currentTarget: HTMLDetailsElement }) {
+  try {
+    window.localStorage.setItem(CENTRAL_FECHADA, evento.currentTarget.open ? "nao" : "sim");
+  } catch {
+    // Mesmo caso: sem onde guardar, a escolha vale só para esta visita.
+  }
+}
+
 export const PRIVATE_PAY_CONVENIO = "Particular";
 export const CONVENIOS = [
   "Particular","Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde",
@@ -170,6 +211,11 @@ export function DashboardClient({
   const evaluationById = useMemo(() => new Map(avaliacoes.map((a)=>[a.id,a])), [avaliacoes]);
   const drafts = avaliacoes.filter((a) => a.status === "rascunho");
   const completed = avaliacoes.filter((a) => a.status === "concluida");
+  const orientacoesPendentes = completed.filter((a) => a.dados?.orientacoes_enviadas !== true);
+  // O que a Central mostra em número quando está recolhida. Só entra aqui o
+  // que tem contagem real: os outros dois alertas são lembretes fixos da
+  // rotina, e somá-los inflaria o aviso com trabalho que talvez não exista.
+  const pendenciasCentral = drafts.length + orientacoesPendentes.length;
   const today = localDateKey();
   const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate()+1);
   const tomorrow = localDateKey(tomorrowDate);
@@ -511,15 +557,22 @@ export function DashboardClient({
               </div>;
             }) : <div className="emptyClinical">Nenhuma consulta agendada para hoje.</div>}
           </section>
-          <section className="clinicalPanel alertsPanel">
-            <div className="panelTitle"><strong>Central Operacional</strong><span>alertas da rotina baseados nas avaliações em andamento</span></div>
+          <details className="clinicalPanel alertsPanel" ref={lembrarCentral} onToggle={guardarCentral}>
+            <summary className="panelTitle">
+              <strong>Central Operacional</strong>
+              <span>alertas da rotina baseados nas avaliações em andamento</span>
+              {pendenciasCentral > 0 && (
+                <em className="centralResumo">{pendenciasCentral} pendência{pendenciasCentral > 1 ? "s" : ""}</em>
+              )}
+              <Icone nome="seta" className="centralSeta" />
+            </summary>
             <div className="alertGrid">
               <Alert icone="alerta" title="Avaliações incompletas" text={`${drafts.length} avaliação(ões) aguardando conclusão`} action="REVISAR" danger onClick={goToFirstDraft} />
               <Alert icone="alerta" title="Medicamentos" text="Revisar anticoagulantes e GLP-1 durante a anamnese" action="AVALIAR" onClick={goToFirstDraft} />
               <Alert icone="fechar" title="Exames pendentes" text="Confira exames e pareceres antes da conclusão" action="PENDÊNCIA" onClick={goToFirstDraft} />
-              <Alert icone="envelope" title="Orientações não enviadas" text={`${completed.filter(a=>a.dados?.orientacoes_enviadas!==true).length} documento(s) aguardando envio`} action="ENVIAR" onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)} />
+              <Alert icone="envelope" title="Orientações não enviadas" text={`${orientacoesPendentes.length} documento(s) aguardando envio`} action="ENVIAR" onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)} />
             </div>
-          </section>
+          </details>
           <section className="clinicalPanel agendaPanel">
             <div className="agendaHead"><strong>Agenda</strong><button className={agendaRange==="hoje"?"active":""} onClick={()=>setAgendaRange("hoje")}>Hoje</button><button className={agendaRange==="amanha"?"active":""} onClick={()=>setAgendaRange("amanha")}>Amanhã</button><button className={agendaRange==="semana"?"active":""} onClick={()=>setAgendaRange("semana")}>Semana</button><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, procedimento..." /></div>
             {filteredAgenda.slice(0,20).map((appointment) => { const p=patientMap.get(appointment.patient_id); if(!p)return null; const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined; return <button className="agendaRow" key={appointment.id} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>
