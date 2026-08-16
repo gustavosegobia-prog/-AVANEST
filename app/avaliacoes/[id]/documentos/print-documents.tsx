@@ -1,6 +1,7 @@
 "use client";
 
 import {Fragment,useMemo,useState} from "react";
+import { idadeDoPaciente } from "@/lib/idade";
 import {createClient} from "@/utils/supabase/client";
 import {ehAntitrombotico,exigeOrientacao} from "@/lib/medication-guide";
 import {suspensionSummary} from "@/lib/medication-summary";
@@ -9,7 +10,7 @@ import {BrandMark} from "@/components/brand-mark";
 type Data=Record<string,string|boolean>;
 type Props={
   avaliacao:{id:string;institution_id:string;patient_id:string;status:string;versao:number;dados:Data|null;snapshot_conclusao:Data|null;created_at:string;updated_at:string;concluida_at:string|null};
-  paciente:{id:string;nome:string;cpf:string|null;data_nascimento:string|null;sexo:string|null;telefone:string|null;email:string|null;hospital:string|null;cirurgia:string|null;procedimento:string|null;convenio:string|null};
+  paciente:{id:string;nome:string;cpf:string|null;data_nascimento:string|null;idade_anos?:number|null;sexo:string|null;telefone:string|null;email:string|null;hospital:string|null;cirurgia:string|null;procedimento:string|null;convenio:string|null};
   perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string;permissoes?:string[]|null};
   organizacao:{nome:string;tipo:string|null;telefone:string|null;logo_url?:string|null}|null;
 };
@@ -214,7 +215,9 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
     }
   }
   const medications=useMemo<Medication[]>(()=>{try{const v=JSON.parse(String(dados.medicamentos_json||"[]"));return Array.isArray(v)?v:[]}catch{return[]}},[dados.medicamentos_json]);
-  const age=useMemo(()=>{if(!paciente.data_nascimento)return null;const birth=new Date(`${paciente.data_nascimento}T12:00:00`),now=new Date();return now.getFullYear()-birth.getFullYear()-(now<new Date(now.getFullYear(),birth.getMonth(),birth.getDate())?1:0)},[paciente.data_nascimento]);
+  // A mesma conta da avaliação, do mesmo arquivo: a ficha impressa não pode
+  // mostrar uma idade diferente da que entrou nos escores.
+  const age=useMemo(()=>idadeDoPaciente(paciente).anos,[paciente]);
   const weight=Number(dados.peso||0),height=Number(dados.altura||0),imc=weight&&height?weight/((height/100)**2):0;
   const heightInches=height/2.54;
   const idealWeight=height?Math.max(30,(String(dados.sexo||paciente.sexo).toLowerCase()==="masculino"?50:45.5)+2.3*(heightInches-60)):0;
