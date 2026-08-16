@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
+import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { ChatFlutuante } from "@/components/chat-flutuante";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 
@@ -294,6 +295,9 @@ export function DashboardClient({
     const patientPayload = {
       institution_id: perfil.institution_id, created_by: perfil.id,
       nome: patientName, cpf: cpfDigits, rg: text("rg"), data_nascimento: birthDate,
+      // Só entra quando não há data de nascimento: com as duas gravadas, um
+      // aniversário faria as duas discordarem sem ninguém perceber.
+      idade_anos: birthDate ? null : lerIdadeInformada(text("idade_anos")),
       sexo: text("sexo"), telefone: phoneDigits||null, email: text("email"), endereco: text("endereco"),
       cidade: text("cidade"), uf: text("uf"), cep: text("cep"), hospital: text("hospital"),
       cirurgia: text("cirurgia"), especialidade: text("especialidade"),
@@ -1361,7 +1365,7 @@ function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:bool
             <Field name="nome" label="Nome completo" wide required autoFocus/>
             <Field name="cpf" label="CPF" required mask="cpf" inputMode="numeric"/>
             <Field name="rg" label="RG"/>
-            <Field name="data_nascimento" label="Data de nascimento" type="date"/>
+            <CamposIdade/>
             <SelectField name="sexo" label="Sexo" options={["Feminino","Masculino","Outro","Não informado"]}/>
           </div>
         </fieldset>
@@ -1438,6 +1442,47 @@ const MASCARAS: Record<string,(valor:string)=>string> = {
   },
   cep: (valor) => valor.replace(/\D/g,"").slice(0,8).replace(/(\d{5})(\d)/,"$1-$2"),
 };
+
+/**
+ * Data de nascimento e idade, lado a lado.
+ *
+ * Nem todo paciente chega com a data: o idoso que não lembra, a ficha de
+ * internação que só traz "78 anos", o encaixe de última hora. O cadastro não
+ * pode parar por causa disso — mas também não pode acabar com dois números
+ * discordando um do outro.
+ *
+ * Por isso os dois campos são um só controle: com a data preenchida, a idade
+ * aparece calculada e trancada, e vai vazia para o banco. Sem a data, a idade
+ * é digitável. Quem manda depois, na hora de usar, é lib/idade.ts.
+ */
+function CamposIdade({nascimento:inicial="",idade:idadeInicial=""}:{nascimento?:string;idade?:string}) {
+  const [nascimento,setNascimento]=useState(inicial);
+  const [idade,setIdade]=useState(idadeInicial);
+  const calculada=idadePorNascimento(nascimento);
+  const temData=Boolean(nascimento.trim());
+  return <>
+    <label className="clinicalField"><span>Data de nascimento</span>
+      <input name="data_nascimento" type="date" value={nascimento} onChange={e=>setNascimento(e.target.value)}/>
+    </label>
+    <label className="clinicalField"><span>Idade (anos)</span>
+      <input
+        // Sem name quando a data manda: campo desabilitado não entra no envio,
+        // e assim nunca se grava uma idade que contradiz a data de nascimento.
+        {...(temData?{}:{name:"idade_anos"})}
+        type="number" min={0} max={130} step={1} inputMode="numeric"
+        value={temData?(calculada!==null?String(calculada):""):idade}
+        onChange={e=>setIdade(e.target.value)}
+        disabled={temData}
+        placeholder={temData?"":"Ex.: 78"}
+      />
+      <small className="campoNota">
+        {temData
+          ? (calculada!==null?"calculada pela data de nascimento":"data de nascimento inválida")
+          : "preencha a data acima, ou digite a idade aqui"}
+      </small>
+    </label>
+  </>;
+}
 
 function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue,autoComplete,mask,inputMode,autoFocus}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string;autoComplete?:string;mask?:keyof typeof MASCARAS;inputMode?:"numeric"|"text";autoFocus?:boolean}) {
   // Campo com máscara é controlado: o valor exibido é sempre o formatado,
