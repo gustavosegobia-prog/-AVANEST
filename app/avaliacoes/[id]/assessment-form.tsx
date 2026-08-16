@@ -7,12 +7,12 @@ import { createClient } from "@/utils/supabase/client";
 import { calculateLastDoseDate, ehAntitrombotico, ehGlp1, exigeOrientacao, findMedicationGuideEntry } from "@/lib/medication-guide";
 import { orientacaoSugerida } from "@/lib/medication-summary";
 import { diaParaMomento, lerMedicamentosEscritos, lerUmMedicamento, mesmoMedicamento } from "@/lib/medicamentos-escritos";
+import { idadeDoPaciente, idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
 import {
   AVISO_CLINICO,
   ehPediatrico,
-  idadeEmMesesPorNascimento,
   opcoesDeTubo,
 } from "@/lib/calculos/via-aerea-pediatrica";
 
@@ -21,7 +21,7 @@ type Draft = Record<string, string | boolean>;
 type Assessment = { id: string; institution_id: string; patient_id: string; status: string; versao: number; dados: Draft | null; updated_at: string; lock_version:number };
 type Profile = { id:string; nome:string; crm:string|null; rqe:string|null; role:string };
 type Patient = {
-  id:string; nome:string; cpf:string|null; rg?:string|null; data_nascimento:string|null; sexo:string|null;
+  id:string; nome:string; cpf:string|null; rg?:string|null; data_nascimento:string|null; idade_anos?:number|null; sexo:string|null;
   telefone:string|null; email:string|null; hospital?:string|null; cirurgia?:string|null;
   especialidade?:string|null; procedimento?:string|null; convenio?:string|null; data_consulta?:string|null; horario?:string|null;
 };
@@ -71,6 +71,11 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       crm: String(saved.crm || perfil.crm || ""),
       rqe: String(saved.rqe || perfil.rqe || ""),
       ecg: saved.ecg == null ? "Ritmo sinusal." : String(saved.ecg),
+      // O jejum nasce no padrão do serviço em vez de "Selecione". Era a última
+      // etapa a travar a conclusão, e a resposta é a mesma na esmagadora
+      // maioria das fichas — quem precisa de outra coisa troca em dois toques.
+      jejum_solidos: saved.jejum_solidos == null ? JEJUM_SOLIDOS_PADRAO : String(saved.jejum_solidos),
+      jejum_liquidos: saved.jejum_liquidos == null ? JEJUM_LIQUIDOS_PADRAO : String(saved.jejum_liquidos),
     };
   });
   const [saveState, setSaveState] = useState<"saved"|"pending"|"saving"|"error">("saved");
@@ -253,12 +258,33 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     }
   }
 
-  const age = useMemo(() => {
-    if (!paciente.data_nascimento) return null;
-    const birth = new Date(`${paciente.data_nascimento}T12:00:00`); const now = new Date();
-    const calculated = now.getFullYear()-birth.getFullYear()-(now < new Date(now.getFullYear(),birth.getMonth(),birth.getDate()) ? 1 : 0);
-    return Number.isFinite(calculated) && calculated >= 0 && calculated <= 130 ? calculated : null;
-  },[paciente.data_nascimento]);
+  // Data de nascimento e idade moram no cadastro do paciente, não na
+  // avaliação: quem corrige aqui corrige para todas as fichas dele, e não só
+  // para esta. Ficam em estado local só para a tela responder na hora — o
+  // cadastro é gravado logo em seguida.
+  const [identidade,setIdentidade]=useState({
+    data_nascimento:paciente.data_nascimento??"",
+    idade_anos:paciente.idade_anos!=null?String(paciente.idade_anos):"",
+  });
+  const [erroIdade,setErroIdade]=useState("");
+  const idade=useMemo(()=>idadeDoPaciente({
+    data_nascimento:identidade.data_nascimento,
+    idade_anos:lerIdadeInformada(identidade.idade_anos),
+  }),[identidade]);
+  const age=idade.anos;
+
+  async function gravarIdentidade(proxima:{data_nascimento:string;idade_anos:string}) {
+    setIdentidade(proxima);
+    const nascimento=proxima.data_nascimento.trim()||null;
+    // Com data de nascimento válida a idade digitada não é gravada: duas
+    // fontes salvas juntas passam a discordar no primeiro aniversário.
+    const anos=nascimento&&idadePorNascimento(nascimento)!==null
+      ? null
+      : lerIdadeInformada(proxima.idade_anos);
+    const {error}=await createClient().from("pacientes")
+      .update({data_nascimento:nascimento,idade_anos:anos}).eq("id",paciente.id);
+    setErroIdade(error?"Não consegui salvar no cadastro do paciente. Tente de novo.":"");
+  }
   const weight = Number(draft.peso || 0), height = Number(draft.altura || 0);
   const imc = weight && height ? weight / ((height/100) ** 2) : 0;
   const heightInches = height / 2.54;
@@ -279,7 +305,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     )
   );
   const completedSteps=[
-    Boolean(isFilled(paciente.nome)&&isFilled(paciente.data_nascimento)&&age!==null&&isFilled(draft.peso)&&isFilled(draft.altura)),
+    Boolean(isFilled(paciente.nome)&&age!==null&&isFilled(draft.peso)&&isFilled(draft.altura)),
     Boolean(isFilled(draft.cirurgia)),
     // A ordem acompanha STEPS: anamnese é a etapa 3, medicamentos a 4.
     anamnesisComplete,
@@ -373,7 +399,29 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
         <h1>1 · Identificação do paciente</h1>
         <div className="evalFormGrid">
           <label className="evalField span3"><span>Nome completo</span><input value={paciente.nome} readOnly/></label>
-          <label className="evalField"><span>Data de nascimento</span><input className={paciente.data_nascimento&&age===null?"invalidField":""} value={paciente.data_nascimento??""} type="date" readOnly/>{paciente.data_nascimento&&age===null&&<small className="fieldError">Data inválida. Corrija o cadastro do paciente.</small>}</label>
+          <label className="evalField"><span>Data de nascimento</span>
+            <input
+              className={idade.nascimentoInvalido?"invalidField":""}
+              value={identidade.data_nascimento} type="date"
+              onChange={e=>void gravarIdentidade({...identidade,data_nascimento:e.target.value})}
+            />
+            {idade.nascimentoInvalido&&<small className="fieldError">Data inválida — a idade abaixo é a que vale.</small>}
+          </label>
+          <label className="evalField"><span>Idade (anos)</span>
+            <input
+              type="number" min={0} max={130} step={1} inputMode="numeric"
+              value={idade.fonte==="nascimento"?String(idade.anos??""):identidade.idade_anos}
+              onChange={e=>void gravarIdentidade({...identidade,idade_anos:e.target.value})}
+              disabled={idade.fonte==="nascimento"}
+              placeholder={idade.fonte==="nascimento"?"":"Ex.: 78"}
+            />
+            <small className="fieldHint">
+              {idade.fonte==="nascimento"
+                ?"calculada pela data de nascimento"
+                :"sem a data de nascimento, digite a idade — é ela que entra nos cálculos"}
+            </small>
+            {erroIdade&&<small className="fieldError">{erroIdade}</small>}
+          </label>
           {select("sexo","Sexo",["Feminino","Masculino","Outro"])}
           <label className="evalField"><span>CPF</span><input value={paciente.cpf??""} readOnly/></label>
           {input("peso","Peso (kg)","number")}{input("altura","Altura (cm)","number")}{input("convenio","Convênio")}
@@ -397,7 +445,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       <div id="etapa-6"><Airway draft={draft} set={set}/></div>
       <div id="etapa-7"><ComplementaryExams draft={draft} set={set} avaliacao={avaliacao}/></div>
       <div id="etapa-8"><Scores draft={draft} set={set} age={age} sex={paciente.sexo} imc={imc}/></div>
-      <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} imc={imc} conclude={conclude} retrySave={()=>void save()} saveState={saveState} saveError={saveError}/></div>
+      <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} idadeMeses={idade.meses} imc={imc} conclude={conclude} retrySave={()=>void save()} saveState={saveState} saveError={saveError}/></div>
     </div>
   </main>;
 }
@@ -562,6 +610,46 @@ function medicationFromName(nome:string, surgeryDate:string, dose="", frequencia
     confirmada:false,orientacaoEditada:false,
   };
 }
+/**
+ * Jejum: o padrão do serviço já vem escolhido.
+ *
+ * Antes os dois campos abriam em "Selecione", e eram o que mais travava a
+ * conclusão da ficha — respondidos igual quase sempre. O padrão fica à vista,
+ * escrito por extenso, e as outras opções ficam a um toque de distância.
+ */
+const JEJUM_SOLIDOS_PADRAO = "8 horas antes";
+const JEJUM_LIQUIDOS_PADRAO = "Jejum absoluto";
+const JEJUM_SOLIDOS = [JEJUM_SOLIDOS_PADRAO, "6 horas antes (refeição leve)", "2 horas antes (líquido sem resíduo)", "Protocolo especial"];
+const JEJUM_LIQUIDOS = [JEJUM_LIQUIDOS_PADRAO, "Líquidos claros até 2 h antes", "Líquidos claros até 1 h antes", "Protocolo especial"];
+
+/**
+ * Um valor escolhido, com as outras opções escondidas atrás de um botão.
+ *
+ * Não é um <select> porque a lista fechada de um select esconde o que está
+ * valendo atrás de um clique; aqui o que vale está escrito na tela, e quem
+ * quer outra coisa pede para ver. As opções são botões de verdade, então
+ * teclado e leitor de tela continuam funcionando.
+ */
+function EscolhaComPadrao({rotulo,valor,opcoes,onEscolher,className=""}:{
+  rotulo:string; valor:string; opcoes:string[]; onEscolher:(valor:string)=>void; className?:string;
+}) {
+  const [abertas,setAbertas]=useState(false);
+  return <div className={`evalField escolhaPadrao ${className}`.trim()}>
+    <span>{rotulo}</span>
+    {abertas
+      ? <div className="escolhaOpcoes" role="group" aria-label={rotulo}>
+          {opcoes.map(opcao=><button
+            type="button" key={opcao} className={opcao===valor?"active":""}
+            onClick={()=>{onEscolher(opcao);setAbertas(false)}}
+          >{opcao}</button>)}
+        </div>
+      : <div className="escolhaAtual">
+          <strong>{valor||"—"}</strong>
+          <button type="button" onClick={()=>setAbertas(true)}>Outras opções</button>
+        </div>}
+  </div>;
+}
+
 function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const [name,setName]=useState("");
   const medications=readMedications(draft.medicamentos_json);
@@ -990,14 +1078,13 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div><p>Outros escores somente devem ser usados quando houver dados suficientes e validação clínica.</p></section></>;
 }
 
-function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,saveError}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;imc:number;conclude:()=>Promise<void>;retrySave:()=>void;saveState:"saved"|"pending"|"saving"|"error";saveError:string}) {
+function Conclusion({draft,set,paciente,age,idadeMeses,imc,conclude,retrySave,saveState,saveError}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;idadeMeses:number|undefined;imc:number;conclude:()=>Promise<void>;retrySave:()=>void;saveState:"saved"|"pending"|"saving"|"error";saveError:string}) {
   const medications=readMedications(draft.medicamentos_json);
   const lastAutomaticPlan=useRef("");
   /* Tubo pediátrico no planejamento: peso e data de nascimento já estão na
      ficha, e trocar de tela no meio da indução é o que se quer evitar.
      A idade em anos inteiros não serve — abaixo de 1 ano o calibre vem do
      peso, e um lactente de 8 meses apareceria como "0 ano". */
-  const idadeMeses=idadeEmMesesPorNascimento(paciente.data_nascimento);
   const pesoKg=Number(draft.peso||0)||undefined;
   const usaTubo=["Anestesia geral","Técnica combinada"].includes(String(draft.tecnica??""));
   const opcoesTubo=usaTubo&&ehPediatrico(idadeMeses)
@@ -1030,7 +1117,7 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
   const requirementGroups = [
     ["Identificação", [
       [paciente.nome, "nome do paciente"],
-      [age === null && paciente.data_nascimento ? "" : "ok", "data de nascimento válida"],
+      [age === null ? "" : "ok", "idade definida (data de nascimento ou idade informada)"],
     ]],
     ["Procedimento", [
       [draft.cirurgia, "cirurgia/procedimento"],
@@ -1096,8 +1183,8 @@ function Conclusion({draft,set,paciente,age,imc,conclude,retrySave,saveState,sav
   function generateText(){lastAutomaticPlan.current=automaticPlan;set("plano_anestesico",automaticPlan);set("plano_anestesico_editado",false)}
   return <><section className="evalSection"><div className="conclusionHeading"><h1>9 · Resumo da avaliação</h1><button className="outlineClinical" onClick={generateText}>Atualizar orientações finais automaticamente ↓</button></div><div className="summaryGrid">{summary.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
   <section className="evalSection"><h2>Prescrição e planejamento pré-anestésico</h2><div className="planningGrid">
-    <label className="evalField plan4"><span>Jejum — sólidos</span><select value={String(draft.jejum_solidos??"")} onChange={e=>set("jejum_solidos",e.target.value)}><option value="">Selecione</option><option>8 horas antes</option><option>6 horas antes (refeição leve)</option><option>Protocolo especial</option></select></label>
-    <label className="evalField plan4"><span>Jejum — líquidos claros</span><select value={String(draft.jejum_liquidos??"")} onChange={e=>set("jejum_liquidos",e.target.value)}><option value="">Selecione</option><option>Líquidos claros até 2 h antes</option><option>Jejum absoluto</option><option>Protocolo especial</option></select></label>
+    <EscolhaComPadrao className="plan4" rotulo="Jejum — sólidos" valor={String(draft.jejum_solidos??JEJUM_SOLIDOS_PADRAO)} opcoes={JEJUM_SOLIDOS} onEscolher={v=>set("jejum_solidos",v)}/>
+    <EscolhaComPadrao className="plan4" rotulo="Jejum — líquidos claros" valor={String(draft.jejum_liquidos??JEJUM_LIQUIDOS_PADRAO)} opcoes={JEJUM_LIQUIDOS} onEscolher={v=>set("jejum_liquidos",v)}/>
     <label className="evalField plan2"><span>Dormonid VO (pré-medicação)</span><select value={String(draft.premedicacao??"")} onChange={e=>set("premedicacao",e.target.value)}><option value="">Selecione</option><option>Não prescrever</option><option>7,5 mg</option><option>15 mg</option></select></label>
     <label className="evalField plan2"><span>Leito de UTI</span><select value={String(draft.leito_uti??"")} onChange={e=>set("leito_uti",e.target.value)}><option value="">Selecione</option><option>Não</option><option>Solicitar</option><option>A definir</option></select></label>
     <label className="evalField plan2"><span>Concentrado de hemácias (CH)</span><select value={String(draft.concentrado_hemacias??"")} onChange={e=>{set("concentrado_hemacias",e.target.value);if(e.target.value!=="Solicitar"&&e.target.value!=="Sim")set("quantidade_ch","")}}><option value="">Selecione</option><option>Não</option><option>Solicitar</option><option>A definir</option></select></label>
