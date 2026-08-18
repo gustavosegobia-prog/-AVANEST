@@ -13,8 +13,11 @@ import { Icone } from "@/components/icone";
 
 export const metadata: Metadata = {
   title: "Planos e preços | AvaNEST",
+  // Sem número de vagas aqui: metadata é estática, e um "100 primeiros"
+  // escrito à mão sobrevive à mudança da campanha e passa a mentir. O número
+  // que vale aparece na página, vindo do banco.
   description:
-    "Avaliação pré-anestésica digital do anestesiologista sozinho à clínica inteira. Oferta de lançamento para os 100 primeiros.",
+    "Avaliação pré-anestésica digital, do anestesiologista sozinho à clínica inteira. Oferta de lançamento por tempo limitado.",
 };
 
 // A página mostra contagem de vagas: cachear daria número velho.
@@ -26,8 +29,68 @@ const propostaHospital =
 // O cadastro do AVANEST é por convite, não por autoatendimento. Quem ainda não
 // tem conta não consegue chegar ao checkout, então o botão dele abre a
 // conversa em vez de um login que não leva a lugar nenhum.
+const duvida =
+  WHATSAPP + encodeURIComponent("Olá! Tenho uma dúvida sobre o AVANEST antes de assinar.");
 const querPlano = (nome: string) =>
   WHATSAPP + encodeURIComponent(`Olá! Quero contratar o plano ${nome} do AVANEST.`);
+
+/**
+ * Perguntas frequentes.
+ *
+ * O texto é comercial, mas os números não são escritos à mão: o limite da
+ * campanha e os dois preços saem do banco, os mesmos que o cartão do plano
+ * mostra logo acima. Um FAQ que diz "25 primeiros" enquanto a promoção vale
+ * para 100 é pior do que não ter FAQ — e é exatamente o que acontece quando o
+ * número é digitado uma segunda vez.
+ */
+const perguntas = (a: {
+  limite: number | null;
+  preco: number | null;
+  precoPadrao: number | null;
+  suporte: string;
+}) => [
+  {
+    p: "Preciso pagar taxa de instalação ou assinar contrato de fidelidade?",
+    r: "Não. O AVANEST não cobra taxa de instalação e não exige fidelidade. O cancelamento é pela sua própria conta, em Admin › Assinatura, a qualquer momento e sem passar por atendimento: não há nova cobrança, e o acesso continua até o fim do período que você já pagou.",
+  },
+  {
+    p: "Se eu cancelar, recebo o dinheiro de volta?",
+    r: "Cancelando nos primeiros 14 dias depois da cobrança, o valor daquele mês é devolvido pela mesma forma de pagamento. Depois disso o mês em curso não é reembolsado, mas o acesso continua até o fim dele e não há nova cobrança. A tela mostra em que dia do mês você está antes de confirmar o cancelamento.",
+  },
+  a.limite && a.preco
+    ? {
+        p: `Como funciona a promoção de ${reais(a.preco)}/mês?`,
+        r:
+          `O preço de lançamento vale para os ${a.limite} primeiros assinantes do plano Solo e fica garantido ` +
+          `enquanto a assinatura seguir ativa — não sobe na renovação.` +
+          (a.precoPadrao ? ` Esgotadas as vagas, o Solo passa a ${reais(a.precoPadrao)}/mês para quem assinar depois.` : ""),
+      }
+    : null,
+  {
+    p: "Qual a diferença entre os planos Equipe 5 e Clínica?",
+    r: "O Equipe 5 atende times de até 5 anestesiologistas que usam o sistema para as avaliações pré-anestésicas. O Clínica não tem limite de anestesiologistas e inclui os módulos de recepção, financeiro e administração — é para quem quer a operação inteira da clínica num sistema só.",
+  },
+  {
+    p: "Minha equipe tem mais de 5 anestesiologistas, mas não preciso de recepção e financeiro. Existe plano intermediário?",
+    r: "Os planos fechados são Solo, Equipe 5 e Clínica. Fora desses formatos existe o Hospital, sob medida: fale com a gente e montamos uma proposta para o seu caso.",
+  },
+  {
+    p: "Como o AVANEST protege os dados dos pacientes?",
+    r: "O sistema segue os princípios da LGPD. O acesso é separado por perfil: a recepção organiza a fila e o cadastro sem enxergar conteúdo clínico, e o financeiro trabalha com valores sem abrir a avaliação. Backup automático está em todos os planos.",
+  },
+  {
+    p: "Dá para migrar as fichas ou o sistema que uso hoje?",
+    r: "Se você já tem um fluxo de avaliação pré-anestésica em papel ou em outro sistema, fale com a gente antes de assinar para combinarmos como trazer o que já existe.",
+  },
+  {
+    p: "O suporte está incluído em todos os planos?",
+    r: "Sim. Suporte, atualizações e impressão ilimitada de fichas, termos e orientações entram em todos os planos, sem custo extra.",
+  },
+  {
+    p: "Como faço para começar?",
+    r: "Você pode conversar 15 minutos pelo WhatsApp antes de decidir, ou escolher agora mesmo o plano do tamanho da sua equipe aqui em cima.",
+  },
+];
 
 type Plano = {
   codigo: string;
@@ -201,6 +264,35 @@ export default async function PlanosPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="planosFaq" id="faq">
+        <h2>Perguntas frequentes</h2>
+        {/* <details> em vez de um acordeão escrito à mão: abre por clique, por
+            Enter e por Espaço, o leitor de tela anuncia recolhido/expandido, e
+            o buscador enxerga a resposta mesmo fechada. */}
+        <div className="planosFaqLista">
+          {perguntas({
+            limite: vagas?.limite ?? null,
+            preco: campanhaVale ? Number(vagas!.preco) : null,
+            precoPadrao: vagas?.preco_padrao != null ? Number(vagas.preco_padrao) : null,
+            suporte: WHATSAPP,
+          })
+            .filter((item) => item !== null)
+            .map((item) => (
+              <details key={item!.p}>
+                <summary>
+                  {item!.p}
+                  <Icone nome="seta" tamanho={16} />
+                </summary>
+                <p>{item!.r}</p>
+              </details>
+            ))}
+        </div>
+        <p className="planosFaqRodape">
+          Ficou uma dúvida que não está aqui?{" "}
+          <a href={duvida} target="_blank" rel="noreferrer">Chame no WhatsApp</a>.
+        </p>
       </section>
 
       <footer className="avnFooter">
