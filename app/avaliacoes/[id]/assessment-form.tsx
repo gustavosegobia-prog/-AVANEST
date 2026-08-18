@@ -8,6 +8,7 @@ import { calculateLastDoseDate, ehAntitrombotico, ehGlp1, exigeOrientacao, findM
 import { orientacaoSugerida } from "@/lib/medication-summary";
 import { diaParaMomento, lerMedicamentosEscritos, lerUmMedicamento, mesmoMedicamento } from "@/lib/medicamentos-escritos";
 import { idadeDoPaciente, idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
+import { PREDITORES_VIA_AEREA, resumoViaAerea } from "@/lib/via-aerea";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
 import {
@@ -415,11 +416,11 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
               disabled={idade.fonte==="nascimento"}
               placeholder={idade.fonte==="nascimento"?"":"Ex.: 78"}
             />
-            <small className="fieldHint">
-              {idade.fonte==="nascimento"
-                ?"calculada pela data de nascimento"
-                :"sem a data de nascimento, digite a idade — é ela que entra nos cálculos"}
-            </small>
+            {/* A legenda só aparece com o campo travado, para explicar por que
+                não dá para digitar ali. Vazio, o "Ex.: 78" já diz o que fazer —
+                e uma frase abaixo de cada campo vira ruído numa tela de nove
+                etapas. */}
+            {idade.fonte==="nascimento"&&<small className="fieldHint">calculada pela data de nascimento</small>}
             {erroIdade&&<small className="fieldError">{erroIdade}</small>}
           </label>
           {select("sexo","Sexo",["Feminino","Masculino","Outro"])}
@@ -847,18 +848,10 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
 }
 
 function Airway({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
-  const predictors=["Retrognatia/micrognatia","Macroglossia","Pescoço curto","Barba","Massa cervical","Radioterapia cervical prévia","Cirurgia cervical prévia","História de intubação difícil","Dificuldade de ventilação prévia","Traqueostomia","Apneia do sono"];
-  const key=(item:string)=>`via_${item.toLowerCase().replace(/\W+/g,"_")}`;
-  const primaryOptions: Array<[string,string[]]>=[
-    ["mallampati",["Classe III","Classe IV"]],
-    ["abertura_oral",["< 3 cm"]],
-    ["distancia_tireo",["< 6 cm"]],
-    ["mobilidade",["Reduzida","Muito reduzida"]],
-    ["denticao",["Prótese removível","Alterações dentárias"]],
-  ];
-  const primary=primaryOptions.filter(([field,values])=>values.includes(String(draft[field]))).length;
-  const count=predictors.filter(item=>draft[key(item)]===true).length+primary;
-  const risk=count===0?"Baixa":count<=2?"Moderada":"Alta";
+  // A lista e a conta vêm de lib/via-aerea: a ficha impressa lê exatamente as
+  // mesmas, e por isso as duas não voltam a discordar.
+  const predictors=[...PREDITORES_VIA_AEREA];
+  const {total:count,risco:risk}=resumoViaAerea(draft);
   const choice=(name:string,label:string,options:string[])=><label className="evalField"><span>{label}</span><select value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}><option value="">Selecione</option>{options.map(o=><option key={o}>{o}</option>)}</select></label>;
   return <section className="evalSection"><h1>6 · Avaliação da via aérea</h1><div className="airwayGrid">
     {choice("mallampati","Mallampati",["Classe I","Classe II","Classe III","Classe IV"])}
