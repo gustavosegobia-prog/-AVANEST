@@ -41,6 +41,16 @@ export const CONVENIOS = [
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean };
 type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null };
+// O que minha_assinatura() devolve. cancelada_em é o que separa "vai
+// renovar" de "vai até a data e acaba".
+type Assinatura = {
+  organizacao: string; plano: string; assinatura_ate: string | null;
+  dias_restantes: number | null; profissionais: number; valor_mensal: number;
+  liberada: boolean; cancelada_em: string | null;
+  // Ainda ativa, é a previsão de como seria cancelando agora. Já cancelada, é
+  // a decisão que foi tomada na hora e não muda mais.
+  reembolso_devido: boolean; dias_de_uso: number | null; prazo_de_reembolso: number;
+};
 type Convite = { id:string; email:string; role:string; token:string; status:string; expires_at:string; created_at:string };
 type Paciente = {
   id: string; nome: string; cpf: string | null; rg?: string | null; data_nascimento: string | null;
@@ -938,6 +948,142 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   </div>
 }
 
+/**
+ * Assinatura: o que está valendo, e o botão de encerrar.
+ *
+ * A página de planos promete "sem fidelidade, cancele quando quiser". Sem uma
+ * tela, isso dependia de alguém atender o WhatsApp — e promessa que depende de
+ * atendimento não é promessa.
+ *
+ * Cancelar aqui quer dizer "não renove mais". O acesso vai até a data já paga,
+ * e a tela diz essa data antes e depois de confirmar: quem cancela precisa
+ * saber que não vai perder o sistema na mesma hora, senão adia a decisão e
+ * pede reembolso depois.
+ *
+ * A confirmação é digitada, não é um "tem certeza?". Numa clínica, quem clica
+ * pode ser o administrador contratado, e o clique derruba a cobrança de todo
+ * mundo.
+ */
+function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
+  const [dados,setDados]=useState<Assinatura|null>(null);
+  const [carregando,setCarregando]=useState(true);
+  const [encerrando,setEncerrando]=useState(false);
+  const [confirmacao,setConfirmacao]=useState("");
+  const [motivo,setMotivo]=useState("");
+  const [aviso,setAviso]=useState("");
+  const [erro,setErro]=useState("");
+  const [versao,setVersao]=useState(0);
+
+  useEffect(()=>{
+    let ativo=true;
+    createClient().rpc("minha_assinatura").then(({data})=>{
+      if(!ativo)return;
+      setDados((Array.isArray(data)?data[0]:data)??null);
+      setCarregando(false);
+    });
+    return ()=>{ ativo=false };
+  },[versao]);
+
+  async function cancelar(){
+    setEncerrando(true); setErro(""); setAviso("");
+    const resposta=await fetch("/api/assinatura/cancelar",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({motivo}),
+    });
+    const corpo=await resposta.json().catch(()=>null);
+    setEncerrando(false);
+    if(!resposta.ok){ setErro(corpo?.error||"Não consegui cancelar. Tente de novo."); return; }
+    setConfirmacao(""); setMotivo("");
+    setAviso(corpo?.aviso||(corpo?.reembolsoDevido
+      ?"Assinatura cancelada. Não haverá nova cobrança, e o valor deste mês será devolvido."
+      :"Assinatura cancelada. Não haverá nova cobrança."));
+    setVersao(v=>v+1);
+    onRefresh();
+  }
+
+  async function reativar(){
+    setEncerrando(true); setErro(""); setAviso("");
+    const {error}=await createClient().rpc("reativar_assinatura");
+    setEncerrando(false);
+    if(error){ setErro(error.message); return; }
+    setAviso("Assinatura reativada. A cobrança volta a renovar normalmente.");
+    setVersao(v=>v+1);
+    onRefresh();
+  }
+
+  if(carregando) return null;
+  const cancelada=Boolean(dados?.cancelada_em);
+  const ate=dados?.assinatura_ate ? new Date(dados.assinatura_ate).toLocaleDateString("pt-BR") : null;
+
+  return <PainelRecolhivel
+    chave="adm-assinatura"
+    abrePadrao={false}
+    titulo="Assinatura"
+    legenda={cancelada
+      ? (ate?`cancelada — acesso liberado até ${ate}`:"cancelada")
+      : (ate?`renova em ${ate}`:"sem data de renovação")}
+  >
+    {aviso&&<p className="financeSuccess assinaturaRecado">{aviso}</p>}
+    {erro&&<p className="clinicalError assinaturaRecado">{erro}</p>}
+
+    {cancelada ? (
+      <div className="assinaturaBloco">
+        <p>
+          Você cancelou a renovação{dados?.cancelada_em?` em ${new Date(dados.cancelada_em).toLocaleDateString("pt-BR")}`:""}.
+          {ate?` O acesso continua até ${ate} — nada é desligado antes disso.`:" O acesso continua até o fim do período pago."}
+        </p>
+        {dados?.reembolso_devido
+          ? <p className="assinaturaReembolso dentro">
+              O cancelamento entrou no prazo de {dados.prazo_de_reembolso} dias: o valor deste mês
+              será devolvido pela mesma forma de pagamento.
+            </p>
+          : <p className="assinaturaReembolso fora">
+              Fora do prazo de {dados?.prazo_de_reembolso??14} dias de devolução — o valor deste mês
+              não é reembolsado, e o acesso segue até o fim dele.
+            </p>}
+        <button className="outlineClinical" disabled={encerrando} onClick={reativar}>
+          {encerrando?"Reativando...":"Voltar atrás e continuar assinando"}
+        </button>
+      </div>
+    ) : (
+      <div className="assinaturaBloco">
+        <p>
+          Sem fidelidade e sem multa. Ao cancelar, não há nova cobrança
+          {ate?`, e o acesso continua até ${ate}`:""} — nada é desligado na hora.
+        </p>
+        {/* O aviso do reembolso vem ANTES do botão, e não depois: descobrir
+            que o dinheiro não volta só na tela de confirmação é o tipo de
+            surpresa que vira reclamação. */}
+        {dados?.dias_de_uso!=null&&(
+          dados.reembolso_devido
+            ? <p className="assinaturaReembolso dentro">
+                Você está no dia {dados.dias_de_uso} deste mês. Cancelando agora, dentro dos
+                primeiros {dados.prazo_de_reembolso} dias, o valor deste mês é devolvido.
+              </p>
+            : <p className="assinaturaReembolso fora">
+                Você está no dia {dados.dias_de_uso} deste mês. O prazo de devolução é de
+                {" "}{dados.prazo_de_reembolso} dias, então o valor já pago não volta — mas o
+                acesso continua até o fim do mês{ate?`, em ${ate}`:""}.
+              </p>
+        )}
+        <label className="clinicalField">
+          <span>Por que está cancelando? (opcional, ajuda a melhorar)</span>
+          <input value={motivo} onChange={e=>setMotivo(e.target.value)} maxLength={500} placeholder="Ex.: parei de atender, ficou caro, faltou um recurso"/>
+        </label>
+        <label className="clinicalField">
+          <span>Para confirmar, digite CANCELAR</span>
+          <input value={confirmacao} onChange={e=>setConfirmacao(e.target.value)} placeholder="CANCELAR" autoComplete="off"/>
+        </label>
+        <button
+          className="outlineClinical red"
+          disabled={encerrando||confirmacao.trim().toUpperCase()!=="CANCELAR"}
+          onClick={cancelar}
+        >{encerrando?"Cancelando...":"Cancelar assinatura"}</button>
+      </div>
+    )}
+  </PainelRecolhivel>;
+}
+
 function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;onRefresh:()=>void}) {
   const [convites,setConvites]=useState<Convite[]>([]);
   const [meio,setMeio]=useState<"email"|"link">("email");
@@ -1170,6 +1316,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
         </div>
       </div>
     </section>
+    <PainelAssinatura onRefresh={onRefresh}/>
     <InvitePanel perfil={perfil} organizacao={organizacao} onRefresh={onRefresh}/>
     <section className="metricGrid adminMetrics"><Metric value={perfis.filter(item=>item.status==="ativo").length} label="Usuários ativos" tone="green"/><Metric value={perfis.filter(item=>item.role==="medico").length} label="Médicos" tone="blue"/><Metric value={perfis.filter(item=>item.status==="inativo").length} label="Acessos inativos" tone="red"/><Metric value={auditoria.length} label="Eventos recentes" tone="amber"/></section>
     <section className="clinicalPanel adminUsers">
