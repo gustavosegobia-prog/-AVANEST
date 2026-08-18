@@ -5,6 +5,7 @@ import { idadeDoPaciente } from "@/lib/idade";
 import {createClient} from "@/utils/supabase/client";
 import {ehAntitrombotico,exigeOrientacao} from "@/lib/medication-guide";
 import {suspensionSummary} from "@/lib/medication-summary";
+import {preditoresMarcados,resumoViaAerea} from "@/lib/via-aerea";
 import {BrandMark} from "@/components/brand-mark";
 
 type Data=Record<string,string|boolean>;
@@ -150,25 +151,42 @@ function PaperInlineBlock({title,linhas,extras=[],classe}:{title?:string;linhas:
   </>;
 }
 
+// O texto do termo.
+//
+// A numeração impressa sai de como o bloco é montado lá embaixo: os dois
+// primeiros itens viram 2 e 3, os riscos viram o item 4, e o resto segue de 5
+// em diante. Mexer na ordem daqui muda os números no papel.
+//
+// Nada aqui cita clínica nem hospital pelo nome: quem assina o termo é a
+// organização que está usando o sistema, e o nome dela entra pelo cadastro.
+// Um nome fixo no texto já foi motivo de retrabalho uma vez.
+//
+// Isto é documento jurídico. Foi escrito para ser claro para quem vai assinar
+// — frases curtas, sem juridiquês desnecessário — mas continua sendo texto que
+// o advogado da organização deve ler antes de virar rotina.
 const CONSENT_ITEMS=[
-  "Foi claramente exposto a mim que as condutas propostas serão conduzidas de acordo com os princípios éticos básicos de respeito pelo ser humano, da maximização de benefícios e minimização de danos ou prejuízos esperados e pela obrigação de tratamento moralmente certo e adequado, buscando sempre dar a cada um aquilo que é de direito.",
-  "Por decisão voluntária, tomada após um processo informativo e deliberativo sobre a natureza, consequência e riscos dos procedimentos a serem realizados, aceito o fato de que qualquer procedimento anestésico poderá necessitar de procedimentos complementares, apesar dos cuidados, esforços e perícia dos profissionais responsáveis envolvidos, bem como, em princípio, não existem anestesias mais ou menos simples, pois todas representam, embora de forma relativa, um risco de vida.",
-  "Aceito o fato de que o tabagismo, o uso do álcool ou de drogas são fatores que, embora não impeçam a realização de anestesias, podem determinar a incidência maior das complicações descritas acima.",
-  "Reconheço que, durante o curso do ato anestésico, existem aspectos que não podem ser previamente identificados e, por isso, eventualmente necessitam procedimentos adicionais e diferentes dos inicialmente programados e combinados. Por isto estou ciente e autorizo o médico anestesiologista, bem como os seus assistentes ou os seus designados, a realizar qualquer técnica ou tratamento necessário para a condução do ato anestésico, incluindo, mas não limitando, procedimentos de remoção de urgência e terapia intensiva em outras instituições.",
-  "Entendo que o médico anestesiologista e toda a sua equipe se obrigam unicamente a usar todos os meios científicos à sua disposição para tentar, com sua arte, atingir um fim desejado, porém não certo. Assim, por estar consciente que a medicina não é uma ciência exata e que é impossível prever-se resultados em quaisquer práticas anestésicas, aceito o fato de que não me podem ser dadas garantias de resultado nos procedimentos anestesiológicos propostos.",
-  "Compreendo que no dia da cirurgia pode ser outro médico anestesista que vai aplicar a anestesia, diferente do que me avaliou, por motivo de agendamento ou plantão definido por escala. Se for outro anestesista, estou ciente que ele lerá esta avaliação e seguirá os preceitos éticos e profissionais para segurança anestésica.",
-  "Se minha cirurgia for realizada em Hospital Escola, aceito o fato de que pode haver contato com Médicos Residentes em Especialização auxiliando no meu tratamento, sempre sob supervisão do Médico Anestesiologista Assistente.",
-  "Concordo em cooperar com os médicos responsáveis pelo meu tratamento até o meu restabelecimento completo, aceitando e observando as determinações que me forem recomendadas, oral e/ou por escrito, pois assim não o fazendo poderei provocar a frustração dos fins desejados, pôr em perigo a minha saúde ou meu bem-estar, ou ocasionar sequelas temporárias ou permanentes.",
-  "Autorizo o registro (em prontuário médico e/ou computador e/ou som, etc.) dos procedimentos necessários para a realização da anestesia proposta, sendo que todas as informações serão mantidas em estrito sigilo e divulgadas apenas àquelas que necessitam ou têm direito legal às mesmas.",
+  "Foi claramente exposto a mim que os cuidados propostos seguirão os princípios éticos da medicina: respeito à pessoa, busca do maior benefício possível e redução dos danos e riscos previsíveis.",
+  "Minha decisão é voluntária e foi tomada depois de receber informações sobre a natureza, as consequências e os riscos dos procedimentos, e de poder discuti-las. Entendo que qualquer procedimento anestésico pode exigir procedimentos complementares, mesmo com todo o cuidado e a perícia da equipe, e que não existe anestesia sem risco: todas, ainda que em graus diferentes, envolvem risco de vida.",
+  "Aceito o fato de que o tabagismo e o uso de álcool ou de outras drogas, embora não impeçam a realização da anestesia, aumentam a chance das complicações descritas acima.",
+  "Reconheço que, durante o ato anestésico, podem surgir situações que não era possível prever antes. Por isso autorizo o médico anestesiologista e a equipe que o auxilia a realizar as técnicas e os tratamentos necessários à condução segura da anestesia — inclusive mudar a técnica combinada, se for preciso —, além de procedimentos de urgência e a transferência para terapia intensiva, na própria instituição ou em outra.",
+  "Entendo que o médico anestesiologista e sua equipe se comprometem a empregar todos os meios ao seu alcance para alcançar o melhor resultado, mas não podem garantir o resultado em si. A medicina não é uma ciência exata, e não é possível prever com certeza o desfecho de nenhum procedimento anestésico.",
+  "Compreendo que, no dia da cirurgia, a anestesia pode ser aplicada por um anestesiologista diferente do que me avaliou, por escala ou plantão. Nesse caso, estou ciente de que ele lerá esta avaliação e seguirá os mesmos cuidados de segurança.",
+  "Se minha cirurgia for realizada em hospital de ensino, aceito que médicos residentes participem do meu atendimento, sempre sob supervisão do médico anestesiologista responsável.",
+  "Concordo em seguir as orientações que me forem dadas, por escrito ou verbalmente, até minha recuperação — em especial o tempo de jejum e a orientação sobre quais dos meus medicamentos manter e quais suspender. Estou ciente de que não seguir essas orientações pode levar ao adiamento da cirurgia e aumentar o risco do procedimento.",
+  "Autorizo o registro dos dados necessários à minha avaliação e à realização da anestesia, em prontuário em papel ou eletrônico. Estou ciente de que esses dados são protegidos por sigilo profissional e pela Lei Geral de Proteção de Dados, e de que só serão compartilhados com quem participa do meu cuidado ou com quem tenha direito legal de acesso.",
+  "Tive a oportunidade de fazer perguntas e todas foram respondidas em linguagem que compreendi. Estou ciente de que posso recusar o procedimento ou retirar este consentimento a qualquer momento antes do início da anestesia, sem que isso prejudique o meu atendimento.",
 ];
+// A repetição do "Poderá ocorrer" é de propósito. Sem ela a lista vira um
+// rol de coisas que vão acontecer, e não de coisas que podem acontecer —
+// e é exatamente essa a diferença que o paciente precisa entender.
 const CONSENT_RISKS=[
-  "Dor de garganta, rouquidão, dentes fraturados com perda parcial ou total, sangramento nasal e oral em pequena quantidade e anestesia de partes da língua (intubação oro/nasotraqueal).",
-  "Dor de cabeça, dores lombares, dores musculares, tonturas, vertigens, dificuldade respiratória e desmaios durante a recuperação anestésica e nos dias seguintes.",
-  "Sede e fome devido ao tempo de jejum prolongado e/ou pelo uso de medicamentos.",
-  "Dor nos locais de punções de veias e/ou artérias e flebites, devido aos materiais e medicamentos utilizados.",
-  "Ardência nos olhos, úlceras de córnea, deslocamento de lentes e perda de pelos.",
-  "Frio, tremores, áreas com falta de sensibilidade por vícios de postura ou após bloqueios, que poderão ser parciais ou totais por período indeterminado e, mesmo raríssimo, permanentes.",
-  "Transtornos de comportamento afetivo e de memória, na forma de ansiedade e, apesar de raro, quadros psicológicos mais complexos.",
+  "Poderá ocorrer dor de garganta, rouquidão, lesão ou perda de dentes, pequeno sangramento pelo nariz ou pela boca e dormência em partes da língua, relacionados à colocação do tubo respiratório.",
+  "Poderá ocorrer dor de cabeça, dor lombar, dores musculares, tontura, vertigem, dificuldade para respirar e desmaio, durante a recuperação da anestesia e nos dias seguintes.",
+  "Poderá ocorrer sede e fome, pelo tempo de jejum e pelos medicamentos usados.",
+  "Poderá ocorrer dor no local das punções de veia ou artéria, além de inflamação da veia (flebite), pelos materiais e medicamentos utilizados.",
+  "Poderá ocorrer ardência nos olhos, lesão da córnea, deslocamento de lentes de contato e queda de pelos.",
+  "Poderá ocorrer frio, tremores e áreas com falta de sensibilidade, por posicionamento durante a cirurgia ou após bloqueios. Em geral são passageiras, podem durar um tempo indeterminado e, muito raramente, ser permanentes.",
+  "Poderá ocorrer alteração do humor e da memória, mais comumente na forma de ansiedade e confusão passageira, e, embora raro, quadros psicológicos mais complexos.",
 ];
 
 export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
@@ -288,7 +306,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   const selectedToggleLabels=(prefix:string,labels:string[])=>labels.filter(label=>dados[toggleKey(prefix,label)]===true);
   const cardiovascularFindings=selectedToggleLabels("cardio",["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]);
   const respiratoryFindings=selectedToggleLabels("resp",["MV preservado","Sibilos","Roncos","Estertores","Estridor","Musculatura acessória","Tosse","Dispneia"]);
-  const airwayPredictors=selectedToggleLabels("via",["Retrognatia/micrognatia","Macroglossia","Pescoço curto","Barba","Massa cervical","Radioterapia cervical prévia","Cirurgia cervical prévia","História de intubação difícil","Dificuldade de ventilação prévia","Traqueostomia","Apneia do sono"]);
+  const airwayPredictors=preditoresMarcados(dados);
   const checks=[
     ["Paciente identificado",Boolean(paciente.nome)],
     ["Anestesiologista e CRM preenchidos",Boolean(dados.anestesiologista&&dados.crm)],
@@ -305,8 +323,10 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
     (String(paciente.sexo||dados.sexo).toLowerCase()==="feminino"?1:0)+
     (String(dados.habitos||"")!=="Sim"||!String(dados.habitos_detalhes||"").toLowerCase().includes("tabag")?1:0);
   const apfelRisk=["10%","21%","39%","61%","79%"][apfelScore];
-  const airwayCount=Object.keys(dados).filter(key=>key.startsWith("via_")&&dados[key]===true).length;
-  const airwayRisk=airwayCount===0?"Baixa":airwayCount<=2?"Moderada":"Alta";
+  // A mesma conta da tela da avaliação, do mesmo arquivo. Antes eram duas, e
+  // a do papel esquecia os achados do exame: Mallampati IV virava "Moderada
+  // (1 preditor)" na ficha e "Alta (3)" na tela.
+  const {total:airwayCount,risco:airwayRisk}=resumoViaAerea(dados);
 
   // Na ficha, as orientações cobrem tudo que não for "Manter" — inclusive o que
   // ficou em "Avaliar", que é decisão pendente e precisa aparecer. Os mantidos
@@ -529,8 +549,26 @@ function PaperSignature({dados,perfil}:{dados:Data;perfil:Props["perfil"]}){
   // do número — o campo aceita as duas formas.
   const rqeBruto=String(dados.rqe??"").trim()||String(perfil.rqe??"").trim();
   const rqe=hasText(rqeBruto)?(/^rqe\b/i.test(rqeBruto)?rqeBruto:`RQE ${rqeBruto}`):"";
-  return <div className="paperSignature"><span>________________________________________<br/>
-    <b>{text(dados.anestesiologista,perfil.nome)}</b> — {text(dados.crm,perfil.crm||"CRM não informado")}{rqe?` · ${rqe}`:""}<br/>
-    Anestesiologista</span></div>;
+  // Muita gente escreve a titulação junto do CRM — "60593/PR (residente em
+  // anestesiologia)" — porque não havia outro lugar para ela. Impresso assim,
+  // saía tudo grudado numa linha só e ainda contradizia o rótulo fixo
+  // "Anestesiologista" logo abaixo. O que vem entre parênteses no fim do campo
+  // é essa titulação: sobe para a linha própria e substitui o rótulo.
+  const crmBruto=text(dados.crm,perfil.crm||"CRM não informado").trim();
+  const entreParenteses=crmBruto.match(/^(.*?)\s*\(([^()]+)\)\s*$/);
+  const crm=entreParenteses?entreParenteses[1].trim():crmBruto;
+  const titulo=entreParenteses?entreParenteses[2].trim():"Anestesiologista";
+  const registro=`${crm}${rqe?` · ${rqe}`:""}`;
+  // Três linhas empilhadas, no canto inferior direito: nome, registro, e
+  // embaixo a especialidade ou a residência. É como se assina um documento
+  // clínico — e estreito, para ler como carimbo e não como parágrafo.
+  return <div className="paperSignature">
+    <div className="paperSignatureBloco">
+      <span className="paperSignatureLinha" aria-hidden="true"/>
+      <b>{text(dados.anestesiologista,perfil.nome)}</b>
+      <span>{registro}</span>
+      <small>{titulo}</small>
+    </div>
+  </div>;
 }
 function DocChoice({checked,onChange,title,detail}:{checked:boolean;onChange:(v:boolean)=>void;title:string;detail:string}){return <label className={`docChoice ${checked?"selected":""}`}><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)}/><span><b>{title}</b><small>{detail}</small></span></label>}
