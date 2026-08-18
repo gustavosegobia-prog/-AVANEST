@@ -226,12 +226,16 @@
    parágrafo. margin-top:auto só empurra dentro de um container flex — por
    isso a folha virou coluna. Com a ficha curta, sobrava meia página em branco
    entre o texto e a assinatura. */
-.paperSignature{display:flex;justify-content:flex-end;margin-top:auto;padding-top:34px}
+/* display:block, e não flex. O bloco da assinatura é um item de flex no
+   Chrome e no Safari, e o Safari não respeita break-inside dentro de flex:
+   no iPhone e no iPad o nome ficava numa folha e o CRM na seguinte. Como
+   bloco, a regra de não quebrar vale. */
+.paperSignature{display:block;text-align:right;margin-top:auto;padding-top:34px}
 /* Largura do carimbo. Só o canto: um bloco largo atravessando a folha lia
    como mais um parágrafo do documento. Estreito, empilhado e encostado à
    direita, lê como assinatura. O max-width segura o nome comprido; o
    min-width impede que um nome curto encolha o traço a um risquinho. */
-.paperSignatureBloco{width:max-content;max-width:min(42%,270px);min-width:190px;text-align:center;line-height:1.25}
+.paperSignatureBloco{display:inline-block;width:max-content;max-width:min(42%,270px);min-width:190px;text-align:center;line-height:1.25;break-inside:avoid;page-break-inside:avoid}
 .paperSignatureLinha{display:block;border-top:1px solid #111;margin-bottom:3px}
 /* Nome, CRM embaixo do nome, e embaixo do CRM a especialidade ou a
    residência — cada um na sua linha, como num carimbo de verdade. */
@@ -259,10 +263,13 @@
 .paperSignature{margin-top:24px;padding-top:0}.documentsTopbar .roleNav{display:none}}
 @media screen and (max-width:760px){.documentsMain{width:calc(100% - 24px);padding-top:22px}.documentsHeading{align-items:flex-start;flex-direction:column}.documentsSidebar{grid-template-columns:1fr}.printPaper{padding:20px 16px;font-size:9px;overflow:auto}.paperPatientGrid{grid-template-columns:repeat(2,1fr)}.paperPatientGrid span{border-bottom:1px solid #aaa}.paperColumns,.consentSignatures{grid-template-columns:1fr}.paperExam{grid-template-columns:1fr 1fr}.docSaved{display:none}}
 @page{size:A4;margin:10mm}
-@media print{@page{size:A4 portrait;margin:7mm}body{background:#fff!important}.documentsTopbar,.documentsHeading,.documentInfo,.documentsSidebar,.deleteConfirmStrip,.deleteAssessmentError{display:none!important}.documentsMain{width:100%;padding:0}.documentsLayout,.paperStack{display:block}/* min-height 100vh: uma folha inteira, para a assinatura ter até onde
-   descer. Sem isso, no papel a folha encolhe até o texto e o rodapé volta
-   a subir junto com ele. */
-.printPaper{display:flex;flex-direction:column;width:auto;min-height:100vh;border:0;border-radius:0;box-shadow:none;padding:0;margin:0;color:#000;opacity:1;filter:none;break-after:page;page-break-after:always;overflow:visible}.assessmentPaper{display:flex;min-height:0;overflow:visible;font-size:7.8px}.printPaper:last-child{break-after:auto;page-break-after:auto}.printPaper.notSelected{display:none!important}.legalReview{background:#fff!important}.paperTitle,.paperTable th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{@page{size:A4 portrait;margin:7mm}body{background:#fff!important}.documentsTopbar,.documentsHeading,.documentInfo,.documentsSidebar,.deleteConfirmStrip,.deleteAssessmentError{display:none!important}.documentsMain{width:100%;padding:0}.documentsLayout,.paperStack{display:block}/* Quase uma folha inteira, para a assinatura ter até onde descer. Sem isso,
+   no papel a folha encolhe até o texto e o rodapé volta a subir junto com ele.
+   Os 64 px a menos não são estética: o navegador imprime cabeçalho e rodapé
+   próprios (o endereço do site e "Página 1 de 4") dentro da área da página, e
+   100vh cheios não cabem no que sobra. O excedente empurrava a assinatura para
+   a folha seguinte — foi o que aconteceu no iPhone e no iPad. */
+.printPaper{display:flex;flex-direction:column;width:auto;min-height:calc(100vh - 64px);border:0;border-radius:0;box-shadow:none;padding:0;margin:0;color:#000;opacity:1;filter:none;break-after:page;page-break-after:always;overflow:visible}.assessmentPaper{display:flex;min-height:0;overflow:visible;font-size:7.8px}.printPaper:last-child{break-after:auto;page-break-after:auto}.printPaper.notSelected{display:none!important}.legalReview{background:#fff!important}.paperTitle,.paperTable th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 
 /* Fluxo clínico contínuo e campos condicionais */
 [id^="etapa-"]{scroll-margin-top:155px}
@@ -657,8 +664,8 @@ button:disabled{cursor:not-allowed}
   /* min-height de uma folha: é o espaço em que a assinatura desce até o pé
      da página. Sem ele a folha encolhe até o texto, e o rodapé sobe junto.
      Não é altura fixa — ficha longa continua passando para a segunda folha. */
-  .assessmentPaper{display:flex;flex-direction:column;height:auto;min-height:100vh;max-height:none;overflow:visible;font-size:13px}
-  .consentPaper,.guidancePaper{display:flex;flex-direction:column;min-height:100vh}
+  .assessmentPaper{display:flex;flex-direction:column;height:auto;min-height:calc(100vh - 64px);max-height:none;overflow:visible;font-size:13px}
+  .consentPaper,.guidancePaper{display:flex;flex-direction:column;min-height:calc(100vh - 64px)}
   /* O título AUTORIZAÇÃO não fica sozinho no pé da folha com o parágrafo
      dele na seguinte. */
   /* O termo em uma folha só. Não é capricho de layout: termo de duas folhas
