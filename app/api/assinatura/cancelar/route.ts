@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { cancelarAssinatura, mercadoPagoConfigurado } from "@/lib/mercado-pago";
+import { adaptadorDe } from "@/lib/pagamentos";
 
 // Cancelar a assinatura.
 //
 // A ordem aqui é deliberada e não é a mais óbvia: primeiro registra no banco,
-// depois avisa o Mercado Pago. O contrário parece mais seguro — só cancela de
+// depois avisa o gateway. O contrário parece mais seguro — só cancela de
 // verdade quando a cobrança parar —, mas amarra o direito do cliente à saúde
-// de um serviço de terceiro. Se o Mercado Pago estiver fora do ar, ou a conta
+// de um serviço de terceiro. Se o gateway estiver fora do ar, ou a conta
 // bloqueada, a pessoa ficaria sem conseguir cancelar e continuaria sendo
 // cobrada. Então o pedido é aceito sempre, e a cobrança é o que pode falhar e
 // virar uma pendência nossa para resolver à mão.
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   // Daqui para baixo é a cobrança. Nada que falhe aqui desfaz o cancelamento
   // acima: o cliente já saiu, e o que sobra é uma conta para fechar.
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!mercadoPagoConfigurado() || !serviceKey) {
+  if (!serviceKey) {
     return NextResponse.json({
       ok: true,
       acessoAte,
@@ -64,18 +64,31 @@ export async function POST(request: Request) {
   const { data: perfil } = await supabase
     .from("perfis").select("institution_id").eq("id", user.id).maybeSingle();
   const { data: cobranca } = await admin
-    .from("instituicoes").select("mp_assinatura_id")
+    .from("instituicoes").select("pagamento_provedor,pagamento_assinatura_id")
     .eq("id", perfil?.institution_id ?? "").maybeSingle();
 
-  const preapproval = (cobranca as { mp_assinatura_id?: string | null } | null)?.mp_assinatura_id;
-  if (!preapproval) {
+  const dados = cobranca as
+    { pagamento_provedor?: string | null; pagamento_assinatura_id?: string | null } | null;
+  const assinaturaId = dados?.pagamento_assinatura_id;
+  if (!assinaturaId) {
     // Cortesia, cobrança fora do sistema, ou assinatura que nunca chegou a
     // existir no provedor: não há o que encerrar.
     return NextResponse.json({ ok: true, acessoAte, reembolsoDevido, cobrancaEncerrada: true });
   }
 
+  // O gateway em que ESTA assinatura nasceu, não o que cobra as novas. Mandar
+  // um preapproval do Mercado Pago para o Asaas daria "não encontrei", e o
+  // cliente seguiria sendo cobrado depois de ter cancelado.
+  const provedor = adaptadorDe(dados?.pagamento_provedor);
+  if (!provedor) {
+    return NextResponse.json({
+      ok: true, acessoAte, reembolsoDevido, cobrancaEncerrada: false,
+      aviso: "Cancelamento registrado. A cobrança recorrente será encerrada pela equipe do AVANEST.",
+    });
+  }
+
   try {
-    await cancelarAssinatura(preapproval);
+    await provedor.cancelarAssinatura(assinaturaId);
     return NextResponse.json({ ok: true, acessoAte, reembolsoDevido, cobrancaEncerrada: true });
   } catch {
     return NextResponse.json({

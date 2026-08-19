@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { criarAssinatura, mercadoPagoConfigurado } from "@/lib/mercado-pago";
+import { provedorAtivo } from "@/lib/pagamentos";
 
 // A data de vigência dos documentos publicados. Fica junto do código que
 // grava o aceite para não sair de sincronia com o texto: mudou /termos ou
@@ -50,17 +50,18 @@ export async function POST(request: Request) {
   // Quem já tem assinatura ativa não abre outra. Duas assinaturas na mesma
   // organização cobrariam duas vezes, e a segunda passaria a mandar no
   // vínculo — a renovação da primeira chegaria sem dono. Trocar de plano ou
-  // encerrar é pelo painel do Mercado Pago.
+  // encerrar é pelo painel da conta.
   const { data: atual } = await supabase
-    .from("instituicoes").select("plano,mp_assinatura_id")
+    .from("instituicoes").select("plano,pagamento_assinatura_id")
     .eq("id", perfil.institution_id).maybeSingle();
-  if (atual?.plano === "ativo" && atual.mp_assinatura_id) {
+  if (atual?.plano === "ativo" && atual.pagamento_assinatura_id) {
     return NextResponse.json({
-      error: "Esta organização já tem uma assinatura ativa. Para trocar de plano ou encerrar, use o painel do Mercado Pago.",
+      error: "Esta organização já tem uma assinatura ativa. Para trocar de plano ou encerrar, use o painel da conta.",
     }, { status: 409 });
   }
 
-  if (!mercadoPagoConfigurado()) {
+  const provedor = provedorAtivo();
+  if (!provedor) {
     return NextResponse.json(
       { error: "O pagamento online ainda não foi habilitado. Fale com o AVANEST pelo WhatsApp." },
       { status: 503 },
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Reserva antes de falar com o Mercado Pago: a vaga de fundador e o preço
+  // Reserva antes de falar com o gateway: a vaga de fundador e o preço
   // saem daqui, e a função recusa plano inexistente, plano sob consulta e
   // equipe maior do que o plano comporta.
   const { data: reservaData, error: erroReserva } = await admin.rpc("reservar_plano", {
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não foi possível calcular o valor do plano." }, { status: 500 });
   }
 
-  // Carimba o aceite antes de falar com o Mercado Pago. A função só preenche
+  // Carimba o aceite antes de falar com o gateway. A função só preenche
   // se ainda estiver vazio, então o registro guarda a primeira vez — que é a
   // que importa — e não a última tentativa de checkout.
   const { error: erroAceite } = await admin.rpc("registrar_aceite_termos", {
@@ -114,39 +115,44 @@ export async function POST(request: Request) {
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://avanest.com.br";
 
-  let preapproval;
+  // O nome do responsável vai para o cadastro do pagador no gateway. Sem ele,
+  // o cliente teria de digitar o próprio nome numa tela que já sabe quem é.
+  const { data: quemAssina } = await supabase
+    .from("perfis").select("nome").eq("id", user.id).maybeSingle();
+
+  let criada;
   try {
-    preapproval = await criarAssinatura({
+    criada = await provedor.criarAssinatura({
       institutionId: perfil.institution_id,
       organizacao: String(assinatura?.organizacao ?? "Organização"),
       plano: String(reserva?.plano_nome ?? codigo),
       emailPagador: user.email ?? "",
+      nomePagador: String(quemAssina?.nome ?? assinatura?.organizacao ?? "Responsável"),
       valorMensal,
-      retorno: `${site}/assinatura/retorno`,
+      retornoSucesso: `${site}/assinatura/retorno`,
+      retornoCancelado: `${site}/dashboard`,
     });
   } catch (erro) {
     // O motivo real vai para o log do servidor; o cliente recebe algo útil.
-    console.error("[assinatura/checkout]", erro);
+    console.error("[assinatura/checkout]", provedor.nome, erro);
     return NextResponse.json({
       error: "Não foi possível abrir o pagamento agora. Tente de novo ou fale com o AVANEST.",
     }, { status: 502 });
   }
 
-  if (!preapproval?.init_point) {
-    return NextResponse.json({ error: "O Mercado Pago não devolveu o link de pagamento." }, { status: 502 });
-  }
-
-  // Guarda o vínculo com a chave de serviço: a coluna é protegida contra
+  // Guarda o vínculo com a chave de serviço: as colunas são protegidas contra
   // escrita pelo cliente, e é isso que impede alguém de se dar acesso grátis.
-  const { error } = await admin.rpc("vincular_assinatura_mp", {
+  const { error } = await admin.rpc("vincular_assinatura", {
     p_institution_id: perfil.institution_id,
-    p_preapproval_id: preapproval.id,
-    p_payer_email: user.email ?? "",
+    p_provedor: criada.provedor,
+    p_assinatura_id: criada.referencia,
+    p_cliente_id: criada.clienteId ?? null,
+    p_email: user.email ?? "",
   });
   if (error) {
     console.error("[assinatura/checkout] vincular", error);
     return NextResponse.json({ error: "A assinatura foi criada, mas não ficou registrada. Fale com o AVANEST." }, { status: 500 });
   }
 
-  return NextResponse.json({ url: preapproval.init_point });
+  return NextResponse.json({ url: criada.url });
 }
