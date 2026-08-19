@@ -94,10 +94,17 @@ export async function criarAssinatura(dados: NovaAssinatura): Promise<Assinatura
         quantity: 1,
         value: Number(dados.valorMensal.toFixed(2)),
       }],
-      customerData: {
-        name: dados.nomePagador,
-        email: dados.emailPagador,
-      },
+      // customerData NÃO vai aqui, e isso é resultado de teste, não de leitura.
+      //
+      // Mandar só nome e e-mail parecia gentileza — a página do Asaas já viria
+      // com os campos preenchidos. Mas o Asaas valida o bloco inteiro assim que
+      // ele aparece, e respondeu 400 exigindo cpfCnpj, phoneNumber, address,
+      // addressNumber e postalCode. São dados que o AVANEST não coleta e não
+      // precisa: quem cadastra anestesiologista não pede CEP.
+      //
+      // Sem o bloco, o próprio pagador digita tudo na página do Asaas, junto
+      // com o cartão. Menos dado sensível passando por aqui, e um campo a menos
+      // no nosso cadastro.
       callback: {
         successUrl: dados.retornoSucesso,
         cancelUrl: dados.retornoCancelado,

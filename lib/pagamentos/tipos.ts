@@ -16,7 +16,6 @@ export type NovaAssinatura = {
   organizacao: string;
   plano: string;
   emailPagador: string;
-  nomePagador: string;
   valorMensal: number;
   /** Para onde o cliente volta quando termina de pagar. */
   retornoSucesso: string;

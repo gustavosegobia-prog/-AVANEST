@@ -115,11 +115,6 @@ export async function POST(request: Request) {
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://avanest.com.br";
 
-  // O nome do responsável vai para o cadastro do pagador no gateway. Sem ele,
-  // o cliente teria de digitar o próprio nome numa tela que já sabe quem é.
-  const { data: quemAssina } = await supabase
-    .from("perfis").select("nome").eq("id", user.id).maybeSingle();
-
   let criada;
   try {
     criada = await provedor.criarAssinatura({
@@ -127,7 +122,6 @@ export async function POST(request: Request) {
       organizacao: String(assinatura?.organizacao ?? "Organização"),
       plano: String(reserva?.plano_nome ?? codigo),
       emailPagador: user.email ?? "",
-      nomePagador: String(quemAssina?.nome ?? assinatura?.organizacao ?? "Responsável"),
       valorMensal,
       retornoSucesso: `${site}/assinatura/retorno`,
       retornoCancelado: `${site}/dashboard`,
