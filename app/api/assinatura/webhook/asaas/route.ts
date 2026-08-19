@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { asaasConfigurado, conferirWebhook, lerEvento } from "@/lib/pagamentos/asaas";
+import { conferirWebhook, lerEvento } from "@/lib/pagamentos/asaas";
 
 // Aviso de cobrança do Asaas.
 //
@@ -23,7 +23,16 @@ function admin() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!asaasConfigurado() || !process.env.ASAAS_WEBHOOK_TOKEN || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  // Exige só o que esta rota de fato usa: o token para conferir quem chamou, e
+  // a chave de serviço para gravar. A chave da API do Asaas NÃO entra aqui.
+  //
+  // Ela entrava, e estava errado. Receber um pagamento não depende de a gente
+  // poder chamar o Asaas de volta — o aviso já traz tudo. Com a chave na
+  // condição, um dia em que ela fosse trocada ou expirasse, todo pagamento que
+  // chegasse levaria 503; o Asaas contaria como falha, penalizaria o webhook e
+  // acabaria desativando. Cliente pagando, acesso não liberando, e a causa
+  // seria uma chave que esta rota nem usa.
+  if (!process.env.ASAAS_WEBHOOK_TOKEN || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error("[webhook/asaas] integração não configurada");
     return NextResponse.json({ erro: "não configurado" }, { status: 503 });
   }
