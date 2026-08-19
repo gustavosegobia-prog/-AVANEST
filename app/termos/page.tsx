@@ -11,7 +11,7 @@ export default function TermosPage() {
     <PaginaLegal
       titulo="Termos de Uso"
       resumo="Estas condições regem o uso do AVANEST. Ao criar uma conta ou usar o sistema, você concorda com elas."
-      vigencia="5 de agosto de 2026"
+      vigencia="19 de agosto de 2026"
     >
       <h2>1. Quem somos</h2>
       <p>
@@ -54,8 +54,8 @@ export default function TermosPage() {
       <h2>5. Planos, pagamento e renovação</h2>
       <p>
         Os preços vigentes são os exibidos em <a href="/planos">avanest.com.br/planos</a>. A
-        assinatura é mensal e recorrente, processada pelo <b>Mercado Pago</b>. O AVANEST não recebe
-        nem armazena números de cartão.
+        assinatura é mensal e recorrente, processada pelo <b>Asaas</b>. O AVANEST não recebe
+        nem armazena números de cartão: eles são digitados na página do provedor de pagamento.
       </p>
       <p>
         Cada plano comporta um número máximo de anestesiologistas. Para incluir mais profissionais,
@@ -68,9 +68,11 @@ export default function TermosPage() {
         <b> não retorna à campanha</b> — uma nova contratação será pelo preço de tabela vigente.
       </p>
       <p>
-        <b>Cancelamento:</b> pode ser feito a qualquer momento, pelo painel do Mercado Pago. O
-        acesso permanece até o fim do período já pago. Não há multa nem fidelidade. Não há devolução
-        proporcional de período iniciado.
+        <b>Cancelamento:</b> pode ser feito a qualquer momento pela própria conta, em
+        <b>Assinatura</b>, sem passar por atendimento. O acesso permanece até o fim do período já
+        pago. Não há multa nem fidelidade. O valor do mês em curso é devolvido quando o cancelamento
+        ocorre em até <b>14 dias</b> do último pagamento; depois desse prazo não há devolução
+        proporcional.
       </p>
       <p>
         <b>Falta de pagamento:</b> vencida a assinatura, o acesso ao sistema é bloqueado. Os dados

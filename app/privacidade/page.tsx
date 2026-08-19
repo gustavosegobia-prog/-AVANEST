@@ -11,7 +11,7 @@ export default function PrivacidadePage() {
     <PaginaLegal
       titulo="Política de Privacidade"
       resumo="Como o AVANEST trata dados pessoais, em especial dados de saúde, conforme a Lei nº 13.709/2018 (LGPD)."
-      vigencia="5 de agosto de 2026"
+      vigencia="19 de agosto de 2026"
     >
       <h2>1. Quem responde pelo quê</h2>
       <p>
@@ -94,7 +94,7 @@ export default function PrivacidadePage() {
       <ul>
         <li><b>Supabase</b> — banco de dados, autenticação e armazenamento de arquivos.</li>
         <li><b>Vercel</b> — hospedagem da aplicação.</li>
-        <li><b>Mercado Pago</b> — processamento de pagamentos (não recebe dados de pacientes).</li>
+        <li><b>Asaas</b> — processamento de pagamentos (não recebe dados de pacientes).</li>
       </ul>
       <p>
         Também compartilhamos quando houver ordem judicial ou requisição de autoridade competente.

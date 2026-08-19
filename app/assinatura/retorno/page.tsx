@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 
-// Para onde o Mercado Pago devolve o cliente depois do checkout.
+// Para onde o provedor de pagamento devolve o cliente depois do checkout.
 //
 // A confirmação de verdade vem pelo webhook, não por esta volta — o navegador
 // pode voltar antes de o pagamento ser processado. Por isso a tela fala em
@@ -29,7 +29,7 @@ export default async function RetornoPage() {
           <p>
             {liberada
               ? "Sua assinatura está ativa. Pode voltar ao sistema e seguir trabalhando."
-              : "A confirmação do Mercado Pago pode levar alguns minutos. Assim que o pagamento for aprovado, o acesso é liberado sozinho — não precisa pagar de novo."}
+              : "A confirmação do pagamento pode levar alguns minutos. Assim que o pagamento for aprovado, o acesso é liberado sozinho — não precisa pagar de novo."}
           </p>
           <Link className="avnLoginSubmit" href="/dashboard">Voltar ao sistema</Link>
           {!liberada && <Link className="avnLoginCancel" href="/assinatura">Ver situação da assinatura</Link>}

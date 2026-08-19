@@ -161,7 +161,7 @@ export default async function AssinaturaPage({
               {podeContratar && cabe
                 ? <AssinarButton
                     plano={alvo.codigo}
-                    rotulo={liberada ? `Contratar o plano ${alvo.nome}` : "Pagar com Mercado Pago"}
+                    rotulo={liberada ? `Contratar o plano ${alvo.nome}` : `Assinar o plano ${alvo.nome}`}
                   />
                 : !podeContratar
                   ? <p className="avnOnboardingEmail">

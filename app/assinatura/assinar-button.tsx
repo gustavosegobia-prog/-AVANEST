@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-// Abre o checkout do Mercado Pago. Vai daqui qual plano se quer e o aceite dos
+// Abre o checkout do provedor de pagamento. Vai daqui qual plano se quer e o aceite dos
 // documentos, nunca quanto custa: o preço é decidido e congelado no banco.
 //
 // O botão só acende com a caixa marcada, mas quem recusa de verdade é o
@@ -50,7 +50,7 @@ export function AssinarButton({ plano, rotulo }: { plano: string; rotulo: string
         </span>
       </label>
       <button className="avnLoginSubmit" onClick={assinar} disabled={carregando || !aceite}>
-        {carregando ? "Abrindo o Mercado Pago..." : rotulo}
+        {carregando ? "Abrindo o pagamento..." : rotulo}
       </button>
     </>
   );

@@ -7,7 +7,7 @@ import { provedorAtivo } from "@/lib/pagamentos";
 // grava o aceite para não sair de sincronia com o texto: mudou /termos ou
 // /privacidade, muda aqui, e os aceites novos passam a apontar para a versão
 // nova sem mexer nos antigos.
-const VERSAO_DOCUMENTOS = "2026-08-05";
+const VERSAO_DOCUMENTOS = "2026-08-19";
 
 // Abre o checkout da assinatura mensal.
 //
