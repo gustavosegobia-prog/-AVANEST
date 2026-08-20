@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 import { Icone } from "@/components/icone";
 import { AssinarButton } from "./assinar-button";
+import { SairButton } from "./sair-button";
 
 const WHATSAPP = "https://wa.me/5541997870810";
 
@@ -180,9 +181,9 @@ export default async function AssinaturaPage({
           <a className="avnLoginCancel" href={WHATSAPP} target="_blank" rel="noreferrer">
             Falar com o AVANEST no WhatsApp
           </a>
-          <Link className="avnLoginCancel" href={liberada ? "/dashboard" : "/login"}>
-            {liberada ? "Voltar ao sistema" : "Sair"}
-          </Link>
+          {liberada
+            ? <Link className="avnLoginCancel" href="/dashboard">Voltar ao sistema</Link>
+            : <SairButton/>}
         </div>
       </section>
     </main>

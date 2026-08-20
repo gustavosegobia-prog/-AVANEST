@@ -129,7 +129,11 @@
 .avnLoginContent .loginForm input{height:55px;border:1.5px solid #d6e0e8;border-radius:11px;background:#eef2f6;padding:0 16px;font-size:16px;margin:0;color:var(--cor-tinta)}.avnLoginContent .loginForm input:focus{outline:3px solid rgba(0,180,216,.2);border-color:#00a8c8}
 .avnPasswordField{position:relative;margin-bottom:7px}.avnPasswordField input{width:100%;padding-right:90px!important}.avnPasswordField button{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--cor-marca);font-weight:750;cursor:pointer;padding:8px}
 .avnLoginSubmit{width:100%;border:0;border-radius:11px;padding:16px;background:linear-gradient(135deg,#078cc5,#25c2a0);color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,119,182,.28)}.avnLoginSubmit:disabled{opacity:.65;cursor:wait}
-.avnLoginCancel{align-self:center;color:var(--cor-tinta-fraca);margin-top:17px;font-size:14px}.avnLoginCancel:hover{color:var(--cor-marca)}
+/* Serve para <a> e para <button>: o "Sair" precisa encerrar a sessão de
+   verdade, e botão cru viria com fundo, borda e fonte do navegador,
+   destoando dos dois links vizinhos. */
+.avnLoginCancel{align-self:center;color:var(--cor-tinta-fraca);margin-top:17px;font-size:14px;background:none;border:0;font-family:inherit;cursor:pointer}
+.avnLoginCancel:disabled{opacity:.6;cursor:wait}.avnLoginCancel:hover{color:var(--cor-marca)}
 .avnLoginContent .loginError{border:0;border-radius:8px;background:#fbe9e9;color:#bb3535;margin:2px 0 7px;font-size:13px}
 .avnLoginContent .loginSuccess{border:0;border-radius:8px;background:var(--cor-sucesso-suave);color:var(--cor-sucesso);margin:0 0 8px;padding:11px 13px;font-size:13px}.avnForgotPassword{justify-self:end;color:var(--cor-marca);font-size:13px;font-weight:750;margin:1px 0 7px}.avnForgotPassword:hover{text-decoration:underline}.recoveryConfirmation{background:var(--cor-sucesso-suave);color:var(--cor-sucesso);border:1px solid #adddcc;border-radius:12px;padding:18px}.recoveryConfirmation strong{display:block;font-size:18px}.recoveryConfirmation p{margin:7px 0 0!important;color:#356c5d!important;line-height:1.5}
 @media(max-width:760px){.avnLoginPage{padding:16px}.avnLoginCard{grid-template-columns:1fr}.avnLoginIllustration{min-height:260px;padding:28px}.avnLoginMonitor{display:none}.avnLoginIllustration>p{margin-top:45px}.avnLoginContent{padding:34px 25px}}
@@ -143,6 +147,16 @@
    exatamente o mesmo tanto: com valores separados, mexer em um deixava o
    cabeçalho desalinhado do conteúdo, e ninguém percebe isso lendo o CSS. */
 :root{--largura-painel:2000px}
+/* A avaliação para antes do painel, e de propósito. Ela é um formulário, não
+   uma lista: esticar até 2000px transformaria "Nome completo" num campo de
+   898px — medido — para escrever um nome, sem eliminar uma linha sequer.
+   Espaço preenchido não é espaço aproveitado.
+
+   Só vale a partir de 1500px, junto com as 9 colunas. As duas mudanças andam
+   coladas porque separá-las cria uma faixa ruim: entre 1400 e 1500px o
+   formulário cresceria ainda com 6 colunas, e o campo do nome passaria de
+   637px para ~707px — pior do que estava. */
+:root{--largura-avaliacao:1680px}
 .clinicalMain{width:min(var(--largura-painel),calc(100% - 48px));margin:auto;padding:38px 0 80px}.clinicalWelcome{display:flex;justify-content:space-between;align-items:center;gap:20px}.clinicalWelcome h1,.receptionMain h1{font-size:29px;margin:0 0 5px}.clinicalWelcome p,.receptionMain>section>p{color:var(--cor-tinta-fraca);margin:0}.primaryClinical{border:0;border-radius:11px;background:var(--cor-marca);color:#fff;font-weight:800;padding:17px 27px;box-shadow:0 5px 13px rgba(23,107,181,.2);cursor:pointer}.primaryClinical.compact{padding:12px 18px;box-shadow:none}.primaryClinical:disabled{opacity:.6}.metricGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:17px;margin:27px 0 22px}.metricCard{background:#fff;border:1px solid #d3dee8;border-radius:17px;padding:24px 23px;min-height:106px}.metricCard strong{display:block;font-size:32px;margin-bottom:8px}.metricCard span{color:#5c7186}.metricCard .blue{color:var(--cor-marca)}.metricCard .red{color:var(--cor-perigo)}.metricCard .green{color:var(--cor-sucesso)}.metricCard .amber{color:var(--cor-atencao)}.clinicalPanel{background:#fff;border:1px solid #d3dee8;border-radius:17px;overflow:hidden;margin:22px 0}.panelTitle{padding:18px 25px;border-bottom:1px solid var(--cor-borda);display:flex;align-items:center;gap:15px}.panelTitle strong{font-size:18px}.panelTitle span{color:var(--cor-tinta-fraca);font-size:14px}.queueRow{min-height:72px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:80px minmax(270px,1fr) auto auto;align-items:center;gap:18px;padding:10px 25px}.queueRow:last-child{border-bottom:0}.queueRow time{color:var(--cor-marca);font-weight:850;font-family:monospace;font-size:17px}.queueInfo strong,.agendaRow strong{display:block}.queueInfo small,.agendaRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.statusChip{border-radius:99px;padding:8px 13px;font-size:12px;font-weight:850;white-space:nowrap}.statusChip.present{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}.statusChip.paused{background:#e9eef2;color:#5a7084}.statusChip.waiting{background:var(--cor-atencao-suave);color:var(--cor-atencao)}.emptyClinical{padding:45px;text-align:center;color:var(--cor-tinta-fraca)}/* A Central recolhe. O <summary> vira a barra de título inteira: clique,
    Enter e Espaço já funcionam de graça, e o leitor de tela anuncia se está
    aberta — nada disso precisaria ser reescrito à mão, e à mão sairia pior.
@@ -1703,3 +1717,19 @@ button:disabled{cursor:not-allowed}
 .assinaturaReembolso{margin:0;padding:11px 13px;border-radius:10px;font-size:14px;line-height:1.5}
 .assinaturaReembolso.dentro{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
 .assinaturaReembolso.fora{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+
+/* ============================================================================
+   Tela larga: mais colunas, não campos maiores
+   ==========================================================================
+   Numa tela de 1920 sobravam ~500px de vazio à direita, e a saída óbvia —
+   alargar o formulário — piorava: os campos esticavam e o número de linhas
+   ficava igual. Aumentando a grade junto com a largura, cada campo mantém o
+   tamanho de hoje e cabem mais por linha. Medido a 1920px: a identificação
+   cai de 3 linhas para 2, e a seção encolhe 25% de altura.
+
+   1500px é o piso porque abaixo disso 9 colunas espremem o campo curto a
+   menos de 140px, e aí "Data de nascimento" não cabe mais escrito. */
+@media(min-width:1500px){
+  .evalMain{width:min(var(--largura-avaliacao),calc(100% - 48px))}
+  .evalFormGrid{grid-template-columns:repeat(9,1fr)}
+}
