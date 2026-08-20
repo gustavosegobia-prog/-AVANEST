@@ -8,7 +8,7 @@ import { calculateLastDoseDate, ehAntitrombotico, ehGlp1, exigeOrientacao, findM
 import { orientacaoSugerida } from "@/lib/medication-summary";
 import { diaParaMomento, lerMedicamentosEscritos, lerUmMedicamento, mesmoMedicamento } from "@/lib/medicamentos-escritos";
 import { idadeDoPaciente, idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
-import { PREDITORES_VIA_AEREA, resumoViaAerea } from "@/lib/via-aerea";
+import { PREDITORES_VIA_AEREA, frasePreditoresMarcados, resumoViaAerea } from "@/lib/via-aerea";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
 import {
@@ -314,7 +314,10 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     Boolean(isFilled(draft.pa_sistolica)&&isFilled(draft.pa_diastolica)&&isFilled(draft.fc)&&isFilled(draft.spo2)),
     Boolean(isFilled(draft.mallampati)&&isFilled(draft.abertura_oral)&&isFilled(draft.distancia_tireo)&&isFilled(draft.denticao)&&isFilled(draft.mobilidade)),
     true,
-    Boolean(isFilled(draft.asa)&&draft.asa_confirmada===true&&isFilled(draft.capacidade_funcional)),
+    // A caixa "confirmada pelo médico" saiu da tela: quem seleciona o ASA já é
+    // o médico. Exigi-la aqui deixaria a etapa presa em incompleta para
+    // sempre, e o progresso da avaliação nunca fecharia.
+    Boolean(isFilled(draft.asa)&&isFilled(draft.capacidade_funcional)),
     Boolean(isFilled(draft.jejum_solidos)&&isFilled(draft.jejum_liquidos)&&isFilled(draft.tecnica)&&isFilled(draft.conclusao)&&isFilled(draft.anestesiologista)&&isFilled(draft.crm)),
   ];
   const progress=Math.round(completedSteps.filter(Boolean).length/completedSteps.length*100);
@@ -416,11 +419,6 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
               disabled={idade.fonte==="nascimento"}
               placeholder={idade.fonte==="nascimento"?"":"Ex.: 78"}
             />
-            {/* A legenda só aparece com o campo travado, para explicar por que
-                não dá para digitar ali. Vazio, o "Ex.: 78" já diz o que fazer —
-                e uma frase abaixo de cada campo vira ruído numa tela de nove
-                etapas. */}
-            {idade.fonte==="nascimento"&&<small className="fieldHint">calculada pela data de nascimento</small>}
             {erroIdade&&<small className="fieldError">{erroIdade}</small>}
           </label>
           {select("sexo","Sexo",["Feminino","Masculino","Outro"])}
@@ -780,7 +778,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
         e do outro lado da tela ninguém precisa escrever o remédio de novo. */}
     <div className="questionCard medicationUseQuestion">
       <div className="questionHead">
-        <strong>Usa anticoagulante ou antiagregante? (afina o sangue)</strong>
+        <strong>Usa anticoagulante ou antiagregante?</strong>
         <div className="answerButtons">{["Sim","Não","Não sabe"].map(answer=><button type="button" className={String(draft.anticoagulante??"")===answer?"active":""} onClick={()=>{set("anticoagulante",answer);if(answer!=="Sim")set("anticoagulante_detalhes","")}} key={answer}>{answer}</button>)}</div>
       </div>
       <Antitromboticos draft={draft} resposta={String(draft.anticoagulante??"")}/>
@@ -861,7 +859,7 @@ function Airway({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=
     {choice("mobilidade","Mobilidade cervical",["Normal","Reduzida","Muito reduzida"])}
   </div><ToggleChips title="PREDITORES ADICIONAIS" prefix="via" items={predictors} draft={draft} set={set}/>
   <label className="evalField examOptionalNote"><span>Observações da via aérea</span><textarea value={String(draft.observacoes_via_aerea??"")} onChange={e=>set("observacoes_via_aerea",e.target.value)}/></label>
-  <div className={`airwayRisk ${risk.toLowerCase()}`}><strong>{risk} probabilidade sugerida de via aérea difícil</strong><span>{count} preditor(es) marcado(s) — sugestão de apoio, deve ser confirmada pelo anestesiologista.</span></div>
+  <div className={`airwayRisk ${risk.toLowerCase()}`}><strong>{risk} probabilidade sugerida de via aérea difícil</strong><span>{frasePreditoresMarcados(count)} — sugestão de apoio, deve ser confirmada pelo anestesiologista.</span></div>
   {/* A conta acima é sugestão; esta linha é a decisão. São coisas diferentes e
       por isso ficam em campos diferentes: contar preditor não substitui o
       julgamento de quem vai intubar, e quem lê a ficha depois precisa saber
@@ -1035,7 +1033,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   const apfelRisk=["≈ 10%","≈ 21%","≈ 39%","≈ 61%","≈ 79%"][apfelScore];
   const asa=["ASA I","ASA II","ASA III","ASA IV","ASA V","ASA VI"];
   return <><div className="scoreGrid">
-    <section className="evalSection"><h1>8 · Classificação ASA</h1><p className="evalHint">Selecione e confirme a classificação médica.</p><div className="asaButtons">{asa.map(item=><button className={draft.asa===item?"selected":""} onClick={()=>set("asa",item)} key={item}>{item}</button>)}<button className={draft.asa_emergencia===true?"selected":""} onClick={()=>set("asa_emergencia",draft.asa_emergencia!==true)}>+ E (emergência)</button></div><label className="confirmScore"><input type="checkbox" checked={draft.asa_confirmada===true} onChange={e=>set("asa_confirmada",e.target.checked)}/> Classificação confirmada pelo médico</label></section>
+    <section className="evalSection"><h1>8 · Classificação ASA</h1><p className="evalHint">Selecione a classificação médica.</p><div className="asaButtons">{asa.map(item=><button className={draft.asa===item?"selected":""} onClick={()=>set("asa",item)} key={item}>{item}</button>)}<button className={draft.asa_emergencia===true?"selected":""} onClick={()=>set("asa_emergencia",draft.asa_emergencia!==true)}>+ E (emergência)</button></div></section>
     <section className="evalSection"><h1>Índice de Lee (RCRI)</h1><p className="evalHint">Marque os critérios presentes.</p>
       <div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div>
       <div className={`scoreResult ${rcriScore>=2?"warning":""}`}>
@@ -1068,7 +1066,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
     </section>
     <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={`${label}${key==="stop_imc"&&imc?` (IMC ${imc.toFixed(1)})`:key==="stop_idade"&&age?` (${age} anos)`:key==="stop_masculino"&&sex?` (${sex})`:""}`} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
     <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk} <small>referência de apoio; confirmar conduta</small></div></section>
-  </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div><p>Outros escores somente devem ser usados quando houver dados suficientes e validação clínica.</p></section></>;
+  </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div></section></>;
 }
 
 function Conclusion({draft,set,paciente,age,idadeMeses,imc,conclude,retrySave,saveState,saveError}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;idadeMeses:number|undefined;imc:number;conclude:()=>Promise<void>;retrySave:()=>void;saveState:"saved"|"pending"|"saving"|"error";saveError:string}) {
