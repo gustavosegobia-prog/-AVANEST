@@ -257,7 +257,17 @@
 .paperSignatureBloco>span{margin-top:1px}
 /* O 80% padrão do <small> deixava a titulação miúda demais para uma linha que
    é parte do carimbo, e não uma nota de rodapé. */
-.paperSignatureBloco>small{margin-top:1px;font-size:.92em}.consentPaper,.guidancePaper{font-family:Georgia,"Times New Roman",serif;font-size:13px;line-height:1.48}.consentPaper h2,.guidancePaper h2{font-size:23px}.consentPaper>p{margin:17px 0;text-align:justify}.legalReview{background:#fff0cf;border:1px solid #c89628;color:#774c00;padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:800}/* As duas assinaturas são um bloco só. Sem o break-inside, a do paciente
+.paperSignatureBloco>small{margin-top:1px;font-size:.92em}.consentPaper,.guidancePaper{font-family:Georgia,"Times New Roman",serif;font-size:13px;line-height:1.48}.consentPaper h2,.guidancePaper h2{font-size:23px}.consentPaper>p{margin:17px 0;text-align:justify}
+/* O preflight do Tailwind zera list-style de ol e ul, e no termo isso apagava
+   a numeração inteira: o item 1 aparecia (está escrito à mão no parágrafo), os
+   itens 2 e 3 viravam parágrafos indentados sem número, e o próximo número
+   visível era o 4. Quem lê um consentimento assinado e vê a contagem pular de
+   1 para 4 não conclui "faltou o marcador" — conclui que alguém tirou dois
+   itens depois de assinado. Num documento que existe para provar o que foi
+   informado, isso é grave. Os riscos perdiam os pontos pelo mesmo motivo. */
+.consentPaper ol{list-style:decimal}
+.consentPaper ul{list-style:disc}
+.consentPaper ol,.consentPaper ul{padding-left:1.7em}.legalReview{background:#fff0cf;border:1px solid #c89628;color:#774c00;padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:800}/* As duas assinaturas são um bloco só. Sem o break-inside, a do paciente
    ficava numa folha e a da testemunha ia sozinha para a seguinte, solta,
    fora do termo que ela testemunha. O respiro de cima encolheu junto: 80px
    de vão bastavam para empurrar o bloco inteiro para a página seguinte. */
@@ -726,7 +736,10 @@ button:disabled{cursor:not-allowed}
   .consentPaper>p{margin:4px 0}
   .consentPaper ol,.consentPaper ul{margin:5px 0;padding-left:19px}
   .consentPaper li{margin:2px 0}
-  .consentPaper ul{column-count:2;column-gap:20px}
+  /* inside, e não o padrão outside: com o marcador do lado de fora ele é
+     desenhado no padding da <ul>, e a <ul> só tem padding na borda esquerda da
+     PRIMEIRA coluna. Os pontos da segunda coluna eram cortados. */
+  .consentPaper ul{column-count:2;column-gap:20px;list-style-position:inside;padding-left:3px}
   .consentPaper ul li{break-inside:avoid;margin:2px 0}
   /* Gap fixo, e não margin-top:auto. Com auto o bloco encostava exatamente
      na borda inferior da área imprimível, e a linha da data raspava no

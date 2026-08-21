@@ -422,7 +422,12 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             ]}/>
           <PaperBlock title="PROCEDIMENTO CIRÚRGICO" items={facts([
             ["Cirurgia proposta",dados.cirurgia||paciente.cirurgia||paciente.procedimento,"wide"],
-            ["Cirurgião",dados.cirurgiao],["Hospital",dados.hospital||paciente.hospital],
+            // Hospital em duas colunas: nome de hospital é longo ("HOSPITAL
+            // SANTA CASA CAMPO MOURÃO") e numa célula estreita quebrava em duas
+            // linhas com o Caráter colado ao lado. Ocupando a linha de cima
+            // inteira, o Caráter desce para a linha seguinte e os dois se leem
+            // de relance.
+            ["Cirurgião",dados.cirurgiao],["Hospital",dados.hospital||paciente.hospital,"wide"],
             ["Caráter",dados.carater],["Porte",dados.porte],["Lateralidade",dados.lateralidade],
             ["Regime",dados.regime],["Data",formatDate(text(dados.data_cirurgia))],["Horário",dados.horario_cirurgia],
           ])}/>
@@ -567,7 +572,19 @@ function PaperSignature({dados,perfil}:{dados:Data;perfil:Props["perfil"]}){
   const entreParenteses=crmBruto.match(/^(.*?)\s*\(([^()]+)\)\s*$/);
   const crm=entreParenteses?entreParenteses[1].trim():crmBruto;
   const titulo=entreParenteses?entreParenteses[2].trim():"Anestesiologista";
-  const registro=`${crm}${rqe?` · ${rqe}`:""}`;
+  // O cadastro guarda só o número e a UF — "60593/PR". Sozinho no papel, isso
+  // não diz que registro é: podia ser matrícula, ramal, qualquer coisa. Quem
+  // confere uma ficha assinada precisa ler CRM, número e estado.
+  //
+  // O prefixo só entra quando falta. Parte dos perfis já tem "CRM" digitado no
+  // campo, e prefixar sem olhar produziria "CRM CRM 60593/PR" — inclusive no
+  // texto de ausência, que já começa com CRM.
+  //
+  // Sem \b depois do "crm" de propósito: com ele, "CRMSP 1234" e "CRMPR 60593"
+  // não casavam (S e P são letras, não há fronteira de palavra ali) e saíam
+  // como "CRM CRMSP 1234". Número de CRM começa com dígito, então qualquer
+  // coisa que já comece com essas três letras é o prefixo.
+  const registro=`${/^\s*crm/i.test(crm)?crm:`CRM ${crm}`}${rqe?` · ${rqe}`:""}`;
   // Três linhas empilhadas, no canto inferior direito: nome, registro, e
   // embaixo a especialidade ou a residência. É como se assina um documento
   // clínico — e estreito, para ler como carimbo e não como parágrafo.
