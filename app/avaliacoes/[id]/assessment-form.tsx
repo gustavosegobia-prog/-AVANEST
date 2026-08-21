@@ -544,7 +544,13 @@ function Antitromboticos({draft,resposta}:{draft:Draft;resposta:string}) {
   const encontrados=readMedications(draft.medicamentos_json).filter(item=>ehAntitrombotico(item.nome));
   const legadoDose=String(draft.anticoagulante_ultima_dose??"");
   const legadoIndicacao=String(draft.anticoagulante_indicacao??"");
-  const irParaMedicamentos=()=>document.querySelector(".medicationAdd")?.scrollIntoView({behavior:"smooth",block:"center"});
+  // Rolar e já deixar o cursor piscando no campo: quem clicou aqui quer
+  // digitar o nome do remédio, não procurar onde clicar de novo.
+  const irParaMedicamentos=()=>{
+    const alvo=document.querySelector<HTMLElement>(".medicationAdd");
+    alvo?.scrollIntoView({behavior:"smooth",block:"center"});
+    alvo?.querySelector("input")?.focus({preventScroll:true});
+  };
 
   // Lista vazia e resposta "Não": nada a dizer. É o caso mais comum.
   if(!encontrados.length&&resposta!=="Sim"&&!legadoDose&&!legadoIndicacao)return null;
@@ -552,6 +558,12 @@ function Antitromboticos({draft,resposta}:{draft:Draft;resposta:string}) {
   return <div className="antithromboticBox">
     {encontrados.length>0&&resposta!==""&&resposta!=="Sim"&&
       <p className="antithromboticWarn">A resposta é <b>{resposta}</b>, mas a lista abaixo tem {encontrados.length===1?"um medicamento que afina o sangue":"medicamentos que afinam o sangue"}. Confira antes de concluir.</p>}
+
+    {/* A contradição na outra direção: anticoagulante é medicação contínua, e
+        as duas perguntas ficam a poucos centímetros uma da outra. Sem este
+        aviso, a divergência atravessava a ficha inteira sem ninguém notar. */}
+    {resposta==="Sim"&&String(draft.medicacao_continua??"")==="Não"&&
+      <p className="antithromboticWarn">A pergunta de medicação contínua está como <b>Não</b>, mas anticoagulante é medicação contínua. Reveja aquela resposta.</p>}
 
     {encontrados.length>0
       ? <>
@@ -643,7 +655,18 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
   const [name,setName]=useState("");
   const medications=readMedications(draft.medicamentos_json);
   const medicationAnswer=String(draft.medicacao_continua??"");
-  const showMedicationForm=medicationAnswer==="Sim"||medications.length>0;
+  // Anticoagulante conta como "Sim" aqui, e isso conserta um beco sem saída.
+  //
+  // Quem respondia "Não" para medicação contínua e "Sim" para anticoagulante
+  // via a caixa dizer "cadastre na lista abaixo" — só que a lista inteira
+  // estava escondida pela primeira resposta. O botão "Ir para a lista de
+  // medicamentos" procurava um elemento que não existia na tela, o `?.`
+  // engolia o nulo e o clique não fazia absolutamente nada.
+  //
+  // Ficava sem lugar para registrar justamente a classe em que suspensão e
+  // reinício mais precisam sair escritos na ficha. Anticoagulante é medicação
+  // contínua: dizer que o paciente usa um já é motivo para abrir a lista.
+  const showMedicationForm=medicationAnswer==="Sim"||medications.length>0||String(draft.anticoagulante??"")==="Sim";
   const save=(items:Medication[])=>{
     set("medicamentos_json",JSON.stringify(items));
     // Cadastrar um antitrombótico responde a pergunta logo acima — é
