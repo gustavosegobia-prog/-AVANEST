@@ -621,6 +621,15 @@ const JEJUM_LIQUIDOS_PADRAO = "Jejum absoluto";
 const JEJUM_SOLIDOS = [JEJUM_SOLIDOS_PADRAO, "6 horas antes (refeição leve)", "2 horas antes (líquido sem resíduo)", "Protocolo especial"];
 const JEJUM_LIQUIDOS = [JEJUM_LIQUIDOS_PADRAO, "Líquidos claros até 2 h antes", "Líquidos claros até 1 h antes", "Protocolo especial"];
 
+// Um <select> sem opção correspondente ao valor salvo aparece em branco, e o
+// que estava gravado some da tela sem aviso. Numa ficha reaberta isso seria
+// perder a orientação de jejum caladamente — então o valor atual entra na
+// lista quando não estiver nela. Acontece com avaliação antiga, salva quando
+// as opções eram outras.
+function comValorAtual(opcoes: string[], atual: string) {
+  return atual && !opcoes.includes(atual) ? [atual, ...opcoes] : opcoes;
+}
+
 /**
  * Um valor escolhido, com as outras opções escondidas atrás de um botão.
  *
@@ -629,25 +638,6 @@ const JEJUM_LIQUIDOS = [JEJUM_LIQUIDOS_PADRAO, "Líquidos claros até 2 h antes"
  * quer outra coisa pede para ver. As opções são botões de verdade, então
  * teclado e leitor de tela continuam funcionando.
  */
-function EscolhaComPadrao({rotulo,valor,opcoes,onEscolher,className=""}:{
-  rotulo:string; valor:string; opcoes:string[]; onEscolher:(valor:string)=>void; className?:string;
-}) {
-  const [abertas,setAbertas]=useState(false);
-  return <div className={`evalField escolhaPadrao ${className}`.trim()}>
-    <span>{rotulo}</span>
-    {abertas
-      ? <div className="escolhaOpcoes" role="group" aria-label={rotulo}>
-          {opcoes.map(opcao=><button
-            type="button" key={opcao} className={opcao===valor?"active":""}
-            onClick={()=>{onEscolher(opcao);setAbertas(false)}}
-          >{opcao}</button>)}
-        </div>
-      : <div className="escolhaAtual">
-          <strong>{valor||"—"}</strong>
-          <button type="button" onClick={()=>setAbertas(true)}>Outras opções</button>
-        </div>}
-  </div>;
-}
 
 function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const [name,setName]=useState("");
@@ -1163,8 +1153,11 @@ function Conclusion({draft,set,paciente,age,idadeMeses,imc,conclude,retrySave,sa
   function generateText(){lastAutomaticPlan.current=automaticPlan;set("plano_anestesico",automaticPlan);set("plano_anestesico_editado",false)}
   return <><section className="evalSection"><div className="conclusionHeading"><h1>9 · Resumo da avaliação</h1><button className="outlineClinical" onClick={generateText}>Atualizar orientações finais automaticamente ↓</button></div><div className="summaryGrid">{summary.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
   <section className="evalSection"><h2>Prescrição e planejamento pré-anestésico</h2><div className="planningGrid">
-    <EscolhaComPadrao className="plan4" rotulo="Jejum — sólidos" valor={String(draft.jejum_solidos??JEJUM_SOLIDOS_PADRAO)} opcoes={JEJUM_SOLIDOS} onEscolher={v=>set("jejum_solidos",v)}/>
-    <EscolhaComPadrao className="plan4" rotulo="Jejum — líquidos claros" valor={String(draft.jejum_liquidos??JEJUM_LIQUIDOS_PADRAO)} opcoes={JEJUM_LIQUIDOS} onEscolher={v=>set("jejum_liquidos",v)}/>
+    {/* Selects comuns, e não um botão "Outras opções". O padrão continua vindo
+        marcado — que era o ponto —, mas trocar passa a ser o mesmo gesto de
+        todos os outros campos da tela, em vez de um a mais. */}
+    <label className="evalField plan4"><span>Jejum — sólidos</span><select value={String(draft.jejum_solidos??JEJUM_SOLIDOS_PADRAO)} onChange={e=>set("jejum_solidos",e.target.value)}>{comValorAtual(JEJUM_SOLIDOS,String(draft.jejum_solidos??JEJUM_SOLIDOS_PADRAO)).map(o=><option key={o}>{o}</option>)}</select></label>
+    <label className="evalField plan4"><span>Jejum — líquidos claros</span><select value={String(draft.jejum_liquidos??JEJUM_LIQUIDOS_PADRAO)} onChange={e=>set("jejum_liquidos",e.target.value)}>{comValorAtual(JEJUM_LIQUIDOS,String(draft.jejum_liquidos??JEJUM_LIQUIDOS_PADRAO)).map(o=><option key={o}>{o}</option>)}</select></label>
     <label className="evalField plan2"><span>Dormonid VO (pré-medicação)</span><select value={String(draft.premedicacao??"")} onChange={e=>set("premedicacao",e.target.value)}><option value="">Selecione</option><option>Não prescrever</option><option>7,5 mg</option><option>15 mg</option></select></label>
     <label className="evalField plan2"><span>Leito de UTI</span><select value={String(draft.leito_uti??"")} onChange={e=>set("leito_uti",e.target.value)}><option value="">Selecione</option><option>Não</option><option>Solicitar</option><option>A definir</option></select></label>
     <label className="evalField plan2"><span>Concentrado de hemácias (CH)</span><select value={String(draft.concentrado_hemacias??"")} onChange={e=>{set("concentrado_hemacias",e.target.value);if(e.target.value!=="Solicitar"&&e.target.value!=="Sim")set("quantidade_ch","")}}><option value="">Selecione</option><option>Não</option><option>Solicitar</option><option>A definir</option></select></label>
