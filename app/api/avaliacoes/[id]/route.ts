@@ -1,15 +1,35 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
+import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // A exclusão é feita no servidor: a chave administrativa nunca chega ao navegador.
-export async function DELETE(_request: Request, { params }: RouteContext) {
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
+  // A rota mais destrutiva do sistema apaga registro clínico. Confere a origem
+  // como a de faturamento já fazia — não fazia sentido a mais perigosa ser a
+  // menos protegida.
+  const origemInvalida = validateMutationRequest(request);
+  if (origemInvalida) return origemInvalida;
+
   const { id } = await params;
+  if (!UUID_PATTERN.test(id)) {
+    return NextResponse.json({ error: "Identificador de avaliação inválido." }, { status: 400 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sua sessão expirou. Entre novamente." }, { status: 401 });
+
+  // Apagar avaliação é uma de cada vez, com confirmação na tela. Dez por
+  // minuto já é folgado — e transforma "conta tomada apaga o arquivo inteiro
+  // num laço" em algo lento o bastante para alguém notar.
+  const excedeu = enforceRateLimit(`avaliacao-excluir:${user.id}`, { limit: 10, windowMs: 60_000 });
+  if (excedeu) return excedeu;
 
   const { data: actor } = await supabase
     .from("perfis")

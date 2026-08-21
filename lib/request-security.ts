@@ -61,11 +61,31 @@ export function validateMutationRequest(
   return null;
 }
 
+// Quantas chaves vencidas varrer a cada chamada.
+//
+// O mapa é a memória do processo e nunca era limpo: cada usuário que passasse
+// por uma rota limitada deixava uma entrada para sempre. Num processo que fica
+// horas de pé, isso é um vazamento — devagar, mas que só cresce.
+//
+// A varredura é parcial de propósito. Percorrer o mapa inteiro a cada
+// requisição transformaria o limitador no gargalo justamente quando há muita
+// gente usando. Vinte chaves por chamada limpam mais rápido do que entram.
+const VARREDURA = 20;
+
+function limparVencidas(agora: number) {
+  let vistas = 0;
+  for (const [chave, entrada] of rateLimitStore) {
+    if (entrada.resetAt <= agora) rateLimitStore.delete(chave);
+    if (++vistas >= VARREDURA) break;
+  }
+}
+
 export function enforceRateLimit(
   key: string,
   options: { limit: number; windowMs: number },
 ) {
   const now = Date.now();
+  limparVencidas(now);
   const current = rateLimitStore.get(key);
 
   if (!current || current.resetAt <= now) {

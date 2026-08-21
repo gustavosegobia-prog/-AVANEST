@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { provedorAtivo } from "@/lib/pagamentos";
 
@@ -15,10 +16,19 @@ const VERSAO_DOCUMENTOS = "2026-08-19";
 // preço é reservar_plano, no banco, com a campanha travada — é lá que a vaga
 // de fundador é disputada e o valor fica congelado.
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const origemInvalida = validateMutationRequest(request, { requireJson: true });
+  if (origemInvalida) return origemInvalida;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sua sessão expirou." }, { status: 401 });
+
+  // Cada chamada aqui reserva vaga de campanha e abre uma sessão no gateway.
+  // Sem limite, um laço consumiria as vagas de fundador sem ninguém pagar
+  // nada — e a campanha apareceria esgotada para quem ia assinar de verdade.
+  const excedeu = enforceRateLimit(`assinatura-checkout:${user.id}`, { limit: 8, windowMs: 600_000 });
+  if (excedeu) return excedeu;
 
   const corpo = await request.json().catch(() => null) as { plano?: unknown; aceite?: unknown } | null;
   const codigo = typeof corpo?.plano === "string" ? corpo.plano.trim() : "";

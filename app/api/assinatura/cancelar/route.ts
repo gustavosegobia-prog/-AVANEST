@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { adaptadorDe } from "@/lib/pagamentos";
 
@@ -16,10 +17,18 @@ import { adaptadorDe } from "@/lib/pagamentos";
 // Cancelar aqui quer dizer "não renove mais". O acesso segue até a data já
 // paga — quem decide isso é a função no banco, que não mexe em assinatura_ate.
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const origemInvalida = validateMutationRequest(request, { requireJson: true });
+  if (origemInvalida) return origemInvalida;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sua sessão expirou." }, { status: 401 });
+
+  // Cancelar é uma ação por vez, não uma rajada. O limite existe porque cada
+  // chamada fala com o gateway e grava auditoria.
+  const excedeu = enforceRateLimit(`assinatura-cancelar:${user.id}`, { limit: 5, windowMs: 600_000 });
+  if (excedeu) return excedeu;
 
   const corpo = await request.json().catch(() => null) as { motivo?: unknown } | null;
   const motivo = typeof corpo?.motivo === "string" ? corpo.motivo.trim().slice(0, 500) : "";

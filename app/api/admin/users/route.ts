@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
+import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 
 const ALLOWED_ROLES = new Set(["recepcao", "medico", "financeiro", "admin"]);
 
 export async function POST(request: NextRequest) {
+  // Confere a origem antes de qualquer outra coisa: é a conta do Supabase que
+  // dispara o e-mail de convite, e é o nosso domínio que aparece nele.
+  const origemInvalida = validateMutationRequest(request, { requireJson: true });
+  if (origemInvalida) return origemInvalida;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sua sessão expirou." }, { status: 401 });
+
+  // Vinte convites por hora por administrador. Um administrador legítimo
+  // cadastra a equipe uma vez; uma conta tomada usaria esta rota para disparar
+  // e-mail em massa saindo do nosso domínio — e quem paga a fatura de
+  // reputação é o AVANEST, com os e-mails dos clientes indo para spam.
+  const excedeu = enforceRateLimit(`convite-usuario:${user.id}`, { limit: 20, windowMs: 3_600_000 });
+  if (excedeu) return excedeu;
 
   const { data: actor } = await supabase
     .from("perfis")
