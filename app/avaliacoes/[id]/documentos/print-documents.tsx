@@ -5,7 +5,7 @@ import { idadeDoPaciente } from "@/lib/idade";
 import {createClient} from "@/utils/supabase/client";
 import {ehAntitrombotico,exigeOrientacao} from "@/lib/medication-guide";
 import {suspensionSummary} from "@/lib/medication-summary";
-import {preditoresMarcados,resumoViaAerea} from "@/lib/via-aerea";
+import {frasePreditores,preditoresMarcados,resumoViaAerea,riscoNoMasculino} from "@/lib/via-aerea";
 import {BrandMark} from "@/components/brand-mark";
 
 type Data=Record<string,string|boolean>;
@@ -479,7 +479,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
                 ["Mallampati",dados.mallampati],["Abertura oral",dados.abertura_oral],
                 ["Dist. tireoment.",dados.distancia_tireo],["Dentição",dados.denticao],
                 ["Mobilidade cervical",dados.mobilidade],
-                ["Risco sugerido",airwayCount>0?`${airwayRisk} (${airwayCount} preditor(es))`:""],
+                ["Risco sugerido",airwayCount>0?`${riscoNoMasculino(airwayRisk)} (${frasePreditores(airwayCount)})`:""],
                 ["Preditores",airwayPredictors.join(", ")],
               ]),
             ]}

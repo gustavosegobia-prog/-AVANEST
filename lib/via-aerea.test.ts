@@ -3,9 +3,22 @@ import assert from "node:assert/strict";
 import {
   chavePreditor,
   contarPreditores,
+  frasePreditores,
+  frasePreditoresMarcados,
   resumoViaAerea,
+  riscoNoMasculino,
   riscoViaAerea,
 } from "./via-aerea.ts";
+
+test("o plural é escrito, não deixado como preditor(es)", () => {
+  assert.equal(frasePreditores(1), "1 preditor");
+  assert.equal(frasePreditores(3), "3 preditores");
+  // Zero é plural em português: "nenhum preditor" seria outra frase, e quem
+  // chama isto já não imprime a linha quando a conta dá zero.
+  assert.equal(frasePreditores(0), "0 preditores");
+  assert.equal(frasePreditoresMarcados(1), "1 preditor marcado");
+  assert.equal(frasePreditoresMarcados(4), "4 preditores marcados");
+});
 
 test("via aérea sem nada marcado não tem preditor", () => {
   assert.equal(contarPreditores({}), 0);
@@ -61,4 +74,17 @@ test("caixinha só conta quando é true de verdade", () => {
   assert.equal(contarPreditores({ via_barba: "false" } as Record<string, unknown>), 0);
   assert.equal(contarPreditores({ via_barba: false }), 0);
   assert.equal(contarPreditores({ via_barba: true }), 1);
+});
+
+test("na ficha o rótulo é \"Risco sugerido\", e risco é masculino", () => {
+  assert.equal(riscoNoMasculino("Baixa"), "Baixo");
+  assert.equal(riscoNoMasculino("Moderada"), "Moderado");
+  assert.equal(riscoNoMasculino("Alta"), "Alto");
+});
+
+test("as duas formas saem da mesma conta, não de duas", () => {
+  const dados = { mallampati: "Classe IV", mobilidade: "Reduzida", via_barba: true };
+  const { risco } = resumoViaAerea(dados);
+  assert.equal(risco, "Alta");                      // "Alta probabilidade" na tela
+  assert.equal(riscoNoMasculino(risco), "Alto");    // "Risco sugerido: Alto" no papel
 });

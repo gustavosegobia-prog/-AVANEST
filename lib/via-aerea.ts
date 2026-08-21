@@ -70,11 +70,33 @@ export function contarPreditores(dados: CamposViaAerea): number {
   return preditoresMarcados(dados).length + achadosQueContam(dados).length;
 }
 
+// No feminino porque na tela a palavra que vem depois é "probabilidade":
+// "Alta probabilidade sugerida de via aérea difícil".
 export type RiscoViaAerea = "Baixa" | "Moderada" | "Alta";
 
 export function riscoViaAerea(quantidade: number): RiscoViaAerea {
   if (quantidade === 0) return "Baixa";
   return quantidade <= 2 ? "Moderada" : "Alta";
+}
+
+// Na ficha impressa o rótulo é "Risco sugerido", e risco é masculino: ali sai
+// "Alto", não "Alta". É a mesma classificação, escrita para concordar com a
+// palavra que a antecede — por isso duas formas, e não duas contas.
+const NO_MASCULINO = { Baixa: "Baixo", Moderada: "Moderado", Alta: "Alto" } as const;
+
+export function riscoNoMasculino(risco: RiscoViaAerea): "Baixo" | "Moderado" | "Alto" {
+  return NO_MASCULINO[risco];
+}
+
+// "3 preditor(es)" é jeito de planilha, não de documento clínico. O número é
+// conhecido na hora de escrever a frase, então não há motivo para empurrar a
+// escolha do plural para quem lê.
+export function frasePreditores(quantidade: number): string {
+  return quantidade === 1 ? "1 preditor" : `${quantidade} preditores`;
+}
+
+export function frasePreditoresMarcados(quantidade: number): string {
+  return quantidade === 1 ? "1 preditor marcado" : `${quantidade} preditores marcados`;
 }
 
 export function resumoViaAerea(dados: CamposViaAerea): {
