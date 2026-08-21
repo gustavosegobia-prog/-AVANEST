@@ -277,13 +277,32 @@
 .paperSignature{margin-top:24px;padding-top:0}.documentsTopbar .roleNav{display:none}}
 @media screen and (max-width:760px){.documentsMain{width:calc(100% - 24px);padding-top:22px}.documentsHeading{align-items:flex-start;flex-direction:column}.documentsSidebar{grid-template-columns:1fr}.printPaper{padding:20px 16px;font-size:9px;overflow:auto}.paperPatientGrid{grid-template-columns:repeat(2,1fr)}.paperPatientGrid span{border-bottom:1px solid #aaa}.paperColumns,.consentSignatures{grid-template-columns:1fr}.paperExam{grid-template-columns:1fr 1fr}.docSaved{display:none}}
 @page{size:A4;margin:10mm}
-@media print{@page{size:A4 portrait;margin:7mm}body{background:#fff!important}.documentsTopbar,.documentsHeading,.documentInfo,.documentsSidebar,.deleteConfirmStrip,.deleteAssessmentError{display:none!important}.documentsMain{width:100%;padding:0}.documentsLayout,.paperStack{display:block}/* Quase uma folha inteira, para a assinatura ter até onde descer. Sem isso,
-   no papel a folha encolhe até o texto e o rodapé volta a subir junto com ele.
-   Os 64 px a menos não são estética: o navegador imprime cabeçalho e rodapé
-   próprios (o endereço do site e "Página 1 de 4") dentro da área da página, e
-   100vh cheios não cabem no que sobra. O excedente empurrava a assinatura para
-   a folha seguinte — foi o que aconteceu no iPhone e no iPad. */
-.printPaper{display:flex;flex-direction:column;width:auto;min-height:calc(100vh - 64px);border:0;border-radius:0;box-shadow:none;padding:0;margin:0;color:#000;opacity:1;filter:none;break-after:page;page-break-after:always;overflow:visible}.assessmentPaper{display:flex;min-height:0;overflow:visible;font-size:7.8px}.printPaper:last-child{break-after:auto;page-break-after:auto}.printPaper.notSelected{display:none!important}.legalReview{background:#fff!important}.paperTitle,.paperTable th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{@page{size:A4 portrait;margin:7mm}body{background:#fff!important;-webkit-text-size-adjust:100%;text-size-adjust:100%}.documentsTopbar,.documentsHeading,.documentInfo,.documentsSidebar,.deleteConfirmStrip,.deleteAssessmentError{display:none!important}.documentsMain{width:100%;padding:0}.documentsLayout,.paperStack{display:block}
+/* A altura da folha em MILÍMETROS, e nunca mais em vh. Aqui está a razão.
+
+   No papel, `100vh` só significa "a altura da página" porque o Chrome e o
+   Edge decidem resolver assim. O Safari do iPhone e do iPad não: ele não
+   refaz o layout para o papel, resolve o vh contra a TELA e depois encaixa o
+   resultado na folha. Então a mesma regra virava:
+
+     iPad em pé    1366px de tela - 64  = 1302px = 344mm  → não cabe nos 283mm
+                   da folha, e o que sobra desce para a página 2. Era a
+                   assinatura do paciente e da testemunha indo sozinha para
+                   a folha seguinte.
+     iPad deitado  1024px de tela - 64  =  960px = 254mm  → sobra papel em
+                   branco embaixo. "Não está tomando a folha toda."
+
+   Dois sintomas opostos, a mesma linha, mudando só a orientação do aparelho.
+   Medido: com o vh resolvido contra 1366px o termo sai em 2 páginas; com
+   altura fixa em milímetros sai em 1, e é a mesma 1 do computador.
+
+   Por que 255mm e não os 266mm que equivalem ao comportamento de hoje no
+   computador: o Safari do iOS impõe as margens dele e imprime cabeçalho e
+   rodapé próprios dentro da página, e não dá para medir isso daqui. Estourar
+   custa uma folha a mais com a assinatura órfã; sobrar custa um dedo de papel
+   branco embaixo. A conta é assimétrica, então o valor é o conservador. */
+:root{--altura-folha-impressa:255mm}
+.printPaper{display:flex;flex-direction:column;width:auto;min-height:var(--altura-folha-impressa);border:0;border-radius:0;box-shadow:none;padding:0;margin:0;color:#000;opacity:1;filter:none;break-after:page;page-break-after:always;overflow:visible}.assessmentPaper{display:flex;min-height:0;overflow:visible;font-size:7.8px}.printPaper:last-child{break-after:auto;page-break-after:auto}.printPaper.notSelected{display:none!important}.legalReview{background:#fff!important}.paperTitle,.paperTable th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 
 /* Fluxo clínico contínuo e campos condicionais */
 [id^="etapa-"]{scroll-margin-top:155px}
@@ -677,8 +696,8 @@ button:disabled{cursor:not-allowed}
   /* min-height de uma folha: é o espaço em que a assinatura desce até o pé
      da página. Sem ele a folha encolhe até o texto, e o rodapé sobe junto.
      Não é altura fixa — ficha longa continua passando para a segunda folha. */
-  .assessmentPaper{display:flex;flex-direction:column;height:auto;min-height:calc(100vh - 64px);max-height:none;overflow:visible;font-size:13px}
-  .consentPaper,.guidancePaper{display:flex;flex-direction:column;min-height:calc(100vh - 64px)}
+  .assessmentPaper{display:flex;flex-direction:column;height:auto;min-height:var(--altura-folha-impressa);max-height:none;overflow:visible;font-size:13px}
+  .consentPaper,.guidancePaper{display:flex;flex-direction:column;min-height:var(--altura-folha-impressa)}
   /* O título AUTORIZAÇÃO não fica sozinho no pé da folha com o parágrafo
      dele na seguinte. */
   /* O termo em uma folha só. Não é capricho de layout: termo de duas folhas
