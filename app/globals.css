@@ -697,7 +697,15 @@ button:disabled{cursor:not-allowed}
      da página. Sem ele a folha encolhe até o texto, e o rodapé sobe junto.
      Não é altura fixa — ficha longa continua passando para a segunda folha. */
   .assessmentPaper{display:flex;flex-direction:column;height:auto;min-height:var(--altura-folha-impressa);max-height:none;overflow:visible;font-size:13px}
-  .consentPaper,.guidancePaper{display:flex;flex-direction:column;min-height:var(--altura-folha-impressa)}
+  .guidancePaper{display:flex;flex-direction:column;min-height:var(--altura-folha-impressa)}
+  /* O termo é block, e não flex, de propósito. O Safari — no iPhone, no iPad e
+     no Mac — não respeita break-inside dentro de um container flex: o filho é
+     um flex item, e ele quebra no meio assim mesmo. Em block ele respeita.
+     Como o bloco da assinatura já desce por margin-top fixo e não por
+     margin-top:auto, o flex aqui não servia para mais nada — e custava a
+     única regra que impede a assinatura de virar a folha sozinha. */
+  .consentPaper{display:block;min-height:var(--altura-folha-impressa)}
+  .consentClosing{break-inside:avoid;page-break-inside:avoid}
   /* O título AUTORIZAÇÃO não fica sozinho no pé da folha com o parágrafo
      dele na seguinte. */
   /* O termo em uma folha só. Não é capricho de layout: termo de duas folhas
@@ -705,13 +713,19 @@ button:disabled{cursor:not-allowed}
      paciente aceitou — se perde do prontuário. Corpo menor, entrelinhas
      justas, e os riscos em duas colunas: são linhas curtas, e em coluna única
      desperdiçavam meia largura da folha em espaço em branco. */
-  .consentPaper{font-size:11.8px;line-height:1.34}
+  /* Entrelinha 1.26 e não 1.34: medido, o termo cabia numa folha até 12,5px de
+     corpo e estourava em 13px — 10% de folga, e o Safari do iOS renderiza o
+     bastante acima disso para consumir tudo. Apertando entrelinha e margens a
+     mesma folha aguenta até 13px. Não é garantia de folha única em todo
+     aparelho — o que garante é o .consentClosing acima —, mas é folga de graça
+     e ninguém percebe 0,08 de entrelinha num texto deste tamanho. */
+  .consentPaper{font-size:11.8px;line-height:1.26}
   .consentPaper h2{font-size:16px;margin:3px 0 2px}
   .consentPaper h3{font-size:10.2px;margin:0 0 5px}
   .consentPaper h4{font-size:11px;margin:8px 0 2px}
-  .consentPaper>p{margin:5px 0}
+  .consentPaper>p{margin:4px 0}
   .consentPaper ol,.consentPaper ul{margin:5px 0;padding-left:19px}
-  .consentPaper li{margin:3px 0}
+  .consentPaper li{margin:2px 0}
   .consentPaper ul{column-count:2;column-gap:20px}
   .consentPaper ul li{break-inside:avoid;margin:2px 0}
   /* Gap fixo, e não margin-top:auto. Com auto o bloco encostava exatamente

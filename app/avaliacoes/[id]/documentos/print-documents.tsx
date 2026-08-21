@@ -520,8 +520,17 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           <ol start={2}>{CONSENT_ITEMS.slice(0,2).map(item=><li key={item}>{item}</li>)}</ol>
           <p><b>4. Os seguintes pontos me foram esclarecidos:</b></p><ul>{CONSENT_RISKS.map(item=><li key={item}>{item}</li>)}</ul>
           <ol start={5}>{CONSENT_ITEMS.slice(2).map(item=><li key={item}>{item}</li>)}</ol>
-          <h4>AUTORIZAÇÃO</h4><p>Entendo que os meios utilizados visando assegurar a compreensão adequada das informações foram observados e, embora sendo sabedor(a) de que os procedimentos aos quais me submeterei, além de serem de risco, poderão ocasionar as alterações descritas acima e limitação das minhas atividades cotidianas por um período indeterminado de tempo, aceito e autorizo que os profissionais acima designados realizem os procedimentos constantes neste termo de autorização.</p>
-          <div className="consentSignatures"><span>PACIENTE: ___________________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span><span>TESTEMUNHA: _______________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span></div>
+          {/* O fecho do termo é um bloco só, e isso não é organização: é o que
+              impede a assinatura de sair sozinha numa folha. Antes o parágrafo
+              da autorização terminava no pé de uma página e as linhas de
+              PACIENTE e TESTEMUNHA caíam na seguinte, sem nada em volta — um
+              papel com duas linhas e um espaço em branco, que não se sustenta
+              como consentimento assinado. Envolvidos num mesmo elemento com
+              break-inside:avoid, ou os dois cabem, ou os dois viram juntos. */}
+          <div className="consentClosing">
+            <h4>AUTORIZAÇÃO</h4><p>Entendo que os meios utilizados visando assegurar a compreensão adequada das informações foram observados e, embora sendo sabedor(a) de que os procedimentos aos quais me submeterei, além de serem de risco, poderão ocasionar as alterações descritas acima e limitação das minhas atividades cotidianas por um período indeterminado de tempo, aceito e autorizo que os profissionais acima designados realizem os procedimentos constantes neste termo de autorização.</p>
+            <div className="consentSignatures"><span>PACIENTE: ___________________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span><span>TESTEMUNHA: _______________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span></div>
+          </div>
         </article>
 
         <article className={`printPaper guidancePaper ${selected.guidance?"":"notSelected"}`}><header><span>{clinica||"Orientações ao paciente"}</span></header><h2>Orientações Pré-Anestésicas</h2><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{objectiveMedicationGuidance(m)||"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}
