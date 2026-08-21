@@ -996,7 +996,13 @@ button:disabled{cursor:not-allowed}
 .allergyBanner b{font-weight:800}
 
 /* Stepper: estado por símbolo, cor e palavra — nunca só por cor. */
-.evalSteps{position:relative;flex-wrap:wrap;justify-content:flex-start;gap:var(--esp-2);padding:var(--esp-3) 0 var(--esp-2)}
+/* top:auto é a parte que importa. A barra de etapas já grudou no topo, com
+   top:72px para não passar por baixo do cabeçalho. Ela voltou a ser
+   estática e o deslocamento ficou — e em position:relative o top empurra o
+   elemento para baixo sem tirar o espaço de cima. Resultado: 72px de vão
+   entre o cabeçalho e "Etapa 1 de 9", medidos. O celular já tinha esse
+   conserto; o computador não. */
+.evalSteps{position:relative;top:auto;flex-wrap:wrap;justify-content:flex-start;gap:var(--esp-2);padding:var(--esp-3) 0 var(--esp-2)}
 .evalStepsResumo{flex-basis:100%;margin:0 0 var(--esp-1);font-size:12px;font-weight:700;color:var(--cor-tinta-fraca);letter-spacing:.02em;text-transform:uppercase}
 .evalSteps button{display:inline-flex;align-items:center;gap:var(--esp-2);border-radius:var(--raio-1);padding:var(--esp-2) var(--esp-3);background:var(--cor-superficie);border:1px solid var(--cor-borda);color:var(--cor-tinta-fraca);font-weight:650;font-size:13px;transition:border-color var(--transicao),background var(--transicao)}
 .evalSteps button:hover{border-color:var(--cor-marca);color:var(--cor-tinta)}
@@ -1538,12 +1544,6 @@ button:disabled{cursor:not-allowed}
    Avaliação no celular
    ========================================================================== */
 @media(max-width:700px){
-  /* O deslocamento de 72px era de quando a barra de etapas grudava no topo.
-     Ela passou a ser estática e o deslocamento ficou: empurrava a barra para
-     baixo sem reservar espaço, o que abria um vão acima dela e fazia com que
-     ela cobrisse a linha de botões logo abaixo. */
-  .evalSteps{top:auto}
-
   /* "Etapa 1 de 9" sai da fila que rola. Como item da fila ela ficava com
      90 px e quebrava em três linhas; fora do fluxo, ocupa uma linha só e os
      passos rolam embaixo dela. */
