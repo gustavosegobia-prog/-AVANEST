@@ -1770,3 +1770,83 @@ button:disabled{cursor:not-allowed}
   .evalMain{width:min(var(--largura-avaliacao),calc(100% - 48px))}
   .evalFormGrid{grid-template-columns:repeat(9,1fr)}
 }
+
+/* ===========================================================================
+   Financeiro: coluna de tarefas + gráficos
+   ===========================================================================
+   A tela empilhava dez painéis e obrigava a rolar para achar o que fazer. Agora
+   as tarefas ficam numa coluna à esquerda e só a escolhida abre à direita.
+
+   As quatro cores de série foram conferidas contra protanopia, deuteranopia e
+   tritanopia, e contra o fundo, nos dois temas — nenhuma dupla vizinha fica
+   indistinguível. Vermelho de propósito não entra: ele é estado (glosa, em
+   aberto), não categoria, e reaproveitá-lo como "série 4" faria uma barra
+   qualquer parecer um problema. */
+:root{--graf-1:#1668b3;--graf-2:#0d7a5b;--graf-3:#7a4bbd;--graf-4:#8f6100}
+.clinicalDark{--graf-1:#3d8fd4;--graf-2:#1a9c74;--graf-3:#9a72d8;--graf-4:#b8811f}
+
+.financeLayout{display:grid;grid-template-columns:246px minmax(0,1fr);gap:22px;align-items:start;margin-top:22px}
+.financeTarefas{position:sticky;top:18px;display:flex;flex-direction:column;gap:2px;
+  background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:17px;padding:12px}
+.financeTarefaGrupo{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--cor-tinta-fraca);padding:14px 12px 6px}
+.financeTarefaGrupo:first-child{padding-top:6px}
+.financeTarefas button{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;text-align:left;border:0;background:none;font:inherit;font-weight:650;color:var(--cor-tinta);
+  padding:11px 12px;border-radius:10px;cursor:pointer;transition:background var(--transicao)}
+.financeTarefas button:hover{background:var(--cor-superficie-suave)}
+.financeTarefas button.active{background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-weight:800}
+.financeTarefas button:focus-visible{outline:0;box-shadow:var(--foco)}
+/* O contador diz "isto aqui está esperando você". Só aparece quando há algo. */
+.financeTarefaContador{background:var(--cor-atencao-suave);color:var(--cor-atencao);
+  border-radius:999px;padding:2px 9px;font-size:12px;font-weight:850}
+.financeTarefas button.active .financeTarefaContador{background:var(--cor-marca);color:#fff}
+/* Dentro da coluna, o primeiro painel não precisa da margem que o separava do
+   painel de cima — não há painel de cima. */
+.financeConteudo>*>.clinicalPanel:first-child,.financeConteudo>.clinicalPanel:first-child{margin-top:0}
+
+/* --- Gráficos ----------------------------------------------------------- */
+.grafGrade{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px}
+.grafCartao{background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:17px;padding:20px 22px 22px}
+.grafCartao header{margin-bottom:16px}
+.grafCartao h3{margin:0;font-size:16px}
+.grafCartao header p{margin:4px 0 0;color:var(--cor-tinta-fraca);font-size:13px}
+.grafDestaque{grid-column:1/-1}
+.grafNumeroHeroi strong{display:block;font-size:46px;line-height:1;font-weight:850;color:var(--cor-marca)}
+.grafNumeroHeroi span{display:block;margin-top:8px;color:var(--cor-tinta-fraca);font-size:14px}
+
+.grafLegenda{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:14px;font-size:13px;color:var(--cor-tinta-fraca)}
+.grafLegenda span{display:flex;align-items:center;gap:7px}
+.grafLegenda i{width:11px;height:11px;border-radius:3px;flex:none}
+.grafLegenda b{color:var(--cor-tinta)}
+
+.grafBarras{display:flex;flex-direction:column;gap:14px}
+.grafLinha{display:grid;grid-template-columns:minmax(70px,116px) minmax(0,1fr);gap:12px;align-items:center}
+.grafRotulo{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grafTrilhas{display:flex;flex-direction:column;gap:2px;min-width:0}
+.grafTrilha{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:9px;min-width:0}
+.grafPista{min-width:0}
+/* A barra encosta na linha de base e arredonda só a ponta que cresce: ponta
+   arredondada dos dois lados faz uma barra curta parecer maior do que é. */
+.grafBarra{height:13px;border-radius:0 4px 4px 0;flex:none;min-width:3px;transition:width var(--transicao)}
+.grafTrilha b{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--cor-tinta-fraca);white-space:nowrap}
+
+.grafColunas{display:flex;align-items:flex-end;gap:10px;height:190px}
+.grafMes{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;min-width:0}
+.grafPar{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%;min-height:0}
+.grafColuna{width:44%;max-width:26px;border-radius:4px 4px 0 0;transition:height var(--transicao)}
+.grafMes>span{font-size:12px;color:var(--cor-tinta-fraca);font-weight:700}
+
+.grafPilha{display:flex;gap:2px;height:15px;margin-bottom:14px}
+.grafPilha>div:first-child{border-radius:4px 0 0 4px}
+.grafPilha>div:last-child{border-radius:0 4px 4px 0}
+.grafPilha>div:only-child{border-radius:4px}
+
+@media(max-width:1100px){
+  /* Abaixo disto a coluna fixa espreme o conteúdo: as tarefas viram uma
+     faixa rolável no topo, e o painel usa a largura toda. */
+  .financeLayout{grid-template-columns:1fr}
+  .financeTarefas{position:static;flex-direction:row;overflow-x:auto;gap:6px}
+  .financeTarefaGrupo{display:none}
+  .financeTarefas button{width:auto;white-space:nowrap}
+}
