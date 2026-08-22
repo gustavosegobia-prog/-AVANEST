@@ -1303,6 +1303,8 @@ const ACAO_LABELS:Record<string,string>={
 
 function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void}) {
   const [message,setMessage]=useState("");
+  // Qual seção da Administração está aberta, igual ao Financeiro.
+  const [aba,setAba]=useState("usuarios");
   const [busy,setBusy]=useState("");
   const [org,setOrg]=useState({nome:organizacao?.nome??"",telefone:organizacao?.telefone??"",email:organizacao?.email??""});
   const orgAlterada=org.nome!==(organizacao?.nome??"")||org.telefone!==(organizacao?.telefone??"")||org.email!==(organizacao?.email??"");
@@ -1352,24 +1354,39 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
   return <div className="clinicalMain adminMain">
     <section><h1>Administração</h1><p>Gerencie usuários, permissões profissionais e acompanhe ações importantes do sistema.</p></section>
     {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"}>{message}</p>}
-    <section className="clinicalPanel">
-      <div className="panelTitle"><strong>Dados da organização</strong><span>O nome abaixo é o que sai impresso na ficha de anestesia e no termo de consentimento.</span></div>
-      <div className="orgCampos">
-        <label className="clinicalField"><span>Nome da organização</span><input value={org.nome} onChange={e=>setOrg(v=>({...v,nome:e.target.value}))}/></label>
-        <label className="clinicalField"><span>Telefone</span><input value={org.telefone} onChange={e=>setOrg(v=>({...v,telefone:e.target.value}))} placeholder="(00) 00000-0000"/></label>
-        <label className="clinicalField"><span>E-mail de contato</span><input value={org.email} onChange={e=>setOrg(v=>({...v,email:e.target.value}))} placeholder="contato@exemplo.com.br"/></label>
-      </div>
-      <div className="orgAcoes">
-        <small>{organizacao?.tipo==="individual"?"Cadastro individual":"Grupo"} · plano e cobrança ficam na página de assinatura.</small>
-        <div>
-          <a className="outlineClinical" href="/assinatura"><Icone nome="assinatura" tamanho={15}/> Plano e cobrança</a>
-          <button className="primaryClinical compact" disabled={busy==="org"||!orgAlterada} onClick={saveOrganizacao}>{busy==="org"?"Salvando...":"Salvar dados"}</button>
-        </div>
-      </div>
-    </section>
-    <PainelAssinatura onRefresh={onRefresh}/>
-    <InvitePanel perfil={perfil} organizacao={organizacao} onRefresh={onRefresh}/>
     <section className="metricGrid adminMetrics"><Metric value={perfis.filter(item=>item.status==="ativo").length} label="Usuários ativos" tone="green"/><Metric value={perfis.filter(item=>item.role==="medico").length} label="Médicos" tone="blue"/><Metric value={perfis.filter(item=>item.status==="inativo").length} label="Acessos inativos" tone="red"/><Metric value={auditoria.length} label="Eventos recentes" tone="amber"/></section>
+
+    <div className="financeLayout">
+      {/* Mesma coluna de tarefas do Financeiro. O contador é só o de acessos
+          inativos, que é a única coisa aqui que de fato pede uma decisão —
+          inventar contador nas outras faria os números pararem de significar
+          alguma coisa. */}
+      <nav className="financeTarefas" aria-label="Seções da Administração">
+        {([
+          ["grupo","Do dia a dia"],
+          ["usuarios","Usuários e permissões",perfis.filter(i=>i.status==="inativo").length],
+          ["convites","Convites"],
+          ["grupo","Organização"],
+          ["dados","Dados da organização"],
+          ["assinatura","Assinatura"],
+          ["grupo","Registro"],
+          ["auditoria","Auditoria"],
+        ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
+          id==="grupo"
+            ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
+            : <button
+                type="button" key={id}
+                className={aba===id?"active":""}
+                aria-current={aba===id?"true":undefined}
+                onClick={()=>setAba(id)}
+              >
+                <span>{rotulo}</span>
+                {contador?<b className="financeTarefaContador">{contador}</b>:null}
+              </button>)}
+      </nav>
+
+      <div className="financeConteudo">
+      {aba==="usuarios"&&<>
     <section className="clinicalPanel adminUsers">
       <div className="panelTitle"><strong>Usuários e permissões</strong><span>Alterações ficam registradas na auditoria.</span></div>
       <div className="adminFiltros">
@@ -1468,6 +1485,31 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
         });
       })()}
     </section>
+      </>}
+      {aba==="convites"&&<>
+    <InvitePanel perfil={perfil} organizacao={organizacao} onRefresh={onRefresh}/>
+      </>}
+      {aba==="dados"&&<>
+    <section className="clinicalPanel">
+      <div className="panelTitle"><strong>Dados da organização</strong><span>O nome abaixo é o que sai impresso na ficha de anestesia e no termo de consentimento.</span></div>
+      <div className="orgCampos">
+        <label className="clinicalField"><span>Nome da organização</span><input value={org.nome} onChange={e=>setOrg(v=>({...v,nome:e.target.value}))}/></label>
+        <label className="clinicalField"><span>Telefone</span><input value={org.telefone} onChange={e=>setOrg(v=>({...v,telefone:e.target.value}))} placeholder="(00) 00000-0000"/></label>
+        <label className="clinicalField"><span>E-mail de contato</span><input value={org.email} onChange={e=>setOrg(v=>({...v,email:e.target.value}))} placeholder="contato@exemplo.com.br"/></label>
+      </div>
+      <div className="orgAcoes">
+        <small>{organizacao?.tipo==="individual"?"Cadastro individual":"Grupo"} · plano e cobrança ficam na página de assinatura.</small>
+        <div>
+          <a className="outlineClinical" href="/assinatura"><Icone nome="assinatura" tamanho={15}/> Plano e cobrança</a>
+          <button className="primaryClinical compact" disabled={busy==="org"||!orgAlterada} onClick={saveOrganizacao}>{busy==="org"?"Salvando...":"Salvar dados"}</button>
+        </div>
+      </div>
+    </section>
+      </>}
+      {aba==="assinatura"&&<>
+    <PainelAssinatura onRefresh={onRefresh}/>
+      </>}
+      {aba==="auditoria"&&<>
     {/* Auditoria também fica recolhida: é registro para consulta, não painel
         de rotina, e expõe quem fez o quê a cada acesso à tela. */}
     <PainelRecolhivel
@@ -1486,6 +1528,9 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
         return <div className="auditRow" key={item.id}><time>{new Date(item.created_at).toLocaleString("pt-BR")}</time><span><strong>{ACAO_LABELS[item.acao]??item.acao.replaceAll("_"," ")}</strong><small>{sobre} · por {quem}</small></span></div>;
       }):<div className="emptyClinical compactEmpty">Nenhum evento de auditoria registrado ainda.</div>}
     </PainelRecolhivel>
+      </>}
+      </div>
+    </div>
   </div>;
 }
 
