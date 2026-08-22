@@ -17,6 +17,14 @@ export type NovaAssinatura = {
   plano: string;
   emailPagador: string;
   valorMensal: number;
+  /**
+   * Meses sem cobrança antes da primeira fatura, vindos da campanha.
+   *
+   * Não é desconto: o valor mensal continua o mesmo, o que muda é quando a
+   * primeira cobrança vence. Por isso mora aqui e não num campo de preço —
+   * quem decide o valor é o banco, e quem decide a data é a campanha.
+   */
+  mesesGratis?: number;
   /** Para onde o cliente volta quando termina de pagar. */
   retornoSucesso: string;
   /** Para onde ele volta se desistir no meio. */

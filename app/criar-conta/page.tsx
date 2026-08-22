@@ -27,12 +27,14 @@ export default async function CriarContaPage({
   // não tinha como seguir. O plano viaja junto até o checkout.
   if (!token && plano) {
     const { data: planoData } = await supabase
-      .from("planos").select("nome,preco_mensal")
+      .from("planos").select("nome,preco_mensal,preco_por_profissional")
       .eq("codigo", plano).eq("ativo", true).maybeSingle();
     const { data: vagasData } = await supabase.rpc("vagas_fundador");
     const vagas = Array.isArray(vagasData) ? vagasData[0] : vagasData;
-    const naCampanha = vagas?.ativa === true && Number(vagas?.restantes ?? 0) > 0
-      && vagas?.plano_codigo === plano;
+    // A campanha vale para qualquer plano agora: são meses grátis, não um
+    // preço especial de um plano só. A data de término já entra no `ativa`.
+    const mesesGratis = Number(vagas?.meses_gratis ?? 0);
+    const naCampanha = vagas?.ativa === true && mesesGratis > 0;
     const reais = (valor: number) =>
       Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -47,9 +49,11 @@ export default async function CriarContaPage({
             <h1>Criar sua conta</h1>
             {planoData ? (
               <p>
-                Plano <b>{planoData.nome}</b> por{" "}
-                <b>{reais(naCampanha ? Number(vagas.preco) : Number(planoData.preco_mensal))}/mês</b>
-                {naCampanha && <> — preço de fundador, garantido enquanto a assinatura seguir ativa</>}.
+                Plano <b>{planoData.nome}</b>{" "}
+                {planoData.preco_por_profissional != null
+                  ? <>por <b>{reais(Number(planoData.preco_por_profissional))} por anestesiologista/mês</b></>
+                  : <>por <b>{reais(Number(planoData.preco_mensal))}/mês</b></>}
+                {naCampanha && <> — com <b>{mesesGratis} {mesesGratis === 1 ? "mês" : "meses"} grátis</b> pela campanha de lançamento</>}.
                 {" "}Depois de criar a conta você escolhe individual ou grupo e conclui o pagamento.
               </p>
             ) : (

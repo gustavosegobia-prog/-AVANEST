@@ -26,7 +26,7 @@ type Plano = {
 };
 
 type Vagas = {
-  ativa: boolean; limite: number; restantes: number;
+  ativa: boolean; limite: number; restantes: number; meses_gratis: number; termina_em: string | null;
   preco: number; rotulo: string; plano_codigo: string;
 };
 
@@ -73,7 +73,9 @@ export default async function AssinaturaPage({
 
   // Enquanto a campanha valer e a organização couber nela, o preço mostrado é
   // o de lançamento. Quem já é fundador mantém o preço congelado que contratou.
-  const campanhaVale = Boolean(vagas?.ativa) && Number(vagas?.restantes ?? 0) > 0;
+  // Campanha de tempo: vale enquanto estiver ativa e der algum mês grátis. A
+  // data de término já entra no `ativa` que a função devolve.
+  const campanhaVale = Boolean(vagas?.ativa) && Number(vagas?.meses_gratis ?? 0) > 0;
   const alvoNaCampanha = Boolean(alvo) && alvo!.codigo === vagas?.plano_codigo;
   const precoFundador = jaEFundador && alvoNaCampanha;
   const precoDaCampanha = alvoNaCampanha && (campanhaVale || jaEFundador);

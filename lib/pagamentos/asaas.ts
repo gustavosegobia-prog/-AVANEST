@@ -58,17 +58,36 @@ async function chamar<T>(caminho: string, init?: RequestInit): Promise<T> {
 
 type RespostaCheckout = { id: string; link: string };
 
-/** Data de amanhã em YYYY-MM-DD, no fuso de Brasília. */
-export function primeiroVencimento(hoje = new Date()): string {
-  // Hoje não serve: se o cliente terminar o checkout depois do corte do dia, a
-  // cobrança já nasceria vencida. Amanhã é o primeiro dia seguro.
-  const amanha = new Date(hoje.getTime() + 24 * 60 * 60 * 1000);
+/**
+ * Data do primeiro vencimento em YYYY-MM-DD, no fuso de Brasília.
+ *
+ * Sem campanha é amanhã. Hoje não serve: se o cliente terminar o checkout
+ * depois do corte do dia, a cobrança já nasceria vencida.
+ *
+ * Com campanha, é o dia seguinte ao fim dos meses grátis. É assim que "2 meses
+ * grátis" acontece de verdade — a assinatura existe desde já, o acesso está
+ * liberado, e a primeira fatura só vence lá na frente. Dar desconto no valor
+ * seria outra coisa, e não é o que foi prometido.
+ */
+export function primeiroVencimento(hoje = new Date(), mesesGratis = 0): string {
+  const base = new Date(hoje.getTime() + 24 * 60 * 60 * 1000);
+  const meses = Number.isFinite(mesesGratis) ? Math.max(0, Math.trunc(mesesGratis)) : 0;
+  if (meses > 0) {
+    // setUTCMonth com dia 31 em mês de 30 transborda para o mês seguinte
+    // (31/08 + 1 mês viraria 01/10). Fixar o dia 1 antes de somar e só então
+    // devolver o dia mantém a conta previsível.
+    const dia = base.getUTCDate();
+    base.setUTCDate(1);
+    base.setUTCMonth(base.getUTCMonth() + meses);
+    const ultimoDia = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0)).getUTCDate();
+    base.setUTCDate(Math.min(dia, ultimoDia));
+  }
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(amanha);
+  }).format(base);
 }
 
 export async function criarAssinatura(dados: NovaAssinatura): Promise<AssinaturaCriada> {
@@ -85,7 +104,7 @@ export async function criarAssinatura(dados: NovaAssinatura): Promise<Assinatura
       externalReference: dados.institutionId,
       subscription: {
         cycle: "MONTHLY",
-        nextDueDate: primeiroVencimento(),
+        nextDueDate: primeiroVencimento(new Date(), dados.mesesGratis ?? 0),
       },
       items: [{
         name: `AVANEST ${dados.plano}`,

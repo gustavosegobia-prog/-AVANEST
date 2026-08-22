@@ -44,9 +44,8 @@ const querPlano = (nome: string) =>
  * número é digitado uma segunda vez.
  */
 const perguntas = (a: {
-  limite: number | null;
-  preco: number | null;
-  precoPadrao: number | null;
+  mesesGratis: number | null;
+  terminaEm: string | null;
   suporte: string;
 }) => [
   {
@@ -57,13 +56,14 @@ const perguntas = (a: {
     p: "Se eu cancelar, recebo o dinheiro de volta?",
     r: "Cancelando nos primeiros 14 dias depois da cobrança, o valor daquele mês é devolvido pela mesma forma de pagamento. Depois disso o mês em curso não é reembolsado, mas o acesso continua até o fim dele e não há nova cobrança. A tela mostra em que dia do mês você está antes de confirmar o cancelamento.",
   },
-  a.limite && a.preco
+  a.mesesGratis
     ? {
-        p: `Como funciona a promoção de ${reais(a.preco)}/mês?`,
+        p: `Como funciona a campanha de ${a.mesesGratis} ${a.mesesGratis === 1 ? "mês" : "meses"} grátis?`,
         r:
-          `O preço de lançamento vale para os ${a.limite} primeiros assinantes do plano Solo e fica garantido ` +
-          `enquanto a assinatura seguir ativa — não sobe na renovação.` +
-          (a.precoPadrao ? ` Esgotadas as vagas, o Solo passa a ${reais(a.precoPadrao)}/mês para quem assinar depois.` : ""),
+          `Quem contrata durante a campanha não paga os ${a.mesesGratis} primeiros ${a.mesesGratis === 1 ? "mês" : "meses"}: ` +
+          `a assinatura fica ativa desde o primeiro dia e a primeira cobrança só vence depois desse período. ` +
+          `Não é desconto no valor — o preço mensal segue o do seu plano, e não sobe na renovação por causa da campanha.` +
+          (a.terminaEm ? ` A campanha vale para quem assinar até ${a.terminaEm}.` : ""),
       }
     : null,
   {
@@ -97,6 +97,7 @@ type Plano = {
   nome: string;
   descricao: string;
   preco_mensal: number | null;
+  preco_por_profissional: number | null;
   min_profissionais: number;
   max_profissionais: number | null;
   destaque: boolean;
@@ -108,6 +109,8 @@ type Vagas = {
   limite: number;
   ocupadas: number;
   restantes: number;
+  meses_gratis: number;
+  termina_em: string | null;
   preco: number;
   preco_padrao: number | null;
   rotulo: string;
@@ -131,7 +134,7 @@ export default async function PlanosPage() {
   const supabase = await createClient();
 
   const [{ data: planosData }, { data: vagasData }, { data: { user } }] = await Promise.all([
-    supabase.from("planos").select("*").eq("ativo", true).order("ordem"),
+    supabase.from("planos").select("*,preco_por_profissional").eq("ativo", true).order("ordem"),
     supabase.rpc("vagas_fundador"),
     supabase.auth.getUser(),
   ]);
@@ -154,7 +157,9 @@ export default async function PlanosPage() {
 
   // A campanha só vale enquanto está ligada E sobra vaga. Depois disso a
   // página inteira passa a falar no preço de tabela, sem nenhuma edição.
-  const campanhaVale = Boolean(vagas?.ativa) && Number(vagas?.restantes ?? 0) > 0;
+  // A data de término já entra no `ativa` que a função devolve, então aqui
+  // basta perguntar se a campanha está valendo e se ela dá algum mês.
+  const campanhaVale = Boolean(vagas?.ativa) && Number(vagas?.meses_gratis ?? 0) > 0;
   const planoDaCampanha = vagas?.plano_codigo ?? "";
 
   return (
@@ -172,11 +177,12 @@ export default async function PlanosPage() {
           <p className="planosCampanha">
             <Icone nome="estrela" tamanho={18} />
             <span>
-              <b>Promoção para os {vagas!.limite} primeiros.</b> Garantem{" "}
-              {reais(Number(vagas!.preco))}/mês para sempre.
-              {vagas!.preco_padrao != null && (
-                <> Depois: {reais(Number(vagas!.preco_padrao))}/mês.</>
-              )}
+              <b>{vagas!.meses_gratis} {vagas!.meses_gratis === 1 ? "mês grátis" : "meses grátis"}</b>{" "}
+              para quem assinar
+              {vagas!.termina_em
+                ? <> até {new Date(`${vagas!.termina_em}T12:00:00`).toLocaleDateString("pt-BR")}</>
+                : " durante a campanha"}.
+              {" "}A primeira cobrança só vence depois desse período.
             </span>
           </p>
         )}
@@ -194,8 +200,11 @@ export default async function PlanosPage() {
 
       <section className="planosGrade" id="planos">
         {planos.map((plano) => {
-          const daCampanha = campanhaVale && plano.codigo === planoDaCampanha;
-          const preco = daCampanha ? Number(vagas!.preco) : plano.preco_mensal;
+          // A campanha agora vale para qualquer plano: são meses grátis, não um
+          // preço especial de um plano só.
+          const daCampanha = campanhaVale;
+          const porProfissional = plano.preco_por_profissional;
+          const preco = plano.preco_mensal;
 
           return (
             <article
@@ -220,19 +229,24 @@ export default async function PlanosPage() {
                 </p>
               ) : (
                 <p className="planoPreco">
-                  {daCampanha && plano.preco_mensal != null && (
-                    <s aria-label={`De ${reais(Number(plano.preco_mensal))} por mês`}>
-                      {reais(Number(plano.preco_mensal))}
-                    </s>
-                  )}
-                  <strong>{reais(Number(preco))}</strong>
-                  <span>/mês</span>
+                  {/* Quando o plano é por profissional, o número grande é o
+                      valor por cabeça — é ele que o cliente usa para fazer a
+                      conta da equipe dele. O piso aparece embaixo, como "a
+                      partir de", porque é o mínimo que a fatura terá. */}
+                  <strong>{reais(Number(porProfissional ?? preco))}</strong>
+                  <span>{porProfissional != null ? "/profissional/mês" : "/mês"}</span>
+                </p>
+              )}
+
+              {porProfissional != null && preco != null && (
+                <p className="planoEquipe" style={{ marginTop: 0 }}>
+                  A partir de {reais(Number(preco))}/mês
                 </p>
               )}
 
               {daCampanha && (
                 <p className="planoFundadorNota">
-                  Preço garantido para sempre enquanto a assinatura seguir ativa.
+                  {vagas!.meses_gratis} {vagas!.meses_gratis === 1 ? "mês" : "meses"} sem cobrança para quem assinar durante a campanha.
                 </p>
               )}
 
@@ -273,9 +287,10 @@ export default async function PlanosPage() {
             o buscador enxerga a resposta mesmo fechada. */}
         <div className="planosFaqLista">
           {perguntas({
-            limite: vagas?.limite ?? null,
-            preco: campanhaVale ? Number(vagas!.preco) : null,
-            precoPadrao: vagas?.preco_padrao != null ? Number(vagas.preco_padrao) : null,
+            mesesGratis: campanhaVale ? Number(vagas!.meses_gratis) : null,
+            terminaEm: vagas?.termina_em
+              ? new Date(`${vagas.termina_em}T12:00:00`).toLocaleDateString("pt-BR")
+              : null,
             suporte: WHATSAPP,
           })
             .filter((item) => item !== null)

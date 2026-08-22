@@ -104,6 +104,10 @@ export async function POST(request: NextRequest) {
   }
   const reserva = Array.isArray(reservaData) ? reservaData[0] : reservaData;
   const valorMensal = Number(reserva?.preco ?? 0);
+  // Os meses grátis saem da campanha, no banco, junto com o preço. Vêm daqui e
+  // não de uma constante no código para que ligar, desligar ou encurtar a
+  // campanha seja um update de uma linha, sem deploy.
+  const mesesGratis = Number(reserva?.meses_gratis ?? 0);
   if (!(valorMensal > 0)) {
     return NextResponse.json({ error: "Não foi possível calcular o valor do plano." }, { status: 500 });
   }
@@ -133,6 +137,7 @@ export async function POST(request: NextRequest) {
       plano: String(reserva?.plano_nome ?? codigo),
       emailPagador: user.email ?? "",
       valorMensal,
+      mesesGratis,
       retornoSucesso: `${site}/assinatura/retorno`,
       retornoCancelado: `${site}/dashboard`,
     });

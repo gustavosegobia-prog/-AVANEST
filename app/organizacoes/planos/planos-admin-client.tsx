@@ -29,6 +29,7 @@ type Campanha = {
 
 type Vagas = {
   ativa: boolean; limite: number; ocupadas: number; restantes: number;
+  meses_gratis: number; termina_em: string | null;
   preco: number; preco_padrao: number | null; rotulo: string; plano_codigo: string;
 } | null;
 
@@ -99,7 +100,13 @@ export function PlanosAdminClient({
   const ocupadas = Number(vagas?.ocupadas ?? 0);
   const limiteAtual = Number(vagas?.limite ?? 0);
   const restantes = Number(vagas?.restantes ?? 0);
-  const promocaoValendo = Boolean(vagas?.ativa) && restantes > 0;
+  const mesesGratis = Number(vagas?.meses_gratis ?? 0);
+  // A campanha passou a fechar por data, não por vaga. O `ativa` que a função
+  // devolve já leva o prazo em conta.
+  const promocaoValendo = Boolean(vagas?.ativa) && mesesGratis > 0;
+  const terminaEm = vagas?.termina_em
+    ? new Date(`${vagas.termina_em}T12:00:00`).toLocaleDateString("pt-BR")
+    : null;
   const planoDaCampanha = planos.find((p) => p.codigo === campanha?.plano_codigo);
 
   return <main className="clinicalShell">
@@ -130,10 +137,14 @@ export function PlanosAdminClient({
 
       <section className="metricGrid adminMetrics">
         <div className="metricCard">
-          <strong className={promocaoValendo ? "green" : ""}>{restantes}</strong>
-          <span>Vagas restantes de {limiteAtual}</span>
+          <strong className={promocaoValendo ? "green" : ""}>{mesesGratis}</strong>
+          <span>{mesesGratis === 1 ? "Mês grátis concedido" : "Meses grátis concedidos"}</span>
         </div>
-        <div className="metricCard"><strong className="blue">{ocupadas}</strong><span>Fundadores já garantidos</span></div>
+        <div className="metricCard">
+          <strong className={promocaoValendo ? "green" : "amber"}>{terminaEm ?? "sem prazo"}</strong>
+          <span>Campanha vale até</span>
+        </div>
+        <div className="metricCard"><strong className="blue">{ocupadas}</strong><span>Organizações que já entraram</span></div>
         <div className="metricCard">
           <strong className={vagas?.ativa ? "green" : "amber"}>{vagas?.ativa ? "Ligada" : "Encerrada"}</strong>
           <span>Situação da campanha</span>
