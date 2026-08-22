@@ -67,12 +67,12 @@ const perguntas = (a: {
       }
     : null,
   {
-    p: "Qual a diferença entre os planos Equipe 5 e Clínica?",
-    r: "O Equipe 5 atende times de até 5 anestesiologistas que usam o sistema para as avaliações pré-anestésicas. O Clínica não tem limite de anestesiologistas e inclui os módulos de recepção, financeiro e administração — é para quem quer a operação inteira da clínica num sistema só.",
+    p: "Como escolho o plano certo?",
+    r: "Pelo tamanho da equipe. Cada plano atende a uma faixa de anestesiologistas, indicada no próprio cartão aqui em cima, e o preço é fechado: não varia com a quantidade de avaliações nem com o número de pacientes. Só contam anestesiologistas ativos com CRM — recepção, financeiro e administração não ocupam vaga.",
   },
   {
-    p: "Minha equipe tem mais de 5 anestesiologistas, mas não preciso de recepção e financeiro. Existe plano intermediário?",
-    r: "Os planos fechados são Solo, Equipe 5 e Clínica. Fora desses formatos existe o Hospital, sob medida: fale com a gente e montamos uma proposta para o seu caso.",
+    p: "E se a minha equipe crescer depois de eu assinar?",
+    r: "Você troca de plano quando passar da faixa contratada, e a troca é feita pelo painel da conta, sem precisar falar com atendimento. Acima da maior faixa da tabela, o plano é montado sob medida: fale com a gente e preparamos uma proposta.",
   },
   {
     p: "Como o AVANEST protege os dados dos pacientes?",
@@ -311,7 +311,7 @@ export default async function PlanosPage() {
       </section>
 
       <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos LTDA — CNPJ 55.965.276/0001-04</span>
+        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
         <nav className="avnFooterLinks">
           <Link href="/termos">Termos de Uso</Link>
           <Link href="/privacidade">Política de Privacidade</Link>

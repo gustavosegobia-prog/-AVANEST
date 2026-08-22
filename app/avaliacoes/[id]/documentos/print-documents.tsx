@@ -181,12 +181,12 @@ const CONSENT_ITEMS=[
 // e é exatamente essa a diferença que o paciente precisa entender.
 const CONSENT_RISKS=[
   "Poderá ocorrer dor de garganta, rouquidão, lesão ou perda de dentes, pequeno sangramento pelo nariz ou pela boca e dormência em partes da língua, relacionados à colocação do tubo respiratório.",
-  "Poderá ocorrer dor de cabeça, dor lombar, dores musculares, tontura, vertigem, dificuldade para respirar e desmaio, durante a recuperação da anestesia e nos dias seguintes.",
+  "Poderá ocorrer dor de cabeça, dor lombar, dores musculares, tontura, vertigem, dificuldade para respirar e desmaio durante a recuperação da anestesia e nos dias seguintes.",
   "Poderá ocorrer sede e fome, pelo tempo de jejum e pelos medicamentos usados.",
   "Poderá ocorrer dor no local das punções de veia ou artéria, além de inflamação da veia (flebite), pelos materiais e medicamentos utilizados.",
   "Poderá ocorrer ardência nos olhos, lesão da córnea, deslocamento de lentes de contato e queda de pelos.",
   "Poderá ocorrer frio, tremores e áreas com falta de sensibilidade, por posicionamento durante a cirurgia ou após bloqueios. Em geral são passageiras, podem durar um tempo indeterminado e, muito raramente, ser permanentes.",
-  "Poderá ocorrer alteração do humor e da memória, mais comumente na forma de ansiedade e confusão passageira, e, embora raro, quadros psicológicos mais complexos.",
+  "Poderá ocorrer alteração do humor e da memória, mais comumente na forma de ansiedade e confusão passageira, e, embora raros, quadros psicológicos mais complexos.",
 ];
 
 export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
@@ -520,8 +520,8 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           {hasText(printablePlan)&&<p className="paperObservations">{text(printablePlan)}</p>}<PaperSignature dados={dados} perfil={perfil}/></article>
 
         <article className={`printPaper consentPaper officialConsent ${selected.consent?"":"notSelected"}`}><header><span>{(clinica||"SERVIÇO DE ANESTESIOLOGIA").toUpperCase()}</span></header><h2>TERMO DE CONSENTIMENTO ANESTÉSICO</h2><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
-          <p><b>1.</b> Por determinação explícita de minha vontade e em consideração ao meu interesse pessoal eu: <b>{paciente.nome}</b></p>
-          <p>Por este termo autorizo {clinica?<b>{clinica}</b>:"o serviço de anestesiologia responsável pelo meu atendimento"} e os médicos anestesiologistas de sua equipe a realizar os procedimentos anestésicos necessários para a realização da cirurgia à qual, no momento, me proponho a realizar{hasText(paciente.hospital)?<>, no <b>{text(paciente.hospital)}</b></>:null}.</p>
+          <p><b>1.</b> Por determinação explícita de minha vontade e em consideração ao meu interesse pessoal, eu: <b>{paciente.nome}</b></p>
+          <p>Por este termo autorizo {clinica?<b>{clinica}</b>:"o serviço de anestesiologia responsável pelo meu atendimento"} e os médicos anestesiologistas de sua equipe a realizar os procedimentos anestésicos necessários à realização da cirurgia a que, no momento, me proponho{hasText(paciente.hospital)?<>, no <b>{text(paciente.hospital)}</b></>:null}.</p>
           <ol start={2}>{CONSENT_ITEMS.slice(0,2).map(item=><li key={item}>{item}</li>)}</ol>
           <p><b>4. Os seguintes pontos me foram esclarecidos:</b></p><ul>{CONSENT_RISKS.map(item=><li key={item}>{item}</li>)}</ul>
           <ol start={5}>{CONSENT_ITEMS.slice(2).map(item=><li key={item}>{item}</li>)}</ol>
@@ -533,7 +533,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               como consentimento assinado. Envolvidos num mesmo elemento com
               break-inside:avoid, ou os dois cabem, ou os dois viram juntos. */}
           <div className="consentClosing">
-            <h4>AUTORIZAÇÃO</h4><p>Entendo que os meios utilizados visando assegurar a compreensão adequada das informações foram observados e, embora sendo sabedor(a) de que os procedimentos aos quais me submeterei, além de serem de risco, poderão ocasionar as alterações descritas acima e limitação das minhas atividades cotidianas por um período indeterminado de tempo, aceito e autorizo que os profissionais acima designados realizem os procedimentos constantes neste termo de autorização.</p>
+            <h4>AUTORIZAÇÃO</h4><p>Entendo que os meios utilizados para assegurar a compreensão adequada das informações foram observados e, embora saiba que os procedimentos aos quais me submeterei, além de serem de risco, poderão ocasionar as alterações descritas acima e limitação das minhas atividades cotidianas por período indeterminado, aceito e autorizo que os profissionais acima designados realizem os procedimentos constantes neste termo de autorização.</p>
             <div className="consentSignatures"><span>PACIENTE: ___________________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span><span>TESTEMUNHA: _______________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span></div>
           </div>
         </article>

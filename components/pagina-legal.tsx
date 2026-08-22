@@ -40,7 +40,7 @@ export function PaginaLegal({
       </article>
 
       <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos LTDA — CNPJ 55.965.276/0001-04</span>
+        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
       </footer>
     </main>
   );

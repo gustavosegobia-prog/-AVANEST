@@ -15,7 +15,7 @@ export default function TermosPage() {
     >
       <h2>1. Quem somos</h2>
       <p>
-        O AVANEST é operado por <b>G. Segobia Serviços Médicos LTDA</b>, CNPJ 55.965.276/0001-04,
+        O AVANEST é operado por <b>G. Segobia Serviços Médicos Ltda.</b>, CNPJ 55.965.276/0001-04,
         adiante chamada AVANEST. Contato: <a href="mailto:contato@avanest.com.br">contato@avanest.com.br</a>.
       </p>
 

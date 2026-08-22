@@ -165,7 +165,7 @@ export default function PrivacidadePage() {
 
       <h2>11. Encarregado (DPO) e contato</h2>
       <p>
-        Encargo exercido por G. Segobia Serviços Médicos LTDA. Contato para assuntos de proteção de
+        Encargo exercido por G. Segobia Serviços Médicos Ltda. Contato para assuntos de proteção de
         dados: <a href="mailto:contato@avanest.com.br">contato@avanest.com.br</a>.
       </p>
 
