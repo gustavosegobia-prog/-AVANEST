@@ -175,6 +175,11 @@ export function DashboardClient({
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  // O "Pesquisar paciente" da área Médico focava o campo da Recepção, que não
+  // está montado aqui — o botão simplesmente não fazia nada. Passa a focar a
+  // busca do histórico, que é o campo de busca que existe nesta tela.
+  const buscaHistoricoRef = useRef<HTMLInputElement>(null);
+  const [secaoMedico,setSecaoMedico]=useState("hoje");
   const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.cirurgia ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
   const currentByPatient = useMemo(() => {
     const result = new Map<string,Avaliacao>();
@@ -517,6 +522,32 @@ export function DashboardClient({
             <Metric value={completed.filter(a=>a.dados?.orientacoes_enviadas!==true).length} label="Orientações pendentes" tone="amber" />
             <Metric value={asaHigh} label="Pacientes ASA III+" tone="red" />
           </section>
+
+          <div className="financeLayout">
+            <nav className="financeTarefas" aria-label="Seções da área Médico">
+              {([
+                ["grupo","Do dia a dia"],
+                ["hoje","Consultas de hoje",queue.length],
+                ["agenda","Agenda"],
+                ["grupo","Acompanhamento"],
+                ["central","Central Operacional",pendenciasCentral],
+                ["historico","Histórico de avaliações"],
+              ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
+                id==="grupo"
+                  ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
+                  : <button
+                      type="button" key={id}
+                      className={secaoMedico===id?"active":""}
+                      aria-current={secaoMedico===id?"true":undefined}
+                      onClick={()=>setSecaoMedico(id)}
+                    >
+                      <span>{rotulo}</span>
+                      {contador?<b className="financeTarefaContador">{contador}</b>:null}
+                    </button>)}
+            </nav>
+
+            <div className="financeConteudo">
+            {secaoMedico==="hoje"&&<>
           <section className="clinicalPanel">
             <div className="panelTitle"><strong>Fila de atendimento — hoje</strong><span>prioridade → horário agendado → chegada → encaixes</span></div>
             {queue.length ? queue.map((appointment, index) => {
@@ -533,6 +564,18 @@ export function DashboardClient({
               </div>;
             }) : <div className="emptyClinical">Nenhuma consulta agendada para hoje.</div>}
           </section>
+            </>}
+            {secaoMedico==="agenda"&&<>
+          <section className="clinicalPanel agendaPanel">
+            <div className="agendaHead"><strong>Agenda</strong><button className={agendaRange==="hoje"?"active":""} onClick={()=>setAgendaRange("hoje")}>Hoje</button><button className={agendaRange==="amanha"?"active":""} onClick={()=>setAgendaRange("amanha")}>Amanhã</button><button className={agendaRange==="semana"?"active":""} onClick={()=>setAgendaRange("semana")}>Semana</button><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, procedimento..." /></div>
+            {filteredAgenda.slice(0,20).map((appointment) => { const p=patientMap.get(appointment.patient_id); if(!p)return null; const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined; return <button className="agendaRow" key={appointment.id} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>
+              <span className="avatar">{initials(p.nome)}</span><span><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></span>
+              <time>{brDate(appointment.data)}</time><span className={`statusChip ${a?.status === "concluida" ? "present" : appointment.status==="faltou"?"danger":"waiting"}`}>{a?.status === "concluida" ? "CONCLUÍDA" : a?.status==="rascunho" ? "EM ANDAMENTO" : appointment.status.toUpperCase()}</span>
+            </button>;})}
+            {filteredAgenda.length===0&&<div className="emptyClinical compactEmpty">Nenhum agendamento neste período.</div>}
+          </section>
+            </>}
+            {secaoMedico==="central"&&<>
           <PainelRecolhivel
             className="alertsPanel"
             chave="central-operacional"
@@ -549,18 +592,12 @@ export function DashboardClient({
               <Alert icone="envelope" title="Orientações não enviadas" text={`${orientacoesPendentes.length} documento(s) aguardando envio`} action="ENVIAR" onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)} />
             </div>
           </PainelRecolhivel>
-          <section className="clinicalPanel agendaPanel">
-            <div className="agendaHead"><strong>Agenda</strong><button className={agendaRange==="hoje"?"active":""} onClick={()=>setAgendaRange("hoje")}>Hoje</button><button className={agendaRange==="amanha"?"active":""} onClick={()=>setAgendaRange("amanha")}>Amanhã</button><button className={agendaRange==="semana"?"active":""} onClick={()=>setAgendaRange("semana")}>Semana</button><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, procedimento..." /></div>
-            {filteredAgenda.slice(0,20).map((appointment) => { const p=patientMap.get(appointment.patient_id); if(!p)return null; const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined; return <button className="agendaRow" key={appointment.id} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>
-              <span className="avatar">{initials(p.nome)}</span><span><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></span>
-              <time>{brDate(appointment.data)}</time><span className={`statusChip ${a?.status === "concluida" ? "present" : appointment.status==="faltou"?"danger":"waiting"}`}>{a?.status === "concluida" ? "CONCLUÍDA" : a?.status==="rascunho" ? "EM ANDAMENTO" : appointment.status.toUpperCase()}</span>
-            </button>;})}
-            {filteredAgenda.length===0&&<div className="emptyClinical compactEmpty">Nenhum agendamento neste período.</div>}
-          </section>
+            </>}
+            {secaoMedico==="historico"&&<>
           <section className="clinicalPanel historyPanel">
             <div className="panelTitle"><strong>Histórico de avaliações</strong><span>Encontre rascunhos e avaliações concluídas já salvas.</span></div>
             <div className="historyFilters">
-              <input value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
+              <input ref={buscaHistoricoRef} value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
               <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)} aria-label="Filtrar por status"><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>
               <label>De<input type="date" value={historyFrom} onChange={(event)=>setHistoryFrom(event.target.value)} /></label>
               <label>Até<input type="date" value={historyTo} onChange={(event)=>setHistoryTo(event.target.value)} /></label>
@@ -569,7 +606,10 @@ export function DashboardClient({
             {historicalAssessments.length===0&&<div className="emptyClinical compactEmpty">Nenhuma avaliação encontrada com estes filtros.</div>}
             {historicalAssessments.length>50&&<div className="historyLimit">Mostrando as 50 avaliações mais recentes. Refine os filtros para ver uma lista menor.</div>}
           </section>
-          <div className="quickLinks"><button onClick={()=>searchRef.current?.focus()}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
+            </>}
+            </div>
+          </div>
+          <div className="quickLinks"><button onClick={()=>{setSecaoMedico("historico");requestAnimationFrame(()=>buscaHistoricoRef.current?.focus())}}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
         </div>
       ) : view === "recepcao" ? (
         <div className="clinicalMain receptionMain">
