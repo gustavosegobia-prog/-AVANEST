@@ -1995,27 +1995,50 @@ button:disabled{cursor:not-allowed}
 .plantaoAbas{margin:6px 0 18px}
 
 .plantaoCalendario{padding:18px 20px 22px}
-.plantaoSemana,.plantaoGrade{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.plantaoSemana,.plantaoGrade{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .plantaoSemana{margin-bottom:8px}
 .plantaoSemana span{text-align:center;font-size:12px;font-weight:800;color:var(--cor-tinta-fraca)}
 /* Altura fixa, não aspect-ratio: quadrado numa grade de 1340px dá célula de
    180px, e o calendário sozinho ocupa a tela inteira. Retângulo largo é o
    formato normal de calendário mensal, e sobra espaço para a lista embaixo. */
-.plantaoDia{position:relative;height:62px;border:1px solid var(--cor-borda);
-  border-radius:11px;background:var(--cor-superficie);font:inherit;color:inherit;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  transition:border-color var(--transicao),background var(--transicao)}
+.plantaoDia{position:relative;min-height:88px;border:1px solid var(--cor-borda);
+  border-radius:12px;background:var(--cor-superficie);font:inherit;color:inherit;cursor:pointer;
+  display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:7px 7px 6px;text-align:left;
+  transition:border-color var(--transicao),box-shadow var(--transicao)}
 .plantaoDia:hover{border-color:var(--cor-marca)}
 .plantaoDia:focus-visible{outline:0;box-shadow:var(--foco)}
-.plantaoDia b{font-size:15px;font-weight:700}
-.plantaoDia.hoje{border-color:var(--cor-marca);border-width:2px}
-.plantaoDia.meu{background:var(--cor-marca-suave)}
-.plantaoPontos{display:flex;gap:3px;height:7px}
-/* Cheio é turno seu; vazado é de colega. Ver a escala do grupo é o motivo de
-   a escala existir — e a forma distingue sem depender só da cor. */
-.plantaoPontos i{width:7px;height:7px;border-radius:50%}
-.plantaoPontos i.cheio{background:var(--cor-marca)}
-.plantaoPontos i.vazado{border:1.5px solid var(--cor-tinta-fraca)}
+.plantaoDia b{font-size:13.5px;font-weight:750;color:var(--cor-tinta-fraca)}
+/* Fim de semana com fundo levemente diferente: a coluna do sábado é a que
+   mais se procura numa escala, e contar sete colunas para achá-la é o tipo de
+   esforço que a cor resolve de graça. */
+.plantaoDia.fds{background:var(--cor-superficie-suave)}
+.plantaoDia.hoje{border-color:var(--cor-marca);border-width:2px;padding:6px 6px 5px}
+.plantaoDia.hoje b{color:var(--cor-marca);font-weight:850}
+.plantaoDia.aberto{box-shadow:var(--foco);border-color:var(--cor-marca)}
+
+.plantaoEtiquetas{display:flex;flex-direction:column;gap:3px;min-width:0}
+/* A etiqueta diz qual plantão é. Barra colorida à esquerda e nome ao lado:
+   cor sozinha não distingue seis modelos, e nome sozinho não se acha de
+   relance no meio de trinta e um quadrados.
+   
+   As classes são etq-*, e não as cor-* que os chips de modelo usam: aquelas
+   pintam o FUNDO, e aqui isso apagava o texto — a etiqueta virava uma barra
+   sólida sem nome, que é exatamente o problema que ela existe para resolver. */
+.plantaoEtiqueta{font-style:normal;font-size:10.5px;font-weight:700;line-height:1.25;
+  padding:2px 5px 2px 6px;border-radius:4px;border-left:3px solid var(--cor-tinta-fraca);
+  background:var(--cor-superficie-suave);color:var(--cor-tinta);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plantaoDia.fds .plantaoEtiqueta{background:var(--cor-superficie)}
+/* Plantão de colega fica esmaecido: na escala do grupo, o que é seu precisa
+   saltar sem exigir leitura. */
+.plantaoEtiqueta.deOutro{opacity:.6;font-weight:600}
+.plantaoMais{font-style:normal;font-size:10px;font-weight:700;color:var(--cor-tinta-fraca);padding-left:3px}
+.plantaoEtiqueta.etq-azul{border-left-color:var(--graf-1)}
+.plantaoEtiqueta.etq-verde{border-left-color:var(--graf-2)}
+.plantaoEtiqueta.etq-roxo{border-left-color:var(--graf-3)}
+.plantaoEtiqueta.etq-ambar{border-left-color:var(--graf-4)}
+.plantaoEtiqueta.etq-vermelho{border-left-color:var(--cor-perigo)}
+.plantaoEtiqueta.etq-cinza{border-left-color:var(--cor-tinta-fraca)}
 
 .plantaoDetalhe{border-color:var(--cor-marca)}
 .plantaoLinha{display:flex;align-items:center;gap:15px;flex-wrap:wrap;
@@ -2059,7 +2082,8 @@ button:disabled{cursor:not-allowed}
   .plantaoModeloForm{grid-template-columns:repeat(2,1fr)}
   .plantaoModeloForm .clinicalField.wide{grid-column:1/-1}
   .plantaoLinha{gap:10px}
-  .plantaoDia{height:52px}
+  .plantaoDia{min-height:72px;padding:5px}
+  .plantaoEtiqueta{font-size:9.5px}
 }
 
 /* --- Escopo da escala e troca dirigida --------------------------------- */

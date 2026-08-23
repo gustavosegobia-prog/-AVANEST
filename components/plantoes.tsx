@@ -79,6 +79,10 @@ export function Plantoes({
 
   const nomePorId = useMemo(() => new Map(colegas.map((c) => [c.id, c.nome])), [colegas]);
   const localPorId = useMemo(() => new Map(locais.map((l) => [l.id, nomeDoLocal(l)])), [locais]);
+  // O calendário precisa dizer QUAL plantão é, não só que existe um. Cor e
+  // nome vêm do modelo; sem modelo, o rótulo cai no horário, que ainda
+  // distingue diurno de noturno.
+  const modeloPorId = useMemo(() => new Map(modelos.map((mo) => [mo.id, mo])), [modelos]);
 
   const carregar = useCallback(async () => {
     const supabase = createClient();
@@ -196,6 +200,11 @@ export function Plantoes({
           <button className="outlineClinical" onClick={() => mudarMes(-1)} aria-label="Mês anterior">‹</button>
           <strong>{MESES[m - 1]} {ano}</strong>
           <button className="outlineClinical" onClick={() => mudarMes(1)} aria-label="Próximo mês">›</button>
+          {/* Depois de folhear três meses para trás, voltar é um toque. */}
+          {mes !== `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}` && (
+            <button className="outlineClinical" onClick={() =>
+              setMes(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`)}>Hoje</button>
+          )}
         </div>
       </section>
 
@@ -239,18 +248,29 @@ export function Plantoes({
                   const doDia = plantoes.filter((p) => p.data === dia && p.situacao !== "cancelado"
                     && (escopo === "grupo" || p.perfil_id === perfilId));
                   const meusDoDia = doDia.filter((p) => p.perfil_id === perfilId);
+                  const fimDeSemana = new Date(`${dia}T12:00:00`).getDay() % 6 === 0;
                   return (
                     <button
                       type="button" key={dia}
-                      className={`plantaoDia${dia === hojeISO ? " hoje" : ""}${meusDoDia.length ? " meu" : ""}`}
+                      className={`plantaoDia${dia === hojeISO ? " hoje" : ""}${fimDeSemana ? " fds" : ""}${diaAberto === dia ? " aberto" : ""}`}
                       onClick={() => setDiaAberto(diaAberto === dia ? null : dia)}
+                      aria-label={`${i + 1} — ${doDia.length ? `${doDia.length} plantão(ões)` : "sem plantão"}`}
                     >
                       <b>{i + 1}</b>
-                      {/* Ponto cheio é turno seu; vazado é de um colega. Ver a
-                          escala do grupo é o motivo de a escala existir. */}
-                      <span className="plantaoPontos">
-                        {meusDoDia.slice(0, 3).map((p) => <i key={p.id} className="cheio" />)}
-                        {doDia.length > meusDoDia.length && <i className="vazado" />}
+                      {/* Duas etiquetas no máximo. A terceira vira "+1": três
+                          nomes espremidos num quadrado de 90px não se leem, e
+                          o dia inteiro está a um toque de distância. */}
+                      <span className="plantaoEtiquetas">
+                        {doDia.slice(0, 2).map((p) => {
+                          const mo = p.modelo_id ? modeloPorId.get(p.modelo_id) : undefined;
+                          const meu = p.perfil_id === perfilId;
+                          return (
+                            <i key={p.id} className={`plantaoEtiqueta etq-${mo?.cor ?? "cinza"}${meu ? "" : " deOutro"}`}>
+                              {mo?.nome ?? hhmm(p.hora_inicio)}
+                            </i>
+                          );
+                        })}
+                        {doDia.length > 2 && <i className="plantaoMais">+{doDia.length - 2}</i>}
                       </span>
                     </button>
                   );
