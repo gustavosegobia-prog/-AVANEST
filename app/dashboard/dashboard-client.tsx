@@ -11,6 +11,7 @@ import { ChatFlutuante } from "@/components/chat-flutuante";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
+import { LocaisAdmin } from "@/components/locais-admin";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -1428,6 +1429,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
           ["convites","Convites"],
           ["grupo","Organização"],
           ["dados","Dados da organização"],
+          ["locais","Locais de atendimento"],
           ["assinatura","Assinatura"],
           ["grupo","Registro"],
           ["auditoria","Auditoria"],
@@ -1565,6 +1567,18 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
         </div>
       </div>
     </section>
+      </>}
+      {aba==="locais"&&<>
+        <section className="clinicalPanel">
+          <div className="panelTitle"><strong>Locais de atendimento</strong><span>Hospitais, clínicas e consultórios onde a equipe atende.</span></div>
+          <div className="locaisAdminCaixa">
+            <LocaisAdmin
+              institutionId={perfil.institution_id}
+              perfilId={perfil.id}
+              podeCompartilhar={["owner","admin"].includes(perfil.role)||(Array.isArray(perfil.permissoes)&&perfil.permissoes.includes("admin"))}
+            />
+          </div>
+        </section>
       </>}
       {aba==="assinatura"&&<>
     <PainelAssinatura onRefresh={onRefresh}/>
