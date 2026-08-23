@@ -1985,3 +1985,79 @@ button:disabled{cursor:not-allowed}
    ficha, que é onde falta espaço. Largura variando é inofensivo. */
 .paperLogo{height:38px;max-width:150px;object-fit:contain}
 .paperLogoGrupo{justify-self:end}
+
+/* ===========================================================================
+   Plantões
+   =========================================================================== */
+.plantaoMesNav{display:flex;align-items:center;gap:12px}
+.plantaoMesNav strong{min-width:150px;text-align:center;font-size:17px;text-transform:capitalize}
+.plantaoMetrics{grid-template-columns:repeat(5,1fr)}
+.plantaoAbas{margin:6px 0 18px}
+
+.plantaoCalendario{padding:18px 20px 22px}
+.plantaoSemana,.plantaoGrade{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.plantaoSemana{margin-bottom:8px}
+.plantaoSemana span{text-align:center;font-size:12px;font-weight:800;color:var(--cor-tinta-fraca)}
+/* Altura fixa, não aspect-ratio: quadrado numa grade de 1340px dá célula de
+   180px, e o calendário sozinho ocupa a tela inteira. Retângulo largo é o
+   formato normal de calendário mensal, e sobra espaço para a lista embaixo. */
+.plantaoDia{position:relative;height:62px;border:1px solid var(--cor-borda);
+  border-radius:11px;background:var(--cor-superficie);font:inherit;color:inherit;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  transition:border-color var(--transicao),background var(--transicao)}
+.plantaoDia:hover{border-color:var(--cor-marca)}
+.plantaoDia:focus-visible{outline:0;box-shadow:var(--foco)}
+.plantaoDia b{font-size:15px;font-weight:700}
+.plantaoDia.hoje{border-color:var(--cor-marca);border-width:2px}
+.plantaoDia.meu{background:var(--cor-marca-suave)}
+.plantaoPontos{display:flex;gap:3px;height:7px}
+/* Cheio é turno seu; vazado é de colega. Ver a escala do grupo é o motivo de
+   a escala existir — e a forma distingue sem depender só da cor. */
+.plantaoPontos i{width:7px;height:7px;border-radius:50%}
+.plantaoPontos i.cheio{background:var(--cor-marca)}
+.plantaoPontos i.vazado{border:1.5px solid var(--cor-tinta-fraca)}
+
+.plantaoDetalhe{border-color:var(--cor-marca)}
+.plantaoLinha{display:flex;align-items:center;gap:15px;flex-wrap:wrap;
+  padding:13px 25px;border-bottom:1px solid var(--cor-borda)}
+.plantaoLinha:last-child{border-bottom:0}
+.plantaoQuando{min-width:104px}
+.plantaoQuando strong,.plantaoOnde strong{display:block}
+.plantaoQuando small,.plantaoOnde small{display:block;color:var(--cor-tinta-fraca);margin-top:3px;font-size:12.5px}
+.plantaoOnde{flex:1;min-width:170px}
+.plantaoTrocaAviso{color:var(--cor-atencao)!important;font-weight:700}
+.plantaoLinha select,.plantaoLinha .inlineMoney input{height:40px;border:1px solid var(--cor-borda);
+  background:var(--cor-superficie-suave);border-radius:9px;padding:0 11px;font:inherit}
+.plantaoLinha .inlineMoney{width:130px}
+
+.plantaoLancar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:16px 25px;
+  border-top:1px solid var(--cor-borda);background:var(--cor-superficie-suave)}
+.plantaoLancar>span{font-size:13px;color:var(--cor-tinta-fraca)}
+.plantaoModeloChip{display:grid;gap:1px;text-align:left;padding:9px 14px;border-radius:10px;cursor:pointer;
+  border:1px solid var(--cor-borda);border-left-width:4px;background:var(--cor-superficie);font:inherit;color:inherit}
+.plantaoModeloChip:hover{border-color:var(--cor-marca)}
+.plantaoModeloChip small{color:var(--cor-tinta-fraca);font-size:12px}
+.plantaoCor{width:5px;height:34px;border-radius:3px;flex:none}
+.cor-azul{border-left-color:var(--graf-1);background-color:var(--graf-1)}
+.cor-verde{border-left-color:var(--graf-2);background-color:var(--graf-2)}
+.cor-roxo{border-left-color:var(--graf-3);background-color:var(--graf-3)}
+.cor-ambar{border-left-color:var(--graf-4);background-color:var(--graf-4)}
+.cor-vermelho{border-left-color:var(--cor-perigo);background-color:var(--cor-perigo)}
+.cor-cinza{border-left-color:var(--cor-tinta-fraca);background-color:var(--cor-tinta-fraca)}
+/* O chip usa a cor só na borda: fundo colorido apagaria o texto do modelo. */
+.plantaoModeloChip{background-color:var(--cor-superficie)!important}
+
+.plantaoModeloForm{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:20px 25px;
+  border-bottom:1px solid var(--cor-borda);align-items:end}
+.plantaoModeloForm .clinicalField.wide{grid-column:span 2}
+.plantaoDuracoes{grid-column:1/-1;display:flex;align-items:center;gap:9px}
+.plantaoDuracoes>span{font-size:12px;color:var(--cor-tinta-fraca)}
+.plantaoModeloForm .localCompartilhar,.plantaoModeloForm>button{grid-column:1/-1}
+
+@media(max-width:900px){
+  .plantaoMetrics{grid-template-columns:repeat(2,1fr)}
+  .plantaoModeloForm{grid-template-columns:repeat(2,1fr)}
+  .plantaoModeloForm .clinicalField.wide{grid-column:1/-1}
+  .plantaoLinha{gap:10px}
+  .plantaoDia{height:52px}
+}

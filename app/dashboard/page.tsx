@@ -70,16 +70,20 @@ export default async function DashboardPage({
   // decide tanto os botões da barra quanto em qual área o sistema abre. Quem
   // não tem Médico continua abrindo na própria área — a lista é filtrada pelo
   // que a pessoa pode ver, então nunca sobra ninguém sem aba.
-  const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin"];
+  // Plantões logo depois de Médico: é trabalho, não administração. Quem tem
+  // acesso clínico tem plantão — recepção e financeiro não fazem turno.
+  const permissionOrder: DashboardView[] = ["medico", "plantoes", "recepcao", "financeiro", "admin"];
   const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
   const hasLegacyFullAccess = ["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos");
   const allowedViews: DashboardView[] = hasLegacyFullAccess
     ? permissionOrder
-    : permissionOrder.filter((view) => perfil.role === view || assignedPermissions.includes(view));
+    : permissionOrder.filter((view) => perfil.role === view || assignedPermissions.includes(view)
+        // Plantões acompanha o acesso Médico: não é uma permissão à parte.
+        || (view === "plantoes" && (perfil.role === "medico" || assignedPermissions.includes("medico"))));
   if (allowedViews.length === 0) allowedViews.push("medico");
   const canManage = allowedViews.includes("admin");
   const canFinance = allowedViews.includes("financeiro");
-  const requestedView = ["recepcao", "medico", "financeiro", "admin"].includes(area ?? "")
+  const requestedView = ["recepcao", "medico", "plantoes", "financeiro", "admin"].includes(area ?? "")
     ? area as DashboardView
     : undefined;
   const initialView = requestedView && allowedViews.includes(requestedView)
@@ -88,7 +92,7 @@ export default async function DashboardPage({
   const needsClinicalData = initialView === "recepcao" || initialView === "medico";
   const needsFinanceData = initialView === "financeiro" && canFinance;
   const needsAdminData = initialView === "admin" && canManage;
-  const needsProfiles = needsAdminData || (initialView === "medico" && canManage);
+  const needsProfiles = needsAdminData || initialView === "plantoes" || (initialView === "medico" && canManage);
 
   const [
     { data: pacientes },

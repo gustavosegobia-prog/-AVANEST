@@ -12,6 +12,7 @@ import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { LocaisAdmin } from "@/components/locais-admin";
+import { Plantoes } from "@/components/plantoes";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -72,7 +73,7 @@ type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:s
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
-export type DashboardView = "medico" | "recepcao" | "financeiro" | "admin";
+export type DashboardView = "medico" | "plantoes" | "recepcao" | "financeiro" | "admin";
 
 // A lista de convênios é a mesma no cadastro do paciente e no financeiro:
 // os padrão, mais os que a organização cadastrou, menos os que ela removeu.
@@ -489,6 +490,7 @@ export function DashboardClient({
             é médico não tem nada escondido, senão ficaria sem aba nenhuma. */}
         <nav className={allowedViews.includes("medico")?"roleNav temMedico":"roleNav"} aria-label="Áreas do sistema">
           {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
+          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={view === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>Plantões</button>}
           {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
           {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
@@ -663,6 +665,12 @@ export function DashboardClient({
           </div>
           <div className="quickLinks"><button onClick={()=>{setSecaoMedico("historico");requestAnimationFrame(()=>buscaHistoricoRef.current?.focus())}}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
         </div>
+      ) : view === "plantoes" ? (
+        <Plantoes
+          perfilId={perfil.id} institutionId={perfil.institution_id}
+          locais={locais} ehAdmin={["owner","admin"].includes(perfil.role)}
+          colegas={perfis.filter(p=>p.status==="ativo").map(p=>({id:p.id,nome:p.nome}))}
+        />
       ) : view === "recepcao" ? (
         <div className="clinicalMain receptionMain">
           <section><h1>Recepção</h1><p>Cadastro de pacientes e agenda — sem acesso a dados clínicos ou financeiros.</p><div className="quickLinks"><button onClick={() => setOpen(true)}>Novo paciente</button><button onClick={()=>setAgendaRange("hoje")}>Agenda de hoje</button><button onClick={()=>searchRef.current?.focus()}>Pesquisar paciente</button></div></section>
