@@ -107,7 +107,7 @@ export default async function DashboardPage({
         ? supabase.from("pacientes").select("*").order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
     needsClinicalData || needsFinanceData
-      ? supabase.from("avaliacoes").select("id,patient_id,created_by,status,versao,updated_at,created_at,concluida_at,dados").order("updated_at", { ascending: false })
+      ? supabase.from("avaliacoes").select("id,patient_id,created_by,status,versao,updated_at,created_at,concluida_at,dados,local_atendimento_id").order("updated_at", { ascending: false })
       : Promise.resolve({ data: [] }),
     needsClinicalData
       ? supabase.from("agendamentos").select("*").order("data", { ascending: true }).order("horario", { ascending: true })
@@ -131,6 +131,7 @@ export default async function DashboardPage({
       email={user.email ?? ""}
       organizacao={instituicao ?? null}
       localAtivo={localAtivo}
+      locais={disponiveis}
       totalDeLocais={disponiveis.length}
       pacientes={pacientes ?? []}
       avaliacoes={avaliacoes ?? []}

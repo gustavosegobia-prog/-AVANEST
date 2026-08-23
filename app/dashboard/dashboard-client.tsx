@@ -64,7 +64,7 @@ type Paciente = {
   plano?: string | null; data_consulta?: string | null; horario?: string | null;
   observacoes?: string | null; created_at: string;
 };
-type Avaliacao = { id: string; patient_id: string; created_by?: string | null; status: string; versao?: number; updated_at: string; created_at: string; concluida_at?: string | null; dados?: Record<string, unknown> | null };
+type Avaliacao = { id: string; patient_id: string; created_by?: string | null; status: string; versao?: number; updated_at: string; created_at: string; concluida_at?: string | null; dados?: Record<string, unknown> | null; local_atendimento_id?: string | null };
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
 type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
@@ -136,13 +136,13 @@ const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamen
 
 export function DashboardClient({
   perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
-  initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0,
+  initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
   /** Onde a pessoa está atendendo agora. Null quando a organização ainda não cadastrou nenhum local. */
-  localAtivo?:LocalDisponivel|null; totalDeLocais?:number;
+  localAtivo?:LocalDisponivel|null; totalDeLocais?:number; locais?:LocalDisponivel[];
   initialView?: DashboardView;
   initialNewPatient?: boolean;
   autoStartAssessment?: boolean;
@@ -166,6 +166,11 @@ export function DashboardClient({
   const [agendaRange, setAgendaRange] = useState<"hoje"|"amanha"|"semana">("hoje");
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyStatus, setHistoryStatus] = useState("todas");
+  // Começa em "todos", e não no local ativo — o pedido diz "mostrar primeiro",
+  // que é ordenar, não esconder. Filtrar por padrão abriria o histórico vazio
+  // para quem acabou de adotar os locais: nenhuma avaliação anterior tem um, e
+  // a tela pareceria ter perdido o trabalho de meses.
+  const [historyLocal, setHistoryLocal] = useState("todos");
   const [historyFrom, setHistoryFrom] = useState("");
   const [historyTo, setHistoryTo] = useState("");
   const [dark, setDark] = useState(false);
@@ -211,10 +216,20 @@ export function DashboardClient({
     const searchable = `${patient?.nome ?? ""} ${patient?.cpf ?? ""} ${patient?.cirurgia ?? ""} ${patient?.procedimento ?? ""} ${patient?.hospital ?? ""} ${professional}`.toLowerCase();
     const referenceDate = (assessment.concluida_at || assessment.updated_at || assessment.created_at).slice(0, 10);
     return (historyStatus === "todas" || assessment.status === historyStatus)
+      && (historyLocal === "todos"
+          || (historyLocal === "sem" ? !assessment.local_atendimento_id
+              : assessment.local_atendimento_id === historyLocal))
       && (!historyQuery || searchable.includes(historyQuery.toLowerCase()))
       && (!historyFrom || referenceDate >= historyFrom)
       && (!historyTo || referenceDate <= historyTo);
-  }).sort((a,b) => (b.concluida_at || b.updated_at || b.created_at).localeCompare(a.concluida_at || a.updated_at || a.created_at)), [avaliacoes, patientMap, professionalMap, historyQuery, historyStatus, historyFrom, historyTo]);
+  }).sort((a,b) => {
+    // Sem filtro escolhido, o que foi feito no local de hoje sobe. É o
+    // "mostrar primeiro" do pedido: nada some, só muda de ordem. Com um
+    // filtro ativo a comparação empata em todos, e vale a data.
+    const doLocal = (x:Avaliacao) => localAtivo && x.local_atendimento_id === localAtivo.id ? 0 : 1;
+    return doLocal(a) - doLocal(b)
+      || (b.concluida_at || b.updated_at || b.created_at).localeCompare(a.concluida_at || a.updated_at || a.created_at);
+  }), [avaliacoes, patientMap, professionalMap, historyQuery, historyStatus, historyFrom, historyTo, historyLocal, localAtivo]);
   const scheduledToday = agendamentos.filter((a) => a.data === today && !["cancelado","reagendado"].includes(a.status));
   const queue = scheduledToday;
   const filteredAgenda = agendamentos.filter((item) => {
@@ -624,6 +639,18 @@ export function DashboardClient({
             <div className="historyFilters">
               <input ref={buscaHistoricoRef} value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
               <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)} aria-label="Filtrar por status"><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>
+              {/* Só aparece com mais de um local: com um só, o filtro não filtra
+                  nada e vira um controle que ocupa espaço sem responder nada. */}
+              {locais.length>1&&(
+                <select value={historyLocal} onChange={(event)=>setHistoryLocal(event.target.value)} aria-label="Filtrar por local de atendimento">
+                  <option value="todos">Todos os locais</option>
+                  {locais.map((item)=><option key={item.id} value={item.id}>{nomeDoLocal(item)}</option>)}
+                  {/* As avaliações feitas antes desta funcionalidade não têm
+                      local. Sem esta opção elas sumiriam do histórico assim que
+                      alguém filtrasse, e pareceriam perdidas. */}
+                  <option value="sem">Sem local registrado</option>
+                </select>
+              )}
               <label>De<input type="date" value={historyFrom} onChange={(event)=>setHistoryFrom(event.target.value)} /></label>
               <label>Até<input type="date" value={historyTo} onChange={(event)=>setHistoryTo(event.target.value)} /></label>
             </div>
