@@ -2105,3 +2105,14 @@ button:disabled{cursor:not-allowed}
 .plantaoDestino input{margin-top:3px;width:18px;height:18px;flex:none}
 .plantaoDestino strong{display:block;font-size:14.5px}
 .plantaoDestino small{color:var(--cor-tinta-fraca);font-size:13px}
+
+/* O botão de lançar fica no cabeçalho, e não escondido dentro do calendário:
+   sem ele o único caminho era clicar num dia e escolher um modelo — e quem
+   ainda não criou modelo nenhum encontrava um beco sem saída logo na entrada. */
+.plantaoAcoesTopo{display:flex;align-items:center;gap:10px;margin-left:auto;margin-right:16px}
+.clinicalWelcome .plantaoAcoesTopo+.plantaoMesNav{margin-left:0}
+@media(max-width:760px){
+  .plantaoAcoesTopo{margin:12px 0 0;width:100%}
+  .plantaoAcoesTopo button{width:100%}
+  .clinicalWelcome{flex-wrap:wrap}
+}

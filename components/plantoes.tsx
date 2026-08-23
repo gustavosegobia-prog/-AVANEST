@@ -76,6 +76,10 @@ export function Plantoes({
   // trabalho este mês" e "quem está de plantão no dia 12".
   const [escopo, setEscopo] = useState<"minha" | "grupo">("minha");
   const [pedindoTroca, setPedindoTroca] = useState<Plantao | null>(null);
+  // Lançar sem modelo. O modelo é atalho, não pré-requisito: exigir que a
+  // pessoa crie um modelo antes de registrar o primeiro plantão é uma parede
+  // logo na entrada, e foi exatamente onde a tela travou no primeiro uso.
+  const [lancando, setLancando] = useState<string | null>(null);
 
   const nomePorId = useMemo(() => new Map(colegas.map((c) => [c.id, c.nome])), [colegas]);
   const localPorId = useMemo(() => new Map(locais.map((l) => [l.id, nomeDoLocal(l)])), [locais]);
@@ -136,6 +140,26 @@ export function Plantoes({
     void carregar();
   }
 
+  async function lancarAvulso(dados: {
+    data: string; local_id: string; hora_inicio: string; hora_fim: string; valor: number;
+  }) {
+    setErro(""); setAviso("");
+    const { error } = await createClient().from("plantoes").insert({
+      institution_id: institutionId, perfil_id: perfilId,
+      local_id: dados.local_id || null, data: dados.data,
+      hora_inicio: dados.hora_inicio, hora_fim: dados.hora_fim,
+      valor: dados.valor, created_by: perfilId,
+    });
+    if (error) {
+      setErro(error.code === "23505"
+        ? "Você já tem um plantão nesse dia e horário."
+        : "Não foi possível lançar o plantão.");
+      return;
+    }
+    setLancando(null);
+    void carregar();
+  }
+
   async function atualizar(id: string, campos: Partial<Plantao>) {
     setErro("");
     const supabase = createClient();
@@ -182,10 +206,10 @@ export function Plantoes({
     void carregar();
   }
 
+  const hojeISO = new Date().toISOString().slice(0, 10);
   const [ano, m] = mes.split("-").map(Number);
   const diasNoMes = new Date(ano, m, 0).getDate();
   const primeiroDiaSemana = new Date(ano, m - 1, 1).getDay();
-  const hojeISO = new Date().toISOString().slice(0, 10);
 
   if (carregando) return <div className="emptyClinical">Carregando plantões…</div>;
 
@@ -195,6 +219,11 @@ export function Plantoes({
         <div>
           <h1>Plantões</h1>
           <p>Sua escala, o valor de cada turno e as trocas com a equipe.</p>
+        </div>
+        <div className="plantaoAcoesTopo">
+          <button className="primaryClinical compact" onClick={() => setLancando(hojeISO.startsWith(mes) ? hojeISO : `${mes}-01`)}>
+            + Lançar plantão
+          </button>
         </div>
         <div className="plantaoMesNav">
           <button className="outlineClinical" onClick={() => mudarMes(-1)} aria-label="Mês anterior">‹</button>
@@ -265,8 +294,18 @@ export function Plantoes({
                           const mo = p.modelo_id ? modeloPorId.get(p.modelo_id) : undefined;
                           const meu = p.perfil_id === perfilId;
                           return (
-                            <i key={p.id} className={`plantaoEtiqueta etq-${mo?.cor ?? "cinza"}${meu ? "" : " deOutro"}`}>
-                              {mo?.nome ?? hhmm(p.hora_inicio)}
+                            <i key={p.id}
+                              className={`plantaoEtiqueta etq-${mo?.cor ?? "cinza"}${meu ? "" : " deOutro"}`}
+                              // Na escala do grupo o que distingue é o hospital:
+                              // um grupo cobre várias instituições ao mesmo
+                              // tempo, e saber que há "um diurno" no dia 12 não
+                              // diz se é no Mamborê ou no ambulatório. Na escala
+                              // pessoal isso já é sabido, e o nome do modelo
+                              // informa mais — diurno ou noturno.
+                              title={`${mo?.nome ?? "Plantão"} · ${hhmm(p.hora_inicio)}–${hhmm(p.hora_fim)}${p.local_id ? ` · ${localPorId.get(p.local_id) ?? ""}` : ""}`}>
+                              {escopo === "grupo"
+                                ? (p.local_id ? localPorId.get(p.local_id) ?? "Sem local" : "Sem local")
+                                : (mo?.nome ?? hhmm(p.hora_inicio))}
                             </i>
                           );
                         })}
@@ -283,7 +322,8 @@ export function Plantoes({
             <DiaDetalhe
               dia={diaAberto} plantoes={plantoes.filter((p) => p.data === diaAberto)}
               modelos={modelos} perfilId={perfilId} nomePorId={nomePorId} localPorId={localPorId}
-              onLancar={lancar} onAtualizar={atualizar} onRemover={remover}
+              onLancar={lancar} onLancarAvulso={(d) => setLancando(d)}
+              onAtualizar={atualizar} onRemover={remover}
               onFechar={() => setDiaAberto(null)}
             />
           )}
@@ -344,6 +384,13 @@ export function Plantoes({
         </>
       )}
 
+      {lancando && (
+        <LancarPlantao
+          dia={lancando} locais={locais} modelos={modelos}
+          onFechar={() => setLancando(null)} onSalvar={lancarAvulso}
+        />
+      )}
+
       {pedindoTroca && (
         <PedirTroca
           plantao={pedindoTroca} colegas={colegas.filter((c) => c.id !== perfilId)}
@@ -373,11 +420,12 @@ export function Plantoes({
 
 function DiaDetalhe({
   dia, plantoes, modelos, perfilId, nomePorId, localPorId,
-  onLancar, onAtualizar, onRemover, onFechar,
+  onLancar, onLancarAvulso, onAtualizar, onRemover, onFechar,
 }: {
   dia: string; plantoes: Plantao[]; modelos: Modelo[]; perfilId: string;
   nomePorId: Map<string, string>; localPorId: Map<string, string>;
   onLancar: (dia: string, modelo: Modelo) => void;
+  onLancarAvulso: (dia: string) => void;
   onAtualizar: (id: string, campos: Partial<Plantao>) => void;
   onRemover: (id: string) => void;
   onFechar: () => void;
@@ -410,13 +458,20 @@ function DiaDetalhe({
       <div className="plantaoLancar">
         <span>Lançar a partir de um modelo:</span>
         {modelos.length === 0
-          ? <small>Nenhum modelo criado ainda — crie um na aba Modelos.</small>
+          ? <button className="primaryClinical compact" onClick={() => onLancarAvulso(dia)}>
+              + Lançar plantão neste dia
+            </button>
           : modelos.map((mo) => (
             <button key={mo.id} className={`plantaoModeloChip cor-${mo.cor}`} onClick={() => onLancar(dia, mo)}>
               <b>{mo.nome}</b>
               <small>{hhmm(mo.hora_inicio)}–{hhmm(mo.hora_fim)} · {money(Number(mo.valor))}</small>
             </button>
           ))}
+        {modelos.length > 0 && (
+          <button className="outlineClinical" onClick={() => onLancarAvulso(dia)}>
+            Outro horário…
+          </button>
+        )}
       </div>
     </section>
   );
@@ -528,6 +583,104 @@ function ModelosPainel({
           </div>
         ))}
     </section>
+  );
+}
+
+/**
+ * Lançar um plantão sem depender de modelo.
+ *
+ * O modelo economiza toques em quem já tem rotina; quem está começando não tem
+ * nenhum, e sem esta tela o caminho era: adivinhar que existe uma aba Modelos,
+ * criar um lá, voltar, clicar no dia. Quatro passos para registrar um turno.
+ *
+ * Escolher um modelo aqui preenche o resto — continua sendo atalho, e agora
+ * também sem ser obrigação.
+ */
+function LancarPlantao({
+  dia, locais, modelos, onFechar, onSalvar,
+}: {
+  dia: string;
+  locais: LocalDisponivel[];
+  modelos: Modelo[];
+  onFechar: () => void;
+  onSalvar: (d: { data: string; local_id: string; hora_inicio: string; hora_fim: string; valor: number }) => void;
+}) {
+  const [form, setForm] = useState({
+    data: dia, local_id: locais[0]?.id ?? "", hora_inicio: "07:00", hora_fim: "19:00", valor: "",
+  });
+
+  function aplicarModelo(id: string) {
+    const mo = modelos.find((x) => x.id === id);
+    if (!mo) return;
+    setForm({
+      ...form, local_id: mo.local_id ?? form.local_id,
+      hora_inicio: hhmm(mo.hora_inicio), hora_fim: hhmm(mo.hora_fim),
+      valor: String(Number(mo.valor) || ""),
+    });
+  }
+
+  return (
+    <div className="patientModalBackdrop" role="presentation">
+      <section className="localModal" role="dialog" aria-modal="true" aria-labelledby="lancar-plantao">
+        <div className="patientModalHead">
+          <div><h2 id="lancar-plantao">Lançar plantão</h2>
+            <p>O valor pode ser ajustado depois, direto na lista.</p></div>
+          <button type="button" onClick={onFechar} aria-label="Fechar">×</button>
+        </div>
+
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          onSalvar({ ...form, valor: Number(form.valor.replace(/\./g, "").replace(",", ".")) || 0 });
+        }}>
+          {modelos.length > 0 && (
+            <label className="clinicalField wide">
+              <span>Usar um modelo (opcional)</span>
+              <select defaultValue="" onChange={(e) => aplicarModelo(e.target.value)}>
+                <option value="">Preencher à mão</option>
+                {modelos.map((mo) => (
+                  <option key={mo.id} value={mo.id}>
+                    {mo.nome} · {hhmm(mo.hora_inicio)}–{hhmm(mo.hora_fim)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div className="localFormGrade" style={{ marginTop: 14 }}>
+            <label className="clinicalField span2"><span>Data</span>
+              <input type="date" value={form.data}
+                onChange={(e) => setForm({ ...form, data: e.target.value })} /></label>
+            <label className="clinicalField span2"><span>Local</span>
+              <select value={form.local_id} onChange={(e) => setForm({ ...form, local_id: e.target.value })}>
+                <option value="">Sem local</option>
+                {locais.map((l) => <option key={l.id} value={l.id}>{nomeDoLocal(l)}</option>)}
+              </select></label>
+            <label className="clinicalField"><span>Início</span>
+              <input type="time" value={form.hora_inicio}
+                onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} /></label>
+            <label className="clinicalField"><span>Fim</span>
+              <input type="time" value={form.hora_fim}
+                onChange={(e) => setForm({ ...form, hora_fim: e.target.value })} /></label>
+            <label className="clinicalField span2"><span>Valor</span>
+              <input value={form.valor} inputMode="decimal" placeholder="1.100,00"
+                onChange={(e) => setForm({ ...form, valor: e.target.value })} /></label>
+          </div>
+
+          <div className="plantaoDuracoes">
+            <span>Duração rápida:</span>
+            {DURACOES.map((h) => (
+              <button type="button" key={h} className="outlineClinical"
+                onClick={() => setForm({ ...form, hora_fim: somarHoras(form.hora_inicio, h) })}>{h}h</button>
+            ))}
+          </div>
+
+          <div className="modalActions">
+            <button type="button" className="outlineClinical" onClick={onFechar}>Cancelar</button>
+            <button type="submit" className="primaryClinical compact">Lançar</button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
 
