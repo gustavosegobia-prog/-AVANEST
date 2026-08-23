@@ -201,6 +201,54 @@ const CONSENT_RISKS=[
   "Poderá ocorrer alteração do humor e da memória, mais comumente na forma de ansiedade e confusão passageira, e, embora raros, quadros psicológicos mais complexos.",
 ];
 
+/**
+ * O cabeçalho institucional dos documentos.
+ *
+ * Três colunas: marca da instituição, identidade do documento, marca do grupo.
+ * O que não estiver cadastrado simplesmente não ocupa espaço — cabeçalho com
+ * buraco reservado para um logo que não existe fica pior do que cabeçalho sem
+ * logo nenhum.
+ *
+ * No meio vai o nome do documento, e não a marca do AVANEST. O papel que chega
+ * na mão do paciente é da clínica que o atendeu; a plataforma que gerou o
+ * arquivo não é parte do atendimento e não precisa assinar junto.
+ *
+ * Tudo aqui vem do snapshot da avaliação, nunca do local ativo agora: reimprimir
+ * um documento de março não pode carimbá-lo com o hospital de hoje.
+ */
+function CabecalhoInstitucional({
+  local, clinica, titulo, referencia, medico,
+}: {
+  local: LocalCongelado | null;
+  clinica: string;
+  titulo: string;
+  referencia?: string;
+  medico?: string;
+}) {
+  const instituicao = (local?.nome_fantasia || local?.nome || clinica || "").trim();
+  const cidade = [local?.cidade, local?.estado].filter(Boolean).join("/");
+  const linhas = [local?.grupo_anestesia, cidade, medico].filter(Boolean) as string[];
+
+  return (
+    <header className="paperHeader">
+      {local?.logo_url && (
+        // eslint-disable-next-line @next/next/no-img-element -- papel impresso: sem otimização nem carregamento tardio.
+        <img className="paperLogo" src={local.logo_url} alt="" />
+      )}
+      <span className="paperHeaderMeio">
+        <strong>{titulo}</strong>
+        {instituicao && <b className="paperInstituicao">{instituicao}</b>}
+        {linhas.length > 0 && <small>{linhas.join(" · ")}</small>}
+        {referencia && <small className="paperRef">{referencia}</small>}
+      </span>
+      {local?.logo_grupo_url && (
+        // eslint-disable-next-line @next/next/no-img-element -- idem.
+        <img className="paperLogo paperLogoGrupo" src={local.logo_grupo_url} alt="" />
+      )}
+    </header>
+  );
+}
+
 export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   const dados=avaliacao.snapshot_conclusao||avaliacao.dados||{};
   // O papel que chega na mão do paciente leva o nome de quem atende, não o da
@@ -419,10 +467,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>
       <div className="documentsLayout"><div className="paperStack">
-        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><header className="assessmentHeader"><span>{logo
-            // eslint-disable-next-line @next/next/no-img-element -- papel impresso: a imagem precisa sair no tamanho original, sem otimização nem carregamento tardio.
-            ?<img className="paperLogo" src={logo} alt={clinica||"Logo da organização"}/>
-            :<b>{clinica||"Avaliação Pré-Anestésica"}</b>}</span><strong>FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA</strong><small>AVA-{avaliacao.id.slice(0,8)} · v{avaliacao.versao}</small></header>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
+        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA" referencia={`AVA-${avaliacao.id.slice(0,8)} · v${avaliacao.versao}`} medico={text(dados.anestesiologista,perfil.nome)}/>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
           {/* Duas linhas, e a divisão é de propósito: em cima quem é o
               paciente — nome, CPF, idade, sexo —, embaixo as medidas e o
               convênio. Deixar a quebra por conta do acaso jogava o CPF para
@@ -539,9 +584,24 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           ])}/>
           {hasText(printablePlan)&&<p className="paperObservations">{text(printablePlan)}</p>}<PaperSignature dados={dados} perfil={perfil}/></article>
 
-        <article className={`printPaper consentPaper officialConsent ${selected.consent?"":"notSelected"}`}><header><span>{(clinica||"SERVIÇO DE ANESTESIOLOGIA").toUpperCase()}</span></header><h2>TERMO DE CONSENTIMENTO ANESTÉSICO</h2><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
+        <article className={`printPaper consentPaper officialConsent ${selected.consent?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="TERMO DE CONSENTIMENTO ANESTÉSICO" medico={text(dados.anestesiologista,perfil.nome)}/><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
           <p><b>1.</b> Por determinação explícita de minha vontade e em consideração ao meu interesse pessoal, eu: <b>{paciente.nome}</b></p>
-          <p>Por este termo autorizo {clinica?<b>{clinica}</b>:"o serviço de anestesiologia responsável pelo meu atendimento"} e os médicos anestesiologistas de sua equipe a realizar os procedimentos anestésicos necessários à realização da cirurgia a que, no momento, me proponho{hasText(paciente.hospital)?<>, no <b>{text(paciente.hospital)}</b></>:null}.</p>
+          <p>Por este termo autorizo {clinica?<b>{clinica}</b>:"o serviço de anestesiologia responsável pelo meu atendimento"} e os médicos anestesiologistas de sua equipe a realizar os procedimentos anestésicos necessários à realização da cirurgia a que, no momento, me proponho{(() => {
+            // O lugar só é dito de novo quando é OUTRO. Com o local
+            // preenchido, quem autoriza e onde se opera são o mesmo nome, e
+            // repeti-lo produzia "autorizo Santa Casa ... me proponho, no
+            // Santa Casa" — além de feio, "no" com nome feminino estava
+            // errado, e não há como acertar o artigo sem saber o gênero de
+            // cada razão social.
+            //
+            // "em", sem artigo, é a saída que serve aos dois gêneros. Ela só
+            // aparece nas avaliações antigas, que têm hospital digitado no
+            // cadastro do paciente e nenhum local vinculado.
+            const daAvaliacao=(local?.nome_fantasia||local?.nome||"").trim();
+            const doCadastro=text(paciente.hospital);
+            if(daAvaliacao) return null;
+            return hasText(doCadastro)?<>, a ser realizada em <b>{doCadastro}</b></>:null;
+          })()}.</p>
           <ol start={2}>{CONSENT_ITEMS.slice(0,2).map(item=><li key={item}>{item}</li>)}</ol>
           <p><b>4. Os seguintes pontos me foram esclarecidos:</b></p><ul>{CONSENT_RISKS.map(item=><li key={item}>{item}</li>)}</ul>
           <ol start={5}>{CONSENT_ITEMS.slice(2).map(item=><li key={item}>{item}</li>)}</ol>
@@ -558,7 +618,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
           </div>
         </article>
 
-        <article className={`printPaper guidancePaper ${selected.guidance?"":"notSelected"}`}><header><span>{clinica||"Orientações ao paciente"}</span></header><h2>Orientações Pré-Anestésicas</h2><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{objectiveMedicationGuidance(m)||"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}
+        <article className={`printPaper guidancePaper ${selected.guidance?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="ORIENTAÇÕES PRÉ-ANESTÉSICAS" medico={text(dados.anestesiologista,perfil.nome)}/><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{objectiveMedicationGuidance(m)||"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}
           <PaperBlock title="PLANEJAMENTO" items={facts([
             ["Tipo de anestesia prevista",dados.tecnica,"wide"],
             ["Jejum — sólidos",dados.jejum_solidos],["Jejum — líquidos claros",dados.jejum_liquidos],

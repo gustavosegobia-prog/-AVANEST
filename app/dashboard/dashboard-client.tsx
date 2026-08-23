@@ -389,6 +389,10 @@ export function DashboardClient({
     const previous=currentByPatient.get(patientId);
     const { data, error: createError } = await supabase.from("avaliacoes").insert({
       institution_id: perfil.institution_id, patient_id: patientId, created_by: perfil.id, status: "rascunho",
+      // Onde o paciente está sendo atendido. O gatilho do banco congela os
+      // dados do local a partir daqui, e é esse congelado que os documentos
+      // imprimem — trocar de local depois não mexe nesta avaliação.
+      local_atendimento_id: localAtivo?.id ?? null,
       versao:previous?.status==="concluida"?Number(previous.versao||1)+1:1,
       avaliacao_anterior_id:previous?.status==="concluida"?previous.id:null,
     }).select("id").single();
