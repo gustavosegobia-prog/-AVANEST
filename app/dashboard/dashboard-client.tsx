@@ -151,13 +151,22 @@ export function DashboardClient({
   const router = useRouter();
   const allowedViews = useMemo<DashboardView[]>(() => {
     // Médico primeiro: é a área de trabalho do anestesiologista, e a ordem daqui
-  // decide tanto os botões da barra quanto em qual área o sistema abre. Quem
-  // não tem Médico continua abrindo na própria área — a lista é filtrada pelo
-  // que a pessoa pode ver, então nunca sobra ninguém sem aba.
-  const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin"];
+    // decide tanto os botões da barra quanto em qual área o sistema abre. Quem
+    // não tem Médico continua abrindo na própria área — a lista é filtrada pelo
+    // que a pessoa pode ver, então nunca sobra ninguém sem aba.
+    //
+    // ATENÇÃO: esta lista tem uma gêmea em app/dashboard/page.tsx, e as duas
+    // precisam concordar. O servidor usa a dele para decidir quais dados
+    // carregar; esta aqui decide quais botões aparecem. Área nova acrescentada
+    // só de um lado vira exatamente o que aconteceu com Plantões: o botão
+    // existe no código, a condição nunca é verdadeira, e a aba simplesmente
+    // não nasce — sem erro, sem aviso, sem nada para investigar.
+    const permissionOrder: DashboardView[] = ["medico", "plantoes", "recepcao", "financeiro", "admin"];
     const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
     if (["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos")) return permissionOrder;
-    const permittedViews = permissionOrder.filter((area) => perfil.role === area || assignedPermissions.includes(area));
+    const permittedViews = permissionOrder.filter((area) => perfil.role === area || assignedPermissions.includes(area)
+      // Plantões acompanha o acesso Médico: não é uma permissão à parte.
+      || (area === "plantoes" && (perfil.role === "medico" || assignedPermissions.includes("medico"))));
     return permittedViews.length > 0 ? permittedViews : ["medico"];
   }, [perfil.role, perfil.permissoes]);
   const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
@@ -490,7 +499,7 @@ export function DashboardClient({
             é médico não tem nada escondido, senão ficaria sem aba nenhuma. */}
         <nav className={allowedViews.includes("medico")?"roleNav temMedico":"roleNav"} aria-label="Áreas do sistema">
           {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
-          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={view === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>Plantões</button>}
+          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={view === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>Escala</button>}
           {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
           {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}

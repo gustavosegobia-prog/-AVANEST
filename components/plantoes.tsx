@@ -217,8 +217,8 @@ export function Plantoes({
     <div className="clinicalMain plantaoMain">
       <section className="clinicalWelcome">
         <div>
-          <h1>Plantões</h1>
-          <p>Sua escala, o valor de cada turno e as trocas com a equipe.</p>
+          <h1>Escala</h1>
+          <p>Seus plantões, o valor de cada turno e as trocas com a equipe.</p>
         </div>
         <div className="plantaoAcoesTopo">
           <button className="primaryClinical compact" onClick={() => setLancando(hojeISO.startsWith(mes) ? hojeISO : `${mes}-01`)}>

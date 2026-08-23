@@ -72,6 +72,10 @@ export default async function DashboardPage({
   // que a pessoa pode ver, então nunca sobra ninguém sem aba.
   // Plantões logo depois de Médico: é trabalho, não administração. Quem tem
   // acesso clínico tem plantão — recepção e financeiro não fazem turno.
+  //
+  // ATENÇÃO: esta lista tem uma gêmea em dashboard-client.tsx. Área nova
+  // acrescentada só aqui carrega os dados e não desenha o botão; só lá,
+  // desenha o botão e não carrega os dados. As duas precisam concordar.
   const permissionOrder: DashboardView[] = ["medico", "plantoes", "recepcao", "financeiro", "admin"];
   const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
   const hasLegacyFullAccess = ["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos");
