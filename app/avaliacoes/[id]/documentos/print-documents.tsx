@@ -9,11 +9,23 @@ import {frasePreditores,preditoresMarcados,resumoViaAerea,riscoNoMasculino} from
 import {BrandMark} from "@/components/brand-mark";
 
 type Data=Record<string,string|boolean>;
+/**
+ * O local como estava no dia do atendimento.
+ *
+ * Vem congelado dentro da avaliação, e não da tabela de locais, de propósito:
+ * se o hospital mudar de nome ou de endereço amanhã, o documento assinado hoje
+ * não pode mudar junto.
+ */
+type LocalCongelado={
+  nome?:string;nome_fantasia?:string;cnpj?:string;tipo?:string;
+  endereco?:string;numero?:string;bairro?:string;cidade?:string;estado?:string;
+  telefone?:string;logo_url?:string;grupo_anestesia?:string;logo_grupo_url?:string;
+};
 type Props={
-  avaliacao:{id:string;institution_id:string;patient_id:string;status:string;versao:number;dados:Data|null;snapshot_conclusao:Data|null;created_at:string;updated_at:string;concluida_at:string|null};
+  avaliacao:{id:string;institution_id:string;patient_id:string;status:string;versao:number;dados:Data|null;snapshot_conclusao:Data|null;created_at:string;updated_at:string;concluida_at:string|null;local_snapshot?:LocalCongelado|null};
   paciente:{id:string;nome:string;cpf:string|null;data_nascimento:string|null;idade_anos?:number|null;sexo:string|null;telefone:string|null;email:string|null;hospital:string|null;cirurgia:string|null;procedimento:string|null;convenio:string|null};
   perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string;permissoes?:string[]|null};
-  organizacao:{nome:string;tipo:string|null;telefone:string|null;logo_url?:string|null}|null;
+  organizacao:{nome:string;tipo:string|null;telefone:string|null}|null;
 };
 const normalizar=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim().toLowerCase();
 
@@ -194,14 +206,22 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   // O papel que chega na mão do paciente leva o nome de quem atende, não o da
   // plataforma. Para o anestesiologista sozinho, o nome da organização é
   // "Fulano — Individual"; o sufixo é controle interno e não vai para o papel.
-  const clinica=organizacao
-    ?(organizacao.tipo==="individual"
-      ?organizacao.nome.replace(/\s*[—-]\s*Individual$/i,"").trim()
-      :organizacao.nome).trim()
-    :"";
-  // Organização com marca cadastrada imprime a marca; sem ela, o cabeçalho
-  // segue com o nome em texto, como sempre foi.
-  const logo=String(organizacao?.logo_url||"").trim();
+  // O nome do local vem primeiro. A organização é quem contrata o AVANEST; o
+  // local é onde o paciente foi atendido, e é esse que o papel precisa dizer.
+  // Sem local — avaliação anterior a esta funcionalidade —, segue a organização,
+  // e nada muda para o que já foi impresso.
+  const clinica=(avaliacao.local_snapshot?.nome_fantasia||avaliacao.local_snapshot?.nome||"").trim()
+    ||(organizacao
+      ?(organizacao.tipo==="individual"
+        ?organizacao.nome.replace(/\s*[—-]\s*Individual$/i,"").trim()
+        :organizacao.nome).trim()
+      :"");
+  // A marca vem do local do atendimento, não da organização: quem atende em
+  // três hospitais tem três cabeçalhos, e o logo certo é o do lugar onde o
+  // paciente foi visto. Sem local ou sem logo, o cabeçalho segue em texto,
+  // como sempre foi.
+  const local=avaliacao.local_snapshot??null;
+  const logo=String(local?.logo_url||"").trim();
   const assignedPermissions=Array.isArray(perfil.permissoes)?perfil.permissoes:[];
   const hasLegacyFullAccess=["admin","owner"].includes(perfil.role)||assignedPermissions.includes("todos");
   const canManage=hasLegacyFullAccess||perfil.role==="admin"||assignedPermissions.includes("admin");
