@@ -10,6 +10,7 @@ import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { ChatFlutuante } from "@/components/chat-flutuante";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
+import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -134,11 +135,13 @@ const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamen
 
 export function DashboardClient({
   perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
-  initialNewPatient = false, autoStartAssessment = false,
+  initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0,
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
+  /** Onde a pessoa está atendendo agora. Null quando a organização ainda não cadastrou nenhum local. */
+  localAtivo?:LocalDisponivel|null; totalDeLocais?:number;
   initialView?: DashboardView;
   initialNewPatient?: boolean;
   autoStartAssessment?: boolean;
@@ -437,9 +440,26 @@ export function DashboardClient({
     <main className={`clinicalShell ${dark?"clinicalDark":""}`}>
       <header className="clinicalTopbar">
         <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
-        <div className="orgBadge" title={organizacao?.nome ?? "Organização"}>
-          <strong>{organizacao?.nome ?? "Organização"}</strong>
-        </div>
+        {/* Com local escolhido, é ele que aparece: quem atende em três
+            hospitais precisa saber em qual está antes de imprimir a primeira
+            ficha, e o nome da organização é o mesmo nos três. Sem local
+            cadastrado, o cabeçalho segue como sempre foi. */}
+        {localAtivo ? (
+          <Link
+            className="orgBadge localAtivoBadge"
+            href="/locais?trocar=1"
+            title={`Atendendo em ${nomeDoLocal(localAtivo)}. Clique para trocar.`}
+          >
+            <span aria-hidden="true">📍</span>
+            <strong>{nomeDoLocal(localAtivo)}</strong>
+            {totalDeLocais > 1 && <span className="localSeta" aria-hidden="true">▾</span>}
+            <span className="visuallyHidden">Trocar local de atendimento</span>
+          </Link>
+        ) : (
+          <div className="orgBadge" title={organizacao?.nome ?? "Organização"}>
+            <strong>{organizacao?.nome ?? "Organização"}</strong>
+          </div>
+        )}
         {/* Só os módulos de trabalho ficam na barra. Tema, assinatura, bloqueio
             e saída são utilidades: foram para o menu do usuário, senão nove
             controles disputam a mesma faixa e nenhum se destaca. */}

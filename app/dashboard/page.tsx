@@ -1,13 +1,15 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
+import { COOKIE_LOCAL, COOKIE_LOCAL_MAX_AGE, localAindaVale, type LocalDisponivel } from "@/lib/local-ativo";
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ area?: string; novo?: string; iniciar?: string }>;
+  searchParams: Promise<{ area?: string; novo?: string; iniciar?: string; local?: string }>;
 }) {
-  const { area, novo, iniciar } = await searchParams;
+  const { area, novo, iniciar, local: localDaUrl } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -29,6 +31,37 @@ export default async function DashboardPage({
 
   // Trava comercial: assinatura vencida ou suspensa impede o uso do sistema.
   // O isolamento entre organizações continua a cargo do RLS.
+  // ------------------------------------------------------------------
+  // Local de atendimento da sessão
+  //
+  // A regra de não atrapalhar quem ainda não usa isto: só existindo local
+  // cadastrado é que a escolha passa a ser exigida. Organização sem nenhum
+  // local entra no painel como sempre entrou — a funcionalidade se liga
+  // sozinha quando o primeiro local nascer, e ninguém fica preso numa tela
+  // de cadastro no meio de um dia de trabalho.
+  //
+  // O erro da RPC é engolido de propósito: enquanto a migration não tiver
+  // rodado, a função não existe, e derrubar o painel inteiro por causa disso
+  // seria trocar um recurso novo por todos os antigos.
+  const { data: locaisData } = await supabase.rpc("meus_locais");
+  const locais = (locaisData ?? []) as LocalDisponivel[];
+  const disponiveis = locais.filter((item) => item.ativo);
+
+  const cookieStore = await cookies();
+  const idDoCookie = cookieStore.get(COOKIE_LOCAL)?.value;
+  // A URL manda quando vem de /locais com um local só — o cookie ainda não foi
+  // gravado nesse caminho, e mandar de volta para a escolha faria um pingue-
+  // pongue entre as duas telas.
+  let localAtivo = localAindaVale(localDaUrl ?? idDoCookie, disponiveis);
+  if (!localAtivo && disponiveis.length > 0) redirect("/locais");
+  if (localAtivo && localDaUrl) {
+    // Grava o que veio pela URL, para a próxima entrada não passar por /locais.
+    cookieStore.set(COOKIE_LOCAL, localAtivo.id, {
+      httpOnly: true, sameSite: "lax", path: "/",
+      secure: process.env.NODE_ENV === "production", maxAge: COOKIE_LOCAL_MAX_AGE,
+    });
+  }
+
   const { data: assinaturaData } = await supabase.rpc("minha_assinatura");
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   if (assinatura && assinatura.liberada === false) redirect("/assinatura");
@@ -97,6 +130,8 @@ export default async function DashboardPage({
       // a chamada demorasse ou falhasse.
       email={user.email ?? ""}
       organizacao={instituicao ?? null}
+      localAtivo={localAtivo}
+      totalDeLocais={disponiveis.length}
       pacientes={pacientes ?? []}
       avaliacoes={avaliacoes ?? []}
       agendamentos={agendamentos ?? []}
