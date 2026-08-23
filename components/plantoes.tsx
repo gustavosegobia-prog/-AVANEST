@@ -28,6 +28,11 @@ type Plantao = {
   aberto_para_troca: boolean; observacoes: string | null;
 };
 type Colega = { id: string; nome: string };
+type Troca = {
+  id: string; plantao_id: string; solicitante_id: string;
+  destinatario_id: string | null; status: string; mensagem: string | null;
+  created_at: string;
+};
 
 const MESES = ["janeiro","fevereiro","março","abril","maio","junho",
                "julho","agosto","setembro","outubro","novembro","dezembro"];
@@ -66,6 +71,11 @@ export function Plantoes({
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
+  const [trocas, setTrocas] = useState<Troca[]>([]);
+  // Escala do grupo ou só a minha. Duas leituras da mesma tela: "onde eu
+  // trabalho este mês" e "quem está de plantão no dia 12".
+  const [escopo, setEscopo] = useState<"minha" | "grupo">("minha");
+  const [pedindoTroca, setPedindoTroca] = useState<Plantao | null>(null);
 
   const nomePorId = useMemo(() => new Map(colegas.map((c) => [c.id, c.nome])), [colegas]);
   const localPorId = useMemo(() => new Map(locais.map((l) => [l.id, nomeDoLocal(l)])), [locais]);
@@ -75,14 +85,16 @@ export function Plantoes({
     const [ano, m] = mes.split("-").map(Number);
     const primeiro = `${mes}-01`;
     const ultimo = new Date(ano, m, 0).toISOString().slice(0, 10);
-    const [{ data: mods }, { data: plans, error }] = await Promise.all([
+    const [{ data: mods }, { data: plans, error }, { data: trs }] = await Promise.all([
       supabase.from("modelos_plantao").select("*").eq("ativo", true).order("nome"),
       supabase.from("plantoes").select("*").gte("data", primeiro).lte("data", ultimo).order("data"),
+      supabase.from("trocas_plantao").select("*").eq("status", "pendente").order("created_at", { ascending: false }),
     ]);
     setCarregando(false);
     if (error) { setErro("Não foi possível carregar os plantões."); return; }
     setModelos((mods ?? []) as Modelo[]);
     setPlantoes((plans ?? []) as Plantao[]);
+    setTrocas((trs ?? []) as Troca[]);
   }, [mes]);
 
   useEffect(() => { void carregar(); }, [carregar]);
@@ -126,6 +138,36 @@ export function Plantoes({
     const { error } = await supabase.from("plantoes")
       .update({ ...campos, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) { setErro("Não foi possível salvar a alteração."); return; }
+    void carregar();
+  }
+
+  async function pedirTroca(plantao: Plantao, destinatarioId: string, mensagem: string) {
+    setErro(""); setAviso("");
+    const supabase = createClient();
+    const { error } = await supabase.from("trocas_plantao").insert({
+      institution_id: institutionId, plantao_id: plantao.id,
+      solicitante_id: perfilId,
+      // String vazia significa "todo o grupo"; o banco guarda null, que é o
+      // que aceitar_troca lê para saber que qualquer um pode assumir.
+      destinatario_id: destinatarioId || null,
+      mensagem: mensagem.trim() || null,
+    });
+    if (error) { setErro("Não foi possível registrar o pedido de troca."); return; }
+    await supabase.from("plantoes").update({ aberto_para_troca: true }).eq("id", plantao.id);
+    setPedindoTroca(null);
+    setAviso(destinatarioId
+      ? "Convite enviado. Ele aparece na aba Trocas do colega."
+      : "Plantão oferecido ao grupo. Qualquer colega pode assumir.");
+    void carregar();
+  }
+
+  async function responderTroca(trocaId: string, acao: "aceitar_troca" | "recusar_troca" | "cancelar_troca") {
+    setErro(""); setAviso("");
+    const { error } = await createClient().rpc(acao, { p_troca_id: trocaId });
+    if (error) { setErro(error.message); return; }
+    setAviso(acao === "aceitar_troca"
+      ? "Plantão assumido. A escala foi atualizada e a troca ficou registrada na auditoria."
+      : acao === "recusar_troca" ? "Convite recusado." : "Pedido cancelado.");
     void carregar();
   }
 
@@ -176,6 +218,17 @@ export function Plantoes({
 
       {aba === "escala" && (
         <>
+          <div className="plantaoEscopo" role="group" aria-label="De quem é a escala">
+            {([["minha", "Minha escala"], ["grupo", "Escala do grupo"]] as const).map(([id, rot]) => (
+              <button key={id} type="button" className={escopo === id ? "active" : ""}
+                onClick={() => setEscopo(id)}>{rot}</button>
+            ))}
+            <small>
+              {escopo === "minha"
+                ? "Só os seus turnos."
+                : "Todos os turnos da equipe. Você edita apenas os seus."}
+            </small>
+          </div>
           <section className="clinicalPanel">
             <div className="plantaoCalendario">
               <div className="plantaoSemana">{DIAS.map((d, i) => <span key={i}>{d}</span>)}</div>
@@ -183,7 +236,8 @@ export function Plantoes({
                 {Array.from({ length: primeiroDiaSemana }).map((_, i) => <span key={`v${i}`} />)}
                 {Array.from({ length: diasNoMes }, (_, i) => {
                   const dia = `${mes}-${String(i + 1).padStart(2, "0")}`;
-                  const doDia = plantoes.filter((p) => p.data === dia && p.situacao !== "cancelado");
+                  const doDia = plantoes.filter((p) => p.data === dia && p.situacao !== "cancelado"
+                    && (escopo === "grupo" || p.perfil_id === perfilId));
                   const meusDoDia = doDia.filter((p) => p.perfil_id === perfilId);
                   return (
                     <button
@@ -215,45 +269,68 @@ export function Plantoes({
           )}
 
           <section className="clinicalPanel">
-            <div className="panelTitle"><strong>Meus plantões em {MESES[m - 1]}</strong><span>o valor é editável: o combinado muda de um plantão para outro</span></div>
-            {meus.length === 0
+            <div className="panelTitle">
+              <strong>{escopo === "grupo" ? `Escala da equipe em ${MESES[m - 1]}` : `Meus plantões em ${MESES[m - 1]}`}</strong>
+              <span>o valor é editável no seu próprio plantão: o combinado muda de um turno para outro</span>
+            </div>
+            {(escopo === "grupo" ? plantoes.filter((p) => p.situacao !== "cancelado") : meus).length === 0
               ? <div className="emptyClinical compactEmpty">Nenhum plantão lançado neste mês. Toque num dia do calendário para lançar.</div>
-              : meus.map((p) => (
+              : (escopo === "grupo" ? plantoes.filter((p) => p.situacao !== "cancelado") : meus).map((p) => {
+                const meu = p.perfil_id === perfilId;
+                return (
                 <div className="plantaoLinha" key={p.id}>
                   <span className="plantaoQuando">
                     <strong>{Number(p.data.slice(8, 10))}/{p.data.slice(5, 7)}</strong>
                     <small>{hhmm(p.hora_inicio)}–{hhmm(p.hora_fim)} · {p.horas}h</small>
                   </span>
                   <span className="plantaoOnde">
-                    <strong>{p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local"}</strong>
+                    <strong>{escopo === "grupo" ? nomePorId.get(p.perfil_id) ?? "Profissional" : (p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local")}</strong>
+                    <small>{escopo === "grupo" ? (p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local") : null}</small>
                     {p.aberto_para_troca && <small className="plantaoTrocaAviso">oferecido para troca</small>}
                   </span>
-                  <label className="inlineMoney">
-                    <span>Valor</span>
-                    <input
-                      defaultValue={Number(p.valor) || ""} placeholder="R$ 0,00" inputMode="decimal"
-                      onBlur={(e) => {
-                        const v = Number(e.target.value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
-                        if (Number.isFinite(v) && v !== Number(p.valor)) void atualizar(p.id, { valor: v });
-                      }}
-                    />
-                  </label>
-                  <select value={p.situacao} onChange={(e) => void atualizar(p.id, { situacao: e.target.value })}>
-                    <option value="escalado">Escalado</option>
-                    <option value="realizado">Realizado</option>
-                    <option value="pago">Pago</option>
-                    <option value="cancelado">Cancelado</option>
-                  </select>
-                  <button
-                    className="outlineClinical"
-                    onClick={() => void atualizar(p.id, { aberto_para_troca: !p.aberto_para_troca })}
-                  >
-                    {p.aberto_para_troca ? "Cancelar oferta" : "Oferecer troca"}
-                  </button>
+                  {/* O valor do colega não é editável nem visível: quanto cada
+                      um recebe é assunto dele com quem paga, e a escala não
+                      precisa expor isso para funcionar. O RLS recusaria a
+                      escrita de qualquer forma; esconder evita a tentativa. */}
+                  {meu ? (
+                    <label className="inlineMoney">
+                      <span>Valor</span>
+                      <input
+                        defaultValue={Number(p.valor) || ""} placeholder="R$ 0,00" inputMode="decimal"
+                        onBlur={(e) => {
+                          const v = Number(e.target.value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+                          if (Number.isFinite(v) && v !== Number(p.valor)) void atualizar(p.id, { valor: v });
+                        }}
+                      />
+                    </label>
+                  ) : <span className="plantaoDeColega">de colega</span>}
+                  {meu && (
+                    <select value={p.situacao} onChange={(e) => void atualizar(p.id, { situacao: e.target.value })}>
+                      <option value="escalado">Escalado</option>
+                      <option value="realizado">Realizado</option>
+                      <option value="pago">Pago</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
+                  )}
+                  {meu && (
+                    <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
+                      {p.aberto_para_troca ? "Trocar de novo" : "Solicitar troca"}
+                    </button>
+                  )}
                 </div>
-              ))}
+                );
+              })}
           </section>
         </>
+      )}
+
+      {pedindoTroca && (
+        <PedirTroca
+          plantao={pedindoTroca} colegas={colegas.filter((c) => c.id !== perfilId)}
+          localPorId={localPorId}
+          onFechar={() => setPedindoTroca(null)}
+          onEnviar={(destino, msg) => void pedirTroca(pedindoTroca, destino, msg)}
+        />
       )}
 
       {aba === "modelos" && (
@@ -266,9 +343,8 @@ export function Plantoes({
 
       {aba === "trocas" && (
         <TrocasPainel
-          plantoes={plantoes} perfilId={perfilId} nomePorId={nomePorId} localPorId={localPorId}
-          onMudou={(texto) => { setAviso(texto); void carregar(); }}
-          onErro={setErro}
+          trocas={trocas} plantoes={plantoes} perfilId={perfilId}
+          nomePorId={nomePorId} localPorId={localPorId} onResponder={responderTroca}
         />
       )}
     </div>
@@ -435,84 +511,180 @@ function ModelosPainel({
   );
 }
 
-function TrocasPainel({
-  plantoes, perfilId, nomePorId, localPorId, onMudou, onErro,
+/**
+ * Pedir troca: para o grupo todo ou para uma pessoa.
+ *
+ * A diferença não é cosmética. Oferta ao grupo é "alguém cobre?", e o primeiro
+ * que aceitar leva. Convite dirigido é "você cobre?", e ninguém além dele pode
+ * assumir — é o que faz sentido quando já houve uma combinação por fora e só
+ * falta registrar.
+ */
+function PedirTroca({
+  plantao, colegas, localPorId, onFechar, onEnviar,
 }: {
-  plantoes: Plantao[]; perfilId: string;
-  nomePorId: Map<string, string>; localPorId: Map<string, string>;
-  onMudou: (texto: string) => void; onErro: (texto: string) => void;
+  plantao: Plantao;
+  colegas: Colega[];
+  localPorId: Map<string, string>;
+  onFechar: () => void;
+  onEnviar: (destinatarioId: string, mensagem: string) => void;
 }) {
-  const [ocupado, setOcupado] = useState("");
-  const oferecidos = plantoes.filter((p) => p.aberto_para_troca && p.situacao !== "cancelado");
-  const deColegas = oferecidos.filter((p) => p.perfil_id !== perfilId);
-  const meus = oferecidos.filter((p) => p.perfil_id === perfilId);
+  const [destino, setDestino] = useState("");
+  const [mensagem, setMensagem] = useState("");
 
-  async function assumir(p: Plantao) {
-    if (!confirm(`Assumir o plantão de ${nomePorId.get(p.perfil_id) ?? "seu colega"} em ${p.data.slice(8,10)}/${p.data.slice(5,7)}?`)) return;
-    setOcupado(p.id);
-    const supabase = createClient();
-    // O pedido é criado e aceito na mesma ação: aqui a oferta já é pública, e
-    // exigir que o dono confirme de novo faria o colega esperar por uma
-    // resposta que ele já deu ao oferecer.
-    const { data: troca, error } = await supabase.from("trocas_plantao")
-      .insert({ institution_id: (p as unknown as { institution_id: string }).institution_id,
-                plantao_id: p.id, solicitante_id: p.perfil_id })
-      .select("id").single();
-    if (error || !troca) { setOcupado(""); onErro("Não foi possível registrar a troca."); return; }
-    const { error: erroAceite } = await supabase.rpc("aceitar_troca", { p_troca_id: troca.id });
-    setOcupado("");
-    if (erroAceite) { onErro(erroAceite.message); return; }
-    onMudou("Plantão assumido. A escala foi atualizada e a troca ficou registrada na auditoria.");
+  return (
+    <div className="patientModalBackdrop" role="presentation">
+      <section className="localModal" role="dialog" aria-modal="true" aria-labelledby="pedir-troca">
+        <div className="patientModalHead">
+          <div>
+            <h2 id="pedir-troca">Solicitar troca</h2>
+            <p>
+              {Number(plantao.data.slice(8, 10))}/{plantao.data.slice(5, 7)} ·{" "}
+              {hhmm(plantao.hora_inicio)}–{hhmm(plantao.hora_fim)} ·{" "}
+              {plantao.local_id ? localPorId.get(plantao.local_id) ?? "sem local" : "sem local"}
+            </p>
+          </div>
+          <button type="button" onClick={onFechar} aria-label="Fechar">×</button>
+        </div>
+
+        <form onSubmit={(e) => { e.preventDefault(); onEnviar(destino, mensagem); }}>
+          <fieldset className="plantaoDestino">
+            <legend>Para quem?</legend>
+            <label className={destino === "" ? "ativo" : ""}>
+              <input type="radio" name="destino" checked={destino === ""} onChange={() => setDestino("")} />
+              <span>
+                <strong>Todo o grupo</strong>
+                <small>Qualquer colega pode assumir. O primeiro que aceitar leva.</small>
+              </span>
+            </label>
+            <label className={destino !== "" ? "ativo" : ""}>
+              <input type="radio" name="destino" checked={destino !== ""}
+                onChange={() => setDestino(colegas[0]?.id ?? "")} />
+              <span>
+                <strong>Uma pessoa</strong>
+                <small>Só ela vê o convite e só ela pode aceitar.</small>
+              </span>
+            </label>
+          </fieldset>
+
+          {destino !== "" && (
+            <label className="clinicalField">
+              <span>Colega</span>
+              <select value={destino} onChange={(e) => setDestino(e.target.value)}>
+                {colegas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </label>
+          )}
+
+          <label className="clinicalField wide" style={{ marginTop: 14 }}>
+            <span>Mensagem (opcional)</span>
+            <textarea className="localObs" rows={2} value={mensagem}
+              onChange={(e) => setMensagem(e.target.value)}
+              placeholder="Ex.: consigo cobrir o seu do dia 30 em troca" />
+          </label>
+
+          <div className="modalActions">
+            <button type="button" className="outlineClinical" onClick={onFechar}>Cancelar</button>
+            <button type="submit" className="primaryClinical compact"
+              disabled={destino !== "" && colegas.length === 0}>
+              Enviar pedido
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+/**
+ * As trocas em aberto, dos dois lados.
+ *
+ * Separadas como o médico pensa nelas: "o que me pediram" e "o que eu pedi".
+ * Juntar as duas numa lista só obrigaria a ler cada linha para descobrir de
+ * que lado dela a pessoa está.
+ */
+function TrocasPainel({
+  trocas, plantoes, perfilId, nomePorId, localPorId, onResponder,
+}: {
+  trocas: Troca[];
+  plantoes: Plantao[];
+  perfilId: string;
+  nomePorId: Map<string, string>;
+  localPorId: Map<string, string>;
+  onResponder: (id: string, acao: "aceitar_troca" | "recusar_troca" | "cancelar_troca") => void;
+}) {
+  const plantaoPorId = new Map(plantoes.map((p) => [p.id, p]));
+  // Recebidos: o que foi dirigido a mim, mais o que foi aberto ao grupo por
+  // outra pessoa. Os meus próprios pedidos nunca entram aqui.
+  const recebidos = trocas.filter((t) => t.solicitante_id !== perfilId
+    && (t.destinatario_id === null || t.destinatario_id === perfilId));
+  const enviados = trocas.filter((t) => t.solicitante_id === perfilId);
+
+  function Linha({ troca, lado }: { troca: Troca; lado: "recebido" | "enviado" }) {
+    const p = plantaoPorId.get(troca.plantao_id);
+    if (!p) return null;
+    const dirigido = troca.destinatario_id !== null;
+    return (
+      <div className="plantaoLinha">
+        <span className="plantaoQuando">
+          <strong>{Number(p.data.slice(8, 10))}/{p.data.slice(5, 7)}</strong>
+          <small>{hhmm(p.hora_inicio)}–{hhmm(p.hora_fim)} · {p.horas}h</small>
+        </span>
+        <span className="plantaoOnde">
+          <strong>
+            {lado === "recebido"
+              ? nomePorId.get(troca.solicitante_id) ?? "Colega"
+              : dirigido ? `para ${nomePorId.get(troca.destinatario_id!) ?? "colega"}` : "aberto ao grupo"}
+          </strong>
+          <small>{p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local"}</small>
+          {troca.mensagem && <small className="plantaoMensagem">“{troca.mensagem}”</small>}
+        </span>
+        <span className={`statusChip ${dirigido ? "waiting" : "paused"}`}>
+          {dirigido ? "convite" : "aberto ao grupo"}
+        </span>
+        {lado === "recebido" ? (
+          <>
+            <button className="primaryClinical compact" onClick={() => onResponder(troca.id, "aceitar_troca")}>
+              Assumir
+            </button>
+            {/* Recusar só existe no convite dirigido: numa oferta aberta, quem
+                não quer apenas não assume — e "recusar" apagaria a oferta para
+                todos os outros colegas. */}
+            {dirigido && (
+              <button className="outlineClinical" onClick={() => onResponder(troca.id, "recusar_troca")}>
+                Recusar
+              </button>
+            )}
+          </>
+        ) : (
+          <button className="outlineClinical red" onClick={() => onResponder(troca.id, "cancelar_troca")}>
+            Cancelar pedido
+          </button>
+        )}
+      </div>
+    );
   }
 
   return (
-    <section className="clinicalPanel">
-      <div className="panelTitle">
-        <strong>Trocas</strong>
-        <span>plantões oferecidos pela equipe neste mês</span>
-      </div>
-
-      {deColegas.length === 0 && meus.length === 0 && (
-        <div className="emptyClinical compactEmpty">
-          Nenhum plantão oferecido. Para oferecer um seu, use “Oferecer troca” na lista da Escala.
+    <>
+      <section className="clinicalPanel">
+        <div className="panelTitle">
+          <strong>Pedidos recebidos</strong>
+          <span>convites para você e plantões oferecidos ao grupo</span>
         </div>
-      )}
+        {recebidos.length === 0
+          ? <div className="emptyClinical compactEmpty">Nenhum pedido no momento.</div>
+          : recebidos.map((t) => <Linha key={t.id} troca={t} lado="recebido" />)}
+      </section>
 
-      {deColegas.map((p) => (
-        <div className="plantaoLinha" key={p.id}>
-          <span className="plantaoQuando">
-            <strong>{p.data.slice(8, 10)}/{p.data.slice(5, 7)}</strong>
-            <small>{hhmm(p.hora_inicio)}–{hhmm(p.hora_fim)} · {p.horas}h</small>
-          </span>
-          <span className="plantaoOnde">
-            <strong>{nomePorId.get(p.perfil_id) ?? "Colega"}</strong>
-            <small>{p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local"}</small>
-          </span>
-          <b>{money(Number(p.valor))}</b>
-          <button className="primaryClinical compact" disabled={ocupado === p.id}
-            onClick={() => void assumir(p)}>
-            {ocupado === p.id ? "Assumindo…" : "Assumir"}
-          </button>
+      <section className="clinicalPanel">
+        <div className="panelTitle">
+          <strong>Trocas que você pediu</strong>
+          <span>aguardando alguém assumir</span>
         </div>
-      ))}
-
-      {meus.length > 0 && (
-        <>
-          <div className="panelTitle"><strong>Oferecidos por você</strong><span>aguardando alguém assumir</span></div>
-          {meus.map((p) => (
-            <div className="plantaoLinha" key={p.id}>
-              <span className="plantaoQuando">
-                <strong>{p.data.slice(8, 10)}/{p.data.slice(5, 7)}</strong>
-                <small>{hhmm(p.hora_inicio)}–{hhmm(p.hora_fim)}</small>
-              </span>
-              <span className="plantaoOnde">
-                <strong>{p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local"}</strong>
-              </span>
-              <span className="statusChip waiting">aguardando</span>
-            </div>
-          ))}
-        </>
-      )}
-    </section>
+        {enviados.length === 0
+          ? <div className="emptyClinical compactEmpty">Você não tem pedidos em aberto. Use “Solicitar troca” na Escala.</div>
+          : enviados.map((t) => <Linha key={t.id} troca={t} lado="enviado" />)}
+      </section>
+    </>
   );
 }

@@ -2061,3 +2061,23 @@ button:disabled{cursor:not-allowed}
   .plantaoLinha{gap:10px}
   .plantaoDia{height:52px}
 }
+
+/* --- Escopo da escala e troca dirigida --------------------------------- */
+.plantaoEscopo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+.plantaoEscopo button{border:1px solid var(--cor-borda);background:var(--cor-superficie);
+  border-radius:999px;padding:9px 18px;font:inherit;font-weight:700;color:var(--cor-tinta);cursor:pointer}
+.plantaoEscopo button.active{background:var(--cor-marca);border-color:var(--cor-marca);color:#fff}
+.plantaoEscopo button:focus-visible{outline:0;box-shadow:var(--foco)}
+.plantaoEscopo small{color:var(--cor-tinta-fraca);font-size:13px;margin-left:6px}
+.plantaoDeColega{color:var(--cor-tinta-fraca);font-size:13px;width:130px}
+.plantaoMensagem{font-style:italic;color:var(--cor-tinta-fraca)!important}
+
+.plantaoDestino{border:0;padding:0;margin:18px 0 0;display:grid;gap:10px}
+.plantaoDestino legend{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--cor-tinta-fraca);padding:0;margin-bottom:4px}
+.plantaoDestino label{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;cursor:pointer;
+  border:1px solid var(--cor-borda);border-radius:12px;transition:border-color var(--transicao),background var(--transicao)}
+.plantaoDestino label.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave)}
+.plantaoDestino input{margin-top:3px;width:18px;height:18px;flex:none}
+.plantaoDestino strong{display:block;font-size:14.5px}
+.plantaoDestino small{color:var(--cor-tinta-fraca);font-size:13px}
