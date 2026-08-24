@@ -5,8 +5,8 @@ import { AppLogo } from "@/components/app-logo";
 export const metadata: Metadata = {
   title: "O que o AVANEST faz | Sistema para anestesiologistas",
   description:
-    "Avaliação pré-anestésica, calculadoras com fonte citada, escala por hospital, "
-    + "produção do plantão e faturamento — o dia inteiro do anestesiologista num sistema só.",
+    "Avaliação pré-anestésica, escala por hospital, produção do plantão e faturamento "
+    + "— o dia inteiro do anestesiologista num sistema só.",
 };
 
 /**
@@ -40,26 +40,9 @@ const BLOCOS: Bloco[] = [
       ["Medicamentos de uso contínuo com orientação de suspensão",
         "A base diz quantos dias antes suspender cada antitrombótico e quando reintroduzir. "
         + "Você confere e ajusta; a orientação sai na ficha que o paciente leva para casa."],
-    ],
-  },
-  {
-    titulo: "As contas que se faz no corredor",
-    itens: [
-      ["Doses por peso, sem multiplicar o que é dose fixa",
-        "O cálculo respeita a apresentação do medicamento. Dose fixa não é multiplicada pelo peso, "
-        + "e a reversão do bloqueio pede a profundidade em vez de decidir sozinha pelo peso."],
-      ["Gasometria pela foto do laudo",
-        "Fotografe o papel térmico e os valores entram nos campos. Número fora do que existe em ser "
-        + "humano é descartado em vez de preenchido — campo vazio você vê e corrige; número errado passa."],
-      ["Distúrbios eletrolíticos, osmolaridade e Fick",
-        "Correção de sódio, potássio, cálcio e magnésio; gap osmolar que não confunde ureia com BUN; "
-        + "débito cardíaco que diz se o VO₂ foi medido ou presumido, porque isso muda o peso do resultado."],
-      ["ROTEM e PCA com a plataforma e a fonte na tela",
-        "Intervalo de referência é por plataforma, e o sistema recusa transportar um da delta para a "
-        + "sigma. Cada número tem obra e página anotadas; o que a fonte não afirma fica em branco."],
       ["Via aérea pediátrica por idade — e por peso no neonato",
-        "Acima de um ano vale a fórmula da idade. Abaixo dela não vale, e o cálculo passa a sair de "
-        + "tabela por peso: aplicar fórmula de criança maior em recém-nascido erra para cima."],
+        "Acima de um ano vale a fórmula da idade. Abaixo dela não vale, e o tamanho do tubo passa "
+        + "a sair de tabela por peso: aplicar fórmula de criança maior em recém-nascido erra para cima."],
     ],
   },
   {
