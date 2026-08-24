@@ -273,7 +273,12 @@ export function ProducaoDoDia({
 
   async function remover(id: string, paciente: string) {
     if (!confirm(`Apagar a anotação de ${paciente}?`)) return;
-    await createClient().from("producao_do_dia").delete().eq("id", id);
+    // O erro é olhado. Sem isso, uma recusa do banco voltava calada: a lista
+    // recarregava, a anotação continuava lá, e a pessoa apagava de novo
+    // achando que o clique não tinha pegado.
+    const { error } = await createClient().from("producao_do_dia").delete().eq("id", id);
+    if (error) { setErro(error.message || "Não foi possível apagar a anotação."); return; }
+    setErro("");
     void carregar();
   }
 

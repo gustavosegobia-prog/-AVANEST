@@ -454,7 +454,16 @@ export function DashboardClient({
       avaliacao_anterior_id:previous?.status==="concluida"?previous.id:null,
     }).select("id").single();
     if (createError || !data) { setError(createError?.message ?? "Falha ao iniciar avaliação."); setBusy(false); return; }
-    if(appointmentId) await supabase.from("agendamentos").update({avaliacao_id:data.id,updated_at:new Date().toISOString()}).eq("id",appointmentId);
+    // O agendamento aponta para a avaliação que acabou de nascer. Se esta
+    // ligação falha em silêncio, a avaliação existe e a fila da recepção
+    // continua sem saber dela: o paciente aparece como não avaliado, e alguém
+    // começa uma segunda avaliação do mesmo caso. A avaliação já está criada,
+    // então isto não impede de seguir — avisa e segue.
+    if(appointmentId){
+      const {error:linkError}=await supabase.from("agendamentos")
+        .update({avaliacao_id:data.id,updated_at:new Date().toISOString()}).eq("id",appointmentId);
+      if(linkError) setError("A avaliação foi criada, mas não ficou ligada ao agendamento da recepção. Avise quem administra.");
+    }
     router.push(`/avaliacoes/${data.id}`);
   }
 

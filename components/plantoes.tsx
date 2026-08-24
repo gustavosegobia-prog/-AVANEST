@@ -1275,7 +1275,13 @@ function ModelosPainel({
 
   async function apagar(id: string) {
     if (!confirm("Apagar este modelo? Os plantões já lançados continuam.")) return;
-    await createClient().from("modelos_plantao").update({ ativo: false }).eq("id", id);
+    // Modelo da equipe só quem administra apaga, e o RLS recusa o resto. Sem
+    // olhar o erro, a recusa voltava calada e o modelo reaparecia na lista sem
+    // explicação nenhuma.
+    const { error } = await createClient().from("modelos_plantao")
+      .update({ ativo: false }).eq("id", id);
+    if (error) { setErro(error.message || "Não foi possível apagar o modelo."); return; }
+    setErro("");
     onMudou();
   }
 

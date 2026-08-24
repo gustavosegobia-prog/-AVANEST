@@ -153,16 +153,19 @@ export function LocaisAdmin({
           </span>
           {local.owner_id && <span className="statusChip paused">Particular</span>}
           {!local.ativo && <span className="statusChip waiting">Arquivado</span>}
+          {/* O rótulo diz o que a pessoa GANHA, e não o que ela tira. "Em
+              preparação" descreve a situação do hospital; o que se quer saber,
+              olhando a lista, é quem enxerga isso agora. */}
           {local.oculto && <span className="statusChip waiting"
-            title="Só quem escondeu o local — e o dono da organização — enxerga. Ele não aparece na escolha de onde trabalhar nem na coluna da Escala para mais ninguém.">
-            Em preparação</span>}
+            title="Este local aparece só para você — e para o dono da organização. Não aparece na escolha de onde trabalhar nem na coluna da Escala para mais ninguém.">
+            Só para você</span>}
           <div className="locaisAcoes">
             <button className="outlineClinical" onClick={() => setEditando(local)}>Editar</button>
             <button className="outlineClinical" onClick={() => void alternarOculto(local)}
               title={local.oculto
                 ? "Passa a aparecer para toda a equipe"
-                : "Fica só para você, enquanto o local está sendo preparado"}>
-              {local.oculto ? "Mostrar à equipe" : "Ocultar da equipe"}
+                : "Fica só na sua conta: some da escolha de local e da coluna da Escala para todos os outros"}>
+              {local.oculto ? "Mostrar à equipe" : "Deixar só para mim"}
             </button>
             <button className="outlineClinical" onClick={() => void alternarArquivo(local)}>
               {local.ativo ? "Arquivar" : "Reativar"}
