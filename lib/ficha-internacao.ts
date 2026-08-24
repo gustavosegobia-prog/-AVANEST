@@ -66,6 +66,127 @@ const normalizar = (t: string) =>
   t.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/\s+/g, " ").trim();
 
+/**
+ * Sem acento e em minúsculas, mas SEM juntar espaços.
+ *
+ * Serve para procurar rótulo dentro do texto e usar a posição achada para
+ * cortar o original. Juntar espaços mudaria o comprimento, e a posição
+ * apontaria para outra letra — cortando o nome do paciente no meio.
+ */
+const achatar = (t: string) =>
+  t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+const escaparRegex = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Todo rótulo que uma ficha pode ter, do mais longo para o mais curto.
+ *
+ * O comprimento manda para "nome do paciente" ser testado antes de "nome":
+ * casando o curto primeiro, o corte cairia no lugar errado.
+ */
+const TODOS_ROTULOS = [...new Set([
+  ...ROTULOS.flatMap((r) => r.apelidos), ...NUNCA_E_VALOR,
+])].sort((a, b) => b.length - a.length);
+
+/**
+ * Rótulos compridos o bastante para serem reconhecidos sem os dois-pontos.
+ *
+ * O OCR perde os dois-pontos com frequência, e sem eles "Paciente FULANO DE
+ * TAL Data de nascimento 01/01/1980" ficaria inteiro no campo do nome. Mas
+ * cortar em rótulo curto é perigoso: "data", "hora" e "leito" aparecem dentro
+ * de descrição de procedimento, e o corte comeria o texto. Oito letras é onde
+ * a palavra deixa de ser comum e passa a ser rótulo de formulário.
+ */
+const ROTULOS_INCONFUNDIVEIS = TODOS_ROTULOS.filter((r) => r.length >= 8);
+
+/**
+ * Este pedaço de texto COMEÇA com um rótulo?
+ *
+ * Se começa, ele é a linha do campo seguinte, e não o valor deste. É o teste
+ * que precisa vir ANTES do corte: "DATA DE NASCIMENTO: 02/05/1970" cortado no
+ * próximo rótulo vira "DATA DE" — duas palavras, sem dígito, com cara de nome
+ * de gente. O corte serve para separar valor de rótulo, não para fabricar
+ * valor a partir de rótulo.
+ *
+ * `exigeDoisPontos` para o procedimento: ele é descrição livre, e uma cirurgia
+ * pode legitimamente começar com uma palavra que também é rótulo de ficha.
+ * Com os dois-pontos, "Clínica geral" passa e "Clínica: São Lucas" não.
+ */
+function comecaComRotulo(valor: string, exigeDoisPontos = false): boolean {
+  const plano = achatar(valor.trim());
+  return TODOS_ROTULOS.some((rotulo) => new RegExp(
+    `^${escaparRegex(rotulo).replace(/ /g, "\\s+")}\\s*${exigeDoisPontos ? ":" : "(?!\\p{L})"}`,
+    "u",
+  ).test(plano));
+}
+
+/**
+ * Corta o valor onde começa o próximo rótulo.
+ *
+ * É o conserto do caso mais comum de ficha de hospital: duas colunas que o
+ * reconhecimento junta numa linha só. "Paciente: FULANO DE TAL Data de
+ * nascimento: 01/01/1980" tem o nome certo lá dentro, mas o campo inteiro era
+ * recusado por conter dígitos — e a tela dizia que não reconheceu nada, tendo
+ * reconhecido tudo.
+ *
+ * `agressivo` liga o corte em rótulo sem dois-pontos. Vale para nome e
+ * convênio, que são curtos e nunca contêm palavra de formulário; não vale
+ * para procedimento, que é descrição livre e perderia texto legítimo.
+ */
+export function cortarNoProximoRotulo(valor: string, agressivo = false): string {
+  const plano = achatar(valor);
+  // Índice fora de sincronia: melhor devolver inteiro do que cortar errado.
+  if (plano.length !== valor.length) return valor;
+
+  let corte = valor.length;
+  const procurar = (rotulo: string, exigeDoisPontos: boolean) => {
+    // (?<!\p{L}) para "nome" não casar dentro de "sobrenome".
+    const re = new RegExp(
+      `(?<!\\p{L})${escaparRegex(rotulo)}\\s*${exigeDoisPontos ? ":" : "\\b"}`, "gu");
+    for (const achado of plano.matchAll(re)) {
+      // Posição 0 é o próprio rótulo que trouxe este valor até aqui.
+      if (achado.index > 0 && achado.index < corte) corte = achado.index;
+    }
+  };
+  for (const rotulo of TODOS_ROTULOS) procurar(rotulo, true);
+  if (agressivo) for (const rotulo of ROTULOS_INCONFUNDIVEIS) procurar(rotulo, false);
+
+  if (agressivo) {
+    // O rótulo vizinho nem sempre é lido direito: "Carteira" saiu como
+    // "“ca rteira" numa foto com sombra, e o corte por nome não o reconheceu.
+    // Mas os dois-pontos sobreviveram — e nome de pessoa e de operadora nunca
+    // os contêm. Onde houver dois-pontos, houve rótulo: corta ali, voltando
+    // até o começo da palavra que os carrega.
+    const doisPontos = valor.indexOf(":");
+    if (doisPontos > 0) {
+      let k = doisPontos;
+      while (k > 0 && !/\s/.test(valor[k - 1])) k--;
+      if (k > 0) corte = Math.min(corte, k);
+    }
+  }
+
+  const cortado = valor.slice(0, corte).trim();
+  return agressivo ? semSobraDeRotulo(cortado) : cortado;
+}
+
+/**
+ * Tira o cotoco que sobra do rótulo cortado.
+ *
+ * "UNIMED CAMPO MOURAO “ca" — o "“ca" é o começo de "Carteira" que o
+ * reconhecimento partiu ao meio. Só sai o que é curto E tem sinal que não
+ * pertence a nome nenhum: assim "Bradesco Saúde S/A" fica inteiro, porque a
+ * barra é sinal legítimo de razão social.
+ */
+function semSobraDeRotulo(valor: string): string {
+  const partes = valor.split(/\s+/);
+  while (partes.length > 1) {
+    const ultima = partes[partes.length - 1];
+    if (ultima.length <= 3 && /[^\p{L}\d&./-]/u.test(ultima)) partes.pop();
+    else break;
+  }
+  return partes.join(" ").trim();
+}
+
 /** Um rótulo sozinho na linha não é valor de nada. */
 function pareceRotulo(valor: string): boolean {
   const n = normalizar(valor).replace(/[:.\-]+$/, "");
@@ -136,16 +257,42 @@ export function lerFichaDeInternacao(texto: string): {
   const dados: DadosDaFicha = {};
 
   for (let i = 0; i < linhas.length; i++) {
-    const n = normalizar(linhas[i]);
+    // A borda da tabela e o quadradinho de marcar entram no reconhecimento
+    // como "|", "[", "»". Sem tirá-los da frente, a linha "| Paciente: ..."
+    // não começa com rótulo nenhum e a ficha inteira passava batida.
+    const linha = linhas[i].replace(/^[^\p{L}\d]+/u, "");
+    // A busca do rótulo é feita aqui, e não no texto de espaços juntados: a
+    // posição encontrada vai recortar a LINHA, e só bate com ela se os dois
+    // tiverem o mesmo comprimento. Com espaços juntados, uma ficha com espaço
+    // duplo cortava o nome do paciente uma letra fora do lugar.
+    const plano = achatar(linha);
+    if (plano.length !== linha.length) continue;
+
     for (const { campo, apelidos } of ROTULOS) {
       if (dados[campo]) continue;
       for (const apelido of apelidos) {
-        // O rótulo tem de começar a linha. "nome" no meio de uma frase é
-        // palavra comum, e casar com ela devolveria pedaço de texto solto.
-        if (!n.startsWith(apelido)) continue;
-        const resto = limparValor(linhas[i].slice(apelido.length));
-        const candidatos = [resto, limparValor(linhas[i + 1] ?? "")];
-        for (const c of candidatos) {
+        // \s+ no lugar do espaço: o reconhecimento espaça o rótulo como quer.
+        const achado = new RegExp(
+          `(?<!\\p{L})${escaparRegex(apelido).replace(/ /g, "\\s+")}\\s*(:)?`, "u",
+        ).exec(plano);
+        // No começo da linha vale sem dois-pontos. No meio dela, só com — que
+        // é o que sobra quando o reconhecimento junta duas colunas da ficha
+        // numa linha só. Sem essa exigência, "nome" no meio de uma frase é
+        // palavra comum e devolveria pedaço de texto solto.
+        if (!achado || (achado.index > 0 && !achado[1])) continue;
+
+        // O corte tira o que veio da coluna ao lado: sem ele, "FULANO DE TAL
+        // Data de nascimento: 01/01/1980" é recusado inteiro por ter dígito.
+        const agressivo = campo !== "procedimento";
+        const brutos = [
+          limparValor(linha.slice(achado.index + achado[0].length)),
+          limparValor(linhas[i + 1] ?? ""),
+        ];
+        for (const bruto of brutos) {
+          // Recusar ANTES de cortar. Um pedaço que começa com rótulo é a linha
+          // do campo seguinte, e cortá-lo fabricaria valor a partir de rótulo.
+          if (!bruto || comecaComRotulo(bruto, !agressivo)) continue;
+          const c = cortarNoProximoRotulo(bruto, agressivo);
           if (c && VALIDA[campo](c)) { dados[campo] = c; break; }
         }
         break;

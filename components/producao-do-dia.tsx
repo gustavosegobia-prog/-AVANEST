@@ -42,6 +42,92 @@ export function lerValor(bruto: string): number {
   return Number.isFinite(v) && v >= 0 ? v : 0;
 }
 
+/**
+ * Preparar a foto antes de reconhecer.
+ *
+ * Entregar o arquivo do celular direto ao leitor é o motivo mais comum de não
+ * sair texto nenhum. Três coisas atrapalham, e as três se resolvem aqui:
+ *
+ * TAMANHO. Um retrato de 4032×3024 leva quase um minuto e não lê melhor: o
+ * motor foi treinado em digitalização de 300 dpi, e resolução muito acima
+ * disso confunde a separação das letras. Foto pequena demais tem o problema
+ * oposto — letra com menos de uns 20 pixels de altura não se reconhece —,
+ * então imagem pequena é ampliada.
+ *
+ * COR. A ficha é preta sobre branco; a cor só carrega ruído do papel amarelado
+ * e da sombra azulada da luz do centro cirúrgico.
+ *
+ * CONTRASTE. Foto de papel na mão pega sombra de um lado e brilho do outro, e
+ * o cinza fica todo espremido no meio da escala. O alongamento usa o 2º e o 98º
+ * percentil em vez do mínimo e do máximo: um único pixel preto de borda ou um
+ * reflexo estourado fixaria os extremos e a correção não faria nada.
+ *
+ * Sem binarizar. Preto e branco puro decide por pixel o que é letra, e numa
+ * foto com sombra ele apaga a metade escura da ficha inteira.
+ */
+async function prepararFoto(arquivo: File): Promise<HTMLCanvasElement | File> {
+  try {
+    const imagem = await createImageBitmap(arquivo);
+    const maior = Math.max(imagem.width, imagem.height);
+    // Teto de 2200 e piso de 1500: a faixa onde a letra de uma ficha impressa
+    // fica com altura suficiente para ser lida sem virar mancha.
+    const escala = maior > 2200 ? 2200 / maior : maior < 1500 ? Math.min(2, 1500 / maior) : 1;
+    const largura = Math.round(imagem.width * escala);
+    const altura = Math.round(imagem.height * escala);
+
+    const tela = document.createElement("canvas");
+    tela.width = largura; tela.height = altura;
+    const pincel = tela.getContext("2d", { willReadFrequently: true });
+    if (!pincel) return arquivo;
+    pincel.drawImage(imagem, 0, 0, largura, altura);
+    imagem.close();
+
+    const quadro = pincel.getImageData(0, 0, largura, altura);
+    const px = quadro.data;
+
+    // Luminância pelos pesos da percepção humana: 0,299/0,587/0,114. A média
+    // simples escurece o vermelho do carimbo até ele virar letra.
+    const histograma = new Uint32Array(256);
+    const cinza = new Uint8ClampedArray(px.length / 4);
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) {
+      const c = (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) / 1000;
+      cinza[j] = c;
+      histograma[c | 0]++;
+    }
+
+    const total = cinza.length;
+    const percentil = (fracao: number) => {
+      let acumulado = 0;
+      const alvo = total * fracao;
+      for (let v = 0; v < 256; v++) {
+        acumulado += histograma[v];
+        if (acumulado >= alvo) return v;
+      }
+      return 255;
+    };
+    const baixo = percentil(0.02);
+    const alto = percentil(0.98);
+    // Faixa estreita demais é papel liso sem texto, ou foto totalmente
+    // estourada: alongar aí só amplifica o ruído do sensor.
+    const amplitude = alto - baixo;
+    const alonga = amplitude >= 25;
+
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) {
+      const v = alonga
+        ? Math.max(0, Math.min(255, ((cinza[j] - baixo) * 255) / amplitude))
+        : cinza[j];
+      px[i] = px[i + 1] = px[i + 2] = v;
+      px[i + 3] = 255;
+    }
+    pincel.putImageData(quadro, 0, 0);
+    return tela;
+  } catch {
+    // Navegador sem createImageBitmap, imagem que não decodifica, memória
+    // curta: segue com o arquivo original em vez de não ler nada.
+    return arquivo;
+  }
+}
+
 export function ProducaoDoDia({
   dia, perfilId, institutionId, plantaoId, conveniosConhecidos,
 }: {
@@ -61,6 +147,10 @@ export function ProducaoDoDia({
   const [novo, setNovo] = useState(vazio);
   const [lendoFoto, setLendoFoto] = useState(false);
   const [avisoFoto, setAvisoFoto] = useState("");
+  // O texto que saiu da foto, guardado só quando algum campo não foi achado.
+  // Fica na memória da aba e some ao recarregar: é material de conserto, não
+  // registro — e traz nome de paciente, que não tem por que ser gravado.
+  const [textoLido, setTextoLido] = useState("");
 
   /**
    * Ler a ficha de internação por foto.
@@ -73,17 +163,32 @@ export function ProducaoDoDia({
    * O que é reconhecido cai nos campos do formulário e fica lá para ser
    * conferido: nada é salvo sozinho. O motor entra por import dinâmico, então
    * quem nunca usar a câmera não carrega esses megabytes.
+   *
+   * Quando não sai nada, o problema é de um de dois tipos, e a tela precisa
+   * dizer qual: ou a foto não gerou texto — e o conserto é fotografar de
+   * novo — ou gerou texto e os campos não foram achados, e aí o conserto é
+   * meu, no reconhecimento dos rótulos. Uma frase só para os dois casos manda
+   * a pessoa repetir uma foto que já estava boa.
    */
   async function lerFicha(arquivo?: File) {
     if (!arquivo) return;
-    setLendoFoto(true); setErro(""); setAvisoFoto("");
+    setLendoFoto(true); setErro(""); setAvisoFoto(""); setTextoLido("");
     try {
       const { default: Tesseract } = await import("tesseract.js");
-      const { data } = await Tesseract.recognize(arquivo, "por");
+      const preparada = await prepararFoto(arquivo);
+      const { data } = await Tesseract.recognize(preparada, "por");
       const { dados, naoEncontrados } = lerFichaDeInternacao(data.text);
 
       if (!dados.paciente && !dados.convenio && !dados.procedimento) {
-        setErro("Não reconheci nada nesta imagem. Tente uma foto mais próxima, sem reflexo e com a ficha plana — ou digite os campos.");
+        // Conta letras, e não caracteres: foto ruim devolve pontuação e
+        // pedaços de borda, que enchem o texto sem serem leitura nenhuma.
+        const letras = (data.text.match(/\p{L}/gu) ?? []).length;
+        if (letras < 25) {
+          setErro("A foto não gerou texto legível. Tente mais perto, com a ficha plana, sem sombra e sem reflexo — a luz da janela costuma resolver.");
+        } else {
+          setErro("Li o texto da ficha, mas não achei os campos. Digite abaixo — e, se puder, me mande o texto lido: é com ele que eu ensino o sistema a ler esta ficha.");
+          setTextoLido(data.text.trim());
+        }
         return;
       }
       setNovo({
@@ -95,6 +200,9 @@ export function ProducaoDoDia({
       setAvisoFoto(naoEncontrados.length
         ? `${AVISO_FICHA} Não achei: ${naoEncontrados.map((c) => ROTULO_CAMPO[c]).join(", ")}.`
         : AVISO_FICHA);
+      // Mesmo com acerto parcial o texto fica guardado: é o que permite
+      // descobrir por que o campo que faltou não foi achado.
+      if (naoEncontrados.length) setTextoLido(data.text.trim());
     } catch {
       setErro("Não consegui carregar o leitor de imagem. Digite os campos.");
     } finally {
@@ -251,6 +359,25 @@ export function ProducaoDoDia({
       </datalist>
 
       {avisoFoto && <p className="producaoConfira" role="status">{avisoFoto}</p>}
+
+      {/* O texto que saiu da foto, fechado.
+          Ele é a única forma de descobrir por que uma ficha não foi lida: sem
+          ver o que o reconhecimento entendeu, o conserto vira adivinhação. Fica
+          fechado porque é material de conserto e não faz parte do trabalho de
+          anotar, e some sozinho ao recarregar a página. */}
+      {textoLido && (
+        <details className="producaoTextoLido">
+          <summary>Ver o texto que saiu da foto</summary>
+          <p>
+            Isto é o que o leitor entendeu da imagem. Se os campos estão aí e
+            não foram preenchidos, o erro é meu: copie e me mande que eu ensino
+            o sistema a ler esta ficha.
+          </p>
+          <textarea readOnly value={textoLido} rows={10}
+            aria-label="Texto reconhecido na foto"
+            onFocus={(e) => e.currentTarget.select()} />
+        </details>
+      )}
 
       <form className="producaoNovo" onSubmit={adicionar}>
         <input
