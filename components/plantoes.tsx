@@ -435,16 +435,6 @@ export function Plantoes({
   // vai para montá-la, e o botão de lançar está ali.
   const locaisAtivos = useMemo(() => locais.filter((l) => l.ativo), [locais]);
 
-  // Plantão sem hospital ganha linha própria só quando existe algum — e leva o
-  // número junto, porque a linha existe para ser esvaziada. O privado não
-  // entra: ele não é um plantão do grupo sem lugar, é um plantão de fora, e
-  // aparecer aqui o mandaria para uma escala que ninguém mais enxerga.
-  const plantoesSemLocal = useMemo(
-    () => plantoes.filter((p) => p.situacao !== "cancelado" && !p.local_id && !p.privado).length,
-    [plantoes],
-  );
-  const temPlantaoSemLocal = plantoesSemLocal > 0;
-
   // Id que não corresponde a hospital nenhum cai em "todos": é o que impede um
   // local arquivado, ou um cadastro que mudou, de esvaziar a tela em silêncio.
   const hospitalAtivo = filtroDeHospital(hospital, locaisAtivos.map((l) => l.id));
@@ -693,20 +683,15 @@ export function Plantoes({
             // se lê inteira sem a outra atravessada no meio.
             ["grupo", "Escala do grupo"],
             ...locaisAtivos.map((l) => [`grupo:${l.id}`, nomeDoLocal(l)] as [string, string]),
-            // "Todos os hospitais" saiu. A pergunta que ele respondia — "onde
-            // eu estou este mês?" — é respondida melhor por Minha escala, que
-            // já junta todos os hospitais da pessoa. Juntar as equipes de três
-            // serviços num calendário só não é a escala de lugar nenhum, e a
-            // coluna ficava com uma linha que ninguém abria duas vezes.
+            // A coluna lista hospitais, e só. Saíram daqui "Todos os
+            // hospitais" — a pergunta dele, "onde eu estou este mês?", Minha
+            // escala responde melhor, já juntando tudo — e "Sem hospital",
+            // que era uma gaveta de conserto ocupando lugar de escala.
             //
-            // "Sem hospital" fica, e some sozinho: ele só aparece enquanto
-            // existir plantão lançado sem lugar. Sem ele, esses plantões não
-            // apareceriam em escala nenhuma do grupo — sumiriam da tela sem
-            // ninguém descobrir por quê. O contador está ali para isso ser
-            // resolvido, não para virar paisagem.
-            ...(temPlantaoSemLocal
-              ? [["grupo:sem", "Sem hospital", plantoesSemLocal] as [string, string, number]]
-              : []),
+            // Plantão sem lugar continua existindo e continua visível em Minha
+            // escala, que não filtra por hospital. O que ele não tem mais é
+            // linha própria na escala do grupo: uma escala é de um serviço, e
+            // "nenhum serviço" não é um deles.
             ["grupo", "Equipe"],
             ["trocas", "Trocas", trocasParaMim],
             ["grupo", "Faturamento"],
