@@ -1937,7 +1937,7 @@ button:disabled{cursor:not-allowed}
 .localFundo .localGrupo{color:var(--avn-teal)!important}
 /* A marca do hospital fica num quadro claro de propósito: os logos vêm com
    fundo branco embutido, e sobre o escuro apareceria um retângulo recortado. */
-.localFundo .localMarca{background:#fff}
+.localFundo .localMarca{background:none;box-shadow:0 0 0 1px #ffffff2e}
 .localFundo .localBusca{background:#ffffff0a;border-color:#ffffff26;color:#cfe0ec}
 .localFundo .localBusca input{color:#fff}
 .localFundo .localBusca input::placeholder{color:#7fa0b8}
@@ -1983,23 +1983,23 @@ button:disabled{cursor:not-allowed}
 .localCartao.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave)}
 .localCartao:disabled{opacity:.6;cursor:default}
 
-/* Retangular, e não quadrado. Logo de hospital é quase sempre uma faixa
-   larga — "INOVANEST" numa proporção de 5:1 —, e contida num quadrado de 48px
-   ela virava uma tirinha de 9px de altura. Num quadro largo a mesma marca sobe
-   para 15px e o logo quadrado continua cabendo inteiro. */
-.localMarca{width:96px;height:66px;flex:none;border-radius:14px;display:grid;place-items:center;padding:8px;
+/* Moldura redonda, sem fundo.
+   
+   Era um quadro branco, e o quadro existia por um motivo real: os logos vinham
+   em JPEG com fundo branco embutido, e sem ele apareceria um retângulo
+   recortado sobre o escuro. A saída não foi mexer no CSS — foi recortar os
+   arquivos. Com os três em PNG de fundo transparente, o quadro deixou de ter
+   função e virou o retângulo que ele existia para esconder.
+   
+   Redonda porque as três marcas são discos. O anel de 1px dá contorno ao logo
+   do Santa Casa, que é navy sobre um cartão navy e sem ele perde a borda; nos
+   outros dois ele desaparece contra o branco e o verde. */
+.localMarca{width:72px;height:72px;flex:none;border-radius:50%;display:grid;place-items:center;
   background:var(--cor-marca-suave);color:var(--cor-marca);font-weight:850;font-size:19px;overflow:hidden}
-/* O logo respira dentro do quadro em vez de encostar nas bordas. Sem o
-   recuo, marca larga como a da Unimed ia de ponta a ponta e marca estreita
-   ficava perdida no meio — e a diferença entre as duas parecia desalinhamento,
-   quando era só a proporção de cada arquivo. */
-.localMarca img{width:100%;height:100%;object-fit:contain;
-  /* mix-blend-mode dissolve o fundo do arquivo no quadro. A maioria dos logos
-     vem em JPEG com fundo branco, e branco em multiply é neutro: o retângulo
-     do arquivo some e sobra só o desenho. Serve também para o branco sujo que
-     a compressão deixa, que era o que criava a borda visível dentro do
-     quadro. */
-  mix-blend-mode:multiply}
+/* Sem mix-blend-mode: ele existia para dissolver o fundo branco do JPEG no
+   quadro branco, e agora não há nem um nem outro. Sobre o cartão escuro,
+   multiply apagaria o desenho. */
+.localMarca img{width:100%;height:100%;object-fit:contain}
 .localTexto{display:grid;gap:4px;min-width:0;flex:1}
 /* Duas linhas, e não reticências: 'Santa Casa de Misericórdia de Campo Mourão'
    cortado em 'Santa Casa de Misericórdia de Camp…' esconde justamente a
