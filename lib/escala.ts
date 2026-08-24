@@ -151,6 +151,23 @@ export function carimboICS(data: string, hora: string, viraODia = false): string
     + `T${hhmm(hora).replace(":", "")}00`;
 }
 
+/**
+ * O filtro de hospital que se pode aplicar sem esconder nada.
+ *
+ * Existe por causa de um defeito real: a escala do grupo abria filtrada no
+ * hospital onde a pessoa está atendendo hoje, e a barra para trocar de
+ * hospital só aparecia havendo mais de um com plantão no mês. Quando o
+ * hospital ativo não tinha turno nenhum — ou os plantões estavam lançados sem
+ * local —, o calendário vinha vazio e não havia botão nenhum para desfazer. A
+ * tela escondia os dados e não dizia como mostrá-los.
+ *
+ * A regra: filtro que não corresponde a nenhum hospital com plantão não vale.
+ * Nunca some dado sem que exista, na tela, o caminho de volta.
+ */
+export function filtroDeHospital(escolhido: string, comPlantao: string[]): string {
+  return escolhido !== "todos" && comPlantao.includes(escolhido) ? escolhido : "todos";
+}
+
 // ---------------------------------------------------------------------------
 // A folha impressa
 // ---------------------------------------------------------------------------

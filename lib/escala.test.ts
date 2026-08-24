@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { PlantaoImpresso } from "./escala.ts";
 import {
-  carimboICS, corpoDaFolha, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  carimboICS, corpoDaFolha, filtroDeHospital, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
   nomeCurto, periodoDoTurno, plural, rotuloSituacao, somarHoras, textoICS,
 } from "./escala.ts";
 
@@ -317,4 +317,35 @@ test("folha com vários hospitais não nomeia nenhum no título", () => {
     turno("Hospital da Unimed", "ANA PAULA DE SOUZA"),
   ]);
   assert.equal(titulo, "Escala da equipe — agosto de 2026");
+});
+
+// ---------------------------------------------------------------------------
+// O filtro de hospital não pode esconder a escala
+//
+// Defeito real: a escala do grupo abria filtrada no hospital onde a pessoa
+// estava atendendo, e a barra para trocar só aparecia havendo mais de um
+// hospital com plantão. Quando o hospital ativo não tinha turno — ou os
+// plantões estavam lançados sem local —, o calendário vinha vazio e não havia
+// botão nenhum para desfazer.
+// ---------------------------------------------------------------------------
+
+test("filtro num hospital que tem plantão vale", () => {
+  assert.equal(filtroDeHospital("sc", ["sc", "un"]), "sc");
+});
+
+test("filtro num hospital sem plantão nenhum não vale", () => {
+  // Era este o caso: local ativo é a clínica, mas os plantões do mês são todos
+  // no hospital. Filtrar esvaziaria a tela sem oferecer saída.
+  assert.equal(filtroDeHospital("clinica", ["sc", "un"]), "todos");
+});
+
+test("plantões lançados sem local nenhum não somem", () => {
+  // Nenhum hospital tem plantão porque nenhum plantão tem hospital. Filtrar
+  // por qualquer coisa esconderia o mês inteiro.
+  assert.equal(filtroDeHospital("sc", []), "todos");
+});
+
+test('"todos" continua sendo "todos"', () => {
+  assert.equal(filtroDeHospital("todos", ["sc"]), "todos");
+  assert.equal(filtroDeHospital("todos", []), "todos");
 });

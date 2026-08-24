@@ -6,7 +6,7 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import {
   corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
-  montarICS, periodoDoTurno, plural, somarHoras,
+  filtroDeHospital, montarICS, periodoDoTurno, plural, somarHoras,
 } from "@/lib/escala";
 
 // Plantões: a escala, o valor e a troca.
@@ -365,14 +365,6 @@ export function Plantoes({
   // impressa e o arquivo de agenda leem daqui — se cada um refizesse o filtro,
   // bastaria um deles esquecer o "situacao !== cancelado" para a escala
   // impressa sair diferente da que está na tela.
-  const daEscala = useMemo(
-    () => plantoes.filter((p) => p.situacao !== "cancelado"
-      && (escopo === "grupo" || p.perfil_id === perfilId)
-      // O filtro de hospital é só do grupo, pelo motivo explicado em `hospital`.
-      && (escopo !== "grupo" || hospital === "todos" || p.local_id === hospital)),
-    [plantoes, escopo, perfilId, hospital],
-  );
-
   // Os hospitais que de fato têm plantão neste mês. A lista vem do que está na
   // escala, e não do cadastro inteiro: local cadastrado e sem plantão nenhum
   // vira uma aba que abre vazia toda vez que alguém clica nela.
@@ -381,6 +373,20 @@ export function Plantoes({
       .map((p) => p.local_id).filter((id): id is string => Boolean(id)));
     return locais.filter((l) => ids.has(l.id));
   }, [plantoes, locais]);
+
+  // O filtro só vale se corresponder a um hospital que tem plantão. Sem esta
+  // conferência, abrir filtrado no local ativo esvaziava o calendário sempre
+  // que ele não tivesse turno no mês — e a barra para trocar, que só aparece
+  // havendo mais de um hospital, não estava lá para desfazer.
+  const hospitalAtivo = filtroDeHospital(hospital, hospitaisDoMes.map((l) => l.id));
+
+  const daEscala = useMemo(
+    () => plantoes.filter((p) => p.situacao !== "cancelado"
+      && (escopo === "grupo" || p.perfil_id === perfilId)
+      // O filtro de hospital é só do grupo, pelo motivo explicado em `hospital`.
+      && (escopo !== "grupo" || hospitalAtivo === "todos" || p.local_id === hospitalAtivo)),
+    [plantoes, escopo, perfilId, hospitalAtivo],
+  );
 
   /**
    * Os turnos de um dia, agrupados por hospital E horário.
@@ -555,10 +561,10 @@ export function Plantoes({
               aria-label="Hospital da escala do grupo">
               {hospitaisDoMes.map((l) => (
                 <button key={l.id} type="button"
-                  className={hospital === l.id ? "active" : ""}
+                  className={hospitalAtivo === l.id ? "active" : ""}
                   onClick={() => setHospital(l.id)}>{nomeDoLocal(l)}</button>
               ))}
-              <button type="button" className={hospital === "todos" ? "active" : ""}
+              <button type="button" className={hospitalAtivo === "todos" ? "active" : ""}
                 onClick={() => setHospital("todos")}>Todos</button>
             </div>
           )}
@@ -627,7 +633,7 @@ export function Plantoes({
                                       horário sozinho não diz de qual serviço é
                                       o turno. Filtrado num hospital, o nome
                                       seria a mesma palavra em toda célula. */}
-                                  {hospital === "todos" && (
+                                  {hospitalAtivo === "todos" && (
                                     <span className="plantaoOnde1">
                                       {t.localId ? localPorId.get(t.localId) ?? "—" : "Sem local"}
                                     </span>
