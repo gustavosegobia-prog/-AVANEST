@@ -2300,6 +2300,47 @@ button:disabled{cursor:not-allowed}
 /* O chip usa a cor só na borda: fundo colorido apagaria o texto do modelo. */
 .plantaoModeloChip{background-color:var(--cor-superficie)!important}
 
+/* --- Escalar rápido: a fila de nomes ------------------------------------
+   Vem da planilha em que a escala era montada: clicar na célula do dia, abrir
+   a lista, escolher o nome. Aqui a lista está sempre aberta — é uma fila de
+   botões — porque o gesto se repete dezenas de vezes numa tarde de montagem e
+   cada abertura de menu é um toque a mais.
+
+   O caminho manual não sai do lugar: no formulário a fila fica em cima da
+   lista suspensa, as duas movendo o mesmo campo. Com quinze pessoas a fila
+   vira um muro, e é na lista que o nome aparece inteiro — que é o que se
+   confere antes de escalar alguém para um plantão. */
+.plantaoParaQuem{display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+  padding:14px 25px 0}
+.plantaoParaQuem>span{font-size:13px;color:var(--cor-tinta-fraca)}
+/* No formulário a fila é um bloco próprio, com o mesmo rótulo dos campos ao
+   lado para não parecer avulsa dentro da grade. */
+.plantaoFilaCampo{display:grid;gap:7px;min-width:0}
+.plantaoFilaRotulo{font-size:12.5px;font-weight:700;color:var(--cor-tinta-fraca)}
+.plantaoFilaCampo .clinicalField span{font-size:11.5px;font-weight:600}
+.plantaoFilaNomes{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+/* A cor é a mesma que identifica a pessoa no calendário, e entra só numa
+   tarja à esquerda: chip inteiro colorido brigaria com o estado escolhido,
+   que é o que precisa saltar aqui. */
+.plantaoNomeChip{position:relative;display:inline-flex;align-items:center;gap:5px;
+  padding:7px 11px 7px 13px;border-radius:999px;cursor:pointer;font:inherit;font-size:13px;
+  font-weight:700;line-height:1;border:1px solid var(--cor-borda);
+  background:var(--cor-superficie);color:var(--cor-tinta);
+  box-shadow:inset 4px 0 0 -1px var(--med-cor,transparent);
+  transition:border-color var(--transicao),box-shadow var(--transicao),background var(--transicao)}
+.plantaoNomeChip:hover{border-color:var(--cor-marca)}
+.plantaoNomeChip:focus-visible{outline:0;box-shadow:var(--foco)}
+/* Escolhido é um estado que decide para quem vai o próximo clique: precisa ser
+   visível de longe e não pode depender só de cor — daí a borda grossa e o
+   fundo, além do aria-pressed que o leitor de tela anuncia. */
+.plantaoNomeChip.escolhido{border-color:var(--cor-marca);border-width:2px;
+  padding:6px 10px 6px 12px;background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+/* Quem já está neste dia. Não bloqueia — pode haver dois turnos no mesmo dia,
+   manhã e noite —, mas avisa antes do clique em vez de deixar o banco recusar
+   com um erro seco. */
+.plantaoNomeChip.jaEscalado{opacity:.62}
+.plantaoNomeChip.jaEscalado>b{font-size:11px;color:var(--cor-sucesso)}
+
 .plantaoModeloForm{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:20px 25px;
   border-bottom:1px solid var(--cor-borda);align-items:end}
 .plantaoModeloForm .clinicalField.wide{grid-column:span 2}
@@ -2489,6 +2530,12 @@ button:disabled{cursor:not-allowed}
 .plantaoLancarGrade{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px;align-items:end}
 .plantaoLancarGrade .clinicalField.span2{grid-column:span 2}
 .plantaoLancarGrade .clinicalField.span4{grid-column:1/-1}
+/* A fila ocupa a linha inteira. O `.span4` da grade é escrito como
+   `.clinicalField.span4`, e a fila não é um clinicalField: sem esta regra ela
+   caía numa coluna de quatro, com 127px, e os nomes empilhavam um por linha.
+   align-self porque a grade alinha pelo fim, e este bloco é mais alto que os
+   campos ao lado. */
+.plantaoLancarGrade .plantaoFilaCampo{grid-column:1/-1;align-self:start}
 .plantaoLancarGrade .plantaoDuracoes{grid-column:1/-1;margin:0}
 .plantaoNota{margin:14px 0 0;padding:11px 14px;border-radius:10px;font-size:13px;
   background:var(--cor-marca-suave);color:var(--cor-tinta)}

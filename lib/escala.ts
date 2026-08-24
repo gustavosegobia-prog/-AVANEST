@@ -164,6 +164,52 @@ export function nomeCurto(nome: string): string {
 }
 
 /**
+ * O apelido de cada colega para o botão de escalar rápido.
+ *
+ * Na planilha em que a escala era montada, a lista suspensa mostrava BRU, IGO,
+ * FLA, TAY, GUS, ANA — o primeiro nome cortado, porque a coluna é estreita. É
+ * rápido e todo mundo entende. Mas corte cego colide: Marcos e Marcelo viram
+ * MAR os dois, e um clique errado escala outro anestesista para o plantão —
+ * numa planilha alguém percebe e corrige, aqui vira a escala oficial do
+ * serviço.
+ *
+ * Então o apelido é o primeiro nome INTEIRO, e só cresce quando precisa: com
+ * dois Marcos entra a inicial do sobrenome, e com dois Marcos Silva entra o
+ * sobrenome por extenso. Curto por padrão, sem nunca ficar ambíguo — a
+ * desambiguação é calculada sobre a equipe de verdade, não adivinhada.
+ *
+ * Devolve na mesma ordem que recebeu, para o chamador casar com a lista dele.
+ */
+export function apelidosDaEquipe(equipe: { id: string; nome: string }[]): Map<string, string> {
+  const capitalizar = (p: string) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+  const partes = equipe.map((c) => partesDoNome(c.nome).map(capitalizar));
+
+  // Os degraus, do mais curto ao mais longo: "Marcos", "Marcos S.",
+  // "Marcos Silva", e por fim o nome inteiro que veio do cadastro.
+  const degraus = (p: string[]): string[] => {
+    if (!p.length) return ["—"];
+    const primeiro = p[0];
+    if (p.length === 1) return [primeiro];
+    const ultimo = p[p.length - 1];
+    return [primeiro, `${primeiro} ${ultimo[0]}.`, `${primeiro} ${ultimo}`, p.join(" ")];
+  };
+
+  // Quantas pessoas este apelido alcançaria. Enquanto for mais de uma, o
+  // apelido daquela pessoa sobe mais um degrau.
+  const quantos = (rotulo: string) =>
+    partes.filter((p) => degraus(p).includes(rotulo)).length;
+
+  const mapa = new Map<string, string>();
+  equipe.forEach((colega, i) => {
+    const opcoes = degraus(partes[i]);
+    // O último degrau entra mesmo se ainda colidir: dois cadastros com o nome
+    // idêntico existem, e um botão sem texto seria pior que um botão repetido.
+    mapa.set(colega.id, opcoes.find((op) => quantos(op) === 1) ?? opcoes[opcoes.length - 1]);
+  });
+  return mapa;
+}
+
+/**
  * "1 plantão" / "3 plantões".
  *
  * "plantão(ões)" é o atalho que economiza uma linha de código e custa a frase:

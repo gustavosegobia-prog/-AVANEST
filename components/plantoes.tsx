@@ -7,8 +7,8 @@ import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/produc
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
   corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
-  filtroDeHospital, montarICS, nomeDoPeriodo, plantaoNaEscala, plural, somarHoras,
-  TURNOS_DO_DIA, turnosCobertos,
+  apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
+  plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, turnosCobertos,
 } from "@/lib/escala";
 
 // Plantões: a escala, o valor e a troca.
@@ -174,7 +174,10 @@ export function Plantoes({
   // Lançar sem modelo. O modelo é atalho, não pré-requisito: exigir que a
   // pessoa crie um modelo antes de registrar o primeiro plantão é uma parede
   // logo na entrada, e foi exatamente onde a tela travou no primeiro uso.
-  const [lancando, setLancando] = useState<string | null>(null);
+  // O dia e para quem. A pessoa vem junto porque o formulário manual pode ser
+  // aberto de dentro do atalho rápido — escolheu o colega, quer outro horário —
+  // e reabrir com "Para mim" apagaria a escolha que a pessoa acabou de fazer.
+  const [lancando, setLancando] = useState<{ dia: string; para: string } | null>(null);
 
   const nomePorId = useMemo(() => new Map(colegas.map((c) => [c.id, c.nome])), [colegas]);
   const localPorId = useMemo(() => new Map(locais.map((l) => [l.id, nomeDoLocal(l)])), [locais]);
@@ -202,6 +205,9 @@ export function Plantoes({
     colegas.forEach((c, i) => m.set(c.id, CORES_MEDICO[i % CORES_MEDICO.length]));
     return m;
   }, [colegas]);
+
+  // O nome curto de cada colega para os botões de escalar rápido.
+  const apelidos = useMemo(() => apelidosDaEquipe(colegas), [colegas]);
 
   const carregar = useCallback(async () => {
     const supabase = createClient();
@@ -236,22 +242,41 @@ export function Plantoes({
     setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
 
-  async function lancar(dia: string, modelo: Modelo) {
+  /**
+   * Lançar a partir de um modelo, para mim ou para um colega.
+   *
+   * `para` é o atalho de escalar rápido: escolhe-se a pessoa, clica-se no
+   * modelo, e o turno entra na escala dela. A trava de administrador é a mesma
+   * do lançamento manual — o RLS recusaria de qualquer forma, e conferir aqui
+   * evita a tentativa virar um erro seco na tela.
+   */
+  async function lancar(dia: string, modelo: Modelo, para?: string) {
     setErro(""); setAviso("");
+    const dono = ehAdmin && para ? para : perfilId;
     const supabase = createClient();
     const { error } = await supabase.from("plantoes").insert({
-      institution_id: institutionId, perfil_id: perfilId,
+      institution_id: institutionId, perfil_id: dono,
       local_id: modelo.local_id, modelo_id: modelo.id,
       data: dia, hora_inicio: modelo.hora_inicio, hora_fim: modelo.hora_fim,
-      valor: modelo.valor, created_by: perfilId,
+      // Mesma regra do lançamento manual: quanto o colega recebe é combinado
+      // dele com quem paga, e ele ajusta na própria lista. O valor do modelo é
+      // o seu, não o dele.
+      valor: dono === perfilId ? modelo.valor : 0, created_by: perfilId,
     });
     if (error) {
       setErro(error.code === "23505"
-        ? "Você já tem um plantão nesse dia e horário."
+        ? dono === perfilId
+          ? "Você já tem um plantão nesse dia e horário."
+          : `${nomePorId.get(dono) ?? "Esse profissional"} já tem um plantão nesse dia e horário.`
         : "Não foi possível lançar o plantão.");
       return;
     }
-    setDiaAberto(null);
+    // O painel do dia fica ABERTO quando se escala outra pessoa: montar a
+    // escala é escalar seis nomes seguidos no mesmo dia, e fechar a cada
+    // clique obrigaria a reabrir o dia toda vez. Para si mesmo fecha, que é o
+    // gesto único de quem só lança o próprio plantão.
+    if (dono === perfilId) setDiaAberto(null);
+    else setAviso(`Plantão de ${nomeCurto(nomePorId.get(dono) ?? "")} lançado em ${dia.slice(8, 10)}/${dia.slice(5, 7)}.`);
     void carregar();
   }
 
@@ -663,7 +688,9 @@ export function Plantoes({
                 </button>
                 <button className="outlineClinical" onClick={imprimirEscala}>Imprimir</button>
                 <button className="primaryClinical compact"
-                  onClick={() => setLancando(hojeISO.startsWith(mes) ? hojeISO : `${mes}-01`)}>
+                  onClick={() => setLancando({
+                    dia: hojeISO.startsWith(mes) ? hojeISO : `${mes}-01`, para: perfilId,
+                  })}>
                   + Lançar plantão
                 </button>
               </div>
@@ -761,8 +788,9 @@ export function Plantoes({
               modelos={modelos} perfilId={perfilId} ehAdmin={ehAdmin}
               pessoal={escopo === "minha"}
               institutionId={institutionId} conveniosConhecidos={conveniosConhecidos}
+              colegas={colegas} apelidos={apelidos} corPorMedico={corPorMedico}
               nomePorId={nomePorId} localPorId={localPorId}
-              onLancar={lancar} onLancarAvulso={(d) => setLancando(d)}
+              onLancar={lancar} onLancarAvulso={(d, p) => setLancando({ dia: d, para: p })}
               onRemover={remover}
               onFechar={() => setDiaAberto(null)}
             />
@@ -873,8 +901,9 @@ export function Plantoes({
           dentro da coluna herdariam a largura dela. */}
       {lancando && (
         <LancarPlantao
-          dia={lancando} locais={locais} modelos={modelos}
-          colegas={colegas} perfilId={perfilId} ehAdmin={ehAdmin}
+          dia={lancando.dia} para={lancando.para} locais={locais} modelos={modelos}
+          colegas={colegas} apelidos={apelidos} corPorMedico={corPorMedico}
+          perfilId={perfilId} ehAdmin={ehAdmin}
           onFechar={() => setLancando(null)} onSalvar={lancarAvulso}
         />
       )}
@@ -893,15 +922,17 @@ export function Plantoes({
 }
 
 function DiaDetalhe({
-  dia, plantoes, modelos, perfilId, ehAdmin, pessoal, institutionId, conveniosConhecidos,
+  dia, plantoes, modelos, colegas, apelidos, corPorMedico,
+  perfilId, ehAdmin, pessoal, institutionId, conveniosConhecidos,
   nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onFechar,
 }: {
   dia: string; plantoes: Plantao[]; modelos: Modelo[]; perfilId: string;
+  colegas: Colega[]; apelidos: Map<string, string>; corPorMedico: Map<string, string>;
   ehAdmin: boolean; pessoal: boolean;
   institutionId: string; conveniosConhecidos: string[];
   nomePorId: Map<string, string>; localPorId: Map<string, string>;
-  onLancar: (dia: string, modelo: Modelo) => void;
-  onLancarAvulso: (dia: string) => void;
+  onLancar: (dia: string, modelo: Modelo, para: string) => void;
+  onLancarAvulso: (dia: string, para: string) => void;
   onRemover: (id: string) => void;
   onFechar: () => void;
 }) {
@@ -909,6 +940,26 @@ function DiaDetalhe({
   // A anotação se liga ao plantão quando não há dúvida de qual é. Com dois
   // turnos seus no mesmo dia, escolher um por conta própria seria chute.
   const meusDoDia = plantoes.filter((p) => p.perfil_id === perfilId && p.situacao !== "cancelado");
+
+  /**
+   * Para quem o próximo clique escala.
+   *
+   * A escala do serviço era montada numa planilha: clicar na célula do dia,
+   * abrir a lista, escolher o nome. São dois toques, e é o que se repete
+   * quarenta vezes numa tarde de montagem. Aqui é o mesmo gesto — escolher a
+   * pessoa, clicar no turno —, e a escolha FICA de pé entre um lançamento e
+   * outro, porque quem monta a escala costuma pôr a mesma pessoa em vários
+   * dias seguidos.
+   *
+   * Nasce em "mim" e só existe para quem monta a escala. Sem ser
+   * administrador, o único destino possível é você mesmo — e o RLS confirma.
+   */
+  const [para, setPara] = useState(perfilId);
+  const escalaOutro = ehAdmin && para !== perfilId;
+  // Quem já está neste dia: escalar duas vezes a mesma pessoa no mesmo turno
+  // é o erro mais fácil de cometer clicando rápido, e o banco recusa com um
+  // erro seco. Marcado no botão, ele nem chega a ser clicado.
+  const jaNoDia = new Set(plantoes.filter((p) => p.situacao !== "cancelado").map((p) => p.perfil_id));
   return (
     <section className="clinicalPanel plantaoDetalhe">
       <div className="panelTitle">
@@ -935,20 +986,59 @@ function DiaDetalhe({
         </div>
       ))}
 
+      {/* Escolher a pessoa, e só então o turno. A ordem é essa porque é a
+          pergunta que se faz montando escala: "quem fica na quinta?" — o
+          horário já está decidido antes de abrir o dia.
+
+          Só para quem monta a escala, e só quando há mais de uma pessoa: para
+          o anestesista sozinho a fila seria um botão único escrito "Para mim",
+          que não escolhe nada. */}
+      {ehAdmin && !pessoal && colegas.length > 1 && (
+        <div className="plantaoParaQuem">
+          <span>Escalar:</span>
+          <div className="plantaoFilaNomes" role="group" aria-label="Para quem escalar">
+            <button type="button"
+              className={`plantaoNomeChip${para === perfilId ? " escolhido" : ""}`}
+              aria-pressed={para === perfilId} onClick={() => setPara(perfilId)}>
+              Para mim
+            </button>
+            {colegas.filter((c) => c.id !== perfilId).map((c) => (
+              <button type="button" key={c.id}
+                className={`plantaoNomeChip med-${corPorMedico.get(c.id) ?? "m8"}`
+                  + `${para === c.id ? " escolhido" : ""}${jaNoDia.has(c.id) ? " jaEscalado" : ""}`}
+                aria-pressed={para === c.id}
+                title={jaNoDia.has(c.id) ? `${c.nome} — já está neste dia` : c.nome}
+                onClick={() => setPara(c.id)}>
+                {apelidos.get(c.id) ?? c.nome}
+                {jaNoDia.has(c.id) && <b aria-hidden="true">✓</b>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="plantaoLancar">
-        <span>Lançar a partir de um modelo:</span>
+        <span>{escalaOutro
+          ? `Turno de ${apelidos.get(para) ?? "quem você escolheu"}:`
+          : "Lançar a partir de um modelo:"}</span>
         {modelos.length === 0
-          ? <button className="primaryClinical compact" onClick={() => onLancarAvulso(dia)}>
+          ? <button className="primaryClinical compact" onClick={() => onLancarAvulso(dia, para)}>
               + Lançar plantão neste dia
             </button>
           : modelos.map((mo) => (
-            <button key={mo.id} className={`plantaoModeloChip cor-${mo.cor}`} onClick={() => onLancar(dia, mo)}>
+            <button key={mo.id} className={`plantaoModeloChip cor-${mo.cor}`} onClick={() => onLancar(dia, mo, para)}>
               <b>{mo.nome}</b>
-              <small>{hhmm(mo.hora_inicio)}–{hhmm(mo.hora_fim)} · {money(Number(mo.valor))}</small>
+              {/* O valor do modelo é o SEU. Escalando outra pessoa ele sairia
+                  da tela como promessa de pagamento que não foi combinada com
+                  ninguém — o plantão dela entra com valor zero, e ela ajusta. */}
+              <small>{hhmm(mo.hora_inicio)}–{hhmm(mo.hora_fim)}{escalaOutro ? "" : ` · ${money(Number(mo.valor))}`}</small>
             </button>
           ))}
+        {/* O caminho manual continua inteiro: data, local, horário e para quem,
+            tudo à mão. O atalho não substitui o formulário — ele leva a pessoa
+            escolhida junto para dentro dele. */}
         {modelos.length > 0 && (
-          <button className="outlineClinical" onClick={() => onLancarAvulso(dia)}>
+          <button className="outlineClinical" onClick={() => onLancarAvulso(dia, para)}>
             Outro horário…
           </button>
         )}
@@ -1102,12 +1192,17 @@ function ModelosPainel({
  * também sem ser obrigação.
  */
 function LancarPlantao({
-  dia, locais, modelos, colegas, perfilId, ehAdmin, onFechar, onSalvar,
+  dia, para, locais, modelos, colegas, apelidos, corPorMedico,
+  perfilId, ehAdmin, onFechar, onSalvar,
 }: {
   dia: string;
+  /** Quem já vinha escolhido na fila rápida do painel do dia. */
+  para: string;
   locais: LocalDisponivel[];
   modelos: Modelo[];
   colegas: Colega[];
+  apelidos: Map<string, string>;
+  corPorMedico: Map<string, string>;
   perfilId: string;
   ehAdmin: boolean;
   onFechar: () => void;
@@ -1115,7 +1210,7 @@ function LancarPlantao({
 }) {
   const [form, setForm] = useState({
     data: dia, local_id: locais[0]?.id ?? "", hora_inicio: "07:00", hora_fim: "19:00",
-    valor: "", perfil_id: perfilId,
+    valor: "", perfil_id: ehAdmin ? para : perfilId,
   });
   const paraOutro = ehAdmin && form.perfil_id !== perfilId;
 
@@ -1176,17 +1271,47 @@ function LancarPlantao({
             {/* Quem monta a escala do serviço escala os outros. Sem este campo,
                 "Escala do grupo" era um diário compartilhado: mostrava o que
                 cada um lançou para si, e não a escala que alguém montou. */}
+            {/* Os dois caminhos, um em cima do outro e sempre os dois. A fila
+                é o atalho: um toque no nome e pronto. A lista suspensa
+                continua embaixo porque com quinze pessoas na organização a
+                fila vira um muro de botões, e porque nela o nome aparece
+                inteiro — que é o que se confere antes de escalar alguém para
+                um plantão. As duas são o mesmo campo: mexer numa move a outra.
+
+                A fila fica FORA do <label>. Dentro dele, o clique num chip
+                seria repassado ao controle rotulado e abriria a lista suspensa
+                junto — dois campos reagindo a um toque só. */}
             {ehAdmin && colegas.length > 1 && (
-              <label className="clinicalField span4">
-                <span>Para quem</span>
-                <select value={form.perfil_id}
-                  onChange={(e) => setForm({ ...form, perfil_id: e.target.value })}>
-                  <option value={perfilId}>Para mim</option>
+              <div className="plantaoFilaCampo span4">
+                <span className="plantaoFilaRotulo" id="para-quem-rapido">Para quem</span>
+                <div className="plantaoFilaNomes" role="group" aria-labelledby="para-quem-rapido">
+                  <button type="button"
+                    className={`plantaoNomeChip${form.perfil_id === perfilId ? " escolhido" : ""}`}
+                    aria-pressed={form.perfil_id === perfilId}
+                    onClick={() => setForm({ ...form, perfil_id: perfilId })}>
+                    Para mim
+                  </button>
                   {colegas.filter((c) => c.id !== perfilId).map((c) => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
+                    <button type="button" key={c.id} title={c.nome}
+                      className={`plantaoNomeChip med-${corPorMedico.get(c.id) ?? "m8"}`
+                        + `${form.perfil_id === c.id ? " escolhido" : ""}`}
+                      aria-pressed={form.perfil_id === c.id}
+                      onClick={() => setForm({ ...form, perfil_id: c.id })}>
+                      {apelidos.get(c.id) ?? c.nome}
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+                <label className="clinicalField">
+                  <span>Ou escolha pelo nome completo</span>
+                  <select value={form.perfil_id}
+                    onChange={(e) => setForm({ ...form, perfil_id: e.target.value })}>
+                    <option value={perfilId}>Para mim</option>
+                    {colegas.filter((c) => c.id !== perfilId).map((c) => (
+                      <option key={c.id} value={c.id}>{c.nome}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             )}
 
             <label className="clinicalField span2"><span>Data</span>

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { PlantaoImpresso } from "./escala.ts";
 import {
-  carimboICS, corpoDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  apelidosDaEquipe, carimboICS, corpoDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
   nomeCurto, nomeDoPeriodo, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
@@ -47,6 +47,58 @@ test("nomeDoPeriodo: o turno dito por extenso", () => {
 // ---------------------------------------------------------------------------
 // Nomes
 // ---------------------------------------------------------------------------
+test("apelidosDaEquipe: curto por padrão, cresce só quando colide", () => {
+  const a = apelidosDaEquipe([
+    { id: "1", nome: "Dr. Gustavo Segobia da Silva" },
+    { id: "2", nome: "Bruna Alencar" },
+    { id: "3", nome: "Ana" },
+  ]);
+  assert.equal(a.get("1"), "Gustavo");
+  assert.equal(a.get("2"), "Bruna");
+  assert.equal(a.get("3"), "Ana");
+});
+
+test("apelidosDaEquipe: dois de primeiro nome igual não podem virar o mesmo botão", () => {
+  // O caso que o corte de três letras da planilha erra: MAR e MAR. Um clique
+  // errado aqui escala outro anestesista para o plantão.
+  const a = apelidosDaEquipe([
+    { id: "1", nome: "Marcos Andrade" },
+    { id: "2", nome: "Marcos Silva" },
+    { id: "3", nome: "Marcelo Prado" },
+  ]);
+  assert.equal(a.get("1"), "Marcos A.");
+  assert.equal(a.get("2"), "Marcos S.");
+  assert.equal(a.get("3"), "Marcelo");
+  assert.equal(new Set(a.values()).size, 3);
+});
+
+test("apelidosDaEquipe: sobrenome por extenso quando a inicial ainda colide", () => {
+  const a = apelidosDaEquipe([
+    { id: "1", nome: "Marcos Silva" },
+    { id: "2", nome: "Marcos Souza" },
+  ]);
+  assert.equal(a.get("1"), "Marcos Silva");
+  assert.equal(a.get("2"), "Marcos Souza");
+});
+
+test("apelidosDaEquipe: nome idêntico não deixa botão sem texto", () => {
+  const a = apelidosDaEquipe([
+    { id: "1", nome: "Ana Lima" },
+    { id: "2", nome: "Ana Lima" },
+  ]);
+  assert.equal(a.get("1"), "Ana Lima");
+  assert.equal(a.get("2"), "Ana Lima");
+});
+
+test("apelidosDaEquipe: partícula e título não entram no apelido", () => {
+  const a = apelidosDaEquipe([
+    { id: "1", nome: "Dra. Flávia de Oliveira" },
+    { id: "2", nome: "Flávia dos Santos" },
+  ]);
+  assert.equal(a.get("1"), "Flávia O.");
+  assert.equal(a.get("2"), "Flávia S.");
+});
+
 test("iniciais: partícula não vira inicial", () => {
   assert.equal(iniciais("GUSTAVO SEGOBIA DA SILVA"), "GS");
   assert.equal(iniciais("Ana de Souza"), "AS");
