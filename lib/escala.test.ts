@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { PlantaoImpresso } from "./escala.ts";
 import {
   apelidosDaEquipe, carimboICS, corpoDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
-  nomeCurto, nomeDoPeriodo, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
+  nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +47,21 @@ test("nomeDoPeriodo: o turno dito por extenso", () => {
 // ---------------------------------------------------------------------------
 // Nomes
 // ---------------------------------------------------------------------------
+test("ondeFica: o cadastro, o escrito à mão, ou nada", () => {
+  const nomes = new Map([["h1", "Hospital da Unimed"]]);
+  assert.equal(ondeFica({ local_id: "h1" }, nomes), "Hospital da Unimed");
+  // Plantão de fora: o lugar é texto, e não passa pelo cadastro do grupo.
+  assert.equal(ondeFica({ local_id: null, local_texto: "Clínica de endoscopia" }, nomes),
+    "Clínica de endoscopia");
+  assert.equal(ondeFica({ local_id: null, local_texto: null }, nomes), "Sem local");
+  // Só espaços é o mesmo que vazio: senão a linha da escala fica sem lugar
+  // nenhum e parece erro de carregamento.
+  assert.equal(ondeFica({ local_id: null, local_texto: "   " }, nomes), "Sem local");
+  // Local que saiu do cadastro devolve "—", não string vazia.
+  assert.equal(ondeFica({ local_id: "sumiu" }, nomes), "—");
+  assert.equal(ondeFica({ local_id: null }, nomes, ""), "");
+});
+
 test("apelidosDaEquipe: curto por padrão, cresce só quando colide", () => {
   const a = apelidosDaEquipe([
     { id: "1", nome: "Dr. Gustavo Segobia da Silva" },

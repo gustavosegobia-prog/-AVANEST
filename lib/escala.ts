@@ -164,6 +164,27 @@ export function nomeCurto(nome: string): string {
 }
 
 /**
+ * Onde o plantão acontece, para a tela.
+ *
+ * Duas origens, e nunca as duas: o local do cadastro, que é do grupo, ou o
+ * lugar escrito à mão, que existe para o plantão de fora — a sedação no
+ * consultório de endoscopia, o hospital que não é do serviço. O cadastro
+ * ganha quando os dois vierem preenchidos, o que o banco já impede.
+ *
+ * Local que sumiu do cadastro devolve "—" e não string vazia: uma linha da
+ * escala sem lugar nenhum parece um erro de carregamento, e "—" diz que o
+ * dado existe e o nome é que não foi achado.
+ */
+export function ondeFica(
+  plantao: { local_id?: string | null; local_texto?: string | null },
+  nomes: Map<string, string>,
+  vazio = "Sem local",
+): string {
+  if (plantao.local_id) return nomes.get(plantao.local_id) ?? "—";
+  return (plantao.local_texto ?? "").trim() || vazio;
+}
+
+/**
  * O apelido de cada colega para o botão de escalar rápido.
  *
  * Na planilha em que a escala era montada, a lista suspensa mostrava BRU, IGO,

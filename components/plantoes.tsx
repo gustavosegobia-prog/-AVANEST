@@ -8,7 +8,7 @@ import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
   corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
-  plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, turnosCobertos,
+  ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, turnosCobertos,
 } from "@/lib/escala";
 
 // Plantões: a escala, o valor e a troca.
@@ -32,6 +32,10 @@ type Plantao = {
   data: string; hora_inicio: string; hora_fim: string; horas: number;
   valor: number; situacao: string; pago_em: string | null;
   aberto_para_troca: boolean; observacoes: string | null;
+  // Plantão de fora: sedação em consultório, hospital que não é do grupo. Só
+  // quem lançou enxerga — o RLS não devolve os dos outros nem para o chefe —,
+  // e por isso o lugar vem escrito à mão, sem passar pelo cadastro de locais.
+  privado: boolean; local_texto: string | null;
 };
 type Colega = { id: string; nome: string };
 type Troca = {
@@ -166,9 +170,14 @@ export function Plantoes({
    * esteja espalhado.
    *
    * Começa no local onde a pessoa está atendendo hoje, que ela já respondeu
-   * ao entrar no sistema.
+   * ao entrar no sistema. Sem essa resposta, no primeiro hospital do cadastro
+   * — e não em "todos": a visão de conjunto saiu da coluna porque não é a
+   * escala de lugar nenhum, e abrir nela deixaria a tela mostrando justamente
+   * o que se decidiu não mostrar.
    */
-  const [hospital, setHospital] = useState<string>(localAtivoId ?? "todos");
+  const [hospital, setHospital] = useState<string>(
+    localAtivoId ?? locais.find((l) => l.ativo)?.id ?? "todos",
+  );
   const { oculto: valorOculto, alternar: esconderValores, mascara } = useValoresOcultos();
   const [pedindoTroca, setPedindoTroca] = useState<Plantao | null>(null);
   // Lançar sem modelo. O modelo é atalho, não pré-requisito: exigir que a
@@ -281,17 +290,27 @@ export function Plantoes({
   }
 
   async function lancarAvulso(dados: {
-    data: string; local_id: string; hora_inicio: string; hora_fim: string;
-    valor: number; perfil_id: string;
+    data: string; local_id: string; local_texto: string;
+    hora_inicio: string; hora_fim: string;
+    valor: number; perfil_id: string; privado: boolean;
   }) {
     setErro(""); setAviso("");
     // Quem monta a escala do serviço lança para os outros; quem não é
     // administrador só lança para si — o RLS recusaria de qualquer forma, e
     // forçar aqui evita a tentativa virar um erro seco na tela.
-    const dono = ehAdmin && dados.perfil_id ? dados.perfil_id : perfilId;
+    //
+    // Plantão privado é sempre para si, mesmo sendo administrador: um turno
+    // que só a outra pessoa enxerga, lançado por você, é agenda dela — e o
+    // banco recusa.
+    const dono = ehAdmin && dados.perfil_id && !dados.privado ? dados.perfil_id : perfilId;
     const { error } = await createClient().from("plantoes").insert({
       institution_id: institutionId, perfil_id: dono,
-      local_id: dados.local_id || null, data: dados.data,
+      // Um ou outro, nunca os dois: é o que a constraint do banco exige, e o
+      // que impede a mesma linha de ter dois lugares diferentes.
+      local_id: dados.privado ? null : (dados.local_id || null),
+      local_texto: dados.privado ? (dados.local_texto.trim() || null) : null,
+      privado: dados.privado,
+      data: dados.data,
       hora_inicio: dados.hora_inicio, hora_fim: dados.hora_fim,
       // O valor de um plantão que você escala para outra pessoa é combinado
       // entre ela e quem paga: entra zero, e ela ajusta na própria lista.
@@ -306,7 +325,9 @@ export function Plantoes({
       return;
     }
     setLancando(null);
-    if (dono !== perfilId) {
+    if (dados.privado) {
+      setAviso("Plantão lançado só na sua escala. Ninguém do grupo enxerga este turno.");
+    } else if (dono !== perfilId) {
       setAviso(`Plantão lançado para ${nomePorId.get(dono) ?? "o profissional"}. Ele aparece na escala dele, que pode ajustar o valor e pedir troca.`);
     }
     void carregar();
@@ -317,7 +338,10 @@ export function Plantoes({
     const supabase = createClient();
     const { error } = await supabase.from("plantoes")
       .update({ ...campos, updated_at: new Date().toISOString() }).eq("id", id);
-    if (error) { setErro("Não foi possível salvar a alteração."); return; }
+    // A mensagem do banco vem inteira. As recusas daqui são regras de escala —
+    // "este plantão é do grupo, passe para um colega" —, e traduzir isso para
+    // "não foi possível salvar" esconde justamente a parte que diz o que fazer.
+    if (error) { setErro(error.message || "Não foi possível salvar a alteração."); return; }
     void carregar();
   }
 
@@ -351,10 +375,33 @@ export function Plantoes({
     void carregar();
   }
 
+  /**
+   * Apagar. Só o que é privado, ou por quem monta a escala.
+   *
+   * Plantão da escala do grupo não se apaga: sai passando para um colega que
+   * aceite. O banco recusa com essa frase, e a tela repete o que ele disse em
+   * vez de traduzir por conta própria — mensagem inventada aqui envelhece
+   * separada da regra que a produziu.
+   */
   async function remover(id: string) {
-    if (!confirm("Remover este plantão da escala?")) return;
-    const supabase = createClient();
-    await supabase.from("plantoes").delete().eq("id", id);
+    const alvo = plantoes.find((p) => p.id === id);
+    const pergunta = alvo?.privado
+      ? "Apagar este plantão? Ele é só seu, ninguém do grupo o enxerga."
+      : "Remover este plantão da escala?";
+    if (!confirm(pergunta)) return;
+    setErro(""); setAviso("");
+    // O .select() no fim não é enfeite: a política de apagar do banco esconde
+    // a linha em vez de recusar, e sem ele um DELETE barrado volta como
+    // sucesso com zero linhas — a tela diria "removido" e o plantão
+    // continuaria na escala. Com ele, zero linhas é resposta e vira aviso.
+    const { data, error } = await createClient()
+      .from("plantoes").delete().eq("id", id).select("id");
+    if (error) { setErro(error.message || "Não foi possível remover o plantão."); return; }
+    if (!data || data.length === 0) {
+      setErro("Este plantão está na escala do grupo e não pode ser apagado."
+        + " Use \"Passar plantão\" e escolha um colega — ele sai da sua escala quando o colega aceitar.");
+      return;
+    }
     void carregar();
   }
 
@@ -388,11 +435,15 @@ export function Plantoes({
   // vai para montá-la, e o botão de lançar está ali.
   const locaisAtivos = useMemo(() => locais.filter((l) => l.ativo), [locais]);
 
-  // Plantão sem hospital ganha linha própria só quando existe algum.
-  const temPlantaoSemLocal = useMemo(
-    () => plantoes.some((p) => p.situacao !== "cancelado" && !p.local_id),
+  // Plantão sem hospital ganha linha própria só quando existe algum — e leva o
+  // número junto, porque a linha existe para ser esvaziada. O privado não
+  // entra: ele não é um plantão do grupo sem lugar, é um plantão de fora, e
+  // aparecer aqui o mandaria para uma escala que ninguém mais enxerga.
+  const plantoesSemLocal = useMemo(
+    () => plantoes.filter((p) => p.situacao !== "cancelado" && !p.local_id && !p.privado).length,
     [plantoes],
   );
+  const temPlantaoSemLocal = plantoesSemLocal > 0;
 
   // Id que não corresponde a hospital nenhum cai em "todos": é o que impede um
   // local arquivado, ou um cadastro que mudou, de esvaziar a tela em silêncio.
@@ -405,6 +456,11 @@ export function Plantoes({
   const daEscala = useMemo(
     () => plantoes.filter((p) => p.situacao !== "cancelado"
       && (escopo === "grupo" || p.perfil_id === perfilId)
+      // O plantão privado nunca entra na escala do grupo, nem na sua. O banco
+      // já não devolve os dos outros; o seu volta, e sem esta linha ele cairia
+      // em "Sem hospital" — dentro da escala do grupo, que é o único lugar
+      // onde ele não deve estar.
+      && (escopo !== "grupo" || !p.privado)
       // A escala pessoal mistura os hospitais de propósito; a do grupo é uma
       // por hospital, pelo motivo explicado em `hospital`.
       && (escopo !== "grupo" || plantaoNaEscala(p.local_id, hospitalAtivo))),
@@ -437,9 +493,11 @@ export function Plantoes({
 
   /** O que esta escala mostra, em uma frase. */
   const notaDaEscala = escopo === "minha"
-    ? "Todos os seus turnos, de todos os hospitais, num lugar só."
+    ? "Todos os seus turnos, de todos os hospitais, num lugar só — inclusive os plantões só seus."
     : hospitalAtivo === "todos"
-      ? "Todos os hospitais de uma vez. Serve para achar buraco de cobertura; para trabalhar, abra o hospital."
+      // Sem item na coluna: só se chega aqui por hospital arquivado ou
+      // organização sem local cadastrado. A frase diz o caminho de volta.
+      ? "Nenhum hospital aberto — a escala está mostrando todos juntos. Escolha um hospital na coluna ao lado."
       : hospitalAtivo === "sem"
         ? "Plantões lançados sem hospital. Abra o dia e relance com o local para eles entrarem na escala certa."
         : `Escala da equipe em ${locaisAtivos.find((l) => l.id === hospitalAtivo)
@@ -516,8 +574,8 @@ export function Plantoes({
         id: p.id, data: p.data, hora_inicio: p.hora_inicio, hora_fim: p.hora_fim,
         titulo: escopo === "grupo"
           ? `Plantão · ${nomePorId.get(p.perfil_id) ?? "equipe"}`
-          : `Plantão${p.local_id ? ` · ${localPorId.get(p.local_id) ?? ""}` : ""}`,
-        onde: p.local_id ? localPorId.get(p.local_id) ?? "" : "",
+          : `Plantão${ondeFica(p, localPorId, "") ? ` · ${ondeFica(p, localPorId, "")}` : ""}`,
+        onde: ondeFica(p, localPorId, ""),
       }))),
       "text/calendar;charset=utf-8",
     );
@@ -563,7 +621,7 @@ export function Plantoes({
       plantoes: daEscala.map((p) => ({
         data: p.data, hora_inicio: p.hora_inicio, hora_fim: p.hora_fim,
         horas: Number(p.horas), valor: Number(p.valor), situacao: p.situacao,
-        local: p.local_id ? localPorId.get(p.local_id) ?? "" : "",
+        local: ondeFica(p, localPorId, ""),
         profissional: nomePorId.get(p.perfil_id) ?? "",
       })),
     });
@@ -635,11 +693,20 @@ export function Plantoes({
             // se lê inteira sem a outra atravessada no meio.
             ["grupo", "Escala do grupo"],
             ...locaisAtivos.map((l) => [`grupo:${l.id}`, nomeDoLocal(l)] as [string, string]),
-            // Plantão lançado sem hospital existe e precisa aparecer em algum
-            // lugar. Sem esta linha ele some de todas as escalas e ninguém
-            // descobre por quê.
-            ...(temPlantaoSemLocal ? [["grupo:sem", "Sem hospital"] as [string, string]] : []),
-            ...(locaisAtivos.length > 1 ? [["grupo:todos", "Todos os hospitais"] as [string, string]] : []),
+            // "Todos os hospitais" saiu. A pergunta que ele respondia — "onde
+            // eu estou este mês?" — é respondida melhor por Minha escala, que
+            // já junta todos os hospitais da pessoa. Juntar as equipes de três
+            // serviços num calendário só não é a escala de lugar nenhum, e a
+            // coluna ficava com uma linha que ninguém abria duas vezes.
+            //
+            // "Sem hospital" fica, e some sozinho: ele só aparece enquanto
+            // existir plantão lançado sem lugar. Sem ele, esses plantões não
+            // apareceriam em escala nenhuma do grupo — sumiriam da tela sem
+            // ninguém descobrir por quê. O contador está ali para isso ser
+            // resolvido, não para virar paisagem.
+            ...(temPlantaoSemLocal
+              ? [["grupo:sem", "Sem hospital", plantoesSemLocal] as [string, string, number]]
+              : []),
             ["grupo", "Equipe"],
             ["trocas", "Trocas", trocasParaMim],
             ["grupo", "Faturamento"],
@@ -766,9 +833,9 @@ export function Plantoes({
                                 const mo = p.modelo_id ? modeloPorId.get(p.modelo_id) : undefined;
                                 return (
                                   <i key={p.id} className={`plantaoEtiqueta etq-${mo?.cor ?? "cinza"}`}
-                                    title={`${nomeDoPeriodo(p.hora_inicio, p.hora_fim)} · ${faixa(p.hora_inicio, p.hora_fim)}${p.local_id ? ` · ${localPorId.get(p.local_id) ?? ""}` : ""}`}>
+                                    title={`${nomeDoPeriodo(p.hora_inicio, p.hora_fim)} · ${faixa(p.hora_inicio, p.hora_fim)}${ondeFica(p, localPorId, "") ? ` · ${ondeFica(p, localPorId, "")}` : ""}`}>
                                     <b>{faixa(p.hora_inicio, p.hora_fim)}</b>
-                                    <span>{p.local_id ? localPorId.get(p.local_id) ?? "Sem local" : "Sem local"}</span>
+                                    <span>{ondeFica(p, localPorId)}</span>
                                   </i>
                                 );
                               })}
@@ -791,7 +858,7 @@ export function Plantoes({
               colegas={colegas} apelidos={apelidos} corPorMedico={corPorMedico}
               nomePorId={nomePorId} localPorId={localPorId}
               onLancar={lancar} onLancarAvulso={(d, p) => setLancando({ dia: d, para: p })}
-              onRemover={remover}
+              onRemover={remover} onPassar={(p) => setPedindoTroca(p)}
               onFechar={() => setDiaAberto(null)}
             />
           )}
@@ -817,8 +884,8 @@ export function Plantoes({
                     <small>{hhmm(p.hora_inicio)}–{hhmm(p.hora_fim)} · {p.horas}h</small>
                   </span>
                   <span className="plantaoOnde">
-                    <strong>{escopo === "grupo" ? nomePorId.get(p.perfil_id) ?? "Profissional" : (p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local")}</strong>
-                    <small>{escopo === "grupo" ? (p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local") : null}</small>
+                    <strong>{escopo === "grupo" ? nomePorId.get(p.perfil_id) ?? "Profissional" : ondeFica(p, localPorId)}</strong>
+                    <small>{escopo === "grupo" ? ondeFica(p, localPorId) : null}</small>
                     {p.aberto_para_troca && <small className="plantaoTrocaAviso">oferecido para troca</small>}
                   </span>
                   {/* O valor do colega não é editável nem visível: quanto cada
@@ -847,7 +914,14 @@ export function Plantoes({
                           <option value="escalado">Escalado</option>
                           <option value="realizado">Realizado</option>
                           <option value="pago">Pago</option>
-                          <option value="cancelado">Cancelado</option>
+                          {/* "Cancelado" some da escala igualzinho a apagar, e
+                              some sem ninguém saber. Num plantão do grupo é a
+                              mesma regra do Remover: sai passando para um
+                              colega. O banco recusa de qualquer forma; tirar a
+                              opção evita o erro depois do clique. */}
+                          {(p.privado || ehAdmin || p.situacao === "cancelado") && (
+                            <option value="cancelado">Cancelado</option>
+                          )}
                         </select>
                       </label>
                     )}
@@ -858,11 +932,23 @@ export function Plantoes({
                         altura de rótulo acima dos campos vizinhos — e acertar
                         isso com um padding escolhido a olho volta a desalinhar
                         assim que a fonte ou o corpo do rótulo mudar. */}
-                    {meu && (
+                    {/* Plantão privado não se oferece: o colega não o enxerga,
+                        não sabe onde fica nem quanto vale, e aceitaria às
+                        cegas. Ele se apaga, que é o que faz sentido para um
+                        turno que só existe para você. */}
+                    {meu && !p.privado && (
                       <span className="inlineMoney">
                         <span aria-hidden="true">&nbsp;</span>
                         <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
-                          {p.aberto_para_troca ? "Trocar de novo" : "Solicitar troca"}
+                          {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
+                        </button>
+                      </span>
+                    )}
+                    {meu && p.privado && (
+                      <span className="inlineMoney">
+                        <span aria-hidden="true">&nbsp;</span>
+                        <button className="outlineClinical red" onClick={() => void remover(p.id)}>
+                          Apagar
                         </button>
                       </span>
                     )}
@@ -924,7 +1010,7 @@ export function Plantoes({
 function DiaDetalhe({
   dia, plantoes, modelos, colegas, apelidos, corPorMedico,
   perfilId, ehAdmin, pessoal, institutionId, conveniosConhecidos,
-  nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onFechar,
+  nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onPassar, onFechar,
 }: {
   dia: string; plantoes: Plantao[]; modelos: Modelo[]; perfilId: string;
   colegas: Colega[]; apelidos: Map<string, string>; corPorMedico: Map<string, string>;
@@ -934,6 +1020,7 @@ function DiaDetalhe({
   onLancar: (dia: string, modelo: Modelo, para: string) => void;
   onLancarAvulso: (dia: string, para: string) => void;
   onRemover: (id: string) => void;
+  onPassar: (p: Plantao) => void;
   onFechar: () => void;
 }) {
   const [d, mm, aa] = [dia.slice(8, 10), dia.slice(5, 7), dia.slice(0, 4)];
@@ -976,13 +1063,22 @@ function DiaDetalhe({
           </span>
           <span className="plantaoOnde">
             <strong>{nomePorId.get(p.perfil_id) ?? "Profissional"}</strong>
-            <small>{p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local"}</small>
+            <small>{ondeFica(p, localPorId)}{p.privado ? " · só você vê" : ""}</small>
           </span>
-          {/* O administrador tira da escala o plantão de qualquer um: quem monta
-              a escala corrige a escala. O colega comum só mexe no que é dele. */}
-          {p.perfil_id === perfilId || ehAdmin
+          {/* Três botões diferentes, e a diferença é de regra, não de tela.
+              O administrador tira da escala o plantão de qualquer um: quem
+              monta a escala corrige a escala. O plantão privado é só seu e
+              some quando você quiser. O da escala do grupo não se apaga — sai
+              passando para um colega que aceite, porque quem some de um turno
+              sem avisar deixa o buraco para o dia da cirurgia. */}
+          {ehAdmin || (p.perfil_id === perfilId && p.privado)
             ? <button className="outlineClinical red" onClick={() => onRemover(p.id)}>Remover</button>
-            : <span className="statusChip paused">de colega</span>}
+            : p.perfil_id === perfilId
+              ? <button className="outlineClinical" onClick={() => onPassar(p)}
+                  title="Este plantão é da escala do grupo: ele sai da sua escala quando um colega aceitar">
+                  Passar plantão
+                </button>
+              : <span className="statusChip paused">de colega</span>}
         </div>
       ))}
 
@@ -1206,13 +1302,20 @@ function LancarPlantao({
   perfilId: string;
   ehAdmin: boolean;
   onFechar: () => void;
-  onSalvar: (d: { data: string; local_id: string; hora_inicio: string; hora_fim: string; valor: number; perfil_id: string }) => void;
+  onSalvar: (d: {
+    data: string; local_id: string; local_texto: string;
+    hora_inicio: string; hora_fim: string; valor: number;
+    perfil_id: string; privado: boolean;
+  }) => void;
 }) {
   const [form, setForm] = useState({
-    data: dia, local_id: locais[0]?.id ?? "", hora_inicio: "07:00", hora_fim: "19:00",
-    valor: "", perfil_id: ehAdmin ? para : perfilId,
+    data: dia, local_id: locais[0]?.id ?? "", local_texto: "",
+    hora_inicio: "07:00", hora_fim: "19:00",
+    valor: "", perfil_id: ehAdmin ? para : perfilId, privado: false,
   });
-  const paraOutro = ehAdmin && form.perfil_id !== perfilId;
+  // Privado é sempre para si: um turno que só a outra pessoa enxerga, lançado
+  // por você, é agenda dela. Marcar a chave devolve o destino para você.
+  const paraOutro = ehAdmin && !form.privado && form.perfil_id !== perfilId;
 
   function aplicarModelo(id: string) {
     const mo = modelos.find((x) => x.id === id);
@@ -1281,7 +1384,23 @@ function LancarPlantao({
                 A fila fica FORA do <label>. Dentro dele, o clique num chip
                 seria repassado ao controle rotulado e abriria a lista suspensa
                 junto — dois campos reagindo a um toque só. */}
-            {ehAdmin && colegas.length > 1 && (
+            {/* A chave do plantão de fora.
+                Vem antes de "para quem" e de "local" porque muda os dois: um
+                plantão privado é sempre seu, e o lugar dele não sai do cadastro
+                da organização. Deixá-la no fim faria a pessoa preencher o
+                formulário inteiro e ver metade dele mudar no último clique. */}
+            <label className="localCompartilhar span4">
+              <input type="checkbox" checked={form.privado}
+                onChange={(e) => setForm({ ...form, privado: e.target.checked })} />
+              <span><strong>Plantão só meu</strong>
+                <small>
+                  Sedação fora, hospital que não é do grupo, cobertura particular.
+                  Aparece só na sua escala e no seu mês — ninguém do grupo enxerga,
+                  nem quem monta a escala.
+                </small></span>
+            </label>
+
+            {ehAdmin && colegas.length > 1 && !form.privado && (
               <div className="plantaoFilaCampo span4">
                 <span className="plantaoFilaRotulo" id="para-quem-rapido">Para quem</span>
                 <div className="plantaoFilaNomes" role="group" aria-labelledby="para-quem-rapido">
@@ -1317,20 +1436,34 @@ function LancarPlantao({
             <label className="clinicalField span2"><span>Data</span>
               <input type="date" value={form.data}
                 onChange={(e) => setForm({ ...form, data: e.target.value })} /></label>
-            <label className="clinicalField span2"><span>Local</span>
-              <select value={form.local_id} onChange={(e) => setForm({ ...form, local_id: e.target.value })}>
-                <option value="">Sem local</option>
-                {locais.map((l) => <option key={l.id} value={l.id}>{nomeDoLocal(l)}</option>)}
-              </select>
-              {/* Lista vazia é um beco: a pessoa abre o campo, encontra só
-                  "Sem local" e não tem como adivinhar que o cadastro é noutra
-                  tela. Foi a primeira pergunta de quem usou. */}
-              {locais.length === 0 && (
-                <small className="campoDica">
-                  Nenhum local cadastrado. O cadastro fica em{" "}
-                  <strong>Admin → Organização → Locais de atendimento</strong>.
-                </small>
-              )}</label>
+            {/* No plantão privado o lugar é escrito à mão, e não escolhido.
+                Cadastrar a clínica de endoscopia em "Locais de atendimento"
+                resolveria o nome e estragaria o resto: local do cadastro é do
+                grupo, vira coluna na escala do grupo e aparece para todo mundo
+                — exatamente o oposto de um plantão que só você vê. */}
+            {form.privado
+              ? <label className="clinicalField span2"><span>Onde</span>
+                  <input value={form.local_texto} maxLength={80}
+                    placeholder="Clínica de endoscopia, Hospital São José…"
+                    onChange={(e) => setForm({ ...form, local_texto: e.target.value })} />
+                  <small className="campoDica">
+                    Escrito por você, e não do cadastro da organização — este nome
+                    não aparece para ninguém do grupo.
+                  </small></label>
+              : <label className="clinicalField span2"><span>Local</span>
+                  <select value={form.local_id} onChange={(e) => setForm({ ...form, local_id: e.target.value })}>
+                    <option value="">Sem local</option>
+                    {locais.map((l) => <option key={l.id} value={l.id}>{nomeDoLocal(l)}</option>)}
+                  </select>
+                  {/* Lista vazia é um beco: a pessoa abre o campo, encontra só
+                      "Sem local" e não tem como adivinhar que o cadastro é noutra
+                      tela. Foi a primeira pergunta de quem usou. */}
+                  {locais.length === 0 && (
+                    <small className="campoDica">
+                      Nenhum local cadastrado. O cadastro fica em{" "}
+                      <strong>Admin → Organização → Locais de atendimento</strong>.
+                    </small>
+                  )}</label>}
             <label className="clinicalField"><span>Início</span>
               <input type="time" value={form.hora_inicio}
                 onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} /></label>
@@ -1397,11 +1530,17 @@ function PedirTroca({
       <section className="localModal" role="dialog" aria-modal="true" aria-labelledby="pedir-troca">
         <div className="patientModalHead">
           <div>
-            <h2 id="pedir-troca">Solicitar troca</h2>
+            <h2 id="pedir-troca">Passar plantão</h2>
             <p>
               {Number(plantao.data.slice(8, 10))}/{plantao.data.slice(5, 7)} ·{" "}
               {hhmm(plantao.hora_inicio)}–{hhmm(plantao.hora_fim)} ·{" "}
-              {plantao.local_id ? localPorId.get(plantao.local_id) ?? "sem local" : "sem local"}
+              {ondeFica(plantao, localPorId, "sem local")}
+            </p>
+            {/* Dito antes do envio, e não depois: quem clica aqui está saindo
+                de um plantão, e precisa saber que ainda não saiu. */}
+            <p className="plantaoNota">
+              O plantão continua seu até alguém aceitar. Enquanto ninguém aceitar,
+              você segue escalado.
             </p>
           </div>
           <button type="button" onClick={onFechar} aria-label="Fechar">×</button>
@@ -1496,7 +1635,7 @@ function TrocasPainel({
               ? nomePorId.get(troca.solicitante_id) ?? "Colega"
               : dirigido ? `para ${nomePorId.get(troca.destinatario_id!) ?? "colega"}` : "aberto ao grupo"}
           </strong>
-          <small>{p.local_id ? localPorId.get(p.local_id) ?? "—" : "Sem local"}</small>
+          <small>{ondeFica(p, localPorId)}</small>
           {troca.mensagem && <small className="plantaoMensagem">“{troca.mensagem}”</small>}
         </span>
         <span className={`statusChip ${dirigido ? "waiting" : "paused"}`}>
