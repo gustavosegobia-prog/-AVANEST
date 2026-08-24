@@ -17,7 +17,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
     setError("");
     const form = new FormData(event.currentTarget);
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: entrada, error: signInError } = await supabase.auth.signInWithPassword({
       email: String(form.get("email") ?? ""),
       password: String(form.get("password") ?? ""),
     });
@@ -49,7 +49,13 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
     // diferente, e o local ativo decide o cabeçalho de todo documento
     // impresso no dia. /locais responde sozinha quando não há o que
     // perguntar: com um local só, ou nenhum, ela segue direto para o painel.
-    router.replace(precisaContratar ? "/assinatura" : "/locais");
+    // A recepção entra direto: ela atende sempre no mesmo lugar, e a pergunta
+    // "onde você vai atender hoje?" é do anestesiologista que roda hospitais.
+    const { data: quem } = entrada.user
+      ? await supabase.from("perfis").select("role").eq("id", entrada.user.id).maybeSingle()
+      : { data: null };
+    const escolheLocal = quem?.role !== "recepcao";
+    router.replace(precisaContratar ? "/assinatura" : escolheLocal ? "/locais" : "/dashboard");
   }
 
   return (

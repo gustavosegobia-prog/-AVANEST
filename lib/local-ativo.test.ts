@@ -237,3 +237,61 @@ test("o caminho do login também nunca entra em laço", () => {
     }
   }
 });
+
+// ---------------------------------------------------------------------------
+// Quem não roda hospitais não escolhe hospital
+//
+// A pergunta "onde você vai atender hoje?" é do anestesiologista, que amanhece
+// numa instituição diferente a cada dia. Quem fica na recepção da clínica
+// trabalha sempre no mesmo lugar.
+// ---------------------------------------------------------------------------
+
+test("sem pergunta, nunca manda escolher", () => {
+  const r = decidirLocalDaSessao(undefined, [local("a"), local("b"), local("c")],
+    { pergunta: false });
+  assert.equal(r.precisaEscolher, false);
+  assert.ok(r.local);
+});
+
+test("sem pergunta, fica no último lugar onde esteve", () => {
+  const r = decidirLocalDaSessao(undefined, [
+    local("a", { usado_em: "2026-08-20T10:00:00Z" }),
+    local("b", { usado_em: "2026-08-24T07:00:00Z" }),
+    local("c"),
+  ], { pergunta: false });
+  assert.equal(r.local?.id, "b");
+});
+
+test("sem pergunta e sem histórico, o primeiro da lista serve", () => {
+  // meus_locais() já devolve os recentes na frente; sem recente nenhum, a
+  // ordem dela é a melhor informação que existe.
+  const r = decidirLocalDaSessao(undefined, [local("a"), local("b")], { pergunta: false });
+  assert.equal(r.local?.id, "a");
+  assert.equal(r.precisaEscolher, false);
+});
+
+test("sem pergunta, o cookie continua valendo", () => {
+  const r = decidirLocalDaSessao("c", [
+    local("a", { usado_em: "2026-08-24T07:00:00Z" }), local("b"), local("c"),
+  ], { pergunta: false });
+  assert.equal(r.local?.id, "c");
+});
+
+test("sem pergunta e sem local cadastrado não inventa nenhum", () => {
+  const r = decidirLocalDaSessao(undefined, [], { pergunta: false });
+  assert.equal(r.local, null);
+  assert.equal(r.precisaEscolher, false);
+});
+
+test("sem pergunta, local arquivado não é adotado", () => {
+  const r = decidirLocalDaSessao(undefined, [
+    local("a", { ativo: false, usado_em: "2026-08-24T07:00:00Z" }), local("b"),
+  ], { pergunta: false });
+  assert.equal(r.local?.id, "b");
+});
+
+test("a pergunta continua sendo o padrão", () => {
+  // Omitir a opção não pode desligar a escolha do anestesiologista.
+  const r = decidirLocalDaSessao(undefined, [local("a"), local("b")]);
+  assert.equal(r.precisaEscolher, true);
+});

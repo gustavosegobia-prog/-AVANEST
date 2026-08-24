@@ -167,6 +167,26 @@ export function Plantoes({
    * ao entrar no sistema.
    */
   const [hospital, setHospital] = useState<string>(localAtivoId ?? "todos");
+  /**
+   * Esconder os valores da tela.
+   *
+   * A escala é aberta no corredor do centro cirúrgico, com gente ao lado. O
+   * que se esconde é o quanto a pessoa recebe, e não o que ela trabalhou:
+   * plantões e horas continuam à vista, porque são o que ela veio consultar.
+   *
+   * Fica no aparelho, e não na conta: é sobre quem está olhando por cima do
+   * ombro agora, não sobre quem está logado. Por isso localStorage, e num
+   * try/catch — aba anônima e navegador com dados bloqueados fazem o acesso
+   * lançar exceção, e uma tela de escala não pode cair por causa disso.
+   */
+  const [valorOculto, setValorOculto] = useState(false);
+  useEffect(() => {
+    try { setValorOculto(localStorage.getItem("avanest_esconder_valores") === "1"); } catch { /* segue à vista */ }
+  }, []);
+  function esconderValores(esconder: boolean) {
+    setValorOculto(esconder);
+    try { localStorage.setItem("avanest_esconder_valores", esconder ? "1" : "0"); } catch { /* só nesta sessão */ }
+  }
   const [pedindoTroca, setPedindoTroca] = useState<Plantao | null>(null);
   // Lançar sem modelo. O modelo é atalho, não pré-requisito: exigir que a
   // pessoa crie um modelo antes de registrar o primeiro plantão é uma parede
@@ -392,6 +412,10 @@ export function Plantoes({
     setAba(secao as "producao" | "modelos" | "trocas");
   }
 
+  // Dinheiro só na escala individual. Nas outras abas — Trocas, Modelos — ele
+  // também não tem o que fazer, mas ali as métricas nem aparecem.
+  const mostraDinheiro = aba !== "escala" || escopo === "minha";
+
   /** O que esta escala mostra, em uma frase. */
   const notaDaEscala = escopo === "minha"
     ? "Todos os seus turnos, de todos os hospitais, num lugar só."
@@ -519,12 +543,29 @@ export function Plantoes({
           dela, e duas fileiras de métricas empilhadas fazem o olho comparar
           valores que não têm relação — horas de turno com valor de cirurgia. */}
       {aba !== "producao" && (
-      <section className="metricGrid plantaoMetrics">
+      <section className={`metricGrid plantaoMetrics${mostraDinheiro ? "" : " semDinheiro"}`}>
         <div className="metricCard"><strong>{resumo.turnos}</strong><span>Plantões no mês</span></div>
         <div className="metricCard"><strong>{resumo.horas.toLocaleString("pt-BR")}h</strong><span>Horas</span></div>
-        <div className="metricCard"><strong className="blue">{money(resumo.total)}</strong><span>Total do mês</span></div>
-        <div className="metricCard"><strong className="green">{money(resumo.pago)}</strong><span>Recebido</span></div>
-        <div className="metricCard"><strong className="amber">{money(resumo.aberto)}</strong><span>A receber</span></div>
+        {/* Quanto você recebe é seu. Na escala do grupo, o que está na tela é
+            o turno da equipe, e o seu dinheiro ao lado dele não tem o que
+            explicar — some junto com o escopo. */}
+        {mostraDinheiro && <>
+          <div className="metricCard"><strong className="blue">{valorOculto ? "•••••" : money(resumo.total)}</strong><span>Total do mês</span></div>
+          <div className="metricCard"><strong className="green">{valorOculto ? "•••••" : money(resumo.pago)}</strong><span>Recebido</span></div>
+          <div className="metricCard">
+            <strong className="amber">{valorOculto ? "•••••" : money(resumo.aberto)}</strong>
+            <span>A receber</span>
+            {/* O olho fica no último cartão porque é o fim da fileira: cobre os
+                três de uma vez, e o dedo não passa por cima dos números para
+                alcançá-lo. A escolha vale para o aparelho, não para a conta —
+                é sobre quem está ao lado, não sobre quem está logado. */}
+            <button type="button" className="plantaoOlho" onClick={() => esconderValores(!valorOculto)}
+              aria-pressed={valorOculto}
+              title={valorOculto ? "Mostrar os valores" : "Esconder os valores"}>
+              {valorOculto ? "Mostrar valores" : "Esconder valores"}
+            </button>
+          </div>
+        </>}
       </section>
       )}
 
@@ -683,6 +724,7 @@ export function Plantoes({
             <DiaDetalhe
               dia={diaAberto} plantoes={plantoes.filter((p) => p.data === diaAberto)}
               modelos={modelos} perfilId={perfilId} ehAdmin={ehAdmin}
+              pessoal={escopo === "minha"}
               institutionId={institutionId} conveniosConhecidos={conveniosConhecidos}
               nomePorId={nomePorId} localPorId={localPorId}
               onLancar={lancar} onLancarAvulso={(d) => setLancando(d)}
@@ -816,10 +858,11 @@ export function Plantoes({
 }
 
 function DiaDetalhe({
-  dia, plantoes, modelos, perfilId, ehAdmin, institutionId, conveniosConhecidos,
+  dia, plantoes, modelos, perfilId, ehAdmin, pessoal, institutionId, conveniosConhecidos,
   nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onFechar,
 }: {
-  dia: string; plantoes: Plantao[]; modelos: Modelo[]; perfilId: string; ehAdmin: boolean;
+  dia: string; plantoes: Plantao[]; modelos: Modelo[]; perfilId: string;
+  ehAdmin: boolean; pessoal: boolean;
   institutionId: string; conveniosConhecidos: string[];
   nomePorId: Map<string, string>; localPorId: Map<string, string>;
   onLancar: (dia: string, modelo: Modelo) => void;
@@ -879,12 +922,19 @@ function DiaDetalhe({
       {/* O caderninho do dia. Fica aqui, no painel que já abre ao tocar no
           dia, e não numa tela à parte: a anotação é feita no fim do plantão,
           com o jaleco ainda vestido, e cada toque a mais é um paciente que
-          deixa de ser anotado. */}
-      <ProducaoDoDia
-        dia={dia} perfilId={perfilId} institutionId={institutionId}
-        conveniosConhecidos={conveniosConhecidos}
-        plantaoId={meusDoDia.length === 1 ? meusDoDia[0].id : null}
-      />
+          deixa de ser anotado.
+
+          Só na escala pessoal. Na do grupo o dia que se abre é o de todo
+          mundo, e um caderno de pacientes embaixo dele sugere que se está
+          anotando a produção da equipe — quando a lista é, e continua sendo,
+          estritamente de quem escreve. */}
+      {pessoal && (
+        <ProducaoDoDia
+          dia={dia} perfilId={perfilId} institutionId={institutionId}
+          conveniosConhecidos={conveniosConhecidos}
+          plantaoId={meusDoDia.length === 1 ? meusDoDia[0].id : null}
+        />
+      )}
     </section>
   );
 }

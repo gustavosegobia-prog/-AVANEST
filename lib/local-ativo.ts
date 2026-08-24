@@ -98,8 +98,15 @@ export function localAindaVale(
 export function decidirLocalDaSessao(
   preferido: string | undefined,
   disponiveis: LocalDisponivel[],
+  opcoes: { pergunta?: boolean } = {},
 ): { local: LocalDisponivel | null; precisaEscolher: boolean } {
   const ativos = disponiveis.filter((item) => item.ativo);
+  // A pergunta é do anestesiologista, que amanhece num hospital diferente a
+  // cada dia. Quem fica na recepção da clínica trabalha sempre no mesmo lugar:
+  // perguntar todo login é uma porta a mais para abrir e nenhuma decisão a
+  // tomar. Para essas pessoas o sistema resolve sozinho — e não erra
+  // cabeçalho de documento clínico, porque não é quem os imprime.
+  const pergunta = opcoes.pergunta ?? true;
 
   const doPreferido = localAindaVale(preferido, ativos);
   if (doPreferido) return { local: doPreferido, precisaEscolher: false };
@@ -110,6 +117,14 @@ export function decidirLocalDaSessao(
 
   // Escolher entre uma opção não é escolher.
   if (ativos.length === 1) return { local: ativos[0], precisaEscolher: false };
+
+  // Quem não escolhe fica com o último lugar onde esteve, ou o primeiro da
+  // lista — que meus_locais() já devolve com os recentes na frente.
+  if (!pergunta) {
+    const maisRecente = [...ativos]
+      .sort((a, b) => String(b.usado_em ?? "").localeCompare(String(a.usado_em ?? "")))[0];
+    return { local: maisRecente ?? null, precisaEscolher: false };
+  }
 
   // Mais de um local e nenhum escolhido nesta sessão: pergunta.
   //

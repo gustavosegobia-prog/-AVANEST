@@ -2275,6 +2275,23 @@ button:disabled{cursor:not-allowed}
    frase que explica o que se está vendo — ela continua valendo, porque
    "Escala do grupo" não diz sozinha que você só edita os seus turnos. */
 .plantaoEscopoNota{margin:0 0 14px;color:var(--cor-tinta-fraca);font-size:13px}
+/* Sem os três cartões de dinheiro sobram dois, e em cinco colunas eles ficam
+   perdidos com três buracos ao lado. */
+.plantaoMetrics.semDinheiro{grid-template-columns:repeat(2,minmax(0,1fr));max-width:640px}
+/* O olho vive dentro do último cartão, no canto: cobre os três valores de uma
+   vez e o dedo não passa por cima dos números para alcançá-lo. */
+.plantaoOlho{position:absolute;top:10px;right:12px;border:0;background:none;padding:4px 6px;
+  border-radius:8px;font:inherit;font-size:11px;font-weight:700;color:var(--cor-tinta-fraca);
+  cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.plantaoOlho::before{content:"👁";font-size:13px}
+.plantaoOlho[aria-pressed="true"]::before{content:"🙈"}
+.plantaoOlho:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+.plantaoOlho:focus-visible{outline:0;box-shadow:var(--foco)}
+.plantaoMetrics .metricCard{position:relative}
+@media(max-width:900px){
+  .plantaoOlho{position:static;margin-top:8px;padding:4px 0}
+  .plantaoMetrics.semDinheiro{max-width:none}
+}
 /* O nome do hospital dentro do turno: some quando a escala está filtrada num
    hospital só, onde ele seria a mesma palavra em trinta e uma células. */
 .plantaoOnde1{display:block;font-size:9.5px;font-weight:700;color:var(--cor-tinta-fraca);

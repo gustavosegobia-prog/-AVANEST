@@ -59,6 +59,8 @@ export default async function DashboardPage({
   const { local: localEscolhido, precisaEscolher } = decidirLocalDaSessao(
     localDaUrl ?? cookieStore.get(COOKIE_LOCAL)?.value,
     disponiveis,
+    // A recepção não roda hospitais: fica na clínica onde está o ambulatório.
+    { pergunta: perfil.role !== "recepcao" },
   );
   if (precisaEscolher) redirect("/locais");
   let localAtivo = localEscolhido;
