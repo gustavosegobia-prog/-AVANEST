@@ -67,7 +67,12 @@ export function lerValor(bruto: string): number {
  */
 async function prepararFoto(arquivo: File): Promise<HTMLCanvasElement | File> {
   try {
-    const imagem = await createImageBitmap(arquivo);
+    // imageOrientation não é detalhe: o celular grava a foto deitada e põe no
+    // EXIF a instrução de girar. O canvas ignora essa instrução por padrão, e
+    // o leitor recebia a ficha de lado — texto girado 90° não se reconhece.
+    // Medido nesta ficha: deitada saem 601 letras de lixo, na orientação certa
+    // saem 1724 de texto de verdade.
+    const imagem = await createImageBitmap(arquivo, { imageOrientation: "from-image" });
     const maior = Math.max(imagem.width, imagem.height);
     // Teto de 2200 e piso de 1500: a faixa onde a letra de uma ficha impressa
     // fica com altura suficiente para ser lida sem virar mancha.

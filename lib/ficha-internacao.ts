@@ -39,8 +39,9 @@ const ROTULOS: Array<{ campo: Campo; apelidos: string[] }> = [
     "seguradora", "carteira", "beneficiario de",
   ] },
   { campo: "procedimento", apelidos: [
-    "procedimento proposto", "cirurgia proposta", "procedimento cirurgico",
-    "descricao do procedimento", "procedimento", "cirurgia", "ato cirurgico",
+    "descricao do procedimento", "procedimento proposto", "cirurgia proposta",
+    "procedimento cirurgico", "procedimento solicitado", "procedimento",
+    "cirurgia", "ato cirurgico",
   ] },
 ];
 
@@ -59,6 +60,17 @@ const NUNCA_E_VALOR = [
   "especialidade", "clinica", "hospital", "unidade", "setor", "data", "hora",
   "assinatura", "carimbo", "crm", "diagnostico", "cid", "observacoes",
   "acomodacao", "internacao", "admissao", "guia", "senha", "validade",
+  // Do laudo de AIH do SUS, que é a ficha da maioria das cirurgias em
+  // hospital filantrópico. Sem eles, "Nome do estabelecimento executante"
+  // vira nome de paciente e "Nome do profissional responsável" vira o nome
+  // do cirurgião no lugar do doente.
+  "estabelecimento", "nome do estabelecimento solicitante",
+  "nome do estabelecimento executante", "nome da mae ou responsavel",
+  "nome do profissional responsavel", "nome do profissional autorizador",
+  "cartao nacional de saude", "cns", "cnes", "municipio de residencia",
+  "codigo do procedimento", "carater da internacao", "documento",
+  "raca/cor", "raca", "etnia", "uf", "serie", "cbo", "cnpj", "cnae",
+  "solicitacao", "internamento", "laudo", "reserva", "orgao emissor",
 ];
 
 /** Tira acento, baixa a caixa e junta espaços. */
@@ -112,12 +124,35 @@ const ROTULOS_INCONFUNDIVEIS = TODOS_ROTULOS.filter((r) => r.length >= 8);
  * pode legitimamente começar com uma palavra que também é rótulo de ficha.
  * Com os dois-pontos, "Clínica geral" passa e "Clínica: São Lucas" não.
  */
-function comecaComRotulo(valor: string, exigeDoisPontos = false): boolean {
-  const plano = achatar(valor.trim());
-  return TODOS_ROTULOS.some((rotulo) => new RegExp(
-    `^${escaparRegex(rotulo).replace(/ /g, "\\s+")}\\s*${exigeDoisPontos ? ":" : "(?!\\p{L})"}`,
-    "u",
+function comecaComRotulo(valor: string, apenasCompostos = false): boolean {
+  // O número do campo sai antes. Na ficha do SUS o rótulo vem numerado —
+  // "26 - CÓDIGO DO PROCEDIMENTO" — e sem tirar o "26 - " ele não é
+  // reconhecido como rótulo: virava a descrição da cirurgia.
+  const plano = achatar(valor.trim()).replace(/^\d{1,2}\s*[-–—.:+]\s*/u, "");
+  const lista = apenasCompostos
+    ? TODOS_ROTULOS.filter((r) => r.includes(" "))
+    : TODOS_ROTULOS;
+  return lista.some((rotulo) => new RegExp(
+    `^${escaparRegex(rotulo).replace(/ /g, "\\s+")}(?!\\p{L})`, "u",
   ).test(plano));
+}
+
+/**
+ * Este trecho é o começo de um rótulo que nunca é valor?
+ *
+ * Existe por causa de "11 - NOME DA MÃE OU RESPONSÁVEL". O apelido "nome"
+ * casa ali, e o resto da linha — "DA MÃE OU RESPONSÁVEL..." — era cortado no
+ * próximo rótulo e virava "DA MÃE OU": três palavras, sem dígito, aceito como
+ * nome de paciente. O nome da mãe da paciente não é a paciente, e um erro
+ * desses vira cobrança no nome errado.
+ *
+ * A checagem é feita na POSIÇÃO do rótulo curto: se o que começa ali é um
+ * rótulo mais longo e proibido, o casamento inteiro é descartado.
+ */
+function ehRotuloProibidoMaisLongo(trecho: string): boolean {
+  return NUNCA_E_VALOR.some((rotulo) => rotulo.includes(" ") && new RegExp(
+    `^${escaparRegex(rotulo).replace(/ /g, "\\s+")}(?!\\p{L})`, "u",
+  ).test(trecho));
 }
 
 /**
@@ -133,6 +168,28 @@ function comecaComRotulo(valor: string, exigeDoisPontos = false): boolean {
  * convênio, que são curtos e nunca contêm palavra de formulário; não vale
  * para procedimento, que é descrição livre e perderia texto legítimo.
  */
+/**
+ * Corta o valor onde começa um número de documento.
+ *
+ * Na ficha do SUS o rótulo fica numa linha e o valor na de baixo — e a linha
+ * de baixo traz também o valor da coluna vizinha, sem rótulo nenhum entre os
+ * dois: "MARTINA SIQUEIRA BRAGA 4.407.256" é nome e prontuário grudados.
+ * Não há rótulo em que cortar; o que separa é o número.
+ *
+ * Quatro dígitos no mesmo pedaço, e não qualquer dígito: prontuário, carteira,
+ * CPF, data e código de procedimento têm todos mais que isso, enquanto "Amil
+ * 400" e "Cesárea 2x" têm menos e ficam inteiros.
+ */
+function cortarNoNumero(valor: string): string {
+  const partes = valor.split(/(\s+)/);
+  let saida = "";
+  for (const parte of partes) {
+    if ((parte.match(/\d/g) ?? []).length >= 4) break;
+    saida += parte;
+  }
+  return saida.trim() || valor.trim();
+}
+
 export function cortarNoProximoRotulo(valor: string, agressivo = false): string {
   const plano = achatar(valor);
   // Índice fora de sincronia: melhor devolver inteiro do que cortar errado.
@@ -237,30 +294,96 @@ const VALIDA: Record<Campo, (v: string) => boolean> = {
   procedimento: pareceProcedimento,
 };
 
+/**
+ * Tira a borda da tabela colada na frente da linha.
+ *
+ * "|", "[", "»" e o quadradinho de marcar são o que a linha impressa vira no
+ * reconhecimento. Só na frente: o ")" de "(UNILATERAL)" pertence ao texto.
+ */
+const semBorda = (l: string) => l.replace(/^[^\p{L}\d]+/u, "");
+
 /** Tira a pontuação de borda que o OCR costuma colar no valor. */
 const limparValor = (v: string) =>
   v.replace(/^[\s:;.\-–—|]+/, "").replace(/[\s:;.\-–—|]+$/, "").trim();
+
+/**
+ * O laudo de AIH do SUS.
+ *
+ * Ele tem tratamento próprio porque é o mesmo formulário em todo hospital do
+ * país — e porque a leitura dele quebra a regra geral: o rótulo do campo 5,
+ * "NOME DO PACIENTE", saiu do reconhecimento como "bos Sdl". Não sobrou rótulo
+ * nenhum para casar, e o nome estava ali na linha de baixo.
+ *
+ * O que salva é a vizinhança fixa do formulário. O campo 5 divide a linha de
+ * cabeçalho com o 6, "Nº PRONTUÁRIO", e os valores dos dois vêm juntos na
+ * linha seguinte: "MARTINA SIQUEIRA BRAGA 4.407.256". O prontuário é palavra
+ * comprida e sobrevive ao reconhecimento; ele vira a âncora, e o número separa
+ * o nome do resto.
+ *
+ * Isto só roda depois de o laudo ser reconhecido pelo título. Fora dele, uma
+ * regra que lê "a linha depois de prontuário" acertaria por acaso e erraria em
+ * silêncio.
+ */
+const EH_LAUDO_SUS =
+  /autorizacao de internacao hospitalar|laudo para solicitacao de autorizacao/;
+
+const ANCORAS_SUS: Array<[RegExp, Campo]> = [
+  // Campo 6, ao lado do 5 (nome do paciente).
+  [/(?:^|\s)n\s*[.ºo°]?\s*prontuario/u, "paciente"],
+  // Campo 25, com o 26 (código) ao lado.
+  [/descricao do procedimento|codigo do procedimento/u, "procedimento"],
+];
+
+function lerLaudoDoSUS(linhas: string[], dados: DadosDaFicha): void {
+  const inteiro = normalizar(linhas.join(" "));
+  if (!EH_LAUDO_SUS.test(inteiro)) return;
+
+  for (let i = 0; i < linhas.length - 1; i++) {
+    const cabecalho = normalizar(linhas[i]);
+    for (const [marca, campo] of ANCORAS_SUS) {
+      if (dados[campo] || !marca.test(cabecalho)) continue;
+      const abaixo = cortarNoNumero(limparValor(semBorda(linhas[i + 1] ?? "")));
+      if (abaixo && !comecaComRotulo(abaixo) && VALIDA[campo](abaixo)) {
+        dados[campo] = abaixo;
+      }
+    }
+  }
+
+  // Quem paga é o SUS, e o laudo é o documento que diz isso. Não é palpite:
+  // paciente com convênio ou particular não entra por AIH. Sem esta linha o
+  // campo ficaria em "Particular", que é o padrão do formulário — e cobrar
+  // como particular um caso do SUS é o erro mais caro que esta tela pode
+  // produzir.
+  if (!dados.convenio) dados.convenio = "SUS";
+}
 
 /**
  * Lê a ficha.
  *
  * Percorre linha a linha procurando "rótulo: valor". Quando o valor não vem na
  * mesma linha, olha a seguinte — em ficha impressa o rótulo em cima do campo é
- * tão comum quanto ao lado. O primeiro valor plausível de cada campo vence: as
- * fichas trazem o dado principal no topo, e o que vem depois costuma ser
- * repetição de rodapé ou segunda via.
+ * tão comum quanto ao lado.
+ *
+ * Vence o rótulo MAIS ESPECÍFICO da ficha inteira, não o que aparecer antes.
+ * No laudo de AIH do SUS há um "Cirurgia Eletiva: 4.022.875" no topo — que é o
+ * número da solicitação — e o procedimento de verdade só aparece no campo 25,
+ * lá embaixo. Pela ordem de leitura, o número ganhava; pela especificidade,
+ * "descrição do procedimento" ganha de "cirurgia", esteja onde estiver.
  */
 export function lerFichaDeInternacao(texto: string): {
   dados: DadosDaFicha; naoEncontrados: Campo[];
 } {
   const linhas = String(texto ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const dados: DadosDaFicha = {};
+  // Quanto vale o rótulo que trouxe cada valor: posição na lista de apelidos,
+  // menor é mais específico.
+  const peso: Partial<Record<Campo, number>> = {};
 
   for (let i = 0; i < linhas.length; i++) {
     // A borda da tabela e o quadradinho de marcar entram no reconhecimento
     // como "|", "[", "»". Sem tirá-los da frente, a linha "| Paciente: ..."
     // não começa com rótulo nenhum e a ficha inteira passava batida.
-    const linha = linhas[i].replace(/^[^\p{L}\d]+/u, "");
+    const linha = semBorda(linhas[i]);
     // A busca do rótulo é feita aqui, e não no texto de espaços juntados: a
     // posição encontrada vai recortar a LINHA, e só bate com ela se os dois
     // tiverem o mesmo comprimento. Com espaços juntados, uma ficha com espaço
@@ -269,36 +392,51 @@ export function lerFichaDeInternacao(texto: string): {
     if (plano.length !== linha.length) continue;
 
     for (const { campo, apelidos } of ROTULOS) {
-      if (dados[campo]) continue;
-      for (const apelido of apelidos) {
+      for (let k = 0; k < apelidos.length; k++) {
+        // Já temos um rótulo igual ou mais específico para este campo.
+        if (peso[campo] !== undefined && peso[campo]! <= k) break;
+        const apelido = apelidos[k];
         // \s+ no lugar do espaço: o reconhecimento espaça o rótulo como quer.
         const achado = new RegExp(
           `(?<!\\p{L})${escaparRegex(apelido).replace(/ /g, "\\s+")}\\s*(:)?`, "u",
         ).exec(plano);
-        // No começo da linha vale sem dois-pontos. No meio dela, só com — que
-        // é o que sobra quando o reconhecimento junta duas colunas da ficha
-        // numa linha só. Sem essa exigência, "nome" no meio de uma frase é
-        // palavra comum e devolveria pedaço de texto solto.
-        if (!achado || (achado.index > 0 && !achado[1])) continue;
+        if (!achado) continue;
+
+        // No começo da linha vale sem dois-pontos. No meio dela vale com os
+        // dois-pontos — que é o que sobra quando o reconhecimento junta duas
+        // colunas numa linha só — ou depois de um número de campo, que é como
+        // a ficha do SUS numera tudo: "p— 5- NOME DO PACIENTE 6+Nº PRONTUÁRIO".
+        // Sem essas condições, "nome" no meio de uma frase é palavra comum e
+        // devolveria pedaço de texto solto.
+        const numerado = /\d{1,2}\s*[-–—.:+]\s*$/u.test(plano.slice(0, achado.index));
+        if (achado.index > 0 && !achado[1] && !numerado) continue;
+        // "nome" casa dentro de "NOME DA MÃE OU RESPONSÁVEL". O rótulo mais
+        // longo manda, e ele é proibido: a mãe da paciente não é a paciente.
+        if (ehRotuloProibidoMaisLongo(plano.slice(achado.index))) continue;
 
         // O corte tira o que veio da coluna ao lado: sem ele, "FULANO DE TAL
         // Data de nascimento: 01/01/1980" é recusado inteiro por ter dígito.
         const agressivo = campo !== "procedimento";
         const brutos = [
           limparValor(linha.slice(achado.index + achado[0].length)),
-          limparValor(linhas[i + 1] ?? ""),
+          // A linha de baixo passa pela mesma limpeza de borda que a de cima:
+          // o valor da ficha do SUS vem com "[" colado na frente, e sem tirá-lo
+          // a cirurgia era gravada como "[HERNIOPLASTIA...".
+          limparValor(semBorda(linhas[i + 1] ?? "")),
         ];
         for (const bruto of brutos) {
           // Recusar ANTES de cortar. Um pedaço que começa com rótulo é a linha
           // do campo seguinte, e cortá-lo fabricaria valor a partir de rótulo.
           if (!bruto || comecaComRotulo(bruto, !agressivo)) continue;
-          const c = cortarNoProximoRotulo(bruto, agressivo);
-          if (c && VALIDA[campo](c)) { dados[campo] = c; break; }
+          const c = cortarNoNumero(cortarNoProximoRotulo(bruto, agressivo));
+          if (c && VALIDA[campo](c)) { dados[campo] = c; peso[campo] = k; break; }
         }
         break;
       }
     }
   }
+
+  lerLaudoDoSUS(linhas, dados);
 
   // "Particular" raramente vem rotulado: aparece carimbado ou marcado num
   // quadradinho. Se a palavra está na ficha e nenhum convênio foi encontrado,

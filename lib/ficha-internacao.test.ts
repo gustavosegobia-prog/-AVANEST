@@ -74,12 +74,22 @@ PARTICULAR
   assert.equal(dados.convenio, "Particular");
 });
 
-test("registro colado no nome é descartado", () => {
-  // OCR junta a coluna vizinha com frequência. Nome com número dentro não é
-  // nome, e preencher "MARIA 4471" faria a cobrança sair com lixo.
-  const { dados, naoEncontrados } = lerFichaDeInternacao("Paciente: MARIA APARECIDA 4471\n");
-  assert.equal(dados.paciente, undefined);
-  assert.ok(naoEncontrados.includes("paciente"));
+test("registro colado no nome é cortado, não descartado", () => {
+  // Esta regra MUDOU, e a mudança tem motivo. Antes, nome com número dentro
+  // era jogado fora inteiro — "não adivinhar" era a política. Só que a ficha
+  // do SUS põe o prontuário na mesma linha do nome, sem rótulo entre os dois:
+  // "MARTINA SIQUEIRA BRAGA 4.407.256". Descartar ali é descartar a ficha
+  // toda, que é o que estava acontecendo.
+  //
+  // Cortar no número não é adivinhar: nome de pessoa não tem número de quatro
+  // dígitos dentro. O que vem depois do número é de outra coluna.
+  const { dados } = lerFichaDeInternacao("Paciente: MARIA APARECIDA 4471\n");
+  assert.equal(dados.paciente, "MARIA APARECIDA");
+
+  // O que continua descartado: número curto colado na palavra, que é o OCR
+  // errando dentro do próprio nome e não uma coluna vizinha.
+  const grudado = lerFichaDeInternacao("Paciente: MAR1A APARECIDA\n");
+  assert.equal(grudado.dados.paciente, undefined);
 });
 
 test("primeiro nome sozinho não serve para cobrar", () => {
@@ -232,4 +242,71 @@ test("o corte não come sinal legítimo de razão social", () => {
   // não pertence a nome nenhum.
   const { dados } = lerFichaDeInternacao("Convenio: BRADESCO SAUDE S/A\n");
   assert.equal(dados.convenio, "BRADESCO SAUDE S/A");
+});
+
+// ---------------------------------------------------------------------------
+// O laudo de AIH do SUS
+//
+// Texto real, saído do celular do anestesiologista sobre um laudo da Santa
+// Casa. É o formulário de toda cirurgia pelo SUS no país, e ele quebra as
+// regras que valiam até aqui — por isso tem tratamento próprio.
+// ---------------------------------------------------------------------------
+const LAUDO_SUS = `SUS dncsda de TE LAUDO PARA SOLICITAÇÃO DE AUTORIZAÇÃO DE ”
+| Saúde — Saúde INTERNAÇÃO HOSPITALAR
+1 - NOME DO ESTABELECIMENTO SOLICITANTE Frio K :
+HOSPITAL SANTA CASA DE MISERICORDIA (CAMPO MOURAO/PR) 0014109 E
+3 - NOME DO ESTABELECIMENTO EXECUTANTE TEN D= ;
+HOSPITAL SANTA CASA DE MISERICORDIA (CAMPO MOURAO/PR) 0014109 E
+Nº SOLICITAÇÃO Nº INTERNAMENTO. Nº LAUDO Nº RESERVA A
+Cirurgia Eletiva: 4.022.875 FR.
+bos Sdl 6. Nº PRONTUÁRIO EE
+MARTINA SIQUEIRA BRAGA 4.407.256 CAE,
+11 - NOME DA MÃE OU RESPONSÁVEL DDO 12. Nº TELEFONE DE CONTATO Pee Cd A, =
+ALINE DE OLIVEIRA SIQUEIRA 44 98429-3415 EAbA£A
+25 - DESCRIÇÃO DO PROCEDIMENTO 26 - CÓDIGO DO PROCEDIMENTO
+[HERNIOPLASTIA INGUINAL / CRURAL (UNILATERAL) 04.07.04.010-2
+27 - CUNICA - CARATER DA INTERNAÇÃO 29: DOCUMENTO
+Cirurgia Geral Eletivo ( )ens (X)crF 069.830.716-03
+31 - NOME DO PROFISSIONAL RESPONSÁVEL 32 - DATA DA SOLICITAÇÃO
+IWANDERLISTER DUQUE TAVARES | 18/06/2026
+44 - NOME DO PROFISSIONAL AUTORIZADOR 45: COD. ORGÃO EMISSOR
+[EDUARDO BUENO SAMPAIO. ] 71
+`;
+
+test("laudo do SUS: os três campos, do texto que saiu do celular", () => {
+  const { dados, naoEncontrados } = lerFichaDeInternacao(LAUDO_SUS);
+  assert.equal(dados.paciente, "MARTINA SIQUEIRA BRAGA");
+  assert.equal(dados.procedimento, "HERNIOPLASTIA INGUINAL / CRURAL (UNILATERAL)");
+  assert.equal(dados.convenio, "SUS");
+  assert.deepEqual(naoEncontrados, []);
+});
+
+test("laudo do SUS: a mãe da paciente não é a paciente", () => {
+  // "nome" casa dentro de "NOME DA MÃE OU RESPONSÁVEL", e o corte devolvia
+  // "DA MÃE OU" — três palavras, sem dígito, aceito como nome de gente.
+  const { dados } = lerFichaDeInternacao(LAUDO_SUS);
+  assert.notEqual(dados.paciente, "DA MÃE OU");
+  assert.notEqual(dados.paciente, "ALINE DE OLIVEIRA SIQUEIRA");
+});
+
+test("laudo do SUS: o cirurgião e o autorizador não viram paciente", () => {
+  const { dados } = lerFichaDeInternacao(LAUDO_SUS);
+  assert.notEqual(dados.paciente, "WANDERLISTER DUQUE TAVARES");
+  assert.notEqual(dados.paciente, "EDUARDO BUENO SAMPAIO");
+  assert.notEqual(dados.paciente, "HOSPITAL SANTA CASA DE MISERICORDIA");
+});
+
+test("laudo do SUS: o número da solicitação não vira cirurgia", () => {
+  // "Cirurgia Eletiva: 4.022.875" aparece no topo e é o número do laudo. Pela
+  // ordem de leitura ele ganhava; pela especificidade, o campo 25 ganha.
+  const { dados } = lerFichaDeInternacao(LAUDO_SUS);
+  assert.notEqual(dados.procedimento, "Eletiva: 4.022.875 FR.");
+  assert.notEqual(dados.procedimento, "26 - CÓDIGO DO PROCEDIMENTO");
+});
+
+test("SUS só entra quando o documento é o laudo", () => {
+  // Fora do laudo, convênio em branco continua em branco: inventar pagador é
+  // o erro que cobra do lugar errado.
+  const { dados } = lerFichaDeInternacao("Paciente: CARLA REGINA DUARTE\n");
+  assert.equal(dados.convenio, undefined);
 });
