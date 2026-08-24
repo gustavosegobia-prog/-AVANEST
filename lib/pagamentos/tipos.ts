@@ -9,7 +9,7 @@
 // "cancelled" e "paused" são os únicos status que o banco entende, e é o
 // adaptador que traduz PAYMENT_CONFIRMED, authorized_payment e o que vier.
 
-export type Provedor = "mercadopago" | "asaas";
+export type Provedor = "mercadopago" | "asaas" | "stripe";
 
 export type NovaAssinatura = {
   institutionId: string;
@@ -66,6 +66,21 @@ export type EventoDeCobranca = {
   valor: number | null;
   /** Quantos meses de acesso este evento compra. Zero para eventos que não são pagamento. */
   meses: number;
+  /**
+   * Até quando o acesso vale, em segundos desde 1970, quando o provedor diz.
+   *
+   * Existe porque somar meses erra devagar. O banco fazia
+   * `greatest(now(), assinatura_ate) + p_meses meses` a cada pagamento: como o
+   * aviso chega horas depois da cobrança e o ciclo do gateway tem 30 dias e não
+   * "um mês", cada renovação empurrava a validade um pouco além do que foi
+   * pago. Em um ano vira semanas de acesso que ninguém pagou — e, no sentido
+   * contrário, o cliente de campanha ficava sem acesso entre o fim do teste e a
+   * primeira fatura.
+   *
+   * Quando vem preenchido, manda: a validade passa a ser a data do provedor, e
+   * `meses` fica de reserva para os gateways que não informam período.
+   */
+  acessoAte?: number | null;
   payload: Record<string, unknown>;
 };
 
