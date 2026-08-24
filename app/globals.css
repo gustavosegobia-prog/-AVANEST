@@ -1898,10 +1898,19 @@ button:disabled{cursor:not-allowed}
 .visuallyHidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
   overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
-.localMain{width:min(880px,calc(100% - 40px));margin:auto;padding:26px 0 70px}
+/* Largura maior do que os 880px iniciais: a tela tem uma pergunta só e
+   cabia numa coluna estreita no meio de um monitor vazio. Continua centrada
+   e com teto — escolher onde atender não é painel, e cartão esticado de
+   ponta a ponta faz a lista perder a forma de lista. */
+.localMain{width:min(1180px,calc(100% - 48px));margin:auto;padding:44px 0 60px;
+  /* Centrado na vertical: a tela tem uma pergunta só, e encostada no topo
+     de um monitor de 1080px ela ficava boiando num vazio. O "safe" é o que
+     impede a lista longa de ser cortada por cima — nesse caso ela volta a
+     começar do topo e rola normalmente. */
+  min-height:100dvh;display:grid;align-content:safe center}
 .localTopo{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px}
-.localCabecalho h1{font-size:clamp(26px,4vw,34px);margin:0 0 6px}
-.localCabecalho p{margin:0;color:var(--cor-tinta-fraca);font-size:17px}
+.localCabecalho h1{font-size:clamp(30px,4.2vw,42px);margin:0 0 8px}
+.localCabecalho p{margin:0;color:var(--cor-tinta-fraca);font-size:19px}
 .localErro{margin:18px 0 0}
 
 .localBusca{display:flex;align-items:center;gap:11px;margin:24px 0 6px;padding:0 16px;
@@ -1911,14 +1920,14 @@ button:disabled{cursor:not-allowed}
 .localBusca input:focus{outline:0}
 .localBusca:focus-within{box-shadow:var(--foco);border-color:var(--cor-marca)}
 
-.localSecao{font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
-  color:var(--cor-tinta-fraca);margin:28px 0 12px}
+.localSecao{font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--cor-tinta-fraca);margin:34px 0 14px}
 .localGrade{list-style:none;padding:0;margin:0;display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+  grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:16px}
 
-.localCartao{display:flex;align-items:center;gap:15px;width:100%;text-align:left;
-  padding:16px 18px;min-height:82px;font:inherit;color:inherit;cursor:pointer;
-  background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:15px;
+.localCartao{display:flex;align-items:center;gap:19px;width:100%;text-align:left;
+  padding:22px 24px;min-height:110px;font:inherit;color:inherit;cursor:pointer;
+  background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:16px;
   transition:border-color var(--transicao),box-shadow var(--transicao),transform var(--transicao)}
 .localCartao:hover{border-color:var(--cor-marca);box-shadow:var(--sombra-2)}
 .localCartao:active{transform:scale(.99)}
@@ -1926,16 +1935,16 @@ button:disabled{cursor:not-allowed}
 .localCartao.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave)}
 .localCartao:disabled{opacity:.6;cursor:default}
 
-.localMarca{width:46px;height:46px;flex:none;border-radius:12px;display:grid;place-items:center;
-  background:var(--cor-marca-suave);color:var(--cor-marca);font-weight:850;overflow:hidden}
+.localMarca{width:66px;height:66px;flex:none;border-radius:16px;display:grid;place-items:center;
+  background:var(--cor-marca-suave);color:var(--cor-marca);font-weight:850;font-size:19px;overflow:hidden}
 .localMarca img{width:100%;height:100%;object-fit:contain}
-.localTexto{display:grid;gap:2px;min-width:0;flex:1}
+.localTexto{display:grid;gap:4px;min-width:0;flex:1}
 /* Duas linhas, e não reticências: 'Santa Casa de Misericórdia de Campo Mourão'
    cortado em 'Santa Casa de Misericórdia de Camp…' esconde justamente a
    cidade, que é o que distingue uma Santa Casa da outra. */
-.localTexto strong{font-size:15.5px;line-height:1.28;display:-webkit-box;-webkit-line-clamp:2;
+.localTexto strong{font-size:18px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;overflow:hidden}
-.localTexto small{color:var(--cor-tinta-fraca);font-size:13px}
+.localTexto small{color:var(--cor-tinta-fraca);font-size:14.5px}
 .localGrupo{color:var(--cor-marca)!important}
 .localCarregando{font-size:12px;color:var(--cor-tinta-fraca)}
 
@@ -1943,10 +1952,31 @@ button:disabled{cursor:not-allowed}
   padding:38px 30px;text-align:center;margin-top:26px}
 .localVazio strong{display:block;font-size:18px;margin-bottom:8px}
 .localVazio p{color:var(--cor-tinta-fraca);max-width:440px;margin:0 auto 22px}
-.localNovo{margin-top:22px}
+/* O botão acompanha o tamanho dos cartões acima dele: em corpo de rodapé,
+   parecia nota de rodapé, e cadastrar local é a segunda coisa que se faz
+   nesta tela. */
+/* justify-self porque .localMain virou grade para centralizar na vertical, e
+   em grade o filho preenche a coluna: sem isto o botão esticava por 1180px. */
+.localNovo{margin-top:28px;padding:14px 22px;font-size:15px;border-radius:12px;justify-self:start}
 
+/* Sem padding no elemento que rola.
+   O cabeçalho e a barra de ações são position:sticky, e sticky se prende à
+   caixa de padding do container. Com 26px de padding aqui, os dois ficavam
+   recuados: o cabeçalho não encostava no topo, a barra de ações flutuava 26px
+   acima do fundo — e os campos apareciam por baixo dela, cortados por uma
+   linha reta bem no meio do formulário. As bordas arredondadas dos dois
+   também não encontravam as do modal, e o que se via era um canto redondo ao
+   lado de um canto vivo.
+   O recuo passa para dentro: quem rola não tem padding, e cada bloco cuida
+   do próprio espaçamento. */
 .localModal{width:min(620px,100%);max-height:92vh;overflow:auto;background:var(--cor-superficie);
-  border-radius:18px;padding:26px}
+  border-radius:18px;padding:0}
+.localModal>.patientModalHead{border-radius:18px 18px 0 0}
+.localModal>form{padding:0 26px}
+.localModal>.clinicalError{margin:16px 26px 0}
+/* Margem negativa nas laterais para a barra desfazer o recuo do formulário e
+   voltar a encostar nas bordas do modal, onde o raio dela casa com o dele. */
+.localModal .modalActions{margin:26px -26px 0;border-radius:0 0 18px 18px}
 .localFormGrade{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-top:18px}
 /* Estas duas regras são mais específicas de propósito: existe um
    @media(max-width:1050px) que zera o span2 do formulário de paciente, e
