@@ -180,7 +180,11 @@ export function Plantoes({
    * lançar exceção, e uma tela de escala não pode cair por causa disso.
    */
   const [valorOculto, setValorOculto] = useState(false);
+  // Lido depois da montagem, e não no useState inicial, porque este componente
+  // é renderizado no servidor: lá localStorage não existe, e inicializar por
+  // ele faria o HTML do servidor discordar do primeiro render do navegador.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- estado do aparelho, só existe depois de montar
     try { setValorOculto(localStorage.getItem("avanest_esconder_valores") === "1"); } catch { /* segue à vista */ }
   }, []);
   function esconderValores(esconder: boolean) {
