@@ -416,9 +416,16 @@ export function Plantoes({
     setAba(secao as "producao" | "modelos" | "trocas");
   }
 
-  // Dinheiro só na escala individual. Nas outras abas — Trocas, Modelos — ele
-  // também não tem o que fazer, mas ali as métricas nem aparecem.
-  const mostraDinheiro = aba !== "escala" || escopo === "minha";
+  /**
+   * Os cartões de resumo são de Minha escala, e de mais lugar nenhum.
+   *
+   * Todos eles contam a mesma coisa: os SEUS plantões, as SUAS horas, o SEU
+   * dinheiro. Ao lado da escala do grupo, que mostra o turno da equipe, eles
+   * respondem uma pergunta que ninguém fez ali — e pior, parecem falar do que
+   * está na tela. Em Trocas e Modelos é a mesma história: são listas, não
+   * painéis.
+   */
+  const mostraMetricas = aba === "escala" && escopo === "minha";
 
   /** O que esta escala mostra, em uma frase. */
   const notaDaEscala = escopo === "minha"
@@ -543,35 +550,43 @@ export function Plantoes({
       {erro && <p className="clinicalError">{erro}</p>}
       {aviso && <p className="financeSuccess" role="status">{aviso}</p>}
 
-      {/* Os números do plantão não aparecem na aba Produção: ela traz os
-          dela, e duas fileiras de métricas empilhadas fazem o olho comparar
-          valores que não têm relação — horas de turno com valor de cirurgia. */}
-      {aba !== "producao" && (
-      <section className={`metricGrid plantaoMetrics${mostraDinheiro ? "" : " semDinheiro"}`}>
-        <div className="metricCard"><strong>{resumo.turnos}</strong><span>Plantões no mês</span></div>
-        <div className="metricCard"><strong>{resumo.horas.toLocaleString("pt-BR")}h</strong><span>Horas</span></div>
-        {/* Quanto você recebe é seu. Na escala do grupo, o que está na tela é
-            o turno da equipe, e o seu dinheiro ao lado dele não tem o que
-            explicar — some junto com o escopo. */}
-        {mostraDinheiro && <>
-          <div className="metricCard"><strong className="blue">{valorOculto ? "•••••" : money(resumo.total)}</strong><span>Total do mês</span></div>
-          <div className="metricCard"><strong className="green">{valorOculto ? "•••••" : money(resumo.pago)}</strong><span>Recebido</span></div>
-          <div className="metricCard">
-            <strong className="amber">{valorOculto ? "•••••" : money(resumo.aberto)}</strong>
-            <span>A receber</span>
-            {/* O olho fica no último cartão porque é o fim da fileira: cobre os
-                três de uma vez, e o dedo não passa por cima dos números para
-                alcançá-lo. A escolha vale para o aparelho, não para a conta —
-                é sobre quem está ao lado, não sobre quem está logado. */}
-            <button type="button" className="plantaoOlho" onClick={() => esconderValores(!valorOculto)}
-              aria-pressed={valorOculto}
-              title={valorOculto ? "Mostrar os valores" : "Esconder os valores"}>
-              {valorOculto ? "Mostrar valores" : "Esconder valores"}
-            </button>
-          </div>
-        </>}
-      </section>
-      )}
+      {/* O olho esconde TUDO, e não só o dinheiro: quantos plantões alguém faz
+          no mês é informação de quem faz, e a escala é aberta no corredor do
+          centro cirúrgico com gente ao lado. O rótulo do cartão fica — cartão
+          em branco não diz o que está escondido, e a pessoa mostra tudo de
+          novo só para lembrar o que era. */}
+      {mostraMetricas && (() => {
+        // Os cartões viram lista para o olho poder morar no ÚLTIMO deles,
+        // qualquer que ele seja: na escala do grupo os três de dinheiro não
+        // existem, e um botão preso ao "A receber" sumiria junto com eles.
+        const cartoes = [
+          { chave: "turnos", valor: String(resumo.turnos), rotulo: "Plantões no mês", cor: "" },
+          { chave: "horas", valor: `${resumo.horas.toLocaleString("pt-BR")}h`, rotulo: "Horas", cor: "" },
+          { chave: "total", valor: money(resumo.total), rotulo: "Total do mês", cor: "blue" },
+          { chave: "pago", valor: money(resumo.pago), rotulo: "Recebido", cor: "green" },
+          { chave: "aberto", valor: money(resumo.aberto), rotulo: "A receber", cor: "amber" },
+        ];
+        return (
+        <section className="metricGrid plantaoMetrics">
+          {cartoes.map((c, i) => (
+            <div className="metricCard" key={c.chave}>
+              {/* O rótulo fica; só o número some. Cartão em branco não diz o
+                  que está escondido, e a pessoa acaba mostrando tudo de novo
+                  só para lembrar o que era. */}
+              <strong className={c.cor}>{valorOculto ? "•••" : c.valor}</strong>
+              <span>{c.rotulo}</span>
+              {i === cartoes.length - 1 && (
+                <button type="button" className="plantaoOlho"
+                  onClick={() => esconderValores(!valorOculto)}
+                  aria-pressed={valorOculto}
+                  aria-label={valorOculto ? "Mostrar os números" : "Esconder os números"}
+                  title={valorOculto ? "Mostrar os números" : "Esconder os números"} />
+              )}
+            </div>
+          ))}
+        </section>
+        );
+      })()}
 
       {/* Uma coluna, como no Médico, no Financeiro e no Admin. Antes eram duas
           fileiras de pílulas empilhadas — seção em cima, escopo embaixo —, e
