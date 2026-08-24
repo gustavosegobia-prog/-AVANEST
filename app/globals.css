@@ -2270,7 +2270,13 @@ button:disabled{cursor:not-allowed}
 .clinicalDark .med-m7{--med-cor:#e08a6e}
 .clinicalDark .med-m8{--med-cor:#9aa5b4}
 
+/* O painel recebe foco por código quando o dia abre, para o próximo Tab cair
+   dentro dele. Foco por código não é foco de teclado: o contorno só aparece
+   para quem está navegando por teclado, e o clique do mouse não ganha uma
+   moldura que ninguém pediu. */
 .plantaoDetalhe{border-color:var(--cor-marca)}
+.plantaoDetalhe:focus{outline:none}
+.plantaoDetalhe:focus-visible{outline:none;box-shadow:var(--foco)}
 .plantaoLinha{display:flex;align-items:center;gap:15px;flex-wrap:wrap;
   padding:13px 25px;border-bottom:1px solid var(--cor-borda)}
 .plantaoLinha:last-child{border-bottom:0}

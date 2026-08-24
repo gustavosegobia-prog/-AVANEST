@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
@@ -1065,8 +1065,32 @@ function DiaDetalhe({
   // é o erro mais fácil de cometer clicando rápido, e o banco recusa com um
   // erro seco. Marcado no botão, ele nem chega a ser clicado.
   const jaNoDia = new Set(plantoes.filter((p) => p.situacao !== "cancelado").map((p) => p.perfil_id));
+
+  /**
+   * Clicar no dia leva até o dia.
+   *
+   * O painel sempre abriu logo abaixo do calendário — e um mês de seis
+   * semanas tem quase oitocentos pixels de altura, então ele nascia fora da
+   * tela. Quem clicava no dia 23 via a página não mudar nada, clicava de novo
+   * e fechava o painel que tinha acabado de abrir.
+   *
+   * O foco vai junto da rolagem, e não só ela: quem usa teclado precisa que o
+   * próximo Tab caia dentro do painel que abriu, não de volta no calendário.
+   * `preventScroll` porque o scrollIntoView acima já escolheu a posição — sem
+   * ele o navegador rola uma segunda vez, e o painel dá um pulo.
+   */
+  const painel = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const alvo = painel.current;
+    if (!alvo) return;
+    const suave = typeof window !== "undefined"
+      && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    alvo.scrollIntoView({ behavior: suave ? "smooth" : "auto", block: "center" });
+    alvo.focus({ preventScroll: true });
+  }, [dia]);
+
   return (
-    <section className="clinicalPanel plantaoDetalhe">
+    <section className="clinicalPanel plantaoDetalhe" ref={painel} tabIndex={-1}>
       <div className="panelTitle">
         <strong>{d}/{mm}/{aa}</strong>
         <span>{plantoes.length ? `${plural(plantoes.length, "plantão", "plantões")} na escala` : "nenhum plantão neste dia"}</span>
