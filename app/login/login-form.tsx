@@ -44,7 +44,12 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
     const { data } = await supabase.rpc("minha_assinatura");
     const assinatura = Array.isArray(data) ? data[0] : data;
     const precisaContratar = ["trial", "cancelado"].includes(String(assinatura?.plano ?? ""));
-    router.replace(precisaContratar ? "/assinatura" : "/dashboard");
+    // Depois de entrar, a pergunta é "onde você vai atender hoje?". Quem
+    // trabalha em três hospitais começa cada manhã numa instituição
+    // diferente, e o local ativo decide o cabeçalho de todo documento
+    // impresso no dia. /locais responde sozinha quando não há o que
+    // perguntar: com um local só, ou nenhum, ela segue direto para o painel.
+    router.replace(precisaContratar ? "/assinatura" : "/locais");
   }
 
   return (

@@ -49,6 +49,12 @@ export default async function LocaisPage({
   // um; não há nada a transportar.
   if (disponiveis.length === 1 && trocar !== "1") redirect("/dashboard");
 
+  // Organização que ainda não cadastrou local nenhum não pode parar aqui. O
+  // login passa por esta tela agora, e uma tela de cadastro obrigatório na
+  // porta do sistema seria uma parede para quem nem usa a funcionalidade. O
+  // cadastro do primeiro local fica em Admin, ou aqui por /locais?trocar=1.
+  if (disponiveis.length === 0 && trocar !== "1") redirect("/dashboard");
+
   const cookieStore = await cookies();
   const ativo = cookieStore.get(COOKIE_LOCAL)?.value ?? null;
 

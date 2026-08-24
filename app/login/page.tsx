@@ -18,7 +18,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     const { data } = await supabase.rpc("minha_assinatura");
     const assinatura = Array.isArray(data) ? data[0] : data;
     const precisaContratar = ["trial", "cancelado"].includes(String(assinatura?.plano ?? ""));
-    redirect(precisaContratar ? "/assinatura" : "/dashboard");
+    // Mesmo destino do formulário: a escolha do local vem antes do painel.
+    redirect(precisaContratar ? "/assinatura" : "/locais");
   }
 
   return (

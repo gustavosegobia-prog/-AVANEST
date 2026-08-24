@@ -111,25 +111,15 @@ export function decidirLocalDaSessao(
   // Escolher entre uma opção não é escolher.
   if (ativos.length === 1) return { local: ativos[0], precisaEscolher: false };
 
-  // O último lugar onde a pessoa atendeu vale como resposta.
+  // Mais de um local e nenhum escolhido nesta sessão: pergunta.
   //
-  // Sem isto, quem trabalha em três hospitais respondia "onde você vai atender
-  // hoje?" toda vez que entrasse de um aparelho onde o cookie não existisse —
-  // celular novo, outro navegador, aba anônima. E a resposta seria sempre a
-  // mesma: o lugar de ontem. Perguntar o que já se sabe é fazer o médico
-  // trabalhar pelo sistema.
+  // Chegou a existir aqui uma regra que adotava sozinha o último lugar onde a
+  // pessoa tinha atendido. Foi retirada: o hospital ativo decide o cabeçalho
+  // de todo documento impresso no dia, e quem trabalha em três instituições
+  // começa cada manhã numa diferente. Herdar a escolha de ontem imprime o
+  // nome do hospital errado na ficha que o paciente leva assinado para casa —
+  // e ninguém confere um cabeçalho que sempre esteve certo.
   //
-  // Isto é mais confiável do que o cookie, e não menos: usado_em é gravado no
-  // banco por selecionar_local, então acompanha a pessoa entre aparelhos. O
-  // cookie continua vindo antes só porque é a escolha desta sessão, que pode
-  // ser diferente da de ontem.
-  const maisRecente = ativos
-    .filter((item) => item.usado_em)
-    .sort((a, b) => String(b.usado_em).localeCompare(String(a.usado_em)))[0];
-  if (maisRecente) return { local: maisRecente, precisaEscolher: false };
-
-  // Primeira entrada de quem tem mais de um local e nunca escolheu nenhum.
-  // Aqui a pergunta é legítima: não há histórico, e adivinhar poria o nome do
-  // hospital errado no cabeçalho do documento que o paciente leva para casa.
+  // Quem escolhe é a tela de locais, e só ela. Uma regra, sem surpresa.
   return { local: null, precisaEscolher: true };
 }

@@ -33,41 +33,28 @@ test("vários locais, nunca usado nenhum: manda escolher", () => {
   assert.equal(r.precisaEscolher, true);
 });
 
-test("sem cookie, o último lugar onde atendeu responde pela pessoa", () => {
-  // Aparelho novo, outro navegador, aba anônima: o cookie não existe, mas
-  // usado_em está no banco e acompanha a pessoa.
+test("o histórico NÃO adota o local sozinho", () => {
+  // Regra deliberada, e não esquecimento. O hospital ativo decide o cabeçalho
+  // de todo documento impresso no dia, e quem trabalha em três instituições
+  // começa cada manhã numa diferente. Herdar a escolha de ontem imprime o
+  // hospital errado na ficha que o paciente leva assinado para casa — e
+  // ninguém confere um cabeçalho que sempre esteve certo.
   const r = decidirLocalDaSessao(undefined, [
     local("a", { usado_em: "2026-08-20T10:00:00Z" }),
     local("b", { usado_em: "2026-08-24T07:00:00Z" }),
-    local("c"),
   ]);
-  assert.equal(r.local?.id, "b");
-  assert.equal(r.precisaEscolher, false);
+  assert.equal(r.local, null);
+  assert.equal(r.precisaEscolher, true);
 });
 
-test("o cookie desta sessão vence o histórico de ontem", () => {
+test("o cookie desta sessão dispensa a pergunta", () => {
+  // Escolhido uma vez, não se pergunta de novo enquanto durar a sessão.
   const r = decidirLocalDaSessao("a", [
     local("a", { usado_em: "2026-08-20T10:00:00Z" }),
     local("b", { usado_em: "2026-08-24T07:00:00Z" }),
   ]);
   assert.equal(r.local?.id, "a");
-});
-
-test("o mais recente ignora arquivado, mesmo tendo sido o último", () => {
-  const r = decidirLocalDaSessao(undefined, [
-    local("a", { ativo: false, usado_em: "2026-08-24T07:00:00Z" }),
-    local("b", { usado_em: "2026-08-20T10:00:00Z" }),
-    local("c"),
-  ]);
-  assert.equal(r.local?.id, "b");
   assert.equal(r.precisaEscolher, false);
-});
-
-test("um único com histórico entre vários sem: é ele", () => {
-  const r = decidirLocalDaSessao(undefined, [
-    local("a"), local("b", { usado_em: "2026-08-19T08:00:00Z" }), local("c"),
-  ]);
-  assert.equal(r.local?.id, "b");
 });
 
 test("cookie válido é respeitado mesmo havendo vários", () => {
@@ -130,10 +117,16 @@ test("nunca manda escolher havendo um único disponível — o laço do 500", ()
 // redirect, isto acusa em vez de o erro aparecer no log da Vercel.
 // ---------------------------------------------------------------------------
 
-/** Anda pelo fluxo e devolve o caminho percorrido, ou estoura se não parar. */
-function percorrer(disponiveis: LocalDisponivel[], cookie?: string): string[] {
+/**
+ * Anda pelo fluxo e devolve o caminho percorrido, ou estoura se não parar.
+ *
+ * `de` existe porque o login agora entra por /locais, e não por /dashboard: a
+ * pergunta "onde você vai atender hoje?" é a primeira coisa depois de entrar.
+ */
+function percorrer(disponiveis: LocalDisponivel[], cookie?: string,
+                   de: "/dashboard" | "/locais" = "/dashboard"): string[] {
   const caminho: string[] = [];
-  let pagina = "/dashboard";
+  let pagina: string = de;
   for (let passo = 0; passo < 8; passo++) {
     caminho.push(pagina);
     if (pagina === "/dashboard") {
@@ -142,9 +135,10 @@ function percorrer(disponiveis: LocalDisponivel[], cookie?: string): string[] {
       pagina = "/locais";
       continue;
     }
-    // /locais: um só entra direto; vários mostram a escolha e param aqui.
+    // /locais: com um só, ou nenhum, não há o que perguntar e ela segue
+    // direto. Com vários, mostra a escolha e para aqui.
     const ativos = disponiveis.filter((l) => l.ativo);
-    if (ativos.length === 1) { pagina = "/dashboard"; continue; }
+    if (ativos.length <= 1) { pagina = "/dashboard"; continue; }
     return caminho;                            // mostra o seletor
   }
   throw new Error(`laço de redirect: ${caminho.join(" → ")}`);
@@ -160,14 +154,6 @@ test("nenhum local: o painel abre sem desvio nenhum", () => {
 
 test("vários locais sem cookie e sem histórico: para na escolha", () => {
   assert.deepEqual(percorrer([local("a"), local("b")]), ["/dashboard", "/locais"]);
-});
-
-test("com histórico, o login não passa mais pela escolha", () => {
-  // O pedido: depois de entrar, ir direto para onde o médico vai atender.
-  assert.deepEqual(
-    percorrer([local("a", { usado_em: "2026-08-23T07:00:00Z" }), local("b")]),
-    ["/dashboard"],
-  );
 });
 
 test("vários locais com cookie válido: abre direto", () => {
@@ -209,4 +195,45 @@ test("nomeDoLocal prefere o fantasia", () => {
   assert.equal(nomeDoLocal({ nome: "Razão Social LTDA", nome_fantasia: "Santa Casa" }), "Santa Casa");
   assert.equal(nomeDoLocal({ nome: "Razão Social LTDA", nome_fantasia: null }), "Razão Social LTDA");
   assert.equal(nomeDoLocal({ nome: "Razão Social LTDA", nome_fantasia: "  " }), "Razão Social LTDA");
+});
+
+// ---------------------------------------------------------------------------
+// O caminho do login
+// ---------------------------------------------------------------------------
+
+test("login com vários hospitais para na pergunta, e não segue sozinho", () => {
+  assert.deepEqual(
+    percorrer([local("a"), local("b")], undefined, "/locais"),
+    ["/locais"],
+  );
+});
+
+test("login pergunta mesmo havendo histórico", () => {
+  // Cada manhã pode ser num hospital diferente. O de ontem não responde por hoje.
+  assert.deepEqual(
+    percorrer([local("a", { usado_em: "2026-08-23T07:00:00Z" }), local("b")], undefined, "/locais"),
+    ["/locais"],
+  );
+});
+
+test("login com um hospital só não pergunta nada", () => {
+  assert.deepEqual(percorrer([local("a")], undefined, "/locais"), ["/locais", "/dashboard"]);
+});
+
+test("login sem hospital cadastrado não vira parede", () => {
+  // Organização que não usa locais entra como sempre entrou.
+  assert.deepEqual(percorrer([], undefined, "/locais"), ["/locais", "/dashboard"]);
+});
+
+test("o caminho do login também nunca entra em laço", () => {
+  const listas = [
+    [], [local("a")], [local("a", { ativo: false })],
+    [local("a"), local("b")], [local("a"), local("b", { ativo: false })],
+    [local("a"), local("b"), local("c")],
+  ];
+  for (const lista of listas) {
+    for (const cookie of [undefined, "", "a", "zzz"]) {
+      assert.doesNotThrow(() => percorrer(lista, cookie, "/locais"));
+    }
+  }
 });
