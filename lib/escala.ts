@@ -253,6 +253,74 @@ ${depois}
   return { titulo, corpo };
 }
 
+export type ItemDeProducao = {
+  data: string; paciente: string; convenio: string;
+  procedimento: string | null; valor: number; situacao: string;
+};
+
+const ROTULO_PRODUCAO: Record<string, string> = {
+  a_cobrar: "A cobrar", faturado: "Faturado", recebido: "Recebido", glosado: "Glosado",
+};
+
+/**
+ * A folha de faturamento do mês.
+ *
+ * Agrupada por convênio, e não por data, porque é assim que se cobra: cada
+ * operadora recebe a sua remessa, e o particular é cobrado paciente a
+ * paciente. Uma lista em ordem de dia obrigaria a pessoa a recortar a folha
+ * com a tesoura antes de mandar.
+ *
+ * Esta folha SEMPRE traz nome de paciente e valor — é o documento de cobrança
+ * de quem imprimiu, e ninguém mais tem acesso a ela. Diferente da escala do
+ * grupo, que é pública dentro do serviço e por isso não leva valor nenhum.
+ */
+export function folhaDeProducao(
+  itens: ItemDeProducao[], nomeMes: string, ano: number, impressoEm: Date,
+): { titulo: string; corpo: string } {
+  const titulo = `Produção — ${nomeMes} de ${ano}`;
+
+  const grupos = new Map<string, ItemDeProducao[]>();
+  for (const i of itens) {
+    const k = i.convenio?.trim() || "Particular";
+    grupos.set(k, [...(grupos.get(k) ?? []), i]);
+  }
+
+  const blocos = [...grupos.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
+    .map(([convenio, lista]) => {
+      const soma = lista.reduce((s, i) => s + Number(i.valor), 0);
+      const linhas = [...lista]
+        .sort((a, b) => a.data.localeCompare(b.data))
+        .map((i) => "<tr>"
+          + `<td>${Number(i.data.slice(8, 10))}/${i.data.slice(5, 7)}</td>`
+          + `<td>${escaparHTML(i.paciente)}</td>`
+          + `<td>${escaparHTML(i.procedimento || "—")}</td>`
+          + `<td class="num">${escaparHTML(money(i.valor))}</td>`
+          + `<td>${escaparHTML(ROTULO_PRODUCAO[i.situacao] ?? i.situacao)}</td></tr>`).join("");
+      return `<h2>${escaparHTML(convenio)} <small>${
+        plural(lista.length, "paciente", "pacientes")} · ${escaparHTML(money(soma))}</small></h2>`
+        + `<table class="lista"><colgroup><col style="width:9%"><col style="width:38%">`
+        + `<col><col style="width:14%"><col style="width:13%"></colgroup>`
+        + "<thead><tr><th>Dia</th><th>Paciente</th><th>Procedimento</th>"
+        + '<th class="num">Valor</th><th>Situação</th></tr></thead>'
+        + `<tbody>${linhas}</tbody></table>`;
+    }).join("");
+
+  const total = itens.reduce((s, i) => s + Number(i.valor), 0);
+  const recebido = itens.filter((i) => i.situacao === "recebido")
+    .reduce((s, i) => s + Number(i.valor), 0);
+
+  const corpo = `<h1>${escaparHTML(titulo)}</h1>
+<p class="sub">Pacientes anestesiados no mês, agrupados por convênio.</p>
+${blocos || '<p class="sub">Nada anotado neste mês.</p>'}
+<div class="rodape"><span>${plural(itens.length, "paciente", "pacientes")} · ${
+    escaparHTML(money(total))} · recebido ${escaparHTML(money(recebido))} · a receber ${
+    escaparHTML(money(total - recebido))}</span><span>AVANEST · impresso em ${
+    impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+
+  return { titulo, corpo };
+}
+
 export type EventoDeEscala = {
   id: string; data: string; hora_inicio: string; hora_fim: string;
   titulo: string; onde: string;

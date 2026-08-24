@@ -2142,6 +2142,56 @@ button:disabled{cursor:not-allowed}
   .plantaoEtiqueta{font-size:9.5px}
 }
 
+/* --- Produção do dia ----------------------------------------------------
+   O caderninho do bolso do pijama. A grade é a mesma na lista e no formulário
+   de nova linha: quem acabou de anotar um paciente já sabe onde cai o próximo
+   campo, e o olho não recomeça a busca a cada linha. */
+.producaoBloco{border-top:1px solid var(--cor-borda);padding:16px 25px 20px;
+  background:var(--cor-superficie-suave)}
+.producaoCabeca{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin-bottom:12px}
+.producaoCabeca strong{font-size:14.5px;display:block}
+.producaoCabeca>div>span{color:var(--cor-tinta-fraca);font-size:12.5px}
+.producaoTotais{display:flex;gap:16px;font-size:13px;color:var(--cor-tinta-fraca)}
+.producaoTotais b{color:var(--cor-tinta);font-weight:800}
+.producaoTotais .aberto b{color:var(--cor-atencao)}
+.producaoVazio{margin:0 0 12px;color:var(--cor-tinta-fraca);font-size:13px;max-width:62ch}
+
+.producaoLista{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:7px}
+.producaoItem,.producaoNovo{display:grid;gap:8px;align-items:center;
+  grid-template-columns:1.7fr 1.1fr 1.5fr .85fr .95fr 32px}
+.producaoItem input,.producaoItem select,.producaoNovo input{height:38px;font:inherit;min-width:0;
+  border:1px solid var(--cor-borda);border-radius:8px;padding:0 9px;background:var(--cor-superficie)}
+.producaoItem input:focus-visible,.producaoItem select:focus-visible,
+.producaoNovo input:focus-visible{outline:0;box-shadow:var(--foco);border-color:var(--cor-marca)}
+.producaoNome{font-weight:650}
+/* Uma faixa de cor à esquerda diz o estado sem gastar uma coluna com texto:
+   o que já foi recebido não precisa mais de atenção, e o glosado precisa. */
+.producaoItem{position:relative;padding-left:9px;border-left:3px solid transparent;border-radius:4px}
+.producaoItem.sit-a_cobrar{border-left-color:var(--cor-atencao)}
+.producaoItem.sit-faturado{border-left-color:var(--graf-1)}
+.producaoItem.sit-recebido{border-left-color:var(--cor-sucesso)}
+.producaoItem.sit-glosado{border-left-color:var(--cor-perigo)}
+.producaoApagar{width:32px;height:32px;border:0;border-radius:8px;cursor:pointer;
+  background:transparent;color:var(--cor-tinta-fraca);font-size:19px;line-height:1}
+.producaoApagar:hover{background:var(--cor-perigo);color:#fff}
+.producaoApagar:focus-visible{outline:0;box-shadow:var(--foco)}
+
+/* O botão ocupa as duas últimas colunas — situação e apagar não existem numa
+   linha que ainda não foi criada. */
+.producaoNovo{padding-left:12px}
+.producaoNovo>button{grid-column:5/-1;height:38px}
+
+@media(max-width:1100px){
+  .producaoItem,.producaoNovo{grid-template-columns:1.6fr 1fr 1.3fr .85fr .95fr 32px;gap:6px}
+}
+@media(max-width:820px){
+  .producaoItem,.producaoNovo{grid-template-columns:1fr 1fr;padding-left:9px}
+  .producaoItem .producaoNome,.producaoNovo .producaoNome{grid-column:1/-1}
+  .producaoApagar{justify-self:end}
+  .producaoNovo>button{grid-column:1/-1}
+}
+
 /* --- Escopo da escala e troca dirigida --------------------------------- */
 .plantaoEscopo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 16px}
 .plantaoEscopo button{border:1px solid var(--cor-borda);background:var(--cor-superficie);

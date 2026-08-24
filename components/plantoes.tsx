@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
+import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import {
-  corpoDaFolha, escaparHTML, faixa, hhmm, iniciais, money,
+  corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
   montarICS, periodoDoTurno, plural, somarHoras,
 } from "@/lib/escala";
 
@@ -56,12 +57,13 @@ const DURACOES = [6, 12, 24] as const;
  * Aqui a folha é escrita do zero, com o CSS dela junto: o que sai na
  * impressora é exatamente o que está nesta função, e nada mais.
  */
-function imprimirFolha(titulo: string, corpo: string): boolean {
+function imprimirFolha(titulo: string, corpo: string,
+                       orientacao: "landscape" | "portrait" = "landscape"): boolean {
   const janela = window.open("", "_blank", "width=1100,height=800");
   if (!janela) return false;
   janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <title>${escaparHTML(titulo)}</title><style>
-@page{size:A4 landscape;margin:9mm}
+@page{size:A4 ${orientacao};margin:9mm}
 *{box-sizing:border-box}
 body{margin:0;font:12px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#111}
 h1{font-size:17px;margin:0 0 2px}
@@ -81,6 +83,10 @@ td .t span{font-size:10px;color:#333}
 /* O resumo do grupo tem três colunas curtas: em largura total elas viram três
    faixas de 9cm com uma palavra dentro cada. */
 .lista.resumo{max-width:460px}
+h2{font-size:13px;margin:16px 0 5px;padding-bottom:3px;border-bottom:1.5px solid #333;
+   break-after:avoid;page-break-after:avoid}
+h2 small{font-weight:400;color:#555;font-size:11px;margin-left:7px}
+.num{text-align:right}
 .rodape{margin-top:10px;font-size:9.5px;color:#666;display:flex;justify-content:space-between}
 tr,td,th{break-inside:avoid;page-break-inside:avoid}
 </style></head><body>${corpo}</body></html>`);
@@ -131,7 +137,7 @@ export function Plantoes({
 }) {
   const hoje = new Date();
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`);
-  const [aba, setAba] = useState<"escala" | "modelos" | "trocas">("escala");
+  const [aba, setAba] = useState<"escala" | "producao" | "modelos" | "trocas">("escala");
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [plantoes, setPlantoes] = useState<Plantao[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -154,6 +160,21 @@ export function Plantoes({
   // nome vêm do modelo; sem modelo, o rótulo cai no horário, que ainda
   // distingue diurno de noturno.
   const modeloPorId = useMemo(() => new Map(modelos.map((mo) => [mo.id, mo])), [modelos]);
+  // Convênios que a organização já usa, para o campo do caderninho sugerir
+  // "Unimed" em vez de exigir que se digite de novo a cada paciente.
+  const [conveniosConhecidos, setConvenios] = useState<string[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const { data } = await createClient()
+        .from("convenio_valores").select("convenio").eq("ativo", true);
+      if (!vivo) return;
+      const nomes = [...new Set((data ?? []).map((r) => String(r.convenio).trim()).filter(Boolean))];
+      setConvenios(["Particular", ...nomes.filter((n) => n.toLowerCase() !== "particular")].sort());
+    })();
+    return () => { vivo = false; };
+  }, []);
+
   const corPorMedico = useMemo(() => {
     const m = new Map<string, string>();
     colegas.forEach((c, i) => m.set(c.id, CORES_MEDICO[i % CORES_MEDICO.length]));
@@ -344,6 +365,26 @@ export function Plantoes({
   }
 
   /**
+   * A produção do mês em papel, para mandar para o faturamento.
+   *
+   * Folha retrato, e não paisagem como a escala: é uma lista de nomes, e
+   * lista de nome pede coluna estreita e folha em pé.
+   */
+  function imprimirProducao(itens: Producao[]) {
+    setErro(""); setAviso("");
+    const { titulo, corpo } = folhaDeProducao(
+      itens.map((i) => ({
+        data: i.data, paciente: i.paciente, convenio: i.convenio,
+        procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
+      })),
+      MESES[m - 1], ano, new Date(),
+    );
+    if (!imprimirFolha(titulo, corpo, "portrait")) {
+      setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
+    }
+  }
+
+  /**
    * A escala em papel.
    *
    * Duas folhas diferentes, e não uma com um filtro: a do grupo é a que se
@@ -385,6 +426,10 @@ export function Plantoes({
       {erro && <p className="clinicalError">{erro}</p>}
       {aviso && <p className="financeSuccess" role="status">{aviso}</p>}
 
+      {/* Os números do plantão não aparecem na aba Produção: ela traz os
+          dela, e duas fileiras de métricas empilhadas fazem o olho comparar
+          valores que não têm relação — horas de turno com valor de cirurgia. */}
+      {aba !== "producao" && (
       <section className="metricGrid plantaoMetrics">
         <div className="metricCard"><strong>{resumo.turnos}</strong><span>Plantões no mês</span></div>
         <div className="metricCard"><strong>{resumo.horas.toLocaleString("pt-BR")}h</strong><span>Horas</span></div>
@@ -392,9 +437,10 @@ export function Plantoes({
         <div className="metricCard"><strong className="green">{money(resumo.pago)}</strong><span>Recebido</span></div>
         <div className="metricCard"><strong className="amber">{money(resumo.aberto)}</strong><span>A receber</span></div>
       </section>
+      )}
 
       <div className="financeChips plantaoAbas" role="group" aria-label="Seções dos plantões">
-        {([["escala", "Escala"], ["modelos", "Modelos"], ["trocas", "Trocas"]] as const).map(([id, rot]) => (
+        {([["escala", "Escala"], ["producao", "Produção"], ["modelos", "Modelos"], ["trocas", "Trocas"]] as const).map(([id, rot]) => (
           <button key={id} type="button" className={aba === id ? "active" : ""} onClick={() => setAba(id)}>{rot}</button>
         ))}
       </div>
@@ -511,6 +557,7 @@ export function Plantoes({
             <DiaDetalhe
               dia={diaAberto} plantoes={plantoes.filter((p) => p.data === diaAberto)}
               modelos={modelos} perfilId={perfilId} ehAdmin={ehAdmin}
+              institutionId={institutionId} conveniosConhecidos={conveniosConhecidos}
               nomePorId={nomePorId} localPorId={localPorId}
               onLancar={lancar} onLancarAvulso={(d) => setLancando(d)}
               onRemover={remover}
@@ -613,6 +660,12 @@ export function Plantoes({
         />
       )}
 
+      {aba === "producao" && (
+        <ProducaoDoMes
+          mes={mes} nomeMes={MESES[m - 1]} ano={ano} onImprimir={imprimirProducao}
+        />
+      )}
+
       {aba === "modelos" && (
         <ModelosPainel
           modelos={modelos} locais={locais} perfilId={perfilId}
@@ -632,10 +685,11 @@ export function Plantoes({
 }
 
 function DiaDetalhe({
-  dia, plantoes, modelos, perfilId, ehAdmin, nomePorId, localPorId,
-  onLancar, onLancarAvulso, onRemover, onFechar,
+  dia, plantoes, modelos, perfilId, ehAdmin, institutionId, conveniosConhecidos,
+  nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onFechar,
 }: {
   dia: string; plantoes: Plantao[]; modelos: Modelo[]; perfilId: string; ehAdmin: boolean;
+  institutionId: string; conveniosConhecidos: string[];
   nomePorId: Map<string, string>; localPorId: Map<string, string>;
   onLancar: (dia: string, modelo: Modelo) => void;
   onLancarAvulso: (dia: string) => void;
@@ -643,6 +697,9 @@ function DiaDetalhe({
   onFechar: () => void;
 }) {
   const [d, mm, aa] = [dia.slice(8, 10), dia.slice(5, 7), dia.slice(0, 4)];
+  // A anotação se liga ao plantão quando não há dúvida de qual é. Com dois
+  // turnos seus no mesmo dia, escolher um por conta própria seria chute.
+  const meusDoDia = plantoes.filter((p) => p.perfil_id === perfilId && p.situacao !== "cancelado");
   return (
     <section className="clinicalPanel plantaoDetalhe">
       <div className="panelTitle">
@@ -687,6 +744,16 @@ function DiaDetalhe({
           </button>
         )}
       </div>
+
+      {/* O caderninho do dia. Fica aqui, no painel que já abre ao tocar no
+          dia, e não numa tela à parte: a anotação é feita no fim do plantão,
+          com o jaleco ainda vestido, e cada toque a mais é um paciente que
+          deixa de ser anotado. */}
+      <ProducaoDoDia
+        dia={dia} perfilId={perfilId} institutionId={institutionId}
+        conveniosConhecidos={conveniosConhecidos}
+        plantaoId={meusDoDia.length === 1 ? meusDoDia[0].id : null}
+      />
     </section>
   );
 }

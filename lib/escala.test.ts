@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  carimboICS, faixa, iniciais, montarICS, nomeCurto, periodoDoTurno,
-  rotuloSituacao, somarHoras, textoICS, escaparHTML,
+  carimboICS, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  nomeCurto, periodoDoTurno, plural, rotuloSituacao, somarHoras, textoICS,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -193,4 +193,68 @@ test("escaparHTML fecha a porta de injeção na folha impressa", () => {
     "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
   assert.equal(escaparHTML("Santa Casa & Maternidade"), "Santa Casa &amp; Maternidade");
   assert.equal(escaparHTML(""), "");
+});
+
+// ---------------------------------------------------------------------------
+// A folha de produção
+// ---------------------------------------------------------------------------
+const producao = [
+  { data: "2026-08-03", paciente: "Maria Aparecida", convenio: "Unimed",
+    procedimento: "Colecistectomia", valor: 1240, situacao: "recebido" },
+  { data: "2026-08-01", paciente: "João Batista", convenio: "Unimed",
+    procedimento: "Hérnia inguinal", valor: 980, situacao: "a_cobrar" },
+  { data: "2026-08-05", paciente: "Ana Lúcia", convenio: "Particular",
+    procedimento: null, valor: 2000, situacao: "faturado" },
+];
+
+test("folhaDeProducao agrupa por convênio e ordena por data dentro do grupo", () => {
+  const { corpo } = folhaDeProducao(producao, "agosto", 2026, new Date("2026-08-24T12:00:00"));
+  // Particular vem antes de Unimed em ordem alfabética.
+  assert.ok(corpo.indexOf("Particular") < corpo.indexOf("Unimed"));
+  // Dentro da Unimed, dia 1 antes do dia 3 — a lista chegou fora de ordem.
+  assert.ok(corpo.indexOf("João Batista") < corpo.indexOf("Maria Aparecida"));
+});
+
+test("folhaDeProducao soma por convênio e no rodapé", () => {
+  const { corpo } = folhaDeProducao(producao, "agosto", 2026, new Date("2026-08-24T12:00:00"));
+  assert.match(corpo, /2 pacientes/);                    // Unimed
+  assert.match(corpo, /1 paciente\b/);                   // Particular, no singular
+  assert.match(corpo, /3 pacientes/);                    // rodapé
+  // 1240 + 980 + 2000 = 4220; recebido 1240; a receber 2980.
+  assert.ok(corpo.includes("4.220,00"));
+  assert.ok(corpo.includes("2.980,00"));
+});
+
+test("folhaDeProducao: procedimento em branco vira travessão, não vazio", () => {
+  const { corpo } = folhaDeProducao(producao, "agosto", 2026, new Date("2026-08-24T12:00:00"));
+  assert.match(corpo, /<td>—<\/td>/);
+});
+
+test("folhaDeProducao: convênio em branco cai em Particular", () => {
+  const { corpo } = folhaDeProducao(
+    [{ data: "2026-08-01", paciente: "X", convenio: "  ", procedimento: null,
+       valor: 100, situacao: "a_cobrar" }],
+    "agosto", 2026, new Date("2026-08-24T12:00:00"));
+  assert.match(corpo, /Particular/);
+});
+
+test("folhaDeProducao: mês sem nada continua sendo uma folha válida", () => {
+  const { titulo, corpo } = folhaDeProducao([], "agosto", 2026, new Date("2026-08-24T12:00:00"));
+  assert.equal(titulo, "Produção — agosto de 2026");
+  assert.match(corpo, /Nada anotado neste mês/);
+  assert.match(corpo, /0 pacientes/);
+});
+
+test("folhaDeProducao escapa o nome do paciente", () => {
+  const { corpo } = folhaDeProducao(
+    [{ data: "2026-08-01", paciente: '<b>Ana</b> & "cia"', convenio: "Particular",
+       procedimento: null, valor: 0, situacao: "a_cobrar" }],
+    "agosto", 2026, new Date("2026-08-24T12:00:00"));
+  assert.match(corpo, /&lt;b&gt;Ana&lt;\/b&gt; &amp; &quot;cia&quot;/);
+});
+
+test("plural: singular e plural", () => {
+  assert.equal(plural(0, "paciente", "pacientes"), "0 pacientes");
+  assert.equal(plural(1, "paciente", "pacientes"), "1 paciente");
+  assert.equal(plural(2, "paciente", "pacientes"), "2 pacientes");
 });
