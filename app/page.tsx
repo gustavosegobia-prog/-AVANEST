@@ -12,6 +12,7 @@ export default function HomePage() {
       <header className="avnNav">
         <AppLogo />
         <nav>
+          <a className="avnLogin" href="/recursos">O que o sistema faz</a>
           <a className="avnLogin" href="/login">Login</a>
           <a className="avnPrimary" href="/planos">Ver planos</a>
         </nav>
@@ -60,6 +61,14 @@ export default function HomePage() {
           ].map(([n, title, text]) => (
             <article key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></article>
           ))}
+        </div>
+        {/* Os três cartões acima são o gancho. Quem quer saber de verdade —
+            e anestesiologista quer — precisa de um caminho para a lista
+            inteira, em vez de decidir por três frases. */}
+        <div className="avnActions">
+          <a className="avnSecondary avnVerTudo" href="/recursos">
+            Ver tudo o que o AVANEST faz
+          </a>
         </div>
       </section>
       <footer className="avnFooter">
