@@ -1937,7 +1937,7 @@ button:disabled{cursor:not-allowed}
 .localFundo .localGrupo{color:var(--avn-teal)!important}
 /* A marca do hospital fica num quadro claro de propósito: os logos vêm com
    fundo branco embutido, e sobre o escuro apareceria um retângulo recortado. */
-.localFundo .localMarca{background:#f4f8fb}
+.localFundo .localMarca{background:#fff}
 .localFundo .localBusca{background:#ffffff0a;border-color:#ffffff26;color:#cfe0ec}
 .localFundo .localBusca input{color:#fff}
 .localFundo .localBusca input::placeholder{color:#7fa0b8}
@@ -1983,9 +1983,23 @@ button:disabled{cursor:not-allowed}
 .localCartao.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave)}
 .localCartao:disabled{opacity:.6;cursor:default}
 
-.localMarca{width:66px;height:66px;flex:none;border-radius:16px;display:grid;place-items:center;
+/* Retangular, e não quadrado. Logo de hospital é quase sempre uma faixa
+   larga — "INOVANEST" numa proporção de 5:1 —, e contida num quadrado de 48px
+   ela virava uma tirinha de 9px de altura. Num quadro largo a mesma marca sobe
+   para 15px e o logo quadrado continua cabendo inteiro. */
+.localMarca{width:96px;height:66px;flex:none;border-radius:14px;display:grid;place-items:center;padding:8px;
   background:var(--cor-marca-suave);color:var(--cor-marca);font-weight:850;font-size:19px;overflow:hidden}
-.localMarca img{width:100%;height:100%;object-fit:contain}
+/* O logo respira dentro do quadro em vez de encostar nas bordas. Sem o
+   recuo, marca larga como a da Unimed ia de ponta a ponta e marca estreita
+   ficava perdida no meio — e a diferença entre as duas parecia desalinhamento,
+   quando era só a proporção de cada arquivo. */
+.localMarca img{width:100%;height:100%;object-fit:contain;
+  /* mix-blend-mode dissolve o fundo do arquivo no quadro. A maioria dos logos
+     vem em JPEG com fundo branco, e branco em multiply é neutro: o retângulo
+     do arquivo some e sobra só o desenho. Serve também para o branco sujo que
+     a compressão deixa, que era o que criava a borda visível dentro do
+     quadro. */
+  mix-blend-mode:multiply}
 .localTexto{display:grid;gap:4px;min-width:0;flex:1}
 /* Duas linhas, e não reticências: 'Santa Casa de Misericórdia de Campo Mourão'
    cortado em 'Santa Casa de Misericórdia de Camp…' esconde justamente a
