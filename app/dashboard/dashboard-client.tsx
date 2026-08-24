@@ -577,7 +577,7 @@ export function DashboardClient({
           <div className="financeLayout">
             <nav className="financeTarefas" aria-label="Seções da área Médico">
               {([
-                ["grupo","Do dia a dia"],
+                ["grupo","Atendimento"],
                 ["hoje","Consultas de hoje",queue.length],
                 ["agenda","Agenda"],
                 ["grupo","Acompanhamento"],
@@ -944,7 +944,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           tarefa parada vira ruído e a pessoa para de olhar para todos. */}
       <nav className="financeTarefas" aria-label="Seções do Financeiro">
         {([
-          ["grupo","Do dia a dia"],
+          ["grupo","Operação"],
           ["lancamentos","Lançamentos",pendingPatients.length],
           ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
           ["notas","Notas fiscais",noteAlerts.length],
@@ -976,7 +976,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     {pendingPatients.length>0&&<PainelRecolhivel chave="fin-aguardando" titulo="Atendimentos aguardando lançamento" legenda="vindos automaticamente da recepção e agenda">{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</PainelRecolhivel>}
     {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><PainelRecolhivel className="financeGroup" key={convenio} chave={`fin-grupo-${convenio}`} classeCabecalho="financeGroupHead" titulo={convenio} legenda={`${items.length} atendimento(s)`} extra={<b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b>}>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
     "1.234.56", que é NaN — e o valor da consulta zerava sem aviso. */}
-<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select>{item.status==="glosa"&&<label className="inlineMoney"><span>Glosado</span><input defaultValue={Number(item.glosa_valor)||""} placeholder="R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/></label>}<input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div></div>})}</PainelRecolhivel>)}
+<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><label className="inlineMoney"><span>Situação</span><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select></label>{item.status==="glosa"?<label className="inlineMoney"><span>Glosado</span><input defaultValue={Number(item.glosa_valor)||""} placeholder="R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/></label>:<span aria-hidden="true"/>}<label className="inlineMoney"><span>Nota fiscal</span><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Número" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/></label><label className="inlineMoney"><span>Emissão</span><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Vencimento</span><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Lote</span><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="—" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></label></div></div>})}</PainelRecolhivel>)}
       </>}
       {tarefa==="recebimentos"&&<>
     <PainelRecolhivel chave="fin-recebimentos" titulo="Recebimentos" legenda="PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo">
@@ -1472,7 +1472,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
           alguma coisa. */}
       <nav className="financeTarefas" aria-label="Seções da Administração">
         {([
-          ["grupo","Do dia a dia"],
+          ["grupo","Equipe"],
           ["usuarios","Usuários e permissões",perfis.filter(i=>i.status==="inativo").length],
           ["convites","Convites"],
           ["grupo","Organização"],
