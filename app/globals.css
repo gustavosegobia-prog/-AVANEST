@@ -157,7 +157,13 @@
    formulário cresceria ainda com 6 colunas, e o campo do nome passaria de
    637px para ~707px — pior do que estava. */
 :root{--largura-avaliacao:1680px}
-.clinicalMain{width:min(var(--largura-painel),calc(100% - 48px));margin:auto;padding:38px 0 80px}.clinicalWelcome{display:flex;justify-content:space-between;align-items:center;gap:20px}.clinicalWelcome h1,.receptionMain h1{font-size:29px;margin:0 0 5px}.clinicalWelcome p,.receptionMain>section>p{color:var(--cor-tinta-fraca);margin:0}.primaryClinical{border:0;border-radius:11px;background:var(--cor-marca);color:#fff;font-weight:800;padding:17px 27px;box-shadow:0 5px 13px rgba(23,107,181,.2);cursor:pointer}.primaryClinical.compact{padding:12px 18px;box-shadow:none}.primaryClinical:disabled{opacity:.6}.metricGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:17px;margin:27px 0 22px}.metricCard{background:#fff;border:1px solid #d3dee8;border-radius:17px;padding:24px 23px;min-height:106px}.metricCard strong{display:block;font-size:32px;margin-bottom:8px}.metricCard span{color:#5c7186}.metricCard .blue{color:var(--cor-marca)}.metricCard .red{color:var(--cor-perigo)}.metricCard .green{color:var(--cor-sucesso)}.metricCard .amber{color:var(--cor-atencao)}.clinicalPanel{background:#fff;border:1px solid #d3dee8;border-radius:17px;overflow:hidden;margin:22px 0}.panelTitle{padding:18px 25px;border-bottom:1px solid var(--cor-borda);display:flex;align-items:center;gap:15px}.panelTitle strong{font-size:18px}.panelTitle span{color:var(--cor-tinta-fraca);font-size:14px}.queueRow{min-height:72px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:80px minmax(270px,1fr) auto auto;align-items:center;gap:18px;padding:10px 25px}.queueRow:last-child{border-bottom:0}.queueRow time{color:var(--cor-marca);font-weight:850;font-family:monospace;font-size:17px}.queueInfo strong,.agendaRow strong{display:block}.queueInfo small,.agendaRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.statusChip{border-radius:99px;padding:8px 13px;font-size:12px;font-weight:850;white-space:nowrap}.statusChip.present{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}.statusChip.paused{background:#e9eef2;color:#5a7084}.statusChip.waiting{background:var(--cor-atencao-suave);color:var(--cor-atencao)}.emptyClinical{padding:45px;text-align:center;color:var(--cor-tinta-fraca)}/* A Central recolhe. O <summary> vira a barra de título inteira: clique,
+.clinicalMain{width:min(var(--largura-painel),calc(100% - 48px));margin:auto;padding:38px 0 80px}.clinicalWelcome{display:flex;justify-content:space-between;align-items:center;gap:20px}.clinicalWelcome h1,.receptionMain h1{font-size:29px;margin:0 0 5px}.clinicalWelcome p,.receptionMain>section>p{color:var(--cor-tinta-fraca);margin:0}.primaryClinical{border:0;border-radius:11px;background:var(--cor-marca);color:#fff;font-weight:800;padding:17px 27px;box-shadow:0 5px 13px rgba(23,107,181,.2);cursor:pointer}.primaryClinical.compact{padding:12px 18px;box-shadow:none}.primaryClinical:disabled{opacity:.6}.metricGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:17px;margin:27px 0 22px}.metricCard{background:#fff;border:1px solid #d3dee8;border-radius:17px;padding:24px 23px;min-height:106px}.metricCard strong{display:block;font-size:32px;margin-bottom:8px}.metricCard span{color:#5c7186}.metricCard .blue{color:var(--cor-marca)}.metricCard .red{color:var(--cor-perigo)}.metricCard .green{color:var(--cor-sucesso)}.metricCard .amber{color:var(--cor-atencao)}.clinicalPanel{background:#fff;border:1px solid #d3dee8;border-radius:17px;overflow:hidden;margin:22px 0}.panelTitle{padding:18px 25px;border-bottom:1px solid var(--cor-borda);display:flex;align-items:center;gap:15px}.panelTitle strong{font-size:18px}.panelTitle span{color:var(--cor-tinta-fraca);font-size:14px}.queueRow{min-height:72px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:80px minmax(190px,1fr) 180px 138px 96px;align-items:center;gap:16px;padding:10px 25px}.queueRow:last-child{border-bottom:0}.queueRow time{color:var(--cor-marca);font-weight:850;font-family:monospace;font-size:17px}
+/* Colunas fixas, e não auto. Cada linha da fila é uma grade independente —
+   são irmãs, não células da mesma tabela —, e com largura automática cada uma
+   media as suas próprias etiquetas: "CONFIRMADO" e "AVALIAÇÃO AGENDADA"
+   começavam em pontos diferentes, e a lista descia em escada. */
+.queueRow>.statusChip,.agendaRow>.statusChip{justify-self:start;text-align:center}
+.queueRow>button{width:100%}.queueInfo strong,.agendaRow strong{display:block}.queueInfo small,.agendaRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.statusChip{border-radius:99px;padding:8px 13px;font-size:12px;font-weight:850;white-space:nowrap}.statusChip.present{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}.statusChip.paused{background:#e9eef2;color:#5a7084}.statusChip.waiting{background:var(--cor-atencao-suave);color:var(--cor-atencao)}.emptyClinical{padding:45px;text-align:center;color:var(--cor-tinta-fraca)}/* A Central recolhe. O <summary> vira a barra de título inteira: clique,
    Enter e Espaço já funcionam de graça, e o leitor de tela anuncia se está
    aberta — nada disso precisaria ser reescrito à mão, e à mão sairia pior.
    A descrição cresce para ocupar o vão: é ela que empurra o resumo e a seta
@@ -182,7 +188,7 @@
    próprios cartões já mostram os números, um por um. */
 .centralResumo{font-style:normal;font-size:12px;font-weight:850;background:var(--cor-atencao-suave);color:var(--cor-atencao);border-radius:99px;padding:6px 12px;white-space:nowrap}
 .alertsPanel[open] .centralResumo{display:none}
-.alertGrid{display:grid;grid-template-columns:1fr 1fr}.alertItem{min-height:72px;border-bottom:1px solid var(--cor-borda);padding:14px 25px;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:12px;color:var(--cor-tinta-fraca)}.alertItem:nth-child(odd){border-right:1px solid var(--cor-borda)}.alertItem i{width:33px;height:33px;border-radius:10px;background:var(--cor-atencao-suave);color:var(--cor-atencao);display:grid;place-items:center;font-style:normal;font-weight:850}.alertItem i.danger{background:var(--cor-perigo-suave);color:var(--cor-perigo)}.alertItem span strong{color:var(--cor-tinta)}.alertItem>b{font-size:12px;color:var(--cor-atencao)}.alertItem>b.dangerText{color:var(--cor-perigo)}.agendaHead{display:flex;align-items:center;gap:15px;padding:20px 25px;border-bottom:1px solid var(--cor-borda)}.agendaHead strong{font-size:18px;margin-right:5px}.agendaHead input,.searchPanel input{flex:1;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:10px;padding:13px 16px;font:inherit}.agendaRow{width:100%;border:0;border-bottom:1px solid var(--cor-borda);background:#fff;display:grid;grid-template-columns:52px 1fr auto auto;align-items:center;gap:16px;text-align:left;padding:18px 25px;cursor:pointer;color:inherit}.agendaRow:hover{background:var(--cor-fundo)}.avatar{width:47px;height:47px;border-radius:50%;background:var(--cor-marca-suave);color:var(--cor-marca);display:grid;place-items:center;font-weight:800}.agendaRow time{color:var(--cor-tinta-fraca)}.quickLinks{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}.quickLinks button{padding:11px 20px;background:#fff}.receptionMain>section:first-child{margin-bottom:15px}.receptionMetrics{margin-top:20px}.searchPanel{display:flex;align-items:center;gap:16px;padding:18px 25px}.searchPanel>span{color:var(--cor-tinta-fraca);font-size:13px}.outlineClinical{border:1px solid var(--cor-marca);color:var(--cor-marca);background:#fff;border-radius:9px;padding:9px 14px;font-weight:700;cursor:pointer}.outlineClinical.red{border-color:var(--cor-perigo);color:var(--cor-perigo)}.inlineRegistration{padding-bottom:24px}.inlineRegistration>p,.inlineRegistration>.primaryClinical{margin-left:25px}.clinicalError{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);border-radius:10px;padding:12px 16px}.patientModalBackdrop{position:fixed;inset:0;background:rgba(5,19,32,.74);z-index:80;display:grid;place-items:center;padding:20px}.patientModal{width:min(1280px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:28px}.patientModalHead{display:flex;justify-content:space-between;align-items:start}.patientModalHead h2{margin:0}.patientModalHead p{color:var(--cor-tinta-fraca)}.patientModalHead>button{border:0;background:none;font-size:29px}.insuranceBar{background:var(--cor-superficie-suave);border:1px solid var(--cor-borda);border-radius:12px;padding:17px;margin:15px 0 20px}.patientFormGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:17px}.clinicalField{display:grid;gap:7px}.clinicalField.wide{grid-column:span 3}.clinicalField.span2{grid-column:span 2}.clinicalField span{font-size:12px;color:var(--cor-tinta-fraca);font-weight:750}.clinicalField input,.clinicalField select{min-width:0;width:100%;height:52px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 13px;font:inherit}.modalActions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}
+.alertGrid{display:grid;grid-template-columns:1fr 1fr}.alertItem{min-height:72px;border-bottom:1px solid var(--cor-borda);padding:14px 25px;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:12px;color:var(--cor-tinta-fraca)}.alertItem:nth-child(odd){border-right:1px solid var(--cor-borda)}.alertItem i{width:33px;height:33px;border-radius:10px;background:var(--cor-atencao-suave);color:var(--cor-atencao);display:grid;place-items:center;font-style:normal;font-weight:850}.alertItem i.danger{background:var(--cor-perigo-suave);color:var(--cor-perigo)}.alertItem span strong{color:var(--cor-tinta)}.alertItem>b{font-size:12px;color:var(--cor-atencao)}.alertItem>b.dangerText{color:var(--cor-perigo)}.agendaHead{display:flex;align-items:center;gap:15px;padding:20px 25px;border-bottom:1px solid var(--cor-borda)}.agendaHead strong{font-size:18px;margin-right:5px}.agendaHead input,.searchPanel input{flex:1;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:10px;padding:13px 16px;font:inherit}.agendaRow{width:100%;border:0;border-bottom:1px solid var(--cor-borda);background:#fff;display:grid;grid-template-columns:52px minmax(180px,1fr) 96px 180px;align-items:center;gap:16px;text-align:left;padding:18px 25px;cursor:pointer;color:inherit}.agendaRow:hover{background:var(--cor-fundo)}.avatar{width:47px;height:47px;border-radius:50%;background:var(--cor-marca-suave);color:var(--cor-marca);display:grid;place-items:center;font-weight:800}.agendaRow time{color:var(--cor-tinta-fraca)}.quickLinks{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}.quickLinks button{padding:11px 20px;background:#fff}.receptionMain>section:first-child{margin-bottom:15px}.receptionMetrics{margin-top:20px}.searchPanel{display:flex;align-items:center;gap:16px;padding:18px 25px}.searchPanel>span{color:var(--cor-tinta-fraca);font-size:13px}.outlineClinical{border:1px solid var(--cor-marca);color:var(--cor-marca);background:#fff;border-radius:9px;padding:9px 14px;font-weight:700;cursor:pointer}.outlineClinical.red{border-color:var(--cor-perigo);color:var(--cor-perigo)}.inlineRegistration{padding-bottom:24px}.inlineRegistration>p,.inlineRegistration>.primaryClinical{margin-left:25px}.clinicalError{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);border-radius:10px;padding:12px 16px}.patientModalBackdrop{position:fixed;inset:0;background:rgba(5,19,32,.74);z-index:80;display:grid;place-items:center;padding:20px}.patientModal{width:min(1280px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:28px}.patientModalHead{display:flex;justify-content:space-between;align-items:start}.patientModalHead h2{margin:0}.patientModalHead p{color:var(--cor-tinta-fraca)}.patientModalHead>button{border:0;background:none;font-size:29px}.insuranceBar{background:var(--cor-superficie-suave);border:1px solid var(--cor-borda);border-radius:12px;padding:17px;margin:15px 0 20px}.patientFormGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:17px}.clinicalField{display:grid;gap:7px}.clinicalField.wide{grid-column:span 3}.clinicalField.span2{grid-column:span 2}.clinicalField span{font-size:12px;color:var(--cor-tinta-fraca);font-weight:750}.clinicalField input,.clinicalField select{min-width:0;width:100%;height:52px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 13px;font:inherit}.modalActions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}
 @media(max-width:1050px){.roleBadge{display:none}.metricGrid{grid-template-columns:repeat(3,1fr)}.patientFormGrid{grid-template-columns:repeat(2,1fr)}.clinicalField.wide,.clinicalField.span2{grid-column:auto}.queueRow{grid-template-columns:65px 1fr auto}.queueRow .statusChip{display:none}.alertGrid{grid-template-columns:1fr}.alertItem:nth-child(odd){border-right:0}.agendaHead{flex-wrap:wrap}.agendaHead input{flex-basis:100%}}
 @media(max-width:680px){.clinicalTopbar{padding:0 14px}.clinicalBrand small{display:none}.roleNav .themePill{display:none}.clinicalMain{width:calc(100% - 24px);padding-top:24px}.clinicalWelcome{align-items:flex-start;flex-direction:column}.metricGrid{grid-template-columns:1fr 1fr}.queueRow{grid-template-columns:55px 1fr;padding:13px}.queueRow .primaryClinical{grid-column:1/-1}.agendaRow{grid-template-columns:45px 1fr}.agendaRow time,.agendaRow .statusChip{display:none}.searchPanel{align-items:flex-start;flex-direction:column}.searchPanel input{width:100%}.patientFormGrid{grid-template-columns:1fr}.metricCard{padding:18px}.clinicalWelcome h1,.receptionMain h1{font-size:24px}}
 
@@ -231,14 +237,23 @@
    colunas entraram quando o grupo passou a recolher. */
 .financeGroupHead{min-height:57px;padding:0 25px;display:grid;grid-template-columns:auto 1fr auto auto;gap:15px;align-items:center;border-bottom:1px solid var(--cor-borda)}
 /* Em grade a margem automática não empurra nada — quem alinha é a coluna. */
-.financeGroupHead>.painelExtra{margin-left:0}.financeGroupHead span{color:var(--cor-tinta-fraca)}.financeGroupHead b{color:var(--cor-sucesso)}.financeItemRow{min-height:90px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,2.15fr);gap:15px;align-items:center}.financeItemRow:last-child{border-bottom:0}.financeItemRow strong,.financeSetupRow strong,.paymentRow strong,.repasseRow strong{display:block}.financeItemRow small,.financeSetupRow small,.paymentRow small,.repasseRow small{display:block;color:var(--cor-tinta-fraca);margin-top:5px}.financeItemRow select,.financeSmallInput,.paymentRow input,.paymentRow select,.repasseRow select,.inlineMoney input{height:43px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 8px;font:inherit;min-width:0;width:100%}/* Gabarito fixo, e não auto-fit. Com repeat(auto-fit,minmax(118px,1fr)) o
+.financeGroupHead>.painelExtra{margin-left:0}.financeGroupHead span{color:var(--cor-tinta-fraca)}.financeGroupHead b{color:var(--cor-sucesso)}.financeItemRow{min-height:90px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:minmax(200px,1fr) minmax(0,3.3fr);gap:15px;align-items:center}.financeItemRow:last-child{border-bottom:0}.financeItemRow strong,.financeSetupRow strong,.paymentRow strong,.repasseRow strong{display:block}.financeItemRow small,.financeSetupRow small,.paymentRow small,.repasseRow small{display:block;color:var(--cor-tinta-fraca);margin-top:5px}.financeItemRow select,.financeSmallInput,.paymentRow input,.paymentRow select,.repasseRow select,.inlineMoney input{height:43px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 8px;font:inherit;min-width:0;width:100%}/* Gabarito fixo, e não auto-fit. Com repeat(auto-fit,minmax(118px,1fr)) o
    numero de colunas mudava com a largura E com a presenca do campo Glosado,
    que so aparece em algumas linhas: duas linhas vizinhas quebravam em pontos
    diferentes e nada batia na vertical. Aqui a coluna do glosado existe
    sempre, vazia quando nao ha glosa, e a lista le como tabela. */
 .financeItemFields{display:grid;gap:10px;align-items:end;
-  grid-template-columns:1.2fr 1.3fr 1.05fr .8fr 1.25fr 1.25fr .62fr}
-@media(max-width:1250px){.financeItemFields{grid-template-columns:repeat(4,1fr)}}
+  grid-template-columns:1.05fr 1.25fr .75fr 1.25fr 1.25fr .6fr}
+/* Corpo 13,5px nos campos da linha. Um input type=date pede 168px para
+   mostrar dd/mm/aaaa mais o ícone no corpo herdado do texto; a 13,5px pede
+   142px, e é essa diferença que faz as duas datas caberem na linha em vez
+   de saírem cortadas em "08/10/202". Medido no navegador, não estimado. */
+.financeItemFields input,.financeItemFields select{font-size:13.5px}
+/* O valor glosado desce sob a Situação, em vez de ocupar uma coluna própria.
+   Coluna própria obrigava a reservá-la vazia em toda linha sem glosa — e um
+   buraco no meio da lista parece defeito, não espaço reservado. */
+.financeGlosado{margin-top:6px;height:36px!important;font-size:13px}
+@media(max-width:1250px){.financeItemFields{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.financeItemFields{grid-template-columns:repeat(2,1fr)}}.inlineMoney{display:grid;gap:3px}.inlineMoney span{font-size:10px;color:var(--cor-tinta-fraca)}.financeSetupRow{padding:16px 25px;border-bottom:1px solid var(--cor-borda);display:flex;justify-content:space-between;align-items:center;gap:20px}.financeLotRow{min-height:70px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:180px 1fr 140px 120px;gap:15px;align-items:center}.paymentRow{min-height:84px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:1fr 140px 175px 195px;gap:17px;align-items:center}.paymentButton{height:43px;border:0;border-radius:9px;background:var(--cor-sucesso);color:#fff;font-weight:800}.paymentButton:disabled{opacity:.45}.repasseRow{min-height:76px;padding:13px 25px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:1fr 150px 230px;gap:17px;align-items:center}.compactEmpty{padding:25px}.closingMetrics{display:grid;grid-template-columns:repeat(5,1fr)}.closingMetrics>div{padding:18px 25px;border-right:1px solid var(--cor-borda)}.closingMetrics>div:last-child{border-right:0}.closingMetrics strong{display:block;font-size:20px}.closingMetrics span{color:var(--cor-tinta-fraca);font-size:12px}.closingMetrics .green{color:var(--cor-sucesso)}.closingMetrics .amber{color:var(--cor-atencao)}.closingMetrics .red{color:var(--cor-perigo)}.closingMetrics .blue{color:var(--cor-marca)}.closingFooter{padding:15px 25px;border-top:1px solid var(--cor-borda);display:flex;justify-content:space-between;align-items:center;color:var(--cor-atencao);font-weight:700}.financeFootnote{color:var(--cor-tinta-fraca);font-size:12px}
 @media(max-width:1100px){.financeItemRow{grid-template-columns:1fr}.paymentRow{grid-template-columns:1fr 130px 160px}.paymentButton{grid-column:1/-1}.closingMetrics{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.financeMetrics{grid-template-columns:1fr 1fr}.financeGroupHead{grid-template-columns:1fr auto}.financeGroupHead span{grid-column:1/-1}.financeItemRow,.financeLotRow,.paymentRow,.repasseRow{grid-template-columns:1fr;padding:18px}.financeItemRow .financeSmallInput{grid-column:auto}.financeSetupRow,.closingFooter{align-items:flex-start;flex-direction:column}.closingMetrics{grid-template-columns:1fr 1fr}.closingMetrics>div{border-bottom:1px solid var(--cor-borda)}.closingFooter button{width:100%}}
@@ -353,7 +368,10 @@
 .medicationGuidance>div{display:grid;gap:5px}.medicationGuidance span{color:#50677d;line-height:1.45}.medicationGuidance .wide{grid-column:1/-1}
 .medicationSource{font-size:12px}.medicationConfirm{display:flex;align-items:center;gap:10px;margin:16px 20px;font-weight:750;color:var(--cor-sucesso)}.medicationConfirm input{width:19px;height:19px;accent-color:var(--cor-sucesso)}
 .statusChip.danger{background:var(--cor-perigo-suave);color:var(--cor-perigo)}
-.receptionMain .queueRow{grid-template-columns:80px minmax(270px,1fr) auto auto auto}
+/* A Recepção tem uma coluna a mais que a fila do Médico — dois botões de
+   presença em vez de um. Fixas pelo mesmo motivo: em auto, cada linha media
+   as próprias etiquetas e nada batia com a linha de cima. */
+.receptionMain .queueRow{grid-template-columns:80px minmax(190px,1fr) 180px 138px 96px}
 .alertItem{width:100%;border-top:0;border-left:0;background:#fff;text-align:left;font:inherit;cursor:pointer}.alertItem:disabled{cursor:default}.alertItem:not(:disabled):hover{background:#f6f9fb}.alertItem:focus-visible{outline:3px solid var(--cor-marca);outline-offset:-3px}
 .financeHeading{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap}.financeHeading>div:first-child{flex:1 1 320px;min-width:0}.financeHeading label{display:grid;gap:6px;color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}.financeHeading input{height:44px;border:1px solid var(--cor-borda);background:#fff;border-radius:9px;padding:0 12px;font:inherit}
 .financeHeadingActions{display:flex;align-items:flex-end;gap:12px;flex-wrap:nowrap;flex:0 0 auto}.financeHeadingActions button{height:44px}.financeConfigModal{width:min(760px,calc(100vw - 32px));max-height:90vh;overflow:auto;background:#fff;border-radius:24px;padding:24px}.financeConfigList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}.financeConfigItem{display:flex;align-items:center;gap:8px}.financeConfigItem>label{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 14px;border:1px solid #d7e1ec;border-radius:12px}.financeConfigList label>div{display:flex;align-items:center;gap:6px}.financeConfigList input{width:120px;padding:10px 12px;border:1px solid #cbd8e6;border-radius:10px}.billingPlanTable{overflow-x:auto;padding:0 24px 24px}.billingPlanTable table{width:100%;border-collapse:collapse;min-width:720px}.billingPlanTable th,.billingPlanTable td{text-align:left;padding:13px;border-bottom:1px solid #dce5ee}.billingPlanTable th{font-size:.78rem;text-transform:uppercase;color:#5a6d82}
@@ -1126,9 +1144,15 @@ button:disabled{cursor:not-allowed}
 /* Flex, não grid de colunas contadas: a etiqueta "Sem CRM" só aparece em
    algumas linhas, e com colunas fixas ela empurrava o Editar para a linha
    de baixo — as linhas ficavam com alturas diferentes. */
-.adminUserResumo{display:flex;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5)}
-.adminUserResumo .adminUserIdent{flex:1;min-width:0}
-.adminUserResumo .statusChip,.adminUserResumo>button{flex:none}
+/* Grade de colunas fixas, e não flex. Cada usuário tem um número diferente de
+   etiquetas de área, e em flex isso empurrava o status e o botão de cada linha
+   para uma posição diferente — a lista descia em escada. */
+.adminUserResumo{display:grid;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);
+  grid-template-columns:47px minmax(180px,1fr) minmax(0,290px) 84px 92px}
+.adminUserResumo .adminUserIdent{min-width:0}
+.adminUserPapeis{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.adminUserResumo>.statusChip{justify-self:start}
+.adminUserResumo>button{width:100%}
 .adminUserIdent{min-width:0}
 .adminUserIdent strong{display:block;font-size:14.5px}
 .adminUserIdent small{display:block;color:var(--cor-tinta-fraca);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1142,8 +1166,8 @@ button:disabled{cursor:not-allowed}
 .adminZonaPerigo small{display:block;margin-top:2px;font-size:12px;color:var(--cor-tinta-fraca);max-width:62ch}
 
 @media(max-width:900px){
-  .adminUserResumo{flex-wrap:wrap;row-gap:var(--esp-2)}
-  .adminUserResumo .adminUserIdent{flex:1 1 calc(100% - 52px)}
+  .adminUserResumo{grid-template-columns:47px 1fr auto;row-gap:var(--esp-2)}
+  .adminUserPapeis{grid-column:2/-1}
   .adminUserCampos{grid-template-columns:1fr}
   .adminZonaPerigo{flex-direction:column;align-items:stretch}
 }
@@ -1805,6 +1829,11 @@ button:disabled{cursor:not-allowed}
 .financeTarefas button:hover{background:var(--cor-superficie-suave)}
 .financeTarefas button.active{background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-weight:800}
 .financeTarefas button:focus-visible{outline:0;box-shadow:var(--foco)}
+/* Atalho é ação, não seção: nunca fica aceso e some quando não há o que
+   fazer. Vinha de uma fileira solta no rodapé da página, alinhada com nada. */
+.financeTarefaAtalho{color:var(--cor-marca)!important;font-weight:700!important}
+.financeTarefaAtalho:disabled{color:var(--cor-tinta-fraca)!important;cursor:default;opacity:.55}
+.financeTarefaAtalho:disabled:hover{background:none}
 /* O contador diz "isto aqui está esperando você". Só aparece quando há algo. */
 .financeTarefaContador{background:var(--cor-atencao-suave);color:var(--cor-atencao);
   border-radius:999px;padding:2px 9px;font-size:12px;font-weight:850}
@@ -2000,16 +2029,20 @@ button:disabled{cursor:not-allowed}
 .plantaoMesNav{display:flex;align-items:center;gap:12px}
 .plantaoMesNav strong{min-width:150px;text-align:center;font-size:17px;text-transform:capitalize}
 .plantaoMetrics{grid-template-columns:repeat(5,1fr)}
-.plantaoAbas{margin:6px 0 18px}
 
 .plantaoCalendario{padding:18px 20px 22px}
-.plantaoSemana,.plantaoGrade{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+/* minmax(0,1fr) e não 1fr: o mínimo de uma faixa 1fr é "auto", ou seja, o
+   conteúdo. Uma etiqueta com "Santa Casa de Campo Mourão" dentro alargava a
+   coluna dela, a grade passava da largura do painel e o sábado saía cortado
+   fora da tela. Com mínimo zero as sete colunas cabem sempre e o texto é que
+   corta, que é o que o overflow da etiqueta já resolve. */
+.plantaoSemana,.plantaoGrade{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .plantaoSemana{margin-bottom:8px}
 .plantaoSemana span{text-align:center;font-size:12px;font-weight:800;color:var(--cor-tinta-fraca)}
 /* Altura fixa, não aspect-ratio: quadrado numa grade de 1340px dá célula de
    180px, e o calendário sozinho ocupa a tela inteira. Retângulo largo é o
    formato normal de calendário mensal, e sobra espaço para a lista embaixo. */
-.plantaoDia{position:relative;min-height:88px;border:1px solid var(--cor-borda);
+.plantaoDia{position:relative;min-width:0;min-height:88px;border:1px solid var(--cor-borda);
   border-radius:12px;background:var(--cor-superficie);font:inherit;color:inherit;cursor:pointer;
   display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:7px 7px 6px;text-align:left;
   transition:border-color var(--transicao),box-shadow var(--transicao)}
@@ -2207,13 +2240,11 @@ button:disabled{cursor:not-allowed}
   .producaoNovo>button{grid-column:1/-1}
 }
 
-/* --- Escopo da escala e troca dirigida --------------------------------- */
-.plantaoEscopo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 16px}
-.plantaoEscopo button{border:1px solid var(--cor-borda);background:var(--cor-superficie);
-  border-radius:999px;padding:9px 18px;font:inherit;font-weight:700;color:var(--cor-tinta);cursor:pointer}
-.plantaoEscopo button.active{background:var(--cor-marca);border-color:var(--cor-marca);color:#fff}
-.plantaoEscopo button:focus-visible{outline:0;box-shadow:var(--foco)}
-.plantaoEscopo small{color:var(--cor-tinta-fraca);font-size:13px;margin-left:6px}
+/* --- Escopo da escala e troca dirigida ---------------------------------
+   As pílulas de escopo viraram itens da coluna à esquerda. O que sobrou é a
+   frase que explica o que se está vendo — ela continua valendo, porque
+   "Escala do grupo" não diz sozinha que você só edita os seus turnos. */
+.plantaoEscopoNota{margin:0 0 14px;color:var(--cor-tinta-fraca);font-size:13px}
 .plantaoDeColega{color:var(--cor-tinta-fraca);font-size:13px;min-width:0}
 .plantaoMensagem{font-style:italic;color:var(--cor-tinta-fraca)!important}
 

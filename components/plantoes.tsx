@@ -311,6 +311,32 @@ export function Plantoes({
     void carregar();
   }
 
+  /**
+   * A seção aberta, como a coluna a enxerga.
+   *
+   * Aba e escopo continuam sendo dois estados porque significam coisas
+   * diferentes — que painel mostrar e de quem é a escala —, mas a coluna
+   * apresenta um item por seção. Aqui os dois viram um nome só, e irPara faz
+   * o caminho de volta: sem isso, "Minha escala" e "Escala do grupo"
+   * apareceriam ambas acesas, já que as duas são a aba "escala".
+   */
+  const secaoAtiva = aba === "escala" ? (escopo === "minha" ? "minha" : "equipe") : aba;
+
+  function irPara(secao: string) {
+    if (secao === "minha" || secao === "equipe") {
+      setAba("escala");
+      setEscopo(secao === "minha" ? "minha" : "grupo");
+      return;
+    }
+    setAba(secao as "producao" | "modelos" | "trocas");
+  }
+
+  // O contador da coluna conta o que espera resposta SUA: convite dirigido a
+  // você, mais oferta aberta de outra pessoa. Contar os seus próprios pedidos
+  // faria o número pedir uma ação que não é sua.
+  const trocasParaMim = trocas.filter((t) => t.solicitante_id !== perfilId
+    && (t.destinatario_id === null || t.destinatario_id === perfilId)).length;
+
   const hojeISO = new Date().toISOString().slice(0, 10);
   const [ano, m] = mes.split("-").map(Number);
   const diasNoMes = new Date(ano, m, 0).getDate();
@@ -439,25 +465,45 @@ export function Plantoes({
       </section>
       )}
 
-      <div className="financeChips plantaoAbas" role="group" aria-label="Seções dos plantões">
-        {([["escala", "Escala"], ["producao", "Produção"], ["modelos", "Modelos"], ["trocas", "Trocas"]] as const).map(([id, rot]) => (
-          <button key={id} type="button" className={aba === id ? "active" : ""} onClick={() => setAba(id)}>{rot}</button>
-        ))}
-      </div>
+      {/* Uma coluna, como no Médico, no Financeiro e no Admin. Antes eram duas
+          fileiras de pílulas empilhadas — seção em cima, escopo embaixo —, e
+          além de ocuparem duas alturas antes do calendário davam à Escala uma
+          navegação diferente da de todas as outras áreas do sistema. */}
+      <div className="financeLayout">
+        <nav className="financeTarefas" aria-label="Seções da Escala">
+          {([
+            ["grupo", "Escala"],
+            ["minha", "Minha escala"],
+            ["equipe", "Escala do grupo"],
+            ["grupo", "Equipe"],
+            ["trocas", "Trocas", trocasParaMim],
+            ["grupo", "Faturamento"],
+            ["producao", "Produção"],
+            ["grupo", "Configuração"],
+            ["modelos", "Modelos"],
+          ] as [string, string, number?][]).map(([id, rotulo, contador], i) =>
+            id === "grupo"
+              ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
+              : <button
+                  type="button" key={id}
+                  className={secaoAtiva === id ? "active" : ""}
+                  aria-current={secaoAtiva === id ? "true" : undefined}
+                  onClick={() => irPara(id)}
+                >
+                  <span>{rotulo}</span>
+                  {contador ? <b className="financeTarefaContador">{contador}</b> : null}
+                </button>,
+          )}
+        </nav>
 
+        <div className="financeConteudo">
       {aba === "escala" && (
         <>
-          <div className="plantaoEscopo" role="group" aria-label="De quem é a escala">
-            {([["minha", "Minha escala"], ["grupo", "Escala do grupo"]] as const).map(([id, rot]) => (
-              <button key={id} type="button" className={escopo === id ? "active" : ""}
-                onClick={() => setEscopo(id)}>{rot}</button>
-            ))}
-            <small>
-              {escopo === "minha"
-                ? "Só os seus turnos."
-                : "Todos os turnos da equipe. Você edita apenas os seus."}
-            </small>
-          </div>
+          <p className="plantaoEscopoNota">
+            {escopo === "minha"
+              ? "Só os seus turnos."
+              : "Todos os turnos da equipe. Você edita apenas os seus."}
+          </p>
           <section className="clinicalPanel">
             {/* A barra fica AQUI, colada no calendário, e não no cabeçalho da
                 página. Mudar o mês e lançar um plantão são ações sobre o
@@ -643,23 +689,6 @@ export function Plantoes({
         </>
       )}
 
-      {lancando && (
-        <LancarPlantao
-          dia={lancando} locais={locais} modelos={modelos}
-          colegas={colegas} perfilId={perfilId} ehAdmin={ehAdmin}
-          onFechar={() => setLancando(null)} onSalvar={lancarAvulso}
-        />
-      )}
-
-      {pedindoTroca && (
-        <PedirTroca
-          plantao={pedindoTroca} colegas={colegas.filter((c) => c.id !== perfilId)}
-          localPorId={localPorId}
-          onFechar={() => setPedindoTroca(null)}
-          onEnviar={(destino, msg) => void pedirTroca(pedindoTroca, destino, msg)}
-        />
-      )}
-
       {aba === "producao" && (
         <ProducaoDoMes
           mes={mes} nomeMes={MESES[m - 1]} ano={ano} onImprimir={imprimirProducao}
@@ -680,6 +709,28 @@ export function Plantoes({
           nomePorId={nomePorId} localPorId={localPorId} onResponder={responderTroca}
         />
       )}
+        </div>
+      </div>
+
+      {/* Os modais ficam fora da grade: são sobreposições de tela inteira, e
+          dentro da coluna herdariam a largura dela. */}
+      {lancando && (
+        <LancarPlantao
+          dia={lancando} locais={locais} modelos={modelos}
+          colegas={colegas} perfilId={perfilId} ehAdmin={ehAdmin}
+          onFechar={() => setLancando(null)} onSalvar={lancarAvulso}
+        />
+      )}
+
+      {pedindoTroca && (
+        <PedirTroca
+          plantao={pedindoTroca} colegas={colegas.filter((c) => c.id !== perfilId)}
+          localPorId={localPorId}
+          onFechar={() => setPedindoTroca(null)}
+          onEnviar={(destino, msg) => void pedirTroca(pedindoTroca, destino, msg)}
+        />
+      )}
+
     </div>
   );
 }

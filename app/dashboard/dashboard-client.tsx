@@ -198,6 +198,7 @@ export function DashboardClient({
   // está montado aqui — o botão simplesmente não fazia nada. Passa a focar a
   // busca do histórico, que é o campo de busca que existe nesta tela.
   const buscaHistoricoRef = useRef<HTMLInputElement>(null);
+  const [secaoRecepcao,setSecaoRecepcao]=useState<"hoje"|"buscar">("hoje");
   const [secaoMedico,setSecaoMedico]=useState("hoje");
   const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.cirurgia ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
   const currentByPatient = useMemo(() => {
@@ -595,6 +596,15 @@ export function DashboardClient({
                       <span>{rotulo}</span>
                       {contador?<b className="financeTarefaContador">{contador}</b>:null}
                     </button>)}
+              <span className="financeTarefaGrupo">Atalhos</span>
+              <button type="button" className="financeTarefaAtalho" onClick={goToFirstDraft}>
+                <span>Continuar avaliação pendente</span>
+              </button>
+              <button type="button" className="financeTarefaAtalho"
+                disabled={!completed[0]}
+                onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>
+                <span>Documentos mais recentes</span>
+              </button>
             </nav>
 
             <div className="financeConteudo">
@@ -672,7 +682,6 @@ export function DashboardClient({
             </>}
             </div>
           </div>
-          <div className="quickLinks"><button onClick={()=>{setSecaoMedico("historico");requestAnimationFrame(()=>buscaHistoricoRef.current?.focus())}}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
         </div>
       ) : view === "plantoes" ? (
         <Plantoes
@@ -682,12 +691,53 @@ export function DashboardClient({
         />
       ) : view === "recepcao" ? (
         <div className="clinicalMain receptionMain">
-          <section><h1>Recepção</h1><p>Cadastro de pacientes e agenda — sem acesso a dados clínicos ou financeiros.</p><div className="quickLinks"><button onClick={() => setOpen(true)}>Novo paciente</button><button onClick={()=>setAgendaRange("hoje")}>Agenda de hoje</button><button onClick={()=>searchRef.current?.focus()}>Pesquisar paciente</button></div></section>
+          <section className="clinicalWelcome">
+            <div>
+              <h1>Recepção</h1>
+              <p>Cadastro de pacientes e agenda — sem acesso a dados clínicos ou financeiros.</p>
+            </div>
+            <button className="primaryClinical compact" onClick={()=>setOpen(true)}>+ Novo paciente</button>
+          </section>
           {error&&<p className="clinicalError">{error}</p>}
           <section className="metricGrid receptionMetrics"><Metric value={scheduledToday.length} label="Consultas hoje" tone="blue"/><Metric value={agendamentos.filter(a=>a.data>=today&&!["cancelado","reagendado"].includes(a.status)).length} label="Consultas agendadas" tone="blue"/><Metric value={completedThisMonth.length} label="Concluídas no mês" tone="green"/><Metric value={scheduledToday.filter(a=>a.status==="agendado").length} label="Aguardando confirmação" tone="amber"/><Metric value={agendamentos.filter(a=>a.data.slice(0,7)===today.slice(0,7)&&["faltou","cancelado"].includes(a.status)).length} label="Faltas/canceladas" tone="red"/></section>
+          {/* Coluna de tarefas, como no Médico, no Financeiro e no Admin. A
+              Recepção era a única área sem ela: abria com três botões soltos
+              acima dos números e empilhava tudo o que existe numa página só. */}
+          <div className="financeLayout">
+            <nav className="financeTarefas" aria-label="Seções da Recepção">
+              {([
+                ["grupo","Atendimento"],
+                ["hoje","Consultas de hoje",queue.length],
+                ["grupo","Cadastro"],
+                ["buscar","Pesquisar paciente"],
+              ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
+                id==="grupo"
+                  ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
+                  : <button
+                      type="button" key={id}
+                      className={secaoRecepcao===id?"active":""}
+                      aria-current={secaoRecepcao===id?"true":undefined}
+                      onClick={()=>{
+                        setSecaoRecepcao(id as "hoje"|"buscar");
+                        if(id==="buscar") requestAnimationFrame(()=>searchRef.current?.focus());
+                      }}
+                    >
+                      <span>{rotulo}</span>
+                      {contador?<b className="financeTarefaContador">{contador}</b>:null}
+                    </button>,
+              )}
+            </nav>
+
+            <div className="financeConteudo">
+          {secaoRecepcao==="buscar"&&<>
           <section className="clinicalPanel searchPanel"><strong>Pesquisar paciente</strong><input ref={searchRef} value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Nome, parte do nome, CPF ou telefone..." /><span>O CPF também é verificado ao salvar para evitar duplicidade.</span></section>
           {search&&<section className="clinicalPanel patientSearchResults">{filtered.slice(0,10).map(p=><div className="financeSetupRow" key={p.id}><span><strong>{p.nome}</strong><small>{p.cpf||"CPF não informado"} · {p.telefone||"telefone não informado"}</small></span></div>)}</section>}
-          <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=attendanceOverrides[appointment.id]??appointment.status;const updating=attendanceBusy===appointment.id;return <div className="queueRow" key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{updating?"SALVANDO...":agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><button aria-busy={updating} disabled={updating||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button aria-busy={updating} disabled={updating||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>
+          {!search&&<div className="emptyClinical">Digite acima para encontrar um paciente pelo nome, CPF ou telefone.</div>}
+          </>}
+          {secaoRecepcao==="hoje"&&
+          <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=attendanceOverrides[appointment.id]??appointment.status;const updating=attendanceBusy===appointment.id;return <div className="queueRow" key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{updating?"SALVANDO...":agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><button aria-busy={updating} disabled={updating||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button aria-busy={updating} disabled={updating||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>}
+            </div>
+          </div>
         </div>
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()}/>}
@@ -976,7 +1026,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     {pendingPatients.length>0&&<PainelRecolhivel chave="fin-aguardando" titulo="Atendimentos aguardando lançamento" legenda="vindos automaticamente da recepção e agenda">{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</PainelRecolhivel>}
     {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><PainelRecolhivel className="financeGroup" key={convenio} chave={`fin-grupo-${convenio}`} classeCabecalho="financeGroupHead" titulo={convenio} legenda={`${items.length} atendimento(s)`} extra={<b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b>}>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
     "1.234.56", que é NaN — e o valor da consulta zerava sem aviso. */}
-<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><label className="inlineMoney"><span>Situação</span><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select></label>{item.status==="glosa"?<label className="inlineMoney"><span>Glosado</span><input defaultValue={Number(item.glosa_valor)||""} placeholder="R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/></label>:<span aria-hidden="true"/>}<label className="inlineMoney"><span>Nota fiscal</span><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Número" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/></label><label className="inlineMoney"><span>Emissão</span><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Vencimento</span><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Lote</span><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="—" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></label></div></div>})}</PainelRecolhivel>)}
+<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><label className="inlineMoney"><span>Situação</span><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select>{item.status==="glosa"&&<input className="financeGlosado" defaultValue={Number(item.glosa_valor)||""} placeholder="Glosado: R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/>}</label><label className="inlineMoney"><span>Nota fiscal</span><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Número" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/></label><label className="inlineMoney"><span>Emissão</span><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Vencimento</span><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Lote</span><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="—" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></label></div></div>})}</PainelRecolhivel>)}
       </>}
       {tarefa==="recebimentos"&&<>
     <PainelRecolhivel chave="fin-recebimentos" titulo="Recebimentos" legenda="PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo">
@@ -1538,13 +1588,18 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
                 <strong>{source.nome}</strong>
                 <small>{source.email||"sem e-mail"}{source.crm?` · ${source.crm}`:""}</small>
               </span>
-              <span className="statusChip paused">{ROLE_LABELS[source.role]??source.role}</span>
-              {/* Quem acumula área aparece acumulando: sem isso, a lista mostra
-                  "Financeiro" para alguém que também abre a recepção. */}
-              {areasExtras(source).map(area=><span className="statusChip present" key={area} title="Área extra concedida">+ {ROLE_LABELS[area]??area}</span>)}
-              {/* CRM não é burocracia aqui: a contagem de profissionais do
-                  plano só conta médico com CRM, e a ficha sai sem assinatura. */}
-              {source.role==="medico"&&!source.crm?.trim()&&<span className="statusChip waiting" title="Médico sem CRM não entra na contagem do plano e a ficha impressa sai sem o registro.">Sem CRM</span>}
+              {/* Os papéis ficam numa faixa de largura fixa, e não soltos na
+                  linha: quem tem duas áreas empurrava o status e o botão das
+                  linhas vizinhas para outra posição, e a lista virava escada. */}
+              <span className="adminUserPapeis">
+                <span className="statusChip paused">{ROLE_LABELS[source.role]??source.role}</span>
+                {/* Quem acumula área aparece acumulando: sem isso, a lista mostra
+                    "Financeiro" para alguém que também abre a recepção. */}
+                {areasExtras(source).map(area=><span className="statusChip present" key={area} title="Área extra concedida">+ {ROLE_LABELS[area]??area}</span>)}
+                {/* CRM não é burocracia aqui: a contagem de profissionais do
+                    plano só conta médico com CRM, e a ficha sai sem assinatura. */}
+                {source.role==="medico"&&!source.crm?.trim()&&<span className="statusChip waiting" title="Médico sem CRM não entra na contagem do plano e a ficha impressa sai sem o registro.">Sem CRM</span>}
+              </span>
               <span className={`statusChip ${source.status==="ativo"?"present":"waiting"}`}>{source.status==="ativo"?"Ativo":"Inativo"}</span>
               <button
                 className="outlineClinical" aria-expanded={expandido}
