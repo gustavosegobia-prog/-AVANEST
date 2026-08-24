@@ -32,15 +32,39 @@ test("periodoDoTurno: 24h ganha do horário de início", () => {
 test("iniciais: partícula não vira inicial", () => {
   assert.equal(iniciais("GUSTAVO SEGOBIA DA SILVA"), "GS");
   assert.equal(iniciais("Ana de Souza"), "AS");
+  assert.equal(iniciais("Maria Aparecida dos Santos"), "MS");
   assert.equal(iniciais("Marcos"), "M");
   assert.equal(iniciais(""), "?");
-  // Nome inteiro de partículas curtas não pode explodir.
-  assert.equal(iniciais("De Da Do"), "?");
+});
+
+test("iniciais: o tratamento não é nome", () => {
+  // O caso que apareceu em produção: "Dr. Gustavo Segobia" saía "DS", e todo
+  // médico cadastrado com Dr. na frente começava pela mesma letra — a cor e a
+  // sigla deixavam de distinguir quem estava de plantão.
+  assert.equal(iniciais("Dr. Gustavo Segobia"), "GS");
+  assert.equal(iniciais("DR GUSTAVO SEGOBIA DA SILVA"), "GS");
+  assert.equal(iniciais("Dra. Ana Paula de Souza"), "AS");
+  assert.equal(iniciais("Profa. Carla Nogueira"), "CN");
+  // Só na frente: "Souza Dias" é sobrenome, não tratamento.
+  assert.equal(iniciais("Fernando Souza Dias"), "FD");
+});
+
+test("iniciais: sobrenome de duas letras continua contando", () => {
+  // Um filtro por comprimento derrubava "Sá" junto com "de" e devolvia "JJ".
+  assert.equal(iniciais("José de Sá"), "JS");
+  assert.equal(iniciais("Ana Ré"), "AR");
+});
+
+test("iniciais: cadastro só com o tratamento não deixa a célula vazia", () => {
+  assert.equal(iniciais("Dr."), "D");
+  assert.equal(iniciais("   "), "?");
 });
 
 test("nomeCurto: primeiro nome e último sobrenome, capitalizados", () => {
   assert.equal(nomeCurto("GUSTAVO SEGOBIA DA SILVA"), "Gustavo Silva");
   assert.equal(nomeCurto("ana de souza"), "Ana Souza");
+  assert.equal(nomeCurto("Dr. Gustavo Segobia"), "Gustavo Segobia");
+  assert.equal(nomeCurto("José de Sá"), "José Sá");
   assert.equal(nomeCurto("Marcos"), "Marcos");
   assert.equal(nomeCurto("   "), "—");
 });

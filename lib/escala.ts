@@ -34,16 +34,64 @@ export function periodoDoTurno(inicio: string, horas: number): string {
 }
 
 /**
- * "GUSTAVO SEGOBIA DA SILVA" -> "GS".
+ * Títulos que vêm colados no nome no cadastro.
+ *
+ * "Dr. Gustavo Segobia" tem três palavras, e a primeira não é o nome de
+ * ninguém. Sem esta lista as iniciais saíam "DS" — Dr + Segobia —, e a escala
+ * do grupo mostrava a mesma letra D para todo médico do serviço, que é
+ * exatamente o oposto de identificar quem está de plantão.
+ */
+const TITULOS = new Set(["dr", "dra", "drs", "dras", "doutor", "doutora",
+                         "prof", "profa", "profs", "professor", "professora",
+                         "sr", "sra", "srta"]);
+
+/**
+ * Partículas que ligam sobrenomes.
+ *
+ * Vão numa lista, e não por tamanho da palavra: "dos" e "das" têm três letras
+ * e passariam por um filtro de comprimento, enquanto "Sá" e "Ré" têm duas e
+ * são sobrenome de gente.
+ */
+const PARTICULAS = new Set(["de", "da", "do", "das", "dos", "e", "di", "du",
+                            "del", "della", "van", "von", "der", "la", "le", "y"]);
+
+// O intervalo vai escapado, e não com os acentos literais: combining marks
+// coladas na fonte do editor somem numa cópia e o filtro para de funcionar
+// sem ninguém notar.
+const semAcento = (p: string) =>
+  p.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\.$/, "").toLowerCase();
+
+/**
+ * O nome limpo, em pedaços: sem título na frente e sem partícula no meio.
+ *
+ * Se sobrar nada — alguém cadastrado só como "Dr." — devolve o que veio, para
+ * a tela mostrar algo em vez de um espaço em branco.
+ */
+export function partesDoNome(nome: string): string[] {
+  const cru = (nome || "").trim().split(/\s+/).filter(Boolean);
+  const util = cru.filter((p, i) => {
+    const n = semAcento(p);
+    if (!n) return false;
+    // O título só conta como título na frente do nome: "Souza Dias" tem um
+    // sobrenome legítimo que não pode virar tratamento.
+    if (i === 0 && TITULOS.has(n)) return false;
+    return !PARTICULAS.has(n);
+  });
+  return util.length ? util : cru;
+}
+
+/**
+ * "GUSTAVO SEGOBIA DA SILVA" -> "GS". "Dr. Gustavo Segobia" -> "GS".
  *
  * Para a célula do calendário, onde cabem duas letras e não cabe um nome.
- * Partículas de duas letras ou menos ficam de fora: "DA", "DE", "DO" não
- * identificam ninguém, e "Ana de Souza" tem de virar AS, não AD.
+ * Primeiro nome e último sobrenome, que é como se distingue um colega do
+ * outro numa equipe de seis.
  */
 export function iniciais(nome: string): string {
-  const partes = (nome || "").trim().split(/\s+/).filter((x) => x.length > 2);
+  const partes = partesDoNome(nome);
   if (!partes.length) return "?";
-  return ((partes[0][0] ?? "") + (partes.length > 1 ? partes[partes.length - 1][0] ?? "" : "")).toUpperCase();
+  return ((partes[0][0] ?? "")
+    + (partes.length > 1 ? partes[partes.length - 1][0] ?? "" : "")).toUpperCase();
 }
 
 /**
@@ -54,11 +102,11 @@ export function iniciais(nome: string): string {
  * chegou hoje — e nenhum deles decorou a legenda de cores.
  */
 export function nomeCurto(nome: string): string {
-  const partes = (nome || "").trim().split(/\s+/).filter(Boolean);
+  const partes = partesDoNome(nome);
   if (!partes.length) return "—";
   const capitalizar = (p: string) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
-  const sobrenomes = partes.slice(1).filter((p) => p.length > 2);
-  return [partes[0], sobrenomes[sobrenomes.length - 1]].filter(Boolean).map(capitalizar).join(" ");
+  return [partes[0], partes.length > 1 ? partes[partes.length - 1] : ""]
+    .filter(Boolean).map(capitalizar).join(" ");
 }
 
 /**
