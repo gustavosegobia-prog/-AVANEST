@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { PlantaoImpresso } from "./escala.ts";
 import {
-  apelidosDaEquipe, carimboICS, corpoDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
@@ -448,4 +448,16 @@ test("plantão sem hospital não some: tem escala própria", () => {
 test("a visão de conjunto mostra tudo, inclusive o que não tem hospital", () => {
   assert.equal(plantaoNaEscala("sc", "todos"), true);
   assert.equal(plantaoNaEscala(null, "todos"), true);
+});
+
+test("TURNOS_RAPIDOS saem das faixas do dia, e não de horário escrito à mão", () => {
+  const [dia, noite] = TURNOS_RAPIDOS;
+  assert.equal(dia.inicio, "07:00");
+  assert.equal(dia.fim, "19:00");
+  assert.equal(noite.inicio, "19:00");
+  assert.equal(noite.fim, "07:00");
+  // A garantia que importa: o que o botão lança é exatamente o que o
+  // calendário desenha. Sol cobre manhã e tarde; lua cobre a noite inteira.
+  assert.deepEqual(turnosCobertos(dia.inicio, dia.fim), ["manha", "tarde"]);
+  assert.deepEqual(turnosCobertos(noite.inicio, noite.fim), ["noite"]);
 });

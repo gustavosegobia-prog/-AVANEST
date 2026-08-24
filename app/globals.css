@@ -2349,6 +2349,11 @@ button:disabled{cursor:not-allowed}
 /* "Só meu" não é mais uma pessoa da equipe: é o plantão que não é da equipe.
    A barra separa os dois grupos sem precisar de um segundo rótulo. */
 .plantaoFilaCorte{width:1px;align-self:stretch;margin:1px 4px;background:var(--cor-borda)}
+/* O turno já escolhido fica marcado: sem isso, sol e lua parecem dois botões
+   que não lembram no que você clicou, e a pessoa clica de novo para conferir.
+   A borda engrossa e o padding compensa, para o botão não pular de tamanho. */
+.plantaoDuracoes .outlineClinical.escolhido{border-color:var(--cor-marca);border-width:2px;
+  background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
 .plantaoNomeChip.soMeu{border-style:dashed}
 .plantaoNomeChip.soMeu::before{content:"🔒";font-size:11px;line-height:1}
 

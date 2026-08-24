@@ -46,6 +46,26 @@ export const TURNOS_DO_DIA = [
 
 export type TurnoDoDia = (typeof TURNOS_DO_DIA)[number]["id"];
 
+const emHoras = (minutos: number) =>
+  `${String(Math.floor((minutos % 1440) / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
+
+/**
+ * Sol e lua: os dois turnos que a escala lança o tempo todo.
+ *
+ * Os horários são DERIVADOS das faixas do dia, e não escritos aqui de novo. O
+ * diurno vai do começo da manhã ao começo da noite; o noturno, do começo da
+ * noite ao começo da manhã. Repetir "07:00" e "19:00" num segundo lugar é
+ * garantir que um dia alguém mude a virada do plantão num deles só — e aí o
+ * botão do sol passa a lançar um turno que o calendário desenha meio na tarde
+ * e meio na noite.
+ */
+export const TURNOS_RAPIDOS = [
+  { id: "diurno", nome: "Diurno", icone: "☀️",
+    inicio: emHoras(TURNOS_DO_DIA[0].de), fim: emHoras(TURNOS_DO_DIA[2].de) },
+  { id: "noturno", nome: "Noturno", icone: "🌙",
+    inicio: emHoras(TURNOS_DO_DIA[2].de), fim: emHoras(TURNOS_DO_DIA[0].de) },
+] as const;
+
 const emMinutos = (t: string) => {
   const [h, m] = hhmm(t).split(":");
   return Number(h || 0) * 60 + Number(m || 0);

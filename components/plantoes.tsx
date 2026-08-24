@@ -8,7 +8,8 @@ import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
   corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
-  ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, turnosCobertos,
+  ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
+  turnosCobertos,
 } from "@/lib/escala";
 
 // Plantões: a escala, o valor e a troca.
@@ -1509,10 +1510,29 @@ function LancarPlantao({
                   onChange={(e) => setForm({ ...form, valor: e.target.value })} /></label>
             )}
 
+            {/* Sol e lua preenchem os dois horários de uma vez; os números
+                mexem só no fim. São coisas diferentes na mesma linha, com uma
+                barra entre elas: quase todo plantão é um dos dois turnos
+                inteiros, e para esses digitar 07 e depois 19 é trabalho que a
+                tela devia poupar. */}
             <div className="plantaoDuracoes">
-              <span>Duração rápida:</span>
+              <span>Atalhos:</span>
+              {TURNOS_RAPIDOS.map((t) => {
+                const escolhido = form.hora_inicio === t.inicio && form.hora_fim === t.fim;
+                return (
+                  <button type="button" key={t.id}
+                    className={`outlineClinical${escolhido ? " escolhido" : ""}`}
+                    aria-pressed={escolhido}
+                    title={`${t.nome} · ${t.inicio}–${t.fim}`}
+                    onClick={() => setForm({ ...form, hora_inicio: t.inicio, hora_fim: t.fim })}>
+                    {t.icone} {t.nome}
+                  </button>
+                );
+              })}
+              <span className="plantaoFilaCorte" aria-hidden="true" />
               {DURACOES.map((h) => (
                 <button type="button" key={h} className="outlineClinical"
+                  title={`Termina ${h}h depois do início`}
                   onClick={() => setForm({ ...form, hora_fim: somarHoras(form.hora_inicio, h) })}>{h}h</button>
               ))}
             </div>
