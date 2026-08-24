@@ -702,7 +702,12 @@ export function Plantoes({
             // Instituto. Serviços diferentes, equipes diferentes — e cada uma
             // se lê inteira sem a outra atravessada no meio.
             ["grupo", "Escala do grupo"],
-            ...locaisAtivos.map((l) => [`grupo:${l.id}`, nomeDoLocal(l)] as [string, string]),
+            // O cadeado marca o hospital que a equipe ainda não enxerga. Quem
+            // não administra nunca vê este item — o banco não devolve o local —,
+            // e quem administra precisa saber qual escala está montando às
+            // claras e qual está montando em silêncio.
+            ...locaisAtivos.map((l) =>
+              [`grupo:${l.id}`, `${nomeDoLocal(l)}${l.oculto ? " 🔒" : ""}`] as [string, string]),
             // A coluna lista hospitais, e só. Saíram daqui "Todos os
             // hospitais" — a pergunta dele, "onde eu estou este mês?", Minha
             // escala responde melhor, já juntando tudo — e "Sem hospital",

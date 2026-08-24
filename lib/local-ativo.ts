@@ -31,6 +31,15 @@ export type LocalDisponivel = {
   grupo_anestesia: string | null;
   particular: boolean;
   ativo: boolean;
+  /**
+   * Local em preparação: só quem administra a organização o recebe.
+   *
+   * Quem não administra nunca vê este campo verdadeiro, porque o local nem
+   * chega até ele — meus_locais() já o deixa de fora. Ele existe aqui para a
+   * tela de quem administra poder dizer "este ainda não está anunciado", e não
+   * para decidir o que mostrar: essa decisão é do banco.
+   */
+  oculto?: boolean;
   usado_em: string | null;
 };
 

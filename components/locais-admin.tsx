@@ -23,7 +23,7 @@ type Local = {
   cidade: string | null; estado: string | null; cep: string | null;
   telefone: string | null; email: string | null;
   logo_url: string | null; grupo_anestesia: string | null; logo_grupo_url: string | null;
-  observacoes: string | null; ativo: boolean;
+  observacoes: string | null; ativo: boolean; oculto?: boolean;
 };
 
 const VAZIO = {
@@ -69,6 +69,30 @@ export function LocaisAdmin({
     setMensagem(resposta.startsWith("arquivado")
       ? `"${nomeDoLocal(local)}" foi arquivado: existem ${resposta.split(":")[1]} avaliação(ões) vinculadas a ele. Ele some da escolha, e os documentos antigos continuam corretos.`
       : `"${nomeDoLocal(local)}" foi excluído.`);
+    void carregar();
+  }
+
+  /**
+   * Mostrar ou esconder da equipe.
+   *
+   * Diferente de arquivar, e por isso é outro botão. Arquivar é "não usamos
+   * mais aqui" e esconde de todos, inclusive de quem administra — o local sai
+   * da coluna da Escala e não há onde montar a escala dele. Em preparação é
+   * "ainda não contamos para ninguém": quem administra continua vendo e
+   * montando; para a equipe o hospital ainda não existe.
+   *
+   * A regra de verdade está no banco, em meus_locais() e na policy de leitura.
+   * Aqui é só o gesto.
+   */
+  async function alternarOculto(local: Local) {
+    const supabase = createClient();
+    const { error } = await supabase.from("locais_atendimento")
+      .update({ oculto: !local.oculto, updated_at: new Date().toISOString() })
+      .eq("id", local.id);
+    if (error) { setErro("Não foi possível alterar a visibilidade deste local."); return; }
+    setMensagem(local.oculto
+      ? `"${nomeDoLocal(local)}" agora aparece para a equipe.`
+      : `"${nomeDoLocal(local)}" ficou só para quem administra. Ele some da escolha de local e da coluna da Escala para os demais; os plantões já lançados continuam lá.`);
     void carregar();
   }
 
@@ -121,8 +145,17 @@ export function LocaisAdmin({
           </span>
           {local.owner_id && <span className="statusChip paused">Particular</span>}
           {!local.ativo && <span className="statusChip waiting">Arquivado</span>}
+          {local.oculto && <span className="statusChip waiting"
+            title="Só quem administra a organização enxerga este local. Ele não aparece na escolha de onde trabalhar nem na coluna da Escala para os demais.">
+            Em preparação</span>}
           <div className="locaisAcoes">
             <button className="outlineClinical" onClick={() => setEditando(local)}>Editar</button>
+            <button className="outlineClinical" onClick={() => void alternarOculto(local)}
+              title={local.oculto
+                ? "Passa a aparecer para toda a equipe"
+                : "Fica só para quem administra, enquanto o local está sendo preparado"}>
+              {local.oculto ? "Mostrar à equipe" : "Ocultar da equipe"}
+            </button>
             <button className="outlineClinical" onClick={() => void alternarArquivo(local)}>
               {local.ativo ? "Arquivar" : "Reativar"}
             </button>
