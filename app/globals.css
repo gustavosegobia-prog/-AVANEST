@@ -2288,7 +2288,23 @@ button:disabled{cursor:not-allowed}
 .plantaoOlho[aria-pressed="true"]{opacity:1}
 .plantaoOlho:hover{opacity:1;background:var(--cor-superficie-suave)}
 .plantaoOlho:focus-visible{outline:0;box-shadow:var(--foco);opacity:1}
-.plantaoMetrics .metricCard{position:relative}
+.plantaoMetrics .metricCard,.financeMetrics .metricCard{position:relative}
+/* Enviar, desfazer e imprimir na mesma barra, encostados à direita do título. */
+.producaoAcoesMes{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
+/* A linha do que a equipe enviou. Colunas fixas pelo motivo de sempre: cada
+   linha é uma grade própria, e em largura automática nada bate com a de cima. */
+.producaoRecebidaLinha{display:grid;grid-template-columns:minmax(200px,1fr) 190px 74px 128px;
+  gap:14px;align-items:center;padding:13px 25px;border-bottom:1px solid var(--cor-borda)}
+.producaoRecebidaLinha:last-child{border-bottom:0}
+.producaoRecebidaLinha strong{display:block;font-size:14.5px}
+.producaoRecebidaLinha small{display:block;color:var(--cor-tinta-fraca);font-size:12.5px;margin-top:3px}
+.producaoRecebidaLinha>b{text-align:right;font-variant-numeric:tabular-nums}
+.producaoQuem{color:var(--cor-marca);font-size:13px;font-weight:700}
+.producaoQuando{color:var(--cor-tinta-fraca);font-size:13px;font-variant-numeric:tabular-nums}
+@media(max-width:900px){
+  .producaoRecebidaLinha{grid-template-columns:1fr auto;row-gap:6px}
+  .producaoRecebidaLinha>span:first-child{grid-column:1/-1}
+}
 
 /* O nome do hospital dentro do turno: some quando a escala está filtrada num
    hospital só, onde ele seria a mesma palavra em trinta e uma células. */

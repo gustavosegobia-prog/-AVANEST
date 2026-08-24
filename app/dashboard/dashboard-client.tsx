@@ -12,6 +12,11 @@ import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { LocaisAdmin } from "@/components/locais-admin";
+import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
+import { ProducaoRecebida } from "@/components/producao-do-dia";
+
+const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
+                   "julho","agosto","setembro","outubro","novembro","dezembro"];
 import { Plantoes } from "@/components/plantoes";
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -827,6 +832,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const [configOpen,setConfigOpen]=useState(false);
+  const {oculto,alternar,mascara}=useValoresOcultos();
   const [priceValues,setPriceValues]=useState<Record<string,string>>({});
   const [values,setValues]=useState<Record<string,string>>({});
   const [methods,setMethods]=useState<Record<string,string>>({});
@@ -994,7 +1000,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   return <div className="clinicalMain financeMain">
     <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label><button className="outlineClinical" disabled={!periodItems.length} title={periodItems.length?undefined:"Sem lançamentos na competência selecionada"} onClick={exportCsv}><Icone nome="imprimir" tamanho={15}/> Exportar CSV</button>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}</div></section>
     {message&&<p className={message.includes("não foi")?"clinicalError":"financeSuccess"}>{message}</p>}
-    <section className="metricGrid financeMetrics"><Metric value={periodItems.length} label="Atendimentos no mês" tone="blue"/><MoneyMetric value={total} label="Faturado no mês" tone="blue"/><Metric value={periodItems.filter(i=>!i.nota_fiscal).length} label="Notas pendentes" tone="amber"/><MoneyMetric value={received} label="Recebido no mês" tone="green"/><Metric value={glosas.length} label="Glosas em recurso" tone="red"/></section>
+    <section className="metricGrid financeMetrics"><Metric value={periodItems.length} label="Atendimentos no mês" tone="blue" mascara={mascara}/><MoneyMetric value={total} label="Faturado no mês" tone="blue" mascara={mascara}/><Metric value={periodItems.filter(i=>!i.nota_fiscal).length} label="Notas pendentes" tone="amber" mascara={mascara}/><MoneyMetric value={received} label="Recebido no mês" tone="green" mascara={mascara}/><Metric value={glosas.length} label="Glosas em recurso" tone="red" mascara={mascara} extra={<OlhoValores oculto={oculto} onAlternar={alternar}/>}/></section>
 
     <div className="financeLayout">
       {/* Coluna de tarefas. Os contadores são só do que pede ação — número em
@@ -1006,6 +1012,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
           ["notas","Notas fiscais",noteAlerts.length],
           ["lotes","Lotes de cobrança"],
+          ["producao","Produção da equipe"],
           ["repasses","Repasses"],
           ["grupo","Análise"],
           ["graficos","Gráficos"],
@@ -1101,6 +1108,8 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       {tarefa==="notas"&&<>
     <PainelRecolhivel chave="fin-notas" className="noteAlerts" titulo="Notas fiscais para acompanhamento" legenda="Alerta após 15 dias da emissão, até receber baixa financeira." abrePadrao={noteAlerts.length>0}>{noteAlerts.length?noteAlerts.map(item=>{const patient=patientMap.get(item.patient_id);const due=item.nota_vencimento_at||new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10);return <div className="noteAlertRow" key={item.id}><span><strong>NF {item.nota_fiscal}</strong><small>{item.convenio} · {patient?.nome||"Paciente"} · verificar pagamento desde {brDate(due)}</small></span><button className="paymentButton" disabled={busy===item.id} onClick={()=>{setTarefa("recebimentos");setMessage("Informe o valor recebido abaixo para confirmar a baixa da nota.");/* o alvo da rolagem vive na seção de Recebimentos: sem trocar de seção antes, getElementById não acha nada e o botão não faz coisa alguma */ requestAnimationFrame(()=>document.getElementById(`recebimento-${item.id}`)?.scrollIntoView({behavior:"smooth",block:"center"}))}}>Dar baixa</button><button className="outlineClinical" disabled={busy===item.id} onClick={()=>reprogramNote(item)}>+15 dias</button></div>}):<div className="emptyClinical compactEmpty">Nenhuma nota vencida para acompanhamento.</div>}</PainelRecolhivel>
       </>}
+      {tarefa==="producao"&&<ProducaoRecebida mes={period} nomeMes={NOMES_MES[Number(period.slice(5,7))-1]??""} ano={Number(period.slice(0,4))}/>}
+
       {tarefa==="lotes"&&<>
     <PainelRecolhivel chave="fin-lotes" titulo="📦 Lotes de cobrança" legenda="agrupamento por convênio/hospital, sem dados clínicos" abrePadrao={false}>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</PainelRecolhivel>
       </>}
@@ -1758,11 +1767,16 @@ function ConvenioValoresPanel({perfil,convenioValores,onRefresh}:{perfil:Perfil;
   </>;
 }
 
-function Metric({ value, label, tone }: { value: number; label: string; tone: string }) {
+// `mascara` e `extra` existem para o olho que esconde os números: a função de
+// mascarar vem de fora, e o botão entra no último cartão da fileira.
+function Metric({ value, label, tone, mascara, extra }: { value: number; label: string; tone: string; mascara?: (t:string)=>string; extra?: React.ReactNode }) {
   const tomReal = value === 0 && ["red", "amber"].includes(tone) ? "" : tone;
-  return <div className="metricCard"><strong className={tomReal}>{value.toLocaleString("pt-BR")}</strong><span>{label}</span></div>;
+  const texto = value.toLocaleString("pt-BR");
+  return <div className="metricCard"><strong className={tomReal}>{mascara?mascara(texto):texto}</strong><span>{label}</span>{extra}</div>;
 }
-function MoneyMetric({value,label,tone}:{value:number;label:string;tone:string}){return <div className="metricCard"><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
+function MoneyMetric({value,label,tone,mascara,extra}:{value:number;label:string;tone:string;mascara?:(t:string)=>string;extra?:React.ReactNode}){
+  const texto=value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  return <div className="metricCard"><strong className={tone}>{mascara?mascara(texto):texto}</strong><span>{label}</span>{extra}</div>}
 function MoneySmall({value,label,tone=""}:{value:number;label:string;tone?:string}){return <div><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
 function Alert({ icone, title, text, action, danger=false, onClick }: { icone:Parameters<typeof Icone>[0]["nome"]; title:string; text:string; action:string; danger?:boolean; onClick?:()=>void }) {
   return <button type="button" className="alertItem" onClick={onClick} disabled={!onClick}>

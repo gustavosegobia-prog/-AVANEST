@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
+import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
   corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
   filtroDeHospital, montarICS, periodoDoTurno, plantaoNaEscala, plural, somarHoras,
@@ -167,30 +168,7 @@ export function Plantoes({
    * ao entrar no sistema.
    */
   const [hospital, setHospital] = useState<string>(localAtivoId ?? "todos");
-  /**
-   * Esconder os valores da tela.
-   *
-   * A escala é aberta no corredor do centro cirúrgico, com gente ao lado. O
-   * que se esconde é o quanto a pessoa recebe, e não o que ela trabalhou:
-   * plantões e horas continuam à vista, porque são o que ela veio consultar.
-   *
-   * Fica no aparelho, e não na conta: é sobre quem está olhando por cima do
-   * ombro agora, não sobre quem está logado. Por isso localStorage, e num
-   * try/catch — aba anônima e navegador com dados bloqueados fazem o acesso
-   * lançar exceção, e uma tela de escala não pode cair por causa disso.
-   */
-  const [valorOculto, setValorOculto] = useState(false);
-  // Lido depois da montagem, e não no useState inicial, porque este componente
-  // é renderizado no servidor: lá localStorage não existe, e inicializar por
-  // ele faria o HTML do servidor discordar do primeiro render do navegador.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- estado do aparelho, só existe depois de montar
-    try { setValorOculto(localStorage.getItem("avanest_esconder_valores") === "1"); } catch { /* segue à vista */ }
-  }, []);
-  function esconderValores(esconder: boolean) {
-    setValorOculto(esconder);
-    try { localStorage.setItem("avanest_esconder_valores", esconder ? "1" : "0"); } catch { /* só nesta sessão */ }
-  }
+  const { oculto: valorOculto, alternar: esconderValores, mascara } = useValoresOcultos();
   const [pedindoTroca, setPedindoTroca] = useState<Plantao | null>(null);
   // Lançar sem modelo. O modelo é atalho, não pré-requisito: exigir que a
   // pessoa crie um modelo antes de registrar o primeiro plantão é uma parede
@@ -573,14 +551,10 @@ export function Plantoes({
               {/* O rótulo fica; só o número some. Cartão em branco não diz o
                   que está escondido, e a pessoa acaba mostrando tudo de novo
                   só para lembrar o que era. */}
-              <strong className={c.cor}>{valorOculto ? "•••" : c.valor}</strong>
+              <strong className={c.cor}>{mascara(c.valor)}</strong>
               <span>{c.rotulo}</span>
               {i === cartoes.length - 1 && (
-                <button type="button" className="plantaoOlho"
-                  onClick={() => esconderValores(!valorOculto)}
-                  aria-pressed={valorOculto}
-                  aria-label={valorOculto ? "Mostrar os números" : "Esconder os números"}
-                  title={valorOculto ? "Mostrar os números" : "Esconder os números"} />
+                <OlhoValores oculto={valorOculto} onAlternar={esconderValores} />
               )}
             </div>
           ))}

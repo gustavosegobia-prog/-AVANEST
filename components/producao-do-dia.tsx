@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { money, plural } from "@/lib/escala";
+import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-internacao";
 
 // Produção do dia: o caderninho do bolso do pijama.
@@ -17,6 +18,8 @@ import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-int
 // depois, com calma, quando for faturar.
 
 export type Producao = {
+  /** Preenchido quando a anotação foi enviada ao Financeiro. */
+  enviado_em?: string | null;
   id: string; data: string; paciente: string; convenio: string;
   procedimento: string | null; valor: number; situacao: string;
   observacoes: string | null; plantao_id: string | null;
@@ -294,6 +297,10 @@ export function ProducaoDoMes({
   const [itens, setItens] = useState<Producao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [recado, setRecado] = useState("");
+  const [recarregar, setRecarregar] = useState(0);
+  const { oculto, alternar, mascara } = useValoresOcultos();
 
   useEffect(() => {
     let vivo = true;
@@ -316,7 +323,7 @@ export function ProducaoDoMes({
       setItens((data ?? []) as Producao[]);
     })();
     return () => { vivo = false; };
-  }, [mes]);
+  }, [mes, recarregar]);
 
   // Por convênio é como se fatura: cada operadora recebe a sua remessa, e o
   // particular é cobrado paciente a paciente.
@@ -332,6 +339,39 @@ export function ProducaoDoMes({
     return [...m.entries()].sort((a, b) => b[1].total - a[1].total);
   }, [itens]);
 
+  // O que ainda não foi ao Financeiro. Enviar de novo não duplica nada — a
+  // função ignora o que já tem data —, mas o botão precisa dizer se há algo a
+  // enviar, senão vira um clique sem efeito e sem explicação.
+  const aEnviar = itens.filter((i) => !i.enviado_em).length;
+  const jaEnviados = itens.length - aEnviar;
+
+  /**
+   * Enviar ao Financeiro.
+   *
+   * Até este clique a lista é estritamente sua: nem o administrador enxerga.
+   * O que for enviado passa a ser legível por quem fatura — e só o deste mês,
+   * e só o que já estava anotado. O resto continua invisível.
+   */
+  async function enviar(desfazer = false) {
+    setEnviando(true); setErro(""); setRecado("");
+    const { data, error } = await createClient()
+      .rpc(desfazer ? "desfazer_envio_producao" : "enviar_producao_ao_financeiro", { p_mes: mes });
+    setEnviando(false);
+    if (error) {
+      setErro(error.code === "42883"
+        ? "O envio ao financeiro ainda não existe no banco. Rode a migração 202608240004_enviar_producao_financeiro.sql."
+        : "Não foi possível enviar agora.");
+      return;
+    }
+    const n = Number(data) || 0;
+    setRecado(desfazer
+      ? n > 0 ? `Envio desfeito. O financeiro deixou de ver ${plural(n, "anotação", "anotações")}.`
+              : "Não havia nada enviado neste mês."
+      : n > 0 ? `${plural(n, "anotação foi enviada", "anotações foram enviadas")} ao financeiro.`
+              : "Tudo deste mês já tinha sido enviado.");
+    setRecarregar((x) => x + 1);
+  }
+
   const total = itens.reduce((s, i) => s + Number(i.valor), 0);
   const recebido = itens.filter((i) => i.situacao === "recebido")
     .reduce((s, i) => s + Number(i.valor), 0);
@@ -342,21 +382,45 @@ export function ProducaoDoMes({
     <>
       {erro && <p className="clinicalError">{erro}</p>}
 
+      {recado && <p className="financeSuccess" role="status">{recado}</p>}
+
       <section className="metricGrid plantaoMetrics">
-        <div className="metricCard"><strong>{itens.length}</strong><span>Pacientes no mês</span></div>
-        <div className="metricCard"><strong className="blue">{money(total)}</strong><span>Total anotado</span></div>
-        <div className="metricCard"><strong className="green">{money(recebido)}</strong><span>Recebido</span></div>
-        <div className="metricCard"><strong className="amber">{money(total - recebido)}</strong><span>A receber</span></div>
+        <div className="metricCard"><strong>{mascara(String(itens.length))}</strong><span>Pacientes no mês</span></div>
+        <div className="metricCard"><strong className="blue">{mascara(money(total))}</strong><span>Total anotado</span></div>
+        <div className="metricCard"><strong className="green">{mascara(money(recebido))}</strong><span>Recebido</span></div>
+        <div className="metricCard">
+          <strong className="amber">{mascara(money(total - recebido))}</strong><span>A receber</span>
+          <OlhoValores oculto={oculto} onAlternar={alternar} />
+        </div>
       </section>
 
       <section className="clinicalPanel">
         <div className="panelTitle">
           <strong>Por convênio em {nomeMes} de {ano}</strong>
           <span>é assim que se fatura: uma remessa por operadora</span>
-          <button className="outlineClinical" style={{ marginLeft: "auto" }}
-            disabled={itens.length === 0} onClick={() => onImprimir(itens)}>
-            Imprimir
-          </button>
+          <div className="producaoAcoesMes">
+            {/* Enviar vem primeiro e em destaque: imprimir é para o seu
+                arquivo, enviar é o que faz a cobrança andar. */}
+            <button className="primaryClinical compact" disabled={aEnviar === 0 || enviando}
+              onClick={() => void enviar()}
+              title={aEnviar === 0 ? "Nada novo para enviar neste mês"
+                                   : "O financeiro passa a ver estas anotações"}>
+              {enviando ? "Enviando…"
+                : aEnviar === 0 ? "Enviado ao financeiro"
+                : `Enviar ao financeiro (${aEnviar})`}
+            </button>
+            {jaEnviados > 0 && (
+              <button className="outlineClinical" disabled={enviando}
+                onClick={() => void enviar(true)}
+                title="O financeiro deixa de ver o que foi enviado neste mês">
+                Desfazer envio
+              </button>
+            )}
+            <button className="outlineClinical"
+              disabled={itens.length === 0} onClick={() => onImprimir(itens)}>
+              Imprimir
+            </button>
+          </div>
         </div>
         {porConvenio.length === 0
           ? <div className="emptyClinical compactEmpty">
@@ -399,6 +463,111 @@ export function ProducaoDoMes({
           ))}
         </section>
       )}
+    </>
+  );
+}
+
+/**
+ * O que a equipe enviou para o Financeiro.
+ *
+ * Chega aqui só o que cada anestesista mandou, mês a mês, clicando em "Enviar
+ * ao financeiro" na produção dele. O que ninguém enviou continua invisível —
+ * a lista de pacientes que alguém atendeu não é informação de gestão até que
+ * a própria pessoa a entregue para faturar.
+ *
+ * Vem agrupado por convênio porque é assim que se fatura: uma remessa por
+ * operadora. E traz o nome de quem enviou, que é o que separa duas guias da
+ * mesma cirurgia cobradas por anestesistas diferentes.
+ */
+export function ProducaoRecebida({ mes, nomeMes, ano }: {
+  mes: string; nomeMes: string; ano: number;
+}) {
+  type Linha = {
+    id: string; data: string; paciente: string; convenio: string;
+    procedimento: string | null; valor: number; situacao: string;
+    profissional: string; enviado_em: string;
+  };
+  const [linhas, setLinhas] = useState<Linha[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const { oculto, alternar, mascara } = useValoresOcultos();
+
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const { data, error } = await createClient().rpc("producao_recebida", { p_mes: mes });
+      if (!vivo) return;
+      setCarregando(false);
+      if (error) {
+        setErro(error.code === "42883"
+          ? "A produção enviada ainda não existe no banco. Rode a migração 202608240004_enviar_producao_financeiro.sql."
+          : "Não foi possível carregar a produção enviada.");
+        return;
+      }
+      setErro("");
+      setLinhas((data ?? []) as Linha[]);
+    })();
+    return () => { vivo = false; };
+  }, [mes]);
+
+  const porConvenio = useMemo(() => {
+    const m = new Map<string, Linha[]>();
+    for (const l of linhas) {
+      const k = l.convenio || "Particular";
+      m.set(k, [...(m.get(k) ?? []), l]);
+    }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
+  }, [linhas]);
+
+  const total = linhas.reduce((s, l) => s + Number(l.valor), 0);
+  const quantos = new Set(linhas.map((l) => l.profissional)).size;
+
+  if (carregando) return <div className="emptyClinical">Carregando produção enviada…</div>;
+
+  return (
+    <>
+      {erro && <p className="clinicalError">{erro}</p>}
+
+      <section className="metricGrid financeMetrics">
+        <div className="metricCard"><strong>{mascara(String(linhas.length))}</strong><span>Anotações recebidas</span></div>
+        <div className="metricCard"><strong>{mascara(String(quantos))}</strong><span>Profissionais</span></div>
+        <div className="metricCard">
+          <strong className="blue">{mascara(money(total))}</strong><span>Total a faturar</span>
+          <OlhoValores oculto={oculto} onAlternar={alternar} />
+        </div>
+      </section>
+
+      <section className="clinicalPanel">
+        <div className="panelTitle">
+          <strong>Produção da equipe em {nomeMes} de {ano}</strong>
+          <span>o que cada um enviou para faturar</span>
+        </div>
+        {linhas.length === 0
+          ? <div className="emptyClinical">
+              Ninguém enviou produção deste mês ainda. Cada anestesiologista envia a
+              dele em Escala → Produção.
+            </div>
+          : porConvenio.map(([convenio, doConvenio]) => (
+            <div key={convenio}>
+              <div className="financeGroupHead">
+                <strong>{convenio}</strong>
+                <span>{plural(doConvenio.length, "anotação", "anotações")}</span>
+                <b>{mascara(money(doConvenio.reduce((s, l) => s + Number(l.valor), 0)))}</b>
+              </div>
+              {doConvenio.map((l) => (
+                <div className="producaoRecebidaLinha" key={l.id}>
+                  <span><strong>{l.paciente}</strong>
+                    <small>{l.procedimento || "procedimento não informado"}</small></span>
+                  <span className="producaoQuem">{l.profissional}</span>
+                  <span className="producaoQuando">
+                    {Number(l.data.slice(8, 10))}/{l.data.slice(5, 7)}
+                  </span>
+                  <b>{mascara(money(Number(l.valor)))}</b>
+                </div>
+              ))}
+            </div>
+          ))}
+      </section>
     </>
   );
 }
