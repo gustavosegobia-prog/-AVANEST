@@ -1902,12 +1902,57 @@ button:disabled{cursor:not-allowed}
    cabia numa coluna estreita no meio de um monitor vazio. Continua centrada
    e com teto — escolher onde atender não é painel, e cartão esticado de
    ponta a ponta faz a lista perder a forma de lista. */
+/* ===== A porta do sistema, no escuro da marca ============================
+   Mesma paleta do site e do login: navy #07131f com o gradiente que a tela de
+   entrada usa. Esta é a última tela antes do sistema, que é claro — a troca de
+   fundo marca a passagem em vez de emendar duas telas iguais.
+
+   As cores vão escritas, e não em variáveis de tema: esta tela é escura nos
+   dois temas, e herdar var(--cor-superficie) faria o cartão virar branco para
+   quem usa o AVANEST no modo claro. */
+/* A coluna vai travada em minmax(0,1fr). Sem isso a faixa implícita é "auto",
+   que cresce com o conteúdo: a grade dos cartões pedia 390px de mínimo, a
+   faixa esticava para caber, e no celular o cartão saía cortado pela direita
+   mesmo com o min() aplicado — largura indefinida não tem 100% a que se
+   referir. */
+.localFundo{position:relative;min-height:100vh;min-height:100dvh;
+  display:grid;grid-template-columns:minmax(0,1fr);align-content:safe center;
+  background-color:#07131f}
+/* O fundo é uma camada FIXA atrás do conteúdo, e não a pintura do elemento.
+   Pintado no elemento, ele acaba onde o conteúdo acaba — e numa tela alta com
+   dois cartões sobrava uma faixa clara embaixo, do corpo da página. Fixo, ele
+   cobre a janela inteira em qualquer altura e não desliza ao rolar. */
+.localFundo::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:radial-gradient(1200px 620px at 18% -10%,#0d2c47 0%,transparent 60%),
+             linear-gradient(160deg,#0a2238 0%,#071a2b 58%,#06131f 100%)}
+.localFundo .localCabecalho h1{color:#fff}
+.localFundo .localCabecalho p{color:#9dbbd2}
+.localFundo .localSecao{color:#6f93ad}
+/* O cartão é uma superfície erguida do fundo, e não um retângulo branco: o
+   branco cheio no escuro ofusca, e são três ou quatro deles na tela. */
+.localFundo .localCartao{background:#ffffff0a;border-color:#ffffff1f;color:#eaf2f8}
+.localFundo .localCartao:hover{border-color:var(--avn-teal);background:#ffffff14}
+.localFundo .localCartao.ativo{border-color:var(--avn-teal);background:#43c8b81f}
+.localFundo .localTexto small{color:#9dbbd2}
+.localFundo .localGrupo{color:var(--avn-teal)!important}
+/* A marca do hospital fica num quadro claro de propósito: os logos vêm com
+   fundo branco embutido, e sobre o escuro apareceria um retângulo recortado. */
+.localFundo .localMarca{background:#f4f8fb}
+.localFundo .localBusca{background:#ffffff0a;border-color:#ffffff26;color:#cfe0ec}
+.localFundo .localBusca input{color:#fff}
+.localFundo .localBusca input::placeholder{color:#7fa0b8}
+.localFundo .localNovo{border-color:#ffffff45;color:#fff;background:#ffffff0d}
+.localFundo .localNovo:hover{border-color:var(--avn-teal);color:var(--avn-teal)}
+.localFundo .localVazio{background:#ffffff0a;border-color:#ffffff1f;color:#cfe0ec}
+.localFundo .localVazio strong{color:#fff}
+.localFundo .localVazio p{color:#9dbbd2}
+
+/* Centrado na vertical pelo invólucro, e não aqui: a tela tem uma pergunta só,
+   e encostada no topo de um monitor de 1080px ela ficava boiando num vazio. O
+   "safe" do invólucro é o que impede a lista longa de ser cortada por cima —
+   nesse caso ela volta a começar do topo e rola normalmente. */
 .localMain{width:min(1180px,calc(100% - 48px));margin:auto;padding:44px 0 60px;
-  /* Centrado na vertical: a tela tem uma pergunta só, e encostada no topo
-     de um monitor de 1080px ela ficava boiando num vazio. O "safe" é o que
-     impede a lista longa de ser cortada por cima — nesse caso ela volta a
-     começar do topo e rola normalmente. */
-  min-height:100dvh;display:grid;align-content:safe center}
+  display:grid}
 .localTopo{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px}
 .localCabecalho h1{font-size:clamp(30px,4.2vw,42px);margin:0 0 8px}
 .localCabecalho p{margin:0;color:var(--cor-tinta-fraca);font-size:19px}
@@ -1922,8 +1967,11 @@ button:disabled{cursor:not-allowed}
 
 .localSecao{font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:var(--cor-tinta-fraca);margin:34px 0 14px}
+/* min(390px,100%) e não 390px direto: numa tela de 430px a coluna mínima não
+   cabe na largura útil, a grade estoura e o cartão sai cortado pela direita.
+   Com o min, ela encolhe para a tela em vez de forçar o transbordo. */
 .localGrade{list-style:none;padding:0;margin:0;display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:16px}
+  grid-template-columns:repeat(auto-fill,minmax(min(390px,100%),1fr));gap:16px}
 
 .localCartao{display:flex;align-items:center;gap:19px;width:100%;text-align:left;
   padding:22px 24px;min-height:110px;font:inherit;color:inherit;cursor:pointer;

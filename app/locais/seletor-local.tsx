@@ -82,6 +82,14 @@ export function SeletorDeLocal({
   }
 
   return (
+    /* Fundo escuro como o do site e o da tela de entrada. Esta é a porta: vem
+       logo depois do login e antes do sistema, e o sistema é claro. A troca de
+       fundo marca a passagem — e mantém a identidade da marca no único momento
+       em que ela ainda está à vista depois de entrar.
+
+       O invólucro existe porque .localMain tem largura máxima e fica centrada:
+       pintar o fundo nela deixaria faixas claras nas laterais do monitor. */
+    <div className="localFundo">
     <main className="localMain">
       <header className="localTopo">
         <AppLogo />
@@ -168,6 +176,7 @@ export function SeletorDeLocal({
         />
       )}
     </main>
+    </div>
   );
 }
 
