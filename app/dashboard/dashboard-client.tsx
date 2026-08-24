@@ -165,6 +165,7 @@ const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamen
 export function DashboardClient({
   perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
+  trocasEsperando = 0,
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
@@ -174,6 +175,14 @@ export function DashboardClient({
   initialView?: DashboardView;
   initialNewPatient?: boolean;
   autoStartAssessment?: boolean;
+  /**
+   * Plantões oferecidos esperando a resposta desta pessoa.
+   *
+   * Chega do servidor como contagem, e não como lista: a Escala já carrega os
+   * pedidos inteiros quando é aberta, e trazer os mesmos dados duas vezes é
+   * uma consulta a mais em toda abertura do painel.
+   */
+  trocasEsperando?: number;
 }) {
   const router = useRouter();
   const allowedViews = useMemo<DashboardView[]>(() => {
@@ -543,7 +552,15 @@ export function DashboardClient({
           {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
           {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
-          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={view === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>Escala</button>}
+          {/* O contador de trocas fica AQUI, no topo, e não só dentro da
+              Escala. Um plantão oferecido que ninguém vê é o buraco chegando
+              no dia da cirurgia — e quem está na Recepção ou no Financeiro
+              precisa saber que tem alguém esperando resposta sem ter de abrir
+              a Escala para descobrir. */}
+          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={view === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>
+            Escala
+            {trocasEsperando>0&&<b className="navAviso" title={`${trocasEsperando===1?"Um plantão oferecido espera":"Plantões oferecidos esperam"} a sua resposta`}>{trocasEsperando}</b>}
+          </button>}
         </nav>
         <div className="userMenuWrap">
           <button

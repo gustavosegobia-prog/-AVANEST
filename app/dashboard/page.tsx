@@ -118,6 +118,7 @@ export default async function DashboardPage({
     { data: auditoria },
     { data: periodos },
     { data: convenioValores },
+    { count: trocasEsperando },
   ] = await Promise.all([
     needsFinanceData && perfil.role === "financeiro"
       ? supabase.rpc("financeiro_listar_pacientes")
@@ -138,6 +139,18 @@ export default async function DashboardPage({
     // A recepção também precisa: é a lista de convênios do cadastro do
     // paciente, e um convênio adicionado no financeiro tem de aparecer lá.
     needsClinicalData || needsFinanceData || needsAdminData ? supabase.from("convenio_valores").select("*").order("convenio").order("procedimento") : Promise.resolve({ data: [] }),
+    // Plantões oferecidos que esperam a MINHA resposta. Vem para o topo da
+    // tela, e não só para dentro da Escala: um turno oferecido que ninguém vê
+    // é o buraco chegando no dia da cirurgia. Quem está na Recepção ou no
+    // Financeiro precisa saber que tem alguém esperando resposta.
+    //
+    // Só a contagem: a lista inteira já é carregada pela Escala, e trazer duas
+    // vezes o mesmo dado é uma consulta a mais em toda abertura do painel.
+    supabase.from("trocas_plantao")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pendente")
+      .neq("solicitante_id", user.id)
+      .or(`destinatario_id.is.null,destinatario_id.eq.${user.id}`),
   ]);
 
   return (
@@ -157,6 +170,7 @@ export default async function DashboardPage({
       financeiro={financeiro ?? []}
       pagamentos={pagamentos ?? []}
       perfis={perfis ?? []}
+      trocasEsperando={trocasEsperando ?? 0}
       auditoria={auditoria ?? []}
       periodos={periodos ?? []}
       convenioValores={convenioValores ?? []}

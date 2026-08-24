@@ -874,6 +874,17 @@ button:disabled{cursor:not-allowed}
 .roleNav button.active{background:var(--cor-marca);color:var(--cor-marca-contraste);border-color:var(--cor-marca);font-weight:700}
 .roleNav .themePill{background:transparent;color:var(--cor-tinta-fraca)}
 .roleNav .themePill:hover{background:var(--cor-superficie-suave)}
+/* O número de plantões esperando a sua resposta, colado no nome da área.
+   Cor de atenção, e não de perigo: é alguém pedindo cobertura, não um erro —
+   mas precisa saltar de qualquer tela, porque o preço de não ver é o turno
+   descoberto no dia da cirurgia. */
+.navAviso{display:inline-grid;place-items:center;min-width:19px;height:19px;
+  margin-left:7px;padding:0 5px;border-radius:999px;
+  background:var(--cor-atencao);color:#22160a;
+  font-size:11.5px;font-weight:850;line-height:1}
+/* No botão aceso o fundo já é a cor da marca: o selo inverte para continuar
+   legível em cima dela. */
+.roleNav button.active .navAviso{background:#fff;color:var(--cor-marca-forte)}
 
 /* Cartoes de indicador: menos altura para a mesma informacao. */
 .metricCard{min-height:0;padding:var(--esp-4) var(--esp-5);border-radius:var(--raio-2);border-color:var(--cor-borda);box-shadow:var(--sombra-1)}
