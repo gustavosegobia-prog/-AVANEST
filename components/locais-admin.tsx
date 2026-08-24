@@ -86,13 +86,21 @@ export function LocaisAdmin({
    */
   async function alternarOculto(local: Local) {
     const supabase = createClient();
+    // Quem escondeu vai junto: é dele — e do dono da organização — que o
+    // local continua visível. Sem gravar isso, "esconder" voltaria a
+    // significar "esconder de quem não administra", que é outra coisa.
+    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from("locais_atendimento")
-      .update({ oculto: !local.oculto, updated_at: new Date().toISOString() })
+      .update({
+        oculto: !local.oculto,
+        oculto_por: local.oculto ? null : user?.id ?? null,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", local.id);
     if (error) { setErro("Não foi possível alterar a visibilidade deste local."); return; }
     setMensagem(local.oculto
       ? `"${nomeDoLocal(local)}" agora aparece para a equipe.`
-      : `"${nomeDoLocal(local)}" ficou só para quem administra. Ele some da escolha de local e da coluna da Escala para os demais; os plantões já lançados continuam lá.`);
+      : `"${nomeDoLocal(local)}" ficou só para você. Ele some da escolha de local e da coluna da Escala para todos os outros — inclusive para quem administra; os plantões já lançados continuam lá.`);
     void carregar();
   }
 
@@ -146,14 +154,14 @@ export function LocaisAdmin({
           {local.owner_id && <span className="statusChip paused">Particular</span>}
           {!local.ativo && <span className="statusChip waiting">Arquivado</span>}
           {local.oculto && <span className="statusChip waiting"
-            title="Só quem administra a organização enxerga este local. Ele não aparece na escolha de onde trabalhar nem na coluna da Escala para os demais.">
+            title="Só quem escondeu o local — e o dono da organização — enxerga. Ele não aparece na escolha de onde trabalhar nem na coluna da Escala para mais ninguém.">
             Em preparação</span>}
           <div className="locaisAcoes">
             <button className="outlineClinical" onClick={() => setEditando(local)}>Editar</button>
             <button className="outlineClinical" onClick={() => void alternarOculto(local)}
               title={local.oculto
                 ? "Passa a aparecer para toda a equipe"
-                : "Fica só para quem administra, enquanto o local está sendo preparado"}>
+                : "Fica só para você, enquanto o local está sendo preparado"}>
               {local.oculto ? "Mostrar à equipe" : "Ocultar da equipe"}
             </button>
             <button className="outlineClinical" onClick={() => void alternarArquivo(local)}>
