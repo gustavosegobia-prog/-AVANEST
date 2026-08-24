@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { money, plural } from "@/lib/escala";
+import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-internacao";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -55,6 +56,48 @@ export function ProducaoDoDia({
   const [salvando, setSalvando] = useState(false);
   const vazio = { paciente: "", convenio: "Particular", procedimento: "", valor: "" };
   const [novo, setNovo] = useState(vazio);
+  const [lendoFoto, setLendoFoto] = useState(false);
+  const [avisoFoto, setAvisoFoto] = useState("");
+
+  /**
+   * Ler a ficha de internação por foto.
+   *
+   * A imagem é reconhecida no próprio aparelho e descartada ao fim: a ficha
+   * traz nome, convênio e diagnóstico de um paciente, e mandar isso para um
+   * servidor — ainda que nosso — seria transportar dado de saúde por um
+   * caminho que esta funcionalidade não precisa ter.
+   *
+   * O que é reconhecido cai nos campos do formulário e fica lá para ser
+   * conferido: nada é salvo sozinho. O motor entra por import dinâmico, então
+   * quem nunca usar a câmera não carrega esses megabytes.
+   */
+  async function lerFicha(arquivo?: File) {
+    if (!arquivo) return;
+    setLendoFoto(true); setErro(""); setAvisoFoto("");
+    try {
+      const { default: Tesseract } = await import("tesseract.js");
+      const { data } = await Tesseract.recognize(arquivo, "por");
+      const { dados, naoEncontrados } = lerFichaDeInternacao(data.text);
+
+      if (!dados.paciente && !dados.convenio && !dados.procedimento) {
+        setErro("Não reconheci nada nesta imagem. Tente uma foto mais próxima, sem reflexo e com a ficha plana — ou digite os campos.");
+        return;
+      }
+      setNovo({
+        ...novo,
+        paciente: dados.paciente ?? novo.paciente,
+        convenio: dados.convenio ?? novo.convenio,
+        procedimento: dados.procedimento ?? novo.procedimento,
+      });
+      setAvisoFoto(naoEncontrados.length
+        ? `${AVISO_FICHA} Não achei: ${naoEncontrados.map((c) => ROTULO_CAMPO[c]).join(", ")}.`
+        : AVISO_FICHA);
+    } catch {
+      setErro("Não consegui carregar o leitor de imagem. Digite os campos.");
+    } finally {
+      setLendoFoto(false);
+    }
+  }
 
   const carregar = useCallback(async () => {
     const { data, error } = await createClient()
@@ -99,6 +142,7 @@ export function ProducaoDoDia({
     // Convênio e procedimento ficam: numa sala de cirurgia o caso seguinte
     // costuma ser do mesmo convênio, e limpar tudo obrigaria a redigitar.
     setNovo({ ...novo, paciente: "", valor: "" });
+    setAvisoFoto("");
     void carregar();
     document.getElementById("producao-paciente")?.focus();
   }
@@ -122,14 +166,22 @@ export function ProducaoDoDia({
       <div className="producaoCabeca">
         <div>
           <strong>Produção do dia</strong>
-          <span>quem você anestesiou, para cobrar depois — esta lista é só sua</span>
+          <span>só você vê esta lista</span>
         </div>
-        {itens.length > 0 && (
-          <div className="producaoTotais">
-            <span><b>{money(total)}</b> no dia</span>
-            {aCobrar > 0 && <span className="aberto"><b>{money(aCobrar)}</b> a receber</span>}
-          </div>
-        )}
+        <div className="producaoAcoes">
+          {itens.length > 0 && (
+            <div className="producaoTotais">
+              <span><b>{money(total)}</b> no dia</span>
+              {aCobrar > 0 && <span className="aberto"><b>{money(aCobrar)}</b> a receber</span>}
+            </div>
+          )}
+          <label className="producaoFoto">
+            {lendoFoto ? "Lendo a ficha…" : "Fotografar ficha"}
+            <input type="file" accept="image/*" capture="environment" disabled={lendoFoto}
+              aria-label="Fotografar a ficha de internação"
+              onChange={(e) => { void lerFicha(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+        </div>
       </div>
 
       {erro && <p className="clinicalError">{erro}</p>}
@@ -137,10 +189,10 @@ export function ProducaoDoDia({
       {carregando
         ? <div className="emptyClinical compactEmpty">Carregando…</div>
         : itens.length === 0
-          ? <p className="producaoVazio">
-              Nenhum paciente anotado neste dia. Escreva o nome abaixo — o resto
-              pode ficar para a hora de faturar.
-            </p>
+          // Lista vazia não precisa de texto: o formulário logo abaixo já é a
+          // instrução, e um parágrafo explicando o óbvio só afasta o campo do
+          // dedo de quem está com pressa.
+          ? null
           : (
             <ul className="producaoLista">
               {itens.map((i) => (
@@ -194,6 +246,8 @@ export function ProducaoDoDia({
       <datalist id="producao-convenios">
         {conveniosConhecidos.map((c) => <option key={c} value={c} />)}
       </datalist>
+
+      {avisoFoto && <p className="producaoConfira" role="status">{avisoFoto}</p>}
 
       <form className="producaoNovo" onSubmit={adicionar}>
         <input

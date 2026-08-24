@@ -2155,7 +2155,22 @@ button:disabled{cursor:not-allowed}
 .producaoTotais{display:flex;gap:16px;font-size:13px;color:var(--cor-tinta-fraca)}
 .producaoTotais b{color:var(--cor-tinta);font-weight:800}
 .producaoTotais .aberto b{color:var(--cor-atencao)}
-.producaoVazio{margin:0 0 12px;color:var(--cor-tinta-fraca);font-size:13px;max-width:62ch}
+.producaoAcoes{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+/* O input de arquivo fica escondido dentro do rótulo: o controle nativo do
+   navegador não aceita estilo e escreve "Nenhum arquivo selecionado" ao lado.
+   O rótulo é o botão, e o clique nele abre a câmera. */
+.producaoFoto{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  border:1px solid var(--cor-marca);color:var(--cor-marca);background:var(--cor-superficie);
+  border-radius:9px;padding:8px 14px;font-size:13px;font-weight:750;white-space:nowrap}
+.producaoFoto:hover{background:var(--cor-marca-suave)}
+.producaoFoto:focus-within{outline:0;box-shadow:var(--foco)}
+.producaoFoto input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.producaoFoto::before{content:"📷";font-size:15px}
+/* Aviso de conferência, não de erro: o que a foto trouxe está nos campos e
+   pode estar errado. Âmbar porque pede atenção sem dizer que algo quebrou. */
+.producaoConfira{margin:0 0 10px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  background:var(--cor-atencao-suave,#fff4e0);color:var(--cor-tinta);
+  border-left:3px solid var(--cor-atencao)}
 
 .producaoLista{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:7px}
 .producaoItem,.producaoNovo{display:grid;gap:8px;align-items:center;
