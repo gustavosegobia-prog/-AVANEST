@@ -2189,7 +2189,26 @@ button:disabled{cursor:not-allowed}
   padding:2px 5px 2px 6px;border-radius:4px;border-left:3px solid var(--cor-tinta-fraca);
   background:var(--cor-superficie-suave);color:var(--cor-tinta);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.plantaoDia.fds .plantaoEtiqueta{background:var(--cor-superficie)}
+/* O :not() é o que deixa a etiqueta colorida sobreviver ao fim de semana.
+   Esta regra tem especificidade maior que a da cor do hospital, e sem a
+   exceção ela repintava de cinza justamente sábado e domingo — os dias que
+   mais se procuram numa escala. */
+.plantaoDia.fds .plantaoEtiqueta:not(.etqLocal){background:var(--cor-superficie)}
+
+/* --- A cor do hospital no calendário pessoal ----------------------------
+   "07-19h / HOSPITAL SANTA CASA" em cinza para todo hospital não diz de qual
+   serviço é o dia. Um fundo bem claro na cor do lugar responde isso antes de
+   ler o nome — e quem roda três hospitais lê o mês inteiro de relance.
+
+   O fundo é a MESMA cor da barra à esquerda, diluída em 13% sobre a superfície
+   do cartão: nasce claro no tema claro e escuro no tema escuro, sem uma
+   segunda paleta para manter em dia. As duas declarações de background são de
+   propósito — a primeira é o cinza de sempre, para navegador que não conhece
+   color-mix; a segunda vence onde ele existe. */
+.plantaoEtiqueta.etqLocal{
+  border-left-color:var(--med-cor,var(--cor-tinta-fraca));
+  background:var(--cor-superficie-suave);
+  background:color-mix(in srgb, var(--med-cor,transparent) 13%, var(--cor-superficie))}
 /* Plantão de colega fica esmaecido: na escala do grupo, o que é seu precisa
    saltar sem exigir leitura. */
 .plantaoEtiqueta.deOutro{opacity:.6;font-weight:600}

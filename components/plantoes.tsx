@@ -213,7 +213,6 @@ export function Plantoes({
   // O calendário precisa dizer QUAL plantão é, não só que existe um. Cor e
   // nome vêm do modelo; sem modelo, o rótulo cai no horário, que ainda
   // distingue diurno de noturno.
-  const modeloPorId = useMemo(() => new Map(modelos.map((mo) => [mo.id, mo])), [modelos]);
   // Convênios que a organização já usa, para o campo do caderninho sugerir
   // "Unimed" em vez de exigir que se digite de novo a cada paciente.
   const [conveniosConhecidos, setConvenios] = useState<string[]>([]);
@@ -234,6 +233,23 @@ export function Plantoes({
     colegas.forEach((c, i) => m.set(c.id, CORES_MEDICO[i % CORES_MEDICO.length]));
     return m;
   }, [colegas]);
+
+  /**
+   * A cor de cada hospital, para o calendário da escala pessoal.
+   *
+   * Ordenado por id, e não pela ordem em que a lista chega. `meus_locais()`
+   * devolve os locais recentes na frente — a ordem muda a cada dia e é
+   * diferente para cada pessoa —, e cor tirada da posição nessa lista trocaria
+   * de hospital toda semana. Cor que muda não identifica nada; vira enfeite.
+   *
+   * O id nunca muda, nem quando o hospital troca de razão social.
+   */
+  const corPorLocal = useMemo(() => {
+    const m = new Map<string, string>();
+    [...locais].sort((a, b) => a.id.localeCompare(b.id))
+      .forEach((l, i) => m.set(l.id, CORES_MEDICO[i % CORES_MEDICO.length]));
+    return m;
+  }, [locais]);
 
   // O nome curto de cada colega para os botões de escalar rápido.
   const apelidos = useMemo(() => apelidosDaEquipe(colegas), [colegas]);
@@ -853,10 +869,16 @@ export function Plantoes({
                               {/* Escala pessoal: horário e onde. O lugar é o que
                                   muda de um plantão para outro na agenda de quem
                                   roda três hospitais. */}
+                              {/* A cor é do HOSPITAL, e não do modelo do
+                                  plantão. O modelo é uma conveniência de quem
+                                  lança — quem lança à mão não tem modelo
+                                  nenhum, e a etiqueta saía cinza. Na escala
+                                  pessoal a pergunta é "onde eu estou hoje?",
+                                  então quem manda na cor é o lugar. */}
                               {doDia.slice(0, 2).map((p) => {
-                                const mo = p.modelo_id ? modeloPorId.get(p.modelo_id) : undefined;
                                 return (
-                                  <i key={p.id} className={`plantaoEtiqueta etq-${mo?.cor ?? "cinza"}`}
+                                  <i key={p.id}
+                                    className={`plantaoEtiqueta etqLocal med-${p.local_id ? corPorLocal.get(p.local_id) ?? "m8" : "m8"}`}
                                     title={`${nomeDoPeriodo(p.hora_inicio, p.hora_fim)} · ${faixa(p.hora_inicio, p.hora_fim)}${ondeFica(p, localPorId, "") ? ` · ${ondeFica(p, localPorId, "")}` : ""}`}>
                                     <b>{faixa(p.hora_inicio, p.hora_fim)}</b>
                                     <span>{ondeFica(p, localPorId)}</span>
