@@ -127,13 +127,14 @@ function baixar(nome: string, conteudo: string, tipo: string) {
 const CORES_MEDICO = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"] as const;
 
 export function Plantoes({
-  perfilId, institutionId, locais, ehAdmin, colegas,
+  perfilId, institutionId, locais, ehAdmin, colegas, localAtivoId = null,
 }: {
   perfilId: string;
   institutionId: string;
   locais: LocalDisponivel[];
   ehAdmin: boolean;
   colegas: Colega[];
+  localAtivoId?: string | null;
 }) {
   const hoje = new Date();
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`);
@@ -148,6 +149,24 @@ export function Plantoes({
   // Escala do grupo ou só a minha. Duas leituras da mesma tela: "onde eu
   // trabalho este mês" e "quem está de plantão no dia 12".
   const [escopo, setEscopo] = useState<"minha" | "grupo">("minha");
+  /**
+   * Qual hospital a escala do grupo está mostrando.
+   *
+   * Só vale para a escala do grupo, e é aí que está a diferença entre as
+   * duas. Um grupo de anestesia cobre várias instituições ao mesmo tempo, e
+   * misturá-las num calendário só não é uma lista mais completa: é uma lista
+   * ilegível. Duas linhas "07-19h" no mesmo dia, uma da Santa Casa e outra do
+   * Hospital da Unimed, não se distinguem — e é a escala de dois serviços
+   * diferentes, com equipes diferentes.
+   *
+   * Na escala pessoal acontece o oposto: misturar é a graça. O médico quer
+   * ver o mês inteiro dele num lugar só, não importa em quantos hospitais
+   * esteja espalhado.
+   *
+   * Começa no local onde a pessoa está atendendo hoje, que ela já respondeu
+   * ao entrar no sistema.
+   */
+  const [hospital, setHospital] = useState<string>(localAtivoId ?? "todos");
   const [pedindoTroca, setPedindoTroca] = useState<Plantao | null>(null);
   // Lançar sem modelo. O modelo é atalho, não pré-requisito: exigir que a
   // pessoa crie um modelo antes de registrar o primeiro plantão é uma parede
@@ -348,21 +367,44 @@ export function Plantoes({
   // impressa sair diferente da que está na tela.
   const daEscala = useMemo(
     () => plantoes.filter((p) => p.situacao !== "cancelado"
-      && (escopo === "grupo" || p.perfil_id === perfilId)),
-    [plantoes, escopo, perfilId],
+      && (escopo === "grupo" || p.perfil_id === perfilId)
+      // O filtro de hospital é só do grupo, pelo motivo explicado em `hospital`.
+      && (escopo !== "grupo" || hospital === "todos" || p.local_id === hospital)),
+    [plantoes, escopo, perfilId, hospital],
   );
 
-  /** Os turnos de um dia, agrupados por horário: é como a escala é lida. */
+  // Os hospitais que de fato têm plantão neste mês. A lista vem do que está na
+  // escala, e não do cadastro inteiro: local cadastrado e sem plantão nenhum
+  // vira uma aba que abre vazia toda vez que alguém clica nela.
+  const hospitaisDoMes = useMemo(() => {
+    const ids = new Set(plantoes.filter((p) => p.situacao !== "cancelado")
+      .map((p) => p.local_id).filter((id): id is string => Boolean(id)));
+    return locais.filter((l) => ids.has(l.id));
+  }, [plantoes, locais]);
+
+  /**
+   * Os turnos de um dia, agrupados por hospital E horário.
+   *
+   * O hospital entra na chave, e não é detalhe: sem ele, o plantão das 07h da
+   * Santa Casa e o das 07h do Hospital da Unimed caíam na mesma linha, com as
+   * iniciais das duas equipes juntas. A tela mostrava uma escala que não
+   * existe em lugar nenhum.
+   */
   const turnosDoDia = useCallback((dia: string) => {
     const doDia = daEscala.filter((p) => p.data === dia);
     return Object.values(doDia.reduce<Record<string, {
-      chave: string; inicio: string; fim: string; horas: number; gente: Plantao[];
+      chave: string; localId: string | null; inicio: string; fim: string;
+      horas: number; gente: Plantao[];
     }>>((acc, p) => {
-      const chave = `${p.hora_inicio}|${p.hora_fim}`;
-      acc[chave] ??= { chave, inicio: p.hora_inicio, fim: p.hora_fim, horas: Number(p.horas), gente: [] };
+      const chave = `${p.local_id ?? "-"}|${p.hora_inicio}|${p.hora_fim}`;
+      acc[chave] ??= {
+        chave, localId: p.local_id, inicio: p.hora_inicio, fim: p.hora_fim,
+        horas: Number(p.horas), gente: [],
+      };
       acc[chave].gente.push(p);
       return acc;
-    }, {})).sort((a, b) => a.inicio.localeCompare(b.inicio));
+    }, {})).sort((a, b) => a.inicio.localeCompare(b.inicio)
+      || String(a.localId).localeCompare(String(b.localId)));
   }, [daEscala]);
 
   /**
@@ -501,9 +543,25 @@ export function Plantoes({
         <>
           <p className="plantaoEscopoNota">
             {escopo === "minha"
-              ? "Só os seus turnos."
+              ? "Todos os seus turnos, de todos os hospitais, num lugar só."
               : "Todos os turnos da equipe. Você edita apenas os seus."}
           </p>
+
+          {/* Uma escala por hospital, e não uma escala com tudo dentro. Só
+              aparece quando há mais de um hospital com plantão no mês: com um
+              só, a barra seria uma pergunta com uma resposta. */}
+          {escopo === "grupo" && hospitaisDoMes.length > 1 && (
+            <div className="financeChips plantaoHospitais" role="group"
+              aria-label="Hospital da escala do grupo">
+              {hospitaisDoMes.map((l) => (
+                <button key={l.id} type="button"
+                  className={hospital === l.id ? "active" : ""}
+                  onClick={() => setHospital(l.id)}>{nomeDoLocal(l)}</button>
+              ))}
+              <button type="button" className={hospital === "todos" ? "active" : ""}
+                onClick={() => setHospital("todos")}>Todos</button>
+            </div>
+          )}
           <section className="clinicalPanel">
             {/* A barra fica AQUI, colada no calendário, e não no cabeçalho da
                 página. Mudar o mês e lançar um plantão são ações sobre o
@@ -561,8 +619,19 @@ export function Plantoes({
                           ? <>
                               {turnos.slice(0, 2).map((t) => (
                                 <i key={t.chave} className="plantaoTurno"
-                                  title={`${periodoDoTurno(t.inicio, t.horas)} ${faixa(t.inicio, t.fim)} — ${t.gente.map((g) => nomePorId.get(g.perfil_id) ?? "").join(", ")}`}>
+                                  title={`${periodoDoTurno(t.inicio, t.horas)} ${faixa(t.inicio, t.fim)}`
+                                    + `${t.localId ? ` · ${localPorId.get(t.localId) ?? ""}` : ""}`
+                                    + ` — ${t.gente.map((g) => nomePorId.get(g.perfil_id) ?? "").join(", ")}`}>
                                   <b>{faixa(t.inicio, t.fim)}</b>
+                                  {/* Vendo todos os hospitais de uma vez, o
+                                      horário sozinho não diz de qual serviço é
+                                      o turno. Filtrado num hospital, o nome
+                                      seria a mesma palavra em toda célula. */}
+                                  {hospital === "todos" && (
+                                    <span className="plantaoOnde1">
+                                      {t.localId ? localPorId.get(t.localId) ?? "—" : "Sem local"}
+                                    </span>
+                                  )}
                                   <span className="plantaoQuem">
                                     {t.gente.slice(0, 4).map((g) => (
                                       <em key={g.id} className={`med-${corPorMedico.get(g.perfil_id) ?? "m8"}${g.perfil_id === perfilId ? " eu" : ""}`}>

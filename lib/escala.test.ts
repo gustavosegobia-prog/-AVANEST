@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { PlantaoImpresso } from "./escala.ts";
 import {
-  carimboICS, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  carimboICS, corpoDaFolha, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
   nomeCurto, periodoDoTurno, plural, rotuloSituacao, somarHoras, textoICS,
 } from "./escala.ts";
 
@@ -257,4 +258,63 @@ test("plural: singular e plural", () => {
   assert.equal(plural(0, "paciente", "pacientes"), "0 pacientes");
   assert.equal(plural(1, "paciente", "pacientes"), "1 paciente");
   assert.equal(plural(2, "paciente", "pacientes"), "2 pacientes");
+});
+
+// ---------------------------------------------------------------------------
+// Um grupo, vários hospitais
+//
+// Um grupo de anestesia cobre mais de uma instituição ao mesmo tempo. O turno
+// das 07h da Santa Casa e o das 07h do Hospital da Unimed são escalas de
+// serviços diferentes, com equipes diferentes — e caíam na mesma linha.
+// ---------------------------------------------------------------------------
+
+const turno = (local: string, profissional: string, hora_inicio = "07:00"): PlantaoImpresso => ({
+  data: "2026-08-03", hora_inicio, hora_fim: "19:00", horas: 12,
+  valor: 0, situacao: "escalado", local, profissional,
+});
+
+const folhaDoGrupo = (plantoes: PlantaoImpresso[]) => corpoDaFolha({
+  doGrupo: true, mes: "2026-08", nomeMes: "agosto", ano: 2026,
+  diasNoMes: 31, primeiroDiaSemana: 6, plantoes,
+  impressoEm: new Date("2026-08-24T12:00:00"),
+});
+
+test("hospitais diferentes no mesmo horário não viram um turno só", () => {
+  const { corpo } = folhaDoGrupo([
+    turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
+    turno("Hospital da Unimed", "ANA PAULA DE SOUZA"),
+  ]);
+  // Duas etiquetas, e não uma com os dois nomes dentro.
+  assert.equal(corpo.match(/<span class="t">/g)?.length, 2);
+  assert.match(corpo, /07-19h · Santa Casa/);
+  assert.match(corpo, /07-19h · Hospital da Unimed/);
+  assert.doesNotMatch(corpo, /Gustavo Silva, Ana Souza/);
+});
+
+test("mesmo hospital e mesmo horário continuam juntos", () => {
+  const { corpo } = folhaDoGrupo([
+    turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
+    turno("Santa Casa", "ANA PAULA DE SOUZA"),
+  ]);
+  assert.equal(corpo.match(/<span class="t">/g)?.length, 1);
+  assert.match(corpo, /Gustavo Silva, Ana Souza/);
+});
+
+test("folha de um hospital só leva o nome dele no título e não o repete nas células", () => {
+  const { titulo, corpo } = folhaDoGrupo([
+    turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
+    turno("Santa Casa", "ANA PAULA DE SOUZA", "19:00"),
+  ]);
+  assert.equal(titulo, "Escala da equipe — Santa Casa — agosto de 2026");
+  // O nome não se repete em cada célula: numa folha de um hospital só, seria a
+  // mesma palavra trinta e uma vezes.
+  assert.doesNotMatch(corpo, /07-19h · Santa Casa/);
+});
+
+test("folha com vários hospitais não nomeia nenhum no título", () => {
+  const { titulo } = folhaDoGrupo([
+    turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
+    turno("Hospital da Unimed", "ANA PAULA DE SOUZA"),
+  ]);
+  assert.equal(titulo, "Escala da equipe — agosto de 2026");
 });

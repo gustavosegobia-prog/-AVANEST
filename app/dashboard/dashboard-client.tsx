@@ -692,6 +692,9 @@ export function DashboardClient({
           perfilId={perfil.id} institutionId={perfil.institution_id}
           locais={locais} ehAdmin={["owner","admin"].includes(perfil.role)}
           colegas={perfis.filter(p=>p.status==="ativo").map(p=>({id:p.id,nome:p.nome}))}
+          // A escala do grupo abre no hospital onde a pessoa está hoje: ela já
+          // respondeu isso ao entrar, e perguntar de novo é perguntar duas vezes.
+          localAtivoId={localAtivo?.id ?? null}
         />
       ) : view === "recepcao" ? (
         <div className="clinicalMain receptionMain">

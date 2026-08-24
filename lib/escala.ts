@@ -185,6 +185,11 @@ export function corpoDaFolha(opts: {
 }): { titulo: string; corpo: string } {
   const { doGrupo, mes, nomeMes, ano, diasNoMes, primeiroDiaSemana, plantoes } = opts;
 
+  // Quantos hospitais esta folha cobre. Sai dos dados, e não de um parâmetro:
+  // assim o título e as células nunca discordam do que está impresso.
+  const hospitais = [...new Set(plantoes.map((p) => p.local).filter(Boolean))];
+  const variosHospitais = hospitais.length > 1;
+
   const celulas: string[] = Array.from({ length: primeiroDiaSemana }, () => '<td class="vazio"></td>');
   for (let d = 1; d <= diasNoMes; d++) {
     const dia = `${mes}-${String(d).padStart(2, "0")}`;
@@ -194,14 +199,22 @@ export function corpoDaFolha(opts: {
     // pelo turno, não por pessoa —, e num serviço com seis anestesistas de dia
     // a lista por pessoa não caberia na célula.
     const conteudo = doGrupo
-      ? Object.values(doDia.reduce<Record<string, { inicio: string; fim: string; gente: string[] }>>((acc, p) => {
-          const chave = `${p.hora_inicio}|${p.hora_fim}`;
-          acc[chave] ??= { inicio: p.hora_inicio, fim: p.hora_fim, gente: [] };
+      ? Object.values(doDia.reduce<Record<string, {
+          local: string; inicio: string; fim: string; gente: string[];
+        }>>((acc, p) => {
+          // O hospital entra na chave. Sem ele, o turno das 07h da Santa Casa e
+          // o das 07h do Hospital da Unimed viravam uma linha só, com as duas
+          // equipes juntas — uma escala que não existe em lugar nenhum.
+          const chave = `${p.local}|${p.hora_inicio}|${p.hora_fim}`;
+          acc[chave] ??= { local: p.local, inicio: p.hora_inicio, fim: p.hora_fim, gente: [] };
           acc[chave].gente.push(nomeCurto(p.profissional));
           return acc;
         }, {}))
-        .sort((a, b) => a.inicio.localeCompare(b.inicio))
-        .map((t) => `<span class="t"><b>${escaparHTML(faixa(t.inicio, t.fim))}</b>`
+        .sort((a, b) => a.inicio.localeCompare(b.inicio) || a.local.localeCompare(b.local))
+        .map((t) => `<span class="t"><b>${escaparHTML(faixa(t.inicio, t.fim))}`
+          // Numa folha de um hospital só, repetir o nome em cada célula é ruído;
+          // numa folha com vários, é a única coisa que separa os serviços.
+          + `${variosHospitais && t.local ? ` · ${escaparHTML(t.local)}` : ""}</b>`
           + `<span>${escaparHTML(t.gente.join(", "))}</span></span>`).join("")
       : doDia.map((p) => `<span class="t"><b>${escaparHTML(faixa(p.hora_inicio, p.hora_fim))}</b>`
           + `<span>${escaparHTML(p.local || "Sem local")}</span></span>`).join("");
@@ -213,8 +226,10 @@ export function corpoDaFolha(opts: {
   const semanas: string[] = [];
   for (let i = 0; i < celulas.length; i += 7) semanas.push(`<tr>${celulas.slice(i, i + 7).join("")}</tr>`);
 
+  // Folha de um hospital só leva o nome dele no título: é o que se lê primeiro
+  // quando ela está pregada na parede daquele centro cirúrgico.
   const titulo = doGrupo
-    ? `Escala da equipe — ${nomeMes} de ${ano}`
+    ? `Escala da equipe${hospitais.length === 1 ? ` — ${hospitais[0]}` : ""} — ${nomeMes} de ${ano}`
     : `Meus plantões — ${nomeMes} de ${ano}`;
 
   // Na folha do grupo, o calendário É a folha, e mais nada. A lista turno a
