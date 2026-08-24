@@ -25,10 +25,49 @@ test("um local só entra direto, sem passar pela escolha", () => {
   assert.equal(r.precisaEscolher, false);
 });
 
-test("vários locais e nenhum escolhido: manda escolher", () => {
+test("vários locais, nunca usado nenhum: manda escolher", () => {
+  // Só aqui a pergunta é legítima: sem histórico, adivinhar poria o hospital
+  // errado no cabeçalho do documento que o paciente leva para casa.
   const r = decidirLocalDaSessao(undefined, [local("a"), local("b")]);
   assert.equal(r.local, null);
   assert.equal(r.precisaEscolher, true);
+});
+
+test("sem cookie, o último lugar onde atendeu responde pela pessoa", () => {
+  // Aparelho novo, outro navegador, aba anônima: o cookie não existe, mas
+  // usado_em está no banco e acompanha a pessoa.
+  const r = decidirLocalDaSessao(undefined, [
+    local("a", { usado_em: "2026-08-20T10:00:00Z" }),
+    local("b", { usado_em: "2026-08-24T07:00:00Z" }),
+    local("c"),
+  ]);
+  assert.equal(r.local?.id, "b");
+  assert.equal(r.precisaEscolher, false);
+});
+
+test("o cookie desta sessão vence o histórico de ontem", () => {
+  const r = decidirLocalDaSessao("a", [
+    local("a", { usado_em: "2026-08-20T10:00:00Z" }),
+    local("b", { usado_em: "2026-08-24T07:00:00Z" }),
+  ]);
+  assert.equal(r.local?.id, "a");
+});
+
+test("o mais recente ignora arquivado, mesmo tendo sido o último", () => {
+  const r = decidirLocalDaSessao(undefined, [
+    local("a", { ativo: false, usado_em: "2026-08-24T07:00:00Z" }),
+    local("b", { usado_em: "2026-08-20T10:00:00Z" }),
+    local("c"),
+  ]);
+  assert.equal(r.local?.id, "b");
+  assert.equal(r.precisaEscolher, false);
+});
+
+test("um único com histórico entre vários sem: é ele", () => {
+  const r = decidirLocalDaSessao(undefined, [
+    local("a"), local("b", { usado_em: "2026-08-19T08:00:00Z" }), local("c"),
+  ]);
+  assert.equal(r.local?.id, "b");
 });
 
 test("cookie válido é respeitado mesmo havendo vários", () => {
@@ -119,8 +158,16 @@ test("nenhum local: o painel abre sem desvio nenhum", () => {
   assert.deepEqual(percorrer([]), ["/dashboard"]);
 });
 
-test("vários locais sem cookie: para na escolha, e não volta", () => {
+test("vários locais sem cookie e sem histórico: para na escolha", () => {
   assert.deepEqual(percorrer([local("a"), local("b")]), ["/dashboard", "/locais"]);
+});
+
+test("com histórico, o login não passa mais pela escolha", () => {
+  // O pedido: depois de entrar, ir direto para onde o médico vai atender.
+  assert.deepEqual(
+    percorrer([local("a", { usado_em: "2026-08-23T07:00:00Z" }), local("b")]),
+    ["/dashboard"],
+  );
 });
 
 test("vários locais com cookie válido: abre direto", () => {
