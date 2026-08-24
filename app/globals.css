@@ -2346,6 +2346,11 @@ button:disabled{cursor:not-allowed}
    com um erro seco. */
 .plantaoNomeChip.jaEscalado{opacity:.62}
 .plantaoNomeChip.jaEscalado>b{font-size:11px;color:var(--cor-sucesso)}
+/* "Só meu" não é mais uma pessoa da equipe: é o plantão que não é da equipe.
+   A barra separa os dois grupos sem precisar de um segundo rótulo. */
+.plantaoFilaCorte{width:1px;align-self:stretch;margin:1px 4px;background:var(--cor-borda)}
+.plantaoNomeChip.soMeu{border-style:dashed}
+.plantaoNomeChip.soMeu::before{content:"🔒";font-size:11px;line-height:1}
 
 .plantaoModeloForm{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:20px 25px;
   border-bottom:1px solid var(--cor-borda);align-items:end}

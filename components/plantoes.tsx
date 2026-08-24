@@ -1400,81 +1400,71 @@ function LancarPlantao({
               </label>
             )}
 
-            {/* A pergunta que aparece aqui é "onde eu cadastro os médicos?".
-                A resposta é que eles não se cadastram na escala: quem entrou na
-                organização já é escalável. Sem esta linha, um administrador
-                sozinho vê um campo com um nome só e conclui que a tela está
-                quebrada. */}
-            {ehAdmin && colegas.length <= 1 && (
-              <p className="plantaoNota">
-                Só dá para escalar a si mesmo: não há outro médico com CRM
-                cadastrado. Quem você convidar em <strong>Admin → Convidar</strong> passa
-                a aparecer aqui assim que o CRM dele estiver preenchido —
-                recepção e financeiro não entram na escala.
-              </p>
-            )}
+            {/* Para quem vai o plantão — e "só meu" é um destino, não uma
+                caixa à parte.
 
-            {/* Quem monta a escala do serviço escala os outros. Sem este campo,
-                "Escala do grupo" era um diário compartilhado: mostrava o que
-                cada um lançou para si, e não a escala que alguém montou. */}
-            {/* Os dois caminhos, um em cima do outro e sempre os dois. A fila
-                é o atalho: um toque no nome e pronto. A lista suspensa
-                continua embaixo porque com quinze pessoas na organização a
-                fila vira um muro de botões, e porque nela o nome aparece
-                inteiro — que é o que se confere antes de escalar alguém para
-                um plantão. As duas são o mesmo campo: mexer numa move a outra.
+                Antes eram dois controles empilhados: uma caixa de marcar com
+                quatro linhas de explicação e, embaixo, a fila de nomes. Duas
+                perguntas para uma decisão só, porque plantão privado é sempre
+                seu: marcar a caixa e escolher um colega são coisas que não
+                podem acontecer juntas. Numa fila só, isso é evidente sem
+                nenhum texto — e o que era um bloco de tela virou um toque.
 
-                A fila fica FORA do <label>. Dentro dele, o clique num chip
-                seria repassado ao controle rotulado e abriria a lista suspensa
-                junto — dois campos reagindo a um toque só. */}
-            {/* A chave do plantão de fora.
-                Vem antes de "para quem" e de "local" porque muda os dois: um
-                plantão privado é sempre seu, e o lugar dele não sai do cadastro
-                da organização. Deixá-la no fim faria a pessoa preencher o
-                formulário inteiro e ver metade dele mudar no último clique. */}
-            <label className="localCompartilhar span4">
-              <input type="checkbox" checked={form.privado}
-                onChange={(e) => setForm({ ...form, privado: e.target.checked })} />
-              <span><strong>Plantão só meu</strong>
-                <small>
-                  Sedação fora, hospital que não é do grupo, cobertura particular.
-                  Aparece só na sua escala e no seu mês — ninguém do grupo enxerga,
-                  nem quem monta a escala.
-                </small></span>
-            </label>
-
-            {ehAdmin && colegas.length > 1 && !form.privado && (
-              <div className="plantaoFilaCampo span4">
-                <span className="plantaoFilaRotulo" id="para-quem-rapido">Para quem</span>
-                <div className="plantaoFilaNomes" role="group" aria-labelledby="para-quem-rapido">
-                  <button type="button"
-                    className={`plantaoNomeChip${form.perfil_id === perfilId ? " escolhido" : ""}`}
-                    aria-pressed={form.perfil_id === perfilId}
-                    onClick={() => setForm({ ...form, perfil_id: perfilId })}>
-                    Para mim
+                A fila fica FORA de <label>: dentro dele o clique num chip seria
+                repassado ao controle rotulado e mexeria em dois campos. */}
+            <div className="plantaoFilaCampo span4">
+              <span className="plantaoFilaRotulo" id="para-quem-rapido">Para quem</span>
+              <div className="plantaoFilaNomes" role="group" aria-labelledby="para-quem-rapido">
+                <button type="button"
+                  className={`plantaoNomeChip${!form.privado && form.perfil_id === perfilId ? " escolhido" : ""}`}
+                  aria-pressed={!form.privado && form.perfil_id === perfilId}
+                  onClick={() => setForm({ ...form, privado: false, perfil_id: perfilId })}>
+                  Para mim
+                </button>
+                {ehAdmin && colegas.filter((c) => c.id !== perfilId).map((c) => (
+                  <button type="button" key={c.id} title={c.nome}
+                    className={`plantaoNomeChip med-${corPorMedico.get(c.id) ?? "m8"}`
+                      + `${!form.privado && form.perfil_id === c.id ? " escolhido" : ""}`}
+                    aria-pressed={!form.privado && form.perfil_id === c.id}
+                    onClick={() => setForm({ ...form, privado: false, perfil_id: c.id })}>
+                    {apelidos.get(c.id) ?? c.nome}
                   </button>
-                  {colegas.filter((c) => c.id !== perfilId).map((c) => (
-                    <button type="button" key={c.id} title={c.nome}
-                      className={`plantaoNomeChip med-${corPorMedico.get(c.id) ?? "m8"}`
-                        + `${form.perfil_id === c.id ? " escolhido" : ""}`}
-                      aria-pressed={form.perfil_id === c.id}
-                      onClick={() => setForm({ ...form, perfil_id: c.id })}>
-                      {apelidos.get(c.id) ?? c.nome}
-                    </button>
-                  ))}
-                </div>
+                ))}
+                {/* Separado dos colegas por uma barra: não é mais uma pessoa da
+                    equipe, é o plantão que não é da equipe. */}
+                <span className="plantaoFilaCorte" aria-hidden="true" />
+                <button type="button"
+                  className={`plantaoNomeChip soMeu${form.privado ? " escolhido" : ""}`}
+                  aria-pressed={form.privado}
+                  title="Sedação fora, hospital que não é do grupo, cobertura particular. Entra só na sua escala e no seu mês — ninguém do grupo enxerga, nem quem monta a escala."
+                  onClick={() => setForm({ ...form, privado: true, perfil_id: perfilId })}>
+                  Só meu
+                </button>
+              </div>
+              {/* A lista suspensa só aparece quando a fila vira muro. Com a
+                  equipe pequena ela era um segundo campo dizendo o mesmo. */}
+              {/* A pergunta de quem monta a escala sozinho pela primeira vez é
+                  "onde eu cadastro os médicos?". Uma linha responde; sem ela, a
+                  fila com um nome só parece tela quebrada. */}
+              {ehAdmin && colegas.length <= 1 && (
+                <small className="campoDica">
+                  Só você tem CRM cadastrado. Quem você convidar em <strong>Admin →
+                  Convidar</strong> aparece aqui assim que o CRM estiver preenchido.
+                </small>
+              )}
+              {ehAdmin && colegas.length > 8 && !form.privado && (
                 <label className="clinicalField">
-                  <span>Ou escolha pelo nome completo</span>
+                  <span>Ou pelo nome completo</span>
                   <select value={form.perfil_id}
-                    onChange={(e) => setForm({ ...form, perfil_id: e.target.value })}>
+                    onChange={(e) => setForm({ ...form, privado: false, perfil_id: e.target.value })}>
                     <option value={perfilId}>Para mim</option>
                     {colegas.filter((c) => c.id !== perfilId).map((c) => (
                       <option key={c.id} value={c.id}>{c.nome}</option>
                     ))}
                   </select>
                 </label>
-              </div>
-            )}
+              )}
+            </div>
 
             <label className="clinicalField span2"><span>Data</span>
               <input type="date" value={form.data}
@@ -1489,10 +1479,7 @@ function LancarPlantao({
                   <input value={form.local_texto} maxLength={80}
                     placeholder="Clínica de endoscopia, Hospital São José…"
                     onChange={(e) => setForm({ ...form, local_texto: e.target.value })} />
-                  <small className="campoDica">
-                    Escrito por você, e não do cadastro da organização — este nome
-                    não aparece para ninguém do grupo.
-                  </small></label>
+                  <small className="campoDica">Só você vê este nome.</small></label>
               : <label className="clinicalField span2"><span>Local</span>
                   <select value={form.local_id} onChange={(e) => setForm({ ...form, local_id: e.target.value })}>
                     <option value="">Sem local</option>
