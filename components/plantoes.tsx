@@ -868,9 +868,15 @@ export function Plantoes({
             </div>
           </section>
 
+          {/* O painel mostra o que ESTA escala mostra, e não a tabela inteira.
+              Recebendo `plantoes` cru, ele listava os plantões de todo mundo —
+              em Minha escala, num calendário vazio, abrir um dia trazia o
+              plantão de um colega em outro hospital, com botão de remover e
+              tudo. A escala aberta é a pergunta; o dia aberto é a mesma
+              pergunta, num dia só. */}
           {diaAberto && (
             <DiaDetalhe
-              dia={diaAberto} plantoes={plantoes.filter((p) => p.data === diaAberto)}
+              dia={diaAberto} plantoes={daEscala.filter((p) => p.data === diaAberto)}
               modelos={modelos} perfilId={perfilId} ehAdmin={ehAdmin}
               pessoal={escopo === "minha"}
               institutionId={institutionId} conveniosConhecidos={conveniosConhecidos}
@@ -1061,7 +1067,12 @@ function DiaDetalhe({
    * administrador, o único destino possível é você mesmo — e o RLS confirma.
    */
   const [para, setPara] = useState(perfilId);
-  const escalaOutro = ehAdmin && para !== perfilId;
+  // Na minha escala o destino é sempre eu. A escolha feita na escala do grupo
+  // ficava pendurada no componente ao trocar de aba — e o painel do meu dia
+  // aparecia escrito "Turno de Lucas", oferecendo lançar para outra pessoa
+  // dentro da escala que é só minha.
+  const escalaOutro = ehAdmin && !pessoal && para !== perfilId;
+  const destino = escalaOutro ? para : perfilId;
   // Quem já está neste dia: escalar duas vezes a mesma pessoa no mesmo turno
   // é o erro mais fácil de cometer clicando rápido, e o banco recusa com um
   // erro seco. Marcado no botão, ele nem chega a ser clicado.
@@ -1158,14 +1169,14 @@ function DiaDetalhe({
 
       <div className="plantaoLancar">
         <span>{escalaOutro
-          ? `Turno de ${apelidos.get(para) ?? "quem você escolheu"}:`
+          ? `Turno de ${apelidos.get(destino) ?? "quem você escolheu"}:`
           : "Lançar a partir de um modelo:"}</span>
         {modelos.length === 0
-          ? <button className="primaryClinical compact" onClick={() => onLancarAvulso(dia, para)}>
+          ? <button className="primaryClinical compact" onClick={() => onLancarAvulso(dia, destino)}>
               + Lançar plantão neste dia
             </button>
           : modelos.map((mo) => (
-            <button key={mo.id} className={`plantaoModeloChip cor-${mo.cor}`} onClick={() => onLancar(dia, mo, para)}>
+            <button key={mo.id} className={`plantaoModeloChip cor-${mo.cor}`} onClick={() => onLancar(dia, mo, destino)}>
               <b>{mo.nome}</b>
               {/* O valor do modelo é o SEU. Escalando outra pessoa ele sairia
                   da tela como promessa de pagamento que não foi combinada com
@@ -1177,7 +1188,7 @@ function DiaDetalhe({
             tudo à mão. O atalho não substitui o formulário — ele leva a pessoa
             escolhida junto para dentro dele. */}
         {modelos.length > 0 && (
-          <button className="outlineClinical" onClick={() => onLancarAvulso(dia, para)}>
+          <button className="outlineClinical" onClick={() => onLancarAvulso(dia, destino)}>
             Outro horário…
           </button>
         )}
