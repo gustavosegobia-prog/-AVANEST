@@ -47,7 +47,14 @@ create policy "equipe_le_locais" on public.locais_atendimento
 
 -- ---------------------------------------------------------------------------
 -- A lista que as telas usam
+--
+-- O drop vem antes do create, e não é zelo: a função ganhou uma coluna no
+-- retorno, e `create or replace` recusa mudança de assinatura com
+-- "cannot change return type of existing function". Trocar o corpo de uma
+-- função é replace; trocar o formato do que ela devolve é outra função.
 -- ---------------------------------------------------------------------------
+drop function if exists public.meus_locais();
+
 create or replace function public.meus_locais()
 returns table (
   id uuid, nome text, nome_fantasia text, tipo text, cidade text, estado text,
