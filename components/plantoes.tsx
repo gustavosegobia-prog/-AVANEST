@@ -6,7 +6,7 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import {
   corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
-  filtroDeHospital, montarICS, periodoDoTurno, plural, somarHoras,
+  filtroDeHospital, montarICS, periodoDoTurno, plantaoNaEscala, plural, somarHoras,
 } from "@/lib/escala";
 
 // Plantões: a escala, o valor e a troca.
@@ -339,16 +339,6 @@ export function Plantoes({
    * o caminho de volta: sem isso, "Minha escala" e "Escala do grupo"
    * apareceriam ambas acesas, já que as duas são a aba "escala".
    */
-  const secaoAtiva = aba === "escala" ? (escopo === "minha" ? "minha" : "equipe") : aba;
-
-  function irPara(secao: string) {
-    if (secao === "minha" || secao === "equipe") {
-      setAba("escala");
-      setEscopo(secao === "minha" ? "minha" : "grupo");
-      return;
-    }
-    setAba(secao as "producao" | "modelos" | "trocas");
-  }
 
   // O contador da coluna conta o que espera resposta SUA: convite dirigido a
   // você, mais oferta aberta de outra pessoa. Contar os seus próprios pedidos
@@ -365,28 +355,53 @@ export function Plantoes({
   // impressa e o arquivo de agenda leem daqui — se cada um refizesse o filtro,
   // bastaria um deles esquecer o "situacao !== cancelado" para a escala
   // impressa sair diferente da que está na tela.
-  // Os hospitais que de fato têm plantão neste mês. A lista vem do que está na
-  // escala, e não do cadastro inteiro: local cadastrado e sem plantão nenhum
-  // vira uma aba que abre vazia toda vez que alguém clica nela.
-  const hospitaisDoMes = useMemo(() => {
-    const ids = new Set(plantoes.filter((p) => p.situacao !== "cancelado")
-      .map((p) => p.local_id).filter((id): id is string => Boolean(id)));
-    return locais.filter((l) => ids.has(l.id));
-  }, [plantoes, locais]);
+  // A coluna lista os hospitais do CADASTRO, e não só os que já têm plantão.
+  // Escala de hospital vazio não é um beco: é exatamente onde o administrador
+  // vai para montá-la, e o botão de lançar está ali.
+  const locaisAtivos = useMemo(() => locais.filter((l) => l.ativo), [locais]);
 
-  // O filtro só vale se corresponder a um hospital que tem plantão. Sem esta
-  // conferência, abrir filtrado no local ativo esvaziava o calendário sempre
-  // que ele não tivesse turno no mês — e a barra para trocar, que só aparece
-  // havendo mais de um hospital, não estava lá para desfazer.
-  const hospitalAtivo = filtroDeHospital(hospital, hospitaisDoMes.map((l) => l.id));
+  // Plantão sem hospital ganha linha própria só quando existe algum.
+  const temPlantaoSemLocal = useMemo(
+    () => plantoes.some((p) => p.situacao !== "cancelado" && !p.local_id),
+    [plantoes],
+  );
+
+  // Id que não corresponde a hospital nenhum cai em "todos": é o que impede um
+  // local arquivado, ou um cadastro que mudou, de esvaziar a tela em silêncio.
+  const hospitalAtivo = filtroDeHospital(hospital, locaisAtivos.map((l) => l.id));
 
   const daEscala = useMemo(
     () => plantoes.filter((p) => p.situacao !== "cancelado"
       && (escopo === "grupo" || p.perfil_id === perfilId)
-      // O filtro de hospital é só do grupo, pelo motivo explicado em `hospital`.
-      && (escopo !== "grupo" || hospitalAtivo === "todos" || p.local_id === hospitalAtivo)),
+      // A escala pessoal mistura os hospitais de propósito; a do grupo é uma
+      // por hospital, pelo motivo explicado em `hospital`.
+      && (escopo !== "grupo" || plantaoNaEscala(p.local_id, hospitalAtivo))),
     [plantoes, escopo, perfilId, hospitalAtivo],
   );
+
+  const secaoAtiva = aba === "escala"
+    ? (escopo === "minha" ? "minha" : `grupo:${hospitalAtivo}`)
+    : aba;
+
+  function irPara(secao: string) {
+    if (secao === "minha") { setAba("escala"); setEscopo("minha"); return; }
+    if (secao.startsWith("grupo:")) {
+      setAba("escala"); setEscopo("grupo"); setHospital(secao.slice(6));
+      return;
+    }
+    setAba(secao as "producao" | "modelos" | "trocas");
+  }
+
+  /** O que esta escala mostra, em uma frase. */
+  const notaDaEscala = escopo === "minha"
+    ? "Todos os seus turnos, de todos os hospitais, num lugar só."
+    : hospitalAtivo === "todos"
+      ? "Todos os hospitais de uma vez. Serve para achar buraco de cobertura; para trabalhar, abra o hospital."
+      : hospitalAtivo === "sem"
+        ? "Plantões lançados sem hospital. Abra o dia e relance com o local para eles entrarem na escala certa."
+        : `Escala da equipe em ${locaisAtivos.find((l) => l.id === hospitalAtivo)
+            ? nomeDoLocal(locaisAtivos.find((l) => l.id === hospitalAtivo)!) : "—"}. `
+          + "Você edita apenas os seus turnos.";
 
   /**
    * Os turnos de um dia, agrupados por hospital E horário.
@@ -522,7 +537,17 @@ export function Plantoes({
           {([
             ["grupo", "Escala"],
             ["minha", "Minha escala"],
-            ["equipe", "Escala do grupo"],
+            // Uma escala por hospital, cada uma na sua linha. O grupo não tem
+            // uma escala: tem a da Santa Casa, a do Hospital da Unimed, a do
+            // Instituto. Serviços diferentes, equipes diferentes — e cada uma
+            // se lê inteira sem a outra atravessada no meio.
+            ["grupo", "Escala do grupo"],
+            ...locaisAtivos.map((l) => [`grupo:${l.id}`, nomeDoLocal(l)] as [string, string]),
+            // Plantão lançado sem hospital existe e precisa aparecer em algum
+            // lugar. Sem esta linha ele some de todas as escalas e ninguém
+            // descobre por quê.
+            ...(temPlantaoSemLocal ? [["grupo:sem", "Sem hospital"] as [string, string]] : []),
+            ...(locaisAtivos.length > 1 ? [["grupo:todos", "Todos os hospitais"] as [string, string]] : []),
             ["grupo", "Equipe"],
             ["trocas", "Trocas", trocasParaMim],
             ["grupo", "Faturamento"],
@@ -547,27 +572,7 @@ export function Plantoes({
         <div className="financeConteudo">
       {aba === "escala" && (
         <>
-          <p className="plantaoEscopoNota">
-            {escopo === "minha"
-              ? "Todos os seus turnos, de todos os hospitais, num lugar só."
-              : "Todos os turnos da equipe. Você edita apenas os seus."}
-          </p>
-
-          {/* Uma escala por hospital, e não uma escala com tudo dentro. Só
-              aparece quando há mais de um hospital com plantão no mês: com um
-              só, a barra seria uma pergunta com uma resposta. */}
-          {escopo === "grupo" && hospitaisDoMes.length > 1 && (
-            <div className="financeChips plantaoHospitais" role="group"
-              aria-label="Hospital da escala do grupo">
-              {hospitaisDoMes.map((l) => (
-                <button key={l.id} type="button"
-                  className={hospitalAtivo === l.id ? "active" : ""}
-                  onClick={() => setHospital(l.id)}>{nomeDoLocal(l)}</button>
-              ))}
-              <button type="button" className={hospitalAtivo === "todos" ? "active" : ""}
-                onClick={() => setHospital("todos")}>Todos</button>
-            </div>
-          )}
+          <p className="plantaoEscopoNota">{notaDaEscala}</p>
           <section className="clinicalPanel">
             {/* A barra fica AQUI, colada no calendário, e não no cabeçalho da
                 página. Mudar o mês e lançar um plantão são ações sobre o
@@ -633,7 +638,7 @@ export function Plantoes({
                                       horário sozinho não diz de qual serviço é
                                       o turno. Filtrado num hospital, o nome
                                       seria a mesma palavra em toda célula. */}
-                                  {hospitalAtivo === "todos" && (
+                                  {(hospitalAtivo === "todos" || hospitalAtivo === "sem") && (
                                     <span className="plantaoOnde1">
                                       {t.localId ? localPorId.get(t.localId) ?? "—" : "Sem local"}
                                     </span>

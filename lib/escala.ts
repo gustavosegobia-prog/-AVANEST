@@ -152,20 +152,33 @@ export function carimboICS(data: string, hora: string, viraODia = false): string
 }
 
 /**
- * O filtro de hospital que se pode aplicar sem esconder nada.
+ * Qual escala do grupo está aberta.
  *
- * Existe por causa de um defeito real: a escala do grupo abria filtrada no
- * hospital onde a pessoa está atendendo hoje, e a barra para trocar de
- * hospital só aparecia havendo mais de um com plantão no mês. Quando o
- * hospital ativo não tinha turno nenhum — ou os plantões estavam lançados sem
- * local —, o calendário vinha vazio e não havia botão nenhum para desfazer. A
- * tela escondia os dados e não dizia como mostrá-los.
+ * O grupo não tem uma escala: tem uma por hospital. Uma da Santa Casa, outra
+ * do Hospital da Unimed, outra do Instituto — serviços diferentes, equipes
+ * diferentes, e cada uma se lê inteira sem a outra atravessada no meio. São
+ * itens da coluna da esquerda, e não um filtro: filtro é algo que se aplica a
+ * uma lista, e estas são listas diferentes.
  *
- * A regra: filtro que não corresponde a nenhum hospital com plantão não vale.
- * Nunca some dado sem que exista, na tela, o caminho de volta.
+ * Três valores especiais além do id de um hospital:
+ *   "todos" — a visão de conjunto, útil para achar buraco de cobertura
+ *   "sem"   — os plantões lançados sem hospital, que existem e precisam
+ *             aparecer em algum lugar, senão somem da escala e ninguém
+ *             descobre por quê
+ *
+ * Id que não corresponde a hospital nenhum cai em "todos". É o que impede um
+ * local arquivado, ou um cadastro que mudou, de esvaziar a tela em silêncio.
  */
-export function filtroDeHospital(escolhido: string, comPlantao: string[]): string {
-  return escolhido !== "todos" && comPlantao.includes(escolhido) ? escolhido : "todos";
+export function filtroDeHospital(escolhido: string, idsDisponiveis: string[]): string {
+  if (escolhido === "todos" || escolhido === "sem") return escolhido;
+  return idsDisponiveis.includes(escolhido) ? escolhido : "todos";
+}
+
+/** O plantão entra nesta escala? */
+export function plantaoNaEscala(localDoPlantao: string | null, escala: string): boolean {
+  if (escala === "todos") return true;
+  if (escala === "sem") return !localDoPlantao;
+  return localDoPlantao === escala;
 }
 
 // ---------------------------------------------------------------------------

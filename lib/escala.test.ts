@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { PlantaoImpresso } from "./escala.ts";
 import {
-  carimboICS, corpoDaFolha, filtroDeHospital, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  carimboICS, corpoDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
   nomeCurto, periodoDoTurno, plural, rotuloSituacao, somarHoras, textoICS,
 } from "./escala.ts";
 
@@ -320,32 +320,48 @@ test("folha com vários hospitais não nomeia nenhum no título", () => {
 });
 
 // ---------------------------------------------------------------------------
-// O filtro de hospital não pode esconder a escala
+// Uma escala por hospital
 //
-// Defeito real: a escala do grupo abria filtrada no hospital onde a pessoa
-// estava atendendo, e a barra para trocar só aparecia havendo mais de um
-// hospital com plantão. Quando o hospital ativo não tinha turno — ou os
-// plantões estavam lançados sem local —, o calendário vinha vazio e não havia
-// botão nenhum para desfazer.
+// O grupo não tem uma escala: tem a da Santa Casa, a do Hospital da Unimed, a
+// do Instituto. Serviços diferentes, equipes diferentes, e cada uma se lê
+// inteira sem a outra atravessada no meio.
 // ---------------------------------------------------------------------------
 
-test("filtro num hospital que tem plantão vale", () => {
+test("a escala de um hospital cadastrado é ela mesma", () => {
   assert.equal(filtroDeHospital("sc", ["sc", "un"]), "sc");
 });
 
-test("filtro num hospital sem plantão nenhum não vale", () => {
-  // Era este o caso: local ativo é a clínica, mas os plantões do mês são todos
-  // no hospital. Filtrar esvaziaria a tela sem oferecer saída.
-  assert.equal(filtroDeHospital("clinica", ["sc", "un"]), "todos");
-});
-
-test("plantões lançados sem local nenhum não somem", () => {
-  // Nenhum hospital tem plantão porque nenhum plantão tem hospital. Filtrar
-  // por qualquer coisa esconderia o mês inteiro.
+test("hospital que saiu do cadastro cai em todos, e não sem nada", () => {
+  // Local arquivado, ou cadastro que mudou. Sem esta regra a tela esvaziava em
+  // silêncio, mostrando a escala de um hospital que não existe mais.
+  assert.equal(filtroDeHospital("arquivado", ["sc", "un"]), "todos");
   assert.equal(filtroDeHospital("sc", []), "todos");
 });
 
-test('"todos" continua sendo "todos"', () => {
+test('"todos" e "sem" são escalas legítimas, não ids', () => {
   assert.equal(filtroDeHospital("todos", ["sc"]), "todos");
   assert.equal(filtroDeHospital("todos", []), "todos");
+  // "Sem hospital" vale mesmo sem local cadastrado nenhum: é justamente onde
+  // estão os plantões lançados antes de existir cadastro.
+  assert.equal(filtroDeHospital("sem", []), "sem");
+  assert.equal(filtroDeHospital("sem", ["sc"]), "sem");
+});
+
+test("cada plantão entra na escala do seu hospital, e só nela", () => {
+  assert.equal(plantaoNaEscala("sc", "sc"), true);
+  assert.equal(plantaoNaEscala("sc", "un"), false);
+  assert.equal(plantaoNaEscala("un", "un"), true);
+});
+
+test("plantão sem hospital não some: tem escala própria", () => {
+  // Se ele não aparecesse em lugar nenhum, sumiria da escala e ninguém
+  // descobriria por quê.
+  assert.equal(plantaoNaEscala(null, "sem"), true);
+  assert.equal(plantaoNaEscala(null, "sc"), false);
+  assert.equal(plantaoNaEscala("sc", "sem"), false);
+});
+
+test("a visão de conjunto mostra tudo, inclusive o que não tem hospital", () => {
+  assert.equal(plantaoNaEscala("sc", "todos"), true);
+  assert.equal(plantaoNaEscala(null, "todos"), true);
 });
