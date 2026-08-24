@@ -26,11 +26,65 @@ export function faixa(inicio: string, fim: string): string {
   return `${hhmm(inicio).slice(0, 2)}-${hhmm(fim).slice(0, 2)}h`;
 }
 
-/** Diurno, Noturno ou 24h — o nome que a escala usa. */
-export function periodoDoTurno(inicio: string, horas: number): string {
-  if (horas >= 20) return "24h";
-  const h = Number(hhmm(inicio).slice(0, 2));
-  return h >= 18 || h < 5 ? "Noturno" : "Diurno";
+/**
+ * Os três turnos do dia.
+ *
+ * Manhã, tarde e noite não são um enfeite do calendário: é assim que a escala
+ * é pedida e é assim que a cobertura é conferida. "Quem está de tarde?" tem
+ * resposta imediata na parede do hospital, e tinha de ter aqui.
+ *
+ * Os limites são 07h, 13h e 19h porque é a virada real do plantão brasileiro —
+ * não 06/12/18, que é a divisão do relógio e não a do serviço. A noite vai até
+ * as 07h do dia seguinte, e por isso termina em 31h: o intervalo é contado em
+ * minutos corridos a partir da meia-noite do próprio dia.
+ */
+export const TURNOS_DO_DIA = [
+  { id: "manha", nome: "Manhã", letra: "M", de:  7 * 60, ate: 13 * 60 },
+  { id: "tarde", nome: "Tarde", letra: "T", de: 13 * 60, ate: 19 * 60 },
+  { id: "noite", nome: "Noite", letra: "N", de: 19 * 60, ate: 31 * 60 },
+] as const;
+
+export type TurnoDoDia = (typeof TURNOS_DO_DIA)[number]["id"];
+
+const emMinutos = (t: string) => {
+  const [h, m] = hhmm(t).split(":");
+  return Number(h || 0) * 60 + Number(m || 0);
+};
+
+/** Dois intervalos meio-abertos se cruzam? */
+const cruza = (a1: number, a2: number, b1: number, b2: number) => a1 < b2 && b1 < a2;
+
+/**
+ * Quais turnos este plantão cobre.
+ *
+ * COBRE, e não "começa em". Um 07-19h aparece na manhã E na tarde, porque às
+ * 15h ele está lá — se ele só constasse na manhã, a tarde apareceria
+ * descoberta numa tela feita justamente para achar buraco de cobertura, e
+ * alguém escalaria gente em cima de um plantão que já existe.
+ *
+ * O fim menor ou igual ao início vira o dia: 19-07h e 07-07h são a mesma
+ * convenção que o resto do sistema usa. Por isso a comparação é feita também
+ * com o plantão deslocado um dia para frente e um para trás — o 05-08h cobre
+ * o fim da noite, e o plantão de 24h que começa às 20h volta a cobrir a manhã.
+ */
+export function turnosCobertos(inicio: string, fim: string): TurnoDoDia[] {
+  const i = emMinutos(inicio);
+  let f = emMinutos(fim);
+  if (f <= i) f += 24 * 60;
+  return TURNOS_DO_DIA
+    .filter(({ de, ate }) => cruza(i, f, de, ate)
+      || cruza(i + 1440, f + 1440, de, ate)
+      || cruza(i - 1440, f - 1440, de, ate))
+    .map((t) => t.id);
+}
+
+/** "Manhã", "Manhã e tarde", "24 horas" — o turno dito por extenso. */
+export function nomeDoPeriodo(inicio: string, fim: string): string {
+  const cobertos = turnosCobertos(inicio, fim);
+  if (cobertos.length === 3) return "24 horas";
+  const nomes = TURNOS_DO_DIA.filter((t) => cobertos.includes(t.id)).map((t) => t.nome);
+  if (nomes.length === 2) return `${nomes[0]} e ${nomes[1].toLowerCase()}`;
+  return nomes[0] ?? "";
 }
 
 /**

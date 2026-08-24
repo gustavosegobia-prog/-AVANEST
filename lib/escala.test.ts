@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { PlantaoImpresso } from "./escala.ts";
 import {
   carimboICS, corpoDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
-  nomeCurto, periodoDoTurno, plural, rotuloSituacao, somarHoras, textoICS,
+  nomeCurto, nomeDoPeriodo, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -16,15 +16,32 @@ test("faixa: o horário como o plantonista fala", () => {
   assert.equal(faixa("13:00", "19:00"), "13-19h");
 });
 
-test("periodoDoTurno: 24h ganha do horário de início", () => {
-  assert.equal(periodoDoTurno("07:00", 24), "24h");
-  assert.equal(periodoDoTurno("07:00", 12), "Diurno");
-  assert.equal(periodoDoTurno("13:00", 6), "Diurno");
-  assert.equal(periodoDoTurno("19:00", 12), "Noturno");
-  // Turno que começa de madrugada é noturno, e não diurno: quem entra às 01:00
-  // está cobrindo a noite.
-  assert.equal(periodoDoTurno("01:00", 6), "Noturno");
-  assert.equal(periodoDoTurno("05:00", 6), "Diurno");
+test("turnosCobertos: o plantão aparece em todo turno em que ele está", () => {
+  // O 12h de dia cobre manhã e tarde. Se ele só constasse na manhã, a tarde
+  // apareceria descoberta numa escala que existe para achar buraco.
+  assert.deepEqual(turnosCobertos("07:00", "19:00"), ["manha", "tarde"]);
+  assert.deepEqual(turnosCobertos("07:00", "13:00"), ["manha"]);
+  assert.deepEqual(turnosCobertos("13:00", "19:00"), ["tarde"]);
+  assert.deepEqual(turnosCobertos("19:00", "07:00"), ["noite"]);
+  // 24h: fim igual ao início, e cobre os três.
+  assert.deepEqual(turnosCobertos("07:00", "07:00"), ["manha", "tarde", "noite"]);
+  assert.deepEqual(turnosCobertos("20:00", "20:00"), ["manha", "tarde", "noite"]);
+  // Madrugada é noite, mesmo terminando de manhã cedo.
+  assert.deepEqual(turnosCobertos("01:00", "07:00"), ["noite"]);
+  assert.deepEqual(turnosCobertos("05:00", "08:00"), ["manha", "noite"]);
+  // Segundos no horário não mudam o turno.
+  assert.deepEqual(turnosCobertos("13:00:00", "19:00:00"), ["tarde"]);
+  // A virada é exata: quem sai às 13h não conta na tarde.
+  assert.deepEqual(turnosCobertos("12:00", "13:00"), ["manha"]);
+  assert.deepEqual(turnosCobertos("18:30", "19:00"), ["tarde"]);
+});
+
+test("nomeDoPeriodo: o turno dito por extenso", () => {
+  assert.equal(nomeDoPeriodo("07:00", "19:00"), "Manhã e tarde");
+  assert.equal(nomeDoPeriodo("19:00", "07:00"), "Noite");
+  assert.equal(nomeDoPeriodo("07:00", "13:00"), "Manhã");
+  assert.equal(nomeDoPeriodo("07:00", "07:00"), "24 horas");
+  assert.equal(nomeDoPeriodo("13:00", "23:00"), "Tarde e noite");
 });
 
 // ---------------------------------------------------------------------------

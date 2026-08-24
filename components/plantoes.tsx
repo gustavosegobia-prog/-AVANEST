@@ -7,7 +7,8 @@ import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/produc
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
   corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
-  filtroDeHospital, montarICS, periodoDoTurno, plantaoNaEscala, plural, somarHoras,
+  filtroDeHospital, montarICS, nomeDoPeriodo, plantaoNaEscala, plural, somarHoras,
+  TURNOS_DO_DIA, turnosCobertos,
 } from "@/lib/escala";
 
 // Plantões: a escala, o valor e a troca.
@@ -372,6 +373,10 @@ export function Plantoes({
   // local arquivado, ou um cadastro que mudou, de esvaziar a tela em silêncio.
   const hospitalAtivo = filtroDeHospital(hospital, locaisAtivos.map((l) => l.id));
 
+  // O nome do hospital só cabe na célula quando ela mistura hospitais. Aberta
+  // num deles, seria a mesma palavra repetida em trinta e um quadrados.
+  const mostraLocalNaCelula = hospitalAtivo === "todos" || hospitalAtivo === "sem";
+
   const daEscala = useMemo(
     () => plantoes.filter((p) => p.situacao !== "cancelado"
       && (escopo === "grupo" || p.perfil_id === perfilId)
@@ -440,6 +445,34 @@ export function Plantoes({
     }, {})).sort((a, b) => a.inicio.localeCompare(b.inicio)
       || String(a.localId).localeCompare(String(b.localId)));
   }, [daEscala]);
+
+  /**
+   * O dia dividido em manhã, tarde e noite.
+   *
+   * O turno continua sendo lançado com a hora que a pessoa quiser: um fica até
+   * as 13h, outro faz o dia inteiro, outro entra às 19h. A faixa não é uma
+   * gaveta em que o plantão precisa caber — ela é LIDA do horário. Por isso o
+   * de 07-19h aparece na manhã e na tarde: às 15h ele está lá, e uma tarde em
+   * branco numa tela feita para achar buraco de cobertura faria alguém escalar
+   * gente em cima de um plantão que já existe.
+   *
+   * As três faixas aparecem sempre que o dia tem alguém, inclusive as vazias.
+   * O vazio é a informação: "sábado à noite não tem ninguém" é a pergunta que
+   * traz o coordenador a esta tela.
+   */
+  const faixasDoDia = useCallback((dia: string) => {
+    const turnos = turnosDoDia(dia);
+    if (turnos.length === 0) return [];
+    return TURNOS_DO_DIA.map((faixaDoDia) => {
+      const blocos = turnos.filter((t) => turnosCobertos(t.inicio, t.fim).includes(faixaDoDia.id));
+      // Vendo hospitais diferentes de uma vez, duas equipes na mesma faixa
+      // viram uma fileira só de iniciais — e uma escala que não existe em
+      // lugar nenhum. O nome separa as equipes; num hospital só ele seria a
+      // mesma palavra repetida trinta vezes na tela.
+      const locais = new Set(blocos.map((b) => b.localId ?? "-"));
+      return { ...faixaDoDia, blocos, separarPorLocal: mostraLocalNaCelula && locais.size > 1 };
+    });
+  }, [turnosDoDia, mostraLocalNaCelula]);
 
   /**
    * A escala no calendário do celular.
@@ -644,12 +677,12 @@ export function Plantoes({
                   const doDia = daEscala.filter((p) => p.data === dia);
                   const fimDeSemana = new Date(`${dia}T12:00:00`).getDay() % 6 === 0;
 
-                  // Na escala do grupo, os turnos iguais viram uma linha só com
-                  // as pessoas dentro: "07-19h · GS HM". É como a escala é
-                  // lida na parede do hospital — pelo turno, não por pessoa —,
-                  // e num serviço com seis anestesistas de dia a lista por
-                  // pessoa não caberia em célula nenhuma.
-                  const turnos = escopo === "grupo" ? turnosDoDia(dia) : [];
+                  // Na escala do grupo o dia sai em três faixas — M, T, N — com
+                  // quem cobre cada uma. É como a escala é lida na parede do
+                  // hospital: primeiro o turno, depois quem está nele. Só a
+                  // letra, porque "Manhã" por extenso três vezes não cabe num
+                  // quadrado de calendário, e o nome inteiro está no title.
+                  const faixasDia = escopo === "grupo" ? faixasDoDia(dia) : [];
 
                   return (
                     <button
@@ -662,32 +695,41 @@ export function Plantoes({
                       <span className="plantaoEtiquetas">
                         {escopo === "grupo"
                           ? <>
-                              {turnos.slice(0, 2).map((t) => (
-                                <i key={t.chave} className="plantaoTurno"
-                                  title={`${periodoDoTurno(t.inicio, t.horas)} ${faixa(t.inicio, t.fim)}`
-                                    + `${t.localId ? ` · ${localPorId.get(t.localId) ?? ""}` : ""}`
-                                    + ` — ${t.gente.map((g) => nomePorId.get(g.perfil_id) ?? "").join(", ")}`}>
-                                  <b>{faixa(t.inicio, t.fim)}</b>
-                                  {/* Vendo todos os hospitais de uma vez, o
-                                      horário sozinho não diz de qual serviço é
-                                      o turno. Filtrado num hospital, o nome
-                                      seria a mesma palavra em toda célula. */}
-                                  {(hospitalAtivo === "todos" || hospitalAtivo === "sem") && (
-                                    <span className="plantaoOnde1">
-                                      {t.localId ? localPorId.get(t.localId) ?? "—" : "Sem local"}
-                                    </span>
-                                  )}
+                              {faixasDia.map((f) => (
+                                <i key={f.id} className={`plantaoFaixa${f.blocos.length ? "" : " vazia"}`}
+                                  title={f.blocos.length
+                                    ? `${f.nome} — ` + f.blocos.map((t) =>
+                                        `${faixa(t.inicio, t.fim)}`
+                                        + `${t.localId ? ` ${localPorId.get(t.localId) ?? ""}` : ""}`
+                                        + `: ${t.gente.map((g) => nomePorId.get(g.perfil_id) ?? "").join(", ")}`
+                                      ).join(" · ")
+                                    : `${f.nome} — ninguém escalado`}>
+                                  <b>{f.letra}</b>
                                   <span className="plantaoQuem">
-                                    {t.gente.slice(0, 4).map((g) => (
-                                      <em key={g.id} className={`med-${corPorMedico.get(g.perfil_id) ?? "m8"}${g.perfil_id === perfilId ? " eu" : ""}`}>
-                                        {iniciais(nomePorId.get(g.perfil_id) ?? "")}
-                                      </em>
+                                    {f.blocos.length === 0 && <em className="plantaoVazio">—</em>}
+                                    {f.blocos.map((t) => (
+                                      <span key={t.chave} className="plantaoBloco">
+                                        {/* O nome do hospital só entra quando a
+                                            faixa junta equipes de hospitais
+                                            diferentes: sem ele, as iniciais das
+                                            duas viram uma fileira só e a tela
+                                            mostra uma escala que não existe. */}
+                                        {f.separarPorLocal && (
+                                          <u className="plantaoOnde1">
+                                            {t.localId ? localPorId.get(t.localId) ?? "—" : "Sem local"}
+                                          </u>
+                                        )}
+                                        {t.gente.slice(0, 4).map((g) => (
+                                          <em key={g.id} className={`med-${corPorMedico.get(g.perfil_id) ?? "m8"}${g.perfil_id === perfilId ? " eu" : ""}`}>
+                                            {iniciais(nomePorId.get(g.perfil_id) ?? "")}
+                                          </em>
+                                        ))}
+                                        {t.gente.length > 4 && <em className="plantaoMais">+{t.gente.length - 4}</em>}
+                                      </span>
                                     ))}
-                                    {t.gente.length > 4 && <em className="plantaoMais">+{t.gente.length - 4}</em>}
                                   </span>
                                 </i>
                               ))}
-                              {turnos.length > 2 && <i className="plantaoMais">+{turnos.length - 2} {turnos.length - 2 === 1 ? "turno" : "turnos"}</i>}
                             </>
                           : <>
                               {/* Escala pessoal: horário e onde. O lugar é o que
@@ -697,7 +739,7 @@ export function Plantoes({
                                 const mo = p.modelo_id ? modeloPorId.get(p.modelo_id) : undefined;
                                 return (
                                   <i key={p.id} className={`plantaoEtiqueta etq-${mo?.cor ?? "cinza"}`}
-                                    title={`${periodoDoTurno(p.hora_inicio, Number(p.horas))} ${faixa(p.hora_inicio, p.hora_fim)}${p.local_id ? ` · ${localPorId.get(p.local_id) ?? ""}` : ""}`}>
+                                    title={`${nomeDoPeriodo(p.hora_inicio, p.hora_fim)} · ${faixa(p.hora_inicio, p.hora_fim)}${p.local_id ? ` · ${localPorId.get(p.local_id) ?? ""}` : ""}`}>
                                     <b>{faixa(p.hora_inicio, p.hora_fim)}</b>
                                     <span>{p.local_id ? localPorId.get(p.local_id) ?? "Sem local" : "Sem local"}</span>
                                   </i>

@@ -2134,19 +2134,26 @@ button:disabled{cursor:not-allowed}
 /* Altura fixa, não aspect-ratio: quadrado numa grade de 1340px dá célula de
    180px, e o calendário sozinho ocupa a tela inteira. Retângulo largo é o
    formato normal de calendário mensal, e sobra espaço para a lista embaixo. */
-.plantaoDia{position:relative;min-width:0;min-height:88px;border:1px solid var(--cor-borda);
+/* 100px é o que as três faixas pedem: número do dia mais M, T e N empilhados.
+   Com os 88px de antes o dia com plantão ficava mais alto que o dia vazio e as
+   linhas do calendário desencontravam. */
+.plantaoDia{position:relative;min-width:0;min-height:100px;border:1px solid var(--cor-borda);
   border-radius:12px;background:var(--cor-superficie);font:inherit;color:inherit;cursor:pointer;
   display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:7px 7px 6px;text-align:left;
   transition:border-color var(--transicao),box-shadow var(--transicao)}
 .plantaoDia:hover{border-color:var(--cor-marca)}
 .plantaoDia:focus-visible{outline:0;box-shadow:var(--foco)}
-.plantaoDia b{font-size:13.5px;font-weight:750;color:var(--cor-tinta-fraca)}
+/* Filho DIRETO, e não descendente. O número do dia e a letra da faixa são os
+   dois <b>: com `.plantaoDia b` esta regra alcançava as duas, e `.hoje b` —
+   mais específica que qualquer coisa que a faixa pudesse dizer — pintava o
+   M, o T e o N de azul no dia de hoje. */
+.plantaoDia>b{font-size:13.5px;font-weight:750;color:var(--cor-tinta-fraca)}
 /* Fim de semana com fundo levemente diferente: a coluna do sábado é a que
    mais se procura numa escala, e contar sete colunas para achá-la é o tipo de
    esforço que a cor resolve de graça. */
 .plantaoDia.fds{background:var(--cor-superficie-suave)}
 .plantaoDia.hoje{border-color:var(--cor-marca);border-width:2px;padding:6px 6px 5px}
-.plantaoDia.hoje b{color:var(--cor-marca);font-weight:850}
+.plantaoDia.hoje>b{color:var(--cor-marca);font-weight:850}
 .plantaoDia.aberto{box-shadow:var(--foco);border-color:var(--cor-marca)}
 
 .plantaoEtiquetas{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -2179,15 +2186,36 @@ button:disabled{cursor:not-allowed}
 .plantaoEtiqueta>span{display:block;font-weight:600;color:var(--cor-tinta-fraca);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* --- Turno do grupo: o horário e quem está nele -------------------------
-   "07-19h / GS HM" é como a escala é lida na parede do hospital: pelo turno,
-   não por pessoa. Num serviço com seis anestesistas de dia, uma linha por
-   pessoa não caberia em célula nenhuma — seis iniciais cabem. */
-.plantaoTurno{font-style:normal;display:grid;gap:2px;min-width:0;
+/* --- As três faixas do dia: M, T, N -------------------------------------
+   O dia sai dividido em manhã, tarde e noite, com quem cobre cada uma. É como
+   a escala é lida na parede do hospital: primeiro o turno, depois quem está
+   nele — num serviço com seis anestesistas de dia, uma linha por pessoa não
+   caberia em célula nenhuma, e seis iniciais cabem.
+
+   Só a letra. "Manhã" por extenso três vezes empurraria as iniciais para fora
+   de um quadrado que tem 88px de altura; o nome inteiro está no title.
+
+   A faixa é uma grade de duas colunas, e não flex: assim a letra ocupa a mesma
+   largura em toda célula do mês e as iniciais começam todas na mesma linha
+   vertical. Com flex, um dia de M sozinho e outro de M com quatro pessoas
+   alinhariam diferente, e a leitura na diagonal — que é como se procura um
+   buraco na escala — se perderia. */
+.plantaoFaixa{font-style:normal;display:grid;grid-template-columns:11px minmax(0,1fr);
+  gap:4px;align-items:start;min-width:0;
   padding:2px 5px;border-radius:4px;background:var(--cor-superficie-suave)}
-.plantaoDia.fds .plantaoTurno{background:var(--cor-superficie)}
-.plantaoTurno>b{font-size:10.5px;font-weight:800;color:var(--cor-tinta);letter-spacing:.1px}
+.plantaoDia.fds .plantaoFaixa{background:var(--cor-superficie)}
+.plantaoFaixa>b{font-size:10px;font-weight:850;color:var(--cor-tinta-fraca);
+  letter-spacing:.2px;line-height:1.5;text-align:center}
+/* A faixa sem ninguém fica, e fica apagada. O vazio é a informação: "sábado à
+   noite não tem ninguém" é a pergunta que traz o coordenador a esta tela, e
+   uma faixa que some não responde nada — o dia só encolhe e ninguém percebe. */
+.plantaoFaixa.vazia{background:none;opacity:.45}
+.plantaoVazio{font-style:normal;font-size:9.5px;font-weight:700;line-height:1.5;
+  color:var(--cor-tinta-fraca)}
 .plantaoQuem{display:flex;flex-wrap:wrap;gap:3px;min-width:0}
+/* Cada bloco é um turno de um hospital. Sem essa caixa, as iniciais de dois
+   hospitais na mesma faixa se misturariam numa fileira só. */
+.plantaoBloco{display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-width:0}
 /* A inicial é o que identifica; a cor só acelera o reconhecimento. Por isso a
    cor nunca é o único canal: duas pessoas com a mesma cor continuam distintas
    pelas letras, e o nome inteiro está no title da etiqueta.
@@ -2263,8 +2291,11 @@ button:disabled{cursor:not-allowed}
   .plantaoModeloForm{grid-template-columns:repeat(2,1fr)}
   .plantaoModeloForm .clinicalField.wide{grid-column:1/-1}
   .plantaoLinha{gap:10px}
-  .plantaoDia{min-height:72px;padding:5px}
+  .plantaoDia{min-height:86px;padding:5px}
   .plantaoEtiqueta{font-size:9.5px}
+  /* No celular a letra encosta nas iniciais: sete colunas em 360px deixam
+     ~44px por célula, e cada pixel da coluna da esquerda sai das iniciais. */
+  .plantaoFaixa{grid-template-columns:9px minmax(0,1fr);gap:3px;padding:1px 3px}
 }
 
 /* --- Produção do dia ----------------------------------------------------
@@ -2368,10 +2399,17 @@ button:disabled{cursor:not-allowed}
   .producaoRecebidaLinha>span:first-child{grid-column:1/-1}
 }
 
-/* O nome do hospital dentro do turno: some quando a escala está filtrada num
-   hospital só, onde ele seria a mesma palavra em trinta e uma células. */
-.plantaoOnde1{display:block;font-size:9.5px;font-weight:700;color:var(--cor-tinta-fraca);
-  line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px}
+/* O nome do hospital dentro da faixa: só aparece quando a faixa junta equipes
+   de hospitais diferentes. Filtrada num hospital só, seria a mesma palavra em
+   trinta e uma células; e sem ele, ali, as iniciais das duas equipes viram uma
+   fileira só e a tela mostra uma escala que não existe em lugar nenhum.
+
+   Sem sublinhado, apesar de ser <u>: a tag foi escolhida por ser inline e não
+   ter significado próprio dentro de <em>/<b>, e o traço só faria a palavra
+   parecer um link no meio das iniciais. */
+.plantaoOnde1{font-size:9px;font-weight:700;color:var(--cor-tinta-fraca);
+  text-decoration:none;line-height:1.5;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plantaoDeColega{color:var(--cor-tinta-fraca);font-size:13px;min-width:0}
 .plantaoMensagem{font-style:italic;color:var(--cor-tinta-fraca)!important}
 
