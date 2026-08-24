@@ -10,6 +10,9 @@ import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { ChatFlutuante } from "@/components/chat-flutuante";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
+import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
+import { LocaisAdmin } from "@/components/locais-admin";
+import { Plantoes } from "@/components/plantoes";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -62,7 +65,7 @@ type Paciente = {
   plano?: string | null; data_consulta?: string | null; horario?: string | null;
   observacoes?: string | null; created_at: string;
 };
-type Avaliacao = { id: string; patient_id: string; created_by?: string | null; status: string; versao?: number; updated_at: string; created_at: string; concluida_at?: string | null; dados?: Record<string, unknown> | null };
+type Avaliacao = { id: string; patient_id: string; created_by?: string | null; status: string; versao?: number; updated_at: string; created_at: string; concluida_at?: string | null; dados?: Record<string, unknown> | null; local_atendimento_id?: string | null };
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
 type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
@@ -70,7 +73,7 @@ type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:s
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
-export type DashboardView = "medico" | "recepcao" | "financeiro" | "admin";
+export type DashboardView = "medico" | "plantoes" | "recepcao" | "financeiro" | "admin";
 
 // A lista de convênios é a mesma no cadastro do paciente e no financeiro:
 // os padrão, mais os que a organização cadastrou, menos os que ela removeu.
@@ -134,11 +137,13 @@ const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamen
 
 export function DashboardClient({
   perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
-  initialNewPatient = false, autoStartAssessment = false,
+  initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
+  /** Onde a pessoa está atendendo agora. Null quando a organização ainda não cadastrou nenhum local. */
+  localAtivo?:LocalDisponivel|null; totalDeLocais?:number; locais?:LocalDisponivel[];
   initialView?: DashboardView;
   initialNewPatient?: boolean;
   autoStartAssessment?: boolean;
@@ -146,13 +151,22 @@ export function DashboardClient({
   const router = useRouter();
   const allowedViews = useMemo<DashboardView[]>(() => {
     // Médico primeiro: é a área de trabalho do anestesiologista, e a ordem daqui
-  // decide tanto os botões da barra quanto em qual área o sistema abre. Quem
-  // não tem Médico continua abrindo na própria área — a lista é filtrada pelo
-  // que a pessoa pode ver, então nunca sobra ninguém sem aba.
-  const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin"];
+    // decide tanto os botões da barra quanto em qual área o sistema abre. Quem
+    // não tem Médico continua abrindo na própria área — a lista é filtrada pelo
+    // que a pessoa pode ver, então nunca sobra ninguém sem aba.
+    //
+    // ATENÇÃO: esta lista tem uma gêmea em app/dashboard/page.tsx, e as duas
+    // precisam concordar. O servidor usa a dele para decidir quais dados
+    // carregar; esta aqui decide quais botões aparecem. Área nova acrescentada
+    // só de um lado vira exatamente o que aconteceu com Plantões: o botão
+    // existe no código, a condição nunca é verdadeira, e a aba simplesmente
+    // não nasce — sem erro, sem aviso, sem nada para investigar.
+    const permissionOrder: DashboardView[] = ["medico", "plantoes", "recepcao", "financeiro", "admin"];
     const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
     if (["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos")) return permissionOrder;
-    const permittedViews = permissionOrder.filter((area) => perfil.role === area || assignedPermissions.includes(area));
+    const permittedViews = permissionOrder.filter((area) => perfil.role === area || assignedPermissions.includes(area)
+      // Plantões acompanha o acesso Médico: não é uma permissão à parte.
+      || (area === "plantoes" && (perfil.role === "medico" || assignedPermissions.includes("medico"))));
     return permittedViews.length > 0 ? permittedViews : ["medico"];
   }, [perfil.role, perfil.permissoes]);
   const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
@@ -162,6 +176,11 @@ export function DashboardClient({
   const [agendaRange, setAgendaRange] = useState<"hoje"|"amanha"|"semana">("hoje");
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyStatus, setHistoryStatus] = useState("todas");
+  // Começa em "todos", e não no local ativo — o pedido diz "mostrar primeiro",
+  // que é ordenar, não esconder. Filtrar por padrão abriria o histórico vazio
+  // para quem acabou de adotar os locais: nenhuma avaliação anterior tem um, e
+  // a tela pareceria ter perdido o trabalho de meses.
+  const [historyLocal, setHistoryLocal] = useState("todos");
   const [historyFrom, setHistoryFrom] = useState("");
   const [historyTo, setHistoryTo] = useState("");
   const [dark, setDark] = useState(false);
@@ -175,6 +194,11 @@ export function DashboardClient({
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  // O "Pesquisar paciente" da área Médico focava o campo da Recepção, que não
+  // está montado aqui — o botão simplesmente não fazia nada. Passa a focar a
+  // busca do histórico, que é o campo de busca que existe nesta tela.
+  const buscaHistoricoRef = useRef<HTMLInputElement>(null);
+  const [secaoMedico,setSecaoMedico]=useState("hoje");
   const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.cirurgia ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
   const currentByPatient = useMemo(() => {
     const result = new Map<string,Avaliacao>();
@@ -202,10 +226,20 @@ export function DashboardClient({
     const searchable = `${patient?.nome ?? ""} ${patient?.cpf ?? ""} ${patient?.cirurgia ?? ""} ${patient?.procedimento ?? ""} ${patient?.hospital ?? ""} ${professional}`.toLowerCase();
     const referenceDate = (assessment.concluida_at || assessment.updated_at || assessment.created_at).slice(0, 10);
     return (historyStatus === "todas" || assessment.status === historyStatus)
+      && (historyLocal === "todos"
+          || (historyLocal === "sem" ? !assessment.local_atendimento_id
+              : assessment.local_atendimento_id === historyLocal))
       && (!historyQuery || searchable.includes(historyQuery.toLowerCase()))
       && (!historyFrom || referenceDate >= historyFrom)
       && (!historyTo || referenceDate <= historyTo);
-  }).sort((a,b) => (b.concluida_at || b.updated_at || b.created_at).localeCompare(a.concluida_at || a.updated_at || a.created_at)), [avaliacoes, patientMap, professionalMap, historyQuery, historyStatus, historyFrom, historyTo]);
+  }).sort((a,b) => {
+    // Sem filtro escolhido, o que foi feito no local de hoje sobe. É o
+    // "mostrar primeiro" do pedido: nada some, só muda de ordem. Com um
+    // filtro ativo a comparação empata em todos, e vale a data.
+    const doLocal = (x:Avaliacao) => localAtivo && x.local_atendimento_id === localAtivo.id ? 0 : 1;
+    return doLocal(a) - doLocal(b)
+      || (b.concluida_at || b.updated_at || b.created_at).localeCompare(a.concluida_at || a.updated_at || a.created_at);
+  }), [avaliacoes, patientMap, professionalMap, historyQuery, historyStatus, historyFrom, historyTo, historyLocal, localAtivo]);
   const scheduledToday = agendamentos.filter((a) => a.data === today && !["cancelado","reagendado"].includes(a.status));
   const queue = scheduledToday;
   const filteredAgenda = agendamentos.filter((item) => {
@@ -380,6 +414,10 @@ export function DashboardClient({
     const previous=currentByPatient.get(patientId);
     const { data, error: createError } = await supabase.from("avaliacoes").insert({
       institution_id: perfil.institution_id, patient_id: patientId, created_by: perfil.id, status: "rascunho",
+      // Onde o paciente está sendo atendido. O gatilho do banco congela os
+      // dados do local a partir daqui, e é esse congelado que os documentos
+      // imprimem — trocar de local depois não mexe nesta avaliação.
+      local_atendimento_id: localAtivo?.id ?? null,
       versao:previous?.status==="concluida"?Number(previous.versao||1)+1:1,
       avaliacao_anterior_id:previous?.status==="concluida"?previous.id:null,
     }).select("id").single();
@@ -432,9 +470,26 @@ export function DashboardClient({
     <main className={`clinicalShell ${dark?"clinicalDark":""}`}>
       <header className="clinicalTopbar">
         <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
-        <div className="orgBadge" title={organizacao?.nome ?? "Organização"}>
-          <strong>{organizacao?.nome ?? "Organização"}</strong>
-        </div>
+        {/* Com local escolhido, é ele que aparece: quem atende em três
+            hospitais precisa saber em qual está antes de imprimir a primeira
+            ficha, e o nome da organização é o mesmo nos três. Sem local
+            cadastrado, o cabeçalho segue como sempre foi. */}
+        {localAtivo ? (
+          <Link
+            className="orgBadge localAtivoBadge"
+            href="/locais?trocar=1"
+            title={`Atendendo em ${nomeDoLocal(localAtivo)}. Clique para trocar.`}
+          >
+            <span aria-hidden="true">📍</span>
+            <strong>{nomeDoLocal(localAtivo)}</strong>
+            {totalDeLocais > 1 && <span className="localSeta" aria-hidden="true">▾</span>}
+            <span className="visuallyHidden">Trocar local de atendimento</span>
+          </Link>
+        ) : (
+          <div className="orgBadge" title={organizacao?.nome ?? "Organização"}>
+            <strong>{organizacao?.nome ?? "Organização"}</strong>
+          </div>
+        )}
         {/* Só os módulos de trabalho ficam na barra. Tema, assinatura, bloqueio
             e saída são utilidades: foram para o menu do usuário, senão nove
             controles disputam a mesma faixa e nenhum se destaca. */}
@@ -444,6 +499,7 @@ export function DashboardClient({
             é médico não tem nada escondido, senão ficaria sem aba nenhuma. */}
         <nav className={allowedViews.includes("medico")?"roleNav temMedico":"roleNav"} aria-label="Áreas do sistema">
           {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
+          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={view === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>Escala</button>}
           {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
           {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
@@ -517,6 +573,32 @@ export function DashboardClient({
             <Metric value={completed.filter(a=>a.dados?.orientacoes_enviadas!==true).length} label="Orientações pendentes" tone="amber" />
             <Metric value={asaHigh} label="Pacientes ASA III+" tone="red" />
           </section>
+
+          <div className="financeLayout">
+            <nav className="financeTarefas" aria-label="Seções da área Médico">
+              {([
+                ["grupo","Atendimento"],
+                ["hoje","Consultas de hoje",queue.length],
+                ["agenda","Agenda"],
+                ["grupo","Acompanhamento"],
+                ["central","Central Operacional",pendenciasCentral],
+                ["historico","Histórico de avaliações"],
+              ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
+                id==="grupo"
+                  ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
+                  : <button
+                      type="button" key={id}
+                      className={secaoMedico===id?"active":""}
+                      aria-current={secaoMedico===id?"true":undefined}
+                      onClick={()=>setSecaoMedico(id)}
+                    >
+                      <span>{rotulo}</span>
+                      {contador?<b className="financeTarefaContador">{contador}</b>:null}
+                    </button>)}
+            </nav>
+
+            <div className="financeConteudo">
+            {secaoMedico==="hoje"&&<>
           <section className="clinicalPanel">
             <div className="panelTitle"><strong>Fila de atendimento — hoje</strong><span>prioridade → horário agendado → chegada → encaixes</span></div>
             {queue.length ? queue.map((appointment, index) => {
@@ -533,6 +615,18 @@ export function DashboardClient({
               </div>;
             }) : <div className="emptyClinical">Nenhuma consulta agendada para hoje.</div>}
           </section>
+            </>}
+            {secaoMedico==="agenda"&&<>
+          <section className="clinicalPanel agendaPanel">
+            <div className="agendaHead"><strong>Agenda</strong><button className={agendaRange==="hoje"?"active":""} onClick={()=>setAgendaRange("hoje")}>Hoje</button><button className={agendaRange==="amanha"?"active":""} onClick={()=>setAgendaRange("amanha")}>Amanhã</button><button className={agendaRange==="semana"?"active":""} onClick={()=>setAgendaRange("semana")}>Semana</button><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, procedimento..." /></div>
+            {filteredAgenda.slice(0,20).map((appointment) => { const p=patientMap.get(appointment.patient_id); if(!p)return null; const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined; return <button className="agendaRow" key={appointment.id} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>
+              <span className="avatar">{initials(p.nome)}</span><span><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></span>
+              <time>{brDate(appointment.data)}</time><span className={`statusChip ${a?.status === "concluida" ? "present" : appointment.status==="faltou"?"danger":"waiting"}`}>{a?.status === "concluida" ? "CONCLUÍDA" : a?.status==="rascunho" ? "EM ANDAMENTO" : appointment.status.toUpperCase()}</span>
+            </button>;})}
+            {filteredAgenda.length===0&&<div className="emptyClinical compactEmpty">Nenhum agendamento neste período.</div>}
+          </section>
+            </>}
+            {secaoMedico==="central"&&<>
           <PainelRecolhivel
             className="alertsPanel"
             chave="central-operacional"
@@ -549,19 +643,25 @@ export function DashboardClient({
               <Alert icone="envelope" title="Orientações não enviadas" text={`${orientacoesPendentes.length} documento(s) aguardando envio`} action="ENVIAR" onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)} />
             </div>
           </PainelRecolhivel>
-          <section className="clinicalPanel agendaPanel">
-            <div className="agendaHead"><strong>Agenda</strong><button className={agendaRange==="hoje"?"active":""} onClick={()=>setAgendaRange("hoje")}>Hoje</button><button className={agendaRange==="amanha"?"active":""} onClick={()=>setAgendaRange("amanha")}>Amanhã</button><button className={agendaRange==="semana"?"active":""} onClick={()=>setAgendaRange("semana")}>Semana</button><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, procedimento..." /></div>
-            {filteredAgenda.slice(0,20).map((appointment) => { const p=patientMap.get(appointment.patient_id); if(!p)return null; const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined; return <button className="agendaRow" key={appointment.id} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>
-              <span className="avatar">{initials(p.nome)}</span><span><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></span>
-              <time>{brDate(appointment.data)}</time><span className={`statusChip ${a?.status === "concluida" ? "present" : appointment.status==="faltou"?"danger":"waiting"}`}>{a?.status === "concluida" ? "CONCLUÍDA" : a?.status==="rascunho" ? "EM ANDAMENTO" : appointment.status.toUpperCase()}</span>
-            </button>;})}
-            {filteredAgenda.length===0&&<div className="emptyClinical compactEmpty">Nenhum agendamento neste período.</div>}
-          </section>
+            </>}
+            {secaoMedico==="historico"&&<>
           <section className="clinicalPanel historyPanel">
             <div className="panelTitle"><strong>Histórico de avaliações</strong><span>Encontre rascunhos e avaliações concluídas já salvas.</span></div>
             <div className="historyFilters">
-              <input value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
+              <input ref={buscaHistoricoRef} value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
               <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)} aria-label="Filtrar por status"><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>
+              {/* Só aparece com mais de um local: com um só, o filtro não filtra
+                  nada e vira um controle que ocupa espaço sem responder nada. */}
+              {locais.length>1&&(
+                <select value={historyLocal} onChange={(event)=>setHistoryLocal(event.target.value)} aria-label="Filtrar por local de atendimento">
+                  <option value="todos">Todos os locais</option>
+                  {locais.map((item)=><option key={item.id} value={item.id}>{nomeDoLocal(item)}</option>)}
+                  {/* As avaliações feitas antes desta funcionalidade não têm
+                      local. Sem esta opção elas sumiriam do histórico assim que
+                      alguém filtrasse, e pareceriam perdidas. */}
+                  <option value="sem">Sem local registrado</option>
+                </select>
+              )}
               <label>De<input type="date" value={historyFrom} onChange={(event)=>setHistoryFrom(event.target.value)} /></label>
               <label>Até<input type="date" value={historyTo} onChange={(event)=>setHistoryTo(event.target.value)} /></label>
             </div>
@@ -569,8 +669,17 @@ export function DashboardClient({
             {historicalAssessments.length===0&&<div className="emptyClinical compactEmpty">Nenhuma avaliação encontrada com estes filtros.</div>}
             {historicalAssessments.length>50&&<div className="historyLimit">Mostrando as 50 avaliações mais recentes. Refine os filtros para ver uma lista menor.</div>}
           </section>
-          <div className="quickLinks"><button onClick={()=>searchRef.current?.focus()}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
+            </>}
+            </div>
+          </div>
+          <div className="quickLinks"><button onClick={()=>{setSecaoMedico("historico");requestAnimationFrame(()=>buscaHistoricoRef.current?.focus())}}>Pesquisar paciente</button><button onClick={goToFirstDraft}>Avaliações pendentes</button><button onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>PDFs recentes</button></div>
         </div>
+      ) : view === "plantoes" ? (
+        <Plantoes
+          perfilId={perfil.id} institutionId={perfil.institution_id}
+          locais={locais} ehAdmin={["owner","admin"].includes(perfil.role)}
+          colegas={perfis.filter(p=>p.status==="ativo").map(p=>({id:p.id,nome:p.nome}))}
+        />
       ) : view === "recepcao" ? (
         <div className="clinicalMain receptionMain">
           <section><h1>Recepção</h1><p>Cadastro de pacientes e agenda — sem acesso a dados clínicos ou financeiros.</p><div className="quickLinks"><button onClick={() => setOpen(true)}>Novo paciente</button><button onClick={()=>setAgendaRange("hoje")}>Agenda de hoje</button><button onClick={()=>searchRef.current?.focus()}>Pesquisar paciente</button></div></section>
@@ -835,7 +944,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           tarefa parada vira ruído e a pessoa para de olhar para todos. */}
       <nav className="financeTarefas" aria-label="Seções do Financeiro">
         {([
-          ["grupo","Do dia a dia"],
+          ["grupo","Operação"],
           ["lancamentos","Lançamentos",pendingPatients.length],
           ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
           ["notas","Notas fiscais",noteAlerts.length],
@@ -867,7 +976,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     {pendingPatients.length>0&&<PainelRecolhivel chave="fin-aguardando" titulo="Atendimentos aguardando lançamento" legenda="vindos automaticamente da recepção e agenda">{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</PainelRecolhivel>}
     {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><PainelRecolhivel className="financeGroup" key={convenio} chave={`fin-grupo-${convenio}`} classeCabecalho="financeGroupHead" titulo={convenio} legenda={`${items.length} atendimento(s)`} extra={<b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b>}>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
     "1.234.56", que é NaN — e o valor da consulta zerava sem aviso. */}
-<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select>{item.status==="glosa"&&<label className="inlineMoney"><span>Glosado</span><input defaultValue={Number(item.glosa_valor)||""} placeholder="R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/></label>}<input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Nota fiscal" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} aria-label="Data de emissão da nota" onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} aria-label="Data de vencimento da nota" onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="Lote" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></div></div>})}</PainelRecolhivel>)}
+<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><label className="inlineMoney"><span>Situação</span><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select></label>{item.status==="glosa"?<label className="inlineMoney"><span>Glosado</span><input defaultValue={Number(item.glosa_valor)||""} placeholder="R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/></label>:<span aria-hidden="true"/>}<label className="inlineMoney"><span>Nota fiscal</span><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Número" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/></label><label className="inlineMoney"><span>Emissão</span><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Vencimento</span><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Lote</span><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="—" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></label></div></div>})}</PainelRecolhivel>)}
       </>}
       {tarefa==="recebimentos"&&<>
     <PainelRecolhivel chave="fin-recebimentos" titulo="Recebimentos" legenda="PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo">
@@ -1363,11 +1472,12 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
           alguma coisa. */}
       <nav className="financeTarefas" aria-label="Seções da Administração">
         {([
-          ["grupo","Do dia a dia"],
+          ["grupo","Equipe"],
           ["usuarios","Usuários e permissões",perfis.filter(i=>i.status==="inativo").length],
           ["convites","Convites"],
           ["grupo","Organização"],
           ["dados","Dados da organização"],
+          ["locais","Locais de atendimento"],
           ["assinatura","Assinatura"],
           ["grupo","Registro"],
           ["auditoria","Auditoria"],
@@ -1505,6 +1615,18 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
         </div>
       </div>
     </section>
+      </>}
+      {aba==="locais"&&<>
+        <section className="clinicalPanel">
+          <div className="panelTitle"><strong>Locais de atendimento</strong><span>Hospitais, clínicas e consultórios onde a equipe atende.</span></div>
+          <div className="locaisAdminCaixa">
+            <LocaisAdmin
+              institutionId={perfil.institution_id}
+              perfilId={perfil.id}
+              podeCompartilhar={["owner","admin"].includes(perfil.role)||(Array.isArray(perfil.permissoes)&&perfil.permissoes.includes("admin"))}
+            />
+          </div>
+        </section>
       </>}
       {aba==="assinatura"&&<>
     <PainelAssinatura onRefresh={onRefresh}/>
