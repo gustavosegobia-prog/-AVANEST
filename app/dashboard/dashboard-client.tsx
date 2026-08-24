@@ -48,6 +48,28 @@ export const CONVENIOS = [
   "SulAmérica","Amil","CASSI","SANEPAR","COPEL",
 ];
 
+/**
+ * Quem entra na escala.
+ *
+ * Duas condições, e as duas são necessárias.
+ *
+ * O papel corta a equipe de apoio: recepção e financeiro usam o sistema todo
+ * dia e não fazem anestesia. Mas o papel sozinho não basta — o dono da clínica
+ * é "owner" e é médico, e um corte por role==="medico" tiraria justamente ele
+ * da própria escala.
+ *
+ * O CRM é o que separa médico de administrador dentro do que sobrou. Quem
+ * anestesia responde pelo ato com o registro dele, e a escala é o documento de
+ * quem responde: sem registro, não entra.
+ *
+ * Médico ativo sem CRM não é excluído em silêncio — a escala mostra o nome
+ * dele num aviso, apontando onde preencher.
+ */
+const EQUIPE_DE_APOIO = ["recepcao", "financeiro"];
+
+const ehEscalavel = (p: { status: string; role: string; crm: string | null }) =>
+  p.status === "ativo" && !EQUIPE_DE_APOIO.includes(p.role) && Boolean((p.crm ?? "").trim());
+
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean };
 type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null };
 // O que minha_assinatura() devolve. cancelada_em é o que separa "vai
@@ -696,7 +718,25 @@ export function DashboardClient({
         <Plantoes
           perfilId={perfil.id} institutionId={perfil.institution_id}
           locais={locais} ehAdmin={["owner","admin"].includes(perfil.role)}
-          colegas={perfis.filter(p=>p.status==="ativo").map(p=>({id:p.id,nome:p.nome}))}
+          // Duas listas, e a diferença importa. `colegas` é todo mundo da
+          // organização e serve para RESOLVER NOME: um plantão antigo de quem
+          // hoje está inativo, ou de quem ainda não tem CRM no cadastro,
+          // precisa continuar mostrando o nome de quem está escalado — filtrar
+          // esta lista trocaria o nome por "Profissional" na escala inteira.
+          //
+          // `escalaveis` é quem pode ENTRAR na escala: médico com CRM. Quem
+          // anestesia responde pelo ato com o registro dele, e escala é
+          // documento de quem responde — recepção e financeiro não entram.
+          colegas={perfis.map(p=>({id:p.id,nome:p.nome}))}
+          escalaveis={perfis.filter(ehEscalavel).map(p=>({id:p.id,nome:p.nome}))}
+          // Quem é da clínica, está ativo e ainda não tem CRM no cadastro.
+          // Não some da lista em silêncio: vira aviso com o nome, porque
+          // "fulano não aparece para escalar" sem explicação é o tipo de coisa
+          // que faz o coordenador achar que a tela quebrou.
+          semCRM={perfis
+            .filter(p=>p.status==="ativo" && !EQUIPE_DE_APOIO.includes(p.role)
+              && !(p.crm ?? "").trim())
+            .map(p=>p.nome)}
           // A escala do grupo abre no hospital onde a pessoa está hoje: ela já
           // respondeu isso ao entrar, e perguntar de novo é perguntar duas vezes.
           localAtivoId={localAtivo?.id ?? null}

@@ -133,13 +133,32 @@ function baixar(nome: string, conteudo: string, tipo: string) {
 const CORES_MEDICO = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"] as const;
 
 export function Plantoes({
-  perfilId, institutionId, locais, ehAdmin, colegas, localAtivoId = null,
+  perfilId, institutionId, locais, ehAdmin, colegas, escalaveis, semCRM = [],
+  localAtivoId = null,
 }: {
   perfilId: string;
   institutionId: string;
   locais: LocalDisponivel[];
   ehAdmin: boolean;
+  /**
+   * Todo mundo da organização, para RESOLVER NOME.
+   *
+   * Inclui inativo e quem não tem CRM de propósito: um plantão lançado no mês
+   * passado por alguém que hoje saiu do grupo precisa continuar mostrando o
+   * nome de quem estava escalado. Sem isso a escala de março vira uma fileira
+   * de "Profissional".
+   */
   colegas: Colega[];
+  /**
+   * Quem pode ENTRAR na escala: médico ativo com CRM.
+   *
+   * Quem anestesia responde pelo ato com o registro dele, e a escala é o
+   * documento de quem responde. Recepção e financeiro usam o sistema e não
+   * entram aqui.
+   */
+  escalaveis: Colega[];
+  /** Ativos sem CRM no cadastro. Não some da tela: vira aviso. */
+  semCRM?: string[];
   localAtivoId?: string | null;
 }) {
   const hoje = new Date();
@@ -717,6 +736,20 @@ export function Plantoes({
       {aba === "escala" && (
         <>
           <p className="plantaoEscopoNota">{notaDaEscala}</p>
+
+          {/* Quem não aparece para escalar, e por quê.
+              Sem esta linha, o coordenador abre a fila de nomes, não encontra
+              um colega que trabalha ali todo dia e conclui que a tela está
+              quebrada — em vez de ir preencher o CRM que falta. Só para quem
+              monta a escala: é ele quem tem onde consertar. */}
+          {ehAdmin && escopo === "grupo" && semCRM.length > 0 && (
+            <p className="plantaoNota">
+              {plural(semCRM.length, "profissional está", "profissionais estão")} fora
+              da escala por falta de CRM no cadastro: <strong>{semCRM.join(", ")}</strong>.
+              A escala é o documento de quem responde pela anestesia, e o registro
+              faz parte dele. O CRM se preenche em <strong>Admin → Equipe</strong>.
+            </p>
+          )}
           <section className="clinicalPanel">
             {/* A barra fica AQUI, colada no calendário, e não no cabeçalho da
                 página. Mudar o mês e lançar um plantão são ações sobre o
@@ -840,7 +873,7 @@ export function Plantoes({
               modelos={modelos} perfilId={perfilId} ehAdmin={ehAdmin}
               pessoal={escopo === "minha"}
               institutionId={institutionId} conveniosConhecidos={conveniosConhecidos}
-              colegas={colegas} apelidos={apelidos} corPorMedico={corPorMedico}
+              colegas={escalaveis} apelidos={apelidos} corPorMedico={corPorMedico}
               nomePorId={nomePorId} localPorId={localPorId}
               onLancar={lancar} onLancarAvulso={(d, p) => setLancando({ dia: d, para: p })}
               onRemover={remover} onPassar={(p) => setPedindoTroca(p)}
@@ -973,7 +1006,7 @@ export function Plantoes({
       {lancando && (
         <LancarPlantao
           dia={lancando.dia} para={lancando.para} locais={locais} modelos={modelos}
-          colegas={colegas} apelidos={apelidos} corPorMedico={corPorMedico}
+          colegas={escalaveis} apelidos={apelidos} corPorMedico={corPorMedico}
           perfilId={perfilId} ehAdmin={ehAdmin}
           onFechar={() => setLancando(null)} onSalvar={lancarAvulso}
         />
@@ -981,7 +1014,7 @@ export function Plantoes({
 
       {pedindoTroca && (
         <PedirTroca
-          plantao={pedindoTroca} colegas={colegas.filter((c) => c.id !== perfilId)}
+          plantao={pedindoTroca} colegas={escalaveis.filter((c) => c.id !== perfilId)}
           localPorId={localPorId}
           onFechar={() => setPedindoTroca(null)}
           onEnviar={(destino, msg) => void pedirTroca(pedindoTroca, destino, msg)}
@@ -1350,9 +1383,10 @@ function LancarPlantao({
                 quebrada. */}
             {ehAdmin && colegas.length <= 1 && (
               <p className="plantaoNota">
-                Você é a única pessoa na organização, então só dá para escalar
-                a si mesmo. Quem você convidar em <strong>Admin → Convidar</strong> passa
-                a aparecer aqui automaticamente.
+                Só dá para escalar a si mesmo: não há outro médico com CRM
+                cadastrado. Quem você convidar em <strong>Admin → Convidar</strong> passa
+                a aparecer aqui assim que o CRM dele estiver preenchido —
+                recepção e financeiro não entram na escala.
               </p>
             )}
 
