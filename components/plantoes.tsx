@@ -575,10 +575,18 @@ export function Plantoes({
                     )}
                   </span>
                   <span className="plantaoCelula">
+                    {/* O botão vai dentro da mesma estrutura dos campos, com um
+                        rótulo vazio no lugar do texto. Sem isso ele fica a uma
+                        altura de rótulo acima dos campos vizinhos — e acertar
+                        isso com um padding escolhido a olho volta a desalinhar
+                        assim que a fonte ou o corpo do rótulo mudar. */}
                     {meu && (
-                      <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
-                        {p.aberto_para_troca ? "Trocar de novo" : "Solicitar troca"}
-                      </button>
+                      <span className="inlineMoney">
+                        <span aria-hidden="true">&nbsp;</span>
+                        <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
+                          {p.aberto_para_troca ? "Trocar de novo" : "Solicitar troca"}
+                        </button>
+                      </span>
                     )}
                   </span>
                 </div>
@@ -743,7 +751,8 @@ function ModelosPainel({
               nada e não tem como adivinhar que o cadastro fica em outra tela. */}
           {locais.length === 0 && (
             <small className="campoDica">
-              Nenhum local cadastrado ainda. Eles são criados em Admin → Locais de atendimento.
+              Nenhum local cadastrado ainda. O cadastro fica em{" "}
+              <strong>Admin → Organização → Locais de atendimento</strong>.
             </small>
           )}</label>
         <label className="clinicalField"><span>Início</span>
@@ -904,7 +913,16 @@ function LancarPlantao({
               <select value={form.local_id} onChange={(e) => setForm({ ...form, local_id: e.target.value })}>
                 <option value="">Sem local</option>
                 {locais.map((l) => <option key={l.id} value={l.id}>{nomeDoLocal(l)}</option>)}
-              </select></label>
+              </select>
+              {/* Lista vazia é um beco: a pessoa abre o campo, encontra só
+                  "Sem local" e não tem como adivinhar que o cadastro é noutra
+                  tela. Foi a primeira pergunta de quem usou. */}
+              {locais.length === 0 && (
+                <small className="campoDica">
+                  Nenhum local cadastrado. O cadastro fica em{" "}
+                  <strong>Admin → Organização → Locais de atendimento</strong>.
+                </small>
+              )}</label>
             <label className="clinicalField"><span>Início</span>
               <input type="time" value={form.hora_inicio}
                 onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} /></label>

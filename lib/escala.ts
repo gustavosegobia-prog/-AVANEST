@@ -217,22 +217,13 @@ export function corpoDaFolha(opts: {
     ? `Escala da equipe — ${nomeMes} de ${ano}`
     : `Meus plantões — ${nomeMes} de ${ano}`;
 
-  // Na folha do grupo, o calendário É a folha. A lista turno a turno de um
-  // serviço com seis anestesistas passa de noventa linhas e atravessa quatro
-  // páginas que ninguém prega na parede. No lugar dela vai o que se pergunta
-  // de uma escala afixada: quantos plantões couberam a cada um.
+  // Na folha do grupo, o calendário É a folha, e mais nada. A lista turno a
+  // turno de um serviço com seis anestesistas passa de noventa linhas e
+  // atravessa quatro páginas que ninguém prega na parede; e a tabela de
+  // quantos plantões couberam a cada um vira ranking afixado no corredor,
+  // que não é assunto de escala. Quem precisa desse número tem a tela.
   const depois = doGrupo
-    ? `<table class="lista resumo"><thead><tr><th>Profissional</th><th>Plantões</th><th>Horas</th></tr></thead><tbody>${
-        Object.entries(plantoes.reduce<Record<string, { n: number; h: number }>>((acc, p) => {
-          const quem = nomeCurto(p.profissional);
-          acc[quem] ??= { n: 0, h: 0 };
-          acc[quem].n += 1; acc[quem].h += Number(p.horas);
-          return acc;
-        }, {}))
-          .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
-          .map(([quem, t]) => `<tr><td>${escaparHTML(quem)}</td><td>${t.n}</td>`
-            + `<td>${t.h.toLocaleString("pt-BR")}h</td></tr>`).join("")
-      }</tbody></table>`
+    ? ""
     : `<table class="lista"><colgroup><col style="width:8%"><col style="width:14%"><col style="width:8%">`
       + `<col><col style="width:15%"><col style="width:13%"></colgroup>`
       + `<thead><tr><th>Dia</th><th>Horário</th><th>Horas</th><th>Local</th><th>Valor</th><th>Situação</th></tr></thead><tbody>${

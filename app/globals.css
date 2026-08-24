@@ -2186,8 +2186,11 @@ button:disabled{cursor:not-allowed}
 .plantaoLinha.escalaLinha{display:grid;align-items:center;
   grid-template-columns:110px minmax(180px,1fr) 132px 148px 160px;gap:16px}
 .plantaoCelula{min-width:0;display:flex;flex-direction:column;justify-content:center}
-.plantaoCelula>button{width:100%}
-.plantaoCelula .inlineMoney select{width:100%}
+.plantaoCelula .inlineMoney{width:100%}
+.plantaoCelula .inlineMoney select,.plantaoCelula .inlineMoney button{width:100%}
+/* O botão da troca tem a mesma altura dos campos ao lado dele. Sem isto ele é
+   mais baixo, e a linha ganha um degrau bem no canto que o olho mais visita. */
+.plantaoCelula .inlineMoney button{height:43px}
 @media(max-width:1100px){
   .plantaoLinha.escalaLinha{grid-template-columns:96px minmax(140px,1fr) 118px 132px 140px;gap:11px}
 }
