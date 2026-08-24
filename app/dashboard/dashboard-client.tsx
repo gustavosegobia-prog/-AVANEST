@@ -96,7 +96,7 @@ type Avaliacao = { id: string; patient_id: string; created_by?: string | null; s
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
 type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
-type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; created_at:string; updated_at:string };
+type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
@@ -1352,7 +1352,7 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
 
 function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;onRefresh:()=>void}) {
   const [convites,setConvites]=useState<Convite[]>([]);
-  const [meio,setMeio]=useState<"email"|"link">("email");
+  const [meio,setMeio]=useState<"email"|"link"|"sem-acesso">("email");
   const [versao,setVersao]=useState(0);
   const [busy,setBusy]=useState("");
   const [aviso,setAviso]=useState("");
@@ -1379,6 +1379,28 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
     const form=new FormData(formulario);
     const email=String(form.get("email")??"").trim().toLowerCase();
     const role=String(form.get("role")??"");
+
+    // O anestesiologista que não usa o sistema. Sem e-mail, sem convite, sem
+    // senha: nasce só para ser escalado e faturado.
+    if(meio==="sem-acesso"){
+      const nome=String(form.get("nome")??"").trim();
+      const crm=String(form.get("crm")??"").trim();
+      if(!nome){setAviso("Informe o nome do profissional.");setBusy("");return}
+      if(!crm){setAviso("Informe o CRM — sem ele o profissional não entra na escala.");setBusy("");return}
+      const resposta=await fetch("/api/admin/users",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({nome,role:"medico",sem_acesso:true,crm,
+          rqe:String(form.get("rqe")??"").trim()}),
+      });
+      const resultado=await resposta.json().catch(()=>({}));
+      setBusy("");
+      if(!resposta.ok){setAviso(resultado.error??"Não foi possível cadastrar.");return}
+      formulario.reset();
+      setAviso(`${nome} cadastrado. Já pode ser escalado — e não recebe acesso ao sistema.`);
+      onRefresh();
+      return;
+    }
+
     if(!email){setAviso("Informe o e-mail de quem será convidado.");setBusy("");return}
 
     if(meio==="email"){
@@ -1460,30 +1482,47 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
         onClick={()=>{setMeio("email");setAviso("")}}>Enviar por e-mail</button>
       <button type="button" role="tab" aria-selected={meio==="link"} className={meio==="link"?"active":""}
         onClick={()=>{setMeio("link");setAviso("")}}>Gerar link</button>
+      {/* O terceiro caminho não é um jeito diferente de convidar: é um cadastro
+          que não convida ninguém. Fica junto porque é aqui que o administrador
+          vem quando precisa pôr mais alguém no grupo. */}
+      <button type="button" role="tab" aria-selected={meio==="sem-acesso"} className={meio==="sem-acesso"?"active":""}
+        onClick={()=>{setMeio("sem-acesso");setAviso("")}}>Sem e-mail</button>
     </div>
     <form className="convenioForm" onSubmit={convidar}>
-      {meio==="email"&&<label className="clinicalField span2"><span>Nome completo *</span>
+      {meio!=="link"&&<label className="clinicalField span2"><span>Nome completo *</span>
         <input name="nome" required autoComplete="off" placeholder="Ex.: Dra. Helena Martins"/></label>}
-      <label className="clinicalField span2"><span>E-mail do convidado *</span>
-        <input name="email" type="email" required autoComplete="off" placeholder="pessoa@exemplo.com"/></label>
-      <label className="clinicalField"><span>Função</span>
+      {meio!=="sem-acesso"&&<label className="clinicalField span2"><span>E-mail do convidado *</span>
+        <input name="email" type="email" required autoComplete="off" placeholder="pessoa@exemplo.com"/></label>}
+      {/* O CRM é obrigatório aqui, e só aqui. Quem entra pelo convite preenche
+          o próprio cadastro depois; quem não entra no sistema nunca vai
+          preencher nada — e sem CRM ele não aparece na escala, que é a única
+          razão deste cadastro existir. */}
+      {meio==="sem-acesso"&&<>
+        <label className="clinicalField"><span>CRM *</span>
+          <input name="crm" required autoComplete="off" placeholder="Ex.: 60593/PR"/></label>
+        <label className="clinicalField"><span>RQE (opcional)</span>
+          <input name="rqe" autoComplete="off" placeholder="Registro da especialidade"/></label>
+      </>}
+      {meio!=="sem-acesso"&&<label className="clinicalField"><span>Função</span>
         <select name="role" defaultValue="medico">
           <option value="medico">Anestesiologista</option>
           <option value="recepcao">Recepção</option>
           <option value="financeiro">Financeiro</option>
           <option value="admin">Administrador</option>
-        </select></label>
+        </select></label>}
       {meio==="link"&&<label className="clinicalField"><span>Validade</span>
         <select name="dias" defaultValue="7">
           <option value="3">3 dias</option><option value="7">7 dias</option><option value="30">30 dias</option>
         </select></label>}
       <button className="primaryClinical compact" type="submit" disabled={busy==="novo"}>
-        {busy==="novo"?"Enviando...":meio==="email"?"Enviar convite":"Gerar link"}</button>
+        {busy==="novo"?"Salvando...":meio==="email"?"Enviar convite":meio==="link"?"Gerar link":"Cadastrar sem acesso"}</button>
     </form>
-    {aviso&&<p className={aviso.startsWith("Convite enviado")?"financeSuccess":"clinicalError"} role="alert">{aviso}</p>}
+    {aviso&&<p className={/^(Convite enviado|.+cadastrado\.)/.test(aviso)?"financeSuccess":"clinicalError"} role="alert">{aviso}</p>}
     <p className="evalHint">{meio==="email"
       ? "O AVANEST envia um e-mail com um link para a pessoa criar a própria senha. O acesso já entra com a função escolhida."
-      : "Copie o link gerado e envie por WhatsApp ou onde preferir. Ele só funciona para o e-mail informado, expira na data escolhida e pode ser cancelado a qualquer momento."}</p>
+      : meio==="link"
+      ? "Copie o link gerado e envie por WhatsApp ou onde preferir. Ele só funciona para o e-mail informado, expira na data escolhida e pode ser cancelado a qualquer momento."
+      : "Para o anestesiologista que não usa o sistema. Ele entra na escala, no faturamento e na ficha impressa, e não recebe login nem senha — não há e-mail, não há convite e não há como ele entrar. Se um dia precisar de acesso, você adiciona o e-mail no cadastro dele e o convite sai na hora, sem perder plantão nenhum."}</p>
     {pendentes.length===0
       ? <div className="emptyClinical compactEmpty">Nenhum convite pendente.</div>
       : pendentes.map(item=><div className="conviteRow" key={item.id}>
@@ -1642,7 +1681,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
               <span className="avatar" aria-hidden="true">{initials(source.nome)}</span>
               <span className="adminUserIdent">
                 <strong>{source.nome}</strong>
-                <small>{source.email||"sem e-mail"}{source.crm?` · ${source.crm}`:""}</small>
+                <small>{source.sem_acesso?"não usa o sistema":source.email||"sem e-mail"}{source.crm?` · ${source.crm}`:""}</small>
               </span>
               {/* Os papéis ficam numa faixa de largura fixa, e não soltos na
                   linha: quem tem duas áreas empurrava o status e o botão das
@@ -1655,6 +1694,11 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
                 {/* CRM não é burocracia aqui: a contagem de profissionais do
                     plano só conta médico com CRM, e a ficha sai sem assinatura. */}
                 {source.role==="medico"&&!source.crm?.trim()&&<span className="statusChip waiting" title="Médico sem CRM não entra na contagem do plano e a ficha impressa sai sem o registro.">Sem CRM</span>}
+                {/* Quem foi cadastrado para ser escalado e não entra no
+                    sistema. Sem esta marca, o administrador vê um usuário que
+                    "nunca fez login" e tenta reenviar convite para um e-mail
+                    que não existe. */}
+                {source.sem_acesso&&<span className="statusChip paused" title="Entra na escala e no faturamento. Não tem login: não há e-mail, senha nem convite.">Sem acesso</span>}
               </span>
               <span className={`statusChip ${source.status==="ativo"?"present":"waiting"}`}>{source.status==="ativo"?"Ativo":"Inativo"}</span>
               <button
