@@ -46,9 +46,16 @@ export function rotuloDoTipo(tipo: string | null | undefined): string {
   return TIPOS_DE_LOCAL.find(([valor]) => valor === tipo)?.[1] ?? "Outro";
 }
 
-/** O nome que aparece na tela: o fantasia quando existe, senão a razão social. */
+/**
+ * O nome que aparece na tela: o fantasia quando existe, senão a razão social.
+ *
+ * O trim vem ANTES da escolha, e não depois. Um nome fantasia com só espaços
+ * dentro é texto verdadeiro para o `||`, e a versão que aparava no fim
+ * devolvia string vazia: o local sumia do calendário, do seletor e do
+ * cabeçalho do documento que o paciente leva para casa.
+ */
 export function nomeDoLocal(local: { nome: string; nome_fantasia?: string | null }): string {
-  return (local.nome_fantasia || local.nome || "").trim();
+  return (local.nome_fantasia ?? "").trim() || (local.nome ?? "").trim();
 }
 
 /**
@@ -64,4 +71,45 @@ export function localAindaVale(
 ): LocalDisponivel | null {
   if (!id) return null;
   return disponiveis.find((local) => local.id === id && local.ativo) ?? null;
+}
+
+/**
+ * Qual local vale para esta entrada no painel — sem escrever nada.
+ *
+ * Esta função existe por causa de um erro 500 em produção. O painel resolvia o
+ * local escrevendo o cookie durante a renderização, e Server Component não
+ * pode escrever cookie: o Next recusa com "Cookies can only be modified in a
+ * Server Action or Route Handler" e a página inteira cai. Quem tinha um local
+ * só batia nisso toda vez que entrava.
+ *
+ * A saída não foi mover a escrita para outro lugar: foi perceber que ela não
+ * precisava existir. O cookie é conveniência para quem escolhe entre vários;
+ * quem tem um só não escolheu nada, e a lista de meus_locais() já é consultada
+ * a cada entrada de qualquer forma. Sem escrita, não há o que falhar.
+ *
+ * Devolver a decisão em vez de executá-la é o que permite conferir aqui, no
+ * teste, os casos que só apareceriam em produção: cookie de local arquivado,
+ * profissional que saiu do grupo, organização que ainda não cadastrou nada.
+ *
+ * `precisaEscolher` significa mandar para /locais. Ele nunca é verdadeiro
+ * quando existe um único local disponível — era esse o pingue-pongue entre
+ * /dashboard e /locais.
+ */
+export function decidirLocalDaSessao(
+  preferido: string | undefined,
+  disponiveis: LocalDisponivel[],
+): { local: LocalDisponivel | null; precisaEscolher: boolean } {
+  const ativos = disponiveis.filter((item) => item.ativo);
+
+  const doPreferido = localAindaVale(preferido, ativos);
+  if (doPreferido) return { local: doPreferido, precisaEscolher: false };
+
+  // Organização que ainda não cadastrou local nenhum entra como sempre entrou.
+  // A funcionalidade se liga sozinha quando o primeiro local nascer.
+  if (ativos.length === 0) return { local: null, precisaEscolher: false };
+
+  // Escolher entre uma opção não é escolher.
+  if (ativos.length === 1) return { local: ativos[0], precisaEscolher: false };
+
+  return { local: null, precisaEscolher: true };
 }

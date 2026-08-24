@@ -42,9 +42,12 @@ export default async function LocaisPage({
   const disponiveis = locais.filter((local) => local.ativo);
   // Um local só, e a pessoa não veio trocar de propósito: escolher entre uma
   // opção não é escolher. Entra direto.
-  if (disponiveis.length === 1 && trocar !== "1") {
-    redirect(`/dashboard?local=${encodeURIComponent(disponiveis[0].id)}`);
-  }
+  //
+  // Vai sem ?local= na URL. Ele existia para o painel gravar o cookie ao
+  // chegar, e essa gravação é justamente o que não pode acontecer num Server
+  // Component — era o erro 500. O painel resolve o local sozinho quando só há
+  // um; não há nada a transportar.
+  if (disponiveis.length === 1 && trocar !== "1") redirect("/dashboard");
 
   const cookieStore = await cookies();
   const ativo = cookieStore.get(COOKIE_LOCAL)?.value ?? null;

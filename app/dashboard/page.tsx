@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
-import { COOKIE_LOCAL, COOKIE_LOCAL_MAX_AGE, localAindaVale, type LocalDisponivel } from "@/lib/local-ativo";
+import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/local-ativo";
 
 export default async function DashboardPage({
   searchParams,
@@ -47,20 +47,21 @@ export default async function DashboardPage({
   const locais = (locaisData ?? []) as LocalDisponivel[];
   const disponiveis = locais.filter((item) => item.ativo);
 
+  // NÃO ESCREVA COOKIE AQUI. Este é um Server Component, e o Next recusa a
+  // escrita com "Cookies can only be modified in a Server Action or Route
+  // Handler" — não é aviso, é exceção, e derruba o painel inteiro com erro
+  // 500. Foi exatamente o que aconteceu em produção. Quem grava o cookie do
+  // local é POST /api/local, que é Route Handler e ainda confere no banco, via
+  // selecionar_local, se a pessoa pode usar aquele local.
+  //
+  // Aqui só se decide, e a decisão é pura para poder ser testada.
   const cookieStore = await cookies();
-  const idDoCookie = cookieStore.get(COOKIE_LOCAL)?.value;
-  // A URL manda quando vem de /locais com um local só — o cookie ainda não foi
-  // gravado nesse caminho, e mandar de volta para a escolha faria um pingue-
-  // pongue entre as duas telas.
-  let localAtivo = localAindaVale(localDaUrl ?? idDoCookie, disponiveis);
-  if (!localAtivo && disponiveis.length > 0) redirect("/locais");
-  if (localAtivo && localDaUrl) {
-    // Grava o que veio pela URL, para a próxima entrada não passar por /locais.
-    cookieStore.set(COOKIE_LOCAL, localAtivo.id, {
-      httpOnly: true, sameSite: "lax", path: "/",
-      secure: process.env.NODE_ENV === "production", maxAge: COOKIE_LOCAL_MAX_AGE,
-    });
-  }
+  const { local: localEscolhido, precisaEscolher } = decidirLocalDaSessao(
+    localDaUrl ?? cookieStore.get(COOKIE_LOCAL)?.value,
+    disponiveis,
+  );
+  if (precisaEscolher) redirect("/locais");
+  let localAtivo = localEscolhido;
 
   const { data: assinaturaData } = await supabase.rpc("minha_assinatura");
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
