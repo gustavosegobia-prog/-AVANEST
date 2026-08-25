@@ -1076,7 +1076,6 @@ button:disabled{cursor:not-allowed}
   .userMenuTrigger{padding:0}
 }
 @media(max-width:760px){
-  .clinicalTopbar{grid-template-columns:auto minmax(0,1fr) auto;gap:var(--esp-2)}
   .clinicalBrand small{display:none}
   /* Sem teto de largura: a faixa usa o espaço que sobrar entre a marca e o
      menu. Com teto de 48vw ela ficava com menos de dois botões à mostra. */
@@ -2205,6 +2204,43 @@ button:disabled{cursor:not-allowed}
 .localAtivoBadge:hover{background:var(--cor-superficie-suave)}
 .localAtivoBadge strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(34vw,300px)}
 .localSeta{color:var(--cor-tinta-fraca);font-size:11px}
+
+/* --- A barra do topo em duas linhas -------------------------------------
+   A barra tem QUATRO filhos: marca, local, abas e o canto do usuário (sino e
+   avatar). Em três colunas o quarto caía numa segunda linha que o grid não
+   declarava e, como a barra tinha altura fixa, ele vazava POR CIMA do conteúdo
+   da página — o sino e o avatar apareciam soltos sobre o texto, e do local
+   sobrava só o pin, atrás das abas.
+
+   O ponto de quebra é 1400px, e ele foi MEDIDO, não escolhido. A faixa de
+   abas não encolhe — cinco botões de texto ocupam o que ocupam —, então quem
+   paga a conta da largura que falta é sempre o selo do local. Varrendo de 900
+   a 1400px, ele saía com 19px em 901, 73px em 1000, 99px em 1200 e 199px em
+   1300, todos com o nome cortado; só em 1400 o nome coube inteiro. Um ponto de
+   quebra em 900 ou em 1100 deixaria a maior parte dos notebooks exatamente no
+   estado de que a gente estava fugindo.
+   Este bloco vem depois de `.localAtivoBadge` de propósito: aquela regra tem
+   `display:flex` e ressuscitava o selo que o `display:none` de ≤900 escondia —
+   sem lhe dar largura nenhuma. Em CSS, entre iguais, quem vem depois manda.
+
+   O local não some para caber. É ele que decide o cabeçalho de todo documento
+   impresso no dia, e um pin sozinho não diz em que hospital você está: ganha a
+   linha de baixo inteira, onde o nome cabe por extenso.
+
+   E a altura passa a ser automática. Barra de altura fixa com conteúdo em duas
+   linhas é precisamente o defeito que estava aqui. */
+@media(max-width:1400px){
+  .clinicalTopbar{height:auto;min-height:56px;padding-top:8px;padding-bottom:8px;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-areas:"marca abas canto" "local local local";
+    gap:6px var(--esp-2)}
+  .clinicalBrand{grid-area:marca}
+  .clinicalTopbar>.roleNav{grid-area:abas}
+  .clinicalTopbar>.topbarFim{grid-area:canto}
+  .clinicalTopbar>.orgBadge{grid-area:local;display:flex;align-items:center;gap:6px;
+    min-width:0;margin:0;padding:0;border-left:0;justify-self:start;max-width:100%}
+  .clinicalTopbar>.orgBadge strong{max-width:none;font-size:12.5px}
+}
 
 @media(max-width:760px){
   .localGrade{grid-template-columns:1fr}
