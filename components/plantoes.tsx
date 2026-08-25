@@ -6,7 +6,7 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
-  corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, iniciais, money,
+  corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, money,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
   ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
@@ -1009,7 +1009,7 @@ export function Plantoes({
                                       <span key={t.chave} className="plantaoBloco">
                                         {/* O nome do hospital só entra quando a
                                             faixa junta equipes de hospitais
-                                            diferentes: sem ele, as iniciais das
+                                            diferentes: sem ele, os nomes das
                                             duas viram uma fileira só e a tela
                                             mostra uma escala que não existe. */}
                                         {f.separarPorLocal && (
@@ -1017,12 +1017,30 @@ export function Plantoes({
                                             {t.localId ? localPorId.get(t.localId) ?? "—" : "Sem local"}
                                           </u>
                                         )}
-                                        {t.gente.slice(0, 4).map((g) => (
+                                        {/* O primeiro nome, e não as iniciais.
+                                            "EO" e "MG" só se lê depois de
+                                            decorar quem é quem — e quem abre a
+                                            escala é justamente quem ainda não
+                                            decorou. "Lucas" e "Matheus" se leem
+                                            de primeira.
+
+                                            O apelido sobe de degrau sozinho
+                                            quando dois se chamam Lucas: vira
+                                            "Lucas Q." e "Lucas M.". É a mesma
+                                            regra dos botões de lançar plantão,
+                                            então o nome no calendário é
+                                            exatamente o nome do chip que se
+                                            tocou para escalar. */}
+                                        {t.gente.slice(0, 3).map((g) => (
                                           <em key={g.id} className={`med-${corPorMedico.get(g.perfil_id) ?? "m8"}${g.perfil_id === perfilId ? " eu" : ""}`}>
-                                            {iniciais(nomePorId.get(g.perfil_id) ?? "")}
+                                            {apelidos.get(g.perfil_id) ?? nomeCurto(nomePorId.get(g.perfil_id) ?? "")}
                                           </em>
                                         ))}
-                                        {t.gente.length > 4 && <em className="plantaoMais">+{t.gente.length - 4}</em>}
+                                        {/* Três, e não quatro: nome ocupa cinco
+                                            vezes o que duas letras ocupavam, e
+                                            o quarto empurrava a faixa para uma
+                                            terceira linha na célula. */}
+                                        {t.gente.length > 3 && <em className="plantaoMais">+{t.gente.length - 3}</em>}
                                       </span>
                                     ))}
                                   </span>

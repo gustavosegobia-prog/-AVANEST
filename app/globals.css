@@ -2327,15 +2327,20 @@ button:disabled{cursor:not-allowed}
 /* Cada bloco é um turno de um hospital. Sem essa caixa, as iniciais de dois
    hospitais na mesma faixa se misturariam numa fileira só. */
 .plantaoBloco{display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-width:0}
-/* A inicial é o que identifica; a cor só acelera o reconhecimento. Por isso a
-   cor nunca é o único canal: duas pessoas com a mesma cor continuam distintas
-   pelas letras, e o nome inteiro está no title da etiqueta.
+/* O nome é o que identifica; a cor só acelera o reconhecimento. Por isso a cor
+   nunca é o único canal: duas pessoas com a mesma cor continuam distintas pelo
+   nome, e o nome inteiro está no title da etiqueta.
 
    A cor vem de uma variável, e não de um background direto em .med-*. Um
    `.med-m1{background:...}` tem especificidade menor que este seletor e perdia
-   dele em silêncio: as oito cores ficavam todas cinza, e nada no CSS acusava. */
-.plantaoQuem em{font-style:normal;font-size:9.5px;font-weight:850;line-height:1;
-  padding:2.5px 4px;border-radius:3px;letter-spacing:.2px;
+   dele em silêncio: as oito cores ficavam todas cinza, e nada no CSS acusava.
+
+   O nome não quebra no meio. "Matheus" partido em "Mat / heus" em duas linhas
+   é pior que a etiqueta transbordar, e o ellipsis mantém a célula do dia com a
+   altura que o mês inteiro tem. */
+.plantaoQuem em{font-style:normal;font-size:10px;font-weight:800;line-height:1.25;
+  padding:2px 5px;border-radius:3px;letter-spacing:.1px;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   background:var(--med-cor,var(--cor-tinta-fraca));color:var(--med-tinta,#fff)}
 /* O contorno marca o seu turno. Entre seis iniciais coloridas, achar a sua
    pela cor exigiria lembrar qual é a sua — o contorno dispensa a memória. */
