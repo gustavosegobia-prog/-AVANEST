@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "O que o AVANEST faz | Sistema para anestesiologistas",
   description:
     "Avaliação pré-anestésica, escala por hospital, produção do plantão e faturamento "
-    + "— o dia inteiro do anestesiologista num sistema só.",
+    + "— o dia inteiro do anestesiologista em um sistema só.",
 };
 
 /**
@@ -62,7 +62,7 @@ const BLOCOS: Bloco[] = [
     itens: [
       ["Uma escala por hospital, e a sua com todos juntos",
         "O grupo não tem uma escala: tem a da Santa Casa, a da Unimed, a do Instituto. A sua junta "
-        + "tudo num calendário só, porque ali a pergunta é outra: onde eu trabalho este mês."],
+        + "tudo em um calendário só, porque ali a pergunta é outra: onde eu trabalho este mês."],
       ["O dia dividido em manhã, tarde e noite",
         "O turno continua sendo lançado no horário que você quiser. Quem fica até às 13h aparece na "
         + "manhã; quem faz o dia todo, na manhã e na tarde. A faixa vazia fica à vista: é o buraco "
@@ -80,7 +80,7 @@ const BLOCOS: Bloco[] = [
         + "escala e no seu mês; não aparece para o grupo, nem para quem administra."],
       ["No seu celular e na parede do hospital",
         "A escala sai impressa em paisagem, sempre em uma folha só, para pregar na parede. E vai "
-        + "para o Calendário do iPhone e para o Google Agenda num arquivo único, e não um evento de "
+        + "para o Calendário do iPhone e para o Google Agenda em um arquivo único, e não um evento de "
         + "cada vez. Os feriados nacionais já vêm marcados no calendário."],
     ],
   },
@@ -88,7 +88,7 @@ const BLOCOS: Bloco[] = [
     titulo: "O dinheiro do plantão",
     itens: [
       ["A produção do dia, anotada com o jaleco ainda vestido",
-        "Nome, convênio e cirurgia de cada paciente numa linha só, com o cursor voltando para o "
+        "Nome, convênio e cirurgia de cada paciente em uma linha só, com o cursor voltando para o "
         + "campo do nome depois de salvar. Se anotar oito pacientes custar mais do que rabiscar num "
         + "papel, o dado não chega a existir."],
       ["A ficha de internação lida pela foto",
@@ -177,7 +177,7 @@ export default function RecursosPage() {
 
       <section className="recHero">
         <p className="avnEyebrow">O SISTEMA POR DENTRO</p>
-        <h1>O dia inteiro do anestesiologista, num sistema só.</h1>
+        <h1>O dia inteiro do anestesiologista, em um sistema só.</h1>
         <p className="avnLead">
           Da avaliação pré-anestésica ao valor que entra no fim do mês — passando pela
           escala do serviço, pelos documentos que o paciente leva para casa e pelo
