@@ -65,15 +65,101 @@ const DURACOES = [6, 12, 24] as const;
  * Aqui a folha é escrita do zero, com o CSS dela junto: o que sai na
  * impressora é exatamente o que está nesta função, e nada mais.
  */
+const MARGEM_MM = 8;
+/** A4 em pixels de CSS: 1px = 1/96 pol, 1 pol = 25,4 mm. */
+const MM = 96 / 25.4;
+const FOLHA = {
+  landscape: { largura: (297 - 2 * MARGEM_MM) * MM, altura: (210 - 2 * MARGEM_MM) * MM },
+  portrait: { largura: (210 - 2 * MARGEM_MM) * MM, altura: (297 - 2 * MARGEM_MM) * MM },
+};
+
+/**
+ * Encolhe a folha até ela caber numa página — e nem um ponto além disso.
+ *
+ * A escala do grupo é PREGADA NA PAREDE do centro cirúrgico. Uma folha que
+ * escorrega para a segunda página não é uma folha comprida: são dois papéis, e
+ * o segundo tem quatro dias do mês. Ninguém prega dois. Na prática o mês some
+ * pela metade, que é o oposto do que a folha existe para fazer.
+ *
+ * A conta é de uma passada só, e cabe provar que basta. Na largura W a folha
+ * mede H de altura e a página aceita A. Se H > A, o fator é k = A/H. Alargar o
+ * conteúdo para W/k nunca AUMENTA a altura — mais largura só faz caber mais
+ * coisa por linha —, então a nova altura H' ≤ H, e a altura final H'·k ≤ H·k =
+ * A. A largura final volta a ser (W/k)·k = W, exatamente a da página. Nenhuma
+ * medição às cegas, nenhum laço que pode não terminar.
+ *
+ * Encolher o desenho inteiro, e não a fonte: mudar o tamanho da letra reflui o
+ * texto e um nome que cabia passa a quebrar em duas linhas, o que aumenta a
+ * altura de volta. O zoom preserva as proporções que já foram conferidas.
+ *
+ * O piso de 55% é o ponto em que a letra fica pequena demais para ser lida a um
+ * passo da parede. Abaixo disso a folha não serve mais, e insistir seria
+ * entregar um papel ilegível em vez de um papel em duas páginas.
+ *
+ * DUAS camadas, e isso não é preciosismo — foi o defeito. A primeira versão
+ * encolhia um elemento só, e o PDF continuou saindo com duas páginas: o
+ * `transform` muda o DESENHO e não a caixa de layout, e é pela caixa que o
+ * navegador decide onde cortar a página. O de dentro encolhe; o de fora tem a
+ * altura exata da página e corta o que passar. Sem o de fora, o zoom é
+ * enfeite: a folha fica menorzinha e quebra na mesma linha de antes.
+ */
+function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number }): void {
+  const folha = doc.getElementById("folha");
+  const papel = doc.getElementById("papel");
+  if (!folha || !papel) return;
+
+  folha.style.width = `${caixa.largura}px`;
+  papel.style.width = `${caixa.largura}px`;
+  const alto = papel.scrollHeight;
+  if (alto <= caixa.altura) return;
+
+  // O 0,995 é folga contra arredondamento: a conta prova que cabe, e meio
+  // pixel de sobra transformaria "cabe exatamente" em segunda página em branco.
+  const aplicar = (k: number) => {
+    papel.style.transform = `scale(${k})`;
+    papel.style.width = `${caixa.largura / k}px`;
+    return papel.scrollHeight * k;
+  };
+
+  papel.style.transformOrigin = "top left";
+  let k = Math.max(0.55, (caixa.altura / alto) * 0.995);
+  const usado = aplicar(k);
+
+  // Segunda tentativa, só para não encolher mais do que precisa. Alargar o
+  // papel costuma derrubar a altura bem abaixo do necessário — um mês pesado
+  // saía a 63% quando 85% bastavam, e 20% de letra a menos numa folha lida a um
+  // passo da parede é diferença que se sente. A tentativa é conferida antes de
+  // valer: se a nova altura não couber, volta para a primeira, que é a que tem
+  // prova. Melhor uma folha um pouco pequena do que uma folha cortada.
+  if (usado < caixa.altura * 0.92) {
+    const maior = Math.min(1, k * (caixa.altura / usado) * 0.99);
+    if (aplicar(maior) <= caixa.altura) k = maior;
+    else aplicar(k);
+  }
+
+  folha.style.height = `${caixa.altura}px`;
+  // O corte só entra quando o conteúdo comprovadamente cabe. No mês que nem no
+  // piso de 55% couber — algo além de qualquer escala real —, a folha volta a
+  // quebrar em duas páginas em vez de esconder um dia do mês. Perder um dia
+  // caladamente numa escala de plantão é pior do que qualquer folha feia.
+  folha.style.overflow = papel.scrollHeight * k <= caixa.altura ? "hidden" : "visible";
+  if (folha.style.overflow === "visible") folha.style.height = "auto";
+}
+
 function imprimirFolha(titulo: string, corpo: string,
-                       orientacao: "landscape" | "portrait" = "landscape"): boolean {
+                       orientacao: "landscape" | "portrait" = "landscape",
+                       umaFolhaSo = false): boolean {
   const janela = window.open("", "_blank", "width=1100,height=800");
   if (!janela) return false;
   janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <title>${escaparHTML(titulo)}</title><style>
-@page{size:A4 ${orientacao};margin:9mm}
+@page{size:A4 ${orientacao};margin:${MARGEM_MM}mm}
 *{box-sizing:border-box}
 body{margin:0;font:12px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#111}
+/* O zoom vive em #papel; #folha é a moldura do tamanho da página que impede a
+   quebra. Transform na raiz do documento é tratado de forma diferente por cada
+   motor na hora de imprimir, e a caixa de layout não acompanha o desenho. */
+#papel{transform-origin:top left}
 h1{font-size:17px;margin:0 0 2px}
 .sub{color:#555;font-size:11.5px;margin:0 0 12px}
 /* O timbre da instituição. Centralizado, como o da ficha do paciente: é o
@@ -86,7 +172,12 @@ h1{font-size:17px;margin:0 0 2px}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
 th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#444;
    padding:5px 4px;border:1px solid #bbb;background:#f1f1f1}
-td{border:1px solid #bbb;vertical-align:top;height:88px;padding:4px 5px}
+/* Altura MÍNIMA da célula, e não fixa: um mês tranquilo continua enchendo a
+   folha em vez de virar uma tira de tabela no alto de uma página vazia, e um
+   mês cheio pode crescer — quem devolve o crescimento para dentro da página é
+   o zoom de caberNumaFolha. 76px porque com 6 semanas, que é o pior mês do
+   ano, 6x76 mais o cabeçalho ainda cabem sem zoom nenhum. */
+td{border:1px solid #bbb;vertical-align:top;height:76px;padding:4px 5px}
 td.vazio{background:#fafafa}
 td .d{font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px}
 td .t{display:block;margin-bottom:3px;line-height:1.25}
@@ -104,7 +195,7 @@ h2 small{font-weight:400;color:#555;font-size:11px;margin-left:7px}
 .num{text-align:right}
 .rodape{margin-top:10px;font-size:9.5px;color:#666;display:flex;justify-content:space-between}
 tr,td,th{break-inside:avoid;page-break-inside:avoid}
-</style></head><body>${corpo}</body></html>`);
+</style></head><body><div id="folha"><div id="papel">${corpo}</div></div></body></html>`);
   janela.document.close();
   janela.focus();
   // O print imediato pega a folha antes de o navegador medir a tabela, e sai
@@ -126,7 +217,13 @@ tr,td,th{break-inside:avoid;page-break-inside:avoid}
         }),
         new Promise<void>((ok) => setTimeout(ok, 4000)),
       ]);
-  void pronto.then(() => setTimeout(() => janela.print(), 300));
+  void pronto.then(() => setTimeout(() => {
+    // O ajuste vem DEPOIS do logo carregar. Medir antes dá uma altura sem a
+    // imagem, e o zoom sairia calculado para uma folha que não é a que
+    // imprime — com o logo dentro, ela voltaria a passar para a segunda página.
+    if (umaFolhaSo) caberNumaFolha(janela.document, FOLHA[orientacao]);
+    janela.print();
+  }, 300));
   return true;
 }
 
@@ -807,7 +904,10 @@ export function Plantoes({
         profissional: nomePorId.get(p.perfil_id) ?? "",
       })),
     });
-    if (!imprimirFolha(titulo, corpo)) {
+    // Uma folha só, sempre. A escala é pregada na parede: a segunda página com
+    // os quatro últimos dias do mês não é pregada por ninguém, e o mês some
+    // pela metade.
+    if (!imprimirFolha(titulo, corpo, "landscape", true)) {
       setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
     }
   }
