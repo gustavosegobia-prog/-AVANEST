@@ -116,6 +116,10 @@ export default async function DashboardPage({
   const seisMesesAtras = new Date(Date.UTC(
     Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 7, 1,
   )).toISOString().slice(0, 10);
+  // Dois meses cobrem a troca mais antiga que ainda faz sentido responder.
+  const doisMesesAtras = new Date(Date.UTC(
+    Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 3, 1,
+  )).toISOString().slice(0, 10);
 
   const [
     { data: pacientes },
@@ -189,11 +193,18 @@ export default async function DashboardPage({
     supabase.from("trocas_plantao")
       .select("id,plantao_id,solicitante_id,destinatario_id,status,respondido_por,respondido_em,created_at")
       .order("created_at", { ascending: false }).limit(40),
-    // Só os plantões citados por essas trocas — é deles que sai o "12/09,
-    // 07h–19h" do aviso. Sem o dia, o aviso obriga a abrir a escala para
-    // descobrir de que plantão se trata, que é o trabalho que ele deveria
-    // poupar.
-    supabase.from("plantoes").select("id,data,hora_inicio,hora_fim").limit(400),
+    // Os plantões citados pelas trocas — é deles que sai o "12/09, 07h–19h"
+    // do aviso. Sem o dia, o aviso obriga a abrir a escala para descobrir de
+    // que plantão se trata, que é o trabalho que ele deveria poupar.
+    //
+    // O recorte é por DATA, e não por um teto de linhas. Havia um limit(400)
+    // aqui, e ele quebra com o grupo grande: vinte anestesiologistas em três
+    // turnos passam de mil e oitocentos plantões num mês, e as 400 primeiras
+    // linhas seriam as de algum canto do ano — o aviso da troca de amanhã
+    // ficaria sem data. Ninguém troca o plantão do ano passado, e a janela de
+    // dois meses cobre a troca mais antiga que ainda faz sentido responder.
+    supabase.from("plantoes").select("id,data,hora_inicio,hora_fim")
+      .gte("data", doisMesesAtras),
     // O nome de quem oferece. A lista completa de perfis só é carregada em
     // algumas áreas; o aviso aparece em todas.
     supabase.from("perfis").select("id,nome").eq("status", "ativo"),
