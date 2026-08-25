@@ -553,11 +553,12 @@ export function DashboardClient({
         {/* Só os módulos de trabalho ficam na barra. Tema, assinatura, bloqueio
             e saída são utilidades: foram para o menu do usuário, senão nove
             controles disputam a mesma faixa e nenhum se destaca. */}
-        {/* No celular a barra mostra só o Médico — é onde se cadastra o
-            paciente e se faz a avaliação, e as outras áreas não cabem sem
-            rolar. A marca `temMedico` é o que autoriza esse recorte: quem não
-            é médico não tem nada escondido, senão ficaria sem aba nenhuma. */}
-        <nav className={allowedViews.includes("medico")?"roleNav temMedico":"roleNav"} aria-label="Áreas do sistema">
+        {/* No celular a barra vira uma faixa que rola com o polegar, com TODAS
+            as áreas. Antes ela mostrava só o Médico, e o resultado foi quem faz
+            plantão abrir o telefone e não achar a Escala — sem nada na tela
+            dizendo que ela existia noutro tamanho de janela. Área que some é
+            área que o usuário conclui que o sistema não tem. */}
+        <nav className="roleNav" aria-label="Áreas do sistema">
           {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
           {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
           {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}

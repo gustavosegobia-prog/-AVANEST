@@ -12,7 +12,14 @@ export default function HomePage() {
       <header className="avnNav">
         <AppLogo />
         <nav>
-          <a className="avnLogin" href="/recursos">O que o sistema faz</a>
+          {/* Dois rótulos para o mesmo link, e o CSS escolhe. No celular, "O que
+              o sistema faz" quebrava em TRÊS linhas e o botão subia por cima do
+              logo. Encurtar para todo mundo custaria a frase que explica o
+              destino — que é o trabalho do rótulo numa página de venda. */}
+          <a className="avnLogin avnNavExplica" href="/recursos">
+            <span className="avnSoLargo">O que o sistema faz</span>
+            <span className="avnSoEstreito">Recursos</span>
+          </a>
           <a className="avnLogin" href="/login">Login</a>
           <a className="avnPrimary" href="/planos">Ver planos</a>
         </nav>
