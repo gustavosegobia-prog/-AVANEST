@@ -157,7 +157,18 @@
    formulário cresceria ainda com 6 colunas, e o campo do nome passaria de
    637px para ~707px — pior do que estava. */
 :root{--largura-avaliacao:1680px}
-.clinicalMain{width:min(var(--largura-painel),calc(100% - 48px));margin:auto;padding:38px 0 80px}.clinicalWelcome{display:flex;justify-content:space-between;align-items:center;gap:20px}.clinicalWelcome h1,.receptionMain h1{font-size:29px;margin:0 0 5px}.clinicalWelcome p,.receptionMain>section>p{color:var(--cor-tinta-fraca);margin:0}.primaryClinical{border:0;border-radius:11px;background:var(--cor-marca);color:#fff;font-weight:800;padding:17px 27px;box-shadow:0 5px 13px rgba(23,107,181,.2);cursor:pointer}.primaryClinical.compact{padding:12px 18px;box-shadow:none}.primaryClinical:disabled{opacity:.6}.metricGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:17px;margin:27px 0 22px}.metricCard{background:#fff;border:1px solid #d3dee8;border-radius:17px;padding:24px 23px;min-height:106px}.metricCard strong{display:block;font-size:32px;margin-bottom:8px}.metricCard span{color:#5c7186}.metricCard .blue{color:var(--cor-marca)}.metricCard .red{color:var(--cor-perigo)}.metricCard .green{color:var(--cor-sucesso)}.metricCard .amber{color:var(--cor-atencao)}.clinicalPanel{background:#fff;border:1px solid #d3dee8;border-radius:17px;overflow:hidden;margin:22px 0}.panelTitle{padding:18px 25px;border-bottom:1px solid var(--cor-borda);display:flex;align-items:center;gap:15px}.panelTitle strong{font-size:18px}.panelTitle span{color:var(--cor-tinta-fraca);font-size:14px}.queueRow{min-height:72px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:80px minmax(190px,1fr) 180px 138px 96px;align-items:center;gap:16px;padding:10px 25px}.queueRow:last-child{border-bottom:0}.queueRow time{color:var(--cor-marca);font-weight:850;font-family:monospace;font-size:17px}
+.clinicalMain{width:min(var(--largura-painel),calc(100% - 48px));margin:auto;padding:38px 0 80px}.clinicalWelcome{display:flex;justify-content:space-between;align-items:center;gap:20px}.clinicalWelcome h1,.receptionMain h1{font-size:29px;margin:0 0 5px}.clinicalWelcome p,.receptionMain>section>p{color:var(--cor-tinta-fraca);margin:0}.primaryClinical{border:0;border-radius:11px;background:var(--cor-marca);color:#fff;font-weight:800;padding:17px 27px;box-shadow:0 5px 13px rgba(23,107,181,.2);cursor:pointer}/* O rótulo do botão compacto não quebra: ele mora numa coluna de largura fixa
+   da fila, e quebrando em duas linhas a segunda passava do botão e era cortada
+   pelo painel — "Ver documentos" virava "Ver docu". Medido: 96px de coluna
+   para um rótulo que pede 186px. */
+.primaryClinical.compact{padding:12px 18px;box-shadow:none;white-space:nowrap}.primaryClinical:disabled{opacity:.6}.metricGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:17px;margin:27px 0 22px}.metricCard{background:#fff;border:1px solid #d3dee8;border-radius:17px;padding:24px 23px;min-height:106px}.metricCard strong{display:block;font-size:32px;margin-bottom:8px}.metricCard span{color:#5c7186}.metricCard .blue{color:var(--cor-marca)}.metricCard .red{color:var(--cor-perigo)}.metricCard .green{color:var(--cor-sucesso)}.metricCard .amber{color:var(--cor-atencao)}.clinicalPanel{background:#fff;border:1px solid #d3dee8;border-radius:17px;overflow:hidden;margin:22px 0}.panelTitle{padding:18px 25px;border-bottom:1px solid var(--cor-borda);display:flex;align-items:center;gap:15px}.panelTitle strong{font-size:18px}.panelTitle span{color:var(--cor-tinta-fraca);font-size:14px}/* QUATRO colunas, porque a linha tem quatro filhos: hora, paciente, situação e
+   o botão. Havia cinco, e a sobrando não era inofensiva — empurrava o botão
+   para a coluna de 138px, estreita demais para "Continuar avaliação": o rótulo
+   quebrava em duas linhas, a segunda passava do botão e era aparada pelo
+   painel. "Ver documentos" aparecia como "Ver docu".
+   A linha da Recepção tem cinco filhos de verdade — dois botões — e mantém as
+   cinco colunas na regra dela, logo abaixo. */
+.queueRow{min-height:72px;border-bottom:1px solid var(--cor-borda);display:grid;grid-template-columns:80px minmax(190px,1fr) 180px minmax(186px,auto);align-items:center;gap:16px;padding:10px 25px}.queueRow:last-child{border-bottom:0}.queueRow time{color:var(--cor-marca);font-weight:850;font-family:monospace;font-size:17px}
 /* Colunas fixas, e não auto. Cada linha da fila é uma grade independente —
    são irmãs, não células da mesma tabela —, e com largura automática cada uma
    media as suas próprias etiquetas: "CONFIRMADO" e "AVALIAÇÃO AGENDADA"
@@ -391,7 +402,13 @@
 .officialConsent ol{padding-left:22px}.officialConsent li{margin:10px 0;text-align:justify}
 .officialConsent ul{padding-left:18px;margin:7px 0}.officialConsent ul li{margin:4px 0}
 .officialConsent .consentAuthorization{margin-top:18px;font-weight:700}
-@media(max-width:900px){.receptionMain .queueRow{grid-template-columns:65px 1fr auto}.receptionMain .queueRow .outlineClinical{grid-column:auto}.conditionalDetails,.medicationGuidance{grid-template-columns:1fr}.medicationGuidance .wide{grid-column:auto}}
+@media(max-width:900px){/* Existe um SEGUNDO @media(max-width:900px) mais abaixo neste arquivo, e é ele
+   que manda no layout desta linha: mesma media query, mesma especificidade,
+   e ganha por vir depois. O template daqui é inofensivo porque é sobrescrito;
+   o `grid-column:auto` que morava aqui NÃO era — com 0,3,0 ele derrotava o
+   `grid-column:2` de lá, que tem 0,2,0, e o "✓ Presente" voltava para a coluna
+   da hora, espremido em 62px e cortado. Medido entre 900 e 700px. */
+.receptionMain .queueRow{grid-template-columns:65px 1fr auto}.conditionalDetails,.medicationGuidance{grid-template-columns:1fr}.medicationGuidance .wide{grid-column:auto}}
 @media(max-width:680px){.evalSteps{top:72px;padding:9px 12px}.receptionMain .queueRow{grid-template-columns:55px 1fr}.receptionMain .queueRow .statusChip,.receptionMain .queueRow .outlineClinical{grid-column:1/-1}.conditionalDetails{grid-template-columns:1fr}}
 @media(max-width:1120px){.adminInvite form{grid-template-columns:1fr 1fr}.adminUserRow{grid-template-columns:1fr 1fr 1fr}.adminUserRow>button{height:44px}.auditRow{grid-template-columns:150px 1fr}}
 @media(max-width:700px){.financeHeading{align-items:flex-start;flex-direction:column}.financeHeadingActions{width:100%}.financeConfigList{grid-template-columns:1fr}.adminMetrics{grid-template-columns:1fr 1fr}.adminInvite form,.adminUserRow{grid-template-columns:1fr}.auditRow{grid-template-columns:1fr;gap:5px}.roleNav{min-width:0}.clinicalTopbar{gap:8px}.clinicalBrand strong{font-size:17px}.clinicalBrandMark{width:34px;height:34px}}
