@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
 import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/local-ativo";
+import { montarAvisos } from "@/lib/avisos";
+import { nomeCurto } from "@/lib/escala";
 
 export default async function DashboardPage({
   searchParams,
@@ -63,7 +65,7 @@ export default async function DashboardPage({
     { pergunta: perfil.role !== "recepcao" },
   );
   if (precisaEscolher) redirect("/locais");
-  let localAtivo = localEscolhido;
+  const localAtivo = localEscolhido;
 
   const { data: assinaturaData } = await supabase.rpc("minha_assinatura");
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
@@ -119,6 +121,12 @@ export default async function DashboardPage({
     { data: periodos },
     { data: convenioValores },
     { count: trocasEsperando },
+    { data: trocasDoAviso },
+    { data: plantoesDoAviso },
+    { data: equipeDoAviso },
+    { data: leituraDoChat },
+    { data: chamadosDoAviso },
+    { data: avisosVistos },
   ] = await Promise.all([
     needsFinanceData && perfil.role === "financeiro"
       ? supabase.rpc("financeiro_listar_pacientes")
@@ -151,7 +159,72 @@ export default async function DashboardPage({
       .eq("status", "pendente")
       .neq("solicitante_id", user.id)
       .or(`destinatario_id.is.null,destinatario_id.eq.${user.id}`),
+
+    // ---------------------------------------------------------------------
+    // A caixa de avisos
+    //
+    // Seis consultas, e nenhuma tabela de notificação: os avisos são
+    // DERIVADOS do que já é verdade. Uma troca pendente é um aviso porque
+    // está pendente, e para de ser no instante em que alguém responde — não
+    // há cópia para sincronizar nem linha para apagar.
+    //
+    // Elas entram no mesmo Promise.all das outras: em paralelo, custam o
+    // tempo da mais lenta, e o topo da tela precisa dos avisos em QUALQUER
+    // área — o plantão oferecido não pode depender de a pessoa abrir a
+    // Escala para aparecer.
+    //
+    // Todas com teto e recorte curtos. Esta consulta roda em toda abertura do
+    // painel, e uma caixa de avisos que pesa mais que a tela que ela enfeita
+    // é um recurso que a pessoa desliga.
+    // ---------------------------------------------------------------------
+    supabase.from("trocas_plantao")
+      .select("id,plantao_id,solicitante_id,destinatario_id,status,respondido_por,respondido_em,created_at")
+      .order("created_at", { ascending: false }).limit(40),
+    // Só os plantões citados por essas trocas — é deles que sai o "12/09,
+    // 07h–19h" do aviso. Sem o dia, o aviso obriga a abrir a escala para
+    // descobrir de que plantão se trata, que é o trabalho que ele deveria
+    // poupar.
+    supabase.from("plantoes").select("id,data,hora_inicio,hora_fim").limit(400),
+    // O nome de quem oferece. A lista completa de perfis só é carregada em
+    // algumas áreas; o aviso aparece em todas.
+    supabase.from("perfis").select("id,nome").eq("status", "ativo"),
+    supabase.from("sala_leitura").select("lido_em").eq("perfil_id", user.id).maybeSingle(),
+    supabase.from("chamados")
+      .select("id,assunto,status,ultima_em,visto_autor_em")
+      .eq("aberto_por", user.id).order("ultima_em", { ascending: false }).limit(20),
+    supabase.from("avisos_leitura").select("lido_em").eq("perfil_id", user.id).maybeSingle(),
   ]);
+
+  // As mensagens da sala depois do seu último olhar. Vem em consulta separada
+  // porque depende do resultado da anterior — e é `head`, só a contagem: o
+  // texto das mensagens é da tela do chat, não do aviso.
+  //
+  // O erro é engolido de propósito, aqui e nas seis acima: enquanto a migration
+  // de avisos_leitura não tiver rodado a tabela não existe, e derrubar o painel
+  // inteiro por causa de um sino seria trocar um recurso novo por todos os
+  // antigos. Sem os dados, a caixa fica vazia — que é exatamente o que ela
+  // mostra quando não há aviso nenhum.
+  const desde = leituraDoChat?.lido_em ?? null;
+  const { count: chatNovas } = await supabase.from("sala_mensagens")
+    .select("id", { count: "exact", head: true })
+    .neq("autor_id", user.id)
+    .gt("created_at", desde ?? "1970-01-01T00:00:00Z");
+  const { data: ultimaDoChat } = await supabase.from("sala_mensagens")
+    .select("created_at").neq("autor_id", user.id)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+  // O nome já sai encurtado daqui. "GUSTAVO SEGOBIA DA SILVA" é como o cadastro
+  // guarda; "Gustavo Segobia" é como o colega é chamado — e é o mesmo nome que
+  // o calendário da escala mostra, porque sai da mesma função.
+  const avisos = montarAvisos({
+    perfilId: user.id,
+    trocas: trocasDoAviso ?? [],
+    plantoes: new Map((plantoesDoAviso ?? []).map((p) => [p.id, p])),
+    nomes: new Map((equipeDoAviso ?? []).map((p) => [p.id, nomeCurto(p.nome)])),
+    chat: { novas: chatNovas ?? 0, ultima: ultimaDoChat?.created_at ?? null },
+    chamados: chamadosDoAviso ?? [],
+    vistoEm: avisosVistos?.lido_em ?? null,
+  });
 
   return (
     <DashboardClient
@@ -171,6 +244,7 @@ export default async function DashboardPage({
       pagamentos={pagamentos ?? []}
       perfis={perfis ?? []}
       trocasEsperando={trocasEsperando ?? 0}
+      avisos={avisos}
       auditoria={auditoria ?? []}
       periodos={periodos ?? []}
       convenioValores={convenioValores ?? []}

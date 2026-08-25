@@ -8,6 +8,8 @@ import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
 import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { ChatFlutuante } from "@/components/chat-flutuante";
+import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
+import type { Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
@@ -166,6 +168,7 @@ export function DashboardClient({
   perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
+  avisos = [],
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
@@ -183,6 +186,8 @@ export function DashboardClient({
    * uma consulta a mais em toda abertura do painel.
    */
   trocasEsperando?: number;
+  /** O que espera você, já derivado no servidor. Ver lib/avisos.ts. */
+  avisos?: Aviso[];
 }) {
   const router = useRouter();
   const allowedViews = useMemo<DashboardView[]>(() => {
@@ -225,6 +230,11 @@ export function DashboardClient({
   const [historyTo, setHistoryTo] = useState("");
   const [dark, setDark] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
+  // O pedido de abrir o chat, vindo da caixa de avisos. O token cresce a cada
+  // clique: sem ele, clicar duas vezes no mesmo aviso não reabriria a janela.
+  const [pedidoDeChat, setPedidoDeChat] = useState<
+    { aba: "equipe" | "suporte"; chamado?: string | null; token: number } | null
+  >(null);
   const [contaAberta, setContaAberta] = useState(false);
   const [senha, setSenha] = useState({atual:"",nova:"",confirma:""});
   const [senhaMsg, setSenhaMsg] = useState("");
@@ -562,6 +572,29 @@ export function DashboardClient({
             {trocasEsperando>0&&<b className="navAviso" title={`${trocasEsperando===1?"Um plantão oferecido espera":"Plantões oferecidos esperam"} a sua resposta`}>{trocasEsperando}</b>}
           </button>}
         </nav>
+        {/* O sino fica no TOPO, ao lado do seu nome, e não dentro da Escala.
+            O aviso que importa nasce numa área e é lido em outra: um plantão
+            oferecido às 6 da manhã por quem passou mal precisa alcançar quem
+            está na Recepção cadastrando paciente — e essa pessoa não tem
+            motivo nenhum para abrir a Escala.
+
+            O contador da aba Escala continua onde está. Ele responde outra
+            pergunta — "tem coisa esperando LÁ DENTRO" — e some junto quando a
+            resposta é dada. */}
+        <CaixaDeAvisos
+          avisos={avisos}
+          onIr={(aviso) => {
+            // O clique tem de RESOLVER, não só informar. Um aviso que abre uma
+            // lista onde a pessoa ainda precisa procurar do que ele falava é
+            // meio caminho, e o meio caminho é onde ela desiste.
+            if (aviso.area === "plantoes") { changeView("plantoes"); return; }
+            setPedidoDeChat({
+              aba: aviso.area === "suporte" ? "suporte" : "equipe",
+              chamado: aviso.area === "suporte" ? aviso.id : null,
+              token: Date.now(),
+            });
+          }}
+        />
         <div className="userMenuWrap">
           <button
             className="userMenuTrigger"
@@ -889,7 +922,7 @@ export function DashboardClient({
           anestesista lê sem trocar de tela. Fica por último no HTML porque é
           um apoio — quem navega pelo teclado passa por ele depois do trabalho,
           e não antes. */}
-      <ChatFlutuante perfil={perfil} />
+      <ChatFlutuante perfil={perfil} abrirEm={pedidoDeChat} />
     </main>
   );
 }

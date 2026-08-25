@@ -886,6 +886,62 @@ button:disabled{cursor:not-allowed}
    legível em cima dela. */
 .roleNav button.active .navAviso{background:#fff;color:var(--cor-marca-forte)}
 
+/* --- Caixa de avisos ------------------------------------------------------
+   O sino fica ao lado do seu nome, e não dentro de uma área: o aviso nasce
+   numa e é lido em outra. Quem está na Recepção cadastrando paciente precisa
+   ver o plantão oferecido sem ter motivo nenhum para abrir a Escala. */
+/* Sem margin-left:auto. A barra é `justify-content:space-between`, e o auto
+   somaria um empurrão em cima da distribuição que já existe — abrindo um vão
+   depois das abas e colando o sino no nome. */
+.avisosWrap{position:relative;display:flex;align-items:center;flex:0 0 auto}
+.avisosSino{position:relative;display:grid;place-items:center;
+  width:var(--alt-botao-compacto);height:var(--alt-botao-compacto);
+  border:1px solid transparent;border-radius:var(--raio-1);
+  background:none;cursor:pointer;font-size:17px;line-height:1}
+.avisosSino:hover{background:var(--cor-superficie-suave)}
+.avisosSino:focus-visible{outline:0;box-shadow:var(--foco)}
+/* O número conta só o que espera resposta SUA. Mesma cor do selo da aba
+   Escala: é a mesma urgência, e duas cores para a mesma coisa fazem a pessoa
+   procurar uma diferença que não existe. */
+.avisosContador{position:absolute;top:1px;right:0;display:grid;place-items:center;
+  min-width:18px;height:18px;padding:0 5px;border-radius:999px;
+  background:var(--cor-atencao);color:#22160a;font-size:11px;font-weight:850;line-height:1}
+/* Notícia não ganha número: ganha um ponto. "O Matheus assumiu seu plantão" não
+   é tarefa, e um número que soma notícia nunca zera — contador que não zera é
+   contador que a pessoa aprende a ignorar. */
+.avisosPonto{position:absolute;top:5px;right:5px;width:8px;height:8px;
+  border-radius:999px;background:var(--cor-marca)}
+.avisosLista{position:absolute;top:calc(100% + 6px);right:0;z-index:51;
+  width:min(360px,calc(100vw - 32px));max-height:min(460px,70vh);overflow-y:auto;
+  background:var(--cor-superficie);border:1px solid var(--cor-borda);
+  border-radius:var(--raio-2);box-shadow:var(--sombra-3);padding:var(--esp-1)}
+.avisosTopo{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:6px 9px 9px;border-bottom:1px solid var(--cor-borda);margin-bottom:5px}
+.avisosTopo span{font-size:12px;color:var(--cor-atencao);font-weight:700}
+.avisosVazio{margin:0;padding:11px 9px 14px;font-size:12.5px;color:var(--cor-tinta-fraca);line-height:1.45}
+.avisoItem{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:start;
+  gap:9px;width:100%;text-align:left;padding:9px;border:0;border-radius:var(--raio-1);
+  background:none;cursor:pointer;color:inherit;font:inherit}
+.avisoItem:hover{background:var(--cor-superficie-suave)}
+.avisoItem:focus-visible{outline:0;box-shadow:var(--foco)}
+.avisoIcone{font-size:14px;line-height:1.35}
+.avisoTexto{min-width:0;display:grid;gap:2px}
+.avisoTexto strong{font-size:13px;font-weight:700;line-height:1.3}
+.avisoTexto small{font-size:11.5px;color:var(--cor-tinta-fraca)}
+.avisoQuando{font-size:10.5px;color:var(--cor-tinta-fraca);white-space:nowrap;padding-top:2px}
+/* A barra à esquerda separa o que pede resposta do que só informa, sem depender
+   de cor sozinha: quem não distingue a cor ainda vê a barra. */
+.avisoItem.pede{box-shadow:inset 3px 0 0 var(--cor-atencao)}
+/* No celular a lista não pode pendurar-se no sino.
+   O `right:0` ancora na borda direita do BOTÃO, e num telefone o botão fica
+   perto da borda esquerda da tela: os 360px da lista saíam 306px para fora,
+   pela esquerda. Medido, não suposto — a caixa aparecia cortada pela metade.
+   Presa à janela, ela cabe onde quer que o sino esteja. */
+@media(max-width:680px){
+  .avisosLista{position:fixed;left:12px;right:12px;top:calc(var(--alt-botao-compacto) + 26px);
+    width:auto;max-height:min(70vh,520px)}
+}
+
 /* Cartoes de indicador: menos altura para a mesma informacao. */
 .metricCard{min-height:0;padding:var(--esp-4) var(--esp-5);border-radius:var(--raio-2);border-color:var(--cor-borda);box-shadow:var(--sombra-1)}
 .metricCard strong{font-size:26px;line-height:1.1;margin-bottom:var(--esp-1);color:var(--cor-tinta)}

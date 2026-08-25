@@ -86,7 +86,18 @@ function quando(iso: string) {
   return mesmoDia ? hora : `${data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 }
 
-export function ChatFlutuante({ perfil }: { perfil: Perfil }) {
+export function ChatFlutuante({ perfil, abrirEm = null }: {
+  perfil: Perfil;
+  /**
+   * Um pedido de fora para abrir a janela — hoje, a caixa de avisos da barra.
+   *
+   * O `token` é o que faz o pedido ser um PEDIDO e não um estado. Clicar duas
+   * vezes no mesmo aviso pede a mesma aba duas vezes, e sem um número que muda
+   * o segundo clique não abriria nada: a janela lembraria que já esteve
+   * naquela aba e ficaria fechada.
+   */
+  abrirEm?: { aba: "equipe" | "suporte"; chamado?: string | null; token: number } | null;
+}) {
   const supabase = createClient();
   const suporte = perfil.super_admin === true;
 
@@ -105,6 +116,21 @@ export function ChatFlutuante({ perfil }: { perfil: Perfil }) {
 
   const fimDaSala = useRef<HTMLDivElement | null>(null);
   const fimDaConversa = useRef<HTMLDivElement | null>(null);
+
+  // Atende o pedido de abrir vindo de fora.
+  //
+  // Durante o render, e não dentro de um useEffect. Ajustar estado em resposta
+  // a uma prop que mudou é exatamente o caso que o React manda resolver assim:
+  // pelo efeito, a janela chega a pintar uma vez fechada e só então abre, e o
+  // usuário vê o piscar. Guardar o token atendido é o que impede o laço — na
+  // segunda passada os números já são iguais e nada mais é chamado.
+  const [pedidoAtendido, setPedidoAtendido] = useState(0);
+  if (abrirEm && abrirEm.token !== pedidoAtendido) {
+    setPedidoAtendido(abrirEm.token);
+    setAberto(true);
+    setAba(abrirEm.aba);
+    if (abrirEm.chamado) setChamadoAberto(abrirEm.chamado);
+  }
 
   // ---------------------------------------------------------------------------
   // Leituras
