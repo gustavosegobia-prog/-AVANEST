@@ -18,9 +18,22 @@ import { quantosPedemResposta, type Aviso } from "@/lib/avisos";
 
 const ICONE: Record<string, string> = {
   troca_pedida: "🔄", troca_resolvida: "✅", chat: "💬", suporte: "🛟",
+  // Dinheiro tem ícone próprio, e os três se distinguem: o que falta cobrar, o
+  // que falta receber e o plantão que falta ser pago são três ações diferentes
+  // — o mesmo símbolo nos três faria a pessoa abrir para descobrir qual é.
+  a_faturar: "🧾", a_receber: "⏳", plantao_a_receber: "💰",
 };
 
-/** "há 2 h", "ontem", "12/08". Relógio do navegador, que é o do usuário. */
+/**
+ * "há 2 h", "ontem", "12/08". Relógio do navegador, que é o do usuário.
+ *
+ * Lembrete de dinheiro não leva carimbo de tempo: ele não ACONTECEU numa hora,
+ * é um saldo que continua parado. O título já diz de que mês se trata, e um
+ * "28/07" ao lado de "pacientes de julho sem cobrança" só faria a pessoa
+ * procurar que evento foi aquele.
+ */
+const SEM_RELOGIO = new Set(["a_faturar", "a_receber", "plantao_a_receber"]);
+
 function quandoFoi(iso: string, agora = Date.now()): string {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return "";
@@ -112,7 +125,7 @@ export function CaixaDeAvisos({
           {avisos.length === 0
             /* O vazio diz o que significa. "Nenhum aviso" deixa a dúvida de se
                a caixa está funcionando ou se ninguém mexeu em nada. */
-            ? <p className="avisosVazio">Nada esperando você. Plantão oferecido, resposta do suporte e mensagem da equipe aparecem aqui.</p>
+            ? <p className="avisosVazio">Nada esperando você. Aparecem aqui: plantão oferecido, resposta do suporte, mensagem da equipe, e o que ficou para trás no faturamento e no recebimento.</p>
             : avisos.map((a) => (
               <button
                 key={`${a.tipo}-${a.id}`} role="menuitem"
@@ -124,7 +137,7 @@ export function CaixaDeAvisos({
                   <strong>{a.titulo}</strong>
                   <small>{a.detalhe}</small>
                 </span>
-                <span className="avisoQuando">{quandoFoi(a.quando)}</span>
+                <span className="avisoQuando">{SEM_RELOGIO.has(a.tipo) ? "" : quandoFoi(a.quando)}</span>
               </button>
             ))}
         </div>

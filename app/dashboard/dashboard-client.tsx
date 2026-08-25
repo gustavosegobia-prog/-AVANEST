@@ -594,7 +594,13 @@ export function DashboardClient({
             // O clique tem de RESOLVER, não só informar. Um aviso que abre uma
             // lista onde a pessoa ainda precisa procurar do que ele falava é
             // meio caminho, e o meio caminho é onde ela desiste.
-            if (aviso.area === "plantoes") { changeView("plantoes"); return; }
+            // Os lembretes de dinheiro moram na Escala, na aba Produção: é lá
+            // que se marca "faturado" e "recebido". Mandar para o Financeiro
+            // seria mandar para a tela da organização, e a conta é da pessoa.
+            if (aviso.area === "plantoes" || aviso.area === "producao") {
+              changeView("plantoes");
+              return;
+            }
             setPedidoDeChat({
               aba: aviso.area === "suporte" ? "suporte" : "equipe",
               chamado: aviso.area === "suporte" ? aviso.id : null,

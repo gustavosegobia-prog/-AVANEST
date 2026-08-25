@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
 import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/local-ativo";
-import { montarAvisos } from "@/lib/avisos";
+import { lembretesDoDinheiro, montarAvisos } from "@/lib/avisos";
 import { nomeCurto } from "@/lib/escala";
 
 export default async function DashboardPage({
@@ -110,6 +110,13 @@ export default async function DashboardPage({
   const needsAdminData = initialView === "admin" && canManage;
   const needsProfiles = needsAdminData || initialView === "plantoes" || (initialView === "medico" && canManage);
 
+  // Seis meses para trás. O lembrete só olha os três últimos meses fechados;
+  // o resto seria carregar anos de linhas para somar três números.
+  const hoje = new Date().toISOString().slice(0, 10);
+  const seisMesesAtras = new Date(Date.UTC(
+    Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 7, 1,
+  )).toISOString().slice(0, 10);
+
   const [
     { data: pacientes },
     { data: avaliacoes },
@@ -127,6 +134,8 @@ export default async function DashboardPage({
     { data: leituraDoChat },
     { data: chamadosDoAviso },
     { data: avisosVistos },
+    { data: producaoDoAviso },
+    { data: plantoesDoDinheiro },
   ] = await Promise.all([
     needsFinanceData && perfil.role === "financeiro"
       ? supabase.rpc("financeiro_listar_pacientes")
@@ -193,6 +202,18 @@ export default async function DashboardPage({
       .select("id,assunto,status,ultima_em,visto_autor_em")
       .eq("aberto_por", user.id).order("ultima_em", { ascending: false }).limit(20),
     supabase.from("avisos_leitura").select("lido_em").eq("perfil_id", user.id).maybeSingle(),
+
+    // Os lembretes de dinheiro saem daqui: o que você anestesiou e ainda não
+    // cobrou, o que cobrou e não recebeu, o plantão que trabalhou e não foi
+    // pago. Só os SEUS — o RLS já garante, e a conta é da pessoa, não do grupo.
+    //
+    // Seis meses para trás bastam: o lembrete só olha os três últimos meses
+    // fechados, e trazer o histórico inteiro seria carregar anos de linhas para
+    // somar três números.
+    supabase.from("producao_do_dia").select("data,situacao,valor")
+      .eq("perfil_id", user.id).gte("data", seisMesesAtras),
+    supabase.from("plantoes").select("data,situacao,valor")
+      .eq("perfil_id", user.id).gte("data", seisMesesAtras),
   ]);
 
   // As mensagens da sala depois do seu último olhar. Vem em consulta separada
@@ -224,7 +245,11 @@ export default async function DashboardPage({
     chat: { novas: chatNovas ?? 0, ultima: ultimaDoChat?.created_at ?? null },
     chamados: chamadosDoAviso ?? [],
     vistoEm: avisosVistos?.lido_em ?? null,
-  });
+  }).concat(lembretesDoDinheiro({
+    hoje,
+    producao: producaoDoAviso ?? [],
+    plantoes: plantoesDoDinheiro ?? [],
+  })).sort((a, b) => b.quando.localeCompare(a.quando));
 
   return (
     <DashboardClient
