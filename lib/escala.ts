@@ -480,6 +480,124 @@ ${depois}
   return { titulo, corpo };
 }
 
+export type PlantaoDoFechamento = PlantaoImpresso & {
+  perfilId: string;
+  /** ISO, ou null enquanto ninguém confirmou que trabalhou. */
+  confirmadoEm: string | null;
+};
+
+/**
+ * O fechamento do mês, por profissional — a folha que vai para o financeiro.
+ *
+ * É outro documento que a escala da parede, e a diferença não é de formato: a
+ * da parede não leva valor NENHUM, porque é lida por todo mundo que passa no
+ * corredor. Esta leva valor, nome e total de cada um, e vai para uma pessoa só,
+ * que é quem paga. Foi por isso que a tabela por pessoa saiu da folha do grupo:
+ * afixada, ela vira ranking; entregue ao financeiro, ela é a conta.
+ *
+ * A CONFIRMAÇÃO é o que dá valor a este papel. A escala é um plano — o plantão
+ * trocado na véspera, o cancelado por sala fechada, o que virou meio turno
+ * continuam lá do mesmo jeito. Sem separar confirmado de previsto, quem monta a
+ * folha ou paga pelo plano e erra, ou liga para doze pessoas perguntando o que
+ * aconteceu. Aqui os dois números aparecem lado a lado, e o que não foi
+ * confirmado aparece marcado em vez de sumir: um plantão que a pessoa esqueceu
+ * de confirmar não pode desaparecer da conta dela sem ninguém ver.
+ *
+ * Ordenado por nome, e não por total. Ordem por dinheiro é ranking, e ranking é
+ * o que faz um documento de pagamento circular por motivo errado.
+ */
+export function folhaDeFechamento(
+  plantoes: PlantaoDoFechamento[], nomeMes: string, ano: number, impressoEm: Date,
+  instituicao?: Instituicao | null,
+): { titulo: string; corpo: string } {
+  const titulo = `Fechamento de plantões — ${nomeMes} de ${ano}`;
+
+  const porPessoa = new Map<string, PlantaoDoFechamento[]>();
+  for (const p of plantoes) {
+    porPessoa.set(p.perfilId, [...(porPessoa.get(p.perfilId) ?? []), p]);
+  }
+
+  const gente = [...porPessoa.entries()]
+    .map(([id, lista]) => {
+      const confirmados = lista.filter((p) => p.confirmadoEm);
+      const somar = (ls: PlantaoDoFechamento[], campo: "horas" | "valor") =>
+        ls.reduce((s, p) => s + Number(p[campo] || 0), 0);
+      return {
+        id, lista,
+        nome: nomeCurto(lista[0].profissional) || "Profissional",
+        turnos: lista.length,
+        confirmados: confirmados.length,
+        horas: somar(confirmados, "horas"),
+        valor: somar(confirmados, "valor"),
+        horasPrevistas: somar(lista, "horas"),
+        valorPrevisto: somar(lista, "valor"),
+      };
+    })
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+
+  // O resumo vem primeiro porque é o que o financeiro usa: uma linha por
+  // pessoa, com o que pagar. O detalhe dia a dia existe para conferir uma
+  // linha que pareceu errada — e é por isso que vem depois, e não antes.
+  const resumo = `<h2>Resumo do mês <small>${
+    plural(gente.length, "profissional", "profissionais")}</small></h2>`
+    + '<table class="lista"><colgroup><col><col style="width:12%"><col style="width:12%">'
+    + '<col style="width:14%"><col style="width:16%"></colgroup>'
+    + "<thead><tr><th>Profissional</th><th>Turnos</th><th>Confirmados</th>"
+    + '<th class="num">Horas</th><th class="num">A pagar</th></tr></thead><tbody>'
+    + gente.map((g) => "<tr>"
+      + `<td>${escaparHTML(g.nome)}</td>`
+      + `<td>${g.turnos}</td>`
+      // O pendente aparece ao lado do confirmado, e não no lugar dele: "8 de
+      // 10" diz de uma vez que falta confirmar dois, sem uma segunda tabela.
+      + `<td>${g.confirmados}${g.confirmados < g.turnos ? ` <b>de ${g.turnos}</b>` : ""}</td>`
+      + `<td class="num">${g.horas.toLocaleString("pt-BR")}h</td>`
+      + `<td class="num">${escaparHTML(money(g.valor))}</td></tr>`).join("")
+    + "</tbody><tfoot><tr>"
+    + `<td><b>Total</b></td><td>${gente.reduce((s, g) => s + g.turnos, 0)}</td>`
+    + `<td>${gente.reduce((s, g) => s + g.confirmados, 0)}</td>`
+    + `<td class="num"><b>${gente.reduce((s, g) => s + g.horas, 0).toLocaleString("pt-BR")}h</b></td>`
+    + `<td class="num"><b>${escaparHTML(money(gente.reduce((s, g) => s + g.valor, 0)))}</b></td>`
+    + "</tr></tfoot></table>";
+
+  const detalhe = gente.map((g) => {
+    const linhas = [...g.lista]
+      .sort((a, b) => a.data.localeCompare(b.data) || a.hora_inicio.localeCompare(b.hora_inicio))
+      .map((p) => `<tr${p.confirmadoEm ? "" : ' class="pendente"'}>`
+        + `<td>${Number(p.data.slice(8, 10))}/${p.data.slice(5, 7)}</td>`
+        + `<td>${escaparHTML(`${hhmm(p.hora_inicio)}–${hhmm(p.hora_fim)}`)}</td>`
+        + `<td>${p.horas}h</td>`
+        + `<td>${escaparHTML(p.local || "—")}</td>`
+        + `<td>${p.confirmadoEm ? "Confirmado" : "Aguardando confirmação"}</td>`
+        + `<td class="num">${escaparHTML(money(p.valor))}</td></tr>`).join("");
+    return `<h2>${escaparHTML(g.nome)} <small>${
+      plural(g.confirmados, "turno confirmado", "turnos confirmados")} · ${
+      g.horas.toLocaleString("pt-BR")}h · ${escaparHTML(money(g.valor))}</small></h2>`
+      + '<table class="lista"><colgroup><col style="width:9%"><col style="width:16%">'
+      + '<col style="width:9%"><col><col style="width:21%"><col style="width:15%">'
+      + "</colgroup><thead><tr><th>Dia</th><th>Horário</th><th>Horas</th><th>Local</th>"
+      + '<th>Situação</th><th class="num">Valor</th></tr></thead>'
+      + `<tbody>${linhas}</tbody></table>`;
+  }).join("");
+
+  const aConfirmar = gente.reduce((s, g) => s + (g.turnos - g.confirmados), 0);
+
+  const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
+<p class="sub">Plantões por profissional, para o fechamento do mês.${
+    aConfirmar > 0
+      // O aviso é o primeiro texto da folha porque muda o que se faz com ela:
+      // pagar um fechamento com turnos pendentes é pagar um plano.
+      ? ` <b>${plural(aConfirmar, "turno ainda não foi confirmado", "turnos ainda não foram confirmados")
+        } por quem trabalhou — esses valores não entram no total.</b>`
+      : " Todos os turnos foram confirmados por quem trabalhou."}</p>
+${gente.length ? resumo + detalhe : '<p class="sub">Nenhum plantão neste mês.</p>'}
+<div class="rodape"><span>${plural(plantoes.length, "turno", "turnos")} · ${
+    gente.reduce((s, g) => s + g.horas, 0).toLocaleString("pt-BR")}h confirmadas de ${
+    gente.reduce((s, g) => s + g.horasPrevistas, 0).toLocaleString("pt-BR")}h previstas</span><span>AVANEST · impresso em ${
+    impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+
+  return { titulo, corpo };
+}
+
 export type ItemDeProducao = {
   data: string; paciente: string; convenio: string;
   procedimento: string | null; valor: number; situacao: string;

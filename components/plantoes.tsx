@@ -6,7 +6,7 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
-  corpoDaFolha, escaparHTML, faixa, folhaDeProducao, hhmm, money,
+  corpoDaFolha, escaparHTML, faixa, folhaDeFechamento, folhaDeProducao, hhmm, money,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
   ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
@@ -38,6 +38,9 @@ type Plantao = {
   // quem lançou enxerga — o RLS não devolve os dos outros nem para o chefe —,
   // e por isso o lugar vem escrito à mão, sem passar pelo cadastro de locais.
   privado: boolean; local_texto: string | null;
+  // Quem trabalhou dizendo que trabalhou. Nulo = ainda é só plano, e o
+  // fechamento do mês não paga plano.
+  confirmado_em: string | null;
 };
 type Colega = { id: string; nome: string };
 type Troca = {
@@ -183,6 +186,12 @@ td .d{font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px}
 td .t{display:block;margin-bottom:3px;line-height:1.25}
 td .t b{font-size:10.5px;display:block}
 td .t span{font-size:10px;color:#333}
+/* A linha do turno que ninguém confirmou fica marcada no papel. Sem fundo ela
+   se distingue só pela palavra "Aguardando" na quinta coluna, que é justamente
+   a que o olho não percorre ao conferir uma folha de pagamento. O
+   print-color-adjust é obrigatório: sem ele o navegador descarta fundos ao
+   imprimir, e a marca existiria só na tela. */
+.pendente td{background:#fff4e0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .lista{margin-top:14px}
 .lista td,.lista th{height:auto;padding:5px 7px;font-size:11px}
 .lista td{vertical-align:middle}
@@ -888,6 +897,51 @@ export function Plantoes({
    * lida por todo mundo que passa. A pessoal é a que vai junto do talão, e essa
    * traz o valor porque é para isso que ela serve.
    */
+  /**
+   * O fechamento do mês, para o financeiro.
+   *
+   * Retrato, e não paisagem como a escala: é uma lista de nomes com uma tabela
+   * por pessoa, e isso quer folha em pé. E sem o "uma folha só" da escala — o
+   * fechamento de doze anestesiologistas ocupa três páginas por natureza, e
+   * espremer tudo numa página faria a letra ficar pequena demais para conferir
+   * um valor a pagar.
+   */
+  function imprimirFechamento() {
+    setErro(""); setAviso("");
+    if (daEscala.length === 0) { setErro("Não há plantão neste mês para fechar."); return; }
+    const { titulo, corpo } = folhaDeFechamento(
+      daEscala.map((p) => ({
+        perfilId: p.perfil_id,
+        profissional: nomePorId.get(p.perfil_id) ?? "",
+        data: p.data, hora_inicio: p.hora_inicio, hora_fim: p.hora_fim,
+        horas: Number(p.horas), valor: Number(p.valor), situacao: p.situacao,
+        local: ondeFica(p, localPorId, ""),
+        confirmadoEm: p.confirmado_em,
+      })),
+      MESES[m - 1], ano, new Date(), marcaDe(hospital === "todos" || hospital === "sem" ? null : hospital),
+    );
+    if (!imprimirFolha(titulo, corpo, "portrait")) {
+      setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
+    }
+  }
+
+  /**
+   * Confirmar que o plantão aconteceu.
+   *
+   * O banco recusa confirmar plantão de outra pessoa e plantão do futuro — as
+   * duas regras que dão valor ao documento estão lá, e não aqui, porque uma
+   * regra que só existe na tela é uma regra que some quando alguém chama a API
+   * direto. A tela só evita a tentativa e repete o que o banco disse.
+   */
+  async function confirmar(plantao: Plantao) {
+    setErro(""); setAviso("");
+    const { error } = await createClient().from("plantoes")
+      .update({ confirmado_em: plantao.confirmado_em ? null : new Date().toISOString() })
+      .eq("id", plantao.id);
+    if (error) { setErro(error.message || "Não foi possível confirmar o plantão."); return; }
+    void carregar();
+  }
+
   function imprimirEscala() {
     setErro(""); setAviso("");
     if (daEscala.length === 0) { setErro("Não há plantão neste mês para imprimir."); return; }
@@ -1058,6 +1112,15 @@ export function Plantoes({
                   Google/Apple
                 </button>
                 <button className="outlineClinical" onClick={imprimirEscala}>Imprimir</button>
+                {/* Só para quem monta a escala, e só na visão do grupo. É uma
+                    folha de pagamento: traz o nome e o valor de cada colega, e
+                    na escala pessoal não haveria "cada colega" nenhum. */}
+                {ehAdmin && escopo === "grupo" && (
+                  <button className="outlineClinical" onClick={imprimirFechamento}
+                    title="Dia, horas e valor de cada profissional no mês, para o financeiro">
+                    Fechamento do mês
+                  </button>
+                )}
                 <button className="primaryClinical compact"
                   onClick={() => setLancando({
                     dia: hojeISO.startsWith(mes) ? hojeISO : `${mes}-01`, para: perfilId,
@@ -1296,12 +1359,38 @@ export function Plantoes({
                         não sabe onde fica nem quanto vale, e aceitaria às
                         cegas. Ele se apaga, que é o que faz sentido para um
                         turno que só existe para você. */}
+                    {/* Um botão só, e ele acompanha a vida do plantão: antes do
+                        dia dá para passar adiante; no dia e depois, o que falta
+                        é dizer que aconteceu; confirmado, o que falta é o
+                        dinheiro cair. Três botões lado a lado numa linha de
+                        celular seriam três alvos de dedo onde cabe um, e dois
+                        deles sempre sem sentido para aquele dia.
+
+                        Passar um plantão de ontem não existe, e confirmar o de
+                        semana que vem o banco recusa — o botão não oferece nem
+                        um nem outro. */}
                     {meu && !p.privado && (
                       <span className="inlineMoney">
                         <span aria-hidden="true">&nbsp;</span>
-                        <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
-                          {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
-                        </button>
+                        {p.data > hojeISO ? (
+                          <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
+                            {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
+                          </button>
+                        ) : !p.confirmado_em ? (
+                          <button className="outlineClinical plantaoConfirmar"
+                            title="Confirma que você fez este plantão. É o que o fechamento do mês soma."
+                            onClick={() => void confirmar(p)}>
+                            Confirmar
+                          </button>
+                        ) : (
+                          <button
+                            className={`outlineClinical plantaoRecebido${p.situacao === "pago" ? " sim" : ""}`}
+                            aria-pressed={p.situacao === "pago"}
+                            title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}
+                            onClick={() => void marcarRecebido(p)}>
+                            {p.situacao === "pago" ? "Recebido ✓" : "Recebido"}
+                          </button>
+                        )}
                       </span>
                     )}
                     {/* No lugar onde ficava o Apagar: o que de fato se faz

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { PlantaoImpresso } from "./escala.ts";
+import type { PlantaoDoFechamento, PlantaoImpresso } from "./escala.ts";
 import {
-  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
@@ -526,4 +526,102 @@ test("a folha de produção sai timbrada pela instituição escolhida", () => {
     folhaDeProducao(producao, "agosto", 2026, new Date("2026-08-24T12:00:00")).corpo,
     /class="marca"/,
   );
+});
+
+// ---------------------------------------------------------------------------
+// Fechamento do mês — a folha que vai para o financeiro
+// ---------------------------------------------------------------------------
+
+const turnoDe = (
+  perfilId: string, profissional: string, data: string,
+  { horas = 12, valor = 1100, confirmado = true } = {},
+): PlantaoDoFechamento => ({
+  perfilId, profissional, data, hora_inicio: "07:00", hora_fim: "19:00",
+  horas, valor, situacao: "escalado", local: "Santa Casa",
+  confirmadoEm: confirmado ? `${data}T19:30:00Z` : null,
+});
+
+const fechamento = (ps: PlantaoDoFechamento[]) =>
+  folhaDeFechamento(ps, "agosto", 2026, new Date("2026-08-31T12:00:00"));
+
+test("o fechamento soma horas e valor por profissional", () => {
+  const { corpo } = fechamento([
+    turnoDe("a", "LUCAS QUEIROZ", "2026-08-03"),
+    turnoDe("a", "LUCAS QUEIROZ", "2026-08-10"),
+    turnoDe("b", "MATHEUS GOMES", "2026-08-05", { horas: 6, valor: 600 }),
+  ]);
+  // O valor é comparado com money(), e não com um texto escrito à mão: o
+  // separador do "R$" é espaço INQUEBRÁVEL, e um teste que digita o espaço
+  // comum falha sem que nada esteja errado.
+  assert.ok(corpo.includes(`Lucas Queiroz</td><td>2</td><td>2</td><td class="num">24h</td>`
+    + `<td class="num">${money(2200)}</td>`));
+  assert.ok(corpo.includes(`Matheus Gomes</td><td>1</td><td>1</td><td class="num">6h</td>`
+    + `<td class="num">${money(600)}</td>`));
+});
+
+test("só o CONFIRMADO entra no total a pagar", () => {
+  // É o ponto inteiro do relatório. A escala é um plano: o plantão trocado na
+  // véspera continua lá. Pagar pelo plano é pagar por trabalho que não houve.
+  const { corpo } = fechamento([
+    turnoDe("a", "LUCAS QUEIROZ", "2026-08-03"),
+    turnoDe("a", "LUCAS QUEIROZ", "2026-08-10", { confirmado: false }),
+  ]);
+  // Dois turnos, um confirmado, e o total é de um só.
+  assert.match(corpo, /<td>2<\/td><td>1 <b>de 2<\/b><\/td>/);
+  assert.ok(corpo.includes(`<td class="num">12h</td><td class="num">${money(1100)}</td>`));
+});
+
+test("o turno não confirmado aparece marcado, e não some", () => {
+  // Sumir seria pior do que aparecer: um plantão que a pessoa esqueceu de
+  // confirmar desapareceria da conta dela sem ninguém ver.
+  const { corpo } = fechamento([
+    turnoDe("a", "LUCAS QUEIROZ", "2026-08-10", { confirmado: false }),
+  ]);
+  assert.match(corpo, /class="pendente"/);
+  assert.match(corpo, /Aguardando confirmação/);
+  assert.match(corpo, /10\/08/);
+});
+
+test("a folha avisa em cima quando há turno por confirmar", () => {
+  // O aviso muda o que se faz com o papel: pagar um fechamento com pendências
+  // é pagar um plano. Por isso é a primeira frase, e não uma nota de rodapé.
+  const comPendencia = fechamento([
+    turnoDe("a", "LUCAS QUEIROZ", "2026-08-03"),
+    turnoDe("b", "MATHEUS GOMES", "2026-08-04", { confirmado: false }),
+    turnoDe("b", "MATHEUS GOMES", "2026-08-05", { confirmado: false }),
+  ]);
+  assert.match(comPendencia.corpo, /2 turnos ainda não foram confirmados/);
+  const limpa = fechamento([turnoDe("a", "LUCAS QUEIROZ", "2026-08-03")]);
+  assert.match(limpa.corpo, /Todos os turnos foram confirmados/);
+});
+
+test("a ordem é por NOME, nunca por valor", () => {
+  // Ordenar por dinheiro transforma um documento de pagamento em ranking, e
+  // ranking circula por motivo errado.
+  const { corpo } = fechamento([
+    turnoDe("a", "ANA PAULA DE SOUZA", "2026-08-03", { valor: 100 }),
+    turnoDe("z", "ZELIA MARTINS", "2026-08-04", { valor: 9000 }),
+    turnoDe("m", "MATHEUS GOMES", "2026-08-05", { valor: 5000 }),
+  ]);
+  const ordem = [...corpo.matchAll(/<h2>([^<]+)/g)].map((m) => m[1].trim()).slice(1);
+  assert.deepEqual(ordem, ["Ana Souza", "Matheus Gomes", "Zelia Martins"]);
+});
+
+test("mês sem plantão continua sendo uma folha válida", () => {
+  const { titulo, corpo } = fechamento([]);
+  assert.equal(titulo, "Fechamento de plantões — agosto de 2026");
+  assert.match(corpo, /Nenhum plantão neste mês/);
+});
+
+test("o fechamento sai timbrado pela instituição", () => {
+  const { corpo } = folhaDeFechamento(
+    [turnoDe("a", "LUCAS QUEIROZ", "2026-08-03")], "agosto", 2026,
+    new Date("2026-08-31T12:00:00"), { nome: "Santa Casa", logo: "https://cdn/sc.png" },
+  );
+  assert.ok(corpo.indexOf('class="marca"') < corpo.indexOf("<h1>"));
+});
+
+test("o nome do profissional é escapado", () => {
+  const { corpo } = fechamento([turnoDe("a", "<script>alert(1)</script>", "2026-08-03")]);
+  assert.doesNotMatch(corpo, /<script>/);
 });
