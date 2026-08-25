@@ -76,6 +76,13 @@ function imprimirFolha(titulo: string, corpo: string,
 body{margin:0;font:12px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#111}
 h1{font-size:17px;margin:0 0 2px}
 .sub{color:#555;font-size:11.5px;margin:0 0 12px}
+/* O timbre da instituição. Centralizado, como o da ficha do paciente: é o
+   mesmo papel, saído da mesma clínica, e duas convenções diferentes de
+   cabeçalho no mesmo consultório parecem dois sistemas. */
+.marca{display:flex;align-items:center;justify-content:center;gap:9px;
+       padding-bottom:6px;margin-bottom:9px;border-bottom:1.5px solid #333}
+.marca img{max-height:40px;max-width:170px;object-fit:contain}
+.marca b{font-size:14px;letter-spacing:.3px;text-transform:uppercase}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
 th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#444;
    padding:5px 4px;border:1px solid #bbb;background:#f1f1f1}
@@ -101,9 +108,25 @@ tr,td,th{break-inside:avoid;page-break-inside:avoid}
   janela.document.close();
   janela.focus();
   // O print imediato pega a folha antes de o navegador medir a tabela, e sai
-  // com a primeira linha cortada. 300ms é o suficiente — não há imagem a
-  // carregar, só texto para posicionar.
-  setTimeout(() => janela.print(), 300);
+  // com a primeira linha cortada.
+  //
+  // Desde que o timbre da instituição entrou, há uma imagem a esperar — e ela
+  // vem da rede. Imprimir no tempo fixo de antes sairia com o logo faltando ou
+  // com a altura dele ainda em zero, empurrando a tabela para cima. Daí a
+  // espera pelo `load` do logo; o teto de 4s existe porque um logo que não
+  // carrega não pode segurar a impressão da escala: a folha sai sem ele, que é
+  // exatamente o que sai hoje para quem não cadastrou logo nenhum.
+  const logo = janela.document.querySelector<HTMLImageElement>(".marca img");
+  const pronto = !logo || logo.complete
+    ? Promise.resolve()
+    : Promise.race([
+        new Promise<void>((ok) => {
+          logo.addEventListener("load", () => ok(), { once: true });
+          logo.addEventListener("error", () => ok(), { once: true });
+        }),
+        new Promise<void>((ok) => setTimeout(ok, 4000)),
+      ]);
+  void pronto.then(() => setTimeout(() => janela.print(), 300));
   return true;
 }
 
@@ -211,6 +234,18 @@ export function Plantoes({
 
   const nomePorId = useMemo(() => new Map(colegas.map((c) => [c.id, c.nome])), [colegas]);
   const localPorId = useMemo(() => new Map(locais.map((l) => [l.id, nomeDoLocal(l)])), [locais]);
+  /**
+   * O timbre de um local: nome e logo, do jeito que o papel precisa.
+   *
+   * Sai da lista que a tela já tem em mãos, e não de uma consulta nova: o
+   * cadastro do local já veio com o logo quando a página montou, e ir buscá-lo
+   * de novo na hora de imprimir só acrescentaria uma espera entre o clique e a
+   * janela de impressão.
+   */
+  const marcaDe = useCallback((id: string | null) => {
+    const local = id ? locais.find((l) => l.id === id) : null;
+    return local ? { nome: nomeDoLocal(local), logo: local.logo_url } : null;
+  }, [locais]);
   // O calendário precisa dizer QUAL plantão é, não só que existe um. Cor e
   // nome vêm do modelo; sem modelo, o rótulo cai no horário, que ainda
   // distingue diurno de noturno.
@@ -629,6 +664,9 @@ export function Plantoes({
         procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
       })),
       MESES[m - 1], ano, new Date(),
+      // A produção sai timbrada pela instituição escolhida na entrada — é a
+      // folha que vai para o faturamento DELA.
+      marcaDe(localAtivoId),
     );
     if (!imprimirFolha(titulo, corpo, "portrait")) {
       setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
@@ -647,10 +685,20 @@ export function Plantoes({
   function imprimirEscala() {
     setErro(""); setAviso("");
     if (daEscala.length === 0) { setErro("Não há plantão neste mês para imprimir."); return; }
+    // O timbre só entra quando a folha inteira é de uma instituição só. A do
+    // grupo já vem filtrada por hospital e cai sempre nesse caso; a pessoal
+    // depende do mês — quem rodou três hospitais em agosto recebe a folha sem
+    // timbre, porque não existe um lugar que responda pelo papel todo. O
+    // `local_texto` do plantão de fora entra na conta com prefixo próprio:
+    // sedação em consultório não é o hospital, e sozinha não timbra nada.
+    const ondeEsteve = new Set(daEscala.map((p) => p.local_id ?? `fora:${(p.local_texto ?? "").trim()}`));
+    const unico = ondeEsteve.size === 1 ? [...ondeEsteve][0] : null;
+
     const { titulo, corpo } = corpoDaFolha({
       doGrupo: escopo === "grupo",
       mes, nomeMes: MESES[m - 1], ano, diasNoMes, primeiroDiaSemana,
       impressoEm: new Date(),
+      instituicao: unico && !unico.startsWith("fora:") ? marcaDe(unico) : null,
       plantoes: daEscala.map((p) => ({
         data: p.data, hora_inicio: p.hora_inicio, hora_fim: p.hora_fim,
         horas: Number(p.horas), valor: Number(p.valor), situacao: p.situacao,

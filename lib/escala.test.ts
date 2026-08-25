@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { PlantaoImpresso } from "./escala.ts";
 import {
-  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
@@ -460,4 +460,70 @@ test("TURNOS_RAPIDOS saem das faixas do dia, e não de horário escrito à mão"
   // calendário desenha. Sol cobre manhã e tarde; lua cobre a noite inteira.
   assert.deepEqual(turnosCobertos(dia.inicio, dia.fim), ["manha", "tarde"]);
   assert.deepEqual(turnosCobertos(noite.inicio, noite.fim), ["noite"]);
+});
+
+// ---------------------------------------------------------------------------
+// O timbre da instituição
+// ---------------------------------------------------------------------------
+
+test("timbre com logo e nome: a imagem primeiro, o nome depois", () => {
+  const t = timbreDaFolha({ nome: "Santa Casa de Campo Mourão", logo: "https://cdn/logo.png" });
+  assert.match(t, /<img src="https:\/\/cdn\/logo\.png" alt="">/);
+  assert.match(t, /<b>Santa Casa de Campo Mourão<\/b>/);
+});
+
+test("sem logo cadastrado, o nome sozinho é o timbre — e não fica buraco", () => {
+  // A regra é a mesma da ficha do paciente: o que não está cadastrado não
+  // ocupa espaço. Um <img> vazio reservaria a altura dele no alto da folha.
+  const t = timbreDaFolha({ nome: "Instituto Bom Jesus", logo: null });
+  assert.doesNotMatch(t, /<img/);
+  assert.match(t, /<b>Instituto Bom Jesus<\/b>/);
+});
+
+test("sem instituição nenhuma, não existe faixa", () => {
+  assert.equal(timbreDaFolha(null), "");
+  assert.equal(timbreDaFolha(undefined), "");
+  assert.equal(timbreDaFolha({ nome: "   ", logo: "  " }), "");
+});
+
+test("logo que não é http(s) não vira src", () => {
+  // O endereço vem do cadastro do local, atravessa o banco e termina dentro de
+  // um atributo src numa janela que nós escrevemos. Um javascript: guardado
+  // ali rodaria na hora de imprimir a escala.
+  const t = timbreDaFolha({ nome: "Clínica X", logo: "javascript:alert(1)" });
+  assert.doesNotMatch(t, /<img/);
+  assert.match(t, /<b>Clínica X<\/b>/);
+  assert.doesNotMatch(timbreDaFolha({ nome: "", logo: "data:image/svg+xml,<svg/>" }), /<img/);
+});
+
+test("o nome da instituição é escapado antes de ir para a folha", () => {
+  const t = timbreDaFolha({ nome: 'Hospital "A" & <b>B</b>', logo: null });
+  assert.match(t, /Hospital &quot;A&quot; &amp; &lt;b&gt;B&lt;\/b&gt;/);
+  assert.doesNotMatch(t, /<b>B<\/b>/);
+});
+
+test("a folha da escala sai timbrada, e sem instituição sai como sempre saiu", () => {
+  const comMarca = corpoDaFolha({
+    doGrupo: true, mes: "2026-08", nomeMes: "agosto", ano: 2026,
+    diasNoMes: 31, primeiroDiaSemana: 6, plantoes: [turno("Santa Casa", "ANA PAULA DE SOUZA")],
+    impressoEm: new Date("2026-08-24T12:00:00"),
+    instituicao: { nome: "Santa Casa", logo: "https://cdn/sc.png" },
+  });
+  // O timbre vem ANTES do título: é cabeçalho, não legenda.
+  assert.ok(comMarca.corpo.indexOf('class="marca"') < comMarca.corpo.indexOf("<h1>"));
+  assert.doesNotMatch(folhaDoGrupo([turno("Santa Casa", "ANA PAULA DE SOUZA")]).corpo, /class="marca"/);
+});
+
+test("a folha de produção sai timbrada pela instituição escolhida", () => {
+  const { corpo } = folhaDeProducao(
+    producao, "agosto", 2026, new Date("2026-08-24T12:00:00"),
+    { nome: "Hospital da Unimed", logo: "https://cdn/u.png" },
+  );
+  assert.ok(corpo.indexOf('class="marca"') < corpo.indexOf("<h1>"));
+  assert.match(corpo, /<b>Hospital da Unimed<\/b>/);
+  // Sem instituição, a folha continua igual à de antes — nada de faixa vazia.
+  assert.doesNotMatch(
+    folhaDeProducao(producao, "agosto", 2026, new Date("2026-08-24T12:00:00")).corpo,
+    /class="marca"/,
+  );
 });

@@ -331,6 +331,38 @@ export type PlantaoImpresso = {
   valor: number; situacao: string; local: string; profissional: string;
 };
 
+/** A instituição que assina a folha: o que está cadastrado no local ativo. */
+export type Instituicao = { nome: string; logo?: string | null };
+
+/**
+ * O timbre da folha impressa.
+ *
+ * A folha da escala é pregada na parede do centro cirúrgico e a da produção vai
+ * para o faturamento do hospital — em ambas, quem recebe o papel precisa
+ * reconhecer de onde ele veio antes de ler uma linha. É a mesma regra que já
+ * vale para a ficha do paciente: o cabeçalho é da instituição onde se trabalha,
+ * não da plataforma que imprimiu.
+ *
+ * O que não estiver cadastrado simplesmente não ocupa espaço. Sem logo, o nome
+ * sozinho é o timbre; sem nome e sem logo, não há faixa nenhuma — e não fica um
+ * buraco reservado esperando um arquivo que talvez nunca seja subido.
+ *
+ * Só entra imagem servida por http(s). O endereço vem do nosso próprio
+ * armazenamento, mas ele atravessa o banco e termina dentro de um atributo
+ * `src` numa janela que este código escreve: um `javascript:` guardado no
+ * cadastro do local viraria código rodando na hora de imprimir.
+ */
+export function timbreDaFolha(instituicao?: Instituicao | null): string {
+  const nome = (instituicao?.nome ?? "").trim();
+  const logo = String(instituicao?.logo ?? "").trim();
+  const imagem = /^https?:\/\//i.test(logo) ? logo : "";
+  if (!nome && !imagem) return "";
+  return '<header class="marca">'
+    + (imagem ? `<img src="${escaparHTML(imagem)}" alt="">` : "")
+    + (nome ? `<b>${escaparHTML(nome)}</b>` : "")
+    + "</header>";
+}
+
 /**
  * O corpo da folha da escala.
  *
@@ -353,6 +385,15 @@ export function corpoDaFolha(opts: {
   primeiroDiaSemana: number; // 0 = domingo
   plantoes: PlantaoImpresso[];
   impressoEm: Date;
+  /**
+   * A instituição que timbra a folha, quando a folha é de uma só.
+   *
+   * Quem decide é quem chama: a escala do grupo já vem filtrada por hospital, e
+   * a pessoal pode atravessar três. Carimbar a Santa Casa numa folha que também
+   * traz plantões da Unimed seria um papel que se diz de um lugar onde metade
+   * do que está impresso não aconteceu.
+   */
+  instituicao?: Instituicao | null;
 }): { titulo: string; corpo: string } {
   const { doGrupo, mes, nomeMes, ano, diasNoMes, primeiroDiaSemana, plantoes } = opts;
 
@@ -424,7 +465,7 @@ export function corpoDaFolha(opts: {
             + `<td>${escaparHTML(rotuloSituacao(p.situacao))}</td></tr>`).join("")
       }</tbody></table>`;
 
-  const corpo = `<h1>${escaparHTML(titulo)}</h1>
+  const corpo = `${timbreDaFolha(opts.instituicao)}<h1>${escaparHTML(titulo)}</h1>
 <p class="sub">${doGrupo
     ? "Escala da equipe. Trocas já aceitas estão refletidas nesta folha."
     : "Sua escala pessoal, com o valor combinado de cada turno."}</p>
@@ -462,6 +503,7 @@ const ROTULO_PRODUCAO: Record<string, string> = {
  */
 export function folhaDeProducao(
   itens: ItemDeProducao[], nomeMes: string, ano: number, impressoEm: Date,
+  instituicao?: Instituicao | null,
 ): { titulo: string; corpo: string } {
   const titulo = `Produção — ${nomeMes} de ${ano}`;
 
@@ -496,7 +538,7 @@ export function folhaDeProducao(
   const recebido = itens.filter((i) => i.situacao === "recebido")
     .reduce((s, i) => s + Number(i.valor), 0);
 
-  const corpo = `<h1>${escaparHTML(titulo)}</h1>
+  const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
 <p class="sub">Pacientes anestesiados no mês, agrupados por convênio.</p>
 ${blocos || '<p class="sub">Nada anotado neste mês.</p>'}
 <div class="rodape"><span>${plural(itens.length, "paciente", "pacientes")} · ${
