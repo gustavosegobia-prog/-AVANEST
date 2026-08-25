@@ -157,6 +157,89 @@ function baixar(nome: string, conteudo: string, tipo: string) {
  */
 const CORES_MEDICO = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"] as const;
 
+/** Quanto o dedo precisa andar para a gaveta abrir, e a largura dela. */
+const ARRASTO_ABRE = 44;
+const ARRASTO_LARGURA = 92;
+
+/**
+ * A linha que abre uma gaveta vermelha quando se arrasta para a esquerda.
+ *
+ * O apagar saiu de botão fixo por um motivo de uso, não de estética: a lista é
+ * lida no celular entre um caso e outro, e o que se faz nela todo mês é marcar
+ * que o plantão foi pago — não apagar. Botão vermelho parado ao lado do polegar
+ * na coluna que mais se toca é um erro esperando acontecer; o lugar dele é
+ * atrás de um gesto que ninguém faz sem querer.
+ *
+ * A gaveta ABRE, e não apaga sozinha ao soltar. Arrastar e ver sumir é o
+ * bastante para perder um plantão num ônibus chacoalhando — aqui o gesto revela
+ * o botão, e apagar continua sendo um toque deliberado com confirmação.
+ *
+ * O gesto vertical vence sempre que for maior que o horizontal: sem essa regra,
+ * rolar a lista com o polegar meio torto abre gaveta em cada linha por onde o
+ * dedo passa.
+ *
+ * E existe um caminho sem gesto nenhum. Arrastar não é anunciado por leitor de
+ * tela e não existe no teclado: o mesmo botão está aqui o tempo todo, fora da
+ * vista, e aparece inteiro assim que recebe foco. Quem navega por Tab apaga do
+ * mesmo jeito que quem arrasta.
+ */
+function LinhaComGaveta({
+  podeApagar, onApagar, descricao, children,
+}: {
+  podeApagar: boolean;
+  onApagar: () => void;
+  descricao: string;
+  children: React.ReactNode;
+}) {
+  const [dx, setDx] = useState(0);
+  const inicio = useRef<{ x: number; y: number } | null>(null);
+  // Enquanto o dedo está na tela o deslocamento acompanha; ao soltar, ele salta
+  // para 0 ou para a largura da gaveta. A transição só existe no salto — ligada
+  // durante o arrasto, a linha ficaria atrasada em relação ao dedo.
+  const [arrastando, setArrastando] = useState(false);
+
+  if (!podeApagar) return <>{children}</>;
+
+  return (
+    <div className="plantaoArrasta">
+      <div
+        className="plantaoArrastaCorpo"
+        style={{ transform: `translateX(${dx}px)`, transition: arrastando ? "none" : undefined }}
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          inicio.current = { x: t.clientX, y: t.clientY };
+          setArrastando(true);
+        }}
+        onTouchMove={(e) => {
+          if (!inicio.current) return;
+          const t = e.touches[0];
+          const andou = t.clientX - inicio.current.x;
+          // Rolagem vertical vence. Sem isto, descer a lista com o polegar
+          // torto abre gaveta em cada linha por onde o dedo passa.
+          if (Math.abs(t.clientY - inicio.current.y) > Math.abs(andou)) { setDx(0); return; }
+          // Só para a esquerda, e nunca além da gaveta: puxar para a direita
+          // não revela nada e arrastar 300px não deve descolar a linha da tela.
+          setDx(Math.max(-ARRASTO_LARGURA, Math.min(0, andou)));
+        }}
+        onTouchEnd={() => {
+          setArrastando(false);
+          setDx((d) => (d < -ARRASTO_ABRE ? -ARRASTO_LARGURA : 0));
+          inicio.current = null;
+        }}
+      >
+        {children}
+      </div>
+      <button
+        type="button" className="plantaoGaveta"
+        aria-label={`Apagar plantão de ${descricao}`}
+        onClick={() => { setDx(0); onApagar(); }}
+      >
+        Apagar
+      </button>
+    </div>
+  );
+}
+
 export function Plantoes({
   perfilId, institutionId, locais, ehAdmin, colegas, escalaveis, semCRM = [],
   localAtivoId = null,
@@ -421,6 +504,24 @@ export function Plantoes({
     // "não foi possível salvar" esconde justamente a parte que diz o que fazer.
     if (error) { setErro(error.message || "Não foi possível salvar a alteração."); return; }
     void carregar();
+  }
+
+  /**
+   * "Recebido": um toque, e a data do pagamento junto.
+   *
+   * A data entra aqui porque é aqui que ela existe — o dia em que se apertou o
+   * botão é o dia em que o dinheiro caiu. O seletor de situação nunca a
+   * gravava, e um plantão "pago" sem `pago_em` é um plantão que o fechamento do
+   * mês não consegue somar no mês certo.
+   *
+   * Volta atrás porque quem marca o mês inteiro de enfiada erra uma linha, e a
+   * correção não pode exigir abrir o seletor para desfazer um toque.
+   */
+  async function marcarRecebido(plantao: Plantao) {
+    const recebido = plantao.situacao === "pago";
+    await atualizar(plantao.id, recebido
+      ? { situacao: "realizado", pago_em: null }
+      : { situacao: "pago", pago_em: new Date().toISOString().slice(0, 10) });
   }
 
   async function pedirTroca(plantao: Plantao, destinatarioId: string, mensagem: string) {
@@ -988,12 +1089,22 @@ export function Plantoes({
               : daEscala.map((p) => {
                 const meu = p.perfil_id === perfilId;
                 return (
-                /* Grade de colunas fixas, e não flex com quebra. As linhas de
+                /* A gaveta só existe onde apagar tem chance de dar certo: o
+                   plantão de fora, que é seu e só seu, e a escala do grupo para
+                   quem a monta. Oferecer o gesto numa linha que o banco vai
+                   recusar é ensinar um caminho que termina em erro. */
+                <LinhaComGaveta
+                  key={p.id}
+                  podeApagar={(meu && p.privado) || ehAdmin}
+                  onApagar={() => void remover(p.id)}
+                  descricao={`${Number(p.data.slice(8, 10))}/${p.data.slice(5, 7)}`}
+                >
+                {/* Grade de colunas fixas, e não flex com quebra. As linhas de
                    colega têm menos controles que as suas, e em flex isso
                    empurrava valor, situação e botão para posições diferentes a
                    cada linha — a lista virava um degrau. Aqui cada coluna tem
-                   lugar marcado, ocupado ou não. */
-                <div className="plantaoLinha escalaLinha" key={p.id}>
+                   lugar marcado, ocupado ou não. */}
+                <div className="plantaoLinha escalaLinha">
                   <span className="plantaoQuando">
                     <strong>{Number(p.data.slice(8, 10))}/{p.data.slice(5, 7)}</strong>
                     <small>{hhmm(p.hora_inicio)}–{hhmm(p.hora_fim)} · {p.horas}h</small>
@@ -1025,7 +1136,15 @@ export function Plantoes({
                     {meu && (
                       <label className="inlineMoney">
                         <span>Situação</span>
-                        <select value={p.situacao} onChange={(e) => void atualizar(p.id, { situacao: e.target.value })}>
+                        {/* A data do pagamento anda junto com a situação. Sem
+                            isto, "Pago" pelo seletor deixava pago_em vazio e o
+                            fechamento do mês não sabia em que mês somar. */}
+                        <select value={p.situacao} onChange={(e) => void atualizar(p.id, {
+                          situacao: e.target.value,
+                          pago_em: e.target.value === "pago"
+                            ? p.pago_em ?? new Date().toISOString().slice(0, 10)
+                            : null,
+                        })}>
                           <option value="escalado">Escalado</option>
                           <option value="realizado">Realizado</option>
                           <option value="pago">Pago</option>
@@ -1059,16 +1178,27 @@ export function Plantoes({
                         </button>
                       </span>
                     )}
+                    {/* No lugar onde ficava o Apagar: o que de fato se faz
+                        nesta lista todo mês. O plantão de fora é cobrado por
+                        quem o fez, e o que ele espera é o dinheiro cair —
+                        "recebido" é o único estado que muda depois do turno.
+                        Apagar mudou de lugar: arrasta-se a linha para a
+                        esquerda. */}
                     {meu && p.privado && (
                       <span className="inlineMoney">
                         <span aria-hidden="true">&nbsp;</span>
-                        <button className="outlineClinical red" onClick={() => void remover(p.id)}>
-                          Apagar
+                        <button
+                          className={`outlineClinical plantaoRecebido${p.situacao === "pago" ? " sim" : ""}`}
+                          aria-pressed={p.situacao === "pago"}
+                          onClick={() => void marcarRecebido(p)}
+                        >
+                          {p.situacao === "pago" ? "Recebido ✓" : "Recebido"}
                         </button>
                       </span>
                     )}
                   </span>
                 </div>
+                </LinhaComGaveta>
                 );
               })}
           </section>

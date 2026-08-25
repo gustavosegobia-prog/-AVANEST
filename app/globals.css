@@ -2641,6 +2641,35 @@ button:disabled{cursor:not-allowed}
   .plantaoLinha.escalaLinha .plantaoCelula:last-child{grid-column:1/-1}
 }
 
+/* --- Arrastar para apagar -----------------------------------------------
+   O apagar saiu de botão fixo: a lista é lida no celular entre um caso e
+   outro, e o que se faz nela é marcar que o plantão foi pago — não apagar.
+   Vermelho parado ao lado do polegar é um erro esperando acontecer.
+
+   A gaveta fica ATRÁS da linha, e a linha tem fundo próprio para tapá-la. Sem
+   esse fundo ela apareceria por baixo o tempo todo, e a lista ganharia uma
+   tarja vermelha em cada plantão. */
+.plantaoArrasta{position:relative;overflow:hidden}
+.plantaoArrastaCorpo{position:relative;z-index:1;background:var(--cor-superficie);
+  transition:transform .18s ease;touch-action:pan-y}
+/* A borda que separava as linhas era `.plantaoLinha:last-child{border:0}`, e com
+   a linha dentro do embrulho TODA linha passou a ser a última do seu embrulho —
+   a lista inteira ficou sem divisória. A regra volta um nível acima. */
+.plantaoArrasta>.plantaoArrastaCorpo>.plantaoLinha{border-bottom:1px solid var(--cor-borda)}
+.plantaoArrasta:last-child>.plantaoArrastaCorpo>.plantaoLinha{border-bottom:0}
+.plantaoGaveta{position:absolute;top:0;right:0;bottom:0;width:92px;border:0;
+  background:var(--cor-perigo);color:#fff;font-weight:800;font-size:14px;cursor:pointer}
+/* Arrastar não existe no teclado nem para quem usa leitor de tela. O botão
+   está sempre no HTML e a gaveta se abre sozinha quando ele recebe foco — o
+   `!important` é o que vence o transform inline que o dedo controla. */
+.plantaoArrasta:focus-within>.plantaoArrastaCorpo{transform:translateX(-92px)!important}
+
+/* --- Recebido -----------------------------------------------------------
+   Dois estados no mesmo botão, e o segundo é visivelmente diferente: numa
+   lista de trinta linhas, saber quais já caíram é a leitura que se faz de
+   relance, e um contorno igual ao dos outros não responde isso. */
+.plantaoRecebido.sim{background:var(--cor-sucesso);border-color:var(--cor-sucesso);color:#fff}
+
 /* --- Modal de lançar ----------------------------------------------------
    Uma grade só para o formulário inteiro, a duração rápida inclusive. Ela
    estava fora da grade com grid-column:1/-1 — regra que só vale DENTRO de um
