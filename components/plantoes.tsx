@@ -565,8 +565,16 @@ export function Plantoes({
       institution_id: institutionId, perfil_id: dono,
       // Um ou outro, nunca os dois: é o que a constraint do banco exige, e o
       // que impede a mesma linha de ter dois lugares diferentes.
+      //
+      // Sem local escolhido, vale o que foi escrito à mão — e isso não é mais
+      // privilégio do plantão privado. Antes, não achar o hospital na lista
+      // deixava o plantão sem lugar nenhum, e a folha impressa dizia "Sem
+      // local" num dia em que a pessoa esteve em algum lugar. Escrever o nome é
+      // sempre melhor do que não dizer nada.
       local_id: dados.privado ? null : (dados.local_id || null),
-      local_texto: dados.privado ? (dados.local_texto.trim() || null) : null,
+      local_texto: dados.privado || !dados.local_id
+        ? (dados.local_texto.trim() || null)
+        : null,
       privado: dados.privado,
       data: dados.data,
       hora_inicio: dados.hora_inicio, hora_fim: dados.hora_fim,
@@ -1836,20 +1844,39 @@ function LancarPlantao({
                     placeholder="Clínica de endoscopia, Hospital São José…"
                     onChange={(e) => setForm({ ...form, local_texto: e.target.value })} />
                   <small className="campoDica">Só você vê este nome.</small></label>
-              : <label className="clinicalField span2"><span>Local</span>
-                  <select value={form.local_id} onChange={(e) => setForm({ ...form, local_id: e.target.value })}>
-                    <option value="">Sem local</option>
-                    {locais.map((l) => <option key={l.id} value={l.id}>{nomeDoLocal(l)}</option>)}
-                  </select>
-                  {/* Lista vazia é um beco: a pessoa abre o campo, encontra só
-                      "Sem local" e não tem como adivinhar que o cadastro é noutra
-                      tela. Foi a primeira pergunta de quem usou. */}
-                  {locais.length === 0 && (
-                    <small className="campoDica">
-                      Nenhum local cadastrado. O cadastro fica em{" "}
-                      <strong>Admin → Organização → Locais de atendimento</strong>.
-                    </small>
-                  )}</label>}
+              : <>
+                  <label className="clinicalField span2"><span>Local</span>
+                    <select value={form.local_id} onChange={(e) => setForm({ ...form, local_id: e.target.value })}>
+                      {/* "Sem local" era um beco: escolher aquilo produzia um
+                          plantão sem lugar nenhum, e a folha impressa dizia
+                          "Sem local" num dia em que a pessoa esteve em algum
+                          lugar. Agora a mesma opção ABRE um campo para escrever
+                          — o hospital que ainda não foi cadastrado, a sedação
+                          de sábado, o mutirão. Dizer onde é sempre melhor do
+                          que não dizer nada. */}
+                      <option value="">Outro lugar — escrever</option>
+                      {locais.map((l) => <option key={l.id} value={l.id}>{nomeDoLocal(l)}</option>)}
+                    </select>
+                  </label>
+                  {!form.local_id && (
+                    <label className="clinicalField span2"><span>Onde, ou o que vai fazer</span>
+                      <input value={form.local_texto} maxLength={80} autoFocus
+                        placeholder="Hospital São José, mutirão de catarata, sedação…"
+                        onChange={(e) => setForm({ ...form, local_texto: e.target.value })} />
+                      {/* A lista vazia tinha de dizer onde se cadastra: a
+                          pessoa abria o campo, não achava o hospital dela e não
+                          tinha como adivinhar que o cadastro era noutra tela.
+                          Foi a primeira pergunta de quem usou — e agora ela
+                          pode seguir escrevendo, sem parar o lançamento. */}
+                      <small className="campoDica">
+                        {locais.length === 0
+                          ? <>Nenhum local cadastrado ainda. Para o nome virar coluna da escala do grupo,
+                              cadastre em <strong>Admin → Organização → Locais de atendimento</strong>.</>
+                          : "Aparece na escala e na folha impressa como você escrever."}
+                      </small>
+                    </label>
+                  )}
+                </>}
             <label className="clinicalField"><span>Início</span>
               <input type="time" value={form.hora_inicio}
                 onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} /></label>

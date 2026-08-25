@@ -572,6 +572,13 @@ export function DashboardClient({
             {trocasEsperando>0&&<b className="navAviso" title={`${trocasEsperando===1?"Um plantão oferecido espera":"Plantões oferecidos esperam"} a sua resposta`}>{trocasEsperando}</b>}
           </button>}
         </nav>
+        {/* Sino e menu do usuário viajam JUNTOS, num item só.
+            A barra é um grid de quatro colunas, e não um flex: acrescentar o
+            sino solto criou um quinto filho, que o grid jogou para uma segunda
+            linha — o menu do usuário apareceu embaixo da marca. Agrupados, a
+            barra continua com os mesmos quatro itens de sempre, e as regras de
+            coluna dos três pontos de quebra seguem valendo sem serem tocadas. */}
+        <div className="topbarFim">
         {/* O sino fica no TOPO, ao lado do seu nome, e não dentro da Escala.
             O aviso que importa nasce numa área e é lido em outra: um plantão
             oferecido às 6 da manhã por quem passou mal precisa alcançar quem
@@ -647,6 +654,7 @@ export function DashboardClient({
               <button role="menuitem" className="userMenuSair" onClick={logout}>Sair da conta</button>
             </div>
           </>}
+        </div>
         </div>
       </header>
 

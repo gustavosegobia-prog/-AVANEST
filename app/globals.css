@@ -890,9 +890,12 @@ button:disabled{cursor:not-allowed}
    O sino fica ao lado do seu nome, e não dentro de uma área: o aviso nasce
    numa e é lido em outra. Quem está na Recepção cadastrando paciente precisa
    ver o plantão oferecido sem ter motivo nenhum para abrir a Escala. */
-/* Sem margin-left:auto. A barra é `justify-content:space-between`, e o auto
-   somaria um empurrão em cima da distribuição que já existe — abrindo um vão
-   depois das abas e colando o sino no nome. */
+/* Sino e menu do usuário num item só da barra.
+   A barra do painel é um GRID de quatro colunas, não um flex: o sino solto
+   virava um quinto filho e o grid empurrava o menu do usuário para uma segunda
+   linha, embaixo da marca. Juntos, a barra continua com quatro itens e as
+   regras de coluna dos três pontos de quebra seguem valendo. */
+.topbarFim{display:flex;align-items:center;gap:var(--esp-1);min-width:0;justify-self:end}
 .avisosWrap{position:relative;display:flex;align-items:center;flex:0 0 auto}
 .avisosSino{position:relative;display:grid;place-items:center;
   width:var(--alt-botao-compacto);height:var(--alt-botao-compacto);
