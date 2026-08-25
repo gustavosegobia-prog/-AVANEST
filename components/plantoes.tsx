@@ -11,6 +11,7 @@ import {
   ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
+import { feriadosDoMes } from "@/lib/feriados";
 
 // Plantões: a escala, o valor e a troca.
 //
@@ -250,6 +251,12 @@ export function Plantoes({
       .forEach((l, i) => m.set(l.id, CORES_MEDICO[i % CORES_MEDICO.length]));
     return m;
   }, [locais]);
+
+  // Os feriados nacionais do mês na tela. Recalculado só quando o mês muda:
+  // é conta pura, sem rede e sem banco — feriado nacional é lei publicada, e
+  // uma escala que precisa de internet para saber que 1º de maio é feriado
+  // deixa de funcionar exatamente no plantão em que a rede do hospital cai.
+  const feriados = useMemo(() => feriadosDoMes(mes), [mes]);
 
   // O nome curto de cada colega para os botões de escalar rápido.
   const apelidos = useMemo(() => apelidosDaEquipe(colegas), [colegas]);
@@ -810,6 +817,7 @@ export function Plantoes({
                   const dia = `${mes}-${String(i + 1).padStart(2, "0")}`;
                   const doDia = daEscala.filter((p) => p.data === dia);
                   const fimDeSemana = new Date(`${dia}T12:00:00`).getDay() % 6 === 0;
+                  const feriado = feriados.get(dia);
 
                   // Na escala do grupo o dia sai em três faixas — M, T, N — com
                   // quem cobre cada uma. É como a escala é lida na parede do
@@ -821,11 +829,18 @@ export function Plantoes({
                   return (
                     <button
                       type="button" key={dia}
-                      className={`plantaoDia${dia === hojeISO ? " hoje" : ""}${fimDeSemana ? " fds" : ""}${diaAberto === dia ? " aberto" : ""}`}
+                      className={`plantaoDia${dia === hojeISO ? " hoje" : ""}${fimDeSemana ? " fds" : ""}`
+                        + `${feriado ? ` feriado f-${feriado.tipo}` : ""}${diaAberto === dia ? " aberto" : ""}`}
                       onClick={() => setDiaAberto(diaAberto === dia ? null : dia)}
-                      aria-label={`${i + 1} — ${doDia.length ? plural(doDia.length, "plantão", "plantões") : "sem plantão"}`}
+                      title={feriado ? `${feriado.nome}${feriado.tipo === "facultativo" ? " (ponto facultativo)" : ""}` : undefined}
+                      aria-label={`${i + 1}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? plural(doDia.length, "plantão", "plantões") : "sem plantão"}`}
                     >
                       <b>{i + 1}</b>
+                      {/* O nome do feriado, e não só uma cor. Cor sozinha diz
+                          "tem algo diferente aqui" e obriga a procurar o que é;
+                          numa escala o que importa é qual feriado — o plantão
+                          de Natal não se negocia como o de Corpus Christi. */}
+                      {feriado && <u className="plantaoFeriado">{feriado.nome}</u>}
                       <span className="plantaoEtiquetas">
                         {escopo === "grupo"
                           ? <>

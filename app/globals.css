@@ -2226,6 +2226,24 @@ button:disabled{cursor:not-allowed}
    mais se procura numa escala, e contar sete colunas para achá-la é o tipo de
    esforço que a cor resolve de graça. */
 .plantaoDia.fds{background:var(--cor-superficie-suave)}
+/* --- Feriado ------------------------------------------------------------
+   Numa escala de plantão o feriado não é enfeite: é o dia que paga diferente,
+   que a equipe disputa e que o coordenador esquece de cobrir.
+
+   O nome fica escrito, e não só a cor. Cor sozinha diz "tem algo aqui" e
+   obriga a procurar o que é — e o plantão de Natal não se negocia como o de
+   Corpus Christi. O facultativo vem mais claro que o feriado de lei, porque
+   a diferença entre os dois muda quem é obrigado a estar lá. */
+.plantaoDia.feriado{background:color-mix(in srgb,var(--cor-perigo) 7%,var(--cor-superficie))}
+.plantaoDia.feriado.f-facultativo{background:color-mix(in srgb,var(--cor-atencao) 8%,var(--cor-superficie))}
+.plantaoDia.fds.feriado{background:color-mix(in srgb,var(--cor-perigo) 11%,var(--cor-superficie))}
+.plantaoDia.fds.feriado.f-facultativo{background:color-mix(in srgb,var(--cor-atencao) 12%,var(--cor-superficie))}
+.plantaoFeriado{display:block;text-decoration:none;font-size:9px;font-weight:800;line-height:1.15;
+  letter-spacing:.01em;color:var(--cor-perigo);margin:-1px 0 2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plantaoDia.f-facultativo .plantaoFeriado{color:#8a5a00}
+.clinicalDark .plantaoDia.f-facultativo .plantaoFeriado{color:var(--cor-atencao)}
+
 .plantaoDia.hoje{border-color:var(--cor-marca);border-width:2px;padding:6px 6px 5px}
 .plantaoDia.hoje>b{color:var(--cor-marca);font-weight:850}
 .plantaoDia.aberto{box-shadow:var(--foco);border-color:var(--cor-marca)}
