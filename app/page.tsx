@@ -28,16 +28,15 @@ export default function HomePage() {
       <section className="avnHero">
         <div className="avnOverlay" />
         <div className="avnHeroContent">
-          <p className="avnEyebrow">AVALIAÇÃO PRÉ-ANESTÉSICA</p>
+          <p className="avnEyebrow">GESTÃO EM ANESTESIOLOGIA</p>
           <h1>
-            Feita por quem faz avaliação pré-anestésica.
+            Da avaliação pré-anestésica ao caixa do serviço.
           </h1>
           <p className="avnLead">
-            Nove etapas, escores calculados na hora e ficha, termo e orientações
-            prontos para imprimir com o logo do hospital. Nasceu dentro do centro
-            cirúrgico, e é usada todo dia por anestesiologistas e residentes. No
-            mesmo sistema: a escala do serviço, a produção do plantão e o que você
-            tem a receber.
+            A avaliação em nove etapas, com escores calculados e documentos
+            impressos no timbre do hospital. A escala de todas as instituições em
+            um calendário. O controle do que foi produzido, faturado e recebido.
+            Desenvolvido por anestesiologista, dentro de um serviço em atividade.
           </p>
           <div className="avnActions">
             <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
@@ -49,8 +48,8 @@ export default function HomePage() {
       </section>
 
       <section className="avnInfo" id="como-funciona">
-        <p>GESTÃO EM ANESTESIOLOGIA</p>
-        <h2>Da avaliação ao dinheiro que entra, sem trocar de sistema.</h2>
+        <p>O QUE O SISTEMA COBRE</p>
+        <h2>Três frentes que hoje vivem separadas.</h2>
         <div className="avnGrid">
           {[
             /* A avaliação vem primeiro: é o que o colega reconhece de imediato
@@ -59,18 +58,18 @@ export default function HomePage() {
                lugar — e é aí que o sistema deixa de ser mais um. */
             [
               "01",
-              "A avaliação, em nove etapas que seguem a consulta",
-              "Anamnese, exame físico, via aérea, exames, medicamentos e escores. O texto é salvo enquanto você digita, e no fim saem a ficha, o termo de consentimento e as orientações do paciente, prontos para imprimir.",
+              "Avaliação pré-anestésica",
+              "Nove etapas, com ASA, índice de Lee, STOP-Bang e Apfel calculados a partir do que já foi respondido. Ao final saem a ficha, o termo de consentimento e as orientações ao paciente, impressos no timbre do hospital em que ele foi atendido.",
             ],
             [
               "02",
-              "A escala do serviço, hospital por hospital",
-              "Uma escala por hospital, e a sua reunindo todas num calendário só. Plantão do grupo não se apaga: passa para um colega, com dono, data e resposta registrados.",
+              "Escala do serviço",
+              "Uma escala por instituição, e a do profissional reunindo todas em um calendário. O plantão do grupo não se apaga: é transferido a um colega, com autor, data e resposta registrados.",
             ],
             [
               "03",
-              "O dinheiro do plantão, do lançamento ao recebimento",
-              "Paciente, convênio e cirurgia numa linha, ainda de jaleco. O fechamento do mês sai pronto para o financeiro, e o sistema avisa o que foi faturado e ainda não voltou.",
+              "Controle de caixa",
+              "A produção do dia registrada em uma linha, ainda no hospital. O fechamento do mês sai pronto para o financeiro, e o sistema aponta o que foi faturado e ainda não foi recebido.",
             ],
           ].map(([n, title, text]) => (
             <article key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></article>
@@ -81,7 +80,7 @@ export default function HomePage() {
             inteira, em vez de decidir por três frases. */}
         <div className="avnActions">
           <a className="avnSecondary avnVerTudo" href="/recursos">
-            Ver tudo o que o AVANEST faz
+            Ver todos os recursos
           </a>
         </div>
       </section>

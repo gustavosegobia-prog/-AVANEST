@@ -7,10 +7,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.avanest.com.br"),
   title: "AVANEST | Gestão em anestesiologia",
-  description: "Avaliação pré-anestésica em nove etapas, com ficha, termo e orientações prontos para imprimir. E, no mesmo sistema, a escala do serviço, a produção do plantão e o recebimento.",
+  description: "Sistema de gestão para serviços de anestesiologia: avaliação pré-anestésica em nove etapas, escala por instituição e controle do que foi produzido, faturado e recebido.",
   openGraph: {
     title: "AVANEST | Gestão em anestesiologia",
-    description: "A avaliação pré-anestésica feita por quem faz avaliação pré-anestésica — com a escala e o financeiro do plantão no mesmo sistema.",
+    description: "Da avaliação pré-anestésica ao caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",
   },
   twitter: { card: "summary" },
 };
