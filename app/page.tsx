@@ -33,9 +33,8 @@ export default function HomePage() {
             Da avaliação pré-anestésica ao caixa do serviço.
           </h1>
           <p className="avnLead">
-            Para o anestesiologista que trabalha sozinho, para o grupo e para a
-            clínica. Desenvolvido por anestesiologista, dentro de um serviço em
-            atividade.
+            Para quem trabalha sozinho e para o grupo de anestesia. De
+            anestesiologista para anestesiologista.
           </p>
           {/* Três, e não quatro. "Gestão de clínica" e "gestão de grupo" não são
               uma quarta função: são para QUEM o sistema serve, e isso já está na
