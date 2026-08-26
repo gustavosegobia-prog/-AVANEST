@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import {
+  TELAS_DE_ABERTURA, arquivoDaAbertura, consultaDaAbertura,
+} from "@/lib/tela-de-abertura";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,6 +37,21 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             arquivo chamar-se exatamente "apple-icon.png" na pasta app. O
             caminho explícito funciona com qualquer nome de arquivo. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/icone192.png" />
+        {/* A tela que o iPhone e o iPad mostram no instante do toque no ícone,
+            antes de o site carregar. Sem ela é branco, e um segundo de tela
+            vazia faz a pessoa achar que não abriu e tocar de novo.
+
+            Uma por aparelho porque o iOS só usa o arquivo cuja medida bate
+            exatamente; medida que não bate ele ignora calado, e a tela volta a
+            ser branca. O motivo completo está em lib/tela-de-abertura.ts. */}
+        {TELAS_DE_ABERTURA.map((tela) => (
+          <link
+            key={arquivoDaAbertura(tela)}
+            rel="apple-touch-startup-image"
+            href={arquivoDaAbertura(tela)}
+            media={consultaDaAbertura(tela)}
+          />
+        ))}
         <meta name="theme-color" content="#0879c9" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
