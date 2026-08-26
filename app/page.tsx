@@ -49,7 +49,7 @@ export default function HomePage() {
       </section>
 
       <section className="avnInfo" id="como-funciona">
-        <p>O QUE O AVANEST FAZ</p>
+        <p>GESTÃO EM ANESTESIOLOGIA</p>
         <h2>Da avaliação ao dinheiro que entra, sem trocar de sistema.</h2>
         <div className="avnGrid">
           {[

@@ -127,7 +127,31 @@
   .avnSoLargo{display:none}
   .avnSoEstreito{display:inline}
 }
-@media(max-width:520px){.avnBrand small{display:none}.avnHero h1{font-size:37px}.avnActions,.avnBenefits{display:grid}.avnGrid,.avnStats{grid-template-columns:1fr}}
+/* A linha "gestão em anestesiologia" some no celular desde antes, para
+   caber. Ela é o que o sistema é, e some justamente na tela em que a
+   maioria abre — então volta, menor e mais apertada, em vez de sumir. */
+@media(max-width:520px){.avnHero h1{font-size:37px}.avnActions,.avnBenefits{display:grid}.avnGrid,.avnStats{grid-template-columns:1fr}
+  .avnBrand small{font-size:8px;letter-spacing:.16em;margin-top:3px}
+  .avnMark{width:44px;height:44px}
+  .avnBrand strong{font-size:19px;letter-spacing:.1em}
+  .avnBrand{gap:10px}}
+/* Abaixo de 430px a conta não fecha: marca com a linha de baixo mais os dois
+   botões passam da largura do iPhone e o cabeçalho estoura. Em vez de esconder
+   a linha de novo, aperta-se tudo — a linha, o nome e o respiro dos botões.
+   Medido: sobra folga em 390px, que é a largura do aparelho mais estreito
+   que ainda importa. */
+@media(max-width:430px){
+  /* `nowrap` é o ponto: sem ele a linha quebra em "GESTÃO EM /
+     ANESTESIOLOGIA", o cabeçalho cresce e fica apertado. Medido numa régua de
+     390px — a largura do iPhone — o conjunto ocupa 350px e sobram 40. Antes
+     deste ajuste sobravam 0,3px, que não é folga, é sorte. */
+  .avnBrand small{font-size:7px;letter-spacing:.08em;white-space:nowrap}
+  .avnBrand strong{font-size:18px}
+  .avnMark{width:40px;height:40px}
+  .avnNav{padding:0 14px}
+  .avnNav nav{gap:8px}
+  .avnNav nav a{padding:0 13px;font-size:13.5px}
+}
 
 /* Login fiel ao protótipo clínico do AVANEST */
 .avnLoginPage{min-height:100vh;background:#07131f;display:grid;place-items:center;padding:28px;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
