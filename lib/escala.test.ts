@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { PlantaoDoFechamento, PlantaoImpresso } from "./escala.ts";
 import {
-  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
@@ -624,4 +624,55 @@ test("o fechamento sai timbrado pela instituição", () => {
 test("o nome do profissional é escapado", () => {
   const { corpo } = fechamento([turnoDe("a", "<script>alert(1)</script>", "2026-08-03")]);
   assert.doesNotMatch(corpo, /<script>/);
+});
+
+// ---------------------------------------------------------------------------
+// A janela de confirmar
+// ---------------------------------------------------------------------------
+
+const diurno = { data: "2026-08-25", hora_inicio: "07:00", hora_fim: "19:00" };
+const noturno = { data: "2026-08-25", hora_inicio: "19:00", hora_fim: "07:00" };
+const em = (s: string) => new Date(s);
+
+test("o plantão do dia confirma durante o dia", () => {
+  assert.equal(podeConfirmar(diurno, em("2026-08-25T08:00:00")), true);
+  assert.equal(podeConfirmar(diurno, em("2026-08-25T19:00:00")), true);
+});
+
+test("antes do dia não confirma — não aconteceu ainda", () => {
+  assert.equal(podeConfirmar(diurno, em("2026-08-24T23:59:00")), false);
+});
+
+test("passou a janela, não confirma mais", () => {
+  // É o ponto da regra: sem fechar a janela, no fim do mês a pessoa confirma
+  // trinta de uma vez sem lembrar de nenhum — e o que ela assina não é o que
+  // aconteceu, é o que estava escalado.
+  assert.equal(podeConfirmar(diurno, em("2026-08-26T09:00:00")), false);
+});
+
+test("o noturno confirma na manhã seguinte, que é quando ele termina", () => {
+  // Cortar à meia-noite tornaria impossível confirmar o turno da noite —
+  // justamente aquele em que a pessoa está mais cansada.
+  assert.equal(podeConfirmar(noturno, em("2026-08-25T23:00:00")), true);
+  assert.equal(podeConfirmar(noturno, em("2026-08-26T07:00:00")), true);
+  assert.equal(podeConfirmar(noturno, em("2026-08-26T07:25:00")), true);
+  assert.equal(podeConfirmar(noturno, em("2026-08-26T08:00:00")), false);
+});
+
+test("meia hora de folga depois do fim: tirar a luva e pegar o telefone", () => {
+  assert.equal(podeConfirmar(diurno, em("2026-08-25T19:29:00")), true);
+  assert.equal(podeConfirmar(diurno, em("2026-08-25T19:31:00")), false);
+});
+
+test("plantão de 24 horas confirma até o dia seguinte no mesmo horário", () => {
+  const vinteQuatro = { data: "2026-08-25", hora_inicio: "07:00", hora_fim: "07:00" };
+  assert.equal(podeConfirmar(vinteQuatro, em("2026-08-26T07:00:00")), true);
+  assert.equal(podeConfirmar(vinteQuatro, em("2026-08-26T08:00:00")), false);
+});
+
+test("a virada do mês não fecha a janela do noturno", () => {
+  // 31/08 às 19h termina em 01/09 às 7h. Somar um dia sem trocar de mês daria
+  // "32 de agosto", e o noturno do último dia do mês nunca confirmaria.
+  const ultimoDia = { data: "2026-08-31", hora_inicio: "19:00", hora_fim: "07:00" };
+  assert.equal(podeConfirmar(ultimoDia, em("2026-09-01T06:00:00")), true);
 });

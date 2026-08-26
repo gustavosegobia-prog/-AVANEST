@@ -6,7 +6,7 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
-  corpoDaFolha, escaparHTML, faixa, folhaDeFechamento, folhaDeProducao, hhmm, money,
+  corpoDaFolha, escaparHTML, faixa, folhaDeFechamento, folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
   ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
@@ -413,6 +413,9 @@ export function Plantoes({
   );
   const { oculto: valorOculto, alternar: esconderValores, mascara } = useValoresOcultos();
   const [pedindoTroca, setPedindoTroca] = useState<Plantao | null>(null);
+  // Os hospitais em que você tem, ou já teve, plantão. Decide quais escalas de
+  // grupo a coluna da esquerda oferece.
+  const [meusLocais, setMeusLocais] = useState<Set<string>>(new Set());
   // Lançar sem modelo. O modelo é atalho, não pré-requisito: exigir que a
   // pessoa crie um modelo antes de registrar o primeiro plantão é uma parede
   // logo na entrada, e foi exatamente onde a tela travou no primeiro uso.
@@ -490,11 +493,18 @@ export function Plantoes({
     const [ano, m] = mes.split("-").map(Number);
     const primeiro = `${mes}-01`;
     const ultimo = new Date(ano, m, 0).toISOString().slice(0, 10);
-    const [{ data: mods }, { data: plans, error }, { data: trs }] = await Promise.all([
+    const [{ data: mods }, { data: plans, error }, { data: trs }, { data: onde }] = await Promise.all([
       supabase.from("modelos_plantao").select("*").eq("ativo", true).order("nome"),
       supabase.from("plantoes").select("*").gte("data", primeiro).lte("data", ultimo).order("data"),
       supabase.from("trocas_plantao").select("*").eq("status", "pendente").order("created_at", { ascending: false }),
+      // Em que hospitais ESTA pessoa trabalha — de qualquer mês, e não só do
+      // que está aberto. Quem cobre a Unimed uma vez por trimestre veria a
+      // escala de lá sumir e voltar conforme o mês na tela, o que é pior do
+      // que não tê-la: some justamente quando ela vai consultar o próximo.
+      supabase.from("plantoes").select("local_id")
+        .eq("perfil_id", perfilId).not("local_id", "is", null),
     ]);
+    setMeusLocais(new Set((onde ?? []).map((r) => r.local_id as string)));
     setCarregando(false);
     if (error) { setErro("Não foi possível carregar os plantões."); return; }
     setModelos((mods ?? []) as Modelo[]);
@@ -715,6 +725,10 @@ export function Plantoes({
     && (t.destinatario_id === null || t.destinatario_id === perfilId)).length;
 
   const hojeISO = new Date().toISOString().slice(0, 10);
+  // Um relógio só para a lista inteira. Chamar new Date() dentro do map faria
+  // trinta linhas perguntarem a hora trinta vezes — e, na virada de um minuto,
+  // duas linhas do mesmo mês responderiam coisas diferentes.
+  const agora = new Date();
   const [ano, m] = mes.split("-").map(Number);
   const diasNoMes = new Date(ano, m, 0).getDate();
   const primeiroDiaSemana = new Date(ano, m - 1, 1).getDay();
@@ -727,6 +741,28 @@ export function Plantoes({
   // Escala de hospital vazio não é um beco: é exatamente onde o administrador
   // vai para montá-la, e o botão de lançar está ali.
   const locaisAtivos = useMemo(() => locais.filter((l) => l.ativo), [locais]);
+  /**
+   * As escalas de grupo que ESTA pessoa vê na coluna.
+   *
+   * Quem monta a escala vê todas — não dá para montar a escala de um hospital
+   * que não aparece na tela. Os demais veem os hospitais em que trabalham: a
+   * escala da Unimed não diz nada a quem nunca pisou lá, e três serviços na
+   * coluna fazem procurar o seu entre os que não são.
+   *
+   * Isto é organização da TELA, e não barreira de acesso. Dentro de uma mesma
+   * organização a escala do grupo continua legível por quem tem a área Escala
+   * — é o que a política do banco diz, e mudar isso é mudar a política, não a
+   * coluna. Se a intenção for separar de verdade um hospital do outro, o lugar
+   * da regra é o RLS.
+   *
+   * Enquanto ninguém foi escalado em lugar nenhum, mostra todos: uma coluna
+   * vazia no primeiro uso pareceria defeito, e é justamente a hora em que a
+   * pessoa precisa achar a escala que o chefe acabou de montar.
+   */
+  const locaisDaColuna = useMemo(() => {
+    if (ehAdmin || meusLocais.size === 0) return locaisAtivos;
+    return locaisAtivos.filter((l) => meusLocais.has(l.id));
+  }, [ehAdmin, locaisAtivos, meusLocais]);
 
   // Id que não corresponde a hospital nenhum cai em "todos": é o que impede um
   // local arquivado, ou um cadastro que mudou, de esvaziar a tela em silêncio.
@@ -1040,7 +1076,7 @@ export function Plantoes({
             // não administra nunca vê este item — o banco não devolve o local —,
             // e quem administra precisa saber qual escala está montando às
             // claras e qual está montando em silêncio.
-            ...locaisAtivos.map((l) =>
+            ...locaisDaColuna.map((l) =>
               [`grupo:${l.id}`, `${nomeDoLocal(l)}${l.oculto ? " 🔒" : ""}`] as [string, string]),
             // A coluna lista hospitais, e só. Saíram daqui "Todos os
             // hospitais" — a pergunta dele, "onde eu estou este mês?", Minha
@@ -1378,11 +1414,21 @@ export function Plantoes({
                             {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
                           </button>
                         ) : !p.confirmado_em ? (
-                          <button className="outlineClinical plantaoConfirmar"
-                            title="Confirma que você fez este plantão. É o que o fechamento do mês soma."
-                            onClick={() => void confirmar(p)}>
-                            Confirmar
-                          </button>
+                          podeConfirmar(p, agora) ? (
+                            <button className="outlineClinical plantaoConfirmar"
+                              title="Confirma que você fez este plantão. É o que o fechamento do mês soma."
+                              onClick={() => void confirmar(p)}>
+                              Confirmar
+                            </button>
+                          ) : (
+                            /* A janela fechou. Um botão morto aqui só serviria
+                               para produzir o erro do banco a cada toque; o
+                               selo diz o que aconteceu e por quê. */
+                            <span className="statusChip waiting"
+                              title="A confirmação era no dia do plantão. Ele continua no fechamento do mês, marcado como não confirmado.">
+                              NÃO CONFIRMADO
+                            </span>
+                          )
                         ) : (
                           <button
                             className={`outlineClinical plantaoRecebido${p.situacao === "pago" ? " sim" : ""}`}
@@ -1589,11 +1635,16 @@ function DiaDetalhe({
                 <span className="statusChip present" title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}>
                   CONFIRMADO
                 </span>
-              ) : (
+              ) : podeConfirmar(p, new Date()) ? (
                 <button className="outlineClinical plantaoConfirmar" onClick={() => onConfirmar(p)}
                   title="Confirma que você fez este plantão. É o que o fechamento do mês soma.">
                   Confirmar plantão
                 </button>
+              ) : (
+                <span className="statusChip waiting"
+                  title="A confirmação era no dia do plantão. Ele continua no fechamento do mês, marcado como não confirmado.">
+                  NÃO CONFIRMADO
+                </span>
               )}
               {(ehAdmin || p.privado) && (
                 <button className="outlineClinical red" onClick={() => onRemover(p.id)}>Remover</button>

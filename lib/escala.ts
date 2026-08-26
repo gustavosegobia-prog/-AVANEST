@@ -322,6 +322,41 @@ export function plantaoNaEscala(localDoPlantao: string | null, escala: string): 
   return localDoPlantao === escala;
 }
 
+/**
+ * Dá para confirmar este plantão AGORA?
+ *
+ * A janela vai do começo do dia do plantão até o fim do turno, com meia hora de
+ * folga. Não é do dia inteiro: um turno de 19h às 7h termina no dia seguinte, e
+ * cortar à meia-noite tornaria impossível confirmar o noturno — justamente o
+ * turno em que a pessoa está mais cansada e mais precisa que seja um toque.
+ *
+ * A meia hora depois do fim é o tempo de tirar a luva e pegar o telefone.
+ *
+ * A regra vive no banco, que é quem decide de verdade. Esta cópia existe para a
+ * tela não OFERECER o que o banco vai recusar: botão que só serve para dar erro
+ * é pior do que botão nenhum. As duas precisam concordar, e é isto que os
+ * testes daqui prendem.
+ */
+export function podeConfirmar(
+  plantao: { data: string; hora_inicio: string; hora_fim: string },
+  agora: Date,
+): boolean {
+  const [ano, mes, dia] = plantao.data.split("-").map(Number);
+  const emMinutos = (hhmmss: string) => {
+    const [h, m] = hhmmss.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  // Datas locais, e não UTC: o dia do plantão é o dia de quem trabalhou. Com
+  // Date.UTC, um turno que começa às 21h em Brasília só ficaria confirmável
+  // depois da meia-noite de lá.
+  const comeco = new Date(ano, mes - 1, dia, 0, 0, 0, 0);
+  const viraODia = emMinutos(plantao.hora_fim) <= emMinutos(plantao.hora_inicio);
+  const fim = new Date(ano, mes - 1, dia + (viraODia ? 1 : 0),
+    Math.floor(emMinutos(plantao.hora_fim) / 60),
+    emMinutos(plantao.hora_fim) % 60 + 30, 0, 0);
+  return agora >= comeco && agora <= fim;
+}
+
 // ---------------------------------------------------------------------------
 // A folha impressa
 // ---------------------------------------------------------------------------
