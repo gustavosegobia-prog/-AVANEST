@@ -64,7 +64,7 @@ const BLOCOS: Bloco[] = [
         "O grupo não tem uma escala: tem a da Santa Casa, a da Unimed, a do Instituto. A sua junta "
         + "tudo em um calendário só, porque ali a pergunta é outra: onde eu trabalho este mês."],
       ["O dia dividido em manhã, tarde e noite",
-        "O turno continua sendo lançado no horário que você quiser. Quem fica até às 13h aparece na "
+        "O turno continua sendo lançado no horário que você quiser. Quem fica até as 13h aparece na "
         + "manhã; quem faz o dia todo, na manhã e na tarde. A faixa vazia fica à vista: é o buraco "
         + "na cobertura."],
       ["Escalar é clicar no nome e clicar no turno",

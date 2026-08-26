@@ -24,7 +24,7 @@ export default async function ComecarPage({
       <section className="avnLoginCard avnOnboardingCard">
         <div className="avnLoginIllustration">
           <AppLogo />
-          <p>Cada organização tem seus próprios pacientes, avaliações e documentos, sem qualquer acesso aos dados das demais.</p>
+          <p>Cada organização tem os seus próprios pacientes, escalas, avaliações e documentos, sem nenhum acesso aos dados das demais.</p>
         </div>
         <div className="avnLoginContent">
           <h1>Como você vai usar o AVANEST?</h1>

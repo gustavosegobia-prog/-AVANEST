@@ -50,7 +50,7 @@ const perguntas = (a: {
 }) => [
   {
     p: "Preciso pagar taxa de instalação ou assinar contrato de fidelidade?",
-    r: "Não. O AVANEST não cobra taxa de instalação e não exige fidelidade. O cancelamento é pela sua própria conta, em Admin › Assinatura, a qualquer momento e sem passar por atendimento: não há nova cobrança, e o acesso continua até o fim do período que você já pagou.",
+    r: "Não. O AVANEST não cobra taxa de instalação e não exige fidelidade. O cancelamento é feito pela sua própria conta, em Admin › Assinatura, a qualquer momento e sem passar por atendimento: não há nova cobrança, e o acesso continua até o fim do período que você já pagou.",
   },
   {
     p: "Se eu cancelar, recebo o dinheiro de volta?",
@@ -80,7 +80,7 @@ const perguntas = (a: {
   },
   {
     p: "Dá para migrar as fichas ou o sistema que uso hoje?",
-    r: "Se você já tem um fluxo de avaliação pré-anestésica em papel ou em outro sistema, fale com a gente antes de assinar para combinarmos como trazer o que já existe.",
+    r: "Sim. Se você já mantém as avaliações em papel, a escala numa planilha ou a produção num caderno, fale com a gente antes de assinar: combinamos como trazer o que já existe.",
   },
   {
     p: "O suporte está incluído em todos os planos?",
@@ -88,7 +88,7 @@ const perguntas = (a: {
   },
   {
     p: "Como faço para começar?",
-    r: "Você pode conversar 15 minutos pelo WhatsApp antes de decidir, ou escolher agora mesmo o plano do tamanho da sua equipe aqui em cima.",
+    r: "Você pode falar 15 minutos com a gente pelo WhatsApp antes de decidir ou escolher agora mesmo, aqui em cima, o plano do tamanho da sua equipe.",
   },
 ];
 
@@ -118,13 +118,12 @@ type Vagas = {
 };
 
 const INCLUSO = [
-  "Atualizações gratuitas",
   "Suporte",
-  "Impressão ilimitada",
+  "Atualizações gratuitas",
   "Avaliações ilimitadas",
+  "Impressão ilimitada",
   "Backup automático",
-  "Segurança LGPD",
-  "Atualizações constantes",
+  "Segurança e conformidade com a LGPD",
 ];
 
 const reais = (valor: number) =>
@@ -305,8 +304,8 @@ export default async function PlanosPage() {
             ))}
         </div>
         <p className="planosFaqRodape">
-          Ficou uma dúvida que não está aqui?{" "}
-          <a href={duvida} target="_blank" rel="noreferrer">Chame no WhatsApp</a>.
+          Ficou alguma dúvida que não está aqui?{" "}
+          <a href={duvida} target="_blank" rel="noreferrer">Fale com a gente no WhatsApp</a>.
         </p>
       </section>
 

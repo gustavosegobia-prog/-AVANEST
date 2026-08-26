@@ -57,7 +57,7 @@ export default function HomePage() {
             [
               "01",
               "A escala de todos os hospitais num calendário só",
-              "Cada lugar onde você está escalado, o valor combinado de cada turno, e a troca com um colega registrada — com dono, data e resposta.",
+              "Cada lugar onde você está escalado, o valor combinado de cada turno e a troca com um colega registrada — com dono, data e resposta.",
             ],
             [
               "02",
@@ -67,7 +67,7 @@ export default function HomePage() {
             [
               "03",
               "A produção do dia vira o que você tem a receber",
-              "Paciente, convênio e cirurgia numa linha. O sistema acompanha o que foi faturado, o que foi recebido, e avisa o que ficou para trás.",
+              "Paciente, convênio e cirurgia numa linha. O sistema acompanha o que foi faturado e o que foi recebido, e avisa o que ficou para trás.",
             ],
           ].map(([n, title, text]) => (
             <article key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></article>
