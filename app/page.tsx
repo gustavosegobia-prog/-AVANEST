@@ -28,13 +28,16 @@ export default function HomePage() {
       <section className="avnHero">
         <div className="avnOverlay" />
         <div className="avnHeroContent">
-          <p className="avnEyebrow">O DIA INTEIRO DO ANESTESIOLOGISTA</p>
+          <p className="avnEyebrow">AVALIAÇÃO PRÉ-ANESTÉSICA</p>
           <h1>
-            Escala, avaliação, produção e recebimento em um sistema só.
+            Feita por quem faz avaliação pré-anestésica.
           </h1>
           <p className="avnLead">
-            Do plantão que você assume à cobrança que entra no fim do mês — com a
-            avaliação pré-anestésica, a ficha e o termo saindo prontos no meio do caminho.
+            Nove etapas, escores calculados na hora e ficha, termo e orientações
+            prontos para imprimir com o logo do hospital. Nasceu dentro do centro
+            cirúrgico, e é usada todo dia por anestesiologistas e residentes. No
+            mesmo sistema: a escala do serviço, a produção do plantão e o que você
+            tem a receber.
           </p>
           <div className="avnActions">
             <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
@@ -46,28 +49,28 @@ export default function HomePage() {
       </section>
 
       <section className="avnInfo" id="como-funciona">
-        <p>UMA VISÃO CLARA DO SISTEMA</p>
-        <h2>Veja como o AVANEST organiza o dia.</h2>
+        <p>O QUE O AVANEST FAZ</p>
+        <h2>Da avaliação ao dinheiro que entra, sem trocar de sistema.</h2>
         <div className="avnGrid">
           {[
-            /* Os três cartões seguem o DIA, e não o menu do sistema: é assim
-               que o colega reconhece o próprio trabalho no texto. A escala vem
-               antes porque é por ela que a maioria entra — o plantão é o que
-               já existe, com ou sem sistema. */
+            /* A avaliação vem primeiro: é o que o colega reconhece de imediato
+               e o que ele faz antes de o paciente entrar. Depois a escala e o
+               dinheiro, que são o que ele não esperava encontrar no mesmo
+               lugar — e é aí que o sistema deixa de ser mais um. */
             [
               "01",
-              "A escala de todos os hospitais num calendário só",
-              "Cada lugar onde você está escalado, o valor combinado de cada turno e a troca com um colega registrada — com dono, data e resposta.",
+              "A avaliação, em nove etapas que seguem a consulta",
+              "Anamnese, exame físico, via aérea, exames, medicamentos e escores. O texto é salvo enquanto você digita, e no fim saem a ficha, o termo de consentimento e as orientações do paciente, prontos para imprimir.",
             ],
             [
               "02",
-              "A avaliação pré-anestésica antes de o paciente entrar",
-              "Nove etapas salvas enquanto você digita, cálculos e escores automáticos, e ficha, termo e orientações prontos para imprimir com o logo do hospital.",
+              "A escala do serviço, hospital por hospital",
+              "Uma escala por hospital, e a sua reunindo todas num calendário só. Plantão do grupo não se apaga: passa para um colega, com dono, data e resposta registrados.",
             ],
             [
               "03",
-              "A produção do dia vira o que você tem a receber",
-              "Paciente, convênio e cirurgia numa linha. O sistema acompanha o que foi faturado e o que foi recebido, e avisa o que ficou para trás.",
+              "O dinheiro do plantão, do lançamento ao recebimento",
+              "Paciente, convênio e cirurgia numa linha, ainda de jaleco. O fechamento do mês sai pronto para o financeiro, e o sistema avisa o que foi faturado e ainda não voltou.",
             ],
           ].map(([n, title, text]) => (
             <article key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></article>
