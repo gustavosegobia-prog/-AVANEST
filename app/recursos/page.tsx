@@ -138,10 +138,12 @@ const BLOCOS: Bloco[] = [
     itens: [
       ["Recepção, médico, financeiro e administração",
         "Cada um vê o que precisa ver. A recepção conduz a fila do dia sem abrir conteúdo clínico."],
-      ["Quem entra na escala é médico com CRM",
-        "A escala é o documento de quem responde pela anestesia, e o registro faz parte dela. Quem "
-        + "está sem CRM no cadastro não fica de fora em silêncio: aparece num aviso, pelo nome, "
-        + "indicando onde preencher."],
+      ["Quem entra na escala é médico com CRM, e o RQE vai junto",
+        "A escala é o documento de quem responde pela anestesia, e o registro faz parte dela: sem "
+        + "CRM no cadastro, o nome não entra — e não fica de fora em silêncio, aparece num aviso, "
+        + "pelo nome, indicando onde preencher. O RQE fica guardado no mesmo cadastro e sai "
+        + "impresso ao lado do CRM na assinatura da ficha e das orientações — quem tem o registro "
+        + "da especialidade assina como especialista."],
       ["O colega que não usa o sistema também entra",
         "O anestesiologista que não tem e-mail é cadastrado do mesmo jeito. Ele aparece na escala e "
         + "no faturamento, e não recebe login nenhum."],
