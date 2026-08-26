@@ -1522,9 +1522,16 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
   /**
    * As funções que a mensagem de convite anuncia, para quem vai fazer plantão.
    *
-   * Só para MÉDICO. A recepção não monta escala nem confirma plantão, e uma
-   * lista de coisas que a pessoa não vai usar transforma o convite num anúncio
-   * — e anúncio se lê na diagonal, inclusive a linha do link.
+   * Só para MÉDICO, e a palavra é literal. A primeira versão incluía também
+   * administrador e proprietário, pela suposição de que quem administra o grupo
+   * é anestesiologista — verdade no serviço onde o sistema nasceu, e falsa no
+   * primeiro convite de verdade que saiu: foi para uma administradora que não
+   * faz plantão, com oito linhas sobre escala e confirmação de turno.
+   *
+   * Papel não é profissão. Quem faz plantão tem a área Médico; quem administra
+   * pode ser qualquer pessoa, e recepção e financeiro nunca fazem. Uma lista de
+   * coisas que a pessoa não vai usar transforma o convite num anúncio — e
+   * anúncio se lê na diagonal, inclusive a linha do link.
    *
    * Cada linha é uma função que existe hoje. Convite que promete o que ainda
    * não está pronto vira reclamação na primeira semana de uso.
@@ -1544,8 +1551,9 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
   function enviarWhatsApp(item:Convite){
     const papel=ROLE_LABELS[item.role]??item.role;
     const validade=new Date(item.expires_at).toLocaleDateString("pt-BR");
-    // Médico e administrador fazem plantão; recepção e financeiro, não.
-    const fazPlantao=item.role==="medico"||item.role==="admin"||item.role==="owner";
+    // Quem faz plantão é quem entra como Médico. Administrador é papel de
+    // gestão e pode ser de alguém que nunca pisou no centro cirúrgico.
+    const fazPlantao=item.role==="medico";
     const mensagem=[
       `Olá! Você foi convidado para o AVANEST — ${organizacao?.nome??"nossa organização"}, como ${papel}.`,
       // As funções entram ANTES do link, e não depois: quem lê no WhatsApp
