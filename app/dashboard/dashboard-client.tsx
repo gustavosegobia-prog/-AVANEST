@@ -1520,50 +1520,42 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
   }
 
   /**
-   * As funções que a mensagem de convite anuncia, para quem vai fazer plantão.
+   * Uma frase por papel, dizendo onde a pessoa vai trabalhar.
    *
-   * Só para MÉDICO, e a palavra é literal. A primeira versão incluía também
-   * administrador e proprietário, pela suposição de que quem administra o grupo
-   * é anestesiologista — verdade no serviço onde o sistema nasceu, e falsa no
-   * primeiro convite de verdade que saiu: foi para uma administradora que não
-   * faz plantão, com oito linhas sobre escala e confirmação de turno.
+   * UMA. A versão anterior listava as oito funções em oito linhas, e o primeiro
+   * convite de verdade mostrou dois problemas de uma vez: o WhatsApp entregou
+   * tudo num parágrafo só, e a lista foi para uma administradora que não faz
+   * plantão. Convite não vende — quem recebe já foi convidado por alguém, e a
+   * decisão de entrar já está tomada. Oito linhas antes do link só afastam o
+   * dedo do link.
    *
-   * Papel não é profissão. Quem faz plantão tem a área Médico; quem administra
-   * pode ser qualquer pessoa, e recepção e financeiro nunca fazem. Uma lista de
-   * coisas que a pessoa não vai usar transforma o convite num anúncio — e
-   * anúncio se lê na diagonal, inclusive a linha do link.
-   *
-   * Cada linha é uma função que existe hoje. Convite que promete o que ainda
-   * não está pronto vira reclamação na primeira semana de uso.
+   * A frase muda com o papel porque o papel muda o sistema inteiro: quem entra
+   * na recepção não tem escala, e quem entra no financeiro não tem paciente.
+   * Prometer a escala a quem não a terá é começar com uma decepção.
    */
-  const FUNCOES_DO_MEDICO=[
-    "*Escala do serviço* — uma por hospital, com os feriados nacionais marcados.",
-    "*Minha escala* — reúne todos os seus plantões num calendário só, de todos os hospitais.",
-    "*Passar plantão* — você oferece a um colega, e ele precisa aceitar.",
-    "*Confirmar plantão* — um toque no dia. É o que entra no fechamento do mês.",
-    "*Avaliação pré-anestésica* — nove etapas, salvas enquanto você digita. Mallampati, RCRI e orientação de suspensão dos anticoagulantes.",
-    "*Impressos* — ficha, termo de consentimento e orientações, com o logo do hospital.",
-    "*Produção do dia* — paciente, convênio e cirurgia numa linha. Fotografe a ficha de internação e os campos vêm preenchidos.",
-    "*Escala no celular* — exporta para o Calendário do iPhone e para o Google Agenda.",
-  ];
+  const ONDE_TRABALHA:Record<string,string>={
+    medico:"É onde ficam a escala do serviço, os seus plantões e as avaliações pré-anestésicas, com ficha e termo prontos para imprimir.",
+    recepcao:"É onde ficam o cadastro dos pacientes e a agenda das consultas pré-anestésicas.",
+    financeiro:"É onde ficam o faturamento do serviço e o controle dos recebimentos.",
+    admin:"É onde ficam a equipe, os locais de atendimento e a organização do serviço.",
+    owner:"É onde ficam a equipe, os locais de atendimento e a organização do serviço.",
+  };
 
   // Abre o WhatsApp com a mensagem pronta; o contato é escolhido na hora.
   function enviarWhatsApp(item:Convite){
     const papel=ROLE_LABELS[item.role]??item.role;
     const validade=new Date(item.expires_at).toLocaleDateString("pt-BR");
-    // Quem faz plantão é quem entra como Médico. Administrador é papel de
-    // gestão e pode ser de alguém que nunca pisou no centro cirúrgico.
-    const fazPlantao=item.role==="medico";
     const mensagem=[
       `Olá! Você foi convidado para o AVANEST — ${organizacao?.nome??"nossa organização"}, como ${papel}.`,
-      // As funções entram ANTES do link, e não depois: quem lê no WhatsApp
-      // toca no primeiro link que aparece, e o que vier embaixo não é lido.
-      ...(fazPlantao?["",...FUNCOES_DO_MEDICO]:[]),
       "",
-      `Acesse este link para criar seu acesso: ${linkDoConvite(item.token)}`,
+      ONDE_TRABALHA[item.role]??"",
       "",
-      `O convite é válido até ${validade} e funciona apenas para o e-mail ${item.email}.`,
-    ].join("\n");
+      `Crie seu acesso: ${linkDoConvite(item.token)}`,
+      "",
+      `Válido até ${validade}, apenas para o e-mail ${item.email}.`,
+    // Sem a linha vazia quando não há frase para o papel: duas quebras seguidas
+    // viram um buraco no meio da mensagem.
+    ].filter((l,i,todas)=>l!==""||todas[i-1]!=="").join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`,"_blank","noopener,noreferrer");
   }
 
