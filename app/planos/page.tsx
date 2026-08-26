@@ -12,12 +12,12 @@ import { Icone } from "@/components/icone";
 // código.
 
 export const metadata: Metadata = {
-  title: "Planos e preços | AvaNEST",
+  title: "Planos e preços | AVANEST",
   // Sem número de vagas aqui: metadata é estática, e um "100 primeiros"
   // escrito à mão sobrevive à mudança da campanha e passa a mentir. O número
   // que vale aparece na página, vindo do banco.
   description:
-    "Avaliação pré-anestésica digital, do anestesiologista sozinho à clínica inteira. Oferta de lançamento por tempo limitado.",
+    "Escala, avaliação pré-anestésica, produção e recebimento — do anestesiologista sozinho ao serviço inteiro. Oferta de lançamento por tempo limitado.",
 };
 
 // A página mostra contagem de vagas: cachear daria número velho.

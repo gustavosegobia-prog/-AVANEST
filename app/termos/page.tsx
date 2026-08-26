@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { PaginaLegal } from "@/components/pagina-legal";
 
 export const metadata: Metadata = {
-  title: "Termos de Uso | AvaNEST",
-  description: "Condições de uso do AVANEST, sistema de avaliação pré-anestésica.",
+  title: "Termos de Uso | AVANEST",
+  description: "Condições de uso do AVANEST, sistema de gestão em anestesiologia.",
 };
 
 export default function TermosPage() {
@@ -21,9 +21,10 @@ export default function TermosPage() {
 
       <h2>2. O que o AVANEST é — e o que não é</h2>
       <p>
-        O AVANEST é uma ferramenta de <b>registro e organização</b> da avaliação pré-anestésica.
-        Ele organiza dados que o profissional insere, aplica escores conhecidos (ASA, Índice de Lee,
-        STOP-Bang, Apfel) e produz documentos a partir disso.
+        O AVANEST é uma ferramenta de <b>registro e organização</b> do trabalho do anestesiologista:
+        a avaliação pré-anestésica, a escala de plantões, a produção do dia e o acompanhamento do
+        que há a faturar e a receber. Ele organiza dados que o profissional insere, aplica escores
+        conhecidos (ASA, Índice de Lee, STOP-Bang, Apfel) e produz documentos a partir disso.
       </p>
       <p className="legalDestaque">
         O AVANEST <b>não pratica atos médicos</b>. Não diagnostica, não prescreve, não indica

@@ -39,7 +39,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             </div>
             <div className="avnMonitorFeet"><i /><i /></div>
           </div>
-          <p>Segurança e organização em cada etapa da avaliação pré-anestésica.</p>
+          <p>A escala, a avaliação e o que você tem a receber, em um sistema só.</p>
         </div>
         <div className="avnLoginContent">
           <h1>Entrar no AVANEST</h1>

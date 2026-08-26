@@ -17,10 +17,10 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AVANEST — Avaliação pré-anestésica",
+    name: "AVANEST — Gestão em anestesiologia",
     short_name: "AVANEST",
     description:
-      "Antes da cirurgia, segurança. Avaliação pré-anestésica digital, simples e orientada.",
+      "Escala, avaliação pré-anestésica, produção do plantão e recebimento em um sistema só.",
     // Abre no login, não na página de vendas. Quem instalou o atalho já
     // conhece o produto — e a tela de login manda quem já está autenticado
     // direto para o painel, então na prática o app abre no trabalho.

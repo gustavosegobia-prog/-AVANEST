@@ -4,11 +4,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.avanest.com.br"),
-  title: "AvaNEST | Avaliação pré-anestésica digital",
-  description: "Antes da cirurgia, segurança. Faça sua avaliação pré-anestésica de forma simples e orientada.",
+  title: "AVANEST | Gestão em anestesiologia",
+  description: "Escala, avaliação pré-anestésica, produção do plantão e recebimento — o dia inteiro do anestesiologista em um sistema só.",
   openGraph: {
-    title: "AvaNEST | Antes da cirurgia, segurança.",
-    description: "Avaliação pré-anestésica digital, simples e segura.",
+    title: "AVANEST | Gestão em anestesiologia",
+    description: "Escala, avaliação pré-anestésica, produção e recebimento em um sistema só.",
   },
   twitter: { card: "summary" },
 };

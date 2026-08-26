@@ -341,7 +341,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
         pode aparecer, sumir ou quebrar em duas linhas sem quebrar nada. */}
     <div className="evalFixo">
     <header className="evalTopbar">
-      <Link className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
+      <Link className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Gestão em anestesiologia</small></span></Link>
       {/* O estado do salvamento é dito por extenso, não só por um ponto
           colorido. Quando falha, o botão de tentar de novo fica aqui —
           antes o anestesiologista via o erro e não tinha o que fazer. */}

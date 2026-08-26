@@ -536,7 +536,7 @@ export function DashboardClient({
   return (
     <main className={`clinicalShell ${dark?"clinicalDark":""}`}>
       <header className="clinicalTopbar">
-        <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Avaliação pré-anestésica</small></span></Link>
+        <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Gestão em anestesiologia</small></span></Link>
         {/* Com local escolhido, é ele que aparece: quem atende em três
             hospitais precisa saber em qual está antes de imprimir a primeira
             ficha, e o nome da organização é o mesmo nos três. Sem local

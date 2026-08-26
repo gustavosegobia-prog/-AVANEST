@@ -28,13 +28,13 @@ export default function HomePage() {
       <section className="avnHero">
         <div className="avnOverlay" />
         <div className="avnHeroContent">
-          <p className="avnEyebrow">PREPARO PRÉ-OPERATÓRIO MAIS SEGURO</p>
+          <p className="avnEyebrow">O DIA INTEIRO DO ANESTESIOLOGISTA</p>
           <h1>
-            O AVANEST organiza todo o pré-operatório antes do paciente chegar ao centro cirúrgico.
+            Escala, avaliação, produção e recebimento em um sistema só.
           </h1>
           <p className="avnLead">
-            Da recepção ao anestesiologista, centralize avaliação pré-anestésica, exames,
-            documentos e orientações em um único sistema.
+            Do plantão que você assume à cobrança que entra no fim do mês — com a
+            avaliação pré-anestésica, a ficha e o termo saindo prontos no meio do caminho.
           </p>
           <div className="avnActions">
             <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
@@ -47,23 +47,27 @@ export default function HomePage() {
 
       <section className="avnInfo" id="como-funciona">
         <p>UMA VISÃO CLARA DO SISTEMA</p>
-        <h2>Veja como o AVANEST organiza o pré-operatório.</h2>
+        <h2>Veja como o AVANEST organiza o dia.</h2>
         <div className="avnGrid">
           {[
+            /* Os três cartões seguem o DIA, e não o menu do sistema: é assim
+               que o colega reconhece o próprio trabalho no texto. A escala vem
+               antes porque é por ela que a maioria entra — o plantão é o que
+               já existe, com ou sem sistema. */
             [
               "01",
-              "A recepção opera a fila sem ver conteúdo clínico",
-              "Minimização de acesso a dado sensível, conforme a LGPD, com separação de permissões por perfil.",
+              "A escala de todos os hospitais num calendário só",
+              "Cada lugar onde você está escalado, o valor combinado de cada turno, e a troca com um colega registrada — com dono, data e resposta.",
             ],
             [
               "02",
-              "O anestesiologista recebe o caso organizado antes da cirurgia",
-              "Nove etapas clínicas, cálculos automáticos, salvamento contínuo e visão clara dos pacientes do dia.",
+              "A avaliação pré-anestésica antes de o paciente entrar",
+              "Nove etapas salvas enquanto você digita, cálculos e escores automáticos, e ficha, termo e orientações prontos para imprimir com o logo do hospital.",
             ],
             [
               "03",
-              "Ficha, termo e orientações saem prontos",
-              "Documentação pré-anestésica, termo de consentimento e orientações ao paciente em um fluxo mais seguro e padronizado.",
+              "A produção do dia vira o que você tem a receber",
+              "Paciente, convênio e cirurgia numa linha. O sistema acompanha o que foi faturado, o que foi recebido, e avisa o que ficou para trás.",
             ],
           ].map(([n, title, text]) => (
             <article key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></article>

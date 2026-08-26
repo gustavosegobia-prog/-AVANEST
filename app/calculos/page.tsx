@@ -12,7 +12,7 @@ import { CalculosClient } from "./calculos-client";
 // de digitar /calculos na barra de endereço.
 
 export const metadata: Metadata = {
-  title: "Cálculos extras | AvaNEST",
+  title: "Cálculos extras | AVANEST",
   description: "Gasometria e via aérea pediátrica: apoio rápido à decisão em sala.",
 };
 

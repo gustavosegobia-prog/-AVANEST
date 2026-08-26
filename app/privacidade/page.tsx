@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PaginaLegal } from "@/components/pagina-legal";
 
 export const metadata: Metadata = {
-  title: "Política de Privacidade | AvaNEST",
+  title: "Política de Privacidade | AVANEST",
   description: "Como o AVANEST trata dados pessoais e dados de saúde, conforme a LGPD.",
 };
 

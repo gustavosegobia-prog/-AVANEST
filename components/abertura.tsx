@@ -31,13 +31,16 @@ export function Abertura() {
   return (
     <div className="abertura" aria-hidden="true">
       <div className="aberturaMarca">
-        <BrandMark className="aberturaSimbolo" />
+        {/* Gradiente com id próprio: esta marca convive na mesma página com a
+            do cabeçalho, e id repetido faz a segunda apontar para dentro de um
+            bloco escondido — o traço some. */}
+        <BrandMark className="aberturaSimbolo" gradiente="-abertura" />
         <strong className="aberturaNome">
           <span className="brandBlue">AV</span>
           <span className="brandMidA">A</span>
           <span className="brandTeal">NEST</span>
         </strong>
-        <small>AVALIAÇÃO PRÉ-ANESTÉSICA</small>
+        <small>GESTÃO EM ANESTESIOLOGIA</small>
       </div>
     </div>
   );
