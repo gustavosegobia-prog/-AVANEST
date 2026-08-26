@@ -554,12 +554,7 @@ button:disabled{cursor:not-allowed}
 .avnHeroContent{padding-top:clamp(95px,12vh,135px)}
 @media(max-width:1100px){
   .avnHero{background-position:65% center;background-size:cover}
-  /* Mais escuro do que era, e por mais tempo. Abaixo de 1100px a foto é
-     ampliada para cobrir a área, e o monitor sobe para trás justamente da
-     faixa onde o texto está. Com o escurecimento antigo (55% de opacidade no
-     fim) as letras caíam em cima da tela do monitor e as duas coisas ficavam
-     ilegíveis — nem se lia a frase, nem se via o sistema. */
-  .avnOverlay{background:linear-gradient(90deg,#041626fb 0%,#041626f2 54%,#041626c4 76%,#04162666 100%)}
+  .avnOverlay{background:linear-gradient(90deg,#041626f9 0%,#041626e8 55%,#0416267d 100%)}
 }
 @media(max-width:680px){
   .avnHero{min-height:calc(100svh - 88px);background-position:68% center}
@@ -822,29 +817,8 @@ button:disabled{cursor:not-allowed}
 /* Capa: com a chamada mais curta, o título ganha corpo menor e largura limitada
    para não avançar sobre a imagem do produto à direita. */
 .avnHero h1{font-size:clamp(34px,3.9vw,54px);max-width:760px;margin:20px 0 24px}
-/* O `max-width:none` que estava aqui soltava o título para a largura inteira, e
-   era ele que punha a frase por cima do monitor da foto entre 680 e 900px. O
-   tamanho da letra continua caindo; o limite de largura fica com a regra da
-   faixa do tablet, logo acima. Abaixo de 680px o desenho é de uma coluna só e
-   o limite não vale — por isso ele mora numa consulta com piso, e não aqui. */
-@media(max-width:900px){.avnHero h1{font-size:36px}}
+@media(max-width:900px){.avnHero h1{font-size:36px;max-width:none}}
 @media(max-width:560px){.avnHero h1{font-size:31px}}
-/* A faixa do tablet deitado e do notebook pequeno.
-   Só o escurecimento não resolve: sem limite de largura o título atravessa a
-   tela inteira e passa por cima do monitor de qualquer jeito. O texto para
-   antes de chegar nele, e a foto volta a ter o que mostrar. Acima de 1100px
-   isto já existe, e abaixo de 680px o desenho é de uma coluna só — nas duas
-   pontas a regra não é necessária.
-
-   E fica DEPOIS da regra solta acima, que define max-width:760px sem
-   consulta de mídia: consulta de mídia não acrescenta especificidade, então
-   entre duas regras iguais vence a que vem por último no arquivo. Posta
-   antes, esta aqui não valia nada. */
-@media(min-width:681px) and (max-width:1100px){
-  .avnHero h1{max-width:min(620px,70%)}
-  .avnLead{max-width:min(560px,66%)}
-}
-
 
 /* Primeiro acesso: escolha entre anestesiologista individual, criar grupo ou
    aceitar convite; e o crachá da organização no topo do painel. */
