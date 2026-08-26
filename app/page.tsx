@@ -33,11 +33,19 @@ export default function HomePage() {
             Da avaliação pré-anestésica ao caixa do serviço.
           </h1>
           <p className="avnLead">
-            A avaliação em nove etapas, com escores calculados e documentos
-            impressos no timbre do hospital. A escala de todas as instituições em
-            um calendário. O controle do que foi produzido, faturado e recebido.
-            Desenvolvido por anestesiologista, dentro de um serviço em atividade.
+            Para o anestesiologista que trabalha sozinho, para o grupo e para a
+            clínica. Desenvolvido por anestesiologista, dentro de um serviço em
+            atividade.
           </p>
+          {/* Três, e não quatro. "Gestão de clínica" e "gestão de grupo" não são
+              uma quarta função: são para QUEM o sistema serve, e isso já está na
+              frase acima. Postas aqui, dividiriam a atenção com as três que de
+              fato descrevem o produto. */}
+          <ul className="avnBenefits">
+            <li>Avaliação pré-anestésica<span>nove etapas e quatro escores validados</span></li>
+            <li>Gestão de escala<span>uma por instituição, e a sua reunindo todas</span></li>
+            <li>Gestão financeira<span>produção, faturamento e fluxo de caixa</span></li>
+          </ul>
           <div className="avnActions">
             <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
               Agendar uma conversa de 15 minutos
