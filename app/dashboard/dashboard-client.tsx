@@ -236,6 +236,12 @@ export function DashboardClient({
   const [pedidoDeChat, setPedidoDeChat] = useState<
     { aba: "equipe" | "suporte"; chamado?: string | null; token: number } | null
   >(null);
+  // O mesmo, para a Escala: em que aba ela deve abrir quando o clique veio do
+  // sino. Mesma razão para o token — a aba é estado da tela da Escala, e a
+  // pessoa pode ter saído dela entre um clique e outro.
+  const [aberturaDaEscala, setAberturaDaEscala] = useState<
+    { aba: "escala" | "producao" | "trocas"; token: number } | null
+  >(null);
   const [contaAberta, setContaAberta] = useState(false);
   const [senha, setSenha] = useState({atual:"",nova:"",confirma:""});
   const [senhaMsg, setSenhaMsg] = useState("");
@@ -596,11 +602,23 @@ export function DashboardClient({
             // O clique tem de RESOLVER, não só informar. Um aviso que abre uma
             // lista onde a pessoa ainda precisa procurar do que ele falava é
             // meio caminho, e o meio caminho é onde ela desiste.
+            //
+            // E o clique escolhe a ABA, não só a área. O aviso de troca cai em
+            // Trocas, onde estão o dia, o horário e os botões Assumir e
+            // Recusar — largá-lo no calendário obrigaria a procurar dia a dia
+            // um pedido que está a uma aba de distância.
+            //
             // Os lembretes de dinheiro moram na Escala, na aba Produção: é lá
             // que se marca "faturado" e "recebido". Mandar para o Financeiro
             // seria mandar para a tela da organização, e a conta é da pessoa.
             if (aviso.area === "plantoes" || aviso.area === "producao") {
               changeView("plantoes");
+              setAberturaDaEscala({
+                aba: aviso.tipo === "troca_pedida" || aviso.tipo === "troca_resolvida"
+                  ? "trocas"
+                  : aviso.area === "producao" ? "producao" : "escala",
+                token: Date.now(),
+              });
               return;
             }
             setPedidoDeChat({
@@ -821,6 +839,11 @@ export function DashboardClient({
           // A escala do grupo abre no hospital onde a pessoa está hoje: ela já
           // respondeu isso ao entrar, e perguntar de novo é perguntar duas vezes.
           localAtivoId={localAtivo?.id ?? null}
+          abrirEm={aberturaDaEscala}
+          // Respondeu a troca, confirmou o plantão, ofereceu um turno: o sino
+          // precisa ser remontado no servidor, senão o alerta continua lá
+          // depois de a coisa já ter sido resolvida.
+          onAvisosMudaram={()=>router.refresh()}
         />
       ) : view === "recepcao" ? (
         <div className="clinicalMain receptionMain">

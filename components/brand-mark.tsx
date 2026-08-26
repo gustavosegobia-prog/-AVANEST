@@ -17,7 +17,11 @@ export function BrandMark({ className = "" }: BrandMarkProps) {
           <stop offset="1" stopColor="#2bc5a8" />
         </linearGradient>
       </defs>
-      <path d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="url(#avanest-a-gradient)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="14" />
+      {/* pathLength="1" normaliza o comprimento do traço para 1. Não muda nada
+          no desenho; serve para a animação de abertura poder escrever
+          stroke-dasharray:1 sem precisar medir o caminho em pixels — medida
+          que mudaria sozinha no dia em que alguém ajustasse o "d". */}
+      <path pathLength="1" d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="url(#avanest-a-gradient)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="14" />
     </svg>
   );
 }

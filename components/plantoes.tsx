@@ -348,7 +348,7 @@ function LinhaComGaveta({
 
 export function Plantoes({
   perfilId, institutionId, locais, ehAdmin, colegas, escalaveis, semCRM = [],
-  localAtivoId = null,
+  localAtivoId = null, abrirEm = null, onAvisosMudaram,
 }: {
   perfilId: string;
   institutionId: string;
@@ -374,6 +374,28 @@ export function Plantoes({
   /** Ativos sem CRM no cadastro. Não some da tela: vira aviso. */
   semCRM?: string[];
   localAtivoId?: string | null;
+  /**
+   * Em que aba abrir, quando quem manda abrir é de fora — hoje, o sino.
+   *
+   * O `token` existe porque a aba é ESTADO desta tela, e a pessoa pode sair
+   * dela depois de chegar. Sem o token, um segundo clique no mesmo aviso não
+   * mudaria a propriedade, o efeito não rodaria de novo e o sino pareceria
+   * quebrado. Com ele, cada clique é um pedido novo.
+   */
+  abrirEm?: { aba: "escala" | "producao" | "trocas"; token: number } | null;
+  /**
+   * Avisa o painel de que o sino ficou desatualizado.
+   *
+   * Os avisos são montados no servidor, na abertura da página. Responder uma
+   * troca aqui dentro muda a lista desta tela e não muda a do sino — e o
+   * contador continuava mostrando um pedido já respondido até alguém recarregar
+   * a página inteira. Quem responde a um pedido e vê o alerta continuar
+   * conclui, com razão, que a resposta não foi registrada.
+   *
+   * Chamado só depois das ações que mexem no que o sino conta. Chamar a cada
+   * carregamento faria a página se recarregar em círculo.
+   */
+  onAvisosMudaram?: () => void;
 }) {
   const hoje = new Date();
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`);
@@ -666,6 +688,7 @@ export function Plantoes({
       ? "Convite enviado. Ele aparece na aba Trocas do colega."
       : "Plantão oferecido ao grupo. Qualquer colega pode assumir.");
     void carregar();
+    onAvisosMudaram?.();
   }
 
   async function responderTroca(trocaId: string, acao: "aceitar_troca" | "recusar_troca" | "cancelar_troca") {
@@ -676,6 +699,7 @@ export function Plantoes({
       ? "Plantão assumido. A escala foi atualizada e a troca ficou registrada na auditoria."
       : acao === "recusar_troca" ? "Convite recusado." : "Pedido cancelado.");
     void carregar();
+    onAvisosMudaram?.();
   }
 
   /**
@@ -785,6 +809,15 @@ export function Plantoes({
       && (escopo !== "grupo" || plantaoNaEscala(p.local_id, hospitalAtivo))),
     [plantoes, escopo, perfilId, hospitalAtivo],
   );
+
+  // O sino manda em que aba esta tela abre. Um aviso de troca que caísse no
+  // calendário deixaria a pessoa procurando o pedido dia a dia — e o pedido
+  // está a uma aba de distância, com o dia, o horário e os dois botões.
+  useEffect(() => {
+    if (!abrirEm) return;
+    setAba(abrirEm.aba);
+    if (abrirEm.aba === "escala") setEscopo("minha");
+  }, [abrirEm]);
 
   const secaoAtiva = aba === "escala"
     ? (escopo === "minha" ? "minha" : `grupo:${hospitalAtivo}`)
@@ -976,6 +1009,7 @@ export function Plantoes({
       .eq("id", plantao.id);
     if (error) { setErro(error.message || "Não foi possível confirmar o plantão."); return; }
     void carregar();
+    onAvisosMudaram?.();
   }
 
   function imprimirEscala() {

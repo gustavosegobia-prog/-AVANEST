@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Abertura, SCRIPT_DA_ABERTURA } from "@/components/abertura";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,7 +24,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {/* O rótulo que fica embaixo do ícone na tela de início do iPhone. Sem
             ele o iOS usa o <title> inteiro e corta no meio, virando
             "AvaNEST|Avaliaç...". O ícone em si vem de app/apple-icon.png. */}
+        {/* Decide, antes da primeira pintura, se esta abertura mostra a cortina
+            da marca. Inline e sem `defer` de propósito: um script que chega
+            depois chega tarde — a tela de login já teria aparecido. */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_DA_ABERTURA }} />
         <meta name="apple-mobile-web-app-title" content="AVANEST" />
+        {/* Sem isto o iPhone abre o atalho dentro do Safari, com barra de
+            endereço e tudo — e aí não existe abertura de aplicativo nenhuma,
+            porque não é um aplicativo. O manifesto já pede standalone, mas o
+            iOS antigo só obedece a esta linha. */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         {/* Declarado à mão, apontando para /public, em vez de depender do
             arquivo chamar-se exatamente "apple-icon.png" na pasta app. O
             caminho explícito funciona com qualquer nome de arquivo. */}
@@ -36,7 +47,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* Antes do conteúdo, e não depois: a cortina é a primeira coisa que o
+            navegador desenha, e o CSS a esconde quando não é para aparecer. */}
+        <Abertura />
+        {children}
+      </body>
     </html>
   );
 }

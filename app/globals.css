@@ -2888,3 +2888,72 @@ button:disabled{cursor:not-allowed}
   .tutorialJanela{padding:18px 18px 16px}
   .tutorialJanela h2{font-size:18px}
 }
+
+/* ==========================================================================
+   A abertura do aplicativo
+   ==========================================================================
+   Só aparece quando o script de app/layout.tsx marca o <html> — ou seja, no
+   aplicativo instalado, e uma vez por abertura. No navegador ela não existe:
+   `display:none` é o estado padrão, e o seletor abaixo é a única coisa que
+   liga a cortina.
+
+   TODA A SAÍDA É CSS, com fill-mode forwards. Se o JavaScript falhar depois
+   deste ponto, a cortina some do mesmo jeito. O contrário — depender de código
+   para sair — é uma cortina que um dia fica presa na frente do login.
+
+   O fundo é #fff, igual ao background_color do manifesto: é o que faz a tela
+   do sistema emendar nesta sem piscar.
+   ========================================================================== */
+.abertura{display:none}
+html[data-abrindo] .abertura{
+  /* Flex, e não grid com place-items: medindo a tela num navegador sem
+     interface, o grid deixou o bloco 54px à direita e 43px acima do centro.
+     Não descobri a causa e não vou embarcar um centro que não consigo
+     explicar — flex com margin:auto no filho é o jeito que não depende de
+     interpretação nenhuma. */
+  display:flex;align-items:center;justify-content:center;
+  position:fixed;inset:0;z-index:9999;background:#fff;
+  animation:aberturaSai .42s ease-in .95s forwards;
+}
+html[data-abrindo] .aberturaMarca{margin:auto}
+/* A barra de rolagem do conteúdo atrás não pode aparecer por baixo da
+   cortina; e o toque no meio da abertura não deve cair num campo de login que
+   a pessoa ainda não viu. */
+html[data-abrindo]{overflow:hidden}
+
+.aberturaMarca{display:grid;justify-items:center;gap:2px}
+.aberturaSimbolo{width:104px;height:104px;overflow:visible}
+/* stroke-dasharray:1 só funciona por causa do pathLength="1" do BrandMark:
+   o traço passa a ter comprimento 1, e o desenho vira uma conta de 1 a 0. */
+html[data-abrindo] .aberturaSimbolo path{
+  stroke-dasharray:1;stroke-dashoffset:1;
+  animation:aberturaRisco .72s cubic-bezier(.65,0,.35,1) forwards;
+}
+.aberturaNome{
+  font-size:29px;font-weight:600;letter-spacing:.17em;
+  /* O nome entra depois do traço, e não junto: junto vira um clarão só, e não
+     se lê nem uma coisa nem outra. */
+  opacity:0;animation:aberturaEntra .45s ease-out .5s forwards;
+}
+.aberturaMarca small{
+  color:#82a6be;font-size:9px;letter-spacing:.28em;margin-top:5px;
+  opacity:0;animation:aberturaEntra .45s ease-out .68s forwards;
+}
+
+@keyframes aberturaRisco{to{stroke-dashoffset:0}}
+@keyframes aberturaEntra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes aberturaSai{to{opacity:0;visibility:hidden}}
+
+/* Quem pediu menos movimento ao sistema recebe a marca parada e a mesma saída.
+   Tirar a cortina inteira seria trocar uma abertura por um salto — e o pedido
+   é por menos movimento, não por menos aviso de que o aplicativo abriu. */
+@media(prefers-reduced-motion:reduce){
+  html[data-abrindo] .aberturaSimbolo path{animation:none;stroke-dasharray:none;stroke-dashoffset:0}
+  .aberturaNome,.aberturaMarca small{animation:none;opacity:1;transform:none}
+  html[data-abrindo] .abertura{animation-delay:.55s}
+}
+
+@media(max-width:520px){
+  .aberturaSimbolo{width:86px;height:86px}
+  .aberturaNome{font-size:25px}
+}
