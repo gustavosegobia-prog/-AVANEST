@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { PlantaoDoFechamento, PlantaoImpresso } from "./escala.ts";
 import {
-  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, iniciais, montarICS,
+  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
@@ -675,4 +675,72 @@ test("a virada do mês não fecha a janela do noturno", () => {
   // "32 de agosto", e o noturno do último dia do mês nunca confirmaria.
   const ultimoDia = { data: "2026-08-31", hora_inicio: "19:00", hora_fim: "07:00" };
   assert.equal(podeConfirmar(ultimoDia, em("2026-09-01T06:00:00")), true);
+});
+
+// ---------------------------------------------------------------------------
+// As duas notas do mês
+// ---------------------------------------------------------------------------
+
+const plantaoNota = (data: string, local: string, valor: number, horas = 12) =>
+  ({ data, hora_inicio: "07:00:00", hora_fim: "19:00:00", horas, valor, local });
+
+test("os plantões saem separados por hospital, com um total em cada", () => {
+  // É esse total que a pessoa copia no campo do valor da nota. Uma folha que
+  // mistura hospitais obriga a somar na calculadora antes de emitir.
+  const { corpo } = folhaDePlantoesPorLocal([
+    plantaoNota("2026-08-03", "Hospital A", 1100),
+    plantaoNota("2026-08-10", "Hospital A", 1100),
+    plantaoNota("2026-08-15", "Hospital B", 900),
+  ], "agosto", 2026, new Date("2026-09-01T12:00:00"));
+  assert.match(corpo, /Hospital A[\s\S]*?2 plantões[\s\S]*?2\.200,00/);
+  assert.match(corpo, /Hospital B[\s\S]*?1 plantão[\s\S]*?900,00/);
+});
+
+const item = (data: string, paciente: string, local: string, valor: number,
+              pagador: string | null, convenio = "Particular") =>
+  ({ data, paciente, convenio, procedimento: null, valor,
+     situacao: "a_cobrar", local, pagador });
+
+test("o faturamento quebra por hospital e, dentro dele, por quem paga", () => {
+  const { corpo } = folhaDeFaturamento([
+    item("2026-08-03", "Ana", "Hospital A", 500, "direto"),
+    item("2026-08-04", "Bruno", "Hospital A", 700, "hospital"),
+    item("2026-08-05", "Célia", "Hospital B", 300, "convenio", "Unimed"),
+  ], "agosto", 2026, new Date("2026-09-01T12:00:00"));
+  assert.match(corpo, /Hospital A[\s\S]*?Recebimento direto[\s\S]*?Ana/);
+  assert.match(corpo, /Hospital A[\s\S]*?Pago pelo hospital[\s\S]*?Bruno/);
+  assert.match(corpo, /Hospital B[\s\S]*?Pago pelo convênio[\s\S]*?Célia/);
+});
+
+test("paciente sem pagador definido não entra em nota nenhuma", () => {
+  // A regra que mais importa desta folha. Somar uma linha indecisa a qualquer
+  // um dos três blocos é emitir nota contra quem não deve — e escolher o
+  // tomador é a única coisa que o sistema não pode fazer por quem assina.
+  const { corpo } = folhaDeFaturamento([
+    item("2026-08-03", "Ana", "Hospital A", 500, "direto"),
+    item("2026-08-06", "Dora", "Hospital A", 400, null),
+  ], "agosto", 2026, new Date("2026-09-01T12:00:00"));
+
+  assert.match(corpo, /Sem pagador definido/);
+  assert.match(corpo, /1 paciente está sem pagador definido, somando[\s\S]*?400,00/);
+  // O bloco do recebimento direto soma 500, e não 900.
+  // O espaço depois do R$ é o não separável que o toLocaleString produz, e
+  // não a entidade &nbsp;: \s cobre os dois sem depender de qual é.
+  assert.match(corpo, /Recebimento direto <small>1 paciente · R\$\s500,00/);
+});
+
+test("o hospital em branco vira 'Sem hospital' em vez de sumir", () => {
+  // Linha sem hospital é linha que alguém precisa consertar. Escondê-la faria
+  // o valor desaparecer da nota sem ninguém notar.
+  const { corpo } = folhaDeFaturamento(
+    [item("2026-08-03", "Ana", "", 500, "direto")],
+    "agosto", 2026, new Date("2026-09-01T12:00:00"));
+  assert.match(corpo, /Sem hospital/);
+});
+
+test("mês sem nada não imprime folha em branco sem explicação", () => {
+  const p = folhaDePlantoesPorLocal([], "agosto", 2026, new Date("2026-09-01T12:00:00"));
+  assert.match(p.corpo, /Nenhum plantão neste mês/);
+  const f = folhaDeFaturamento([], "agosto", 2026, new Date("2026-09-01T12:00:00"));
+  assert.match(f.corpo, /Nada anotado neste mês/);
 });

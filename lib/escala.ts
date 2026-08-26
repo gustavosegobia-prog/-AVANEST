@@ -747,3 +747,171 @@ export function montarICS(itens: EventoDeEscala[], agoraUTC = new Date()): strin
   // recusa o arquivo inteiro com quebra de linha simples.
   return linhas.join("\r\n") + "\r\n";
 }
+
+// ===========================================================================
+// As duas notas do mês
+// ===========================================================================
+// Um anestesiologista autônomo emite nota de duas coisas diferentes, e elas
+// não podem sair da mesma lista: o PLANTÃO é hora à disposição, e o
+// FATURAMENTO é o ato anestésico. O tomador costuma ser outro — o plantão é
+// cobrado do hospital ou do grupo, e o ato pode ser cobrado do paciente, do
+// hospital ou da operadora, variando de paciente para paciente dentro do
+// mesmo hospital.
+//
+// Por isso são duas funções, e as duas quebram por hospital: cada nota é
+// emitida contra um tomador, e uma folha que mistura hospitais obriga a pessoa
+// a somar na calculadora antes de preencher a nota — que é exatamente o
+// trabalho que o sistema existe para tirar dela.
+// ===========================================================================
+
+export type PlantaoParaNota = {
+  data: string; hora_inicio: string; hora_fim: string;
+  horas: number; valor: number; local: string;
+};
+
+/**
+ * A folha de plantões do mês, por hospital.
+ *
+ * Diferente do fechamento do grupo, que quebra por PESSOA e vai para quem
+ * paga a equipe. Esta é de uma pessoa só — quem imprimiu — e quebra por
+ * hospital, porque é ela que vira nota: um total por tomador, pronto para
+ * copiar no campo do valor.
+ */
+export function folhaDePlantoesPorLocal(
+  plantoes: PlantaoParaNota[], nomeMes: string, ano: number, impressoEm: Date,
+  instituicao?: Instituicao | null,
+): { titulo: string; corpo: string } {
+  const titulo = `Plantões para nota — ${nomeMes} de ${ano}`;
+
+  const grupos = new Map<string, PlantaoParaNota[]>();
+  for (const p of plantoes) {
+    const k = p.local?.trim() || "Sem hospital";
+    grupos.set(k, [...(grupos.get(k) ?? []), p]);
+  }
+
+  const blocos = [...grupos.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
+    .map(([local, lista]) => {
+      const soma = lista.reduce((s, p) => s + Number(p.valor), 0);
+      const horas = lista.reduce((s, p) => s + Number(p.horas), 0);
+      const linhas = [...lista]
+        .sort((a, b) => a.data.localeCompare(b.data) || a.hora_inicio.localeCompare(b.hora_inicio))
+        .map((p) => "<tr>"
+          + `<td>${Number(p.data.slice(8, 10))}/${p.data.slice(5, 7)}</td>`
+          + `<td>${escaparHTML(p.hora_inicio.slice(0, 5))}–${escaparHTML(p.hora_fim.slice(0, 5))}</td>`
+          + `<td class="num">${Number(p.horas).toFixed(1).replace(".", ",")} h</td>`
+          + `<td class="num">${escaparHTML(money(p.valor))}</td></tr>`).join("");
+      return `<h2>${escaparHTML(local)} <small>${
+        plural(lista.length, "plantão", "plantões")} · ${
+        horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(soma))}</small></h2>`
+        + '<table class="lista"><colgroup><col style="width:12%"><col style="width:26%">'
+        + '<col style="width:18%"><col></colgroup>'
+        + "<thead><tr><th>Dia</th><th>Horário</th>"
+        + '<th class="num">Horas</th><th class="num">Valor</th></tr></thead>'
+        + `<tbody>${linhas}</tbody></table>`;
+    }).join("");
+
+  const total = plantoes.reduce((s, p) => s + Number(p.valor), 0);
+  const horas = plantoes.reduce((s, p) => s + Number(p.horas), 0);
+
+  const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
+<p class="sub">Plantões do mês, separados por hospital — um total por nota.</p>
+${blocos || '<p class="sub">Nenhum plantão neste mês.</p>'}
+<div class="rodape"><span>${plural(plantoes.length, "plantão", "plantões")} · ${
+    horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(total))}</span><span>AVANEST · impresso em ${
+    impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+
+  return { titulo, corpo };
+}
+
+export type ItemDeFaturamento = ItemDeProducao & {
+  local: string;
+  /** "direto" | "hospital" | "convenio", ou null enquanto ninguém decidiu. */
+  pagador: string | null;
+};
+
+const ROTULO_PAGADOR: Record<string, string> = {
+  direto: "Recebimento direto",
+  hospital: "Pago pelo hospital",
+  convenio: "Pago pelo convênio",
+};
+
+/**
+ * A folha de faturamento do mês, por hospital e por quem paga.
+ *
+ * Duas quebras, e as duas são necessárias por um motivo prático: a nota é
+ * emitida contra UM tomador, e dentro de um mesmo hospital o tomador muda de
+ * paciente para paciente. Só por hospital, a pessoa teria de separar as linhas
+ * na mão; só por pagador, ela teria de somar hospital por hospital.
+ *
+ * O QUE AINDA NÃO FOI DECIDIDO APARECE SEPARADO, no fim, e nunca dentro de um
+ * bloco de pagador. Uma linha sem pagador somada a qualquer um dos três viraria
+ * nota emitida contra quem não deve — e o sistema não pode escolher tomador no
+ * lugar de quem assina a nota.
+ */
+export function folhaDeFaturamento(
+  itens: ItemDeFaturamento[], nomeMes: string, ano: number, impressoEm: Date,
+  instituicao?: Instituicao | null,
+): { titulo: string; corpo: string } {
+  const titulo = `Faturamento para nota — ${nomeMes} de ${ano}`;
+
+  const porLocal = new Map<string, ItemDeFaturamento[]>();
+  for (const i of itens) {
+    const k = i.local?.trim() || "Sem hospital";
+    porLocal.set(k, [...(porLocal.get(k) ?? []), i]);
+  }
+
+  const tabela = (lista: ItemDeFaturamento[]) => {
+    const linhas = [...lista]
+      .sort((a, b) => a.data.localeCompare(b.data))
+      .map((i) => "<tr>"
+        + `<td>${Number(i.data.slice(8, 10))}/${i.data.slice(5, 7)}</td>`
+        + `<td>${escaparHTML(i.paciente)}</td>`
+        + `<td>${escaparHTML(i.procedimento || "—")}</td>`
+        + `<td>${escaparHTML(i.convenio?.trim() || "Particular")}</td>`
+        + `<td class="num">${escaparHTML(money(i.valor))}</td></tr>`).join("");
+    return '<table class="lista"><colgroup><col style="width:9%"><col style="width:34%">'
+      + '<col><col style="width:18%"><col style="width:14%"></colgroup>'
+      + "<thead><tr><th>Dia</th><th>Paciente</th><th>Procedimento</th>"
+      + '<th>Convênio</th><th class="num">Valor</th></tr></thead>'
+      + `<tbody>${linhas}</tbody></table>`;
+  };
+
+  const blocos = [...porLocal.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
+    .map(([local, doLocal]) => {
+      const somaLocal = doLocal.reduce((s, i) => s + Number(i.valor), 0);
+      const partes = ["direto", "hospital", "convenio", null].map((quem) => {
+        const lista = doLocal.filter((i) => (i.pagador ?? null) === quem);
+        if (lista.length === 0) return "";
+        const soma = lista.reduce((s, i) => s + Number(i.valor), 0);
+        const rotulo = quem === null
+          ? "Sem pagador definido — decida antes de emitir"
+          : ROTULO_PAGADOR[quem];
+        return `<h3${quem === null ? ' class="pendente"' : ""}>${escaparHTML(rotulo)}`
+          + ` <small>${plural(lista.length, "paciente", "pacientes")} · ${
+            escaparHTML(money(soma))}</small></h3>${tabela(lista)}`;
+      }).join("");
+      return `<h2>${escaparHTML(local)} <small>${
+        plural(doLocal.length, "paciente", "pacientes")} · ${
+        escaparHTML(money(somaLocal))}</small></h2>${partes}`;
+    }).join("");
+
+  const total = itens.reduce((s, i) => s + Number(i.valor), 0);
+  const semPagador = itens.filter((i) => !i.pagador);
+  const pendente = semPagador.reduce((s, i) => s + Number(i.valor), 0);
+
+  const aviso = semPagador.length > 0
+    ? `<p class="sub pendente">${plural(semPagador.length, "paciente está", "pacientes estão")
+      } sem pagador definido, somando ${escaparHTML(money(pendente))}. Esse valor não entra em nota nenhuma enquanto não for decidido.</p>`
+    : "";
+
+  const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
+<p class="sub">Atos anestésicos do mês, separados por hospital e por quem paga — um total por nota.</p>
+${aviso}${blocos || '<p class="sub">Nada anotado neste mês.</p>'}
+<div class="rodape"><span>${plural(itens.length, "paciente", "pacientes")} · ${
+    escaparHTML(money(total))}</span><span>AVANEST · impresso em ${
+    impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+
+  return { titulo, corpo };
+}
