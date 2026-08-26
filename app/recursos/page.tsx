@@ -118,9 +118,10 @@ const BLOCOS: Bloco[] = [
         "Plantão oferecido ao grupo, resposta ao turno que você ofereceu, mensagem nova da equipe e "
         + "resposta do suporte. O aviso nasce numa área e é lido em outra: quem está na recepção "
         + "cadastrando paciente precisa ver o plantão oferecido sem abrir a escala."],
-      ["O número conta só o que espera resposta sua",
-        "Notícia não entra na conta: ganha apenas um ponto, que some assim que você abre a caixa. Um contador que "
-        + "nunca zera é um contador que se aprende a ignorar, inclusive no dia em que ele estiver certo."],
+      ["O número no sino é só o que espera resposta sua",
+        "Aviso que é apenas informação não entra na contagem: aparece como um ponto, que some quando "
+        + "você abre a caixa. Um contador que nunca zera é um contador que se aprende a ignorar — "
+        + "inclusive no dia em que ele estiver certo."],
       ["Lembrete do que ficou para trás no dinheiro",
         "Paciente anestesiado e ainda não cobrado, o que foi faturado e não voltou como pagamento, "
         + "plantão trabalhado e não pago. Só de mês fechado: cobrar um paciente de anteontem não é "
@@ -144,19 +145,24 @@ const BLOCOS: Bloco[] = [
     ],
   },
   {
-    titulo: "O que sustenta tudo isso",
+    titulo: "O sigilo e a segurança",
     itens: [
-      ["O isolamento é do banco, não da tela",
-        "Cada consulta ao banco carrega a organização de quem perguntou. Esconder um botão impede o "
-        + "clique, não o pedido — a regra mora onde o dado mora."],
-      ["Registro de quem fez o quê",
-        "Criação, alteração e exclusão ficam registradas com autor, data e hora."],
-      ["Dado clínico com o mínimo de gente por perto",
-        "Cada perfil recebe apenas o que precisa para trabalhar — o princípio da necessidade, "
-        + "previsto na LGPD. O que a recepção não precisa ver, ela não recebe."],
-      ["O que a fonte não diz, o sistema não inventa",
-        "Nenhum valor de corte foi arredondado, presumido ou obtido pela média entre referências. "
-        + "Onde a referência não existe, o campo fica vazio — e vazio é uma resposta honesta."],
+      ["Os dados da sua clínica não se misturam com os de outra",
+        "Todo pedido de informação sai identificado com a sua organização, e quem não é dela não "
+        + "recebe resposta. A trava fica no banco de dados, e não apenas na tela: esconder um botão "
+        + "impede o clique, não o pedido."],
+      ["Fica registrado quem fez o quê, e quando",
+        "Cada cadastro, alteração e exclusão guarda o autor, a data e a hora. Se um dia alguém "
+        + "perguntar quem mudou aquele campo, a resposta existe."],
+      ["Cada um vê apenas o que precisa para trabalhar",
+        "A recepção conduz a fila do dia sem abrir a avaliação clínica. É o princípio da necessidade "
+        + "previsto na LGPD: quanto menos gente com acesso ao dado do paciente, menor o risco para "
+        + "ele e para você."],
+      ["Valor clínico vem de referência, não de estimativa",
+        "Os pontos de corte, as fórmulas e os prazos de suspensão de medicamento vêm das referências "
+        + "publicadas, sem arredondar nem tirar média entre uma e outra. Onde a referência não "
+        + "existe, o campo fica em branco — num sistema clínico, um número inventado é pior do que "
+        + "um campo vazio."],
     ],
   },
 ];
