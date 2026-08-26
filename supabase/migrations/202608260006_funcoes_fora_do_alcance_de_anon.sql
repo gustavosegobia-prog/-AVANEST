@@ -16,34 +16,54 @@
 -- funções e esquecer o filtro. Hoje isso viraria um endereço público de leitura
 -- de dado clínico. Depois disto, vira um erro de permissão.
 --
+-- POR NOME, E NÃO POR ASSINATURA. A primeira versão deste arquivo listava cada
+-- função com os tipos dos argumentos, e quebrou na primeira execução:
+-- `admin_atualizar_perfil` tinha ganhado um sétimo parâmetro numa migração
+-- posterior, e a assinatura de seis que eu havia lido do histórico não existe
+-- mais no banco. Um REVOKE que erra a assinatura não avisa que errou — ele
+-- falha, e derruba tudo o que vinha depois na mesma execução.
+--
+-- Aqui o bloco pergunta ao catálogo quais funções existem com aquele nome e
+-- revoga cada uma. Sobrevive a parâmetro novo, a sobrecarga e a função que
+-- ainda não foi criada.
+--
 -- convite_info FICA DE FORA, de propósito: a tela de convite roda antes de a
 -- pessoa ter conta, e é ela que mostra o nome da organização a quem foi
--- convidado. Revogar ali quebraria o cadastro por convite. É a única função
--- desta lista que precisa de anon, e por isso é a única com a exceção escrita.
+-- convidado. Revogar ali quebraria o cadastro por convite.
 -- ============================================================================
 
-revoke execute on function public.abrir_chamado(text, text) from anon;
-revoke execute on function public.admin_atualizar_perfil(uuid, text, text, text, text, text) from anon;
-revoke execute on function public.admin_atualizar_perfil(uuid, text, text, text, text, text, text[]) from anon;
-revoke execute on function public.cancelar_assinatura(text) from anon;
-revoke execute on function public.chamado_conversa(uuid) from anon;
-revoke execute on function public.chamados_visiveis() from anon;
-revoke execute on function public.e_suporte() from anon;
-revoke execute on function public.financeiro_listar_pacientes() from anon;
-revoke execute on function public.inicio_do_ciclo(uuid) from anon;
-revoke execute on function public.marcar_chamado_visto(uuid) from anon;
-revoke execute on function public.reativar_assinatura() from anon;
-revoke execute on function public.sala_conversa(int) from anon;
-revoke execute on function public.sala_nao_lidas() from anon;
+do $revogar$
+declare
+  v_nome text;
+  v_assinatura text;
+  v_contou int := 0;
+begin
+  foreach v_nome in array array[
+    -- Funções que devolvem ou mudam dado. Nenhuma delas tem razão para ser
+    -- chamada por quem não entrou no sistema.
+    'abrir_chamado', 'admin_atualizar_perfil', 'cancelar_assinatura',
+    'chamado_conversa', 'chamados_visiveis', 'e_suporte',
+    'financeiro_listar_pacientes', 'inicio_do_ciclo', 'marcar_chamado_visto',
+    'reativar_assinatura', 'sala_conversa', 'sala_nao_lidas',
+    'definir_na_escala', 'meus_locais_de_plantao',
+    -- As de gatilho. O banco as executa sozinho, com os poderes da tabela, e
+    -- por isso revogar não muda o funcionamento — só fecha a porta de
+    -- chamá-las à mão fora do contexto do gatilho.
+    'chamado_ao_receber_mensagem', 'confirmacao_de_plantao_honesta',
+    'plantao_do_grupo_protegido', 'protege_super_admin'
+  ]
+  loop
+    for v_assinatura in
+      select format('public.%I(%s)', p.proname, pg_get_function_identity_arguments(p.oid))
+        from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname = v_nome
+    loop
+      execute format('revoke execute on function %s from anon', v_assinatura);
+      v_contou := v_contou + 1;
+    end loop;
+  end loop;
 
--- As de gatilho. Elas nunca são chamadas por ninguém — o banco as executa
--- sozinho, com os poderes da tabela —, então revogar não muda o funcionamento
--- e fecha a porta de chamá-las à mão fora do contexto do gatilho.
-revoke execute on function public.chamado_ao_receber_mensagem() from anon;
-revoke execute on function public.confirmacao_de_plantao_honesta() from anon;
-revoke execute on function public.plantao_do_grupo_protegido() from anon;
-revoke execute on function public.protege_super_admin() from anon;
-
--- E as duas de hoje, para nascerem com a tranca posta.
-revoke execute on function public.definir_na_escala(uuid, boolean) from anon;
-revoke execute on function public.meus_locais_de_plantao() from anon;
+  raise notice 'Revogado o acesso de anon a % função(ões).', v_contou;
+end
+$revogar$;
