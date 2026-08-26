@@ -61,7 +61,7 @@ const BLOCOS: Bloco[] = [
     titulo: "A escala do serviço",
     itens: [
       ["Uma escala por hospital, e a sua com todos juntos",
-        "O grupo não tem uma escala: tem a da Santa Casa, a da Unimed, a do Instituto. A sua junta "
+        "O grupo não tem uma escala: tem a de cada hospital em que atende. A sua junta "
         + "tudo em um calendário só, porque ali a pergunta é outra: onde eu trabalho este mês."],
       ["O dia dividido em manhã, tarde e noite",
         "O turno continua sendo lançado no horário que você quiser. Quem fica até as 13h aparece na "

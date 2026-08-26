@@ -1884,7 +1884,7 @@ function ModelosPainel({
       <form className="plantaoModeloForm" onSubmit={salvar}>
         <label className="clinicalField wide"><span>Nome *</span>
           <input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}
-            placeholder="Ex.: Mamborê diurno" /></label>
+            placeholder="Ex.: Pronto-atendimento diurno" /></label>
         <label className="clinicalField"><span>Local</span>
           <select value={form.local_id} onChange={(e) => setForm({ ...form, local_id: e.target.value })}>
             <option value="">Sem local</option>

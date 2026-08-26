@@ -79,7 +79,7 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
             <>
               <label htmlFor="organizacao">Nome do grupo</label>
               <input id="organizacao" name="organizacao" required
-                placeholder="Ex.: Grupo de Anestesia Santa Casa" />
+                placeholder="Ex.: Grupo de Anestesia São Lucas" />
             </>
           )}
           <label htmlFor="nome">Seu nome completo</label>

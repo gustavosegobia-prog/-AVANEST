@@ -296,7 +296,7 @@ function FormularioDeLocal({
               <input
                 value={form.nome} autoFocus
                 onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                placeholder="Ex.: Santa Casa de Misericórdia de Campo Mourão"
+                placeholder="Ex.: Hospital Municipal São Lucas"
               />
             </label>
             <label className="clinicalField">
@@ -324,7 +324,7 @@ function FormularioDeLocal({
               <input
                 value={form.grupo_anestesia}
                 onChange={(e) => setForm({ ...form, grupo_anestesia: e.target.value })}
-                placeholder="Ex.: Grupo Inovanest"
+                placeholder="Ex.: Grupo de Anestesia São Lucas"
               />
             </label>
           </div>
