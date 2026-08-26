@@ -50,11 +50,11 @@ const BLOCOS: Bloco[] = [
     titulo: "O que sai impresso",
     itens: [
       ["Ficha, termo de consentimento e orientações",
-        "Os três com o logo e o nome do hospital onde o paciente foi atendido — não os do último "
-        + "hospital em que você entrou no sistema. Reimprimir hoje um documento de março não o "
-        + "carimba com o hospital de hoje."],
+        "Cada documento sai com o logo e o nome do hospital onde aquele paciente foi atendido. Se "
+        + "você reimprimir hoje uma ficha de março, ela sai com o hospital de março."],
       ["A sua assinatura, com CRM e RQE",
-        "Campo vazio não é impresso: a ficha sai do tamanho do caso, sem páginas de espaço em branco."],
+        "Impressa no rodapé de cada documento. E pergunta que ficou sem resposta não vai para o "
+        + "papel: a ficha sai do tamanho do caso, sem páginas de espaço em branco."],
     ],
   },
   {
@@ -90,7 +90,7 @@ const BLOCOS: Bloco[] = [
       ["A produção do dia, anotada com o jaleco ainda vestido",
         "Nome, convênio e cirurgia de cada paciente em uma linha só, com o cursor voltando para o "
         + "campo do nome depois de salvar. Se anotar oito pacientes custar mais do que rabiscar num "
-        + "papel, o dado não chega a existir."],
+        + "papel, ninguém anota — e o que não foi anotado não é cobrado."],
       ["A ficha de internação lida pela foto",
         "O laudo de AIH do SUS e as fichas de convênio: fotografe, e os campos vêm preenchidos. O "
         + "reconhecimento do texto acontece dentro do seu aparelho, e a imagem é descartada ao final "
@@ -109,6 +109,11 @@ const BLOCOS: Bloco[] = [
       ["Quanto entrou, quanto falta receber",
         "O valor de cada turno, o que já foi pago e o total do mês — com um botão em forma de olho "
         + "que esconde os números quando alguém está olhando por cima do seu ombro."],
+      ["As duas notas do mês, separadas por hospital",
+        "Uma folha dos plantões e outra dos pacientes anestesiados, porque são duas notas contra "
+        + "tomadores diferentes. As duas saem com um total por hospital, e na de faturamento você "
+        + "marca, paciente por paciente, se recebe direto, se a conta vai para o hospital ou se "
+        + "quem paga é o convênio."],
     ],
   },
   {
@@ -122,10 +127,10 @@ const BLOCOS: Bloco[] = [
         "Aviso que é apenas informação não entra na contagem: aparece como um ponto, que some quando "
         + "você abre a caixa. Um contador que nunca zera é um contador que se aprende a ignorar — "
         + "inclusive no dia em que ele estiver certo."],
-      ["Lembrete do que ficou para trás no dinheiro",
-        "Paciente anestesiado e ainda não cobrado, o que foi faturado e não voltou como pagamento, "
-        + "plantão trabalhado e não pago. Só de mês fechado: cobrar um paciente de anteontem não é "
-        + "atraso, é o trabalho normal."],
+      ["O que ficou para trás na cobrança",
+        "Paciente anestesiado e ainda não cobrado, conta faturada que não voltou como pagamento, "
+        + "plantão trabalhado e não pago. Só de mês já fechado: cobrar um paciente de anteontem não "
+        + "é atraso, é o trabalho normal."],
     ],
   },
   {
