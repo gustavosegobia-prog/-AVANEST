@@ -2753,6 +2753,46 @@ button:disabled{cursor:not-allowed}
   .producaoNovo>button{grid-column:1/-1}
 }
 
+/* --- As duas notas do mês ----------------------------------------------
+   Cada paciente precisa de duas respostas antes de virar nota: de qual
+   hospital ele é e quem paga por ele. As duas moram na mesma linha da lista,
+   porque a pergunta é sobre aquele paciente e não sobre o mês. */
+.producaoNotaExplica{margin:0;padding:12px 25px 0;color:var(--cor-tinta-fraca);font-size:13px}
+.producaoPendencia{margin:12px 25px 0;padding:11px 14px;border-radius:10px;font-size:13px;
+  background:var(--cor-atencao-suave,#fff4e0);border-left:3px solid var(--cor-atencao)}
+.producaoPendencia p{margin:0}
+.producaoPendencia.semHospital{background:var(--cor-superficie-suave);
+  border-left-color:var(--cor-borda);color:var(--cor-tinta-fraca)}
+.producaoPendenciaAcoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+.producaoPendenciaAcoes>span{font-size:12.5px;color:var(--cor-tinta-fraca)}
+
+.producaoNotaLinha{display:grid;align-items:center;gap:12px;
+  grid-template-columns:56px minmax(150px,1fr) 1fr 1fr 108px;
+  padding:11px 25px;border-bottom:1px solid var(--cor-borda)}
+.producaoNotaLinha:last-child{border-bottom:0}
+.producaoNotaDia{color:var(--cor-tinta-fraca);font-size:13px;font-weight:700}
+.producaoNotaQuem strong{display:block}
+.producaoNotaQuem small{display:block;color:var(--cor-tinta-fraca);margin-top:3px;font-size:12.5px}
+.producaoNotaLinha>b{text-align:right}
+.producaoNotaLinha select{height:38px;min-width:0;font:inherit;border-radius:9px;padding:0 9px;
+  border:1px solid var(--cor-borda);background:var(--cor-superficie);color:inherit}
+.producaoNotaLinha select:focus-visible{outline:0;box-shadow:var(--foco);border-color:var(--cor-marca)}
+/* O que falta responder fica marcado no próprio campo. Sem isto, achar os três
+   pacientes sem pagador numa lista de quarenta é percorrer linha por linha. */
+.producaoNotaLinha select.faltando{border-color:var(--cor-atencao);
+  background:var(--cor-atencao-suave,#fff4e0);color:var(--cor-tinta)}
+/* No celular a linha vira três faixas: dia e valor em cima, o nome inteiro no
+   meio, e os dois seletores lado a lado embaixo. Espremer cinco colunas numa
+   tela de 390px deixaria "Sem hospital" numa caixa de 60px, ilegível. */
+@media(max-width:900px){
+  .producaoNotaLinha{grid-template-columns:1fr 1fr;gap:9px;padding:12px 16px}
+  .producaoNotaDia{grid-column:1;grid-row:1}
+  .producaoNotaLinha>b{grid-column:2;grid-row:1;text-align:right}
+  .producaoNotaQuem{grid-column:1/-1;grid-row:2}
+  .producaoNotaExplica{padding-inline:16px}
+  .producaoPendencia{margin-inline:16px}
+}
+
 /* --- Escopo da escala e troca dirigida ---------------------------------
    As pílulas de escopo viraram itens da coluna à esquerda. O que sobrou é a
    frase que explica o que se está vendo — ela continua valendo, porque

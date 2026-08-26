@@ -6,7 +6,8 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
-  corpoDaFolha, escaparHTML, faixa, folhaDeFechamento, folhaDeProducao, hhmm, money, podeConfirmar,
+  corpoDaFolha, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
+  folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
   ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
@@ -201,6 +202,17 @@ td .t span{font-size:10px;color:#333}
 h2{font-size:13px;margin:16px 0 5px;padding-bottom:3px;border-bottom:1.5px solid #333;
    break-after:avoid;page-break-after:avoid}
 h2 small{font-weight:400;color:#555;font-size:11px;margin-left:7px}
+/* A quebra de dentro do hospital: quem paga. Sem régua, e não em versalete —
+   ela divide, mas não pode competir com o nome do hospital, que é o que
+   separa uma nota da outra. */
+h3{font-size:12px;margin:12px 0 3px;break-after:avoid;page-break-after:avoid}
+h3 small{font-weight:400;color:#555;font-size:11px;margin-left:7px}
+/* O que ainda não tem pagador. Some da soma de todo mundo e precisa saltar aos
+   olhos na folha, senão a pessoa emite as três notas e descobre o quarto bloco
+   no mês seguinte. */
+h3.pendente,p.sub.pendente{color:#8a4b00;font-weight:700}
+p.sub.pendente{background:#fff4e0;border-left:3px solid #d98200;padding:7px 10px;
+  border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .num{text-align:right}
 .rodape{margin-top:10px;font-size:9.5px;color:#666;display:flex;justify-content:space-between}
 tr,td,th{break-inside:avoid;page-break-inside:avoid}
@@ -978,6 +990,58 @@ export function Plantoes({
   }
 
   /**
+   * A nota de plantões do mês, por hospital.
+   *
+   * Sai de `meus`, e não de `daEscala`: a folha que vira nota é de todos os
+   * hospitais em que a pessoa trabalhou no mês, independentemente de qual
+   * hospital está escolhido na tela naquele momento. Quem filtrou a escala
+   * para ver a de um hospital não quis, com isso, emitir nota só daquele.
+   *
+   * Sem timbre. As outras folhas timbram quando são de um lugar só; esta é a
+   * folha das VÁRIAS, e um logo no alto diria que a página inteira é daquele
+   * hospital — justamente o que ela não é.
+   */
+  function imprimirPlantoesParaNota() {
+    setErro(""); setAviso("");
+    if (meus.length === 0) { setErro("Não há plantão seu neste mês para pôr em nota."); return; }
+    const { titulo, corpo } = folhaDePlantoesPorLocal(
+      meus.map((p) => ({
+        data: p.data, hora_inicio: p.hora_inicio, hora_fim: p.hora_fim,
+        horas: Number(p.horas), valor: Number(p.valor),
+        local: ondeFica(p, localPorId, ""),
+      })),
+      MESES[m - 1], ano, new Date(),
+    );
+    if (!imprimirFolha(titulo, corpo, "portrait")) {
+      setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
+    }
+  }
+
+  /**
+   * A nota de faturamento do mês, por hospital e por quem paga.
+   *
+   * O nome do hospital vem do cadastro, pelo `local_id` da anotação. Anotação
+   * sem hospital vai para "Sem hospital" em vez de sumir: um paciente fora de
+   * qualquer nota é uma cobrança perdida, e ele precisa aparecer para ser
+   * consertado.
+   */
+  function imprimirFaturamento(itens: Producao[]) {
+    setErro(""); setAviso("");
+    const { titulo, corpo } = folhaDeFaturamento(
+      itens.map((i) => ({
+        data: i.data, paciente: i.paciente, convenio: i.convenio,
+        procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
+        local: (i.local_id && localPorId.get(i.local_id)) || "",
+        pagador: i.pagador ?? null,
+      })),
+      MESES[m - 1], ano, new Date(),
+    );
+    if (!imprimirFolha(titulo, corpo, "portrait")) {
+      setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
+    }
+  }
+
+  /**
    * A escala em papel.
    *
    * Duas folhas diferentes, e não uma com um filtro: a do grupo é a que se
@@ -1567,7 +1631,11 @@ export function Plantoes({
 
       {aba === "producao" && (
         <ProducaoDoMes
-          mes={mes} nomeMes={MESES[m - 1]} ano={ano} onImprimir={imprimirProducao}
+          mes={mes} nomeMes={MESES[m - 1]} ano={ano}
+          locais={locais.map((l) => ({ id: l.id, nome: nomeDoLocal(l) }))}
+          onImprimir={imprimirProducao}
+          onImprimirFaturamento={imprimirFaturamento}
+          onImprimirPlantoes={imprimirPlantoesParaNota}
         />
       )}
 
@@ -1641,6 +1709,15 @@ function DiaDetalhe({
   // A anotação se liga ao plantão quando não há dúvida de qual é. Com dois
   // turnos seus no mesmo dia, escolher um por conta própria seria chute.
   const meusDoDia = plantoes.filter((p) => p.perfil_id === perfilId && p.situacao !== "cancelado");
+  // O hospital do dia, quando os turnos do dia são todos do mesmo — manhã e
+  // noite no mesmo lugar continuam sendo um hospital só. Com dois hospitais no
+  // mesmo dia não há resposta certa, e a anotação nasce sem: pôr um por conta
+  // própria mandaria o paciente para a nota do hospital errado, e a lista do
+  // mês tem o campo para dizer qual é.
+  const localUnicoDoDia = (() => {
+    const onde = new Set(meusDoDia.map((p) => p.local_id).filter(Boolean));
+    return onde.size === 1 ? ([...onde][0] as string) : null;
+  })();
 
   /**
    * Para quem o próximo clique escala.
@@ -1834,6 +1911,7 @@ function DiaDetalhe({
           dia={dia} perfilId={perfilId} institutionId={institutionId}
           conveniosConhecidos={conveniosConhecidos}
           plantaoId={meusDoDia.length === 1 ? meusDoDia[0].id : null}
+          localId={localUnicoDoDia}
         />
       )}
     </section>

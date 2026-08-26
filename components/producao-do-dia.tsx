@@ -23,6 +23,10 @@ export type Producao = {
   id: string; data: string; paciente: string; convenio: string;
   procedimento: string | null; valor: number; situacao: string;
   observacoes: string | null; plantao_id: string | null;
+  /** Hospital do ato. Vem do plantão quando o dia tem um só, e é corrigível. */
+  local_id?: string | null;
+  /** Quem paga este ato. Nulo enquanto não se decidiu — ver PAGADORES. */
+  pagador?: string | null;
 };
 
 const SITUACOES: Array<[string, string]> = [
@@ -34,6 +38,40 @@ const SITUACOES: Array<[string, string]> = [
 
 const rotuloSituacao = (s: string) =>
   SITUACOES.find(([id]) => id === s)?.[1] ?? s;
+
+/**
+ * Quem paga o ato anestésico.
+ *
+ * Três respostas porque são três notas diferentes, contra três tomadores
+ * diferentes — e a resposta muda de paciente para paciente dentro do mesmo
+ * hospital. Convênio é outra coluna e continua existindo: o paciente pode ser
+ * "Unimed" e mesmo assim pagar direto, quando o combinado foi esse.
+ *
+ * Não há quarta opção "ainda não sei", e é de propósito: o não decidido é a
+ * ausência de escolha, e ele já aparece à parte na folha. Uma opção com esse
+ * nome viraria uma decisão tomada de não decidir.
+ */
+export const PAGADORES: Array<[string, string]> = [
+  ["direto", "Recebo direto"],
+  ["hospital", "O hospital paga"],
+  ["convenio", "O convênio paga"],
+];
+
+/**
+ * O recado certo quando a gravação é recusada.
+ *
+ * Coluna que não existe é o caso de quem atualizou o site e ainda não rodou o
+ * SQL, e "não foi possível salvar" mandaria essa pessoa procurar defeito na
+ * internet. O PostgREST devolve PGRST204 quando não acha a coluna no cache do
+ * esquema, e o Postgres 42703 quando a consulta chega ao banco.
+ */
+function erroDeColuna(erro: { code?: string; message?: string }): string {
+  const some = erro.code === "PGRST204" || erro.code === "42703"
+    || /pagador|local_id/.test(erro.message ?? "");
+  return some
+    ? "As colunas de hospital e de quem paga ainda não existem no banco. Rode a migração 202608260007_faturamento_por_hospital.sql."
+    : "Não foi possível salvar a alteração.";
+}
 
 /** "1.100,00" ou "1100" -> 1100. Aceita o jeito que a pessoa digitar. */
 export function lerValor(bruto: string): number {
@@ -134,13 +172,20 @@ async function prepararFoto(arquivo: File): Promise<HTMLCanvasElement | File> {
 }
 
 export function ProducaoDoDia({
-  dia, perfilId, institutionId, plantaoId, conveniosConhecidos,
+  dia, perfilId, institutionId, plantaoId, localId, conveniosConhecidos,
 }: {
   dia: string;
   perfilId: string;
   institutionId: string;
   /** O plantão do dia, quando há um só. Serve para ligar a anotação ao turno. */
   plantaoId: string | null;
+  /**
+   * O hospital do dia, quando os plantões do dia são todos do mesmo lugar.
+   * É o que separa a nota de um hospital da do outro no fim do mês, e por isso
+   * é gravado já na anotação: perguntar depois, com trinta pacientes na tela,
+   * é perguntar quando ninguém mais lembra.
+   */
+  localId: string | null;
   /** Convênios já usados na organização, para não redigitar "Unimed". */
   conveniosConhecidos: string[];
 }) {
@@ -248,6 +293,7 @@ export function ProducaoDoDia({
     setSalvando(true); setErro("");
     const { error } = await createClient().from("producao_do_dia").insert({
       institution_id: institutionId, perfil_id: perfilId, plantao_id: plantaoId,
+      local_id: localId,
       data: dia, paciente,
       convenio: novo.convenio.trim() || "Particular",
       procedimento: novo.procedimento.trim() || null,
@@ -426,10 +472,16 @@ export function ProducaoDoDia({
  * fim do mês, sentado — e por isso são duas telas e não uma.
  */
 export function ProducaoDoMes({
-  mes, nomeMes, ano, onImprimir,
+  mes, nomeMes, ano, locais, onImprimir, onImprimirFaturamento, onImprimirPlantoes,
 }: {
   mes: string; nomeMes: string; ano: number;
+  /** Os hospitais da organização, para dizer de onde é cada ato. */
+  locais: Array<{ id: string; nome: string }>;
   onImprimir: (itens: Producao[]) => void;
+  /** A nota do ato anestésico, por hospital e por quem paga. */
+  onImprimirFaturamento: (itens: Producao[]) => void;
+  /** A nota da hora à disposição. Sai dos plantões, não desta lista. */
+  onImprimirPlantoes: () => void;
 }) {
   const [itens, setItens] = useState<Producao[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -509,9 +561,54 @@ export function ProducaoDoMes({
     setRecarregar((x) => x + 1);
   }
 
+  /**
+   * Guardar o hospital ou quem paga de um paciente.
+   *
+   * A lista muda na tela antes do banco responder, e de propósito: são
+   * dezenas de pacientes num mês, e recarregar o mês inteiro a cada escolha
+   * faria a lista piscar e perder a posição da rolagem a cada clique. Se o
+   * banco recusar, o mês é recarregado — a tela não pode ficar mostrando uma
+   * escolha que não foi gravada, porque é dela que sai a nota.
+   */
+  async function definir(id: string, campos: Partial<Producao>) {
+    setErro("");
+    setItens((antes) => antes.map((i) => (i.id === id ? { ...i, ...campos } : i)));
+    const { error } = await createClient()
+      .from("producao_do_dia").update(campos).eq("id", id);
+    if (error) { setErro(erroDeColuna(error)); setRecarregar((x) => x + 1); }
+  }
+
+  /**
+   * Resolver de uma vez os que ainda não têm pagador.
+   *
+   * Quase todo mês tem um padrão — num hospital o combinado é receber direto,
+   * noutro a conta vai para o hospital — e as exceções são poucas. Marcar
+   * trinta pacientes um a um para depois corrigir dois é trabalho que o
+   * sistema pode poupar.
+   *
+   * Só toca no que está em branco, e isso é dito duas vezes: na lista de ids e
+   * no `is("pagador", null)` da consulta. A segunda existe porque entre carregar
+   * a tela e clicar aqui pode ter havido uma escolha noutro aparelho, e este
+   * botão não pode desfazer uma decisão já tomada.
+   */
+  async function decidirOsQueFaltam(quem: string) {
+    const alvos = itens.filter((i) => !i.pagador).map((i) => i.id);
+    if (alvos.length === 0) return;
+    setErro("");
+    setItens((antes) => antes.map((i) => (i.pagador ? i : { ...i, pagador: quem })));
+    const { error } = await createClient().from("producao_do_dia")
+      .update({ pagador: quem }).in("id", alvos).is("pagador", null);
+    if (error) { setErro(erroDeColuna(error)); setRecarregar((x) => x + 1); }
+  }
+
   const total = itens.reduce((s, i) => s + Number(i.valor), 0);
   const recebido = itens.filter((i) => i.situacao === "recebido")
     .reduce((s, i) => s + Number(i.valor), 0);
+
+  // O que trava a emissão da nota, e por isso é dito antes dos botões.
+  const semPagador = itens.filter((i) => !i.pagador);
+  const semLocal = itens.filter((i) => !i.local_id);
+  const pendente = semPagador.reduce((s, i) => s + Number(i.valor), 0);
 
   if (carregando) return <div className="emptyClinical">Carregando produção…</div>;
 
@@ -576,26 +673,95 @@ export function ProducaoDoMes({
           ))}
       </section>
 
+      {/* As duas notas do mês.
+          Plantão e faturamento não saem da mesma folha porque não são a mesma
+          coisa: um é hora à disposição, o outro é o ato anestésico, e o tomador
+          costuma ser outro. Ficam lado a lado aqui porque são o trabalho de um
+          mesmo dia do mês — o dia de emitir. */}
+      <section className="clinicalPanel">
+        <div className="panelTitle">
+          <strong>As duas notas de {nomeMes}</strong>
+          <span>plantão é hora à disposição; faturamento é o ato anestésico</span>
+          <div className="producaoAcoesMes">
+            <button className="outlineClinical" onClick={onImprimirPlantoes}>
+              Nota de plantões
+            </button>
+            <button className="primaryClinical compact"
+              disabled={itens.length === 0} onClick={() => onImprimirFaturamento(itens)}>
+              Nota de faturamento
+            </button>
+          </div>
+        </div>
+        <p className="producaoNotaExplica">
+          As duas folhas saem separadas por hospital, com um total por hospital:
+          cada nota é emitida contra um tomador. Na de faturamento, quem paga
+          muda de paciente para paciente — marque abaixo antes de imprimir.
+        </p>
+
+        {semPagador.length > 0 && (
+          <div className="producaoPendencia">
+            <p>
+              <b>{plural(semPagador.length, "paciente está", "pacientes estão")}</b>{" "}
+              sem quem paga definido, somando <b>{money(pendente)}</b>. Esse valor
+              sai numa parte à parte da folha e não entra em nota nenhuma enquanto
+              não for decidido.
+            </p>
+            {/* Um mês costuma ter um padrão e duas exceções. Isto resolve o
+                padrão de uma vez; as exceções se corrigem na lista abaixo. */}
+            <div className="producaoPendenciaAcoes">
+              <span>Os que faltam são todos:</span>
+              {PAGADORES.map(([id, rotulo]) => (
+                <button key={id} type="button" className="outlineClinical compact"
+                  onClick={() => void decidirOsQueFaltam(id)}>
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {semLocal.length > 0 && (
+          <p className="producaoPendencia semHospital">
+            {plural(semLocal.length, "paciente está", "pacientes estão")} sem
+            hospital. Eles saem juntos, em “Sem hospital”, e não somam com nenhum
+            dos outros — o hospital se escolhe na lista abaixo.
+          </p>
+        )}
+      </section>
+
       {itens.length > 0 && (
         <section className="clinicalPanel">
           <div className="panelTitle">
             <strong>Todos os pacientes do mês</strong>
-            <span>edite pela escala, no dia de cada um</span>
+            <span>de qual hospital é cada um, e quem paga</span>
           </div>
           {itens.map((i) => (
-            <div className="plantaoLinha" key={i.id}>
-              <span className="plantaoQuando">
-                <strong>{Number(i.data.slice(8, 10))}/{i.data.slice(5, 7)}</strong>
+            <div className="producaoNotaLinha" key={i.id}>
+              <span className="producaoNotaDia">
+                {Number(i.data.slice(8, 10))}/{i.data.slice(5, 7)}
               </span>
-              <span className="plantaoOnde">
+              <span className="producaoNotaQuem">
                 <strong>{i.paciente}</strong>
-                <small>{i.convenio}{i.procedimento ? ` · ${i.procedimento}` : ""}</small>
+                <small>
+                  {i.convenio}{i.procedimento ? ` · ${i.procedimento}` : ""}
+                  {" · "}{rotuloSituacao(i.situacao)}
+                </small>
               </span>
+              <select value={i.local_id ?? ""} aria-label={`Hospital de ${i.paciente}`}
+                className={i.local_id ? undefined : "faltando"}
+                onChange={(e) => void definir(i.id, { local_id: e.target.value || null })}>
+                <option value="">Sem hospital</option>
+                {locais.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
+              </select>
+              <select value={i.pagador ?? ""} aria-label={`Quem paga ${i.paciente}`}
+                className={i.pagador ? undefined : "faltando"}
+                onChange={(e) => void definir(i.id, { pagador: e.target.value || null })}>
+                <option value="">Quem paga?</option>
+                {PAGADORES.map(([id, rotulo]) => (
+                  <option key={id} value={id}>{rotulo}</option>
+                ))}
+              </select>
               <b>{money(Number(i.valor))}</b>
-              <span className={`statusChip ${i.situacao === "recebido" ? "present"
-                : i.situacao === "glosado" ? "paused" : "waiting"}`}>
-                {rotuloSituacao(i.situacao)}
-              </span>
             </div>
           ))}
         </section>

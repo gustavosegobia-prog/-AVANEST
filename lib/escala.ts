@@ -804,8 +804,11 @@ export function folhaDePlantoesPorLocal(
       return `<h2>${escaparHTML(local)} <small>${
         plural(lista.length, "plantão", "plantões")} · ${
         horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(soma))}</small></h2>`
-        + '<table class="lista"><colgroup><col style="width:12%"><col style="width:26%">'
-        + '<col style="width:18%"><col></colgroup>'
+        // A coluna elástica é a do horário, e não a do valor: a folga cabe
+        // melhor depois de um texto do que antes de um número, que fica
+        // encostado à direita e perde a ligação com o próprio cabeçalho.
+        + '<table class="lista"><colgroup><col style="width:12%"><col>'
+        + '<col style="width:16%"><col style="width:20%"></colgroup>'
         + "<thead><tr><th>Dia</th><th>Horário</th>"
         + '<th class="num">Horas</th><th class="num">Valor</th></tr></thead>'
         + `<tbody>${linhas}</tbody></table>`;
