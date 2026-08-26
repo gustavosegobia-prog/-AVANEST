@@ -348,7 +348,8 @@ function LinhaComGaveta({
 
 export function Plantoes({
   perfilId, institutionId, locais, ehAdmin, colegas, escalaveis, semCRM = [],
-  localAtivoId = null, abrirEm = null, onAvisosMudaram,
+  localAtivoId = null, abrirEm = null, onAvisosMudaram, onEquipeMudou,
+  equipe = [],
 }: {
   perfilId: string;
   institutionId: string;
@@ -371,6 +372,11 @@ export function Plantoes({
    * entram aqui.
    */
   escalaveis: Colega[];
+  /**
+   * Todo mundo do cadastro que PODE entrar na escala — médico ativo — com o
+   * estado atual de cada um. É a lista que a janela de composição mostra.
+   */
+  equipe?: { id: string; nome: string; crm: string | null; naEscala: boolean }[];
   /** Ativos sem CRM no cadastro. Não some da tela: vira aviso. */
   semCRM?: string[];
   localAtivoId?: string | null;
@@ -396,6 +402,15 @@ export function Plantoes({
    * carregamento faria a página se recarregar em círculo.
    */
   onAvisosMudaram?: () => void;
+  /**
+   * Alguém novo entrou na equipe por esta tela.
+   *
+   * Separado de `onAvisosMudaram` de propósito: são dois fatos diferentes, e
+   * um nome que serve para os dois é um nome que não explica nenhum. O painel
+   * pode acabar ligando os dois na mesma recarga — mas isso é decisão dele,
+   * não desta tela.
+   */
+  onEquipeMudou?: () => void;
 }) {
   const hoje = new Date();
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`);
@@ -406,6 +421,7 @@ export function Plantoes({
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
+  const [adicionando, setAdicionando] = useState(false);
   const [trocas, setTrocas] = useState<Troca[]>([]);
   // Escala do grupo ou só a minha. Duas leituras da mesma tela: "onde eu
   // trabalho este mês" e "quem está de plantão no dia 12".
@@ -1012,6 +1028,26 @@ export function Plantoes({
     onAvisosMudaram?.();
   }
 
+  /**
+   * Põe ou tira alguém da fila de nomes da escala.
+   *
+   * Não cadastra ninguém: a pessoa já tem conta no sistema. São duas perguntas
+   * diferentes — estar cadastrado e entrar na escala — e esta tela responde só
+   * a segunda. Cadastrar continua sendo em Admin, com convite e e-mail, que é
+   * o caminho que deixa a pessoa com login próprio.
+   *
+   * A troca vale na hora na lista aberta, e o painel é recarregado ao fechar:
+   * marcar cinco nomes não pode custar cinco recarregamentos da página.
+   */
+  async function alternarNaEscala(id: string, entra: boolean) {
+    setErro("");
+    const { error } = await createClient().rpc("definir_na_escala", {
+      p_perfil_id: id, p_na_escala: entra,
+    });
+    if (error) { setErro(error.message); return false; }
+    return true;
+  }
+
   function imprimirEscala() {
     setErro(""); setAviso("");
     if (daEscala.length === 0) { setErro("Não há plantão neste mês para imprimir."); return; }
@@ -1158,6 +1194,22 @@ export function Plantoes({
               da escala por falta de CRM no cadastro: <strong>{semCRM.join(", ")}</strong>.
               A escala é o documento de quem responde pela anestesia, e o registro
               faz parte dele. O CRM se preenche em <strong>Admin → Equipe</strong>.
+            </p>
+          )}
+          {/* Fica aqui, e não na barra de ações do calendário, por dois
+              motivos. O primeiro é de lugar: quem descobre que falta um nome
+              descobre olhando a fila de nomes, e é aqui que ela é discutida. O
+              segundo é de largura: aquela barra já tem quatro botões, e um
+              quinto a faz quebrar no celular. */}
+          {ehAdmin && escopo === "grupo" && (
+            <p className="plantaoNota plantaoAdicionar">
+              <span>
+                {plural(escalaveis.length, "profissional na escala", "profissionais na escala")}.
+              </span>
+              <button type="button" className="outlineClinical"
+                onClick={() => setAdicionando(true)}>
+                Quem entra na escala
+              </button>
             </p>
           )}
           <section className="clinicalPanel">
@@ -1541,6 +1593,14 @@ export function Plantoes({
           localPorId={localPorId}
           onFechar={() => setPedindoTroca(null)}
           onEnviar={(destino, msg) => void pedirTroca(pedindoTroca, destino, msg)}
+        />
+      )}
+
+      {adicionando && (
+        <QuemEntraNaEscala
+          equipe={equipe}
+          onAlternar={alternarNaEscala}
+          onFechar={() => { setAdicionando(false); onEquipeMudou?.(); }}
         />
       )}
 
@@ -2326,5 +2386,102 @@ function TrocasPainel({
           : enviados.map((t) => <Linha key={t.id} troca={t} lado="enviado" />)}
       </section>
     </>
+  );
+}
+
+/**
+ * Quem entra na escala.
+ *
+ * Uma lista de nomes com uma caixa de seleção em cada, e nada mais. Não
+ * cadastra e não apaga ninguém: essas duas coisas moram em Admin, e misturá-las
+ * aqui daria à janela o poder de excluir alguém sem que a palavra "excluir"
+ * apareça na tela.
+ *
+ * Quem está sem CRM aparece na lista, marcado e desabilitado — e não escondido.
+ * Escondido, o coordenador procuraria o colega, não o encontraria e concluiria
+ * que o sistema perdeu o cadastro. À vista, ele lê o motivo e sabe onde
+ * resolver.
+ *
+ * A marcação vale na hora, e a página só é recarregada ao fechar: marcar cinco
+ * nomes não pode custar cinco recarregamentos.
+ */
+function QuemEntraNaEscala({
+  equipe, onAlternar, onFechar,
+}: {
+  equipe: { id: string; nome: string; crm: string | null; naEscala: boolean }[];
+  onAlternar: (id: string, entra: boolean) => Promise<boolean>;
+  onFechar: () => void;
+}) {
+  const [estado, setEstado] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(equipe.map((p) => [p.id, p.naEscala])),
+  );
+  const [salvando, setSalvando] = useState("");
+
+  async function alternar(id: string, entra: boolean) {
+    setSalvando(id);
+    const deuCerto = await onAlternar(id, entra);
+    setSalvando("");
+    if (deuCerto) setEstado((antes) => ({ ...antes, [id]: entra }));
+  }
+
+  const dentro = equipe.filter((p) => estado[p.id] && (p.crm ?? "").trim()).length;
+
+  return (
+    <div className="patientModalBackdrop" role="presentation">
+      <section className="localModal" role="dialog" aria-modal="true" aria-labelledby="quem-escala">
+        <div className="patientModalHead">
+          <div>
+            <h2 id="quem-escala">Quem entra na escala</h2>
+            <p>
+              Marque quem aparece na fila de nomes quando você monta a escala.
+              Desmarcar não apaga o cadastro nem os plantões já lançados.
+            </p>
+          </div>
+          <button type="button" onClick={onFechar} aria-label="Fechar">×</button>
+        </div>
+
+        {equipe.length === 0 ? (
+          <p className="plantaoNota">
+            Ninguém cadastrado como anestesiologista ainda. O cadastro é em{" "}
+            <strong>Admin → Convidar</strong>, com nome, CRM e e-mail.
+          </p>
+        ) : (
+          <ul className="escalaMembros">
+            {equipe.map((p) => {
+              const semCRM = !(p.crm ?? "").trim();
+              return (
+                <li key={p.id} className={semCRM ? "semCRM" : ""}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(estado[p.id])}
+                      disabled={semCRM || salvando === p.id}
+                      onChange={(e) => void alternar(p.id, e.target.checked)}
+                    />
+                    <span>
+                      <strong>{p.nome}</strong>
+                      <small>
+                        {semCRM
+                          ? "sem CRM no cadastro — preencha em Admin → Equipe"
+                          : `CRM ${p.crm}`}
+                      </small>
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <div className="modalActions">
+          <span className="plantaoNota" style={{ marginRight: "auto" }}>
+            {plural(dentro, "profissional na escala", "profissionais na escala")}.
+          </span>
+          <button type="button" className="primaryClinical compact" onClick={onFechar}>
+            Pronto
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }

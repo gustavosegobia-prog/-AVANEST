@@ -70,8 +70,18 @@ export const CONVENIOS = [
  */
 const EQUIPE_DE_APOIO = ["recepcao", "financeiro"];
 
-const ehEscalavel = (p: { status: string; role: string; crm: string | null }) =>
-  p.status === "ativo" && !EQUIPE_DE_APOIO.includes(p.role) && Boolean((p.crm ?? "").trim());
+// Quem aparece na fila de nomes de quem monta a escala. Três perguntas, e
+// todas precisam de "sim": o acesso está ativo, a pessoa responde pela
+// anestesia (recepção e financeiro não entram) e ela tem CRM no cadastro —
+// a escala é o documento de quem responde, e o registro faz parte dele.
+//
+// A quarta é `na_escala`, e ela existe porque as outras três não bastavam: um
+// residente em rodízio ou um colega que só faz avaliação passava por todas e
+// aparecia na fila de qualquer jeito. `?? true` mantém quem já estava lá
+// enquanto a coluna não existir no banco.
+const ehEscalavel = (p: { status: string; role: string; crm: string | null; na_escala?: boolean }) =>
+  p.status === "ativo" && !EQUIPE_DE_APOIO.includes(p.role)
+  && Boolean((p.crm ?? "").trim()) && (p.na_escala ?? true);
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean };
 type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null };
@@ -99,7 +109,7 @@ type Avaliacao = { id: string; patient_id: string; created_by?: string | null; s
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
 type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
-type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; created_at:string; updated_at:string };
+type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
@@ -840,6 +850,14 @@ export function DashboardClient({
           // respondeu isso ao entrar, e perguntar de novo é perguntar duas vezes.
           localAtivoId={localAtivo?.id ?? null}
           abrirEm={aberturaDaEscala}
+          // Todo mundo que PODE entrar na escala, com o estado de cada um. É
+          // a lista da janela "Quem entra na escala" — por isso não passa
+          // pelo filtro de CRM: quem está sem CRM aparece lá, marcado e
+          // travado, com o motivo escrito.
+          equipe={perfis
+            .filter(p=>p.status==="ativo" && !EQUIPE_DE_APOIO.includes(p.role))
+            .map(p=>({id:p.id,nome:p.nome,crm:p.crm,naEscala:p.na_escala??true}))}
+          onEquipeMudou={()=>router.refresh()}
           // Respondeu a troca, confirmou o plantão, ofereceu um turno: o sino
           // precisa ser remontado no servidor, senão o alerta continua lá
           // depois de a coisa já ter sido resolvida.

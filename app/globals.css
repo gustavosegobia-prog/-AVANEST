@@ -2964,3 +2964,30 @@ button:disabled{cursor:not-allowed}
 @media(max-width:700px){
   .avnInstagram{position:static;display:inline-flex;margin:0 0 18px 18px;box-shadow:none}
 }
+
+/* ==========================================================================
+   Quem entra na escala
+   ==========================================================================
+   Uma linha por pessoa, com a caixa de seleção grande o bastante para o dedo.
+   Quem está sem CRM aparece apagado e travado — visível, e não escondido: o
+   coordenador precisa VER que o colega existe e ler por que ele não pode ser
+   marcado, senão conclui que o cadastro sumiu.
+   ========================================================================== */
+.escalaMembros{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:2px;
+  max-height:52vh;overflow:auto}
+.escalaMembros li{border-bottom:1px solid var(--cor-borda)}
+.escalaMembros li:last-child{border-bottom:0}
+.escalaMembros label{display:flex;align-items:center;gap:14px;padding:12px 4px;
+  cursor:pointer;min-height:52px}
+.escalaMembros input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--cor-marca);
+  cursor:pointer}
+.escalaMembros span{display:grid;gap:2px;min-width:0}
+.escalaMembros strong{font-size:15px}
+.escalaMembros small{color:var(--cor-tinta-fraca);font-size:12px}
+.escalaMembros li.semCRM label{cursor:not-allowed}
+.escalaMembros li.semCRM strong{color:var(--cor-tinta-fraca)}
+.escalaMembros li.semCRM small{color:var(--cor-atencao)}
+
+/* A chamada acima do calendário: a contagem à esquerda, o botão à direita. */
+.plantaoAdicionar{display:flex;align-items:center;justify-content:space-between;
+  gap:14px;flex-wrap:wrap}
