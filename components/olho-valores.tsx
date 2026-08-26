@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icone } from "@/components/icone";
 
 /**
  * Esconder os números da tela.
@@ -51,6 +52,13 @@ export function useValoresOcultos() {
  * Só o ícone, no canto inferior do último cartão da fileira. Com texto ao lado
  * ele subia para o topo e passava por cima do próprio valor que existe para
  * esconder. O que ele faz está no title e no aria-label.
+ *
+ * O desenho é SVG, e não emoji. Aqui moravam 👁 e 🙈 — e o macaco que tapa os
+ * olhos, ao lado de "R$ 12.400,00 a receber", lê como piada num sistema que
+ * trata de saúde e de dinheiro. Emoji também não é ilustração confiável: cada
+ * sistema desenha o seu, e o mesmo botão saía diferente no iPhone, no Android e
+ * no Windows. O traço vem do mesmo conjunto do resto da interface e acompanha a
+ * cor do texto ao lado.
  */
 export function OlhoValores({
   oculto, onAlternar,
@@ -64,6 +72,8 @@ export function OlhoValores({
       type="button" className="plantaoOlho"
       onClick={() => onAlternar(!oculto)}
       aria-pressed={oculto} aria-label={rotulo} title={rotulo}
-    />
+    >
+      <Icone nome={oculto ? "olhoFechado" : "olho"} tamanho={20} />
+    </button>
   );
 }

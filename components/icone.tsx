@@ -35,6 +35,18 @@ const TRACOS = {
   busca: <><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></>,
   pessoa: <><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></>,
   calculadora: <><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7.5h7"/><path d="M9 12v.1"/><path d="M12 12v.1"/><path d="M15 12v.1"/><path d="M9 16.5v.1"/><path d="M12 16.5v.1"/><path d="M15 16.5v.1"/></>,
+  // Ver e não ver. Substituíram um par de emoji — 👁 e o macaco que tapa os
+  // olhos — que num sistema de saúde e de dinheiro soava como piada, e que
+  // ainda mudava de desenho conforme o aparelho de quem estava olhando.
+  olho: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></>,
+  olhoFechado: <><path d="M3 4.5l18 15"/><path d="M10.2 6a9.9 9.9 0 0 1 1.8-.2c6 0 9.5 6.2 9.5 6.2a17 17 0 0 1-3 3.7"/><path d="M6.2 8.1A16.6 16.6 0 0 0 2.5 12S6 18.2 12 18.2c1.3 0 2.5-.3 3.5-.7"/><path d="M9.9 10.2a3 3 0 0 0 4 4.2"/></>,
+  sino: <><path d="M18 9.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5Z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/></>,
+  // Os quatro da caixa de avisos, um por origem.
+  troca: <><path d="M4 8h13l-3.5-3.5"/><path d="M20 16H7l3.5 3.5"/></>,
+  nota: <><path d="M5.5 3.5h13v17l-2.2-1.6-2.2 1.6-2.2-1.6-2.2 1.6-2.2-1.6-1.8 1.6z"/><path d="M9 8.5h6"/><path d="M9 12.5h6"/></>,
+  ampulheta: <><path d="M7 3.5h10"/><path d="M7 20.5h10"/><path d="M7.5 3.5c0 4 4.5 5.4 4.5 8.5S7.5 16.5 7.5 20.5"/><path d="M16.5 3.5c0 4-4.5 5.4-4.5 8.5s4.5 4.5 4.5 8.5"/></>,
+  dinheiro: <><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.8"/></>,
+  boia: <><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="m6 6 3.5 3.5"/><path d="m18 6-3.5 3.5"/><path d="m6 18 3.5-3.5"/><path d="m18 18-3.5-3.5"/></>,
 } as const;
 
 export function Icone({ nome, tamanho = 16, rotulo, className }: Props) {

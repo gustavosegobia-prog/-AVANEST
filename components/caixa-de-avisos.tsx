@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { quantosPedemResposta, type Aviso } from "@/lib/avisos";
+import { Icone } from "@/components/icone";
 
 // A caixa de avisos: o sino da barra do topo.
 //
@@ -16,13 +17,19 @@ import { quantosPedemResposta, type Aviso } from "@/lib/avisos";
 // aviso porque está pendente, e para de ser no instante em que alguém responde.
 // O motivo inteiro está em lib/avisos.ts.
 
-const ICONE: Record<string, string> = {
-  troca_pedida: "🔄", troca_resolvida: "✅", chat: "💬", suporte: "🛟",
-  // Dinheiro tem ícone próprio, e os três se distinguem: o que falta cobrar, o
-  // que falta receber e o plantão que falta ser pago são três ações diferentes
-  // — o mesmo símbolo nos três faria a pessoa abrir para descobrir qual é.
-  a_faturar: "🧾", a_receber: "⏳", plantao_a_receber: "💰",
-};
+// Um ícone por origem do aviso, todos do mesmo conjunto de traços do resto da
+// interface. Eram emoji, e emoji não é ilustração confiável: cada sistema
+// desenha o seu, e a mesma lista saía com um traço diferente no iPhone, no
+// Android e no Windows — num painel clínico isso parece defeito, não estilo.
+//
+// Os três de dinheiro continuam distintos entre si: o que falta cobrar, o que
+// falta receber e o plantão que falta ser pago são ações diferentes, e o mesmo
+// símbolo nos três obrigaria a abrir para descobrir qual é.
+const ICONE = {
+  troca_pedida: "troca", troca_resolvida: "confirmado", chat: "conversa",
+  suporte: "boia", a_faturar: "nota", a_receber: "ampulheta",
+  plantao_a_receber: "dinheiro",
+} as const;
 
 /**
  * "há 2 h", "ontem", "12/08". Relógio do navegador, que é o do usuário.
@@ -109,7 +116,7 @@ export function CaixaDeAvisos({
           ? `Avisos: ${pedemResposta} esperando resposta sua`
           : avisos.length > 0 ? `Avisos: ${avisos.length}` : "Avisos: nada novo"}
       >
-        <span aria-hidden="true">🔔</span>
+        <Icone nome="sino" tamanho={20} />
         {pedemResposta > 0
           ? <b className="avisosContador">{pedemResposta}</b>
           : temNoticia && <b className="avisosPonto" aria-hidden="true" />}
@@ -132,7 +139,7 @@ export function CaixaDeAvisos({
                 className={`avisoItem${a.acao ? " pede" : ""}`}
                 onClick={() => { setAberta(false); onIr(a); }}
               >
-                <span className="avisoIcone" aria-hidden="true">{ICONE[a.tipo] ?? "•"}</span>
+                <span className="avisoIcone" aria-hidden="true"><Icone nome={ICONE[a.tipo] ?? "conversa"} tamanho={17} /></span>
                 <span className="avisoTexto">
                   <strong>{a.titulo}</strong>
                   <small>{a.detalhe}</small>
