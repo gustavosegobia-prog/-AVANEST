@@ -24,7 +24,7 @@
 
 export type TipoDeAviso =
   | "troca_pedida" | "troca_resolvida" | "chat" | "suporte"
-  | "a_faturar" | "a_receber" | "plantao_a_receber";
+  | "a_faturar" | "a_receber" | "plantao_a_receber" | "a_confirmar";
 
 export type Aviso = {
   /** Estável entre recargas: é o id da linha que originou o aviso. */
@@ -278,6 +278,49 @@ export function lembretesDoDinheiro(entrada: {
   }
 
   return avisos;
+}
+
+export type PlantaoParaConfirmar = {
+  data: string; situacao: string; confirmado_em: string | null;
+};
+
+/**
+ * "Confirme o plantão que você fez."
+ *
+ * Separado dos lembretes de dinheiro por causa de UMA regra que é o oposto da
+ * de lá: aqui o mês corrente conta, e o dia de hoje conta mais que todos. O
+ * lembrete de faturamento espera o mês fechar porque cobrar anteontem não é
+ * atraso; a confirmação é o contrário — ela vale no dia, enquanto a pessoa
+ * lembra se ficou até as 13h ou até as 19h, se trocou com alguém, se a sala
+ * fechou. Uma semana depois ninguém lembra, e a folha de pagamento sai de uma
+ * memória e não de um registro.
+ *
+ * Um aviso só para todos os pendentes, e não um por plantão. Quem voltou de
+ * férias tem doze para confirmar, e doze linhas iguais na caixa empurram para
+ * fora tudo o mais que estava lá.
+ */
+export function lembreteDeConfirmacao(entrada: {
+  hoje: string;
+  /** Só os SEUS plantões. Confirmar plantão de outro o banco recusa. */
+  plantoes: PlantaoParaConfirmar[];
+}): Aviso[] {
+  const pendentes = entrada.plantoes.filter((p) =>
+    !p.confirmado_em && p.situacao !== "cancelado" && p.data <= entrada.hoje);
+  if (pendentes.length === 0) return [];
+
+  // O mais recente decide a posição na lista: um plantão de hoje sobe para o
+  // alto da caixa, que é onde ele precisa estar hoje.
+  const maisNovo = pendentes.reduce((a, b) => (a.data > b.data ? a : b));
+  const deHoje = maisNovo.data === entrada.hoje;
+
+  return [{
+    id: "confirmar", tipo: "a_confirmar", area: "plantoes", acao: true,
+    quando: `${maisNovo.data}T23:00:00Z`,
+    titulo: pendentes.length === 1
+      ? (deHoje ? "Confirme o plantão de hoje" : `Confirme o plantão de ${diaCurto(maisNovo.data)}`)
+      : `${pendentes.length} plantões esperando sua confirmação`,
+    detalhe: "Só o que você confirmar entra no fechamento do mês",
+  }];
 }
 
 /**

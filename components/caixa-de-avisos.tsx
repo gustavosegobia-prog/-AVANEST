@@ -28,7 +28,7 @@ import { Icone } from "@/components/icone";
 const ICONE = {
   troca_pedida: "troca", troca_resolvida: "confirmado", chat: "conversa",
   suporte: "boia", a_faturar: "nota", a_receber: "ampulheta",
-  plantao_a_receber: "dinheiro",
+  plantao_a_receber: "dinheiro", a_confirmar: "confirmado",
 } as const;
 
 /**
@@ -39,7 +39,7 @@ const ICONE = {
  * "28/07" ao lado de "pacientes de julho sem cobrança" só faria a pessoa
  * procurar que evento foi aquele.
  */
-const SEM_RELOGIO = new Set(["a_faturar", "a_receber", "plantao_a_receber"]);
+const SEM_RELOGIO = new Set(["a_faturar", "a_receber", "plantao_a_receber", "a_confirmar"]);
 
 function quandoFoi(iso: string, agora = Date.now()): string {
   const t = Date.parse(iso);

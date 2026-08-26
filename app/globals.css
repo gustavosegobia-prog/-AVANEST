@@ -2817,6 +2817,10 @@ button:disabled{cursor:not-allowed}
    contorno cinza dos demais — numa lista de trinta linhas, o que falta fazer
    precisa saltar do que já está feito. */
 .plantaoConfirmar{border-color:var(--cor-marca);color:var(--cor-marca-forte);font-weight:800}
+/* Dois botões na linha do dia: a ação de quem trabalhou e, para quem
+   administra, o Remover ao lado. Em coluna eles dobrariam a altura da linha
+   num mês em que só um dos dois é usado. */
+.plantaoDetalheAcoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .plantaoConfirmar:hover{background:var(--cor-marca-suave)}
 
 /* --- Modal de lançar ----------------------------------------------------

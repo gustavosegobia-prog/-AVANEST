@@ -1264,6 +1264,7 @@ export function Plantoes({
               nomePorId={nomePorId} localPorId={localPorId}
               onLancar={lancar} onLancarAvulso={(d, p) => setLancando({ dia: d, para: p })}
               onRemover={remover} onPassar={(p) => setPedindoTroca(p)}
+              onConfirmar={(p) => void confirmar(p)}
               onFechar={() => setDiaAberto(null)}
             />
           )}
@@ -1470,7 +1471,7 @@ export function Plantoes({
 function DiaDetalhe({
   dia, plantoes, modelos, colegas, apelidos, corPorMedico,
   perfilId, ehAdmin, pessoal, institutionId, conveniosConhecidos,
-  nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onPassar, onFechar,
+  nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onPassar, onConfirmar, onFechar,
 }: {
   dia: string; plantoes: Plantao[]; modelos: Modelo[]; perfilId: string;
   colegas: Colega[]; apelidos: Map<string, string>; corPorMedico: Map<string, string>;
@@ -1481,6 +1482,7 @@ function DiaDetalhe({
   onLancarAvulso: (dia: string, para: string) => void;
   onRemover: (id: string) => void;
   onPassar: (p: Plantao) => void;
+  onConfirmar: (p: Plantao) => void;
   onFechar: () => void;
 }) {
   const [d, mm, aa] = [dia.slice(8, 10), dia.slice(5, 7), dia.slice(0, 4)];
@@ -1502,6 +1504,10 @@ function DiaDetalhe({
    * administrador, o único destino possível é você mesmo — e o RLS confirma.
    */
   const [para, setPara] = useState(perfilId);
+  // O dia de hoje decide qual botão a sua linha mostra: antes dele, passar
+  // adiante; a partir dele, confirmar. O banco recusa confirmar o futuro, e um
+  // botão que só existe para dar erro não deve existir.
+  const hojeISO = new Date().toISOString().slice(0, 10);
   // Na minha escala o destino é sempre eu. A escolha feita na escala do grupo
   // ficava pendurada no componente ao trocar de aba — e o painel do meu dia
   // aparecia escrito "Turno de Lucas", oferecendo lançar para outra pessoa
@@ -1554,20 +1560,48 @@ function DiaDetalhe({
             <strong>{nomePorId.get(p.perfil_id) ?? "Profissional"}</strong>
             <small>{ondeFica(p, localPorId)}{p.privado ? " · só você vê" : ""}</small>
           </span>
-          {/* Três botões diferentes, e a diferença é de regra, não de tela.
-              O administrador tira da escala o plantão de qualquer um: quem
-              monta a escala corrige a escala. O plantão privado é só seu e
-              some quando você quiser. O da escala do grupo não se apaga — sai
-              passando para um colega que aceite, porque quem some de um turno
-              sem avisar deixa o buraco para o dia da cirurgia. */}
-          {ehAdmin || (p.perfil_id === perfilId && p.privado)
-            ? <button className="outlineClinical red" onClick={() => onRemover(p.id)}>Remover</button>
-            : p.perfil_id === perfilId
-              ? <button className="outlineClinical" onClick={() => onPassar(p)}
+          {/* No SEU plantão, a ação do dia vem primeiro — e ela muda com o
+              dia: antes, passar adiante; no dia e depois, confirmar que
+              aconteceu. Só o confirmado entra no fechamento do mês, então
+              esconder esse botão aqui é esconder o passo que faz a pessoa
+              ser paga.
+
+              Havia um defeito nesta escolha: quem administra caía no ramo do
+              "Remover" ANTES de qualquer coisa, e nunca via "Passar plantão"
+              no próprio turno — justamente quem monta a escala, e mais precisa
+              repassar. Agora o poder de administrador entra como botão a mais,
+              e não no lugar da ação de quem trabalhou.
+
+              Plantão privado não confirma: ele não entra no fechamento do
+              grupo, e confirmar o que ninguém vai pagar é um passo sem fim.
+
+              O plantão do grupo não se apaga — sai passando para um colega que
+              aceite, porque quem some de um turno sem avisar deixa o buraco
+              para o dia da cirurgia. */}
+          {p.perfil_id === perfilId ? (
+            <span className="plantaoDetalheAcoes">
+              {p.privado ? null : p.data > hojeISO ? (
+                <button className="outlineClinical" onClick={() => onPassar(p)}
                   title="Este plantão é da escala do grupo: ele sai da sua escala quando um colega aceitar">
-                  Passar plantão
+                  {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
                 </button>
-              : <span className="statusChip paused">de colega</span>}
+              ) : p.confirmado_em ? (
+                <span className="statusChip present" title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}>
+                  CONFIRMADO
+                </span>
+              ) : (
+                <button className="outlineClinical plantaoConfirmar" onClick={() => onConfirmar(p)}
+                  title="Confirma que você fez este plantão. É o que o fechamento do mês soma.">
+                  Confirmar plantão
+                </button>
+              )}
+              {(ehAdmin || p.privado) && (
+                <button className="outlineClinical red" onClick={() => onRemover(p.id)}>Remover</button>
+              )}
+            </span>
+          ) : ehAdmin
+            ? <button className="outlineClinical red" onClick={() => onRemover(p.id)}>Remover</button>
+            : <span className="statusChip paused">de colega</span>}
         </div>
       ))}
 

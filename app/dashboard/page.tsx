@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
 import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/local-ativo";
-import { lembretesDoDinheiro, montarAvisos } from "@/lib/avisos";
+import { lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos } from "@/lib/avisos";
 import { nomeCurto } from "@/lib/escala";
 
 export default async function DashboardPage({
@@ -223,7 +223,7 @@ export default async function DashboardPage({
     // somar três números.
     supabase.from("producao_do_dia").select("data,situacao,valor")
       .eq("perfil_id", user.id).gte("data", seisMesesAtras),
-    supabase.from("plantoes").select("data,situacao,valor")
+    supabase.from("plantoes").select("data,situacao,valor,confirmado_em")
       .eq("perfil_id", user.id).gte("data", seisMesesAtras),
   ]);
 
