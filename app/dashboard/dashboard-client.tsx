@@ -1519,12 +1519,38 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
     else carregar();
   }
 
+  /**
+   * As funções que a mensagem de convite anuncia, para quem vai fazer plantão.
+   *
+   * Só para MÉDICO. A recepção não monta escala nem confirma plantão, e uma
+   * lista de coisas que a pessoa não vai usar transforma o convite num anúncio
+   * — e anúncio se lê na diagonal, inclusive a linha do link.
+   *
+   * Cada linha é uma função que existe hoje. Convite que promete o que ainda
+   * não está pronto vira reclamação na primeira semana de uso.
+   */
+  const FUNCOES_DO_MEDICO=[
+    "*Escala do serviço* — uma por hospital, com os feriados nacionais marcados.",
+    "*Minha escala* — reúne todos os seus plantões num calendário só, de todos os hospitais.",
+    "*Passar plantão* — você oferece a um colega, e ele precisa aceitar.",
+    "*Confirmar plantão* — um toque no dia. É o que entra no fechamento do mês.",
+    "*Avaliação pré-anestésica* — nove etapas, salvas enquanto você digita. Mallampati, RCRI e orientação de suspensão dos anticoagulantes.",
+    "*Impressos* — ficha, termo de consentimento e orientações, com o logo do hospital.",
+    "*Produção do dia* — paciente, convênio e cirurgia numa linha. Fotografe a ficha de internação e os campos vêm preenchidos.",
+    "*Escala no celular* — exporta para o Calendário do iPhone e para o Google Agenda.",
+  ];
+
   // Abre o WhatsApp com a mensagem pronta; o contato é escolhido na hora.
   function enviarWhatsApp(item:Convite){
     const papel=ROLE_LABELS[item.role]??item.role;
     const validade=new Date(item.expires_at).toLocaleDateString("pt-BR");
+    // Médico e administrador fazem plantão; recepção e financeiro, não.
+    const fazPlantao=item.role==="medico"||item.role==="admin"||item.role==="owner";
     const mensagem=[
       `Olá! Você foi convidado para o AVANEST — ${organizacao?.nome??"nossa organização"}, como ${papel}.`,
+      // As funções entram ANTES do link, e não depois: quem lê no WhatsApp
+      // toca no primeiro link que aparece, e o que vier embaixo não é lido.
+      ...(fazPlantao?["",...FUNCOES_DO_MEDICO]:[]),
       "",
       `Acesse este link para criar seu acesso: ${linkDoConvite(item.token)}`,
       "",
