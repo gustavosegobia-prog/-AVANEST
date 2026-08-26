@@ -529,6 +529,7 @@ export function Plantoes({
   const carregar = useCallback(async () => {
     const supabase = createClient();
     const [ano, m] = mes.split("-").map(Number);
+    const tresMesesAtras = new Date(Date.now() - 92 * 86400000).toISOString().slice(0, 10);
     const primeiro = `${mes}-01`;
     const ultimo = new Date(ano, m, 0).toISOString().slice(0, 10);
     const [{ data: mods }, { data: plans, error }, { data: trs }, { data: onde }] = await Promise.all([
@@ -536,11 +537,16 @@ export function Plantoes({
       supabase.from("plantoes").select("*").gte("data", primeiro).lte("data", ultimo).order("data"),
       supabase.from("trocas_plantao").select("*").eq("status", "pendente").order("created_at", { ascending: false }),
       // Em que hospitais ESTA pessoa trabalha — de qualquer mês, e não só do
-      // que está aberto. Quem cobre a Unimed uma vez por trimestre veria a
-      // escala de lá sumir e voltar conforme o mês na tela, o que é pior do
-      // que não tê-la: some justamente quando ela vai consultar o próximo.
+      // que está aberto: quem cobre um lugar uma vez por trimestre veria a
+      // escala de lá sumir e voltar conforme o mês na tela.
+      //
+      // A janela é a MESMA de meus_locais_de_plantao(), que é a regra do
+      // banco. Duas janelas diferentes fariam a coluna oferecer um hospital
+      // cuja escala o banco já esconde, e o clique cairia num mês vazio sem
+      // explicação nenhuma.
       supabase.from("plantoes").select("local_id")
-        .eq("perfil_id", perfilId).not("local_id", "is", null),
+        .eq("perfil_id", perfilId).not("local_id", "is", null)
+        .gte("data", tresMesesAtras),
     ]);
     setMeusLocais(new Set((onde ?? []).map((r) => r.local_id as string)));
     setCarregando(false);
@@ -789,18 +795,16 @@ export function Plantoes({
    * escala da Unimed não diz nada a quem nunca pisou lá, e três serviços na
    * coluna fazem procurar o seu entre os que não são.
    *
-   * Isto é organização da TELA, e não barreira de acesso. Dentro de uma mesma
-   * organização a escala do grupo continua legível por quem tem a área Escala
-   * — é o que a política do banco diz, e mudar isso é mudar a política, não a
-   * coluna. Se a intenção for separar de verdade um hospital do outro, o lugar
-   * da regra é o RLS.
+   * Isto acompanha a regra do banco, e não a substitui: a política de leitura
+   * de `plantoes` diz a mesma coisa, e é ela que barra. Esta lista existe para
+   * a coluna não oferecer um nome cujo conteúdo o banco já esconde.
    *
-   * Enquanto ninguém foi escalado em lugar nenhum, mostra todos: uma coluna
-   * vazia no primeiro uso pareceria defeito, e é justamente a hora em que a
-   * pessoa precisa achar a escala que o chefe acabou de montar.
+   * Quem ainda não tem plantão nenhum não vê escala de grupo — antes via todas.
+   * Mudou porque o banco mudou: mostrar os nomes agora levaria a um mês vazio,
+   * que é pior do que não mostrar. Quem cai nesse caso lê o porquê na tela.
    */
   const locaisDaColuna = useMemo(() => {
-    if (ehAdmin || meusLocais.size === 0) return locaisAtivos;
+    if (ehAdmin) return locaisAtivos;
     return locaisAtivos.filter((l) => meusLocais.has(l.id));
   }, [ehAdmin, locaisAtivos, meusLocais]);
 
@@ -1201,6 +1205,14 @@ export function Plantoes({
               descobre olhando a fila de nomes, e é aqui que ela é discutida. O
               segundo é de largura: aquela barra já tem quatro botões, e um
               quinto a faz quebrar no celular. */}
+          {!ehAdmin && escopo === "grupo" && locaisDaColuna.length === 0 && (
+            <p className="plantaoNota">
+              A escala de um hospital aparece para quem está escalado nele. Você
+              ainda não tem plantão lançado em nenhum — assim que entrar na
+              escala de um lugar, ele aparece aqui na coluna. Os seus plantões,
+              de qualquer lugar, estão sempre em <strong>Minha escala</strong>.
+            </p>
+          )}
           {ehAdmin && escopo === "grupo" && (
             <p className="plantaoNota plantaoAdicionar">
               <span>
