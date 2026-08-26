@@ -472,11 +472,18 @@ export function ProducaoDoDia({
  * fim do mês, sentado — e por isso são duas telas e não uma.
  */
 export function ProducaoDoMes({
-  mes, nomeMes, ano, locais, onImprimir, onImprimirFaturamento, onImprimirPlantoes,
+  mes, nomeMes, ano, locais, lugarPeloPlantao,
+  onImprimir, onImprimirFaturamento, onImprimirPlantoes,
 }: {
   mes: string; nomeMes: string; ano: number;
   /** Os hospitais da organização, para dizer de onde é cada ato. */
   locais: Array<{ id: string; nome: string }>;
+  /**
+   * O lugar escrito à mão no plantão de onde a anotação saiu, quando ele não
+   * é hospital cadastrado — sedação em consultório, cobertura particular. Vazio
+   * quando não há plantão ou quando o plantão também não diz onde foi.
+   */
+  lugarPeloPlantao: (plantaoId: string | null) => string;
   onImprimir: (itens: Producao[]) => void;
   /** A nota do ato anestésico, por hospital e por quem paga. */
   onImprimirFaturamento: (itens: Producao[]) => void;
@@ -606,8 +613,13 @@ export function ProducaoDoMes({
     .reduce((s, i) => s + Number(i.valor), 0);
 
   // O que trava a emissão da nota, e por isso é dito antes dos botões.
+  //
+  // Sem hospital de verdade é quem não tem nem o cadastro nem o texto do
+  // plantão. O paciente anestesiado num plantão de fora já sai com o lugar
+  // escrito na folha, e contá-lo aqui mandaria a pessoa procurar uma pendência
+  // que não existe.
   const semPagador = itens.filter((i) => !i.pagador);
-  const semLocal = itens.filter((i) => !i.local_id);
+  const semLocal = itens.filter((i) => !i.local_id && !lugarPeloPlantao(i.plantao_id));
   const pendente = semPagador.reduce((s, i) => s + Number(i.valor), 0);
 
   if (carregando) return <div className="emptyClinical">Carregando produção…</div>;
@@ -735,7 +747,13 @@ export function ProducaoDoMes({
             <strong>Todos os pacientes do mês</strong>
             <span>de qual hospital é cada um, e quem paga</span>
           </div>
-          {itens.map((i) => (
+          {itens.map((i) => {
+            // O lugar que o plantão já sabe, para quem veio de plantão de
+            // fora. Ele preenche a opção vazia em vez de "Sem hospital": o
+            // paciente da sedação no consultório não está sem lugar — o lugar
+            // dele só não é hospital cadastrado, e vai para a folha assim.
+            const doPlantao = i.local_id ? "" : lugarPeloPlantao(i.plantao_id);
+            return (
             <div className="producaoNotaLinha" key={i.id}>
               <span className="producaoNotaDia">
                 {Number(i.data.slice(8, 10))}/{i.data.slice(5, 7)}
@@ -748,9 +766,9 @@ export function ProducaoDoMes({
                 </small>
               </span>
               <select value={i.local_id ?? ""} aria-label={`Hospital de ${i.paciente}`}
-                className={i.local_id ? undefined : "faltando"}
+                className={i.local_id || doPlantao ? undefined : "faltando"}
                 onChange={(e) => void definir(i.id, { local_id: e.target.value || null })}>
-                <option value="">Sem hospital</option>
+                <option value="">{doPlantao ? `${doPlantao} (do plantão)` : "Sem hospital"}</option>
                 {locais.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
               </select>
               <select value={i.pagador ?? ""} aria-label={`Quem paga ${i.paciente}`}
@@ -763,7 +781,8 @@ export function ProducaoDoMes({
               </select>
               <b>{money(Number(i.valor))}</b>
             </div>
-          ))}
+            );
+          })}
         </section>
       )}
     </>

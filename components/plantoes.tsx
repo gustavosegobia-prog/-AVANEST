@@ -1018,12 +1018,31 @@ export function Plantoes({
   }
 
   /**
+   * O lugar de um plantão que não é hospital cadastrado.
+   *
+   * Plantão de fora — sedação em consultório, cobertura particular, hospital
+   * que não é do serviço — guarda o lugar como texto livre em `local_texto`,
+   * e não aponta para o cadastro. A escala já sabe disso e imprime o texto; a
+   * produção não sabia, porque ela só tem `local_id`.
+   *
+   * Sem esta ponte, o paciente anestesiado num plantão desses saía em "Sem
+   * hospital" na folha de faturamento mesmo com o lugar escrito, a uma linha
+   * de distância, no plantão de onde ele veio — e a nota do ato sairia sem
+   * saber contra quem. O que o plantão sabe, a nota do ato pode usar.
+   */
+  const lugarPeloPlantao = useCallback((plantaoId: string | null) => {
+    if (!plantaoId) return "";
+    const p = plantoes.find((x) => x.id === plantaoId);
+    return p ? ondeFica(p, localPorId, "") : "";
+  }, [plantoes, localPorId]);
+
+  /**
    * A nota de faturamento do mês, por hospital e por quem paga.
    *
-   * O nome do hospital vem do cadastro, pelo `local_id` da anotação. Anotação
-   * sem hospital vai para "Sem hospital" em vez de sumir: um paciente fora de
-   * qualquer nota é uma cobrança perdida, e ele precisa aparecer para ser
-   * consertado.
+   * O nome do hospital vem do cadastro, pelo `local_id` da anotação; faltando
+   * ele, vem do plantão de onde o paciente saiu. Anotação sem os dois vai para
+   * "Sem hospital" em vez de sumir: um paciente fora de qualquer nota é uma
+   * cobrança perdida, e ele precisa aparecer para ser consertado.
    */
   function imprimirFaturamento(itens: Producao[]) {
     setErro(""); setAviso("");
@@ -1031,7 +1050,7 @@ export function Plantoes({
       itens.map((i) => ({
         data: i.data, paciente: i.paciente, convenio: i.convenio,
         procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
-        local: (i.local_id && localPorId.get(i.local_id)) || "",
+        local: (i.local_id && localPorId.get(i.local_id)) || lugarPeloPlantao(i.plantao_id),
         pagador: i.pagador ?? null,
       })),
       MESES[m - 1], ano, new Date(),
@@ -1633,6 +1652,7 @@ export function Plantoes({
         <ProducaoDoMes
           mes={mes} nomeMes={MESES[m - 1]} ano={ano}
           locais={locais.map((l) => ({ id: l.id, nome: nomeDoLocal(l) }))}
+          lugarPeloPlantao={lugarPeloPlantao}
           onImprimir={imprimirProducao}
           onImprimirFaturamento={imprimirFaturamento}
           onImprimirPlantoes={imprimirPlantoesParaNota}
