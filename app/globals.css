@@ -2847,3 +2847,43 @@ button:disabled{cursor:not-allowed}
   .plantaoLancarGrade{grid-template-columns:repeat(2,1fr)}
   .plantaoLancarGrade .clinicalField.span2{grid-column:1/-1}
 }
+
+/* --- Tutorial do primeiro acesso -----------------------------------------
+   Janela com passo a passo, e não holofote apontando para os botões. O
+   holofote depende de cada botão estar onde o tutorial pensa que ele está, e
+   basta um ponto de quebra do celular mover a barra para a seta apontar para o
+   vazio. Um texto que diz "em Médico você cadastra o paciente" continua certo
+   em qualquer largura — e este sistema é aberto tanto no computador da recepção
+   quanto no telefone, entre uma cirurgia e outra. */
+.tutorialFundo{position:fixed;inset:0;z-index:80;display:grid;place-items:center;
+  padding:20px;background:rgba(4,22,38,.55)}
+.tutorialJanela{width:min(460px,100%);background:var(--cor-superficie);
+  border-radius:var(--raio-2);box-shadow:var(--sombra-3);padding:22px 24px 20px;
+  color:var(--cor-tinta)}
+.tutorialJanela:focus{outline:none}
+.tutorialJanela:focus-visible{outline:none;box-shadow:var(--sombra-3),var(--foco)}
+.tutorialTopo{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+/* A contagem fica à vista o tempo todo: sem saber quantas faltam, a pessoa não
+   decide se vale continuar — e na dúvida, fecha. */
+.tutorialConta{font-size:12px;font-weight:700;color:var(--cor-tinta-fraca);letter-spacing:.04em}
+.tutorialFechar{display:grid;place-items:center;width:32px;height:32px;border:0;
+  border-radius:var(--raio-1);background:none;color:var(--cor-tinta-fraca);cursor:pointer}
+.tutorialFechar:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+.tutorialJanela h2{font-size:20px;margin:0 0 8px;line-height:1.25}
+.tutorialJanela p{margin:0;font-size:14.5px;line-height:1.6;color:var(--cor-tinta-fraca)}
+.tutorialPassos{display:flex;gap:5px;margin:18px 0 16px}
+.tutorialPassos b{height:4px;flex:1;border-radius:99px;background:var(--cor-borda)}
+.tutorialPassos b.feito{background:var(--cor-marca-suave)}
+.tutorialPassos b.atual{background:var(--cor-marca)}
+/* Os botões encostam à direita, com o principal por último: é para lá que o
+   polegar vai no celular, e é ele que continua o tutorial. */
+.tutorialBotoes{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.tutorialBotoes button{min-height:42px}
+@media(max-width:520px){
+  /* No telefone os botões ocupam a linha inteira: alvo pequeno no canto de uma
+     janela é onde o dedo erra. */
+  .tutorialBotoes{flex-direction:column-reverse}
+  .tutorialBotoes button{width:100%}
+  .tutorialJanela{padding:18px 18px 16px}
+  .tutorialJanela h2{font-size:18px}
+}

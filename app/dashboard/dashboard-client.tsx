@@ -9,6 +9,7 @@ import { Icone } from "@/components/icone";
 import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { ChatFlutuante } from "@/components/chat-flutuante";
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
+import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
 import type { Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
@@ -639,6 +640,12 @@ export function DashboardClient({
               </>}
               {/* menuitemcheckbox, nao menuitem: o item liga e desliga um estado
                   e o leitor de tela precisa anunciar qual e o atual. */}
+              {/* Um tutorial que não se reabre é um tutorial que se perde no
+                  primeiro "Pular". */}
+              <button role="menuitem" onClick={()=>{setUserMenu(false);reabrirTutorial()}}>
+                <Icone nome="estrela"/> Ver o tutorial
+              </button>
+              <hr/>
               <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{setDark(value=>!value);setUserMenu(false)}}>
                 <Icone nome="tema"/> {dark?"Tema claro":"Tema escuro"}
               </button>
@@ -937,6 +944,13 @@ export function DashboardClient({
           anestesista lê sem trocar de tela. Fica por último no HTML porque é
           um apoio — quem navega pelo teclado passa por ele depois do trabalho,
           e não antes. */}
+      {/* O tutorial só aparece no primeiro acesso deste aparelho, e cada etapa
+          leva o painel para a área de que ela fala: ler "em Médico você faz a
+          avaliação" olhando para o Financeiro não ensina nada. */}
+      <TutorialInicial
+        papel={{ role: perfil.role, nome: perfil.nome, areas: allowedViews }}
+        onIrPara={(area) => changeView(area as DashboardView)}
+      />
       <ChatFlutuante perfil={perfil} abrirEm={pedidoDeChat} />
     </main>
   );
