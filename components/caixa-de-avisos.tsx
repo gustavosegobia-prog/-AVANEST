@@ -29,6 +29,7 @@ const ICONE = {
   troca_pedida: "troca", troca_resolvida: "confirmado", chat: "conversa",
   suporte: "boia", a_faturar: "nota", a_receber: "ampulheta",
   plantao_a_receber: "dinheiro", a_confirmar: "confirmado",
+  escala_publicada: "calendario",
 } as const;
 
 /**
@@ -132,7 +133,7 @@ export function CaixaDeAvisos({
           {avisos.length === 0
             /* O vazio diz o que significa. "Nenhum aviso" deixa a dúvida de se
                a caixa está funcionando ou se ninguém mexeu em nada. */
-            ? <p className="avisosVazio">Nada esperando você. Aparecem aqui: plantão oferecido, resposta do suporte, mensagem da equipe, e o que ficou para trás no faturamento e no recebimento.</p>
+            ? <p className="avisosVazio">Nada esperando você. Aparecem aqui: a escala do mês quando ela entra, plantão oferecido por um colega, resposta do suporte, mensagem da equipe, e o que ficou para trás no faturamento e no recebimento.</p>
             : avisos.map((a) => (
               <button
                 key={`${a.tipo}-${a.id}`} role="menuitem"

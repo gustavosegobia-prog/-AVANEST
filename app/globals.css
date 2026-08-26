@@ -838,6 +838,7 @@ button:disabled{cursor:not-allowed}
 
 /* Convite: escolha entre enviar por e-mail ou gerar link copiável. */
 .inviteModeSwitch{display:flex;gap:8px;padding:0 25px 4px}
+.inviteHint{margin:10px 0 -4px;padding:0 25px;color:var(--cor-tinta-fraca);font-size:12.5px;line-height:1.4}
 .inviteModeSwitch button{border:1px solid var(--cor-borda);background:var(--cor-fundo);color:#3d5265;border-radius:9px;padding:8px 15px;font-weight:700;font-size:13px;cursor:pointer}
 .inviteModeSwitch button.active{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
 .adminUserRow .dangerAction{border-color:#e0b4b4;color:#a12c2c}

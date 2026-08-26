@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 
 const ALLOWED_ROLES = new Set(["recepcao", "medico", "financeiro", "admin"]);
+/** Quem não entra na escala, e por isso não tem por que ter CRM no cadastro. */
+const SEM_ESCALA = new Set(["recepcao", "financeiro"]);
 
 /** O cliente com a chave de serviço, num lugar só para o tipo casar. */
 function clienteAdmin(serviceKey: string) {
@@ -163,7 +165,23 @@ export async function POST(request: NextRequest) {
     must_reset: !semAcesso,
     permissoes: [],
     sem_acesso: semAcesso,
-    ...(semAcesso ? { crm, rqe: rqe || null } : {}),
+    // O CRM entra já no convite, e não só no cadastro sem acesso.
+    //
+    // O perfil nasce aqui, no instante do convite — antes de a pessoa clicar
+    // no e-mail. Só que a escala só oferece quem tem CRM, então o convidado
+    // ficava invisível para o coordenador até ativar a conta e preencher o
+    // próprio cadastro. Quem monta a escala do mês seguinte precisa dela hoje,
+    // e a saída era cadastrar a mesma pessoa duas vezes: uma "sem acesso" para
+    // escalar agora, outra de verdade depois — e então mudar os plantões de
+    // dono na mão. Com o CRM aqui, o convidado entra na escala no mesmo dia, e
+    // quando ele ativa a conta os plantões já são dele.
+    //
+    // Continua opcional: quem não souber o CRM na hora convida assim mesmo, e
+    // a pessoa preenche no primeiro acesso.
+    //
+    // Recepção e financeiro ficam de fora: eles não entram na escala, e um CRM
+    // guardado ali seria dado sem uso à espera de confundir alguém.
+    ...(crm && !SEM_ESCALA.has(role) ? { crm, rqe: rqe || null } : {}),
   });
   if (profileError) {
     return NextResponse.json({ error: "O usuário foi convidado, mas o perfil não pôde ser criado. Revise a tabela de perfis." }, { status: 500 });

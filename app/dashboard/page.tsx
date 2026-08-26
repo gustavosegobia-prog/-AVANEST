@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
 import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/local-ativo";
-import { lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos } from "@/lib/avisos";
+import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos } from "@/lib/avisos";
 import { nomeCurto } from "@/lib/escala";
 
 export default async function DashboardPage({
@@ -223,7 +223,12 @@ export default async function DashboardPage({
     // somar três números.
     supabase.from("producao_do_dia").select("data,situacao,valor")
       .eq("perfil_id", user.id).gte("data", seisMesesAtras),
-    supabase.from("plantoes").select("data,situacao,valor,confirmado_em")
+    // Os mesmos plantões servem a três avisos diferentes, e por isso a consulta
+    // é uma só: o que falta receber, o que falta confirmar e a escala do mês
+    // que alguém acabou de lançar. `created_at` e `created_by` são deste
+    // último — é a diferença entre "entrou plantão meu" e "eu lancei um
+    // plantão", e sem o autor o coordenador receberia aviso da própria escala.
+    supabase.from("plantoes").select("data,situacao,valor,confirmado_em,created_at,created_by")
       .eq("perfil_id", user.id).gte("data", seisMesesAtras),
   ]);
 
@@ -260,6 +265,15 @@ export default async function DashboardPage({
     hoje,
     producao: producaoDoAviso ?? [],
     plantoes: plantoesDoDinheiro ?? [],
+  })).concat(lembreteDeConfirmacao({
+    hoje,
+    plantoes: plantoesDoDinheiro ?? [],
+  })).concat(escalaPublicada({
+    perfilId: user.id,
+    plantoes: plantoesDoDinheiro ?? [],
+    nomes: new Map((equipeDoAviso ?? []).map((p) => [p.id, nomeCurto(p.nome)])),
+    vistoEm: avisosVistos?.lido_em ?? null,
+    hoje,
   })).sort((a, b) => b.quando.localeCompare(a.quando));
 
   return (

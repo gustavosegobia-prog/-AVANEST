@@ -47,6 +47,7 @@ const TRACOS = {
   ampulheta: <><path d="M7 3.5h10"/><path d="M7 20.5h10"/><path d="M7.5 3.5c0 4 4.5 5.4 4.5 8.5S7.5 16.5 7.5 20.5"/><path d="M16.5 3.5c0 4-4.5 5.4-4.5 8.5s4.5 4.5 4.5 8.5"/></>,
   dinheiro: <><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.8"/></>,
   boia: <><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="m6 6 3.5 3.5"/><path d="m18 6-3.5 3.5"/><path d="m6 18 3.5-3.5"/><path d="m18 18-3.5-3.5"/></>,
+  calendario: <><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3.5v3"/><path d="M16 3.5v3"/><path d="M8 13.5h3"/><path d="M8 17h8"/></>,
 } as const;
 
 export function Icone({ nome, tamanho = 16, rotulo, className }: Props) {

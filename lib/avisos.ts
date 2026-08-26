@@ -24,7 +24,8 @@
 
 export type TipoDeAviso =
   | "troca_pedida" | "troca_resolvida" | "chat" | "suporte"
-  | "a_faturar" | "a_receber" | "plantao_a_receber" | "a_confirmar";
+  | "a_faturar" | "a_receber" | "plantao_a_receber" | "a_confirmar"
+  | "escala_publicada";
 
 export type Aviso = {
   /** Estável entre recargas: é o id da linha que originou o aviso. */
@@ -321,6 +322,98 @@ export function lembreteDeConfirmacao(entrada: {
       : `${pendentes.length} plantões esperando sua confirmação`,
     detalhe: "Só o que você confirmar entra no fechamento do mês",
   }];
+}
+
+// ---------------------------------------------------------------------------
+// A escala do mês entrou no sistema
+// ---------------------------------------------------------------------------
+
+export type PlantaoLancado = {
+  data: string;
+  /** Quando a linha entrou no banco. É este o instante da notícia. */
+  created_at: string;
+  /** Quem lançou. Nulo em plantão antigo, de antes da coluna existir. */
+  created_by: string | null;
+};
+
+/** "2026-11" -> "novembro"; noutro ano, "novembro de 2027". */
+const mesPorExtenso = (mes: string, anoDeHoje: string) => {
+  const nome = MESES[Number(mes.slice(5, 7)) - 1] ?? mes;
+  return mes.slice(0, 4) === anoDeHoje ? nome : `${nome} de ${mes.slice(0, 4)}`;
+};
+
+/**
+ * "Escala de novembro no sistema."
+ *
+ * O caso concreto: o coordenador monta a escala do mês seguinte de uma vez, e
+ * hoje ninguém fica sabendo. Quem não abrir a Escala por conta própria descobre
+ * o plantão do dia 3 no dia 3 — e o coordenador acaba avisando pelo WhatsApp,
+ * que é justamente o trabalho que este sistema existe para tirar dele.
+ *
+ * DERIVADO, como todo o resto deste arquivo: não há evento "escala publicada"
+ * guardado em lugar nenhum. O aviso é a resposta a uma pergunta que as próprias
+ * linhas de plantão respondem — "entrou plantão meu que eu ainda não vi?".
+ * Lançar a escala em três tardes diferentes continua produzindo um aviso por
+ * mês, e não três, porque o que se agrupa é o mês do plantão.
+ *
+ * DUAS REGRAS QUE DECIDEM O QUE APARECE:
+ *
+ * Plantão que VOCÊ lançou nunca vira aviso. Avisar alguém do que ele mesmo
+ * acabou de digitar é o tipo de aviso que ensina a ignorar a caixa inteira.
+ *
+ * É notícia, e não tarefa: some quando você abre o sino, e não conta no número
+ * vermelho. A escala não pede resposta — a confirmação, que pede, tem aviso
+ * próprio e vem no dia do plantão.
+ */
+export function escalaPublicada(entrada: {
+  perfilId: string;
+  /** Só os SEUS plantões. */
+  plantoes: PlantaoLancado[];
+  /** Nome curto por id, para o aviso dizer quem montou. */
+  nomes: Map<string, string>;
+  /** Quando você abriu a caixa pela última vez. */
+  vistoEm: string | null;
+  /** "AAAA-MM-DD", para o nome do mês só levar ano quando não for este. */
+  hoje: string;
+}): Aviso[] {
+  const novos = entrada.plantoes.filter((p) =>
+    p.created_by
+    && p.created_by !== entrada.perfilId
+    && (!entrada.vistoEm || p.created_at > entrada.vistoEm));
+  if (novos.length === 0) return [];
+
+  const porMes = new Map<string, { quantos: number; ultimo: string; autores: Set<string> }>();
+  for (const p of novos) {
+    const mes = p.data.slice(0, 7);
+    const antes = porMes.get(mes)
+      ?? { quantos: 0, ultimo: p.created_at, autores: new Set<string>() };
+    antes.quantos += 1;
+    if (p.created_at > antes.ultimo) antes.ultimo = p.created_at;
+    antes.autores.add(p.created_by!);
+    porMes.set(mes, antes);
+  }
+
+  // Do mês mais distante para o mais próximo, e no máximo três. Quem volta de
+  // férias com quatro meses lançados não precisa de quatro linhas: precisa
+  // abrir a escala.
+  return [...porMes.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, 3)
+    .map(([mes, { quantos, ultimo, autores }]) => {
+      // O nome de quem montou só entra quando foi uma pessoa só. Com dois
+      // autores, citar um deles é dar crédito errado — e "lançados por Éder e
+      // outros" é uma frase que não ajuda ninguém a decidir nada.
+      const autor = autores.size === 1 ? entrada.nomes.get([...autores][0]) : undefined;
+      return {
+        id: `escala-${mes}`, tipo: "escala_publicada" as const,
+        area: "plantoes" as const, acao: false, quando: ultimo,
+        titulo: `Escala de ${mesPorExtenso(mes, entrada.hoje.slice(0, 4))} no sistema`,
+        detalhe: autor
+          ? `${contar(quantos, "plantão seu", "plantões seus")}, `
+            + `${quantos === 1 ? "lançado" : "lançados"} por ${autor}`
+          : contar(quantos, "plantão seu", "plantões seus"),
+      };
+    });
 }
 
 /**

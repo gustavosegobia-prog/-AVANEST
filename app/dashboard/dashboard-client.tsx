@@ -1441,6 +1441,9 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
 function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;onRefresh:()=>void}) {
   const [convites,setConvites]=useState<Convite[]>([]);
   const [meio,setMeio]=useState<"email"|"link"|"sem-acesso">("email");
+  // A função escolhida decide se o CRM aparece. Recepção e financeiro não
+  // entram na escala; pedir o registro a eles seria pedir o que não existe.
+  const [papel,setPapel]=useState("medico");
   const [versao,setVersao]=useState(0);
   const [busy,setBusy]=useState("");
   const [aviso,setAviso]=useState("");
@@ -1497,13 +1500,24 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
       if(!nome){setAviso("Informe o nome de quem será convidado.");setBusy("");return}
       const resposta=await fetch("/api/admin/users",{
         method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({nome,email,role}),
+        // O CRM vai junto quando o administrador soube informar. É ele que
+        // faz o convidado aparecer na escala hoje, sem esperar a ativação.
+        body:JSON.stringify({nome,email,role,
+          crm:String(form.get("crm")??"").trim(),
+          rqe:String(form.get("rqe")??"").trim()}),
       });
       const resultado=await resposta.json().catch(()=>({}));
       setBusy("");
       if(!resposta.ok){setAviso(resultado.error??"Não foi possível enviar o convite.");return}
+      const crmInformado=String(form.get("crm")??"").trim();
       formulario.reset();
-      setAviso(`Convite enviado para ${email}.`);
+      setPapel("medico");
+      // A segunda frase é o que o administrador precisa saber agora: dá para
+      // escalar hoje, sem esperar a pessoa clicar no e-mail.
+      setAviso(`Convite enviado para ${email}.`
+        +(crmInformado&&papel==="medico"
+          ?" Já pode ser escalado — os plantões estarão lá quando ativar a conta."
+          :""));
       onRefresh();
       return;
     }
@@ -1602,28 +1616,42 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
       <button type="button" role="tab" aria-selected={meio==="sem-acesso"} className={meio==="sem-acesso"?"active":""}
         onClick={()=>{setMeio("sem-acesso");setAviso("")}}>Sem e-mail</button>
     </div>
+    {/* Fora do formulário de propósito: ele é uma grade de seis colunas, e um
+        parágrafo dentro dela quebraria a linha dos campos ao meio. */}
+    {meio==="email"&&(papel==="medico"||papel==="admin")&&
+      <p className="inviteHint">Com o CRM preenchido, o convidado já entra na escala hoje — sem esperar ele ativar a conta. Os plantões estarão lá quando ele entrar.</p>}
     <form className="convenioForm" onSubmit={convidar}>
       {meio!=="link"&&<label className="clinicalField span2"><span>Nome completo *</span>
         <input name="nome" required autoComplete="off" placeholder="Ex.: Dra. Helena Martins"/></label>}
       {meio!=="sem-acesso"&&<label className="clinicalField span2"><span>E-mail do convidado *</span>
         <input name="email" type="email" required autoComplete="off" placeholder="pessoa@exemplo.com"/></label>}
-      {/* O CRM é obrigatório aqui, e só aqui. Quem entra pelo convite preenche
-          o próprio cadastro depois; quem não entra no sistema nunca vai
-          preencher nada — e sem CRM ele não aparece na escala, que é a única
-          razão deste cadastro existir. */}
-      {meio==="sem-acesso"&&<>
-        <label className="clinicalField"><span>CRM *</span>
-          <input name="crm" required autoComplete="off" placeholder="Ex.: 60593/PR"/></label>
-        <label className="clinicalField"><span>RQE (opcional)</span>
-          <input name="rqe" autoComplete="off" placeholder="Registro da especialidade"/></label>
-      </>}
       {meio!=="sem-acesso"&&<label className="clinicalField"><span>Função</span>
-        <select name="role" defaultValue="medico">
+        <select name="role" value={papel} onChange={e=>setPapel(e.target.value)}>
           <option value="medico">Anestesiologista</option>
           <option value="recepcao">Recepção</option>
           <option value="financeiro">Financeiro</option>
           <option value="admin">Administrador</option>
         </select></label>}
+      {/* O CRM é obrigatório no cadastro sem acesso e opcional no convite.
+          A diferença é quem preenche depois: quem não entra no sistema nunca
+          vai preencher nada, e sem CRM não aparece na escala — que é a única
+          razão daquele cadastro existir.
+
+          No convite ele existe por outro motivo. O perfil nasce no instante em
+          que o convite é enviado, mas sem CRM ninguém consegue escalar a
+          pessoa até ela ativar a conta. Preenchido aqui, o convidado entra na
+          escala do mês hoje, e os plantões já são dele quando ele entrar. */}
+      {/* No "Gerar link" não: ali o perfil só nasce quando a pessoa aceita, e
+          o que ela digitar no aceite é que vale. Um CRM pedido aqui seria um
+          campo que o sistema aceita e depois joga fora. */}
+      {(meio==="sem-acesso"||(meio==="email"&&(papel==="medico"||papel==="admin")))&&<>
+        <label className="clinicalField">
+          <span>CRM {meio==="sem-acesso"?"*":"(opcional)"}</span>
+          <input name="crm" required={meio==="sem-acesso"} autoComplete="off"
+            placeholder="Ex.: 60593/PR"/></label>
+        <label className="clinicalField"><span>RQE (opcional)</span>
+          <input name="rqe" autoComplete="off" placeholder="Registro da especialidade"/></label>
+      </>}
       {meio==="link"&&<label className="clinicalField"><span>Validade</span>
         <select name="dias" defaultValue="7">
           <option value="3">3 dias</option><option value="7">7 dias</option><option value="30">30 dias</option>

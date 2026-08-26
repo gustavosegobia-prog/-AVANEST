@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, quantosPedemResposta, type EntradaDeAvisos, type TrocaParaAviso } from "./avisos.ts";
+import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, quantosPedemResposta, type EntradaDeAvisos, type TrocaParaAviso } from "./avisos.ts";
 
 const EU = "eu-1";
 const LUCAS = "lucas-1";
@@ -313,4 +313,93 @@ test("o mais recente decide a posição do aviso na caixa", () => {
     plantoes: [paraConfirmar("2026-08-02"), paraConfirmar("2026-08-25")],
   });
   assert.ok(a.quando.startsWith("2026-08-25"));
+});
+
+// ---------------------------------------------------------------------------
+// A escala do mês entrou no sistema
+// ---------------------------------------------------------------------------
+
+const lancado = (data: string, quem: string | null, em = "2026-10-20T14:00:00Z") =>
+  ({ data, created_by: quem, created_at: em });
+
+test("a escala do mês vira um aviso só, com o nome de quem montou", () => {
+  // O coordenador lança vinte plantões numa tarde. Vinte avisos empurrariam
+  // para fora da caixa tudo o mais que estava lá.
+  const avisos = escalaPublicada({
+    perfilId: EU, nomes, vistoEm: "2026-10-19T00:00:00Z", hoje: "2026-10-20",
+    plantoes: [lancado("2026-11-03", LUCAS), lancado("2026-11-08", LUCAS),
+               lancado("2026-11-15", LUCAS)],
+  });
+  assert.equal(avisos.length, 1);
+  assert.equal(avisos[0].titulo, "Escala de novembro no sistema");
+  assert.equal(avisos[0].detalhe, "3 plantões seus, lançados por Lucas Queiroz");
+  assert.equal(avisos[0].area, "plantoes");
+});
+
+test("o plantão que eu mesmo lancei não me avisa", () => {
+  // Avisar alguém do que ele acabou de digitar ensina a ignorar a caixa.
+  assert.deepEqual(escalaPublicada({
+    perfilId: EU, nomes, vistoEm: null, hoje: "2026-10-20",
+    plantoes: [lancado("2026-11-03", EU), lancado("2026-11-04", EU)],
+  }), []);
+});
+
+test("depois de aberta a caixa, a mesma escala não volta", () => {
+  assert.deepEqual(escalaPublicada({
+    perfilId: EU, nomes, vistoEm: "2026-10-21T00:00:00Z", hoje: "2026-10-21",
+    plantoes: [lancado("2026-11-03", LUCAS, "2026-10-20T14:00:00Z")],
+  }), []);
+});
+
+test("dois meses lançados de uma vez são dois avisos, do mais distante ao mais próximo", () => {
+  const avisos = escalaPublicada({
+    perfilId: EU, nomes, vistoEm: null, hoje: "2026-10-20",
+    plantoes: [lancado("2026-11-03", LUCAS), lancado("2026-12-02", LUCAS)],
+  });
+  assert.deepEqual(avisos.map((a) => a.titulo),
+    ["Escala de dezembro no sistema", "Escala de novembro no sistema"]);
+});
+
+test("com dois autores no mesmo mês, o aviso não dá crédito a um só", () => {
+  const [a] = escalaPublicada({
+    perfilId: EU, nomes, vistoEm: null, hoje: "2026-10-20",
+    plantoes: [lancado("2026-11-03", LUCAS), lancado("2026-11-09", MATHEUS)],
+  });
+  assert.equal(a.detalhe, "2 plantões seus");
+});
+
+test("o mês de outro ano leva o ano no título", () => {
+  const [a] = escalaPublicada({
+    perfilId: EU, nomes, vistoEm: null, hoje: "2026-12-28",
+    plantoes: [lancado("2027-01-05", LUCAS)],
+  });
+  assert.equal(a.titulo, "Escala de janeiro de 2027 no sistema");
+  assert.equal(a.detalhe, "1 plantão seu, lançado por Lucas Queiroz");
+});
+
+test("escala é notícia, não tarefa: não entra no número vermelho", () => {
+  // O que pede resposta é a confirmação, no dia. A escala só informa.
+  const avisos = escalaPublicada({
+    perfilId: EU, nomes, vistoEm: null, hoje: "2026-10-20",
+    plantoes: [lancado("2026-11-03", LUCAS)],
+  });
+  assert.equal(quantosPedemResposta(avisos), 0);
+});
+
+test("plantão antigo sem autor registrado não vira aviso", () => {
+  // created_by é nulo nas linhas anteriores à coluna. Sem autor não dá para
+  // saber se fui eu que lancei — e avisar por via das dúvidas é avisar errado.
+  assert.deepEqual(escalaPublicada({
+    perfilId: EU, nomes, vistoEm: null, hoje: "2026-10-20",
+    plantoes: [lancado("2026-11-03", null)],
+  }), []);
+});
+
+test("quatro meses de uma vez viram três avisos, e não um muro", () => {
+  const avisos = escalaPublicada({
+    perfilId: EU, nomes, vistoEm: null, hoje: "2026-10-20",
+    plantoes: [lancado("2026-11-01", LUCAS), lancado("2026-12-01", LUCAS),
+               lancado("2027-01-01", LUCAS), lancado("2027-02-01", LUCAS)],
+  });
+  assert.equal(avisos.length, 3);
 });
