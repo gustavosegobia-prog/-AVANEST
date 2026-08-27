@@ -488,8 +488,12 @@ export function corpoDaFolha(opts: {
           // numa folha com vários, é a única coisa que separa os serviços.
           + `${variosHospitais && t.local ? ` · ${escaparHTML(t.local)}` : ""}</b>`
           + `<span>${escaparHTML(t.gente.join(", "))}</span></span>`).join("")
-      : doDia.map((p) => `<span class="t"><b>${escaparHTML(faixa(p.hora_inicio, p.hora_fim))}</b>`
-          + `<span>${escaparHTML(p.local || "Sem local")}</span></span>`).join("");
+      // O mesmo corte da tela: o de 24 horas sai em Diurno e Noturno. A folha
+      // é conferida ao lado do calendário aberto no celular, e duas leituras
+      // diferentes do mesmo dia fazem duvidar das duas.
+      : doDia.flatMap((p) => partesDoPlantao(p.hora_inicio, p.hora_fim)
+          .map((parte) => `<span class="t"><b>${escaparHTML(parte.rotulo)}</b>`
+            + `<span>${escaparHTML(p.local || "Sem local")}</span></span>`)).join("");
     celulas.push(`<td><span class="d">${d}</span>${conteudo}</td>`);
   }
   // A última semana completa sete colunas: sem isto o navegador estica a

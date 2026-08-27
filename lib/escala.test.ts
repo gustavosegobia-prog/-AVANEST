@@ -738,6 +738,24 @@ test("o hospital em branco vira 'Sem hospital' em vez de sumir", () => {
   assert.match(corpo, /Sem hospital/);
 });
 
+test("o papel diz o mesmo que a tela sobre o plantão de 24 horas", () => {
+  // A folha é conferida ao lado do calendário aberto no celular. Quando a tela
+  // dizia "Diurno / Noturno" e o papel dizia "07-07h", as duas leituras do
+  // mesmo dia se contradiziam — e aí não se confia em nenhuma.
+  const { corpo } = corpoDaFolha({
+    doGrupo: false, mes: "2026-08", nomeMes: "agosto", ano: 2026,
+    diasNoMes: 31, primeiroDiaSemana: 6, impressoEm: new Date("2026-09-01T12:00:00"),
+    plantoes: [{
+      data: "2026-08-01", hora_inicio: "07:00", hora_fim: "07:00",
+      horas: 24, valor: 2000, situacao: "realizado",
+      local: "FUNDHOSPAR", profissional: "Gustavo Segobia",
+    }],
+  });
+  assert.match(corpo, /<b>Diurno<\/b><span>FUNDHOSPAR<\/span>/);
+  assert.match(corpo, /<b>Noturno<\/b><span>FUNDHOSPAR<\/span>/);
+  assert.doesNotMatch(corpo, /<b>07-07h<\/b>/);
+});
+
 test("o plantão de 24 horas vira duas etiquetas: Diurno e Noturno", () => {
   // Quem faz o plantão inteiro está lá de dia e de noite. Numa etiqueta só,
   // "07-07h" não se distingue de um diurno no calendário — e é justamente a
