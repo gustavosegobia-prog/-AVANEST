@@ -868,8 +868,12 @@ export type ItemDeFaturamento = ItemDeProducao & {
   pagador: string | null;
 };
 
+// O mesmo vocabulário da tela — Paciente, Hospital, Convênio —, com o verbo
+// que o papel pede. Na tela o nome vem sob a pergunta "Quem paga?" e o verbo
+// seria repetição; no papel o bloco aparece sozinho, sob o nome do hospital, e
+// "Paciente" sem verbo se leria como se o bloco listasse pacientes.
 const ROTULO_PAGADOR: Record<string, string> = {
-  direto: "Recebimento direto",
+  direto: "Pago pelo paciente",
   hospital: "Pago pelo hospital",
   convenio: "Pago pelo convênio",
 };

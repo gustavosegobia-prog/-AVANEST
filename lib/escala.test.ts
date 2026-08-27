@@ -707,7 +707,7 @@ test("o faturamento quebra por hospital e, dentro dele, por quem paga", () => {
     item("2026-08-04", "Bruno", "Hospital A", 700, "hospital"),
     item("2026-08-05", "Célia", "Hospital B", 300, "convenio", "Unimed"),
   ], "agosto", 2026, new Date("2026-09-01T12:00:00"));
-  assert.match(corpo, /Hospital A[\s\S]*?Recebimento direto[\s\S]*?Ana/);
+  assert.match(corpo, /Hospital A[\s\S]*?Pago pelo paciente[\s\S]*?Ana/);
   assert.match(corpo, /Hospital A[\s\S]*?Pago pelo hospital[\s\S]*?Bruno/);
   assert.match(corpo, /Hospital B[\s\S]*?Pago pelo convênio[\s\S]*?Célia/);
 });
@@ -726,7 +726,7 @@ test("paciente sem pagador definido não entra em nota nenhuma", () => {
   // O bloco do recebimento direto soma 500, e não 900.
   // O espaço depois do R$ é o não separável que o toLocaleString produz, e
   // não a entidade &nbsp;: \s cobre os dois sem depender de qual é.
-  assert.match(corpo, /Recebimento direto <small>1 paciente · R\$\s500,00/);
+  assert.match(corpo, /Pago pelo paciente <small>1 paciente · R\$\s500,00/);
 });
 
 test("o hospital em branco vira 'Sem hospital' em vez de sumir", () => {

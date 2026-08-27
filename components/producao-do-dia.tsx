@@ -47,14 +47,19 @@ const rotuloSituacao = (s: string) =>
  * hospital. Convênio é outra coluna e continua existindo: o paciente pode ser
  * "Unimed" e mesmo assim pagar direto, quando o combinado foi esse.
  *
+ * Os rótulos são o TOMADOR, não a ação: "Paciente", e não "Recebo direto". A
+ * pergunta acima do campo é "Quem paga?", e a resposta a uma pergunta de quem
+ * é um nome. Escritos como frase, os três ficavam com comprimentos diferentes
+ * e obrigavam a ler até o fim para descobrir de quem se tratava.
+ *
  * Não há quarta opção "ainda não sei", e é de propósito: o não decidido é a
  * ausência de escolha, e ele já aparece à parte na folha. Uma opção com esse
  * nome viraria uma decisão tomada de não decidir.
  */
 export const PAGADORES: Array<[string, string]> = [
-  ["direto", "Recebo direto"],
-  ["hospital", "O hospital paga"],
-  ["convenio", "O convênio paga"],
+  ["direto", "Paciente"],
+  ["hospital", "Hospital"],
+  ["convenio", "Convênio"],
 ];
 
 /**
