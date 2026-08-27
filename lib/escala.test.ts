@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { PlantaoDoFechamento, PlantaoImpresso } from "./escala.ts";
 import {
-  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS,
+  apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS, partesDoPlantao,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
 } from "./escala.ts";
 
@@ -736,6 +736,23 @@ test("o hospital em branco vira 'Sem hospital' em vez de sumir", () => {
     [item("2026-08-03", "Ana", "", 500, "direto")],
     "agosto", 2026, new Date("2026-09-01T12:00:00"));
   assert.match(corpo, /Sem hospital/);
+});
+
+test("o plantão de 24 horas vira duas etiquetas: Diurno e Noturno", () => {
+  // Quem faz o plantão inteiro está lá de dia e de noite. Numa etiqueta só,
+  // "07-07h" não se distingue de um diurno no calendário — e é justamente a
+  // diferença que se procura num mês que mistura os dois.
+  const p = partesDoPlantao("07:00", "07:00");
+  assert.deepEqual(p.map((x) => x.rotulo), ["Diurno", "Noturno"]);
+});
+
+test("o que não é de 24 horas continua saindo pelo horário", () => {
+  // Um 13-07h cobre tarde e noite, mas chamá-lo de Diurno diria que a pessoa
+  // esteve lá de manhã. O horário é exato; o rótulo de turno, não.
+  assert.deepEqual(partesDoPlantao("07:00", "19:00").map((x) => x.rotulo), ["07-19h"]);
+  assert.deepEqual(partesDoPlantao("19:00", "07:00").map((x) => x.rotulo), ["19-07h"]);
+  assert.deepEqual(partesDoPlantao("13:00", "07:00").map((x) => x.rotulo), ["13-07h"]);
+  assert.deepEqual(partesDoPlantao("07:00", "13:00").map((x) => x.rotulo), ["07-13h"]);
 });
 
 test("o total fecha a coluna de valores, e não só o título", () => {

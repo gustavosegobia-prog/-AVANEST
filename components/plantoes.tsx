@@ -9,7 +9,7 @@ import {
   corpoDaFolha, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
-  ondeFica, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
+  ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
 import { feriadosDoMes } from "@/lib/feriados";
@@ -1368,6 +1368,13 @@ export function Plantoes({
                   // letra, porque "Manhã" por extenso três vezes não cabe num
                   // quadrado de calendário, e o nome inteiro está no title.
                   const faixasDia = escopo === "grupo" ? faixasDoDia(dia) : [];
+                  // Na escala pessoal a etiqueta é por TURNO, e não por
+                  // plantão: o de 24 horas rende duas. O corte em duas
+                  // etiquetas passa a valer aqui, e não na contagem de
+                  // plantões — senão o "+1" diria que há um plantão escondido
+                  // quando o escondido é a metade noturna do mesmo turno.
+                  const etiquetasDoDia = escopo === "grupo" ? [] : doDia.flatMap((p) =>
+                    partesDoPlantao(p.hora_inicio, p.hora_fim).map((parte) => ({ p, parte })));
 
                   return (
                     <button
@@ -1451,17 +1458,21 @@ export function Plantoes({
                                   nenhum, e a etiqueta saía cinza. Na escala
                                   pessoal a pergunta é "onde eu estou hoje?",
                                   então quem manda na cor é o lugar. */}
-                              {doDia.slice(0, 2).map((p) => {
-                                return (
-                                  <i key={p.id}
-                                    className={`plantaoEtiqueta etqLocal med-${p.local_id ? corPorLocal.get(p.local_id) ?? "m8" : "m8"}`}
-                                    title={`${nomeDoPeriodo(p.hora_inicio, p.hora_fim)} · ${faixa(p.hora_inicio, p.hora_fim)}${ondeFica(p, localPorId, "") ? ` · ${ondeFica(p, localPorId, "")}` : ""}`}>
-                                    <b>{faixa(p.hora_inicio, p.hora_fim)}</b>
-                                    <span>{ondeFica(p, localPorId)}</span>
-                                  </i>
-                                );
-                              })}
-                              {doDia.length > 2 && <i className="plantaoMais">+{doDia.length - 2}</i>}
+                              {/* O de 24 horas vira duas etiquetas, Diurno e
+                                  Noturno, cada uma com o hospital. São dois
+                                  turnos de verdade — quem faz o plantão inteiro
+                                  está lá de dia e de noite —, e "07-07h" numa
+                                  etiqueta só não se distinguia de um diurno
+                                  quando o mês mistura os dois. */}
+                              {etiquetasDoDia.slice(0, 2).map(({ p, parte }) => (
+                                <i key={`${p.id}-${parte.id}`}
+                                  className={`plantaoEtiqueta etqLocal med-${p.local_id ? corPorLocal.get(p.local_id) ?? "m8" : "m8"}`}
+                                  title={`${nomeDoPeriodo(p.hora_inicio, p.hora_fim)} · ${faixa(p.hora_inicio, p.hora_fim)}${ondeFica(p, localPorId, "") ? ` · ${ondeFica(p, localPorId, "")}` : ""}`}>
+                                  <b>{parte.rotulo}</b>
+                                  <span>{ondeFica(p, localPorId)}</span>
+                                </i>
+                              ))}
+                              {etiquetasDoDia.length > 2 && <i className="plantaoMais">+{etiquetasDoDia.length - 2}</i>}
                             </>}
                       </span>
                     </button>
@@ -1497,6 +1508,21 @@ export function Plantoes({
               <strong>{escopo === "grupo" ? `Escala da equipe em ${MESES[m - 1]}` : `Meus plantões em ${MESES[m - 1]}`}</strong>
               <span>o valor é editável no seu próprio plantão: o combinado muda de um turno para outro</span>
             </div>
+            {/* Os nomes das colunas, uma vez só no alto.
+                Antes cada linha carregava "Valor" e "Situação" em cima do
+                próprio campo: quinze plantões viravam quinze repetições do
+                mesmo par de palavras, e cada uma custava uma altura de rótulo.
+                Um mês não cabia na tela. Aqui o nome é dito uma vez e a linha
+                fica com a altura do campo. */}
+            {daEscala.length > 0 && (
+              <div className="escalaCabeca" aria-hidden="true">
+                <span>Dia</span>
+                <span>{escopo === "grupo" ? "Quem" : "Onde"}</span>
+                <span>Valor</span>
+                <span>Situação</span>
+                <span />
+              </div>
+            )}
             {daEscala.length === 0
               ? <div className="emptyClinical compactEmpty">Nenhum plantão lançado neste mês. Toque num dia do calendário para lançar.</div>
               : daEscala.map((p) => {
@@ -1533,26 +1559,23 @@ export function Plantoes({
                       escrita de qualquer forma; esconder evita a tentativa. */}
                   <span className="plantaoCelula">
                     {meu ? (
-                      <label className="inlineMoney">
-                        <span>Valor</span>
                         <input
+                          aria-label="Valor do plantão"
                           defaultValue={Number(p.valor) || ""} placeholder="R$ 0,00" inputMode="decimal"
                           onBlur={(e) => {
                             const v = Number(e.target.value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
                             if (Number.isFinite(v) && v !== Number(p.valor)) void atualizar(p.id, { valor: v });
                           }}
                         />
-                      </label>
                     ) : <span className="plantaoDeColega">de colega</span>}
                   </span>
                   <span className="plantaoCelula">
                     {meu && (
-                      <label className="inlineMoney">
-                        <span>Situação</span>
-                        {/* A data do pagamento anda junto com a situação. Sem
-                            isto, "Pago" pelo seletor deixava pago_em vazio e o
-                            fechamento do mês não sabia em que mês somar. */}
-                        <select value={p.situacao} onChange={(e) => void atualizar(p.id, {
+                        /* A data do pagamento anda junto com a situação. Sem
+                           isto, "Pago" pelo seletor deixava pago_em vazio e o
+                           fechamento do mês não sabia em que mês somar. */
+                        <select aria-label="Situação do plantão"
+                          value={p.situacao} onChange={(e) => void atualizar(p.id, {
                           situacao: e.target.value,
                           pago_em: e.target.value === "pago"
                             ? p.pago_em ?? new Date().toISOString().slice(0, 10)
@@ -1570,15 +1593,9 @@ export function Plantoes({
                             <option value="cancelado">Cancelado</option>
                           )}
                         </select>
-                      </label>
                     )}
                   </span>
                   <span className="plantaoCelula">
-                    {/* O botão vai dentro da mesma estrutura dos campos, com um
-                        rótulo vazio no lugar do texto. Sem isso ele fica a uma
-                        altura de rótulo acima dos campos vizinhos — e acertar
-                        isso com um padding escolhido a olho volta a desalinhar
-                        assim que a fonte ou o corpo do rótulo mudar. */}
                     {/* Plantão privado não se oferece: o colega não o enxerga,
                         não sabe onde fica nem quanto vale, e aceitaria às
                         cegas. Ele se apaga, que é o que faz sentido para um
@@ -1594,8 +1611,7 @@ export function Plantoes({
                         semana que vem o banco recusa — o botão não oferece nem
                         um nem outro. */}
                     {meu && !p.privado && (
-                      <span className="inlineMoney">
-                        <span aria-hidden="true">&nbsp;</span>
+                      <span className="plantaoAcao">
                         {p.data > hojeISO ? (
                           <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
                             {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
@@ -1634,8 +1650,7 @@ export function Plantoes({
                         Apagar mudou de lugar: arrasta-se a linha para a
                         esquerda. */}
                     {meu && p.privado && (
-                      <span className="inlineMoney">
-                        <span aria-hidden="true">&nbsp;</span>
+                      <span className="plantaoAcao">
                         <button
                           className={`outlineClinical plantaoRecebido${p.situacao === "pago" ? " sim" : ""}`}
                           aria-pressed={p.situacao === "pago"}

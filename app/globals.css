@@ -2844,6 +2844,28 @@ button:disabled{cursor:not-allowed}
   text-decoration:none;line-height:1.5;max-width:100%;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plantaoDeColega{color:var(--cor-tinta-fraca);font-size:13px;min-width:0}
+
+/* --- A lista de plantões do mês, compacta ------------------------------
+   Cada linha tinha "Valor" e "Situação" escritos em cima do próprio campo, e
+   controles de 43px: 110px por plantão. Um mês de quinze turnos ocupava três
+   telas de rolagem para uma informação que cabe numa. Os nomes das colunas
+   passaram para um cabeçalho único e os campos encolheram para 34px — a linha
+   caiu para cerca de metade, e o mês inteiro se lê de uma vez. */
+.escalaCabeca{display:none}
+@media(min-width:781px){
+  .escalaCabeca{display:grid;align-items:end;gap:11px;
+    grid-template-columns:96px minmax(140px,1fr) 118px 132px 140px;
+    padding:9px 25px 6px;border-bottom:1px solid var(--cor-borda)}
+  .escalaCabeca>span{font-size:10px;font-weight:700;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--cor-tinta-fraca)}
+}
+.plantaoLinha.escalaLinha{padding:9px 25px}
+.escalaLinha .plantaoQuando strong{font-size:14px}
+.escalaLinha .plantaoQuando small,.escalaLinha .plantaoOnde small{margin-top:1px;font-size:11.5px}
+.escalaLinha input,.escalaLinha select,.escalaLinha .plantaoAcao>button{
+  height:34px;width:100%;min-width:0;font-size:13.5px;border-radius:8px}
+.escalaLinha .plantaoAcao{display:block;min-width:0}
+.escalaLinha .plantaoCelula{min-width:0}
 .plantaoMensagem{font-style:italic;color:var(--cor-tinta-fraca)!important}
 
 .plantaoDestino{border:0;padding:0;margin:18px 0 0;display:grid;gap:10px}

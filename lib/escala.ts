@@ -98,6 +98,31 @@ export function turnosCobertos(inicio: string, fim: string): TurnoDoDia[] {
     .map((t) => t.id);
 }
 
+export type ParteDoPlantao = { id: string; rotulo: string; faixa: string };
+
+/**
+ * Como um plantão é ETIQUETADO no calendário.
+ *
+ * O de 24 horas sai em duas etiquetas — Diurno e Noturno —, e não numa só
+ * escrita "07-07h". São dois turnos de verdade: quem faz o plantão inteiro
+ * está lá de dia e está lá de noite, e é assim que ele é combinado, cobrado e
+ * passado para um colega. Uma etiqueta só escondia metade do turno num mês em
+ * que o dia 15 é diurno num hospital e o 22 é integral noutro — a diferença
+ * entre os dois não se lia do calendário.
+ *
+ * SÓ o de 24 horas se parte, e a régra é a cobertura das TRÊS faixas do dia.
+ * Um 13-07h cobre tarde e noite, mas chamá-lo de "Diurno" diria que a pessoa
+ * esteve lá de manhã — o resto continua saindo pelo horário, que é exato.
+ */
+export function partesDoPlantao(inicio: string, fim: string): ParteDoPlantao[] {
+  if (turnosCobertos(inicio, fim).length === 3) {
+    return TURNOS_RAPIDOS.map((t) => ({
+      id: t.id, rotulo: t.nome, faixa: faixa(t.inicio, t.fim),
+    }));
+  }
+  return [{ id: "todo", rotulo: faixa(inicio, fim), faixa: faixa(inicio, fim) }];
+}
+
 /** "Manhã", "Manhã e tarde", "24 horas" — o turno dito por extenso. */
 export function nomeDoPeriodo(inicio: string, fim: string): string {
   const cobertos = turnosCobertos(inicio, fim);
