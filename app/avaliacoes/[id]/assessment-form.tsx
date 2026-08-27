@@ -910,8 +910,36 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
   </section>;
 }
 
-function ScoreToggle({name,label,draft,set,motivo,onAlternar}:{name:string;label:string;draft:Draft;set:(name:string,value:string|boolean)=>void;motivo?:string;onAlternar?:(nome:string,ligado:boolean)=>void}) {
-  const ligado=draft[name]===true;
+/**
+ * Um critério de escore.
+ *
+ * Dois tipos, e a diferença é a origem da resposta.
+ *
+ * O que se PERGUNTA ao paciente — ronco, sonolência, apneia — é botão: só o
+ * paciente sabe, e o médico marca.
+ *
+ * O que o sistema JÁ SABE — sexo, idade, IMC, circunferência cervical — vem
+ * pronto e não é botão. Antes era: o critério aparecia desmarcado mesmo com o
+ * dado no cadastro, e o clique escrevia no rascunho um valor que a conta do
+ * escore ignorava — o total não mudava. Um controle que não responde ao toque
+ * é pior do que um campo travado, porque ele parece quebrado sem dizer por quê.
+ *
+ * Travado, ele diz de onde veio o número e onde se corrige.
+ */
+function ScoreToggle({name,label,draft,set,motivo,onAlternar,derivado,ligadoDerivado,origem}:{name:string;label:string;draft:Draft;set:(name:string,value:string|boolean)=>void;motivo?:string;onAlternar?:(nome:string,ligado:boolean)=>void;
+  /** Vem do cadastro ou do exame físico, e não do toque. */
+  derivado?:boolean;
+  ligadoDerivado?:boolean;
+  /** Onde a pessoa muda esse dado, quando ele está errado ou falta. */
+  origem?:string}) {
+  const ligado=derivado?ligadoDerivado===true:draft[name]===true;
+  if(derivado) return <span
+    className={`scoreToggle derivado${ligado?" selected":""}`}
+    title={origem}
+  >
+    <i>{ligado?"✓":""}</i>
+    <span>{label}{origem&&<small className="scoreMotivo">{origem}</small>}</span>
+  </span>;
   return <button
     className={`scoreToggle${ligado?" selected":""}${motivo?" sugerido":""}`}
     onClick={()=>{const proximo=!ligado;set(name,proximo);onAlternar?.(name,proximo)}}
@@ -1030,18 +1058,30 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
     if(ligado) lista.delete(nome); else lista.add(nome);
     set("escores_recusados",Array.from(lista).join(","));
   }
-  const stopScore=stop.filter(([key])=>{
-    if(key==="stop_imc")return imc>35;
-    if(key==="stop_idade")return age!==null&&age>50;
-    if(key==="stop_masculino")return String(sex||draft.sexo).toLowerCase()==="masculino";
-    if(key==="stop_pescoco")return Number(draft.circ_cervical||0)>40;
-    return draft[key]===true;
-  }).length;
-  const apfelScore=apfel.filter(([key])=>{
-    if(key==="apfel_feminino")return String(sex||draft.sexo).toLowerCase()==="feminino";
-    if(key==="apfel_nao_tabagista")return String(draft.habitos||"")!=="Sim"||!String(draft.habitos_detalhes||"").toLowerCase().includes("tabag");
-    return draft[key]===true;
-  }).length;
+  // Os critérios que NÃO se pergunta ao paciente: o sistema já tem a resposta,
+  // no cadastro ou no exame físico. Uma tabela só, usada tanto pela conta do
+  // escore quanto pelo desenho de cada critério — antes eram duas leituras
+  // separadas, e o total contava um critério que a tela mostrava desmarcado.
+  const sexoDito=String(sex||draft.sexo||"").trim();
+  const cervical=Number(String(draft.circ_cervical||"").replace(",","."))||0;
+  const derivados:Record<string,{ligado:boolean;origem:string}>={
+    stop_imc:{ligado:imc>35,
+      origem:imc?`IMC ${imc.toFixed(1)}`:"peso e altura no exame físico"},
+    stop_idade:{ligado:age!==null&&age>50,
+      origem:age!==null?`${age} anos`:"data de nascimento no cadastro"},
+    stop_masculino:{ligado:sexoDito.toLowerCase()==="masculino",
+      origem:sexoDito||"sexo no cadastro"},
+    stop_pescoco:{ligado:cervical>40,
+      origem:cervical?`${cervical} cm`:"circunferência cervical no exame físico"},
+    apfel_feminino:{ligado:sexoDito.toLowerCase()==="feminino",
+      origem:sexoDito||"sexo no cadastro"},
+    apfel_nao_tabagista:{
+      ligado:String(draft.habitos||"")!=="Sim"||!String(draft.habitos_detalhes||"").toLowerCase().includes("tabag"),
+      origem:"hábitos, na anamnese"},
+  };
+  const vale=(key:string)=>derivados[key]?derivados[key].ligado:draft[key]===true;
+  const stopScore=stop.filter(([key])=>vale(key)).length;
+  const apfelScore=apfel.filter(([key])=>vale(key)).length;
   const stopRisk=stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco";
   const apfelRisk=["≈ 10%","≈ 21%","≈ 39%","≈ 61%","≈ 79%"][apfelScore];
   const asa=["ASA I","ASA II","ASA III","ASA IV","ASA V","ASA VI"];
@@ -1077,8 +1117,8 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
           <p className="cardioAlerta grave"><Icone nome="alerta" tamanho={15}/> Cardiologista não liberou o procedimento.</p>}
       </div>
     </section>
-    <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={`${label}${key==="stop_imc"&&imc?` (IMC ${imc.toFixed(1)})`:key==="stop_idade"&&age?` (${age} anos)`:key==="stop_masculino"&&sex?` (${sex})`:""}`} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
-    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk} <small>referência de apoio; confirmar conduta</small></div></section>
+    <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
+    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk} <small>referência de apoio; confirmar conduta</small></div></section>
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div></section></>;
 }
 

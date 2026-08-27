@@ -1812,6 +1812,18 @@ button:disabled{cursor:not-allowed}
    antes de assinar embaixo. */
 .scoreToggle.sugerido{border-style:dashed;border-color:var(--cor-marca)}
 .scoreToggle.sugerido.selected{border-style:solid}
+/* O critério que vem do cadastro. Não é botão, e não pode parecer um: o dado
+   se corrige onde ele foi digitado — o rótulo abaixo diz onde. A caixa fica
+   arredondada, e não quadrada, para dizer "isto é resultado", e não "isto é
+   uma escolha". */
+.scoreToggle.derivado{cursor:default;background:transparent;
+  border-style:solid;border-color:var(--cor-borda)}
+.scoreToggle.derivado i{border-radius:50%;border-color:var(--cor-borda-forte)}
+.scoreToggle.derivado.selected i{background:var(--cor-sucesso);
+  border-color:var(--cor-sucesso)}
+.scoreToggle.derivado.selected{border-color:var(--cor-sucesso);
+  background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.scoreToggle.derivado .scoreMotivo{color:var(--cor-tinta-fraca);font-weight:600}
 .scoreToggle>span{display:block;text-align:left}
 .scoreMotivo{display:block;margin-top:3px;font-size:11px;font-weight:600;opacity:.75;line-height:1.35;overflow-wrap:anywhere}
 
