@@ -472,10 +472,19 @@ export function ProducaoDoDia({
  * fim do mês, sentado — e por isso são duas telas e não uma.
  */
 export function ProducaoDoMes({
-  mes, nomeMes, ano, locais, lugarPeloPlantao,
+  mes, nomeMes, ano, locais, lugarPeloPlantao, onMudarMes,
   onImprimir, onImprimirFaturamento, onImprimirPlantoes,
 }: {
   mes: string; nomeMes: string; ano: number;
+  /**
+   * Trocar de mês sem sair da aba.
+   *
+   * A seta do mês morava só dentro do calendário, na aba Escala. Quem abria
+   * Produção via o mês corrente zerado — porque a produção do mês ainda não
+   * começou — e não tinha como voltar ao mês que quer faturar. A tela dizia
+   * "nada anotado" sobre um mês que a pessoa nem escolheu.
+   */
+  onMudarMes: (passo: number) => void;
   /** Os hospitais da organização, para dizer de onde é cada ato. */
   locais: Array<{ id: string; nome: string }>;
   /**
@@ -630,6 +639,19 @@ export function ProducaoDoMes({
 
       {recado && <p className="financeSuccess" role="status">{recado}</p>}
 
+      {/* O mês, e as setas para trocá-lo, no alto de tudo. Faturar é sempre
+          olhar para trás: quem abre esta tela no dia 3 quer o mês passado, não
+          este. */}
+      <section className="clinicalPanel producaoMesBarra">
+        <div className="plantaoMesNav">
+          <button className="outlineClinical" onClick={() => onMudarMes(-1)}
+            aria-label="Mês anterior">‹</button>
+          <strong>{nomeMes} de {ano}</strong>
+          <button className="outlineClinical" onClick={() => onMudarMes(1)}
+            aria-label="Próximo mês">›</button>
+        </div>
+      </section>
+
       <section className="metricGrid plantaoMetrics">
         <div className="metricCard"><strong>{mascara(String(itens.length))}</strong><span>Pacientes no mês</span></div>
         <div className="metricCard"><strong className="blue">{mascara(money(total))}</strong><span>Total anotado</span></div>
@@ -642,11 +664,13 @@ export function ProducaoDoMes({
 
       <section className="clinicalPanel">
         <div className="panelTitle">
-          <strong>Por convênio em {nomeMes} de {ano}</strong>
-          <span>é assim que se fatura: uma remessa por operadora</span>
+          <strong>O que você anotou</strong>
+          <span>somado por convênio</span>
           <div className="producaoAcoesMes">
-            {/* Enviar vem primeiro e em destaque: imprimir é para o seu
-                arquivo, enviar é o que faz a cobrança andar. */}
+            {/* Só o envio mora aqui. As três impressões foram para o painel de
+                baixo: um "Imprimir" solto ao lado de "Enviar ao financeiro"
+                fazia parecer que os dois eram o mesmo caminho, e a tela tinha
+                três botões de imprimir espalhados por dois painéis. */}
             <button className="primaryClinical compact" disabled={aEnviar === 0 || enviando}
               onClick={() => void enviar()}
               title={aEnviar === 0 ? "Nada novo para enviar neste mês"
@@ -662,10 +686,6 @@ export function ProducaoDoMes({
                 Desfazer envio
               </button>
             )}
-            <button className="outlineClinical"
-              disabled={itens.length === 0} onClick={() => onImprimir(itens)}>
-              Imprimir
-            </button>
           </div>
         </div>
         {porConvenio.length === 0
@@ -685,27 +705,49 @@ export function ProducaoDoMes({
           ))}
       </section>
 
-      {/* As duas notas do mês.
-          Plantão e faturamento não saem da mesma folha porque não são a mesma
-          coisa: um é hora à disposição, o outro é o ato anestésico, e o tomador
-          costuma ser outro. Ficam lado a lado aqui porque são o trabalho de um
-          mesmo dia do mês — o dia de emitir. */}
+      {/* Tudo o que se imprime, num lugar só.
+          Antes havia três botões de imprimir espalhados por dois painéis, com
+          nomes que não diziam o que sairia do papel. Aqui cada folha é uma
+          linha, com o nome e a frase que explica para que ela serve — a
+          escolha se faz lendo, e não abrindo as três para descobrir. */}
       <section className="clinicalPanel">
         <div className="panelTitle">
-          <strong>As duas notas de {nomeMes}</strong>
-          <span>plantão é hora à disposição; faturamento é o ato anestésico</span>
-          <div className="producaoAcoesMes">
-            <button className="outlineClinical" onClick={onImprimirPlantoes}>
-              Nota de plantões
-            </button>
-            <button className="primaryClinical compact"
-              disabled={itens.length === 0} onClick={() => onImprimirFaturamento(itens)}>
-              Nota de faturamento
-            </button>
-          </div>
+          <strong>Imprimir</strong>
+          <span>três folhas, três finalidades</span>
         </div>
+
+        <div className="producaoFolha">
+          <span>
+            <strong>Nota de plantões</strong>
+            <small>As horas que você ficou à disposição, separadas por hospital.</small>
+          </span>
+          <button className="outlineClinical" onClick={onImprimirPlantoes}>Imprimir</button>
+        </div>
+
+        <div className="producaoFolha">
+          <span>
+            <strong>Nota de faturamento</strong>
+            <small>Os atos anestésicos, por hospital e por quem paga cada paciente.</small>
+          </span>
+          <button className="outlineClinical"
+            disabled={itens.length === 0} onClick={() => onImprimirFaturamento(itens)}>
+            Imprimir
+          </button>
+        </div>
+
+        <div className="producaoFolha">
+          <span>
+            <strong>Lista por convênio</strong>
+            <small>A relação de pacientes agrupada por operadora, para mandar a remessa.</small>
+          </span>
+          <button className="outlineClinical"
+            disabled={itens.length === 0} onClick={() => onImprimir(itens)}>
+            Imprimir
+          </button>
+        </div>
+
         <p className="producaoNotaExplica">
-          As duas folhas saem separadas por hospital, com um total por hospital:
+          As duas notas saem separadas por hospital, com um total por hospital:
           cada nota é emitida contra um tomador. Na de faturamento, quem paga
           muda de paciente para paciente — marque abaixo antes de imprimir.
         </p>

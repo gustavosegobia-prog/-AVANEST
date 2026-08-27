@@ -1673,7 +1673,7 @@ export function Plantoes({
         <ProducaoDoMes
           mes={mes} nomeMes={MESES[m - 1]} ano={ano}
           locais={locais.map((l) => ({ id: l.id, nome: nomeDoLocal(l) }))}
-          lugarPeloPlantao={lugarPeloPlantao}
+          lugarPeloPlantao={lugarPeloPlantao} onMudarMes={mudarMes}
           onImprimir={imprimirProducao}
           onImprimirFaturamento={imprimirFaturamento}
           onImprimirPlantoes={imprimirPlantoesParaNota}
