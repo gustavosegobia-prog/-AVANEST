@@ -1,6 +1,61 @@
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 
+// O que o site é, em linguagem de máquina.
+//
+// O buscador lê o texto da página e adivinha o resto. Isto tira a adivinhação
+// de cima dele: que se trata de um programa, que a categoria é saúde, para que
+// serve, de quem é a empresa e onde ela fica.
+//
+// Não muda posição sozinho — nenhuma marcação muda. O que ela muda é o que o
+// Google mostra QUANDO já resolveu mostrar, e o quanto ele acerta ao decidir
+// para qual busca esta página serve. "Sistema de avaliação pré-anestésica"
+// escrito num campo chamado `applicationSubCategory` é uma afirmação; a mesma
+// frase solta no meio de um parágrafo é um palpite.
+//
+// `offers` sem preço de propósito: o valor vem do banco e muda com a campanha,
+// e preço escrito à mão aqui viraria mentira no primeiro reajuste — com o
+// agravante de o Google mostrar o número velho no resultado da busca.
+const DADOS_ESTRUTURADOS = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "AVANEST",
+  applicationCategory: "HealthApplication",
+  applicationSubCategory: "Sistema de avaliação pré-anestésica e gestão de serviços de anestesiologia",
+  operatingSystem: "Web",
+  url: "https://www.avanest.com.br",
+  inLanguage: "pt-BR",
+  description:
+    "Sistema para anestesiologistas: avaliação pré-anestésica em nove etapas com "
+    + "escores de risco, escala de plantões por hospital, registro da produção do dia "
+    + "e controle do que foi faturado e recebido.",
+  featureList: [
+    "Avaliação pré-anestésica digital com ficha para impressão",
+    "Escores de risco: ASA, STOP-BANG, Apfel e índice de Lee (RCRI)",
+    "Escala de plantões por instituição, com troca entre colegas",
+    "Registro da produção do plantão e do que foi faturado",
+    "Leitura da ficha de internação por foto",
+  ],
+  offers: {
+    "@type": "Offer",
+    priceCurrency: "BRL",
+    availability: "https://schema.org/InStock",
+    url: "https://www.avanest.com.br/planos",
+  },
+  provider: {
+    "@type": "Organization",
+    name: "G. Segobia Serviços Médicos Ltda.",
+    alternateName: "AVANEST",
+    url: "https://www.avanest.com.br",
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Campo Mourão",
+      addressRegion: "PR",
+      addressCountry: "BR",
+    },
+  },
+};
+
 export default function HomePage() {
   const whatsappUrl =
     "https://wa.me/5541997870810?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20conversa%20de%2015%20minutos%20sobre%20o%20AVANEST.";
@@ -9,6 +64,13 @@ export default function HomePage() {
     <main className="avnLanding">
       {/* Aberto pelo atalho da tela de início, vai direto para o login. */}
       <AbrirNoLogin />
+      <script
+        type="application/ld+json"
+        // O conteúdo é a constante logo acima, escrita à mão neste arquivo:
+        // nada aqui vem de usuário, de banco ou de URL, então não há entrada
+        // externa para escapar.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(DADOS_ESTRUTURADOS) }}
+      />
       <header className="avnNav">
         <AppLogo />
         <nav>
