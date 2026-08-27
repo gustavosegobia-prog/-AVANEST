@@ -1261,6 +1261,9 @@ export function Plantoes({
               ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
               : <button
                   type="button" key={id}
+                  // O tutorial ancora nesta marca para acender o item enquanto
+                  // fala dele. Nome estável, independente do rótulo.
+                  data-secao={id}
                   className={secaoAtiva === id ? "active" : ""}
                   aria-current={secaoAtiva === id ? "true" : undefined}
                   onClick={() => irPara(id)}

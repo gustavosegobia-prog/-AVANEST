@@ -3009,9 +3009,26 @@ button:disabled{cursor:not-allowed}
    quanto no telefone, entre uma cirurgia e outra. */
 .tutorialFundo{position:fixed;inset:0;z-index:80;display:grid;place-items:center;
   padding:20px;background:rgba(4,22,38,.55)}
+/* Com holofote, o próprio fundo fica transparente: a escuridão passa a ser a
+   sombra do recorte, que tem o buraco no lugar certo. Duas camadas escuras
+   somadas deixariam o resto da tela quase preto. */
+.tutorialFundo.comFoco{background:transparent;pointer-events:none}
+.tutorialFundo.comFoco>*{pointer-events:auto}
+
+/* O recorte: uma sombra espalhada para fora, com raio maior que qualquer tela.
+   É o que escurece tudo menos o elemento — sem calcular quatro retângulos em
+   volta dele, que descolam a cada rolagem. */
+.tutorialFoco{position:fixed;border-radius:12px;pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(4,22,38,.62), 0 0 0 3px var(--cor-marca-clara);
+  transition:top .25s ease, left .25s ease, width .25s ease, height .25s ease}
+@media(prefers-reduced-motion:reduce){.tutorialFoco{transition:none}}
+
 .tutorialJanela{width:min(460px,100%);background:var(--cor-superficie);
   border-radius:var(--raio-2);box-shadow:var(--sombra-3);padding:22px 24px 20px;
   color:var(--cor-tinta)}
+/* Ancorada ao elemento: sai da grade central e passa a valer o style inline
+   calculado no componente, que já prende a janela dentro das bordas da tela. */
+.tutorialJanela.ancorada{position:fixed;margin:0}
 .tutorialJanela:focus{outline:none}
 .tutorialJanela:focus-visible{outline:none;box-shadow:var(--sombra-3),var(--foco)}
 .tutorialTopo{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}

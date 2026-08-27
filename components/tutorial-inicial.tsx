@@ -6,13 +6,22 @@ import { Icone } from "@/components/icone";
 
 // O tutorial do primeiro acesso.
 //
-// É um passo a passo em janela, e não um holofote apontando para os botões da
-// tela. A escolha é deliberada: o holofote depende de cada botão estar onde o
-// tutorial pensa que ele está, e basta um ponto de quebra do celular mover a
-// barra para a seta apontar para o vazio. Um texto que diz "em Médico você
-// cadastra o paciente" continua certo em qualquer largura de tela — e este
-// sistema é aberto tanto no computador da recepção quanto no telefone, entre
-// uma cirurgia e outra.
+// HOLOFOTE, COM CHÃO FIRME. Cada etapa procura o elemento de que ela fala,
+// recorta a escuridão em volta dele e encosta a janela ao lado: a pessoa lê
+// "em Médico você faz a avaliação" olhando para o botão Médico aceso, e não
+// para um retângulo no meio da tela falando de um lugar que ela ainda não
+// achou.
+//
+// O risco do holofote é conhecido e é por isso que a versão anterior o evitava:
+// ele depende de o botão estar onde o tutorial pensa que está, e um ponto de
+// quebra do celular basta para a seta apontar para o vazio. A defesa não é
+// desistir dele — é o alvo ser opcional e a falta dele ser um caminho normal:
+// não achando o elemento, a janela volta ao centro e a etapa continua valendo,
+// porque o texto sozinho já era suficiente antes.
+//
+// A posição é medida a cada passo, e de novo a cada rolagem e cada mudança de
+// tamanho da janela. Medir uma vez e guardar é o que faz o holofote descolar do
+// botão quando o teclado do celular sobe.
 //
 // A ETAPA TROCA DE ÁREA. Ler "em Médico você faz a avaliação" enquanto se olha
 // para a tela do Financeiro não ensina nada; a cada passo o painel atrás muda
@@ -22,6 +31,11 @@ import { Icone } from "@/components/icone";
 // decisão com custo — quem abrir depois no celular vê de novo — e com um ganho
 // que pesa mais: nada de esquema novo no banco para uma janela que a pessoa vai
 // ver uma vez. Se um dia isto incomodar, o lugar certo é uma coluna em perfis.
+
+type Recorte = { topo: number; esquerda: number; largura: number; altura: number };
+
+/** Uma folga em volta do elemento: o holofote colado na borda parece erro. */
+const FOLGA = 8;
 
 export function TutorialInicial({
   papel, onIrPara,
@@ -34,6 +48,8 @@ export function TutorialInicial({
   const [aberto, setAberto] = useState(false);
   const [passo, setPasso] = useState(0);
   const janela = useRef<HTMLDivElement | null>(null);
+  /** Onde está o elemento da etapa, em coordenadas da tela. Nulo = sem alvo. */
+  const [foco, setFoco] = useState<Recorte | null>(null);
 
   // Lido depois de montar, e não no useState inicial: esta tela é renderizada
   // no servidor, onde localStorage não existe, e inicializar por ele faria o
@@ -48,6 +64,63 @@ export function TutorialInicial({
   useEffect(() => {
     if (aberto) janela.current?.focus();
   }, [aberto, passo]);
+
+  /**
+   * Achar o elemento da etapa e medir onde ele está.
+   *
+   * Roda a cada passo e continua rodando: rolagem e mudança de tamanho movem o
+   * botão, e um holofote medido uma vez só descola dele.
+   *
+   * O atraso do primeiro cálculo não é superstição. A etapa troca de área, e a
+   * área nova monta no quadro seguinte — medir antes disso encontra o botão da
+   * área velha, ou não encontra nada.
+   */
+  // O seletor, e não a etapa inteira: `passosDoTutorial` devolve um array novo
+  // a cada render, e um efeito que dependesse dele remediria a tela sem parar.
+  const alvoDaEtapa = etapas[passo]?.alvo;
+
+  useEffect(() => {
+    if (!aberto) return;
+    const alvo = alvoDaEtapa;
+    // Medir a tela é ler de fora do React e trazer para dentro: a posição de um
+    // botão não existe até o navegador desenhar. É o caso legítimo da regra.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- posição medida do DOM
+    if (!alvo) { setFoco(null); return; }
+
+    let vivo = true;
+    const medir = () => {
+      if (!vivo) return;
+      const el = document.querySelector(alvo);
+      if (!el) { setFoco(null); return; }
+      const r = el.getBoundingClientRect();
+      // Elemento de tamanho zero é elemento que existe no HTML e não está na
+      // tela — menu fechado, aba escondida. Recortar ali abriria um buraco de
+      // nada no canto superior esquerdo.
+      if (r.width === 0 || r.height === 0) { setFoco(null); return; }
+      setFoco({
+        topo: r.top - FOLGA, esquerda: r.left - FOLGA,
+        largura: r.width + FOLGA * 2, altura: r.height + FOLGA * 2,
+      });
+    };
+
+    // Traz o elemento para a tela antes de medir: numa lista longa ele pode
+    // estar abaixo da dobra, e o holofote ficaria fora do campo de visão.
+    const t = setTimeout(() => {
+      document.querySelector(alvo)?.scrollIntoView({ block: "center", behavior: "smooth" });
+      medir();
+      // Segunda medição depois da rolagem suave terminar.
+      setTimeout(medir, 350);
+    }, 60);
+
+    window.addEventListener("resize", medir);
+    window.addEventListener("scroll", medir, true);
+    return () => {
+      vivo = false;
+      clearTimeout(t);
+      window.removeEventListener("resize", medir);
+      window.removeEventListener("scroll", medir, true);
+    };
+  }, [aberto, alvoDaEtapa]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -74,10 +147,53 @@ export function TutorialInicial({
   const etapa = etapas[passo];
   const ultimo = passo === etapas.length - 1;
 
+  /**
+   * Onde a janela senta.
+   *
+   * Abaixo do elemento quando cabe; acima quando não cabe. Sem alvo, no centro
+   * — que é exatamente o comportamento antigo, e por isso a falta de alvo não
+   * é um caso de erro.
+   *
+   * A largura é limitada e a posição, presa às bordas: a janela encostada num
+   * botão do canto direito sairia da tela, e a pessoa leria meia frase.
+   */
+  const posicao = (() => {
+    if (!foco) return undefined;
+    const LARGURA = 340, MARGEM = 12;
+    const alturaTela = typeof window === "undefined" ? 800 : window.innerHeight;
+    const larguraTela = typeof window === "undefined" ? 1200 : window.innerWidth;
+    // Em tela estreita a janela ocupa a largura toda e vai para baixo: ao lado
+    // de um botão num celular sobram quarenta pixels de texto.
+    if (larguraTela < 560) return undefined;
+
+    const abaixo = foco.topo + foco.altura + MARGEM;
+    const cabeAbaixo = abaixo + 240 < alturaTela;
+    const esquerda = Math.min(
+      Math.max(MARGEM, foco.esquerda),
+      larguraTela - LARGURA - MARGEM,
+    );
+    return cabeAbaixo
+      ? { top: abaixo, left: esquerda, width: LARGURA }
+      : { bottom: alturaTela - foco.topo + MARGEM, left: esquerda, width: LARGURA };
+  })();
+
   return (
-    <div className="tutorialFundo" role="presentation">
+    <div className={`tutorialFundo${foco ? " comFoco" : ""}`} role="presentation">
+      {/* O recorte. A escuridão é a sombra DESTE elemento, espalhada para fora
+          por um raio maior que a tela: assim o buraco acompanha o botão sem
+          precisar de quatro retângulos calculados em volta dele. */}
+      {foco && (
+        <span
+          className="tutorialFoco" aria-hidden="true"
+          style={{
+            top: foco.topo, left: foco.esquerda,
+            width: foco.largura, height: foco.altura,
+          }}
+        />
+      )}
       <div
-        className="tutorialJanela" role="dialog" aria-modal="true"
+        className={`tutorialJanela${posicao ? " ancorada" : ""}`}
+        style={posicao} role="dialog" aria-modal="true"
         aria-labelledby="tutorialTitulo" tabIndex={-1} ref={janela}
       >
         <div className="tutorialTopo">

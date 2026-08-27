@@ -19,6 +19,16 @@ export type Etapa = {
   texto: string;
   /** A área que a etapa apresenta. Nula quando é abertura ou fecho. */
   area?: "medico" | "recepcao" | "financeiro" | "admin" | "plantoes";
+  /**
+   * O seletor do que a etapa aponta na tela.
+   *
+   * Quando ele acha o elemento, o tutorial recorta a escuridão em volta dele e
+   * encosta a janela ao lado — a pessoa lê "em Médico você faz a avaliação"
+   * olhando para o botão Médico aceso. Não achando, a janela volta ao centro e
+   * a etapa continua valendo: o texto sozinho já era suficiente antes, e é ele
+   * que sobrevive a um botão que mudou de lugar.
+   */
+  alvo?: string;
 };
 
 export type Papel = { role: string; areas: string[]; nome: string };
@@ -57,6 +67,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (tem("medico")) {
     etapas.push({
       area: "medico",
+      alvo: '[data-area="medico"]',
       titulo: "A avaliação pré-anestésica",
       texto: "Em Médico você cadastra o paciente e faz a avaliação em nove etapas. O texto é salvo enquanto você digita: fechar a tela no meio não perde nada. No fim saem a ficha, o termo de consentimento e as orientações, prontos para imprimir.",
     });
@@ -65,6 +76,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (tem("recepcao")) {
     etapas.push({
       area: "recepcao",
+      alvo: '[data-area="recepcao"]',
       titulo: "A fila do dia",
       texto: "Em Recepção ficam o cadastro do paciente e a agenda. Marque quem chegou como presente — é isso que põe o paciente na fila do anestesiologista.",
     });
@@ -73,11 +85,13 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (tem("plantoes")) {
     etapas.push({
       area: "plantoes",
+      alvo: '[data-area="plantoes"]',
       titulo: "A escala",
       texto: "Escala do serviço, uma por hospital, e Minha escala, que reúne todos os seus plantões num calendário só. Clique num dia para lançar, passar um plantão a um colega ou confirmar o que você fez.",
     });
     etapas.push({
       area: "plantoes",
+      alvo: ".plantaoGrade",
       titulo: "Confirmar o plantão vale no dia",
       // Esta etapa existe por causa de uma regra que surpreende, e surpresa
       // sobre pagamento é a pior de todas. Melhor descobrir aqui do que no
@@ -86,6 +100,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
     etapas.push({
       area: "plantoes",
+      alvo: '[data-secao="producao"]',
       titulo: "A produção do dia",
       texto: "Ainda na Escala, anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos.",
     });
@@ -94,6 +109,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (tem("financeiro")) {
     etapas.push({
       area: "financeiro",
+      alvo: '[data-area="financeiro"]',
       titulo: "O financeiro",
       texto: "Aqui ficam o faturamento do serviço, os recebimentos e o fechamento do mês.",
     });
@@ -102,12 +118,14 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (tem("admin")) {
     etapas.push({
       area: "admin",
+      alvo: '[data-area="admin"]',
       titulo: "A organização",
       texto: "Em Admin ficam a equipe, os convites e os locais de atendimento. Cadastre os hospitais com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios.",
     });
   }
 
   etapas.push({
+    alvo: ".avisosSino",
     titulo: "O sino, no alto da tela",
     texto: "Plantão oferecido por um colega, resposta do suporte, mensagem da equipe e o que ficou para trás no faturamento aparecem ali. O número conta só o que espera resposta sua.",
   });
