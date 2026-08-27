@@ -441,7 +441,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       <div id="etapa-3"><Anamnesis draft={draft} set={set}/></div>
       <div id="etapa-4"><Medications draft={draft} set={set}/></div>
       <div id="etapa-5"><PhysicalExam draft={draft} set={set}/></div>
-      <div id="etapa-6"><Airway draft={draft} set={set}/></div>
+      <div id="etapa-6"><Airway draft={draft} set={set} rascunho={avaliacao.status!=="concluida"}/></div>
       <div id="etapa-7"><ComplementaryExams draft={draft} set={set} avaliacao={avaliacao}/></div>
       <div id="etapa-8"><Scores draft={draft} set={set} age={age} sex={paciente.sexo} imc={imc}/></div>
       <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} idadeMeses={idade.meses} conclude={conclude} retrySave={()=>void save()} saveState={saveState} saveError={saveError}/></div>
@@ -857,10 +857,51 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
   </section>;
 }
 
-function Airway({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
+/**
+ * A via aérea sem alterações, que é a maioria dos pacientes.
+ *
+ * Decisão do Gustavo: os cinco campos já abrem no achado normal, em vez de
+ * "Selecione". Cinco toques por paciente, na esmagadora maioria das vezes para
+ * confirmar o esperado, é o tipo de custo que faz a etapa ser pulada.
+ *
+ * O QUE ISSO CUSTA, e está registrado aqui porque a ficha é documento
+ * assinado: quem pular a etapa 6 assina um exame de via aérea que ninguém fez.
+ * A defesa é o valor ser GRAVADO, e não só desenhado — tela e papel dizem a
+ * mesma coisa, e o que está no papel é o que está no banco. Um padrão que
+ * aparecesse na tela sem ser gravado seria pior: a ficha sairia em branco
+ * enquanto a tela mostrava "Classe I".
+ */
+const VIA_AEREA_PADRAO: Record<string,string> = {
+  mallampati: "Classe I",
+  abertura_oral: "> 4 cm",
+  distancia_tireo: "> 6,5 cm",
+  denticao: "Normais",
+  mobilidade: "Normal",
+};
+
+function Airway({draft,set,rascunho}:{draft:Draft;set:(name:string,value:string|boolean)=>void;
+  /**
+   * Só o rascunho recebe o padrão.
+   *
+   * Ficha concluída reaberta para corrigir o nome do paciente não pode ganhar
+   * um exame de via aérea de brinde: ela já foi assinada com aqueles campos
+   * vazios, e preenchê-los aqui mudaria, em silêncio, o que o documento
+   * afirma.
+   */
+  rascunho:boolean}) {
   // A lista e a conta vêm de lib/via-aerea: a ficha impressa lê exatamente as
   // mesmas, e por isso as duas não voltam a discordar.
   const predictors=[...PREDITORES_VIA_AEREA];
+
+  // Grava o padrão no que ainda está vazio, e só nele: campo já respondido
+  // nunca é tocado, nem quando a resposta é diferente do padrão. Sem isto o
+  // valor existiria na tela e não no registro.
+  useEffect(()=>{
+    if(!rascunho) return;
+    for(const [campo,valor] of Object.entries(VIA_AEREA_PADRAO))
+      if(!String(draft[campo]??"").trim()) set(campo,valor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
   const {total:count,risco:risk}=resumoViaAerea(draft);
   const choice=(name:string,label:string,options:string[])=><label className="evalField"><span>{label}</span><select value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}><option value="">Selecione</option>{options.map(o=><option key={o}>{o}</option>)}</select></label>;
   return <section className="evalSection"><h1>6 · Avaliação da via aérea</h1><div className="airwayGrid">
