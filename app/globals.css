@@ -2948,6 +2948,62 @@ button:disabled{cursor:not-allowed}
 .plantaoOlho:hover{opacity:1;background:var(--cor-superficie-suave)}
 .plantaoOlho:focus-visible{outline:0;box-shadow:var(--foco);opacity:1}
 .plantaoMetrics .metricCard,.financeMetrics .metricCard{position:relative}
+
+/* ── Indicadores do Financeiro ───────────────────────────────────────────── */
+
+/* A seta de comparação com o mês anterior. Fica embaixo do rótulo, pequena:
+   ela qualifica o número, não disputa com ele. */
+.metricVariacao{display:block;margin-top:6px;font-size:12.5px;font-weight:750;
+  font-style:normal;letter-spacing:.01em}
+.metricVariacao.subiu{color:var(--cor-sucesso)}
+.metricVariacao.caiu{color:var(--cor-perigo)}
+/* No cartão de glosa a subida é notícia RUIM, e a cor tem de dizer isso — verde
+   para glosa crescendo seria o oposto do que a tela quer comunicar. O cartão de
+   recebido e o de faturado mantêm a leitura normal. */
+.financeMetrics .metricCard:last-child .metricVariacao.subiu{color:var(--cor-perigo)}
+.financeMetrics .metricCard:last-child .metricVariacao.caiu{color:var(--cor-sucesso)}
+/* O rótulo da glosa carrega o percentual e fica mais longo que os outros. */
+.financeMetrics .metricCard span{line-height:1.4}
+/* Os cinco cartões passaram a ser todos de dinheiro, e "R$ 21.300,00" em 32px
+   não cabe na largura de um quinto da tela: quebrava em "R$" numa linha e o
+   número na outra, o que faz o valor demorar para ser lido. Tamanho fluido e
+   sem quebra — o número encolhe conforme a tela em vez de se partir. */
+.financeMetrics .metricCard strong{font-size:clamp(19px,1.75vw,25px);white-space:nowrap;
+  letter-spacing:-.02em}
+
+/* As tabelas de análise rolam dentro da própria caixa. Cinco colunas de dinheiro
+   não cabem em celular, e sem isto a página inteira ganharia rolagem lateral. */
+.financeTabelaRolavel{overflow-x:auto;margin:0 25px 4px}
+.financeTabela{width:100%;border-collapse:collapse;font-size:14.5px;min-width:560px}
+.financeTabela th,.financeTabela td{padding:11px 14px;text-align:left;
+  border-bottom:1px solid var(--cor-borda);white-space:nowrap}
+.financeTabela th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--cor-tinta-fraca);font-weight:800}
+/* Dinheiro alinhado à direita e em tabular: é o que deixa a coluna comparável
+   de cima a baixo sem o olho ter de reler cada número. */
+.financeTabela .num{text-align:right;font-variant-numeric:tabular-nums}
+.financeTabela td.alerta{color:var(--cor-perigo);font-weight:800}
+.financeTabela tfoot td{border-bottom:0;border-top:2px solid var(--cor-borda);
+  font-weight:850;background:var(--cor-superficie-suave)}
+.financeTabela tbody tr:hover{background:var(--cor-superficie-suave)}
+
+.financeNota{margin:10px 25px 18px;font-size:13.5px;line-height:1.65;
+  color:var(--cor-tinta-fraca);display:flex;align-items:flex-start;gap:7px}
+.financeNota.alerta{color:var(--cor-perigo);font-weight:650}
+
+/* Em celular os cartões ficam em duas colunas, e o `nowrap` do valor cria uma
+   largura mínima que não cabia: dois cartões estouravam a tela por poucos
+   pixels e a página inteira ganhava rolagem lateral. Aperta o respiro e o
+   corpo do número — em vez de deixar o valor quebrar, que era o que a regra
+   acima foi corrigir. */
+@media(max-width:560px){
+  .financeMetrics{gap:11px}
+  .financeMetrics .metricCard{padding:15px 14px;min-height:auto}
+  .financeMetrics .metricCard strong{font-size:17px}
+  .financeMetrics .metricCard span{font-size:13px}
+  .metricVariacao{font-size:11.5px;margin-top:4px}
+  .financeTabelaRolavel,.financeNota{margin-left:18px;margin-right:18px}
+}
 /* Enviar, desfazer e imprimir na mesma barra, encostados à direita do título. */
 .producaoAcoesMes{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
 /* A linha do que a equipe enviou. Colunas fixas pelo motivo de sempre: cada

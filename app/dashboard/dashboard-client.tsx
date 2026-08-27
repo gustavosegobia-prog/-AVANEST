@@ -17,6 +17,11 @@ import { GraficosFinanceiro } from "@/components/graficos-financeiro";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { LocaisAdmin } from "@/components/locais-admin";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
+import {
+  FAIXAS_DE_IDADE, competenciaDoItem, envelhecimento, glosa, mesAnterior,
+  prazoMedioPorConvenio, saldoAReceber, saldoVencido, totaisDoEnvelhecimento,
+  variacao,
+} from "@/lib/financeiro-indicadores";
 import { ProducaoRecebida } from "@/components/producao-do-dia";
 
 const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
@@ -1071,6 +1076,22 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const received=periodItems.reduce((sum,item)=>sum+Number(item.recebido),0);
   const pending=Math.max(0,total-received);
   const glosas=periodItems.filter(item=>item.status==="glosa");
+
+  // Os indicadores que decidem o mês. Quase todos olham o HISTÓRICO INTEIRO, e
+  // não a competência: em faturamento por convênio o dinheiro do mês passado
+  // ainda está na rua, e uma tela que só olha o mês corrente faz uma operação
+  // saudável e uma quebrada parecerem iguais.
+  const hojeIso=new Date().toISOString().slice(0,10);
+  const aReceber=saldoAReceber(financeiro);
+  const vencido=saldoVencido(financeiro,hojeIso);
+  const linhasIdade=envelhecimento(financeiro,hojeIso);
+  const totaisIdade=totaisDoEnvelhecimento(linhasIdade);
+  const prazos=prazoMedioPorConvenio(financeiro,pagamentos);
+  const glosaDoMes=glosa(periodItems);
+  const anterior=mesAnterior(period);
+  const itensAnterior=financeiro.filter(item=>competenciaDoItem(item)===anterior);
+  const totalAnterior=itensAnterior.reduce((s,i)=>s+Number(i.valor),0);
+  const recebidoAnterior=itensAnterior.reduce((s,i)=>s+Number(i.recebido),0);
   const groups=Object.entries(periodItems.reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.convenio||"Particular"]??=[]).push(item);return acc},{}));
   const lots=Object.entries(periodItems.filter(item=>item.lote).reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.lote as string]??=[]).push(item);return acc},{}));
   const periodState=periodos.find(item=>item.periodo===period);
@@ -1210,7 +1231,27 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   return <div className="clinicalMain financeMain">
     <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label><button className="outlineClinical" disabled={!periodItems.length} title={periodItems.length?undefined:"Sem lançamentos na competência selecionada"} onClick={exportCsv}><Icone nome="imprimir" tamanho={15}/> Exportar CSV</button>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}</div></section>
     {message&&<p className={message.includes("não foi")?"clinicalError":"financeSuccess"}>{message}</p>}
-    <section className="metricGrid financeMetrics"><Metric value={periodItems.length} label="Atendimentos no mês" tone="blue" mascara={mascara}/><MoneyMetric value={total} label="Faturado no mês" tone="blue" mascara={mascara}/><Metric value={periodItems.filter(i=>!i.nota_fiscal).length} label="Notas pendentes" tone="amber" mascara={mascara}/><MoneyMetric value={received} label="Recebido no mês" tone="green" mascara={mascara}/><Metric value={glosas.length} label="Glosas em recurso" tone="red" mascara={mascara} extra={<OlhoValores oculto={oculto} onAlternar={alternar}/>}/></section>
+    {/* A barra responde à pergunta certa.
+        Antes ela dizia quanto foi faturado e recebido NO MÊS. Em faturamento
+        por convênio essa não é a pergunta: a nota saiu há dez dias e o convênio
+        paga em quarenta, então o mês corrente quase não tem recebimento e o
+        dinheiro que importa é o dos meses anteriores, ainda na rua.
+        Saem "Atendimentos no mês" (vira ticket médio, no fechamento) e "Notas
+        pendentes" (já tem contador no menu). Entram o saldo, o atraso e a
+        variação — número sem base de comparação não diz se foi bom ou ruim. */}
+    <section className="metricGrid financeMetrics">
+      <MoneyMetric value={aReceber} label="A receber" tone="blue" mascara={mascara}/>
+      <MoneyMetric value={vencido} label="Vencido" tone={vencido>0?"red":"green"} mascara={mascara}/>
+      <MoneyMetric value={total} label="Faturado no mês" tone="blue" mascara={mascara}
+        extra={<Variacao atual={total} anterior={totalAnterior} oculto={oculto}/>}/>
+      <MoneyMetric value={received} label="Recebido no mês" tone="green" mascara={mascara}
+        extra={<Variacao atual={received} anterior={recebidoAnterior} oculto={oculto}/>}/>
+      <MoneyMetric value={glosaDoMes.valor} label={glosaDoMes.percentual===null
+        ? "Glosa no mês"
+        : `Glosa no mês — ${glosaDoMes.percentual.toFixed(1).replace(".",",")}% do faturado`}
+        tone={glosaDoMes.valor>0?"red":"green"} mascara={mascara}
+        extra={<OlhoValores oculto={oculto} onAlternar={alternar}/>}/>
+    </section>
 
     <div className="financeLayout">
       {/* Coluna de tarefas. Os contadores são só do que pede ação — número em
@@ -1225,6 +1266,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ["producao","Produção da equipe"],
           ["repasses","Repasses"],
           ["grupo","Análise"],
+          // O contador é o que está vencido, e não o total a receber: a coluna
+          // conta o que pede ação hoje.
+          ["idade","A receber por idade",linhasIdade.filter(l=>l.faixas.acima90>0).length],
           ["graficos","Gráficos"],
           ["faturamento","Faturado por convênio"],
           ["fechamento","Fechamento do mês"],
@@ -1325,6 +1369,65 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       </>}
       {tarefa==="repasses"&&<>
     <PainelRecolhivel chave="fin-repasses" titulo="🩺 Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao={false}>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</PainelRecolhivel>
+      </>}
+      {tarefa==="idade"&&<>
+    {/* O instrumento nº 1 de recebíveis, e o que faltava.
+        "R$ 40.000 a receber" não diz nada sozinho: quarenta mil com trinta dias
+        é operação saudável, quarenta mil com cento e vinte é dinheiro em risco.
+        É esta tabela que diz para quem ligar na segunda-feira. */}
+    <PainelRecolhivel chave="fin-idade" titulo="A receber por idade"
+      legenda="há quanto tempo cada convênio está devendo" abrePadrao
+      extra={<b>{mascara(money(totaisIdade.total))}</b>}>
+      {linhasIdade.length===0
+        ? <div className="emptyClinical compactEmpty">Nada a receber. Tudo quitado.</div>
+        : <div className="financeTabelaRolavel">
+            <table className="financeTabela">
+              <thead><tr>
+                <th>Convênio</th>
+                {FAIXAS_DE_IDADE.map(f=><th key={f.id} className="num">{f.rotulo}</th>)}
+                <th className="num">Total</th>
+              </tr></thead>
+              <tbody>
+                {linhasIdade.map(linha=><tr key={linha.convenio}>
+                  <td>{linha.convenio}</td>
+                  {FAIXAS_DE_IDADE.map(f=>
+                    <td key={f.id} className={f.id==="acima90"&&linha.faixas[f.id]>0?"num alerta":"num"}>
+                      {linha.faixas[f.id]>0?mascara(money(linha.faixas[f.id])):"—"}
+                    </td>)}
+                  <td className="num"><b>{mascara(money(linha.total))}</b></td>
+                </tr>)}
+              </tbody>
+              <tfoot><tr>
+                <td>Total</td>
+                {FAIXAS_DE_IDADE.map(f=><td key={f.id} className="num">{mascara(money(totaisIdade.faixas[f.id]))}</td>)}
+                <td className="num">{mascara(money(totaisIdade.total))}</td>
+              </tr></tfoot>
+            </table>
+          </div>}
+      {totaisIdade.faixas.acima90>0&&
+        <p className="financeNota alerta"><Icone nome="alerta" tamanho={15}/> {mascara(money(totaisIdade.faixas.acima90))} esperando há mais de 90 dias. É o que costuma virar perda se ninguém cobrar.</p>}
+    </PainelRecolhivel>
+
+    {/* Quanto tempo cada convênio leva para pagar. Muda conversa de contrato e
+        muda a projeção de caixa: quem paga em 78 dias exige quase três meses de
+        capital de giro parado. */}
+    <PainelRecolhivel chave="fin-prazo" titulo="Prazo de pagamento por convênio"
+      legenda="da emissão da nota até o dinheiro entrar, com base no que já foi pago">
+      {prazos.length===0
+        ? <div className="emptyClinical compactEmpty">Ainda não há pagamentos com nota emitida para calcular o prazo.</div>
+        : <div className="financeTabelaRolavel">
+            <table className="financeTabela">
+              <thead><tr><th>Convênio</th><th className="num">Prazo médio</th><th className="num">Pagamentos</th><th className="num">Valor recebido</th></tr></thead>
+              <tbody>{prazos.map(p=><tr key={p.convenio}>
+                <td>{p.convenio}</td>
+                <td className={p.dias>60?"num alerta":"num"}>{p.dias} dias</td>
+                <td className="num">{p.pagamentos}</td>
+                <td className="num">{mascara(money(p.valor))}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
+      <p className="financeNota">A média é ponderada pelo valor: um pagamento grande e demorado pesa mais que vários pequenos e rápidos, porque é onde o seu dinheiro está.</p>
+    </PainelRecolhivel>
       </>}
       {tarefa==="graficos"&&<GraficosFinanceiro financeiro={financeiro} pagamentos={pagamentos} periodo={period}/>}
       {tarefa==="faturamento"&&<>
@@ -2098,6 +2201,26 @@ function MoneyMetric({value,label,tone,mascara,extra}:{value:number;label:string
   const texto=value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   return <div className="metricCard"><strong className={tone}>{mascara?mascara(texto):texto}</strong><span>{label}</span>{extra}</div>}
 function MoneySmall({value,label,tone=""}:{value:number;label:string;tone?:string}){return <div><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
+/**
+ * A seta de comparação com o mês anterior.
+ *
+ * Um valor sozinho não diz se foi bom ou ruim; ele só vira informação ao lado
+ * de uma base. Quando não há base — primeiro mês, ou mês anterior zerado — não
+ * inventa: some. "Aumento de 1.000%" saindo de zero é um número sem sentido
+ * ocupando o lugar mais visível da tela.
+ *
+ * Some também com os valores ocultos: o percentual entrega a ordem de grandeza
+ * de quem está olhando por cima do ombro, e era exatamente disso que o olhinho
+ * de esconder valores protege.
+ */
+function Variacao({atual,anterior,oculto}:{atual:number;anterior:number;oculto:boolean}){
+  const pct=variacao(atual,anterior);
+  if(pct===null||oculto) return null;
+  const subiu=pct>=0;
+  return <em className={`metricVariacao ${subiu?"subiu":"caiu"}`}>
+    {subiu?"▲":"▼"} {Math.abs(pct).toFixed(0)}% vs. mês anterior
+  </em>;
+}
 function Alert({ icone, title, text, action, danger=false, onClick }: { icone:Parameters<typeof Icone>[0]["nome"]; title:string; text:string; action:string; danger?:boolean; onClick?:()=>void }) {
   return <button type="button" className="alertItem" onClick={onClick} disabled={!onClick}>
     <i className={danger?"danger":""}><Icone nome={icone} tamanho={15}/></i>
