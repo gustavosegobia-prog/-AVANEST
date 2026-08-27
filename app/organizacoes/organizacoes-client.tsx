@@ -79,7 +79,6 @@ export function OrganizacoesClient({ nome, organizacoes }: { nome: string; organ
       <section className="clinicalPanel">
         <div className="panelTitle">
           <strong>Assinaturas</strong>
-          <span>cada organização paga o plano que contratou, com o preço congelado</span>
         </div>
         {organizacoes.length === 0
           ? <div className="emptyClinical compactEmpty">Nenhuma organização cadastrada.</div>

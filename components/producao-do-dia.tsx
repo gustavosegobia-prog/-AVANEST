@@ -907,7 +907,6 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
       <section className="clinicalPanel">
         <div className="panelTitle">
           <strong>Produção da equipe em {nomeMes} de {ano}</strong>
-          <span>o que cada um enviou para faturar</span>
         </div>
         {linhas.length === 0
           ? <div className="emptyClinical">

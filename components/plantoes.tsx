@@ -1284,9 +1284,8 @@ export function Plantoes({
           {ehAdmin && escopo === "grupo" && semCRM.length > 0 && (
             <p className="plantaoNota">
               {plural(semCRM.length, "profissional está", "profissionais estão")} fora
-              da escala por falta de CRM no cadastro: <strong>{semCRM.join(", ")}</strong>.
-              A escala é o documento de quem responde pela anestesia, e o registro
-              faz parte dele. O CRM se preenche em <strong>Admin → Equipe</strong>.
+              da escala por falta de CRM: <strong>{semCRM.join(", ")}</strong>.
+              Preencha em <strong>Admin → Equipe</strong>.
             </p>
           )}
           {/* Fica aqui, e não na barra de ações do calendário, por dois
@@ -1296,10 +1295,9 @@ export function Plantoes({
               quinto a faz quebrar no celular. */}
           {!ehAdmin && escopo === "grupo" && locaisDaColuna.length === 0 && (
             <p className="plantaoNota">
-              A escala de um hospital aparece para quem está escalado nele. Você
-              ainda não tem plantão lançado em nenhum — assim que entrar na
-              escala de um lugar, ele aparece aqui na coluna. Os seus plantões,
-              de qualquer lugar, estão sempre em <strong>Minha escala</strong>.
+              A escala de um hospital aparece para quem está escalado nele, e você
+              ainda não tem plantão em nenhum. Os seus estão em{" "}
+              <strong>Minha escala</strong>.
             </p>
           )}
           {ehAdmin && escopo === "grupo" && (
@@ -1506,7 +1504,6 @@ export function Plantoes({
           <section className="clinicalPanel">
             <div className="panelTitle">
               <strong>{escopo === "grupo" ? `Escala da equipe em ${MESES[m - 1]}` : `Meus plantões em ${MESES[m - 1]}`}</strong>
-              <span>o valor é editável no seu próprio plantão: o combinado muda de um turno para outro</span>
             </div>
             {/* Os nomes das colunas, uma vez só no alto.
                 Antes cada linha carregava "Valor" e "Situação" em cima do
@@ -2007,7 +2004,7 @@ function ModelosPainel({
     <section className="clinicalPanel">
       <div className="panelTitle">
         <strong>Modelos de plantão</strong>
-        <span>o turno que se repete, salvo uma vez: lançar o mês vira um toque por dia</span>
+        <span>o turno que se repete</span>
       </div>
 
       {erro && <p className="clinicalError">{erro}</p>}
@@ -2500,7 +2497,6 @@ function TrocasPainel({
       <section className="clinicalPanel">
         <div className="panelTitle">
           <strong>Pedidos recebidos</strong>
-          <span>convites para você e plantões oferecidos ao grupo</span>
         </div>
         {recebidos.length === 0
           ? <div className="emptyClinical compactEmpty">Nenhum pedido no momento.</div>

@@ -796,7 +796,7 @@ export function DashboardClient({
             </>}
             {secaoMedico==="historico"&&<>
           <section className="clinicalPanel historyPanel">
-            <div className="panelTitle"><strong>Histórico de avaliações</strong><span>Encontre rascunhos e avaliações concluídas já salvas.</span></div>
+            <div className="panelTitle"><strong>Histórico de avaliações</strong></div>
             <div className="historyFilters">
               <input ref={buscaHistoricoRef} value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
               <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)} aria-label="Filtrar por status"><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>
@@ -1644,7 +1644,6 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
   return <section className="clinicalPanel">
     <div className="panelTitle">
       <strong><Icone nome="envelope"/> Convidar para {organizacao?.nome??"a organização"}</strong>
-      <span>quem aceitar entra somente nesta organização, com o papel definido aqui</span>
     </div>
     <div className="inviteModeSwitch" role="tablist">
       <button type="button" role="tab" aria-selected={meio==="email"} className={meio==="email"?"active":""}
@@ -1826,7 +1825,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
       <div className="financeConteudo">
       {aba==="usuarios"&&<>
     <section className="clinicalPanel adminUsers">
-      <div className="panelTitle"><strong>Usuários e permissões</strong><span>Alterações ficam registradas na auditoria.</span></div>
+      <div className="panelTitle"><strong>Usuários e permissões</strong></div>
       <div className="adminFiltros">
         <input
           className="adminBusca" type="search" value={buscaUsuario}
@@ -1939,7 +1938,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
       </>}
       {aba==="dados"&&<>
     <section className="clinicalPanel">
-      <div className="panelTitle"><strong>Dados da organização</strong><span>O nome abaixo é o que sai impresso na ficha de anestesia e no termo de consentimento.</span></div>
+      <div className="panelTitle"><strong>Dados da organização</strong><span>sai impresso na ficha e no termo</span></div>
       <div className="orgCampos">
         <label className="clinicalField"><span>Nome da organização</span><input value={org.nome} onChange={e=>setOrg(v=>({...v,nome:e.target.value}))}/></label>
         <label className="clinicalField"><span>Telefone</span><input value={org.telefone} onChange={e=>setOrg(v=>({...v,telefone:e.target.value}))} placeholder="(00) 00000-0000"/></label>
@@ -1956,7 +1955,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfi
       </>}
       {aba==="locais"&&<>
         <section className="clinicalPanel">
-          <div className="panelTitle"><strong>Locais de atendimento</strong><span>Hospitais, clínicas e consultórios onde a equipe atende.</span></div>
+          <div className="panelTitle"><strong>Locais de atendimento</strong></div>
           <div className="locaisAdminCaixa">
             <LocaisAdmin
               institutionId={perfil.institution_id}
