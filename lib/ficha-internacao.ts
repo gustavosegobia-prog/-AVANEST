@@ -32,6 +32,13 @@ export type DadosDaFicha = { paciente?: string; convenio?: string; procedimento?
  */
 const ROTULOS: Array<{ campo: Campo; apelidos: string[] }> = [
   { campo: "paciente", apelidos: [
+    // "10 - nome" é o campo do paciente na guia TISS, e vem antes de "nome"
+    // por um motivo que custou caro: aquela guia tem CINCO campos chamados
+    // "Nome" — do contratado, do profissional solicitante, do hospital
+    // solicitado, do hospital autorizado e do beneficiário. Sem o número, o
+    // leitor pegava o primeiro que aparecesse e o nome do cirurgião entrava
+    // como nome do paciente.
+    "10 - nome", "10-nome", "nome do beneficiario", "beneficiario",
     "nome do paciente", "paciente", "nome completo", "nome civil", "nome",
   ] },
   { campo: "convenio", apelidos: [
@@ -71,7 +78,38 @@ const NUNCA_E_VALOR = [
   "codigo do procedimento", "carater da internacao", "documento",
   "raca/cor", "raca", "etnia", "uf", "serie", "cbo", "cnpj", "cnae",
   "solicitacao", "internamento", "laudo", "reserva", "orgao emissor",
+  // Da guia TISS de solicitação de internação. Todos começam com "Nome" e
+  // nenhum é o paciente: são o médico, o hospital e a operadora. Sem esta
+  // lista, "Nome do Contratado EDSON LUIZ MICHALKIEWICZ" virava o nome do
+  // doente na anotação de produção — e a cobrança sairia no nome errado.
+  "nome do contratado", "nome do profissional solicitante",
+  "nome do profissional executante", "nome do hospital/local solicitado",
+  "nome do hospital / local solicitado", "nome do hospital/local autorizado",
+  "nome do hospital / local autorizado", "nome do hospital", "nome do local",
+  "nome do contratado executante", "nome do solicitante",
+  "registro ans", "numero da guia", "numero da carteira", "codigo na operadora",
+  "codigo do contratado", "numero no conselho", "conselho profissional",
+  "carater do atendimento", "tipo de internacao", "regime de internacao",
+  "indicacao clinica", "data de solicitacao", "data da autorizacao",
+  "validade da carteira", "atendimento a rn", "tipo da acomodacao autorizada",
+  "qtde. diarias solicitadas", "qtde diarias solicitadas",
+  "qtde. diarias autorizadas", "qtde diarias autorizadas",
+  "data provavel da admissao hospitalar", "codigo cbo", "codigo cnes",
 ];
+
+/**
+ * Operadoras reconhecidas pela marca, e não pelo rótulo.
+ *
+ * Da maior para a menor: "unimed" antes de "med" evitaria confusão se um dia
+ * "med" entrasse aqui. A lista é curta de propósito — nome genérico demais
+ * casaria com palavra comum do formulário e trocaria o convênio do paciente.
+ */
+const OPERADORAS = [
+  "Unimed", "Bradesco Saúde", "SulAmérica", "Amil", "Hapvida", "NotreDame",
+  "Cassi", "Golden Cross", "Porto Seguro", "Allianz", "Caixa Saúde",
+  "Sompo", "Prevent Senior", "São Cristóvão", "Med Tour", "Life Empresarial",
+  "Care Plus", "Omint", "Ampla", "Bradesco",
+].sort((a, b) => b.length - a.length);
 
 /** Tira acento, baixa a caixa e junta espaços. */
 const normalizar = (t: string) =>
@@ -442,6 +480,23 @@ export function lerFichaDeInternacao(texto: string): {
   // quadradinho. Se a palavra está na ficha e nenhum convênio foi encontrado,
   // é a resposta — e é justamente o caso em que esquecer de cobrar custa o
   // valor inteiro, porque particular não deixa rastro no faturamento.
+  // A operadora pela MARCA, quando não vem rotulada.
+  //
+  // A guia TISS de solicitação de internação não tem campo "Convênio": a
+  // operadora está no logotipo, que é imagem e não texto, e no cabeçalho —
+  // "Unimed Campo Mourão". O nome quase sempre sobra em algum canto do
+  // reconhecimento, e achá-lo é melhor do que devolver o campo vazio e obrigar
+  // a digitar em toda guia da mesma operadora.
+  //
+  // Só entra quando NENHUM rótulo respondeu: rótulo explícito sempre ganha da
+  // marca solta, senão uma guia da Unimed que cobre um paciente Bradesco
+  // sairia com a operadora errada.
+  if (!dados.convenio) {
+    const achada = OPERADORAS.find((o) => new RegExp(`\\b${escaparRegex(o.toLowerCase())}\\b`)
+      .test(normalizar(texto)));
+    if (achada) dados.convenio = achada;
+  }
+
   if (!dados.convenio && /\bparticular\b/i.test(normalizar(texto))) {
     dados.convenio = "Particular";
   }

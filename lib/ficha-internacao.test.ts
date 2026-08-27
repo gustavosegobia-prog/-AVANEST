@@ -310,3 +310,48 @@ test("SUS só entra quando o documento é o laudo", () => {
   const { dados } = lerFichaDeInternacao("Paciente: CARLA REGINA DUARTE\n");
   assert.equal(dados.convenio, undefined);
 });
+
+// ---------------------------------------------------------------------------
+// A guia TISS de solicitação de internação
+// ---------------------------------------------------------------------------
+// O texto abaixo é o que o reconhecimento devolveu de uma guia real da Unimed
+// Campo Mourão, fotografada pelo Gustavo. Ela quebrou o leitor de dois jeitos
+// ao mesmo tempo, e por isso vira teste.
+const GUIA_TISS = `Unimed Campo Mourao
+GUIA DE SOLICITACAO DE INTERNACAO
+1 - Registro ANS 306100   2 - No Guia no Prestador   3 - Numero da Guia Atribuido pela Operadora
+4 - Data da Autorizacao 26/08/2026   5 - Senha   6 - Data de Validade da Senha
+Dados do Beneficiario
+7 - Numero da Carteira 0183000000127160   8 - Validade da Carteira 01/05/2027
+9 - Atendimento a RN N
+10 - Nome IVETE SOUZA VEIGA MENEZES
+11 - Cartao Nacional de Saude
+Dados do Contratado Solicitante
+12 - Codigo na Operadora 88161
+13 - Nome do Contratado EDSON LUIZ MICHALKIEWICZ
+14 - Nome do Profissional Solicitante EDSON LUIZ MICHALKIEWICZ
+15 - Conselho Profissional 06   16 - Numero no Conselho 012328
+20 - Nome do Hospital/Local Solicitado EDSON LUIZ MICHALKIEWICZ`;
+
+test("guia TISS: o paciente é o campo 10, e não o nome do médico", () => {
+  // O erro que esta guia produzia: ela tem cinco campos "Nome" e o primeiro
+  // que aparecia com rótulo conhecido era o do contratado. A produção do mês
+  // saía com o nome do cirurgião no lugar do doente — e a cobrança ia junto.
+  const { dados } = lerFichaDeInternacao(GUIA_TISS);
+  assert.equal(dados.paciente, "IVETE SOUZA VEIGA MENEZES");
+});
+
+test("guia TISS: a operadora vem da marca quando não há campo de convênio", () => {
+  // A guia não tem campo "Convênio": a operadora está no logotipo e no
+  // cabeçalho. Devolver vazio obrigaria a digitar "Unimed" em toda guia.
+  const { dados } = lerFichaDeInternacao(GUIA_TISS);
+  assert.equal(dados.convenio, "Unimed");
+});
+
+test("rótulo explícito ganha da marca solta", () => {
+  // Guia impressa em papel da Unimed que cobre um paciente de outro convênio:
+  // o campo rotulado manda, senão o paciente sairia na operadora errada.
+  const { dados } = lerFichaDeInternacao(
+    "Unimed Campo Mourao\n10 - Nome MARIA DA SILVA\nConvenio: Bradesco Saude");
+  assert.equal(dados.convenio, "Bradesco Saude");
+});

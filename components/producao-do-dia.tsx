@@ -108,6 +108,70 @@ export function lerValor(bruto: string): number {
  * Sem binarizar. Preto e branco puro decide por pixel o que é letra, e numa
  * foto com sombra ele apaga a metade escura da ficha inteira.
  */
+/**
+ * A mesma imagem, girada.
+ *
+ * Devolve a própria fonte quando o giro é zero: girar por girar custa uma
+ * cópia do quadro inteiro, e a maioria das fotos já está em pé.
+ */
+function girar(fonte: HTMLCanvasElement, graus: 90 | 270): HTMLCanvasElement | null {
+  const tela = document.createElement("canvas");
+  // Trocadas de propósito: girar um quarto de volta troca largura por altura.
+  tela.width = fonte.height; tela.height = fonte.width;
+  const pincel = tela.getContext("2d");
+  if (!pincel) return null;
+  pincel.translate(tela.width / 2, tela.height / 2);
+  pincel.rotate((graus * Math.PI) / 180);
+  pincel.drawImage(fonte, -fonte.width / 2, -fonte.height / 2);
+  return tela;
+}
+
+/**
+ * Quanto texto de verdade saiu de uma leitura.
+ *
+ * Conta LETRAS, e não caracteres. Texto girado 90° não devolve pouca coisa —
+ * devolve muita sujeira: traços de tabela viram "|", "l", "1", "—" aos montes.
+ * Um placar por comprimento escolheria justamente a leitura errada; um placar
+ * por letras escolhe a que tem palavras.
+ */
+const quantoTexto = (t: string) => (t.match(/\p{L}/gu) ?? []).length;
+
+/**
+ * Reconhecer a ficha, tentando as orientações possíveis.
+ *
+ * Em pé primeiro, porque é o caso comum e quase sempre encerra a busca: se a
+ * primeira leitura já traz texto de sobra, as outras duas nem rodam e a espera
+ * é a de antes.
+ *
+ * As outras duas existem por causa da guia larga fotografada sobre a mesa: quem
+ * fotografa vira o celular, não o papel, e o EXIF guarda a rotação da câmera —
+ * não a do documento. A foto sai "em pé" com o texto deitado, e texto deitado
+ * não se reconhece.
+ */
+async function melhorLeitura(
+  // O tipo vem da própria biblioteca, por import type: escrever a assinatura à
+  // mão aqui obrigaria a manter duas versões dela em dia.
+  Tesseract: { recognize: typeof import("tesseract.js").recognize },
+  preparada: HTMLCanvasElement | File,
+) {
+  const primeira = await Tesseract.recognize(preparada, "por");
+  // 240 letras é mais ou menos o que uma guia preenchida rende quando foi lida
+  // de verdade. Abaixo disso, vale gastar os segundos das outras tentativas.
+  if (!(preparada instanceof HTMLCanvasElement)
+      || quantoTexto(primeira.data.text) >= 240) return primeira;
+
+  let melhor = primeira;
+  for (const graus of [90, 270] as const) {
+    const virada = girar(preparada, graus);
+    if (!virada) continue;
+    try {
+      const tentativa = await Tesseract.recognize(virada, "por");
+      if (quantoTexto(tentativa.data.text) > quantoTexto(melhor.data.text)) melhor = tentativa;
+    } catch { /* uma orientação que falha não derruba as outras */ }
+  }
+  return melhor;
+}
+
 async function prepararFoto(arquivo: File): Promise<HTMLCanvasElement | File> {
   try {
     // imageOrientation não é detalhe: o celular grava a foto deitada e põe no
@@ -231,7 +295,19 @@ export function ProducaoDoDia({
     try {
       const { default: Tesseract } = await import("tesseract.js");
       const preparada = await prepararFoto(arquivo);
-      const { data } = await Tesseract.recognize(preparada, "por");
+
+      // Tenta a foto em pé e deitada, e fica com a leitura que rendeu mais.
+      //
+      // A guia de internação é uma folha larga, e quem a fotografa sobre a
+      // mesa vira o CELULAR, não o papel. O EXIF registra a rotação da câmera,
+      // não a do documento — então `imageOrientation: "from-image"` endireita
+      // a foto e o texto continua deitado. Texto girado 90° não se reconhece:
+      // sai um punhado de letras soltas, e foi o que aconteceu com a guia da
+      // Unimed que o Gustavo mandou.
+      //
+      // O custo é rodar o reconhecimento até três vezes. Vale: uma foto que
+      // não lê custa a anotação inteira, digitada à mão ou esquecida.
+      const { data } = await melhorLeitura(Tesseract, preparada);
       const { dados, naoEncontrados } = lerFichaDeInternacao(data.text);
 
       if (!dados.paciente && !dados.convenio && !dados.procedimento) {
