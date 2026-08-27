@@ -142,7 +142,7 @@ export default function PrivacidadePage() {
       <p>
         <b>Pacientes:</b> procure a clínica ou o médico que realizou o atendimento — é a
         controladora dos seus dados. <b>Usuários do sistema:</b> escreva para{" "}
-        <a href="mailto:suporte@avanest.com.br">suporte@avanest.com.br</a>.
+        <a href="mailto:contato@avanest.com.br">contato@avanest.com.br</a>.
       </p>
       <p>
         Lembrando: registros clínicos têm guarda obrigatória por lei, e por isso um pedido de
@@ -165,7 +165,7 @@ export default function PrivacidadePage() {
       <h2>11. Encarregado (DPO) e contato</h2>
       <p>
         Encargo exercido por G. Segobia Serviços Médicos Ltda. Contato para assuntos de proteção de
-        dados: <a href="mailto:suporte@avanest.com.br">suporte@avanest.com.br</a>.
+        dados: <a href="mailto:contato@avanest.com.br">contato@avanest.com.br</a>.
       </p>
 
       <h2>12. Alterações</h2>

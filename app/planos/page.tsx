@@ -84,7 +84,7 @@ const perguntas = (a: {
   },
   {
     p: "O suporte está incluído em todos os planos?",
-    r: "Sim. Suporte, atualizações e impressão ilimitada de fichas, termos e orientações entram em todos os planos, sem custo extra.",
+    r: "Sim. Suporte, atualizações e impressão ilimitada de fichas, termos e orientações entram em todos os planos, sem custo extra. O canal é suporte@avanest.com.br, e dentro do sistema há a aba de chamados.",
   },
   {
     p: "Como faço para começar?",

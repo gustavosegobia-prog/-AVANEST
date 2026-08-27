@@ -16,7 +16,7 @@ export default function TermosPage() {
       <h2>1. Quem somos</h2>
       <p>
         O AVANEST é operado por <b>G. Segobia Serviços Médicos Ltda.</b>, CNPJ 55.965.276/0001-04,
-        adiante chamada AVANEST. Contato: <a href="mailto:suporte@avanest.com.br">suporte@avanest.com.br</a>.
+        adiante chamada AVANEST. Contato: <a href="mailto:contato@avanest.com.br">contato@avanest.com.br</a>.
       </p>
 
       <h2>2. O que o AVANEST é — e o que não é</h2>
@@ -122,6 +122,10 @@ export default function TermosPage() {
       <p>
         Recomendamos imprimir ou arquivar os documentos essenciais de cada atendimento. Nenhum
         sistema substitui a cautela de ter à mão o que é indispensável no dia da cirurgia.
+      </p>
+      <p>
+        <b>Suporte:</b> incluído em todos os planos, pela aba de chamados dentro do sistema ou por{" "}
+        <a href="mailto:suporte@avanest.com.br">suporte@avanest.com.br</a>.
       </p>
 
       <h2>10. Limite de responsabilidade</h2>
