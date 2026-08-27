@@ -2868,6 +2868,52 @@ button:disabled{cursor:not-allowed}
 .financeTarefas .escalaNova:hover{border-color:var(--cor-marca);
   background:var(--cor-marca-suave)}
 
+/* --- Campos de data no iPhone e no iPad --------------------------------
+   O WebKit desenha input[type=date] como controle nativo: ele ignora a altura
+   que a folha pede, monta a própria caixa a partir do texto da data e a
+   centraliza. Com o padding de 14px que os campos usam, o resultado no iPhone
+   é uma caixa quase o dobro da vizinha — foi o que apareceu em "Data de
+   nascimento" ao lado de "Idade", e em "Última dose" no card do medicamento.
+
+   appearance:none tira o desenho nativo; o padding vertical vai a zero e a
+   altura passa a ser a mesma dos outros campos; e ::-webkit-date-and-time-value
+   é o pedaço interno que carrega o texto — sem ele, a data fica centralizada
+   enquanto todo campo ao lado alinha à esquerda. */
+input[type="date"], input[type="datetime-local"],
+input[type="time"], input[type="month"]{
+  -webkit-appearance:none;appearance:none;
+  padding-block:0;
+  /* min-width:0 é o que impede o controle nativo de estourar a coluna da
+     grade: sem ele o WebKit reserva a largura do formato completo da data e a
+     célula cresce, empurrando as vizinhas. */
+  min-width:0;max-width:100%;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value{text-align:left}
+input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
+.evalField input[type="date"],.evalField input[type="datetime-local"],
+.medicationGrid input[type="date"],.medicationGrid input[type="datetime-local"]{
+  display:flex;align-items:center;
+}
+
+/* --- Botão de ação não quebra frase no meio ----------------------------
+   "Voltar e corrigir avaliação" virava "Voltar e corrigir" / "avaliação" em
+   duas linhas, e "Excluir avaliação" idem: o botão parecia quebrado, e não
+   apertado. Numa fila de botões, o certo é o botão inteiro descer para a
+   linha seguinte — e é isso que o wrap do contêiner faz. */
+.documentsHeading{flex-wrap:wrap}
+.documentsHeading h1{text-wrap:balance}
+.documentsHeading>div{flex-wrap:wrap}
+.documentsHeading button,.documentsHeading .outlineClinical,
+.evalControls button,.evalFooterActions button{white-space:nowrap}
+@media(max-width:620px){
+  /* Em tela estreita cada ação ocupa a linha inteira: meia frase num botão de
+     120px não se lê, e dois botões apertados lado a lado erram o dedo. */
+  .documentsHeading>div{width:100%;flex-direction:column;align-items:stretch}
+  .documentsHeading>div>*{width:100%;justify-content:center;text-align:center}
+}
+
 /* --- Produção: o mês e as folhas ---------------------------------------
    A seta do mês vivia só dentro do calendário, na aba Escala. Quem abria
    Produção caía no mês corrente — zerado, porque o mês ainda está começando —
