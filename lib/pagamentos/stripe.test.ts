@@ -191,6 +191,35 @@ describe("lerEvento", () => {
     assert.equal(evento?.institutionId, ORG);
   });
 
+  it("acha a assinatura na fatura da API nova, que aninha em parent", () => {
+    // De 2025-03 em diante `invoice.subscription` e `invoice.subscription_details`
+    // deixaram de existir e passaram a morar em `invoice.parent`. Ler só a forma
+    // velha deixaria toda RENOVAÇÃO órfã — a primeira compra passa pelo
+    // client_reference_id do checkout e esconderia o problema até o mês seguinte.
+    const fim = 1_800_800_000;
+    const evento = lerEvento({
+      id: "evt_novo", type: "invoice.paid",
+      data: { object: { id: "in_novo", customer: "cus_9", amount_paid: 45900,
+                        lines: { data: [{ period: { end: fim } }] },
+                        parent: { subscription_details: {
+                          subscription: "sub_9",
+                          metadata: { institution_id: ORG } } } } },
+    });
+    assert.equal(evento?.assinaturaId, "sub_9");
+    assert.equal(evento?.institutionId, ORG);
+    assert.equal(evento?.acessoAte, fim);
+  });
+
+  it("a forma nova manda quando as duas vêm juntas", () => {
+    const evento = lerEvento({
+      id: "evt_dois", type: "invoice.paid",
+      data: { object: { id: "in_dois", amount_paid: 12900,
+                        subscription_details: { subscription: "sub_velha" },
+                        parent: { subscription_details: { subscription: "sub_nova" } } } },
+    });
+    assert.equal(evento?.assinaturaId, "sub_nova");
+  });
+
   it("cai para o período da linha da fatura quando não há current_period_end", () => {
     const fim = 1_800_700_000;
     const evento = lerEvento({

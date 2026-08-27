@@ -224,8 +224,16 @@ type ObjetoStripe = {
   current_period_end?: number;
   trial_end?: number | null;
   metadata?: Record<string, string> | null;
-  subscription_details?: { metadata?: Record<string, string> | null } | null;
+  subscription_details?: DetalhesDaAssinatura | null;
+  // Versões da API a partir de 2025-03 movem o vínculo da fatura com a
+  // assinatura para cá. Ver `assinaturaDaFatura`.
+  parent?: { subscription_details?: DetalhesDaAssinatura | null } | null;
   lines?: { data?: Array<{ period?: { end?: number } }> } | null;
+};
+
+type DetalhesDaAssinatura = {
+  subscription?: string | null;
+  metadata?: Record<string, string> | null;
 };
 
 type CorpoWebhook = { id?: string; type?: string; data?: { object?: ObjetoStripe } };
@@ -239,17 +247,42 @@ function fimDoPeriodo(objeto: ObjetoStripe): number | null {
   return typeof linha === "number" ? linha : null;
 }
 
+/**
+ * De qual assinatura é esta fatura, e o que veio anexado a ela.
+ *
+ * A fatura mudou de forma no meio do caminho. Até 2025-02 o Stripe entregava
+ * `invoice.subscription` e `invoice.subscription_details`; de 2025-03 em diante
+ * os dois moraram para dentro de `invoice.parent.subscription_details`. Um
+ * webhook criado hoje nasce na versão nova, e um criado no ano passado continua
+ * na antiga — a conta escolhe, e o painel deixa mudar depois.
+ *
+ * Ler só uma das formas quebra exatamente onde dói mais: a primeira compra
+ * passaria (ela vem pelo `client_reference_id` do checkout, que não mudou), e
+ * só as RENOVAÇÕES ficariam órfãs — sem assinatura para achar a organização,
+ * ninguém estende a validade e o cliente adimplente é bloqueado.
+ */
+function daAssinatura(objeto: ObjetoStripe): DetalhesDaAssinatura {
+  const novo = objeto.parent?.subscription_details;
+  const velho = objeto.subscription_details;
+  return {
+    subscription: novo?.subscription ?? velho?.subscription ?? null,
+    metadata: novo?.metadata ?? velho?.metadata ?? null,
+  };
+}
+
 export function lerEvento(corpo: unknown): EventoDeCobranca | null {
   const dados = corpo as CorpoWebhook | null;
   const evento = String(dados?.type ?? "");
   const objeto = dados?.data?.object;
   if (!evento || !objeto?.id) return null;
 
-  const meta = objeto.metadata ?? objeto.subscription_details?.metadata ?? null;
+  const daFatura = daAssinatura(objeto);
+  const meta = objeto.metadata ?? daFatura.metadata ?? null;
   const referencia = String(objeto.client_reference_id ?? meta?.institution_id ?? "");
   const institutionId = UUID.test(referencia) ? referencia : null;
   const assinaturaId = typeof objeto.subscription === "string"
     ? objeto.subscription
+    : typeof daFatura.subscription === "string" ? daFatura.subscription
     : objeto.object === "subscription" ? objeto.id : null;
 
   const base = {
