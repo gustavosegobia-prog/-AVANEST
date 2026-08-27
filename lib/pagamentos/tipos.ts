@@ -3,13 +3,17 @@
 // Existe porque a conta do Mercado Pago foi bloqueada e a assinatura ficou sem
 // por onde cobrar. Trocar de provedor não pode significar reescrever as rotas,
 // o banco e a tela — então o que muda de um gateway para outro fica dentro de
-// um adaptador, e o resto do sistema fala esta linguagem aqui.
+// um adaptador, e o resto do sistema fala esta linguagem aqui. Já valeu duas
+// vezes: Mercado Pago → Asaas → Stripe, sem tocar em rota nem em banco.
 //
 // A regra é: nenhum vocabulário de gateway atravessa esta fronteira. "approved",
 // "cancelled" e "paused" são os únicos status que o banco entende, e é o
 // adaptador que traduz PAYMENT_CONFIRMED, authorized_payment e o que vier.
 
-export type Provedor = "mercadopago" | "asaas" | "stripe";
+// Um só hoje. A união continua sendo um tipo, e não uma string solta, porque é
+// ela que faz o compilador apontar todo lugar a acertar quando entrar o
+// próximo — foi assim que a entrada do Stripe não deixou ponta faltando.
+export type Provedor = "stripe";
 
 export type NovaAssinatura = {
   institutionId: string;
@@ -35,7 +39,7 @@ export type AssinaturaCriada = {
   provedor: Provedor;
   /**
    * O identificador que o webhook vai usar para reencontrar esta organização.
-   * Nem sempre é o id da assinatura: no Asaas a assinatura só passa a existir
+   * Nem sempre é o id da assinatura: no Stripe a assinatura só passa a existir
    * quando o cliente termina o checkout, então aqui vai o id da sessão, e o id
    * definitivo é gravado quando a primeira cobrança chega.
    */
@@ -88,10 +92,10 @@ export type EventoDeCobranca = {
  * O que o resto do sistema pede a um gateway.
  *
  * O webhook de propósito NÃO está aqui. Cada provedor autentica do seu jeito —
- * o Mercado Pago assina o corpo com HMAC, o Asaas manda um token fixo no
- * cabeçalho — e cada um chama uma URL própria, configurada no painel dele.
- * Espremer os dois numa assinatura de método só produziria um parâmetro que
- * metade dos provedores ignora. Cada webhook mora na sua rota, e os dois
+ * o Stripe assina os bytes brutos com HMAC e manda no cabeçalho, outros já
+ * usaram token fixo — e cada um chama uma URL própria, configurada no painel
+ * dele. Espremer isso numa assinatura de método só produziria um parâmetro que
+ * metade dos provedores ignora. Cada webhook mora na sua rota, e todos
  * desembocam no mesmo registrar_pagamento_assinatura.
  */
 export interface AdaptadorDePagamento {

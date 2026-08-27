@@ -86,8 +86,10 @@ export async function POST(request: NextRequest) {
   }
 
   // O gateway em que ESTA assinatura nasceu, não o que cobra as novas. Mandar
-  // um preapproval do Mercado Pago para o Asaas daria "não encontrei", e o
-  // cliente seguiria sendo cobrado depois de ter cancelado.
+  // o id de um gateway para outro daria "não encontrei", e o cliente seguiria
+  // sendo cobrado depois de ter cancelado. Hoje só o Stripe tem adaptador; as
+  // organizações que ainda guardam 'asaas' ou 'mercadopago' caem no null
+  // abaixo, e nenhuma delas tem assinatura ativa para encerrar.
   const provedor = adaptadorDe(dados?.pagamento_provedor);
   if (!provedor) {
     return NextResponse.json({

@@ -1,61 +1,27 @@
-import { asaas } from "./asaas";
 import { stripe } from "./stripe";
-import {
-  cancelarAssinatura as cancelarNoMercadoPago,
-  criarAssinatura as criarNoMercadoPago,
-  mercadoPagoConfigurado,
-} from "../mercado-pago";
 import type { AdaptadorDePagamento, Provedor } from "./tipos";
 
 // Qual gateway cobra.
 //
-// O Mercado Pago continua aqui, e não por nostalgia: quem já assinou por lá
-// tem uma cobrança recorrente rodando, e cancelar essa assinatura precisa
-// continuar funcionando mesmo depois que ninguém novo entrar por ele. O mesmo
-// vale para o Asaas — o suporte nunca respondeu e ninguém novo entra por ele,
-// mas cancelar quem está lá tem de seguir funcionando.
+// Hoje é um só. Já foram três: o Mercado Pago bloqueou a conta, o Asaas nunca
+// respondeu ao suporte depois que o primeiro pagamento não passou, e os dois
+// saíram daqui quando o Stripe entrou em produção e nenhuma organização tinha
+// assinatura ativa por eles — conferido no banco antes de remover.
+//
+// A camada de adaptador continua, e não por simetria vazia: ela é o que
+// permitiu trocar de gateway duas vezes sem reescrever rota, banco e tela. Um
+// provedor novo entra aqui e em ADAPTADORES, e o resto do sistema não fica
+// sabendo.
 
-const mercadoPago: AdaptadorDePagamento = {
-  nome: "mercadopago",
-  configurado: mercadoPagoConfigurado,
-  async criarAssinatura(dados) {
-    const preapproval = await criarNoMercadoPago({
-      institutionId: dados.institutionId,
-      organizacao: dados.organizacao,
-      plano: dados.plano,
-      emailPagador: dados.emailPagador,
-      valorMensal: dados.valorMensal,
-      retorno: dados.retornoSucesso,
-    });
-    if (!preapproval?.init_point) {
-      throw new Error("O Mercado Pago não devolveu o link de pagamento.");
-    }
-    return { provedor: "mercadopago", referencia: preapproval.id, url: preapproval.init_point };
-  },
-  async cancelarAssinatura(assinaturaId) {
-    await cancelarNoMercadoPago(assinaturaId);
-  },
-};
-
-const ADAPTADORES: Record<Provedor, AdaptadorDePagamento> = {
-  stripe,
-  asaas,
-  mercadopago: mercadoPago,
-};
+const ADAPTADORES: Record<Provedor, AdaptadorDePagamento> = { stripe };
 
 /**
  * Quem cobra as assinaturas novas.
  *
  * A escolha é por configuração, não por código: quem tiver chave configurada
- * cobra, na ordem abaixo. PAGAMENTOS_PROVEDOR força um deles, para quando mais
- * de um estiver configurado ao mesmo tempo — durante uma migração, por
- * exemplo. Devolve null quando não há nenhum, e aí a tela avisa em vez de
- * quebrar.
- *
- * A ordem tem o Stripe na frente porque é ele que cobra hoje. As chaves dos
- * outros dois continuam nas variáveis de ambiente para o cancelamento de quem
- * já está lá — se a ordem fosse a antiga, um cliente novo entraria num gateway
- * que ninguém está atendendo.
+ * cobra. PAGAMENTOS_PROVEDOR força um deles, para o dia em que houver mais de
+ * um configurado ao mesmo tempo — durante uma migração, por exemplo. Devolve
+ * null quando não há nenhum, e aí a tela avisa em vez de quebrar.
  */
 export function provedorAtivo(): AdaptadorDePagamento | null {
   const escolhido = process.env.PAGAMENTOS_PROVEDOR as Provedor | undefined;
@@ -64,8 +30,6 @@ export function provedorAtivo(): AdaptadorDePagamento | null {
     return adaptador.configurado() ? adaptador : null;
   }
   if (stripe.configurado()) return stripe;
-  if (asaas.configurado()) return asaas;
-  if (mercadoPago.configurado()) return mercadoPago;
   return null;
 }
 
@@ -74,8 +38,13 @@ export function provedorAtivo(): AdaptadorDePagamento | null {
  *
  * Cancelar a assinatura de um cliente antigo tem de falar com o gateway em que
  * ela foi criada. Usar o provedor ativo aqui mandaria o pedido de cancelamento
- * do Mercado Pago para o Asaas, que responderia "não encontrei" — e o cliente
+ * de um gateway para outro, que responderia "não encontrei" — e o cliente
  * seguiria sendo cobrado depois de ter cancelado.
+ *
+ * O banco ainda guarda 'asaas' e 'mercadopago' em organizações antigas, todas
+ * sem assinatura ativa. Para elas isto devolve null, e a rota de cancelamento
+ * responde que a equipe encerra a cobrança à mão — que é a verdade, já que não
+ * há mais código para falar com aqueles dois.
  */
 export function adaptadorDe(provedor: string | null | undefined): AdaptadorDePagamento | null {
   if (!provedor || !(provedor in ADAPTADORES)) return null;
