@@ -791,8 +791,10 @@ export function ProducaoDoMes({
       {itens.length > 0 && (
         <section className="clinicalPanel">
           <div className="panelTitle">
-            <strong>Todos os pacientes do mês</strong>
-            <span>de qual hospital é cada um, e quem paga</span>
+            {/* Sem legenda. Os dois seletores da linha já se anunciam pelo
+                que trazem escrito, e a frase repetia em palavras o que a
+                própria tabela mostra logo abaixo. */}
+            <strong>Produção do mês</strong>
           </div>
           {itens.map((i) => {
             // O lugar que o plantão já sabe, para quem veio de plantão de
