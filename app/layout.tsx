@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "Sistema de gestão para serviços de anestesiologia: avaliação pré-anestésica em nove etapas, escala por instituição e controle do que foi produzido, faturado e recebido.",
   openGraph: {
     title: "AVANEST | Gestão em anestesiologia",
-    description: "Da avaliação pré-anestésica ao caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",
+    description: "Da avaliação pré-anestésica ao fluxo de caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",
   },
   twitter: { card: "summary" },
 };

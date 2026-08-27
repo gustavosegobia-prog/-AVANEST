@@ -30,7 +30,7 @@ export default function HomePage() {
         <div className="avnHeroContent">
           <p className="avnEyebrow">GESTÃO EM ANESTESIOLOGIA</p>
           <h1>
-            Da avaliação pré-anestésica ao caixa do serviço.
+            Da avaliação pré-anestésica ao fluxo de caixa do serviço.
           </h1>
           <p className="avnLead">
             Para quem trabalha sozinho e para o grupo de anestesia. De
