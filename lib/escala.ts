@@ -811,7 +811,17 @@ export function folhaDePlantoesPorLocal(
         + '<col style="width:16%"><col style="width:20%"></colgroup>'
         + "<thead><tr><th>Dia</th><th>Horário</th>"
         + '<th class="num">Horas</th><th class="num">Valor</th></tr></thead>'
-        + `<tbody>${linhas}</tbody></table>`;
+        + `<tbody>${linhas}</tbody>`
+        // O total repetido no pé da coluna, e não só no título.
+        //
+        // Quem preenche uma nota corre o dedo pela coluna de valores até o fim
+        // e soma. Se o total só existe no cabeçalho, em cinza claro, ele soma
+        // na calculadora do lado — que é justamente o trabalho que esta folha
+        // existe para tirar dele. O número é o mesmo do título; o que muda é
+        // estar onde o olho para.
+        + '<tfoot><tr class="total"><td colspan="2">Total a faturar</td>'
+        + `<td class="num">${horas.toFixed(1).replace(".", ",")} h</td>`
+        + `<td class="num">${escaparHTML(money(soma))}</td></tr></tfoot></table>`;
     }).join("");
 
   const total = plantoes.reduce((s, p) => s + Number(p.valor), 0);
@@ -864,7 +874,11 @@ export function folhaDeFaturamento(
     porLocal.set(k, [...(porLocal.get(k) ?? []), i]);
   }
 
-  const tabela = (lista: ItemDeFaturamento[]) => {
+  // O rótulo do total muda com quem paga: o que ainda não foi decidido não é
+  // "a faturar" — dizer isso ali convidaria a somar na nota justamente o que
+  // não pode entrar em nota nenhuma.
+  const tabela = (lista: ItemDeFaturamento[], pendente = false) => {
+    const soma = lista.reduce((s, i) => s + Number(i.valor), 0);
     const linhas = [...lista]
       .sort((a, b) => a.data.localeCompare(b.data))
       .map((i) => "<tr>"
@@ -877,7 +891,10 @@ export function folhaDeFaturamento(
       + '<col><col style="width:18%"><col style="width:14%"></colgroup>'
       + "<thead><tr><th>Dia</th><th>Paciente</th><th>Procedimento</th>"
       + '<th>Convênio</th><th class="num">Valor</th></tr></thead>'
-      + `<tbody>${linhas}</tbody></table>`;
+      + `<tbody>${linhas}</tbody>`
+      + `<tfoot><tr class="total${pendente ? " pendente" : ""}"><td colspan="4">${
+        pendente ? "Total sem pagador definido" : "Total a faturar"}</td>`
+      + `<td class="num">${escaparHTML(money(soma))}</td></tr></tfoot></table>`;
   };
 
   const blocos = [...porLocal.entries()]
@@ -893,7 +910,7 @@ export function folhaDeFaturamento(
           : ROTULO_PAGADOR[quem];
         return `<h3${quem === null ? ' class="pendente"' : ""}>${escaparHTML(rotulo)}`
           + ` <small>${plural(lista.length, "paciente", "pacientes")} · ${
-            escaparHTML(money(soma))}</small></h3>${tabela(lista)}`;
+            escaparHTML(money(soma))}</small></h3>${tabela(lista, quem === null)}`;
       }).join("");
       return `<h2>${escaparHTML(local)} <small>${
         plural(doLocal.length, "paciente", "pacientes")} · ${

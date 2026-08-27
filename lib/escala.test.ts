@@ -738,6 +738,30 @@ test("o hospital em branco vira 'Sem hospital' em vez de sumir", () => {
   assert.match(corpo, /Sem hospital/);
 });
 
+test("o total fecha a coluna de valores, e não só o título", () => {
+  // Quem preenche nota corre o dedo pela coluna até o fim. Com o total só no
+  // cabeçalho, em cinza, a pessoa soma na calculadora do lado — que é o
+  // trabalho que esta folha existe para tirar dela.
+  const { corpo } = folhaDePlantoesPorLocal([
+    plantaoNota("2026-08-03", "Hospital A", 1100),
+    plantaoNota("2026-08-10", "Hospital A", 1100),
+  ], "agosto", 2026, new Date("2026-09-01T12:00:00"));
+  assert.match(corpo, /<tfoot>[\s\S]*?Total a faturar[\s\S]*?2\.200,00[\s\S]*?<\/tfoot>/);
+});
+
+test("o total do bloco sem pagador não se chama 'a faturar'", () => {
+  // O rótulo é parte da regra: chamar de "a faturar" o que ninguém decidiu
+  // convida a somar na nota justamente o que não pode entrar em nota nenhuma.
+  const { corpo } = folhaDeFaturamento([
+    item("2026-08-03", "Ana", "Hospital A", 500, "direto"),
+    item("2026-08-06", "Dora", "Hospital A", 400, null),
+  ], "agosto", 2026, new Date("2026-09-01T12:00:00"));
+  assert.match(corpo, /Total a faturar[\s\S]*?500,00/);
+  assert.match(corpo, /Total sem pagador definido[\s\S]*?400,00/);
+  // E o total do bloco decidido continua sendo 500, nunca 900.
+  assert.doesNotMatch(corpo, /Total a faturar<\/td><td class="num">R\$\s900,00/);
+});
+
 test("mês sem nada não imprime folha em branco sem explicação", () => {
   const p = folhaDePlantoesPorLocal([], "agosto", 2026, new Date("2026-09-01T12:00:00"));
   assert.match(p.corpo, /Nenhum plantão neste mês/);

@@ -210,6 +210,12 @@ h3 small{font-weight:400;color:#555;font-size:11px;margin-left:7px}
 /* O que ainda não tem pagador. Some da soma de todo mundo e precisa saltar aos
    olhos na folha, senão a pessoa emite as três notas e descobre o quarto bloco
    no mês seguinte. */
+/* A linha de total, no pé de cada tabela. É o número que vai para o campo de
+   valor da nota, então ela é a única linha em negrito da tabela e leva um
+   traço grosso em cima — o olho encontra o fim da coluna sem ler as outras. */
+tfoot tr.total td{font-weight:700;background:#f1f1f1;border-top:2px solid #333;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+tfoot tr.total.pendente td{background:#fff4e0;color:#8a4b00}
 h3.pendente,p.sub.pendente{color:#8a4b00;font-weight:700}
 p.sub.pendente{background:#fff4e0;border-left:3px solid #d98200;padding:7px 10px;
   border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
