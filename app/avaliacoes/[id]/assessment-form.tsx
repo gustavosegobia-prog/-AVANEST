@@ -9,6 +9,10 @@ import { orientacaoSugerida } from "@/lib/medication-summary";
 import { diaParaMomento, lerMedicamentosEscritos, lerUmMedicamento, mesmoMedicamento } from "@/lib/medicamentos-escritos";
 import { idadeDoPaciente, idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { PREDITORES_VIA_AEREA, frasePreditoresMarcados, resumoViaAerea } from "@/lib/via-aerea";
+import {
+  APFEL_CRITERIOS, ASA_CLASSES, RCRI_CRITERIOS, STOP_BANG_CRITERIOS,
+  lerApfel, lerLee, lerStopBang,
+} from "@/lib/escores";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
 import {
@@ -1054,11 +1058,6 @@ function sugerirEscores(draft: Draft, medicamentos: Medication[]): Record<string
   return s;
 }
 
-const LEE_CLASSES = ["I", "II", "III", "IV"];
-// Taxas de evento cardíaco maior da derivação original (Lee et al., Circulation
-// 1999). São as que acompanham o índice na literatura; trocá-las por outra
-// coorte mudaria o número que o anestesiologista lê ao lado da classe.
-const LEE_RISCO = ["0,4%", "0,9%", "6,6%", "11%"];
 // Rótulo curto na tela, valor por extenso no que é gravado e impresso. Os
 // quatro cabem numa linha só com o texto curto; a ficha continua dizendo
 // "Liberado sem restrições", que é o que o leitor do papel precisa ler.
@@ -1070,9 +1069,9 @@ const PARECER_CARDIO: Array<[string, string]> = [
 ];
 
 function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:string|boolean)=>void;age:number|null;sex:string|null;imc:number}) {
-  const rcri=[["rcri_alto_risco","Cirurgia de alto risco"],["rcri_coronaria","Doença arterial coronariana"],["rcri_ic","Insuficiência cardíaca"],["rcri_cerebrovascular","Doença cerebrovascular (AVC/AIT)"],["rcri_insulina","Diabetes em uso de insulina"],["rcri_creatinina","Creatinina > 2,0 mg/dL"]];
-  const stop=[["stop_ronco","Ronco alto"],["stop_cansaco","Cansaço/sonolência diurna"],["stop_apneia","Apneia observada"],["stop_has","Hipertensão arterial"],["stop_pescoco","Circunf. cervical > 40 cm"],["stop_imc","IMC > 35"],["stop_idade","Idade > 50"],["stop_masculino","Sexo masculino"]];
-  const apfel=[["apfel_historia","História de NVPO ou cinetose"],["apfel_opioide","Opioides pós-operatórios previstos"],["apfel_feminino","Sexo feminino"],["apfel_nao_tabagista","Não tabagista"]];
+  // Os critérios vêm de lib/escores, que é o mesmo módulo que alimenta as
+  // páginas públicas de escore. Duas listas escritas à mão divergiriam calado.
+  const rcri=RCRI_CRITERIOS, stop=STOP_BANG_CRITERIOS, apfel=APFEL_CRITERIOS;
   const rcriScore=rcri.filter(([key])=>key==="rcri_creatinina"?Number(String(draft.creatinina||"").replace(",","."))>2:draft[key]===true).length;
 
   // Preenchimento automático dos escores.
@@ -1122,15 +1121,16 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   const vale=(key:string)=>derivados[key]?derivados[key].ligado:draft[key]===true;
   const stopScore=stop.filter(([key])=>vale(key)).length;
   const apfelScore=apfel.filter(([key])=>vale(key)).length;
-  const stopRisk=stopScore<=2?"baixo risco":stopScore<=4?"risco intermediário":"alto risco";
-  const apfelRisk=["≈ 10%","≈ 21%","≈ 39%","≈ 61%","≈ 79%"][apfelScore];
-  const asa=["ASA I","ASA II","ASA III","ASA IV","ASA V","ASA VI"];
+  const stopRisk=lerStopBang(stopScore);
+  const apfelRisk=lerApfel(apfelScore);
+  const lee=lerLee(rcriScore);
+  const asa=ASA_CLASSES.map(c=>c.classe);
   return <><div className="scoreGrid">
     <section className="evalSection"><h1>8 · Classificação ASA</h1><p className="evalHint">Selecione a classificação médica.</p><div className="asaButtons">{asa.map(item=><button className={draft.asa===item?"selected":""} onClick={()=>set("asa",item)} key={item}>{item}</button>)}<button className={draft.asa_emergencia===true?"selected":""} onClick={()=>set("asa_emergencia",draft.asa_emergencia!==true)}>+ E (emergência)</button></div></section>
     <section className="evalSection"><h1>Índice de Lee (RCRI)</h1><p className="evalHint">Marque os critérios presentes.</p>
       <div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div>
       <div className={`scoreResult ${rcriScore>=2?"warning":""}`}>
-        Lee {rcriScore} ponto(s) · Classe {LEE_CLASSES[Math.min(rcriScore,3)]} · evento cardíaco maior ≈ {LEE_RISCO[Math.min(rcriScore,3)]}
+        Lee {rcriScore} ponto(s) · Classe {lee.classe} · evento cardíaco maior ≈ {lee.risco}
         <small>Lee et al., 1999. Apoio à estratificação; confirmar clinicamente.</small>
       </div>
       {/* O parecer do cardiologista entra como registro ao lado do índice, e
@@ -1152,7 +1152,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
             onChange={e=>set("cardio_conduta",e.target.value)}
             placeholder="Ex.: manter betabloqueador no dia da cirurgia; ecocardiograma em 6 meses"/></label>
         {rcriScore>=2&&!draft.cardio_parecer&&
-          <p className="cardioAlerta"><Icone nome="alerta" tamanho={15}/> Classe {LEE_CLASSES[Math.min(rcriScore,3)]} sem parecer cardiológico registrado.</p>}
+          <p className="cardioAlerta"><Icone nome="alerta" tamanho={15}/> Classe {lee.classe} sem parecer cardiológico registrado.</p>}
         {draft.cardio_parecer==="Não liberado"&&
           <p className="cardioAlerta grave"><Icone nome="alerta" tamanho={15}/> Cardiologista não liberou o procedimento.</p>}
       </div>

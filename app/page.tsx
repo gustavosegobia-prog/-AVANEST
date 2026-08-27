@@ -156,6 +156,10 @@ export default function HomePage() {
       <footer className="avnFooter">
         <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
         <nav className="avnFooterLinks">
+          {/* A seção de escores é ligada daqui, e não só pelo sitemap: página
+              que nenhuma outra aponta o buscador trata como periferia, por mais
+              bem escrita que seja. */}
+          <a href="/escores">Escores da avaliação</a>
           <a href="/termos">Termos de Uso</a>
           <a href="/privacidade">Política de Privacidade</a>
         </nav>

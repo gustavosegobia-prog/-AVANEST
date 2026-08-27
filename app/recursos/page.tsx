@@ -231,6 +231,7 @@ export default function RecursosPage() {
         <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
         <nav className="avnFooterLinks">
           <Link href="/">Início</Link>
+          <Link href="/escores">Escores da avaliação</Link>
           <a href="/termos">Termos de Uso</a>
           <a href="/privacidade">Política de Privacidade</a>
         </nav>

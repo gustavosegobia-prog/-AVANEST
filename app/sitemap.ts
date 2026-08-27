@@ -17,6 +17,14 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   { caminho: "/", prioridade: 1.0, frequencia: "weekly" },
   { caminho: "/recursos", prioridade: 0.9, frequencia: "weekly" },
   { caminho: "/planos", prioridade: 0.9, frequencia: "weekly" },
+  // A seção de escores é a porta de entrada de quem ainda não conhece o
+  // AVANEST: ninguém pesquisa o nome de um sistema que não conhece, mas todo
+  // anestesiologista pesquisa "STOP-Bang". Prioridade alta de propósito.
+  { caminho: "/escores", prioridade: 0.8, frequencia: "monthly" },
+  { caminho: "/escores/stop-bang", prioridade: 0.8, frequencia: "monthly" },
+  { caminho: "/escores/apfel", prioridade: 0.8, frequencia: "monthly" },
+  { caminho: "/escores/indice-de-lee", prioridade: 0.8, frequencia: "monthly" },
+  { caminho: "/escores/classificacao-asa", prioridade: 0.8, frequencia: "monthly" },
   { caminho: "/comecar", prioridade: 0.7, frequencia: "monthly" },
   { caminho: "/criar-conta", prioridade: 0.5, frequencia: "monthly" },
   { caminho: "/login", prioridade: 0.3, frequencia: "yearly" },
