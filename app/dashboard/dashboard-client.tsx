@@ -283,7 +283,7 @@ export function DashboardClient({
   // busca do histórico, que é o campo de busca que existe nesta tela.
   const buscaHistoricoRef = useRef<HTMLInputElement>(null);
   const [secaoRecepcao,setSecaoRecepcao]=useState<"hoje"|"buscar">("hoje");
-  const [secaoMedico,setSecaoMedico]=useState("hoje");
+  const [secaoMedico,setSecaoMedico]=useState("agenda");
   const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.cirurgia ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
   const currentByPatient = useMemo(() => {
     const result = new Map<string,Avaliacao>();
@@ -724,20 +724,26 @@ export function DashboardClient({
             <button className="primaryClinical" onClick={() => setOpen(true)}>+ Nova avaliação pré-anestésica</button>
           </section>
           {error && <p className="clinicalError">{error}</p>}
-          <section className="metricGrid">
-            <Metric value={scheduledToday.length} label="Consultas hoje" tone="blue" />
-            <Metric value={drafts.length} label="Pendências" tone="red" />
-            <Metric value={completedThisMonth.length} label="Concluídas no mês" tone="green" />
-            <Metric value={completed.filter(a=>a.dados?.orientacoes_enviadas!==true).length} label="Orientações pendentes" tone="amber" />
-            <Metric value={asaHigh} label="Pacientes ASA III+" tone="red" />
-          </section>
+          {/* A barra de cinco cartões saiu daqui.
+              Três deles — consultas de hoje, pendências e orientações — já
+              apareciam mais duas vezes cada: no contador ao lado do item do
+              menu e escritos por extenso dentro da própria seção. Três cópias
+              do mesmo número não informam três vezes mais; informam a mesma
+              coisa e ocupam a primeira tela do dia.
+              Os outros dois — concluídas no mês e ASA III+ — não pedem ação
+              nenhuma: são retrato do passado. Foram para o topo do Histórico,
+              que é justamente a tela que eles descrevem. */}
 
           <div className="financeLayout">
             <nav className="financeTarefas" aria-label="Seções da área Médico">
               {([
                 ["grupo","Atendimento"],
-                ["hoje","Consultas de hoje",queue.length],
-                ["agenda","Agenda"],
+                // Uma entrada só. "Consultas de hoje" e "Agenda" mostravam os
+                // mesmos agendamentos — no código eram a mesma variável —, com
+                // desenhos diferentes e uma discordância silenciosa: a Agenda
+                // contava cancelados e a fila não, então as duas telas diziam
+                // números diferentes para o mesmo dia.
+                ["agenda","Agenda",queue.length],
                 ["grupo","Acompanhamento"],
                 ["central","Central Operacional",pendenciasCentral],
                 ["historico","Histórico de avaliações"],
@@ -765,32 +771,36 @@ export function DashboardClient({
             </nav>
 
             <div className="financeConteudo">
-            {secaoMedico==="hoje"&&<>
-          <section className="clinicalPanel">
-            <div className="panelTitle"><strong>Fila de atendimento — hoje</strong><span>prioridade → horário agendado → chegada → encaixes</span></div>
-            {queue.length ? queue.map((appointment, index) => {
-              const p=patientMap.get(appointment.patient_id); if(!p)return null;
-              const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined;
-              const attendance=attendanceOverrides[appointment.id]??appointment.status;
-              const statusLabel=a?.status==="concluida"?"CONCLUÍDA":a?.status==="rascunho"?"AVALIAÇÃO PAUSADA":attendance==="presente"?"PACIENTE PRESENTE":attendance==="faltou"?"FALTOU":"AGUARDANDO";
-              const statusTone=a?.status==="concluida"||attendance==="presente"?"present":attendance==="faltou"?"danger":a?.status==="rascunho"?"paused":"waiting";
-              return <div className="queueRow" key={appointment.id}>
-                <time>{appointment.horario?.slice(0,5) || `${8 + index}:00`.padStart(5,"0")}</time>
-                <div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></div>
-                <span className={`statusChip ${statusTone}`}>{statusLabel}</span>
-                <button className="primaryClinical compact" disabled={busy||attendance==="faltou"} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>{a?.status==="concluida"?"Ver documentos":a?.status==="rascunho"?"Continuar avaliação":"Iniciar avaliação"}</button>
-              </div>;
-            }) : <div className="emptyClinical">Nenhuma consulta agendada para hoje.</div>}
-          </section>
-            </>}
             {secaoMedico==="agenda"&&<>
           <section className="clinicalPanel agendaPanel">
             <div className="agendaHead"><strong>Agenda</strong><button className={agendaRange==="hoje"?"active":""} onClick={()=>setAgendaRange("hoje")}>Hoje</button><button className={agendaRange==="amanha"?"active":""} onClick={()=>setAgendaRange("amanha")}>Amanhã</button><button className={agendaRange==="semana"?"active":""} onClick={()=>setAgendaRange("semana")}>Semana</button><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, procedimento..." /></div>
-            {filteredAgenda.slice(0,20).map((appointment) => { const p=patientMap.get(appointment.patient_id); if(!p)return null; const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined; return <button className="agendaRow" key={appointment.id} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>
-              <span className="avatar">{initials(p.nome)}</span><span><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></span>
-              <time>{brDate(appointment.data)}</time><span className={`statusChip ${a?.status === "concluida" ? "present" : appointment.status==="faltou"?"danger":"waiting"}`}>{a?.status === "concluida" ? "CONCLUÍDA" : a?.status==="rascunho" ? "EM ANDAMENTO" : appointment.status.toUpperCase()}</span>
-            </button>;})}
-            {filteredAgenda.length===0&&<div className="emptyClinical compactEmpty">Nenhum agendamento neste período.</div>}
+            {filteredAgenda.slice(0,20).map((appointment, index) => {
+              const p=patientMap.get(appointment.patient_id); if(!p)return null;
+              const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined;
+              const attendance=attendanceOverrides[appointment.id]??appointment.status;
+              const desmarcado=["cancelado","reagendado"].includes(attendance);
+              const statusLabel=a?.status==="concluida"?"CONCLUÍDA":a?.status==="rascunho"?"AVALIAÇÃO PAUSADA":attendance==="presente"?"PACIENTE PRESENTE":attendance==="faltou"?"FALTOU":desmarcado?attendance.toUpperCase():"AGUARDANDO";
+              const statusTone=a?.status==="concluida"||attendance==="presente"?"present":attendance==="faltou"?"danger":a?.status==="rascunho"?"paused":"waiting";
+              // A data só aparece quando o período mostra mais de um dia. Em
+              // "Hoje" ela seria a mesma em todas as linhas, e o que interessa
+              // ali é a HORA — que é como a fila se lê de cima para baixo.
+              const soHoje=agendaRange==="hoje";
+              const hora=appointment.horario?.slice(0,5) || `${8 + index}:00`.padStart(5,"0");
+              return <div className={desmarcado?"queueRow desmarcado":"queueRow"} key={appointment.id}>
+                {/* Data e hora em duas linhas curtas, e não "27/08 · 08:30"
+                    numa só: abaixo de 1050px a coluna da hora encolhe para
+                    65px, e a frase inteira não cabe. */}
+                <time>{soHoje ? hora : <><span>{brDate(appointment.data)}</span><small>{hora}</small></>}</time>
+                <div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></div>
+                <span className={`statusChip ${statusTone}`}>{statusLabel}</span>
+                {/* O botão de ação era exclusivo da fila de hoje. Trazê-lo para
+                    cá é o ganho da fusão: dá para adiantar na véspera a
+                    avaliação de um paciente de amanhã, coisa que antes não
+                    tinha por onde. Desmarcado não abre — não há o que atender. */}
+                <button className="primaryClinical compact" disabled={busy||attendance==="faltou"||desmarcado} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>{a?.status==="concluida"?"Ver documentos":a?.status==="rascunho"?"Continuar avaliação":"Iniciar avaliação"}</button>
+              </div>;
+            })}
+            {filteredAgenda.length===0&&<div className="emptyClinical">{agendaRange==="hoje"?"Nenhuma consulta agendada para hoje.":"Nenhum agendamento neste período."}</div>}
           </section>
             </>}
             {secaoMedico==="central"&&<>
@@ -814,6 +824,15 @@ export function DashboardClient({
             {secaoMedico==="historico"&&<>
           <section className="clinicalPanel historyPanel">
             <div className="panelTitle"><strong>Histórico de avaliações</strong></div>
+            {/* Os dois números que ficavam na barra do topo. Ali eles eram a
+                primeira coisa do dia e não pediam ação nenhuma; aqui são o
+                resumo da lista que vem logo abaixo, que é o que eles medem.
+                O ASA III+ conta todas as avaliações concluídas, não as de
+                hoje — por isso o rótulo diz "no total". */}
+            <section className="metricGrid historyResumo">
+              <Metric value={completedThisMonth.length} label="Concluídas no mês" tone="green" />
+              <Metric value={asaHigh} label="Pacientes ASA III+ no total" tone="red" />
+            </section>
             <div className="historyFilters">
               <input ref={buscaHistoricoRef} value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
               <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)} aria-label="Filtrar por status"><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>

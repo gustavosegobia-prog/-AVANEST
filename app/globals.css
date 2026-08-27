@@ -240,6 +240,23 @@
    media as suas próprias etiquetas: "CONFIRMADO" e "AVALIAÇÃO AGENDADA"
    começavam em pontos diferentes, e a lista descia em escada. */
 .queueRow>.statusChip,.agendaRow>.statusChip{justify-self:start;text-align:center}
+/* Cancelado e reagendado continuam aparecendo na Agenda, e não somem: saber
+   que a consulta das 9h caiu é informação, e uma linha que desaparece deixa a
+   dúvida de se ela existiu. Fica apagada e sem botão — presente para ler,
+   ausente para trabalhar. Não entra no contador do menu, que conta quem você
+   ainda vai atender. */
+.queueRow.desmarcado{opacity:.55}
+.queueRow.desmarcado time{color:var(--cor-tinta-fraca)}
+/* Em "Hoje" é só a hora, numa linha. Em Amanhã e Semana vira data em cima e
+   hora embaixo — duas linhas curtas cabem nos 65px que a coluna tem abaixo de
+   1050px, e "27/08 · 08:30" numa linha só não caberia. */
+.agendaPanel .queueRow time{font-size:15px;line-height:1.3}
+.agendaPanel .queueRow time span{display:block}
+.agendaPanel .queueRow time small{display:block;font-size:13px;font-weight:700;
+  color:var(--cor-tinta-fraca)}
+/* Dois cartões, e não cinco: são o resumo da lista logo abaixo, não o painel
+   principal. Largura de conteúdo em vez de esticar pela tela inteira. */
+.historyResumo{grid-template-columns:repeat(2,minmax(0,220px));margin:18px 25px 4px}
 .queueRow>button{width:100%}.queueInfo strong,.agendaRow strong{display:block}.queueInfo small,.agendaRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.statusChip{border-radius:99px;padding:8px 13px;font-size:12px;font-weight:850;white-space:nowrap}.statusChip.present{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}.statusChip.paused{background:#e9eef2;color:#5a7084}.statusChip.waiting{background:var(--cor-atencao-suave);color:var(--cor-atencao)}.emptyClinical{padding:45px;text-align:center;color:var(--cor-tinta-fraca)}/* A Central recolhe. O <summary> vira a barra de título inteira: clique,
    Enter e Espaço já funcionam de graça, e o leitor de tela anuncia se está
    aberta — nada disso precisaria ser reescrito à mão, e à mão sairia pior.
