@@ -670,7 +670,6 @@ export function ProducaoDoMes({
       <section className="clinicalPanel">
         <div className="panelTitle">
           <strong>O que você anotou</strong>
-          <span>somado por convênio</span>
           <div className="producaoAcoesMes">
             {/* Só o envio mora aqui. As três impressões foram para o painel de
                 baixo: um "Imprimir" solto ao lado de "Enviar ao financeiro"
@@ -718,13 +717,16 @@ export function ProducaoDoMes({
       <section className="clinicalPanel">
         <div className="panelTitle">
           <strong>Imprimir</strong>
-          <span>três folhas, três finalidades</span>
         </div>
 
+        {/* A linha de baixo diz só a QUEBRA de cada folha, que é a única coisa
+            que as distingue na hora de escolher. O resto — por que são duas
+            notas, contra quem cada uma é emitida — está no papel que sai, e
+            repetido aqui virava parágrafo numa tela que se abre para agir. */}
         <div className="producaoFolha">
           <span>
             <strong>Nota de plantões</strong>
-            <small>As horas que você ficou à disposição, separadas por hospital.</small>
+            <small>Por hospital</small>
           </span>
           <button className="outlineClinical" onClick={onImprimirPlantoes}>Imprimir</button>
         </div>
@@ -732,7 +734,7 @@ export function ProducaoDoMes({
         <div className="producaoFolha">
           <span>
             <strong>Nota de faturamento</strong>
-            <small>Os atos anestésicos, por hospital e por quem paga cada paciente.</small>
+            <small>Por hospital e por quem paga</small>
           </span>
           <button className="outlineClinical"
             disabled={itens.length === 0} onClick={() => onImprimirFaturamento(itens)}>
@@ -743,7 +745,7 @@ export function ProducaoDoMes({
         <div className="producaoFolha">
           <span>
             <strong>Lista por convênio</strong>
-            <small>A relação de pacientes agrupada por operadora, para mandar a remessa.</small>
+            <small>Por operadora</small>
           </span>
           <button className="outlineClinical"
             disabled={itens.length === 0} onClick={() => onImprimir(itens)}>
@@ -751,24 +753,20 @@ export function ProducaoDoMes({
           </button>
         </div>
 
-        <p className="producaoNotaExplica">
-          As duas notas saem separadas por hospital, com um total por hospital:
-          cada nota é emitida contra um tomador. Na de faturamento, quem paga
-          muda de paciente para paciente — marque abaixo antes de imprimir.
-        </p>
-
         {semPagador.length > 0 && (
           <div className="producaoPendencia">
+            {/* A consequência em meia linha. Dizer que o valor "sai numa parte
+                à parte da folha e não entra em nota nenhuma enquanto não for
+                decidido" era explicar o mecanismo; o que a pessoa precisa saber
+                é que aquele dinheiro está fora. */}
             <p>
-              <b>{plural(semPagador.length, "paciente está", "pacientes estão")}</b>{" "}
-              sem quem paga definido, somando <b>{money(pendente)}</b>. Esse valor
-              sai numa parte à parte da folha e não entra em nota nenhuma enquanto
-              não for decidido.
+              <b>{plural(semPagador.length, "paciente", "pacientes")}</b> sem quem
+              paga · <b>{money(pendente)}</b> fora das notas
             </p>
             {/* Um mês costuma ter um padrão e duas exceções. Isto resolve o
                 padrão de uma vez; as exceções se corrigem na lista abaixo. */}
             <div className="producaoPendenciaAcoes">
-              <span>Os que faltam são todos:</span>
+              <span>Marcar todos como:</span>
               {PAGADORES.map(([id, rotulo]) => (
                 <button key={id} type="button" className="outlineClinical compact"
                   onClick={() => void decidirOsQueFaltam(id)}>
@@ -781,9 +779,7 @@ export function ProducaoDoMes({
 
         {semLocal.length > 0 && (
           <p className="producaoPendencia semHospital">
-            {plural(semLocal.length, "paciente está", "pacientes estão")} sem
-            hospital. Eles saem juntos, em “Sem hospital”, e não somam com nenhum
-            dos outros — o hospital se escolhe na lista abaixo.
+            {plural(semLocal.length, "paciente", "pacientes")} sem hospital
           </p>
         )}
       </section>
