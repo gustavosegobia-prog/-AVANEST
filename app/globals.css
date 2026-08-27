@@ -2845,6 +2845,14 @@ button:disabled{cursor:not-allowed}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plantaoDeColega{color:var(--cor-tinta-fraca);font-size:13px;min-width:0}
 
+/* "+ Nova escala", no fim da lista de hospitais. Contornado e tracejado, e
+   não preenchido: é um convite, não um destino — e um botão cheio ali
+   competiria com o hospital em que a pessoa está trabalhando. */
+.financeTarefas .escalaNova{color:var(--cor-marca);font-weight:700;
+  border:1px dashed var(--cor-borda-forte);background:transparent}
+.financeTarefas .escalaNova:hover{border-color:var(--cor-marca);
+  background:var(--cor-marca-suave)}
+
 /* --- Produção: o mês e as folhas ---------------------------------------
    A seta do mês vivia só dentro do calendário, na aba Escala. Quem abria
    Produção caía no mês corrente — zerado, porque o mês ainda está começando —

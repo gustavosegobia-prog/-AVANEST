@@ -366,7 +366,7 @@ function LinhaComGaveta({
 
 export function Plantoes({
   perfilId, institutionId, locais, ehAdmin, colegas, escalaveis, semCRM = [],
-  localAtivoId = null, abrirEm = null, onAvisosMudaram, onEquipeMudou,
+  localAtivoId = null, abrirEm = null, onAvisosMudaram, onEquipeMudou, onNovoLocal,
   equipe = [],
 }: {
   perfilId: string;
@@ -420,6 +420,18 @@ export function Plantoes({
    * carregamento faria a página se recarregar em círculo.
    */
   onAvisosMudaram?: () => void;
+  /**
+   * Abrir o cadastro de hospitais.
+   *
+   * Um hospital novo é um cadastro, e o cadastro mora no Admin. Mas quem
+   * descobre que falta um hospital descobre AQUI, olhando a lista de escalas —
+   * e mandar a pessoa procurar sozinha em outra área é onde ela desiste. O
+   * atalho leva ao lugar certo; ele não duplica o formulário.
+   *
+   * Só para quem administra: quem não administra não cadastra local, e um
+   * botão que termina em porta fechada é pior do que botão nenhum.
+   */
+  onNovoLocal?: () => void;
   /**
    * Alguém novo entrou na equipe por esta tela.
    *
@@ -1250,6 +1262,13 @@ export function Plantoes({
             // escala, que não filtra por hospital. O que ele não tem mais é
             // linha própria na escala do grupo: uma escala é de um serviço, e
             // "nenhum serviço" não é um deles.
+            // Um hospital novo é um cadastro, e cadastro mora no Admin — mas
+            // quem descobre que falta um hospital descobre AQUI, olhando esta
+            // lista. Mandar procurar sozinho em outra área é onde a pessoa
+            // desiste. O item leva ao lugar certo; não duplica o formulário.
+            ...(ehAdmin && onNovoLocal
+              ? [["novoLocal", "+ Nova escala"] as [string, string]]
+              : []),
             ["grupo", "Equipe"],
             ["trocas", "Trocas", trocasParaMim],
             ["grupo", "Faturamento"],
@@ -1264,9 +1283,10 @@ export function Plantoes({
                   // O tutorial ancora nesta marca para acender o item enquanto
                   // fala dele. Nome estável, independente do rótulo.
                   data-secao={id}
-                  className={secaoAtiva === id ? "active" : ""}
+                  className={id === "novoLocal" ? "escalaNova"
+                    : secaoAtiva === id ? "active" : ""}
                   aria-current={secaoAtiva === id ? "true" : undefined}
-                  onClick={() => irPara(id)}
+                  onClick={() => id === "novoLocal" ? onNovoLocal?.() : irPara(id)}
                 >
                   <span>{rotulo}</span>
                   {contador ? <b className="financeTarefaContador">{contador}</b> : null}

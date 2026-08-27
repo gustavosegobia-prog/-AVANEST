@@ -265,6 +265,10 @@ export function DashboardClient({
   const [aberturaDaEscala, setAberturaDaEscala] = useState<
     { aba: "escala" | "producao" | "trocas"; token: number } | null
   >(null);
+  /** Em que seção do Admin abrir, quando o pedido vem de outra área. */
+  const [aberturaDoAdmin, setAberturaDoAdmin] = useState<
+    { aba: string; token: number } | null
+  >(null);
   const [contaAberta, setContaAberta] = useState(false);
   const [senha, setSenha] = useState({atual:"",nova:"",confirma:""});
   const [senhaMsg, setSenhaMsg] = useState("");
@@ -863,6 +867,11 @@ export function DashboardClient({
           // respondeu isso ao entrar, e perguntar de novo é perguntar duas vezes.
           localAtivoId={localAtivo?.id ?? null}
           abrirEm={aberturaDaEscala}
+          // "+ Nova escala", no fim da lista de hospitais da Escala. Quem
+          // descobre que falta um hospital descobre olhando aquela lista; o
+          // cadastro fica no Admin, e este atalho leva até ele em vez de
+          // deixar a pessoa procurar.
+          onNovoLocal={()=>{ setAberturaDoAdmin({aba:"locais",token:Date.now()}); changeView("admin"); }}
           // Todo mundo que PODE entrar na escala, com o estado de cada um. É
           // a lista da janela "Quem entra na escala" — por isso não passa
           // pelo filtro de CRM: quem está sem CRM aparece lá, marcado e
@@ -927,7 +936,7 @@ export function DashboardClient({
           </div>
         </div>
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
-      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()}/>}
+      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin}/>}
 
       {contaAberta&&<div className="patientModalBackdrop" role="presentation">
         <section className="contaModal" role="dialog" aria-modal="true" aria-labelledby="conta-titulo">
@@ -1750,10 +1759,23 @@ const ACAO_LABELS:Record<string,string>={
   presenca_confirmada:"Presença confirmada",
 };
 
-function AdminView({perfil,organizacao,perfis,auditoria,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void}) {
+function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void;
+  /**
+   * Em que seção abrir, quando quem manda abrir é de fora — hoje, o
+   * "+ Nova escala" da coluna da Escala.
+   *
+   * O `token` existe pelo mesmo motivo que na Escala: a seção é ESTADO desta
+   * tela e a pessoa pode sair dela. Sem o token, um segundo clique no mesmo
+   * atalho não mudaria a propriedade e o botão pareceria quebrado.
+   */
+  abrirEm?:{aba:string;token:number}|null}) {
   const [message,setMessage]=useState("");
   // Qual seção da Administração está aberta, igual ao Financeiro.
   const [aba,setAba]=useState("usuarios");
+  useEffect(()=>{
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pedido vindo de outra área
+    if(abrirEm) setAba(abrirEm.aba);
+  },[abrirEm]);
   const [busy,setBusy]=useState("");
   const [org,setOrg]=useState({nome:organizacao?.nome??"",telefone:organizacao?.telefone??"",email:organizacao?.email??""});
   const orgAlterada=org.nome!==(organizacao?.nome??"")||org.telefone!==(organizacao?.telefone??"")||org.email!==(organizacao?.email??"");
