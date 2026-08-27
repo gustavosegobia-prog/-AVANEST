@@ -16,7 +16,7 @@ export default function TermosPage() {
       <h2>1. Quem somos</h2>
       <p>
         O AVANEST é operado por <b>G. Segobia Serviços Médicos Ltda.</b>, CNPJ 55.965.276/0001-04,
-        adiante chamada AVANEST. Contato: <a href="mailto:contato@avanest.com.br">contato@avanest.com.br</a>.
+        adiante chamada AVANEST. Contato: <a href="mailto:suporte@avanest.com.br">suporte@avanest.com.br</a>.
       </p>
 
       <h2>2. O que o AVANEST é — e o que não é</h2>
@@ -55,7 +55,7 @@ export default function TermosPage() {
       <h2>5. Planos, pagamento e renovação</h2>
       <p>
         Os preços vigentes são os exibidos em <a href="/planos">avanest.com.br/planos</a>. A
-        assinatura é mensal e recorrente, processada pelo <b>Asaas</b>. O AVANEST não recebe
+        assinatura é mensal e recorrente, processada pela <b>Stripe</b>. O AVANEST não recebe
         nem armazena números de cartão: eles são digitados na página do provedor de pagamento.
       </p>
       <p>
@@ -78,6 +78,10 @@ export default function TermosPage() {
       <p>
         <b>Falta de pagamento:</b> vencida a assinatura, o acesso ao sistema é bloqueado. Os dados
         continuam guardados e voltam a ficar acessíveis com a regularização, observado o item 8.
+      </p>
+      <p>
+        <b>Nota fiscal, recibo e dúvidas de cobrança:</b>{" "}
+        <a href="mailto:financeiro@avanest.com.br">financeiro@avanest.com.br</a>.
       </p>
 
       <h2>6. Período de teste</h2>

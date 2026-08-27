@@ -183,6 +183,14 @@ export default async function AssinaturaPage({
           <a className="avnLoginCancel" href={WHATSAPP} target="_blank" rel="noreferrer">
             Falar com o AVANEST no WhatsApp
           </a>
+          {/* Quem chega aqui com a assinatura vencida quase sempre tem uma
+              pergunta de cobrança — cartão que não passou, nota fiscal, valor
+              diferente do esperado. O WhatsApp resolve o urgente; isto dá o
+              endereço de quem trata disso, e deixa registro escrito dos dois
+              lados. */}
+          <a className="avnLoginCancel" href="mailto:financeiro@avanest.com.br">
+            Dúvida de cobrança ou nota fiscal
+          </a>
           {liberada
             ? <Link className="avnLoginCancel" href="/dashboard">Voltar ao sistema</Link>
             : <SairButton/>}
