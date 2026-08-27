@@ -308,7 +308,7 @@ export function ProducaoDoDia({
       // O custo é rodar o reconhecimento até três vezes. Vale: uma foto que
       // não lê custa a anotação inteira, digitada à mão ou esquecida.
       const { data } = await melhorLeitura(Tesseract, preparada);
-      const { dados, naoEncontrados } = lerFichaDeInternacao(data.text);
+      const { dados, naoEncontrados, modelo } = lerFichaDeInternacao(data.text);
 
       if (!dados.paciente && !dados.convenio && !dados.procedimento) {
         // Conta letras, e não caracteres: foto ruim devolve pontuação e
@@ -328,9 +328,14 @@ export function ProducaoDoDia({
         convenio: dados.convenio ?? novo.convenio,
         procedimento: dados.procedimento ?? novo.procedimento,
       });
+      // Dizer QUE ficha foi reconhecida não é enfeite: é o que permite saber,
+      // olhando a tela, se o erro foi de leitura ou de modelo desconhecido. Sem
+      // isso, "não achei o convênio" tem duas causas possíveis e nenhuma pista
+      // de qual delas é.
+      const qual = modelo ? `Reconheci: ${modelo.nome}.` : "Ficha de modelo novo para mim.";
       setAvisoFoto(naoEncontrados.length
-        ? `${AVISO_FICHA} Não achei: ${naoEncontrados.map((c) => ROTULO_CAMPO[c]).join(", ")}.`
-        : AVISO_FICHA);
+        ? `${qual} ${AVISO_FICHA} Não achei: ${naoEncontrados.map((c) => ROTULO_CAMPO[c]).join(", ")}.`
+        : `${qual} ${AVISO_FICHA}`);
       // Mesmo com acerto parcial o texto fica guardado: é o que permite
       // descobrir por que o campo que faltou não foi achado.
       if (naoEncontrados.length) setTextoLido(data.text.trim());

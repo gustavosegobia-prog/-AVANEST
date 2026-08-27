@@ -355,3 +355,26 @@ test("rótulo explícito ganha da marca solta", () => {
     "Unimed Campo Mourao\n10 - Nome MARIA DA SILVA\nConvenio: Bradesco Saude");
   assert.equal(dados.convenio, "Bradesco Saude");
 });
+
+test("o modelo da ficha é reconhecido e devolvido", () => {
+  // Cada hospital usa um formulário diferente, e o mesmo rótulo muda de dono de
+  // um para outro. Saber QUAL ficha é vem antes de procurar campo nela.
+  assert.equal(lerFichaDeInternacao(GUIA_TISS).modelo?.nome,
+    "Guia TISS de solicitação de internação");
+  assert.equal(
+    lerFichaDeInternacao("LAUDO PARA SOLICITACAO DE AUTORIZACAO DE INTERNACAO HOSPITALAR").modelo?.nome,
+    "Laudo de AIH do SUS");
+  // Ficha que ele ainda não conhece não quebra: cai na busca genérica.
+  const solta = lerFichaDeInternacao("Paciente: JOAO DA SILVA\nConvenio: Amil");
+  assert.equal(solta.modelo, null);
+  assert.equal(solta.dados.paciente, "JOAO DA SILVA");
+  assert.equal(solta.dados.convenio, "Amil");
+});
+
+test("o laudo do SUS responde o convênio por existir", () => {
+  // Paciente com convênio ou particular não entra por AIH. Cobrar como
+  // particular um caso do SUS é o erro mais caro que esta tela produz.
+  const { dados } = lerFichaDeInternacao(
+    "LAUDO PARA SOLICITACAO DE AUTORIZACAO DE INTERNACAO HOSPITALAR\nNome: MARIA SOUZA");
+  assert.equal(dados.convenio, "SUS");
+});

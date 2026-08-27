@@ -362,6 +362,63 @@ const limparValor = (v: string) =>
  * regra que lê "a linha depois de prontuário" acertaria por acaso e erraria em
  * silêncio.
  */
+/**
+ * Os modelos de ficha que o leitor conhece.
+ *
+ * Cada hospital usa um formulário diferente, e o mesmo rótulo muda de dono de
+ * um para outro: numa guia TISS "Nome" aparece cinco vezes e só o campo 10 é o
+ * paciente; num laudo de AIH o nome fica na linha ABAIXO do rótulo, e a
+ * palavra "procedimento" aparece três vezes.
+ *
+ * Procurar rótulo solto, sem saber que ficha é, é o que fazia o nome do
+ * cirurgião virar nome do paciente. Reconhecendo o modelo primeiro, o leitor
+ * sabe ONDE procurar antes de procurar.
+ *
+ * COMO CRESCE. Um hospital novo é uma entrada nesta lista: as marcas que
+ * identificam o papel e, para cada campo, os rótulos daquele formulário. Nada
+ * mais precisa mudar — e ficha de modelo desconhecido continua caindo na busca
+ * genérica, que é o comportamento de sempre.
+ */
+export type ModeloDeFicha = {
+  /** Como a pessoa chama esta ficha, para a tela dizer o que reconheceu. */
+  nome: string;
+  /** Todas precisam aparecer no texto. Uma só casaria com ficha parecida. */
+  marcas: RegExp[];
+  /** Os rótulos deste formulário, do mais específico ao mais geral. */
+  onde: Partial<Record<Campo, string[]>>;
+  /** Quem paga, quando a existência da ficha já responde isso. */
+  convenio?: string;
+};
+
+export const MODELOS: ModeloDeFicha[] = [
+  {
+    nome: "Guia TISS de solicitação de internação",
+    marcas: [/guia de solicitacao de internacao|solicitacao de internacao/],
+    onde: {
+      // O campo 10 é o do beneficiário. Os outros quatro "Nome" da guia são
+      // médico e hospital, e estão na lista do que nunca é valor.
+      paciente: ["10 - nome", "10-nome", "10 nome", "nome do beneficiario"],
+      // Campo 36. "Descrição" sozinho seria arriscado noutra ficha; aqui ele
+      // é o único, e vem depois do código do procedimento.
+      procedimento: ["36 - descricao", "36-descricao", "descricao do procedimento"],
+    },
+  },
+  {
+    nome: "Laudo de AIH do SUS",
+    marcas: [/autorizacao de internacao hospitalar|laudo para solicitacao de autorizacao/],
+    onde: {},
+    // Paciente com convênio ou particular não entra por AIH. Cobrar como
+    // particular um caso do SUS é o erro mais caro que esta tela produz.
+    convenio: "SUS",
+  },
+];
+
+/** Qual destes modelos é a ficha em mãos. Nulo = nenhum conhecido. */
+export function reconhecerModelo(texto: string): ModeloDeFicha | null {
+  const inteiro = normalizar(texto);
+  return MODELOS.find((m) => m.marcas.every((r) => r.test(inteiro))) ?? null;
+}
+
 const EH_LAUDO_SUS =
   /autorizacao de internacao hospitalar|laudo para solicitacao de autorizacao/;
 
@@ -409,13 +466,22 @@ function lerLaudoDoSUS(linhas: string[], dados: DadosDaFicha): void {
  * "descrição do procedimento" ganha de "cirurgia", esteja onde estiver.
  */
 export function lerFichaDeInternacao(texto: string): {
-  dados: DadosDaFicha; naoEncontrados: Campo[];
+  dados: DadosDaFicha; naoEncontrados: Campo[]; modelo: ModeloDeFicha | null;
 } {
   const linhas = String(texto ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const dados: DadosDaFicha = {};
   // Quanto vale o rótulo que trouxe cada valor: posição na lista de apelidos,
   // menor é mais específico.
   const peso: Partial<Record<Campo, number>> = {};
+
+  // Que ficha é esta. Sabendo o modelo, os rótulos DELE entram na frente dos
+  // genéricos — e a busca deixa de ser "procure 'nome' em qualquer lugar" para
+  // ser "o nome do paciente mora no campo 10".
+  const modelo = reconhecerModelo(texto);
+  const rotulos: typeof ROTULOS = ROTULOS.map(({ campo, apelidos }) => ({
+    campo,
+    apelidos: [...(modelo?.onde[campo] ?? []), ...apelidos],
+  }));
 
   for (let i = 0; i < linhas.length; i++) {
     // A borda da tabela e o quadradinho de marcar entram no reconhecimento
@@ -429,7 +495,7 @@ export function lerFichaDeInternacao(texto: string): {
     const plano = achatar(linha);
     if (plano.length !== linha.length) continue;
 
-    for (const { campo, apelidos } of ROTULOS) {
+    for (const { campo, apelidos } of rotulos) {
       for (let k = 0; k < apelidos.length; k++) {
         // Já temos um rótulo igual ou mais específico para este campo.
         if (peso[campo] !== undefined && peso[campo]! <= k) break;
@@ -480,6 +546,11 @@ export function lerFichaDeInternacao(texto: string): {
   // quadradinho. Se a palavra está na ficha e nenhum convênio foi encontrado,
   // é a resposta — e é justamente o caso em que esquecer de cobrar custa o
   // valor inteiro, porque particular não deixa rastro no faturamento.
+  // O convênio que a própria ficha já responde por existir: um laudo de AIH é
+  // do SUS, e não há outra leitura. Depois do rótulo explícito, porque um
+  // campo preenchido na ficha vale mais do que a regra do modelo.
+  if (!dados.convenio && modelo?.convenio) dados.convenio = modelo.convenio;
+
   // A operadora pela MARCA, quando não vem rotulada.
   //
   // A guia TISS de solicitação de internação não tem campo "Convênio": a
@@ -504,7 +575,7 @@ export function lerFichaDeInternacao(texto: string): {
   const naoEncontrados = (["paciente", "convenio", "procedimento"] as Campo[])
     .filter((c) => !dados[c]);
 
-  return { dados, naoEncontrados };
+  return { dados, naoEncontrados, modelo };
 }
 
 export const AVISO_FICHA =
