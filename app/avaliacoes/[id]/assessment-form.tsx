@@ -444,7 +444,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       <div id="etapa-6"><Airway draft={draft} set={set}/></div>
       <div id="etapa-7"><ComplementaryExams draft={draft} set={set} avaliacao={avaliacao}/></div>
       <div id="etapa-8"><Scores draft={draft} set={set} age={age} sex={paciente.sexo} imc={imc}/></div>
-      <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} idadeMeses={idade.meses} imc={imc} conclude={conclude} retrySave={()=>void save()} saveState={saveState} saveError={saveError}/></div>
+      <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} idadeMeses={idade.meses} conclude={conclude} retrySave={()=>void save()} saveState={saveState} saveError={saveError}/></div>
     </div>
   </main>;
 }
@@ -1121,7 +1121,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div></section></>;
 }
 
-function Conclusion({draft,set,paciente,age,idadeMeses,imc,conclude,retrySave,saveState,saveError}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;idadeMeses:number|undefined;imc:number;conclude:()=>Promise<void>;retrySave:()=>void;saveState:"saved"|"pending"|"saving"|"error";saveError:string}) {
+function Conclusion({draft,set,paciente,age,idadeMeses,conclude,retrySave,saveState,saveError}:{draft:Draft;set:(name:string,value:string|boolean)=>void;paciente:Patient;age:number|null;idadeMeses:number|undefined;conclude:()=>Promise<void>;retrySave:()=>void;saveState:"saved"|"pending"|"saving"|"error";saveError:string}) {
   const medications=readMedications(draft.medicamentos_json);
   const lastAutomaticPlan=useRef("");
   /* Tubo pediátrico no planejamento: peso e data de nascimento já estão na
@@ -1133,10 +1133,6 @@ function Conclusion({draft,set,paciente,age,idadeMeses,imc,conclude,retrySave,sa
   const opcoesTubo=usaTubo&&ehPediatrico(idadeMeses)
     ?opcoesDeTubo({idadeMeses,pesoKg})
     :[];
-  const airwayKeys=Object.keys(draft).filter(k=>k.startsWith("via_")&&draft[k]===true).length;
-  const rcri=Object.keys(draft).filter(k=>k.startsWith("rcri_")&&draft[k]===true).length;
-  const stop=Object.keys(draft).filter(k=>k.startsWith("stop_")&&draft[k]===true).length;
-  const apfel=Object.keys(draft).filter(k=>k.startsWith("apfel_")&&draft[k]===true).length;
   const requestsBlood=["Sim","Solicitar"].includes(String(draft.concentrado_hemacias??""));
   const conclusions=["Apto para o procedimento proposto","Apto com ressalvas","Necessita otimização clínica","Necessita exames complementares","Necessita avaliação de outra especialidade","Avaliação inconclusiva"];
   // Gestação só é exibida para paciente feminina; portanto não pode bloquear
@@ -1185,7 +1181,6 @@ function Conclusion({draft,set,paciente,age,idadeMeses,imc,conclude,retrySave,sa
   const checklist=requirementGroups.map(([group])=>[group,missingByGroup[group].length===0] as const);
   const allComplete=checklist.every(([,ok])=>ok);
   const missingFields = checklist.filter(([,ok])=>!ok).flatMap(([group])=>missingByGroup[group] ?? []);
-  const summary=[["Paciente",`${paciente.nome}${age!==null?` · ${age} anos`:""}`],["Cirurgia",String(draft.cirurgia||"—")],["IMC",imc?imc.toFixed(1):"—"],["Alergias",draft.alergias==="Não"?"Não relata alergias.":String(draft.alergias_detalhes||"—")],["Capacidade funcional",String(draft.capacidade_funcional||"—")],["Via aérea",`${airwayKeys===0?"Baixa":airwayKeys<=2?"Moderada":"Alta"} probabilidade sugerida`],["ASA",String(draft.asa||"não definida")],["Lee (RCRI)",`${rcri} ponto(s)`],["STOP-Bang / Apfel",`${stop}/8 · ${apfel}/4`],["Medicamentos",`${medications.filter(m=>m.conduta==="Manter").length} manter · ${medications.filter(m=>m.conduta==="Suspender").length} suspender · ${medications.filter(m=>m.conduta==="Avaliar").length} avaliar`]];
   // Entra tudo que não for "Manter". Suspender, individualizar e avaliar são
   // decisões que alguém precisa ler no papel; manter é a única que não pede
   // nada. Antes daqui "Avaliar" ficava de fora, e era o pior lugar para uma
@@ -1213,8 +1208,15 @@ function Conclusion({draft,set,paciente,age,idadeMeses,imc,conclude,retrySave,sa
     }
   },[automaticPlan,draft.plano_anestesico,planManuallyEdited,set]);
   function generateText(){lastAutomaticPlan.current=automaticPlan;set("plano_anestesico",automaticPlan);set("plano_anestesico_editado",false)}
-  return <><section className="evalSection"><div className="conclusionHeading"><h1>9 · Resumo da avaliação</h1><button className="outlineClinical" onClick={generateText}>Atualizar orientações finais automaticamente ↓</button></div><div className="summaryGrid">{summary.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
-  <section className="evalSection"><h2>Prescrição e planejamento pré-anestésico</h2><div className="planningGrid">
+  // O resumo saiu. Ele repetia, em dez linhas, o que a pessoa acabou de
+  // preencher nas oito etapas acima — e num celular isso é uma tela inteira de
+  // rolagem antes de chegar ao que a etapa 9 pede de fato: planejar, conferir
+  // o checklist e assinar. O que precisa ser revisto antes da assinatura já
+  // está no checklist final, que aponta o que FALTA em vez de repetir o que há.
+  //
+  // O botão continua, e mudou de lugar para o certo: ele escreve as orientações
+  // finais, e agora fica no cabeçalho da seção que as contém.
+  return <><section className="evalSection"><div className="conclusionHeading"><h1>9 · Prescrição e planejamento</h1><button className="outlineClinical" onClick={generateText}>Preencher automaticamente ↓</button></div><div className="planningGrid">
     {/* Selects comuns, e não um botão "Outras opções". O padrão continua vindo
         marcado — que era o ponto —, mas trocar passa a ser o mesmo gesto de
         todos os outros campos da tela, em vez de um a mais. */}
