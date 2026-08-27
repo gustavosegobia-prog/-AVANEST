@@ -10,6 +10,7 @@ import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { ChatFlutuante } from "@/components/chat-flutuante";
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
 import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
+import { iniciais } from "@/lib/escala";
 import type { Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
@@ -133,7 +134,19 @@ function listarConvenios(regras:ConvenioValor[],pacientes:{convenio?:string|null
 }
 
 const brDate = (date?: string | null) => date ? new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR") : "—";
-const initials = (name: string) => name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+/**
+ * A sigla do avatar: primeiro nome e último sobrenome.
+ *
+ * Havia uma cópia local aqui que pegava as duas primeiras palavras do nome —
+ * e "Dr" é uma palavra. Todo médico cadastrado com o tratamento na frente
+ * virava "D" alguma coisa: Dr. Gustavo Segobia saía "DG", Dr. Igor Morais
+ * Monteiro saía "DI", e a letra que deveria distinguir as pessoas era a mesma
+ * para metade da equipe.
+ *
+ * A função boa já existia em lib/escala, com teste para esse caso exato. Uma
+ * regra de nome, dois lugares: era só questão de tempo até divergirem.
+ */
+const initials = iniciais;
 const localDateKey = (date = new Date()) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

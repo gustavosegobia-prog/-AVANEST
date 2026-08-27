@@ -134,6 +134,20 @@ test("iniciais: o tratamento não é nome", () => {
   assert.equal(iniciais("Fernando Souza Dias"), "FD");
 });
 
+test("iniciais: a equipe real, do jeito que está cadastrada", () => {
+  // Os nomes como o Gustavo os cadastrou, com o tratamento na frente e em
+  // maiúsculas. A tela do Admin tinha uma cópia própria da função que pegava
+  // as duas primeiras palavras: metade da equipe virava "D" alguma coisa.
+  assert.equal(iniciais("Dr MATHEUS FANTIM GOMES"), "MG");
+  assert.equal(iniciais("Dr. IGOR MORAIS MONTEIRO"), "IM");
+  assert.equal(iniciais("Dr. GUSTAVO SEGOBIA DA SILVA"), "GS");
+  assert.equal(iniciais("DR. LUCAS SOUZA QUIJO"), "LQ");
+  assert.equal(iniciais("Dr. EDER SAMORANO FORTES DE OLIVEIRA"), "EO");
+  // Sem tratamento, e com sobrenome composto: primeiro nome e último
+  // sobrenome continuam sendo a regra.
+  assert.equal(iniciais("Crislaitiane Dal Ponte Pulido"), "CP");
+});
+
 test("iniciais: sobrenome de duas letras continua contando", () => {
   // Um filtro por comprimento derrubava "Sá" junto com "de" e devolvia "JJ".
   assert.equal(iniciais("José de Sá"), "JS");
