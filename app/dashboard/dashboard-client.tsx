@@ -36,6 +36,7 @@ import { ProducaoRecebida } from "@/components/producao-do-dia";
 const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
                    "julho","agosto","setembro","outubro","novembro","dezembro"];
 import { Plantoes } from "@/components/plantoes";
+import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -161,12 +162,10 @@ const brDate = (date?: string | null) => date ? new Date(`${date}T12:00:00`).toL
  * regra de nome, dois lugares: era só questão de tempo até divergirem.
  */
 const initials = iniciais;
-const localDateKey = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+// O nome antigo, apontando para a função de verdade. Ela morava aqui dentro e
+// lia o relógio da MÁQUINA: no navegador, o fuso de quem abriu a tela; na
+// Vercel, sempre Greenwich. Agora é uma só, com fuso do serviço e teste.
+const localDateKey = dataLocal;
 const timeToMinutes = (time?: string | null) => {
   const [hours, minutes] = String(time ?? "").split(":").map(Number);
   return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
@@ -1073,7 +1072,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const [methods,setMethods]=useState<Record<string,string>>({});
   const [filtroReceb,setFiltroReceb]=useState<"todos"|"aberto"|"quitado">("todos");
   const [novoConvenio,setNovoConvenio]=useState("");
-  const currentMonth=new Date().toISOString().slice(0,7);
+  const currentMonth=mesAtual();
   const [period,setPeriod]=useState(currentMonth);
   // Qual tarefa está aberta na coluna da esquerda. Uma de cada vez: a tela
   // antiga empilhava tudo e obrigava a rolar para achar o que fazer.
@@ -1101,7 +1100,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // não a competência: em faturamento por convênio o dinheiro do mês passado
   // ainda está na rua, e uma tela que só olha o mês corrente faz uma operação
   // saudável e uma quebrada parecerem iguais.
-  const hojeIso=new Date().toISOString().slice(0,10);
+  const hojeIso=hoje();
   const glosaDoMes=glosa(periodItems);
   const anterior=mesAnterior(period);
 
@@ -1169,10 +1168,10 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     return {convenio,consultas:items.length,unit:Number(defaultRule?.valor||0),valor:billed,recebido:paid,pendente:Math.max(0,billed-paid)};
   }).sort((a,b)=>b.valor-a.valor);
   const knownConvenios=listarConvenios(convenioValores,pacientes);
-  const todayIso=new Date().toISOString().slice(0,10);
+  const todayIso=hoje();
   const noteAlerts=financeiro.filter(item=>{
     if(!item.nota_fiscal||Number(item.recebido)>=Number(item.valor)||item.status==="cancelado") return false;
-    const due=item.nota_vencimento_at || (item.nota_emitida_at ? new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10) : null);
+    const due=item.nota_vencimento_at || (item.nota_emitida_at ? somarDias(item.nota_emitida_at,15) : null);
     return Boolean(due&&due<=todayIso);
   });
 
@@ -1307,10 +1306,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     else{setMessage("Período conferido e registrado na auditoria.");onRefresh()}
   }
   async function reprogramNote(item:Financeiro){
-    const base=item.nota_vencimento_at||todayIso;
-    const due=new Date(`${base}T12:00:00`);due.setDate(due.getDate()+15);
-    await updateItem(item.id,{nota_vencimento_at:due.toISOString().slice(0,10),nota_reprogramada_at:todayIso});
-    setMessage(`Nota ${item.nota_fiscal||"sem número"} reprogramada para ${due.toLocaleDateString("pt-BR")}.`);
+    const due=somarDias(item.nota_vencimento_at||todayIso,15);
+    await updateItem(item.id,{nota_vencimento_at:due,nota_reprogramada_at:todayIso});
+    setMessage(`Nota ${item.nota_fiscal||"sem número"} reprogramada para ${due.split("-").reverse().join("/")}.`);
   }
   function exportCsv(){
     // Ponto e vírgula e vírgula decimal: é o que o Excel em português abre
@@ -1469,7 +1467,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     </PainelRecolhivel>
       </>}
       {tarefa==="notas"&&<>
-    <PainelRecolhivel chave="fin-notas" className="noteAlerts" titulo="Notas fiscais para acompanhamento" legenda="Alerta após 15 dias da emissão, até receber baixa financeira." abrePadrao={noteAlerts.length>0}>{noteAlerts.length?noteAlerts.map(item=>{const patient=patientMap.get(item.patient_id);const due=item.nota_vencimento_at||new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10);return <div className="noteAlertRow" key={item.id}><span><strong>NF {item.nota_fiscal}</strong><small>{item.convenio} · {patient?.nome||"Paciente"} · verificar pagamento desde {brDate(due)}</small></span><button className="paymentButton" disabled={busy===item.id} onClick={()=>{setTarefa("recebimentos");setMessage("Informe o valor recebido abaixo para confirmar a baixa da nota.");/* o alvo da rolagem vive na seção de Recebimentos: sem trocar de seção antes, getElementById não acha nada e o botão não faz coisa alguma */ requestAnimationFrame(()=>document.getElementById(`recebimento-${item.id}`)?.scrollIntoView({behavior:"smooth",block:"center"}))}}>Dar baixa</button><button className="outlineClinical" disabled={busy===item.id} onClick={()=>reprogramNote(item)}>+15 dias</button></div>}):<div className="emptyClinical compactEmpty">Nenhuma nota vencida para acompanhamento.</div>}</PainelRecolhivel>
+    <PainelRecolhivel chave="fin-notas" className="noteAlerts" titulo="Notas fiscais para acompanhamento" legenda="Alerta após 15 dias da emissão, até receber baixa financeira." abrePadrao={noteAlerts.length>0}>{noteAlerts.length?noteAlerts.map(item=>{const patient=patientMap.get(item.patient_id);const due=item.nota_vencimento_at||somarDias(item.nota_emitida_at,15);return <div className="noteAlertRow" key={item.id}><span><strong>NF {item.nota_fiscal}</strong><small>{item.convenio} · {patient?.nome||"Paciente"} · verificar pagamento desde {brDate(due)}</small></span><button className="paymentButton" disabled={busy===item.id} onClick={()=>{setTarefa("recebimentos");setMessage("Informe o valor recebido abaixo para confirmar a baixa da nota.");/* o alvo da rolagem vive na seção de Recebimentos: sem trocar de seção antes, getElementById não acha nada e o botão não faz coisa alguma */ requestAnimationFrame(()=>document.getElementById(`recebimento-${item.id}`)?.scrollIntoView({behavior:"smooth",block:"center"}))}}>Dar baixa</button><button className="outlineClinical" disabled={busy===item.id} onClick={()=>reprogramNote(item)}>+15 dias</button></div>}):<div className="emptyClinical compactEmpty">Nenhuma nota vencida para acompanhamento.</div>}</PainelRecolhivel>
       </>}
       {tarefa==="producao"&&<ProducaoRecebida mes={period} nomeMes={NOMES_MES[Number(period.slice(5,7))-1]??""} ano={Number(period.slice(0,4))}/>}
 

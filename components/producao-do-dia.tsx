@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { money, plural } from "@/lib/escala";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-internacao";
+import { ultimoDiaDoMes } from "@/lib/data-local";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -606,8 +607,7 @@ export function ProducaoDoMes({
   useEffect(() => {
     let vivo = true;
     void (async () => {
-      const [a, m] = mes.split("-").map(Number);
-      const ultimo = new Date(a, m, 0).toISOString().slice(0, 10);
+      const ultimo = ultimoDiaDoMes(mes);
       const { data, error } = await createClient()
         .from("producao_do_dia").select("*")
         .gte("data", `${mes}-01`).lte("data", ultimo)

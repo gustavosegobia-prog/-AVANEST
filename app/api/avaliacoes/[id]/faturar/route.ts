@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
+import { hoje } from "@/lib/data-local";
 
 type RouteContext = { params: Promise<{ id: string }> };
 const UUID_PATTERN =
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const valor = Number(rule?.valor ?? 0);
   const repassePercentual = Number(rule?.repasse_percentual ?? 0);
   const referenceDate =
-    patient.data_consulta || assessment.concluida_at?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    patient.data_consulta || assessment.concluida_at?.slice(0, 10) || hoje();
 
   const { data: atendimento, error } = await admin
     .from("financeiro_atendimentos")

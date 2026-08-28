@@ -16,6 +16,7 @@ import { nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes } from "@/lib/
 import { baixarXLSX } from "@/lib/xlsx";
 import { MeuFinanceiro } from "@/components/meu-financeiro";
 import { feriadosDoMes } from "@/lib/feriados";
+import { hoje, dataLocal, mesAtual, somarMeses, ultimoDiaDoMes } from "@/lib/data-local";
 
 // Plantões: a escala, o valor e a troca.
 //
@@ -445,8 +446,7 @@ export function Plantoes({
    */
   onEquipeMudou?: () => void;
 }) {
-  const hoje = new Date();
-  const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`);
+  const [mes, setMes] = useState(mesAtual());
   const [aba, setAba] = useState<"escala" | "producao" | "modelos" | "trocas" | "meufinanceiro">("escala");
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [plantoes, setPlantoes] = useState<Plantao[]>([]);
@@ -561,10 +561,9 @@ export function Plantoes({
 
   const carregar = useCallback(async () => {
     const supabase = createClient();
-    const [ano, m] = mes.split("-").map(Number);
-    const tresMesesAtras = new Date(Date.now() - 92 * 86400000).toISOString().slice(0, 10);
+    const tresMesesAtras = dataLocal(new Date(Date.now() - 92 * 86400000));
     const primeiro = `${mes}-01`;
-    const ultimo = new Date(ano, m, 0).toISOString().slice(0, 10);
+    const ultimo = ultimoDiaDoMes(mes);
     const [{ data: mods }, { data: plans, error }, { data: trs }, { data: onde }] = await Promise.all([
       supabase.from("modelos_plantao").select("*").eq("ativo", true).order("nome"),
       supabase.from("plantoes").select("*").gte("data", primeiro).lte("data", ultimo).order("data"),
@@ -600,9 +599,7 @@ export function Plantoes({
   }, [meus]);
 
   function mudarMes(passo: number) {
-    const [ano, m] = mes.split("-").map(Number);
-    const d = new Date(ano, m - 1 + passo, 1);
-    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    setMes(somarMeses(mes, passo));
   }
 
   /**
@@ -729,7 +726,7 @@ export function Plantoes({
     const recebido = plantao.situacao === "pago";
     await atualizar(plantao.id, recebido
       ? { situacao: "realizado", pago_em: null }
-      : { situacao: "pago", pago_em: new Date().toISOString().slice(0, 10) });
+      : { situacao: "pago", pago_em: hoje() });
   }
 
   async function pedirTroca(plantao: Plantao, destinatarioId: string, mensagem: string) {
@@ -810,7 +807,7 @@ export function Plantoes({
   const trocasParaMim = trocas.filter((t) => t.solicitante_id !== perfilId
     && (t.destinatario_id === null || t.destinatario_id === perfilId)).length;
 
-  const hojeISO = new Date().toISOString().slice(0, 10);
+  const hojeISO = hoje();
   // Um relógio só para a lista inteira. Chamar new Date() dentro do map faria
   // trinta linhas perguntarem a hora trinta vezes — e, na virada de um minuto,
   // duas linhas do mesmo mês responderiam coisas diferentes.
@@ -1395,9 +1392,8 @@ export function Plantoes({
                 <strong>{MESES[m - 1]} {ano}</strong>
                 <button className="outlineClinical" onClick={() => mudarMes(1)} aria-label="Próximo mês">›</button>
                 {/* Depois de folhear três meses para trás, voltar é um toque. */}
-                {mes !== `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}` && (
-                  <button className="outlineClinical" onClick={() =>
-                    setMes(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`)}>Hoje</button>
+                {mes !== mesAtual() && (
+                  <button className="outlineClinical" onClick={() => setMes(mesAtual())}>Hoje</button>
                 )}
               </div>
               <div className="plantaoBarraAcoes">
@@ -1651,7 +1647,7 @@ export function Plantoes({
                           value={p.situacao} onChange={(e) => void atualizar(p.id, {
                           situacao: e.target.value,
                           pago_em: e.target.value === "pago"
-                            ? p.pago_em ?? new Date().toISOString().slice(0, 10)
+                            ? p.pago_em ?? hoje()
                             : null,
                         })}>
                           <option value="escalado">Escalado</option>
@@ -1876,7 +1872,7 @@ function DiaDetalhe({
   // O dia de hoje decide qual botão a sua linha mostra: antes dele, passar
   // adiante; a partir dele, confirmar. O banco recusa confirmar o futuro, e um
   // botão que só existe para dar erro não deve existir.
-  const hojeISO = new Date().toISOString().slice(0, 10);
+  const hojeISO = hoje();
   // Na minha escala o destino é sempre eu. A escolha feita na escala do grupo
   // ficava pendurada no componente ao trocar de aba — e o painel do meu dia
   // aparecia escrito "Turno de Lucas", oferecendo lançar para outra pessoa

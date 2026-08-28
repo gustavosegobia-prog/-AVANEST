@@ -5,6 +5,7 @@ import { DashboardClient, type DashboardView } from "./dashboard-client";
 import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/local-ativo";
 import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos } from "@/lib/avisos";
 import { nomeCurto } from "@/lib/escala";
+import { hoje as hojeNoBrasil, mesAtual, somarMeses } from "@/lib/data-local";
 
 export default async function DashboardPage({
   searchParams,
@@ -116,20 +117,18 @@ export default async function DashboardPage({
 
   // Seis meses para trás. O lembrete só olha os três últimos meses fechados;
   // o resto seria carregar anos de linhas para somar três números.
-  const hoje = new Date().toISOString().slice(0, 10);
-  const seisMesesAtras = new Date(Date.UTC(
-    Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 7, 1,
-  )).toISOString().slice(0, 10);
+  // A Vercel roda em UTC: um `new Date()` aqui é o relógio de Greenwich, e
+  // depois das 21h ele já está no dia seguinte. O painel montado no servidor
+  // discordava do calendário desenhado no navegador de quem estava no Brasil.
+  const hoje = hojeNoBrasil();
+  const mes = mesAtual();
+  const seisMesesAtras = `${somarMeses(mes, -6)}-01`;
   // Doze meses para a receita do Financeiro: o envelhecimento olha o que está
   // em aberto, e conta de mais de um ano é caso de perda contábil e não de
   // cobrança.
-  const dozeMesesAtras = new Date(Date.UTC(
-    Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 13, 1,
-  )).toISOString().slice(0, 10);
+  const dozeMesesAtras = `${somarMeses(mes, -12)}-01`;
   // Dois meses cobrem a troca mais antiga que ainda faz sentido responder.
-  const doisMesesAtras = new Date(Date.UTC(
-    Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 3, 1,
-  )).toISOString().slice(0, 10);
+  const doisMesesAtras = `${somarMeses(mes, -2)}-01`;
 
   const [
     { data: pacientes },
