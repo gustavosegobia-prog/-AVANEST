@@ -37,6 +37,7 @@ const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
                    "julho","agosto","setembro","outubro","novembro","dezembro"];
 import { Plantoes } from "@/components/plantoes";
 import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
+import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -55,6 +56,11 @@ export const ROLE_LABELS: Record<string, string> = {
  * enxergam tudo, e marcar áreas para quem já tem todas só confundiria.
  */
 export const AREAS_EXTRAS = ["recepcao", "medico", "financeiro", "admin"] as const;
+/** Como cada papel se chama na tela. "Anestesiologista", e não "Médico". */
+export const ROTULO_DO_PAPEL: Record<string, string> = {
+  medico: "Anestesiologista", recepcao: "Recepção",
+  financeiro: "Financeiro", admin: "Administrador",
+};
 export const VE_TUDO = ["admin", "owner"];
 export const areasExtras = (p: { role: string; permissoes?: string[] | null }) =>
   (Array.isArray(p.permissoes) ? p.permissoes : []).filter(
@@ -100,7 +106,9 @@ const ehEscalavel = (p: { status: string; role: string; crm: string | null; na_e
   && Boolean((p.crm ?? "").trim()) && (p.na_escala ?? true);
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean };
-type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null };
+type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null;
+  // O que a organização contratou. Nulo = tudo, que é o caso de quase todas.
+  modulos?: string[] | null };
 // O que minha_assinatura() devolve. cancelada_em é o que separa "vai
 // renovar" de "vai até a data e acaba".
 type Assinatura = {
@@ -256,12 +264,18 @@ export function DashboardClient({
     // barra numa ordem e a área de entrada noutra.
     const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin", "plantoes"];
     const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
-    if (["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos")) return permissionOrder;
+    // O segundo filtro é o da ORGANIZAÇÃO, e vem depois do papel: um hospital
+    // que contratou ficha e escala não mostra Financeiro nem para o próprio
+    // administrador. A mesma regra roda no servidor, em page.tsx.
+    const modulos = modulosDaOrganizacao(organizacao?.modulos);
+    if (["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos")) {
+      return areasLiberadas(permissionOrder, modulos);
+    }
     const permittedViews = permissionOrder.filter((area) => perfil.role === area || assignedPermissions.includes(area)
       // Plantões acompanha o acesso Médico: não é uma permissão à parte.
       || (area === "plantoes" && (perfil.role === "medico" || assignedPermissions.includes("medico"))));
-    return permittedViews.length > 0 ? permittedViews : ["medico"];
-  }, [perfil.role, perfil.permissoes]);
+    return areasLiberadas(permittedViews.length > 0 ? permittedViews : ["medico"], modulos);
+  }, [perfil.role, perfil.permissoes, organizacao?.modulos]);
   const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
   const [isAreaPending, startAreaTransition] = useTransition();
   const [open, setOpen] = useState(initialNewPatient);
@@ -741,7 +755,19 @@ export function DashboardClient({
         </div>
       </header>
 
-      {view === "medico" ? (
+      {/* Pode não sobrar área nenhuma: um recepcionista numa organização que
+          contratou só ficha e escala. Antes dos módulos isso era impossível e
+          a tela caía em Médico por padrão — o que agora seria abrir dado
+          clínico para quem a organização não pôs lá. Melhor dizer na cara. */}
+      {!view ? (
+        <div className="clinicalMain">
+          <div className="emptyClinical">
+            <strong>Nenhuma área liberada para o seu perfil.</strong>
+            <p>Sua organização não contratou as áreas que o seu perfil alcança.
+              Fale com o administrador de {organizacao?.nome ?? "sua organização"}.</p>
+          </div>
+        </div>
+      ) : view === "medico" ? (
         <div className="clinicalMain">
           <section className="clinicalWelcome">
             <div><h1>Consultas pré-anestésicas agendadas</h1><p>Olá, {perfil.nome}. Acompanhe a fila e continue suas avaliações.</p></div>
@@ -1870,6 +1896,8 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
   // A função escolhida decide se o CRM aparece. Recepção e financeiro não
   // entram na escala; pedir o registro a eles seria pedir o que não existe.
   const [papel,setPapel]=useState("medico");
+  const papeisDisponiveis=useMemo(
+    ()=>papeisConvidaveis(modulosDaOrganizacao(organizacao?.modulos)),[organizacao?.modulos]);
   const [versao,setVersao]=useState(0);
   const [busy,setBusy]=useState("");
   const [aviso,setAviso]=useState("");
@@ -2050,12 +2078,15 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
         <input name="nome" required autoComplete="off" placeholder="Ex.: Dra. Helena Martins"/></label>}
       {meio!=="sem-acesso"&&<label className="clinicalField span2"><span>E-mail do convidado *</span>
         <input name="email" type="email" required autoComplete="off" placeholder="pessoa@exemplo.com"/></label>}
+      {/* A lista sai do que a ORGANIZAÇÃO contratou. Convidar alguém para
+          "Financeiro" numa casa que não comprou financeiro entrega uma conta
+          que cai numa tela sem nenhuma aba — a pessoa faz a senha, entra e não
+          encontra nada. O banco recusa igual, mas o certo é não oferecer. */}
       {meio!=="sem-acesso"&&<label className="clinicalField"><span>Função</span>
-        <select name="role" value={papel} onChange={e=>setPapel(e.target.value)}>
-          <option value="medico">Anestesiologista</option>
-          <option value="recepcao">Recepção</option>
-          <option value="financeiro">Financeiro</option>
-          <option value="admin">Administrador</option>
+        <select name="role" value={papeisDisponiveis.includes(papel)?papel:papeisDisponiveis[0]}
+          onChange={e=>setPapel(e.target.value)}>
+          {papeisDisponiveis.map(p=>
+            <option key={p} value={p}>{ROTULO_DO_PAPEL[p]}</option>)}
         </select></label>}
       {/* O CRM é obrigatório no cadastro sem acesso e opcional no convite.
           A diferença é quem preenche depois: quem não entra no sistema nunca

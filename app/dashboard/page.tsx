@@ -6,6 +6,7 @@ import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/
 import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos } from "@/lib/avisos";
 import { nomeCurto } from "@/lib/escala";
 import { hoje as hojeNoBrasil, mesAtual, somarMeses } from "@/lib/data-local";
+import { areasLiberadas, modulosDaOrganizacao } from "@/lib/modulos";
 
 export default async function DashboardPage({
   searchParams,
@@ -28,7 +29,7 @@ export default async function DashboardPage({
 
   const { data: instituicao } = await supabase
     .from("instituicoes")
-    .select("nome, tipo, telefone, email")
+    .select("nome, tipo, telefone, email, modulos")
     .eq("id", perfil.institution_id)
     .maybeSingle();
 
@@ -92,17 +93,25 @@ export default async function DashboardPage({
   const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin", "plantoes"];
   const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
   const hasLegacyFullAccess = ["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos");
-  const allowedViews: DashboardView[] = hasLegacyFullAccess
+  const doPapel: DashboardView[] = hasLegacyFullAccess
     ? permissionOrder
     : permissionOrder.filter((view) => perfil.role === view || assignedPermissions.includes(view)
         // Plantões acompanha o acesso Médico: não é uma permissão à parte.
         || (view === "plantoes" && (perfil.role === "medico" || assignedPermissions.includes("medico"))));
-  if (allowedViews.length === 0) allowedViews.push("medico");
+  if (doPapel.length === 0) doPapel.push("medico");
+  // O segundo filtro, e ele vem DEPOIS do papel: o que a organização contratou.
+  // Um hospital que comprou ficha e escala não mostra Financeiro nem para o
+  // próprio administrador — não é permissão de pessoa, é o contrato da casa.
+  const modulos = modulosDaOrganizacao(instituicao?.modulos);
+  const allowedViews = areasLiberadas(doPapel, modulos);
   const canManage = allowedViews.includes("admin");
   const canFinance = allowedViews.includes("financeiro");
   const requestedView = ["recepcao", "medico", "plantoes", "financeiro", "admin"].includes(area ?? "")
     ? area as DashboardView
     : undefined;
+  // Pode não sobrar área nenhuma — um recepcionista numa organização que não
+  // contratou recepção. `initialView` fica indefinido e o cliente diz isso na
+  // cara, em vez de abrir uma tela que a organização não comprou.
   const initialView = requestedView && allowedViews.includes(requestedView)
     ? requestedView
     : allowedViews[0];
