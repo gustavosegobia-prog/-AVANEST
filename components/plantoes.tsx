@@ -1791,6 +1791,14 @@ export function Plantoes({
       {lancando && (
         <LancarPlantao
           dia={lancando.dia} para={lancando.para} locais={locais} modelos={modelos}
+          // O hospital cuja escala está aberta já vem escolhido. Quem entrou na
+          // escala do FUNDHOSPAR para lançar um plantão do FUNDHOSPAR não
+          // deveria ter de dizer isso de novo — e o campo vinha com o primeiro
+          // da lista, que é o hospital errado em toda escala menos uma.
+          //
+          // "todos" e "sem" não são hospitais: nesses dois a escala mistura
+          // lugares, e aí não há o que herdar.
+          localSugerido={["todos", "sem"].includes(hospitalAtivo) ? "" : hospitalAtivo}
           colegas={escalaveis} apelidos={apelidos} corPorMedico={corPorMedico}
           perfilId={perfilId} ehAdmin={ehAdmin}
           onFechar={() => setLancando(null)} onSalvar={lancarAvulso}
@@ -2183,12 +2191,14 @@ function ModelosPainel({
  */
 function LancarPlantao({
   dia, para, locais, modelos, colegas, apelidos, corPorMedico,
-  perfilId, ehAdmin, onFechar, onSalvar,
+  perfilId, ehAdmin, localSugerido, onFechar, onSalvar,
 }: {
   dia: string;
   /** Quem já vinha escolhido na fila rápida do painel do dia. */
   para: string;
   locais: LocalDisponivel[];
+  /** O hospital da escala aberta. Vazio quando ela mistura lugares. */
+  localSugerido: string;
   modelos: Modelo[];
   colegas: Colega[];
   apelidos: Map<string, string>;
@@ -2209,7 +2219,10 @@ function LancarPlantao({
   const [recusa, setRecusa] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [form, setForm] = useState({
-    data: dia, local_id: locais[0]?.id ?? "", local_texto: "",
+    data: dia,
+    // O da escala aberta primeiro; sem ele, o primeiro da lista.
+    local_id: localSugerido || locais[0]?.id || "",
+    local_texto: "",
     hora_inicio: "07:00", hora_fim: "19:00",
     valor: "", perfil_id: ehAdmin ? para : perfilId, privado: false,
   });
