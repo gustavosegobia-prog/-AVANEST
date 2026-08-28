@@ -15,6 +15,7 @@ import {
 import {
   baixarCSV, nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes,
 } from "@/lib/planilha";
+import { MeuFinanceiro } from "@/components/meu-financeiro";
 import { feriadosDoMes } from "@/lib/feriados";
 
 // Plantões: a escala, o valor e a troca.
@@ -447,7 +448,7 @@ export function Plantoes({
 }) {
   const hoje = new Date();
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`);
-  const [aba, setAba] = useState<"escala" | "producao" | "modelos" | "trocas">("escala");
+  const [aba, setAba] = useState<"escala" | "producao" | "modelos" | "trocas" | "meufinanceiro">("escala");
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [plantoes, setPlantoes] = useState<Plantao[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -882,7 +883,7 @@ export function Plantoes({
       setAba("escala"); setEscopo("grupo"); setHospital(secao.slice(6));
       return;
     }
-    setAba(secao as "producao" | "modelos" | "trocas");
+    setAba(secao as "producao" | "modelos" | "trocas" | "meufinanceiro");
   }
 
   /**
@@ -1311,6 +1312,11 @@ export function Plantoes({
             ["trocas", "Trocas", trocasParaMim],
             ["grupo", "Faturamento"],
             ["producao", "Produção"],
+            // A conta da PESSOA, e não a do serviço. Ela mora aqui, e não no
+            // Financeiro, porque o anestesiologista do grupo não tem acesso ao
+            // Financeiro — nem deveria: o caixa comum não é assunto dele. O
+            // dele é.
+            ["meufinanceiro", "Meu financeiro"],
             ["grupo", "Configuração"],
             ["modelos", "Modelos"],
           ] as [string, string, number?][]).map(([id, rotulo, contador], i) =>
@@ -1725,6 +1731,20 @@ export function Plantoes({
               })}
           </section>
         </>
+      )}
+
+      {aba === "meufinanceiro" && (
+        <MeuFinanceiro
+          perfilId={perfilId} institutionId={institutionId}
+          mes={mes} nomeMes={MESES[m - 1]} ano={ano}
+          // Já filtrados: só os seus, sem os cancelados. A tela de dentro não
+          // repete o filtro — ela recebe o que é dela.
+          meusPlantoes={meus.map((p) => ({
+            id: p.id, perfil_id: p.perfil_id, data: p.data, valor: Number(p.valor),
+            situacao: p.situacao, local_id: p.local_id, local_texto: p.local_texto,
+          }))}
+          nomeDoLocalPeloId={(id) => (id && localPorId.get(id)) || ""}
+        />
       )}
 
       {aba === "producao" && (
