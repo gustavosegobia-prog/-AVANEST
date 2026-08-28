@@ -2991,6 +2991,44 @@ button:disabled{cursor:not-allowed}
   color:var(--cor-tinta-fraca);display:flex;align-items:flex-start;gap:7px}
 .financeNota.alerta{color:var(--cor-perigo);font-weight:650}
 
+/* ── Despesas ────────────────────────────────────────────────────────────── */
+
+/* Cinco campos numa linha só no computador, empilhados no celular. Um
+   formulário de despesa que ocupa a tela inteira é o formulário que a pessoa
+   deixa para depois — e despesa não lançada some do resultado do mês sem
+   deixar rastro. */
+.despesaForm{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;padding:16px 25px}
+.despesaForm label{display:flex;flex-direction:column;gap:5px;flex:none}
+.despesaForm label span{font-size:12px;font-weight:750;letter-spacing:.03em;
+  color:var(--cor-tinta-fraca)}
+.despesaForm input,.despesaForm select{height:44px;border:1.5px solid var(--cor-borda);
+  border-radius:10px;padding:0 12px;font-size:15px;background:#fff;color:var(--cor-tinta)}
+.despesaForm input:focus,.despesaForm select:focus{outline:0;box-shadow:var(--foco);
+  border-color:var(--cor-marca)}
+/* A descrição é o único campo que cresce: os outros têm tamanho conhecido, e
+   ela é o que varia de "Contador" a "Manutenção do ventilador da sala 3". */
+.despesaForm .despesaDescricao{flex:1 1 240px;min-width:0}
+.despesaForm input[type=date]{width:150px}
+.despesaForm .despesaCheck{flex-direction:row;align-items:center;gap:7px;
+  height:44px;cursor:pointer}
+.despesaForm .despesaCheck input{height:18px;width:18px;accent-color:var(--cor-marca);
+  cursor:pointer}
+.despesaForm .despesaCheck span{font-size:13.5px;font-weight:600;color:var(--cor-tinta)}
+.despesaForm button{height:44px}
+
+/* A linha da despesa: descrição à esquerda, valor destacado, apagar no fim. */
+.despesaLinha{grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px}
+.despesaValor{font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.resultadoNegativo{color:var(--cor-perigo)}
+
+@media(max-width:700px){
+  .despesaForm{padding:14px 16px;gap:10px}
+  .despesaForm label,.despesaForm .despesaDescricao,.despesaForm input[type=date],
+  .despesaForm button{flex:1 1 100%;width:100%}
+  .despesaLinha{grid-template-columns:1fr auto}
+  .despesaLinha button{grid-column:1/-1}
+}
+
 /* Em celular os cartões ficam em duas colunas, e o `nowrap` do valor cria uma
    largura mínima que não cabia: dois cartões estouravam a tela por poucos
    pixels e a página inteira ganhava rolagem lateral. Aperta o respiro e o

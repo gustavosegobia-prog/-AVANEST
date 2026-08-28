@@ -27,6 +27,10 @@ import {
   type PlantaoBruto, type ProducaoBruta, type Receita,
   paraRecebivel,
 } from "@/lib/receitas";
+import {
+  CATEGORIAS, NOME_DA_CATEGORIA, despesasDoMes, porCategoria,
+  recorrentesFaltando, resultadoDoMes, somarDespesas, type Despesa,
+} from "@/lib/despesas";
 import { ProducaoRecebida } from "@/components/producao-do-dia";
 
 const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
@@ -203,7 +207,7 @@ export function DashboardClient({
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
   avisos = [],
-  plantoesDaReceita = [], producaoDaReceita = [],
+  plantoesDaReceita = [], producaoDaReceita = [], despesas = [],
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
@@ -216,6 +220,8 @@ export function DashboardClient({
    * a produção do dia existiam no sistema e não chegavam a conta nenhuma.
    */
   plantoesDaReceita?: PlantaoBruto[]; producaoDaReceita?: ProducaoBruta[];
+  /** O outro lado do caixa. Sem saída não é fluxo de caixa, é faturamento. */
+  despesas?: Despesa[];
   /** Onde a pessoa está atendendo agora. Null quando a organização ainda não cadastrou nenhum local. */
   localAtivo?:LocalDisponivel|null; totalDeLocais?:number; locais?:LocalDisponivel[];
   initialView?: DashboardView;
@@ -973,7 +979,7 @@ export function DashboardClient({
             </div>
           </div>
         </div>
-      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} plantoesDaReceita={plantoesDaReceita} producaoDaReceita={producaoDaReceita} perfis={perfis} locais={locais} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()}/>
+      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} plantoesDaReceita={plantoesDaReceita} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} locais={locais} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin}/>}
 
       {contaAberta&&<div className="patientModalBackdrop" role="presentation">
@@ -1057,7 +1063,7 @@ export function DashboardClient({
   );
 }
 
-function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,plantoesDaReceita=[],producaoDaReceita=[],perfis=[],locais=[],ehGrupo=false,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];plantoesDaReceita?:PlantaoBruto[];producaoDaReceita?:ProducaoBruta[];perfis?:PerfilGerenciado[];locais?:LocalDisponivel[];ehGrupo?:boolean;onRefresh:()=>void}) {
+function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,plantoesDaReceita=[],producaoDaReceita=[],despesas=[],perfis=[],locais=[],ehGrupo=false,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];plantoesDaReceita?:PlantaoBruto[];producaoDaReceita?:ProducaoBruta[];despesas?:Despesa[];perfis?:PerfilGerenciado[];locais?:LocalDisponivel[];ehGrupo?:boolean;onRefresh:()=>void}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const [configOpen,setConfigOpen]=useState(false);
@@ -1146,6 +1152,13 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // o pagamento, e plantão e produção não passam por emissão dentro do sistema.
   // Misturá-los devolveria "0 dias" para o hospital que paga em sessenta.
   const prazos=prazoMedioPorConvenio(financeiro,pagamentos);
+
+  // O outro lado do caixa.
+  const despesasMes=despesasDoMes(despesas,period);
+  const despesaTotal=somarDespesas(despesasMes);
+  const categorias=porCategoria(despesasMes);
+  const resultado=resultadoDoMes(receitaTotal.valor,despesaTotal);
+  const faltamRecorrentes=recorrentesFaltando(despesas,period);
   const groups=Object.entries(periodItems.reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.convenio||"Particular"]??=[]).push(item);return acc},{}));
   const lots=Object.entries(periodItems.filter(item=>item.lote).reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.lote as string]??=[]).push(item);return acc},{}));
   const periodState=periodos.find(item=>item.periodo===period);
@@ -1162,6 +1175,41 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     const due=item.nota_vencimento_at || (item.nota_emitida_at ? new Date(new Date(`${item.nota_emitida_at}T12:00:00`).getTime()+15*86400000).toISOString().slice(0,10) : null);
     return Boolean(due&&due<=todayIso);
   });
+
+  /**
+   * Lança uma despesa.
+   *
+   * `perfil_id` nulo quer dizer despesa do serviço — a que se rateia. O
+   * formulário oferece a escolha só em grupo: sozinho, "minha" e "do serviço"
+   * são a mesma coisa, e a pergunta seria trabalho sem resposta útil.
+   */
+  async function salvarDespesa(dados:{data:string;descricao:string;categoria:string;valor:number;recorrente:boolean;minha:boolean}) {
+    setBusy("despesa"); setMessage("");
+    const {error}=await createClient().from("despesas").insert({
+      institution_id:perfil.institution_id,
+      perfil_id:dados.minha?perfil.id:null,
+      data:dados.data, descricao:dados.descricao, categoria:dados.categoria,
+      valor:dados.valor, recorrente:dados.recorrente, created_by:perfil.id,
+    });
+    setBusy("");
+    if(error){
+      // 42P01 = a tabela não existe. Sem esta mensagem o erro cru do Postgres
+      // mandaria a pessoa procurar defeito na tela, e não a migração que falta.
+      setMessage(error.code==="42P01"
+        ? "As despesas ainda não existem no banco. Rode a migração 202608270001_despesas.sql."
+        : `Não foi possível lançar a despesa: ${error.message}`);
+      return false;
+    }
+    setMessage("Despesa lançada."); onRefresh(); return true;
+  }
+
+  async function apagarDespesa(id:string) {
+    setBusy(id); setMessage("");
+    const {error}=await createClient().from("despesas").delete().eq("id",id);
+    setBusy("");
+    if(error) setMessage(`Não foi possível apagar: ${error.message}`);
+    else onRefresh();
+  }
 
   async function createBilling(patient:Paciente) {
     setBusy(patient.id); setMessage("");
@@ -1320,10 +1368,12 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ["lancamentos","Lançamentos",pendingPatients.length],
           ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
           ["notas","Notas fiscais",noteAlerts.length],
+          ["despesas","Despesas",faltamRecorrentes.length],
           ["lotes","Lotes de cobrança"],
           ["producao","Produção da equipe"],
           ["repasses","Repasses"],
           ["grupo","Análise"],
+          ["resultado","Resultado do mês"],
           ["origem","De onde vem o dinheiro"],
           // O contador é o que está vencido, e não o total a receber: a coluna
           // conta o que pede ação hoje.
@@ -1429,6 +1479,83 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       {tarefa==="repasses"&&<>
     <PainelRecolhivel chave="fin-repasses" titulo="🩺 Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao={false}>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</PainelRecolhivel>
       </>}
+      {tarefa==="despesas"&&<>
+    {faltamRecorrentes.length>0&&
+      <PainelRecolhivel chave="fin-recorrentes" titulo="Contas que se repetem e ainda não foram lançadas"
+        legenda="o sistema lembra; quem lança é você" abrePadrao>
+        {faltamRecorrentes.map(d=><div className="financeSetupRow" key={d.id}>
+          <span><strong>{d.descricao}</strong><small>{NOME_DA_CATEGORIA.get(d.categoria as never)??"Outra"} · último valor {mascara(money(Number(d.valor)))} em {brDate(d.data)}</small></span>
+          <button className="outlineClinical" disabled={busy==="despesa"}
+            onClick={()=>void salvarDespesa({data:`${period}-05`,descricao:d.descricao,categoria:d.categoria,valor:Number(d.valor),recorrente:true,minha:Boolean(d.perfil_id)})}>
+            Lançar {mascara(money(Number(d.valor)))}
+          </button>
+        </div>)}
+      </PainelRecolhivel>}
+
+    {/* `key={period}` remonta o formulário quando a competência muda, e com
+        isso a data volta sozinha para o mês que está na tela. É o que evita o
+        efeito que sincronizava estado com prop — e o defeito que ele existia
+        para tapar: em setembro conferindo agosto, a despesa nova nasceria em
+        setembro, calada. */}
+    <NovaDespesa key={period} ehGrupo={ehGrupo} periodo={period} ocupado={busy==="despesa"} onSalvar={salvarDespesa}/>
+
+    <PainelRecolhivel chave="fin-despesas-lista" titulo="Despesas do mês"
+      legenda={`${despesasMes.length} lançamento(s)`} abrePadrao
+      extra={<b>{mascara(money(despesaTotal))}</b>}>
+      {despesasMes.length===0
+        ? <div className="emptyClinical compactEmpty">Nenhuma despesa lançada neste mês.</div>
+        : despesasMes.map(d=><div className="financeItemRow despesaLinha" key={d.id}>
+            <div>
+              <strong>{d.descricao}</strong>
+              <small>{brDate(d.data)} · {NOME_DA_CATEGORIA.get(d.categoria as never)??"Outra"} · {d.perfil_id?"pessoal":"do serviço"}{d.recorrente?" · repete todo mês":""}</small>
+            </div>
+            <b className="despesaValor">{mascara(money(Number(d.valor)))}</b>
+            <button className="outlineClinical red" disabled={busy===d.id}
+              onClick={()=>void apagarDespesa(d.id)}>Apagar</button>
+          </div>)}
+    </PainelRecolhivel>
+      </>}
+
+      {tarefa==="resultado"&&<>
+    {/* O número que fecha o mês, e que a tela não tinha.
+        Usa o FATURADO e não o recebido: "o mês deu lucro" se responde com o
+        trabalho daquele mês contra o custo daquele mês. "Tenho dinheiro em
+        caixa" é outra pergunta, e quem responde é A receber por idade — um
+        serviço pode ter um mês excelente e o caixa apertado, e é isso que as
+        duas telas juntas mostram. */}
+    <PainelRecolhivel chave="fin-resultado" titulo="Resultado do mês"
+      legenda="o que entrou menos o que saiu" abrePadrao
+      extra={<b className={resultado.resultado<0?"resultadoNegativo":undefined}>{mascara(money(resultado.resultado))}</b>}>
+      <div className="closingMetrics">
+        <MoneySmall value={resultado.receita} label="Receita faturada" tone="blue"/>
+        <MoneySmall value={resultado.despesa} label="Despesas" tone="red"/>
+        <MoneySmall value={resultado.resultado} label="Resultado" tone={resultado.resultado<0?"red":"green"}/>
+        <div><strong className={resultado.margem!==null&&resultado.margem<0?"red":"green"}>
+          {resultado.margem===null?"—":`${resultado.margem.toFixed(1).replace(".",",")}%`}
+        </strong><span>Margem</span></div>
+      </div>
+      <p className="financeNota">A margem diz quanto de cada real faturado sobrou depois das despesas. Ela só aparece quando houve faturamento no mês.</p>
+    </PainelRecolhivel>
+
+    <PainelRecolhivel chave="fin-categorias" titulo="Para onde foi o dinheiro"
+      legenda="despesas do mês por categoria">
+      {categorias.length===0
+        ? <div className="emptyClinical compactEmpty">Nenhuma despesa lançada neste mês.</div>
+        : <div className="financeTabelaRolavel">
+            <table className="financeTabela">
+              <thead><tr><th>Categoria</th><th className="num">Lançamentos</th><th className="num">Valor</th><th className="num">Fatia</th></tr></thead>
+              <tbody>{categorias.map(c=><tr key={c.id}>
+                <td>{c.nome}</td>
+                <td className="num">{c.linhas}</td>
+                <td className="num">{mascara(money(c.valor))}</td>
+                <td className="num">{c.fatia===null?"—":`${c.fatia.toFixed(1).replace(".",",")}%`}</td>
+              </tr>)}</tbody>
+              <tfoot><tr><td>Total</td><td className="num">{despesasMes.length}</td><td className="num">{mascara(money(despesaTotal))}</td><td className="num">100%</td></tr></tfoot>
+            </table>
+          </div>}
+    </PainelRecolhivel>
+      </>}
+
       {tarefa==="origem"&&<>
     {/* As três fontes de receita do serviço, lado a lado.
         Sempre as três, mesmo zeradas: origem que some da tabela vira pergunta
@@ -2316,6 +2443,74 @@ function Metric({ value, label, tone, mascara, extra }: { value: number; label: 
 function MoneyMetric({value,label,tone,mascara,extra}:{value:number;label:string;tone:string;mascara?:(t:string)=>string;extra?:React.ReactNode}){
   const texto=value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   return <div className="metricCard"><strong className={tone}>{mascara?mascara(texto):texto}</strong><span>{label}</span>{extra}</div>}
+/**
+ * Lançar uma despesa.
+ *
+ * Cinco campos e nada mais. Um formulário de despesa que pede centro de custo,
+ * forma de pagamento e número do documento é o formulário que ninguém preenche
+ * — e despesa não lançada some do resultado do mês sem deixar rastro, que é o
+ * pior desfecho possível para esta tela.
+ *
+ * A data vem preenchida com o dia 5 da competência aberta, e não com hoje: quem
+ * entra aqui está lançando as contas do mês que está olhando, e em setembro
+ * conferindo agosto o "hoje" jogaria a despesa para o mês errado — calado.
+ */
+function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
+  ehGrupo:boolean; periodo:string; ocupado:boolean;
+  onSalvar:(d:{data:string;descricao:string;categoria:string;valor:number;recorrente:boolean;minha:boolean})=>Promise<boolean>;
+}) {
+  const [data,setData]=useState(`${periodo}-05`);
+  const [descricao,setDescricao]=useState("");
+  const [categoria,setCategoria]=useState("estrutura");
+  const [valor,setValor]=useState("");
+  const [recorrente,setRecorrente]=useState(false);
+  const [minha,setMinha]=useState(false);
+  const [erro,setErro]=useState("");
+
+  async function enviar(evento:FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const texto=descricao.trim();
+    if(!texto){setErro("Escreva do que é a despesa.");return}
+    const numero=Number(valor.replace(/\s|R\$/gi,"").replace(/\./g,"").replace(",","."));
+    if(!Number.isFinite(numero)||numero<=0){setErro("Informe um valor maior que zero.");return}
+    setErro("");
+    if(await onSalvar({data,descricao:texto,categoria,valor:numero,recorrente,minha})){
+      setDescricao("");setValor("");setRecorrente(false);
+    }
+  }
+
+  return <PainelRecolhivel chave="fin-nova-despesa" titulo="Lançar despesa"
+    legenda="o que saiu do caixa neste mês" abrePadrao>
+    <form className="despesaForm" onSubmit={enviar}>
+      <label><span>Data</span>
+        <input type="date" value={data} onChange={e=>setData(e.target.value)} required/></label>
+      <label className="despesaDescricao"><span>Do que é</span>
+        <input value={descricao} onChange={e=>setDescricao(e.target.value)}
+          placeholder="Aluguel da sala, anuidade do CRM, contador..." required/></label>
+      <label><span>Categoria</span>
+        <select value={categoria} onChange={e=>setCategoria(e.target.value)}>
+          {CATEGORIAS.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select></label>
+      <label><span>Valor</span>
+        <input value={valor} onChange={e=>setValor(e.target.value)} placeholder="R$ 0,00" inputMode="decimal" required/></label>
+      {/* Só em grupo. Sozinho, "minha" e "do serviço" são a mesma coisa. */}
+      {ehGrupo&&<label className="despesaCheck">
+        <input type="checkbox" checked={minha} onChange={e=>setMinha(e.target.checked)}/>
+        <span>É minha, não do serviço</span></label>}
+      <label className="despesaCheck">
+        <input type="checkbox" checked={recorrente} onChange={e=>setRecorrente(e.target.checked)}/>
+        <span>Repete todo mês</span></label>
+      <button className="primaryClinical compact" type="submit" disabled={ocupado}>
+        {ocupado?"Lançando...":"Lançar"}
+      </button>
+    </form>
+    {erro&&<p className="clinicalError">{erro}</p>}
+    <p className="financeNota">
+      {CATEGORIAS.find(c=>c.id===categoria)?.exemplo}
+    </p>
+  </PainelRecolhivel>;
+}
+
 function MoneySmall({value,label,tone=""}:{value:number;label:string;tone?:string}){return <div><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
 /**
  * A seta de comparação com o mês anterior.

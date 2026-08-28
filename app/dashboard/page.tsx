@@ -152,6 +152,7 @@ export default async function DashboardPage({
     { data: plantoesDoDinheiro },
     { data: plantoesDaReceita },
     { data: producaoDaReceita },
+    { data: despesas },
   ] = await Promise.all([
     needsFinanceData && perfil.role === "financeiro"
       ? supabase.rpc("financeiro_listar_pacientes")
@@ -258,9 +259,25 @@ export default async function DashboardPage({
           .select("id,perfil_id,data,valor,situacao,local_id,local_texto")
           .gte("data", dozeMesesAtras).order("data", { ascending: false })
       : Promise.resolve({ data: [] }),
+    // Pela função, e NÃO pela tabela.
+    //
+    // `producao_do_dia` tem política `perfil_id = auth.uid()` sem exceção para
+    // administrador, e isso é deliberado: a lista de pacientes que um colega
+    // anestesiou não é informação de gestão. Consultar a tabela direto daqui
+    // não dá erro — devolve menos linhas. Num grupo, a receita de produção
+    // sairia só a do próprio usuário, sem aviso nenhum de que faltava o resto.
+    //
+    // A função soma o que foi ENVIADO ao financeiro, com a permissão certa.
     needsFinanceData
-      ? supabase.from("producao_do_dia")
-          .select("id,perfil_id,data,paciente,convenio,procedimento,valor,situacao")
+      ? supabase.rpc("producao_do_periodo", { p_de: dozeMesesAtras, p_ate: hoje })
+      : Promise.resolve({ data: [] }),
+
+    // O outro lado do caixa. Doze meses porque o lembrete de despesa recorrente
+    // olha o histórico para saber o que se repete — com um mês só, toda conta
+    // pareceria nova.
+    needsFinanceData
+      ? supabase.from("despesas")
+          .select("id,perfil_id,data,descricao,categoria,valor,recorrente,local_id,observacoes")
           .gte("data", dozeMesesAtras).order("data", { ascending: false })
       : Promise.resolve({ data: [] }),
   ]);
@@ -333,6 +350,7 @@ export default async function DashboardPage({
       convenioValores={convenioValores ?? []}
       plantoesDaReceita={plantoesDaReceita ?? []}
       producaoDaReceita={producaoDaReceita ?? []}
+      despesas={despesas ?? []}
       initialView={initialView}
       initialNewPatient={novo === "1"}
       autoStartAssessment={novo === "1" && iniciar === "1"}
