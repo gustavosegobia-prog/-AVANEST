@@ -680,13 +680,19 @@ export function Plantoes({
       valor: dono === perfilId ? dados.valor : 0, created_by: perfilId,
     });
     if (error) {
-      setErro(error.code === "23505"
+      // A recusa VOLTA para quem chamou, em vez de virar só um aviso no topo da
+      // página. Com o diálogo aberto por cima, aquele aviso ficava atrás dele:
+      // o sistema recusava, escrevia o motivo, e a pessoa via um botão que não
+      // fazia nada. Cara de travamento, sendo que a resposta estava pronta.
+      const motivo = error.code === "23505"
         ? dono === perfilId
           ? "Você já tem um plantão nesse dia e horário."
           : `${nomePorId.get(dono) ?? "Esse profissional"} já tem um plantão nesse dia e horário.`
-        : "Não foi possível lançar o plantão.");
-      return;
+        : "Não foi possível lançar o plantão.";
+      setErro(motivo);
+      return motivo;
     }
+    setErro("");
     setLancando(null);
     if (dados.privado) {
       setAviso("Plantão lançado só na sua escala. Ninguém do grupo enxerga este turno.");
@@ -694,6 +700,7 @@ export function Plantoes({
       setAviso(`Plantão lançado para ${nomePorId.get(dono) ?? "o profissional"}. Ele aparece na escala dele, que pode ajustar o valor e pedir troca.`);
     }
     void carregar();
+    return null;
   }
 
   async function atualizar(id: string, campos: Partial<Plantao>) {
@@ -2193,8 +2200,14 @@ function LancarPlantao({
     data: string; local_id: string; local_texto: string;
     hora_inicio: string; hora_fim: string; valor: number;
     perfil_id: string; privado: boolean;
-  }) => void;
+    /** Devolve o motivo da recusa, ou null quando gravou. */
+  }) => Promise<string | null>;
 }) {
+  // A recusa do banco mostrada AQUI DENTRO. O aviso no topo da página fica
+  // atrás do diálogo, e "já tem plantão nesse dia e horário" era escrito num
+  // lugar que ninguém via — o botão parecia não fazer nada.
+  const [recusa, setRecusa] = useState("");
+  const [enviando, setEnviando] = useState(false);
   const [form, setForm] = useState({
     data: dia, local_id: locais[0]?.id ?? "", local_texto: "",
     hora_inicio: "07:00", hora_fim: "19:00",
@@ -2225,8 +2238,18 @@ function LancarPlantao({
 
         <form onSubmit={(e) => {
           e.preventDefault();
-          onSalvar({ ...form, valor: Number(form.valor.replace(/\./g, "").replace(",", ".")) || 0 });
+          setRecusa(""); setEnviando(true);
+          void (async () => {
+            const motivo = await onSalvar({
+              ...form, valor: Number(form.valor.replace(/\./g, "").replace(",", ".")) || 0,
+            });
+            setEnviando(false);
+            // Quando grava, quem fecha o diálogo é a tela de fora — ela é que
+            // sabe se deu certo. Aqui só fica o que impediu.
+            if (motivo) setRecusa(motivo);
+          })();
         }}>
+          {recusa && <p className="clinicalError plantaoRecusa" role="alert">{recusa}</p>}
           {/* Grade única para tudo, inclusive a duração rápida. Antes ela ficava
               fora da grade com grid-column:1/-1 — regra que só vale DENTRO de
               um grid —, e como bloco solto encavalava nos campos de horário. */}
@@ -2410,7 +2433,13 @@ function LancarPlantao({
 
           <div className="modalActions">
             <button type="button" className="outlineClinical" onClick={onFechar}>Cancelar</button>
-            <button type="submit" className="primaryClinical compact">Lançar</button>
+            {/* Desabilitado enquanto grava: dois cliques rápidos mandavam dois
+                inserts, e o segundo voltava "já tem plantão nesse dia" — a
+                pessoa via um erro causado pelo próprio acerto anterior. */}
+            <button type="submit" className="primaryClinical compact"
+              disabled={enviando} aria-busy={enviando}>
+              {enviando ? "Lançando..." : "Lançar"}
+            </button>
           </div>
         </form>
       </section>

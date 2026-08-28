@@ -2995,6 +2995,10 @@ button:disabled{cursor:not-allowed}
 
 .mfResumo{background:#fff;border:1px solid #d3dee8;border-radius:17px;padding:20px 24px;
   margin:22px 0}
+/* A recusa fica logo abaixo do cabeçalho do diálogo, antes dos campos: é a
+   primeira coisa a ler quando o botão não fez o que se esperava. */
+.plantaoRecusa{margin:0 0 14px}
+
 .mfResumo{position:relative}
 .mfResumoTopo{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 /* O olho nasceu para o canto de um cartão de métrica, e por isso é absoluto.
