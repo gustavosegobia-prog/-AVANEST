@@ -12,6 +12,9 @@ import {
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
+import {
+  baixarCSV, nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes,
+} from "@/lib/planilha";
 import { feriadosDoMes } from "@/lib/feriados";
 
 // Plantões: a escala, o valor e a troca.
@@ -1036,6 +1039,41 @@ export function Plantoes({
   }
 
   /**
+   * A mesma coisa da folha, só que em planilha.
+   *
+   * A folha impressa resolve levar papel ao hospital. Não resolve o outro
+   * caminho: mandar por e-mail para quem emite a nota. Contador não redigita
+   * PDF, e ninguém quer conferir vinte plantões a olho antes de somar.
+   *
+   * De propósito lê `meus`, e não `daEscala`: a nota é da pessoa. Num grupo,
+   * exportar a escala inteira mandaria ao contador o plantão dos colegas.
+   */
+  function baixarPlanilhaDePlantoes() {
+    setErro(""); setAviso("");
+    if (meus.length === 0) { setErro("Não há plantão seu neste mês para pôr em planilha."); return; }
+    baixarCSV(nomeDoArquivo("plantoes", mes), planilhaDePlantoes(
+      meus.map((p) => ({
+        data: p.data, local: ondeFica(p, localPorId, "Local não informado"),
+        turno: `${p.hora_inicio.slice(0, 5)} às ${p.hora_fim.slice(0, 5)}`,
+        horas: Number(p.horas), valor: Number(p.valor), situacao: p.situacao,
+      })),
+    ));
+  }
+
+  function baixarPlanilhaDeFaturamento(itens: Producao[]) {
+    setErro(""); setAviso("");
+    if (itens.length === 0) { setErro("Não há anotação neste mês para pôr em planilha."); return; }
+    baixarCSV(nomeDoArquivo("faturamento", mes), planilhaDeFaturamento(
+      itens.map((i) => ({
+        data: i.data, paciente: i.paciente, convenio: i.convenio,
+        procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
+        local: (i.local_id && localPorId.get(i.local_id)) || lugarPeloPlantao(i.plantao_id),
+        pagador: i.pagador ?? null,
+      })),
+    ));
+  }
+
+  /**
    * O lugar de um plantão que não é hospital cadastrado.
    *
    * Plantão de fora — sedação em consultório, cobertura particular, hospital
@@ -1697,6 +1735,8 @@ export function Plantoes({
           onImprimir={imprimirProducao}
           onImprimirFaturamento={imprimirFaturamento}
           onImprimirPlantoes={imprimirPlantoesParaNota}
+          onPlanilhaPlantoes={baixarPlanilhaDePlantoes}
+          onPlanilhaFaturamento={baixarPlanilhaDeFaturamento}
         />
       )}
 

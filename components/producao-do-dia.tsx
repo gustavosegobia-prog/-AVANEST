@@ -560,6 +560,7 @@ export function ProducaoDoDia({
 export function ProducaoDoMes({
   mes, nomeMes, ano, locais, lugarPeloPlantao, onMudarMes,
   onImprimir, onImprimirFaturamento, onImprimirPlantoes,
+  onPlanilhaPlantoes, onPlanilhaFaturamento,
 }: {
   mes: string; nomeMes: string; ano: number;
   /**
@@ -584,6 +585,15 @@ export function ProducaoDoMes({
   onImprimirFaturamento: (itens: Producao[]) => void;
   /** A nota da hora à disposição. Sai dos plantões, não desta lista. */
   onImprimirPlantoes: () => void;
+  /**
+   * As mesmas duas notas, em planilha.
+   *
+   * A folha impressa serve para levar papel ao hospital. Quem emite a nota
+   * fiscal trabalha no computador, e não redigita PDF — para esse caminho vai
+   * a planilha, que ele abre no Excel e soma sozinho.
+   */
+  onPlanilhaPlantoes: () => void;
+  onPlanilhaFaturamento: (itens: Producao[]) => void;
 }) {
   const [itens, setItens] = useState<Producao[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -809,6 +819,11 @@ export function ProducaoDoMes({
             <strong>Nota de plantões</strong>
             <small>Por hospital</small>
           </span>
+          {/* Imprimir é para levar ao hospital; planilha é para mandar a quem
+              emite a nota. São dois destinos diferentes do mesmo mês, e por
+              isso os dois botões ficam lado a lado em vez de um substituir o
+              outro. */}
+          <button className="outlineClinical" onClick={onPlanilhaPlantoes}>Planilha</button>
           <button className="outlineClinical" onClick={onImprimirPlantoes}>Imprimir</button>
         </div>
 
@@ -817,6 +832,8 @@ export function ProducaoDoMes({
             <strong>Nota de faturamento</strong>
             <small>Por hospital e por quem paga</small>
           </span>
+          <button className="outlineClinical" disabled={itens.length === 0}
+            onClick={() => onPlanilhaFaturamento(itens)}>Planilha</button>
           <button className="outlineClinical"
             disabled={itens.length === 0} onClick={() => onImprimirFaturamento(itens)}>
             Imprimir

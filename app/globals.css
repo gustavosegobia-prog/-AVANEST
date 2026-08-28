@@ -3104,8 +3104,15 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .producaoFolha strong{display:block;font-size:14.5px}
 .producaoFolha small{display:block;color:var(--cor-tinta-fraca);font-size:12.5px;margin-top:3px}
 .producaoFolha button{flex:none}
+/* Duas saídas por folha — planilha e impressão —, e elas andam juntas à
+   direita. Sem o `margin-left:auto` no primeiro botão, o `space-between`
+   espalharia os dois pela linha e a "Planilha" ficaria no meio do nada,
+   parecendo pertencer ao texto da esquerda. */
+.producaoFolha button:not(:last-child){margin-left:auto}
 @media(max-width:600px){
   .producaoFolha{flex-direction:column;align-items:stretch;gap:9px;padding:13px 16px}
+  /* Empilhados, os dois voltam à largura toda e a margem do desktop sai. */
+  .producaoFolha button:not(:last-child){margin-left:0}
 }
 
 /* --- A lista de plantões do mês, compacta ------------------------------
