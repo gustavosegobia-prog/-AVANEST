@@ -1739,6 +1739,12 @@ export function Plantoes({
           mes={mes} nomeMes={MESES[m - 1]} ano={ano}
           // Ela busca o ANO inteiro por conta própria: a Escala só carrega o mês
           // aberto, e o gráfico de doze colunas precisa dos outros onze.
+          //
+          // Tocar numa coluna troca o mês da ESCALA INTEIRA, e não só o do
+          // gráfico. É o certo: quem foi ver março no gráfico quer o março da
+          // escala também, e dois "mês atual" diferentes na mesma tela seria
+          // um jeito garantido de a pessoa ler o número errado.
+          onEscolherMes={setMes}
           nomeDoLocalPeloId={(id) => (id && localPorId.get(id)) || ""}
         />
       )}

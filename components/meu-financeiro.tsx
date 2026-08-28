@@ -47,7 +47,7 @@ const MES_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
 export function MeuFinanceiro({
-  perfilId, institutionId, mes, nomeMes, ano, nomeDoLocalPeloId,
+  perfilId, institutionId, mes, nomeMes, ano, onEscolherMes, nomeDoLocalPeloId,
 }: {
   perfilId: string;
   institutionId: string;
@@ -55,6 +55,16 @@ export function MeuFinanceiro({
   mes: string;
   nomeMes: string;
   ano: number;
+  /**
+   * Trocar de mês tocando na coluna do gráfico.
+   *
+   * Quem olha o gráfico e vê a barra alta de março quer ver março — e o
+   * caminho de voltar à barra do mês, rolar a tela até o topo e usar as setas
+   * é longo o bastante para a pessoa desistir e ficar só com a impressão.
+   * Como a busca é do ANO inteiro, trocar de mês aqui não vai ao banco: os
+   * doze meses já estão na memória.
+   */
+  onEscolherMes: (competencia: string) => void;
   nomeDoLocalPeloId: (id: string | null) => string;
 }) {
   /**
@@ -265,22 +275,28 @@ export function MeuFinanceiro({
             receber em cima, apagado. A altura conta o mês e a parte cheia conta
             quanto dele já virou dinheiro — duas leituras numa figura só.
 
-            `role="img"` com a descrição inteira porque um gráfico feito de divs
-            é, para o leitor de tela, uma pilha de caixas vazias: sem o rótulo
-            ele anuncia nada. */}
-        <div className="mfGrafico" role="img"
-          aria-label={`Faturamento mês a mês em ${ano}: ${porMes
-            .filter((m) => m.valor > 0)
-            .map((m) => `${MES_LONGO[m.indice]}, ${dinheiro(m.valor)}`)
-            .join("; ") || "nenhum mês com lançamento"}`}>
+            Cada coluna é um BOTÃO, e não uma div: um gráfico feito de divs é,
+            para o leitor de tela, uma pilha de caixas vazias, e aqui elas ainda
+            por cima fazem coisa quando tocadas. Como botão, cada mês anuncia o
+            próprio nome e valor, entra na navegação por teclado e diz qual está
+            escolhido pelo `aria-pressed`. */}
+        <div className="mfGrafico">
           {porMes.map((m) => (
-            <div className={m.competencia === mes ? "mfColuna atual" : "mfColuna"} key={m.competencia}>
-              <div className="mfBarra" title={`${MES_LONGO[m.indice]}: ${dinheiro(m.valor)}`}>
+            <button
+              type="button"
+              key={m.competencia}
+              className={m.competencia === mes ? "mfColuna atual" : "mfColuna"}
+              aria-pressed={m.competencia === mes}
+              aria-label={`${MES_LONGO[m.indice]}: ${m.valor > 0 ? dinheiro(m.valor) : "sem lançamento"}`}
+              title={`${MES_LONGO[m.indice]}: ${dinheiro(m.valor)}`}
+              onClick={() => onEscolherMes(m.competencia)}
+            >
+              <span className="mfBarra">
                 <i className="mfAReceber" style={{ height: `${(m.aReceber / teto) * 100}%` }} />
                 <i className="mfRecebido" style={{ height: `${(m.recebido / teto) * 100}%` }} />
-              </div>
-              <span>{MES_CURTO[m.indice]}</span>
-            </div>
+              </span>
+              <span className="mfMes">{MES_CURTO[m.indice]}</span>
+            </button>
           ))}
         </div>
         <div className="mfLegenda">
