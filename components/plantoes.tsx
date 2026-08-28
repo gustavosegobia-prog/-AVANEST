@@ -1737,12 +1737,8 @@ export function Plantoes({
         <MeuFinanceiro
           perfilId={perfilId} institutionId={institutionId}
           mes={mes} nomeMes={MESES[m - 1]} ano={ano}
-          // Já filtrados: só os seus, sem os cancelados. A tela de dentro não
-          // repete o filtro — ela recebe o que é dela.
-          meusPlantoes={meus.map((p) => ({
-            id: p.id, perfil_id: p.perfil_id, data: p.data, valor: Number(p.valor),
-            situacao: p.situacao, local_id: p.local_id, local_texto: p.local_texto,
-          }))}
+          // Ela busca o ANO inteiro por conta própria: a Escala só carrega o mês
+          // aberto, e o gráfico de doze colunas precisa dos outros onze.
           nomeDoLocalPeloId={(id) => (id && localPorId.get(id)) || ""}
         />
       )}

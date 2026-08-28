@@ -5,10 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
-import {
-  dePlantao, deProducao, doMes, porOrigem, somar,
-  type PlantaoBruto, type Receita,
-} from "@/lib/receitas";
+import { dePlantao, deProducao, doMes, somar, type Receita } from "@/lib/receitas";
 import {
   CATEGORIAS, NOME_DA_CATEGORIA, porCategoria, recorrentesFaltando,
   resultadoDoMes, somarDespesas, type Despesa,
@@ -25,45 +22,51 @@ import {
 // congresso, o carro entre dois hospitais — e dizer quanto sobrou.
 //
 // TUDO QUE ESTA TELA MOSTRA É DA PRÓPRIA PESSOA, e não por educação: é o que o
-// banco devolve. Os plantões vêm filtrados por `perfil_id` pela tela que chama;
-// a produção tem política `perfil_id = auth.uid()` sem exceção nem para o
-// chefe; a despesa pessoal, idem. Não há caminho daqui para o dado de um
-// colega, nem por engano de código.
+// banco devolve. Os plantões são buscados com `perfil_id` igual ao seu; a
+// produção tem política `perfil_id = auth.uid()` sem exceção nem para o chefe;
+// a despesa pessoal, idem. Não há caminho daqui para o dado de um colega, nem
+// por engano de código.
 //
 // O que NÃO entra: a consulta pré-anestésica. Ela é cobrada pelo serviço, do
 // convênio, e aparece no Financeiro do grupo. Somá-la aqui misturaria o que a
 // pessoa recebe com o que o serviço fatura — que é a confusão que esta tela
 // existe para desfazer.
 
+type PlantaoMeu = {
+  id: string; perfil_id: string; data: string; valor: number; horas: number;
+  situacao: string; local_id: string | null; local_texto: string | null;
+};
+
 type ProducaoMinha = {
   id: string; perfil_id: string; data: string; paciente: string;
   convenio: string; procedimento: string | null; valor: number; situacao: string;
 };
 
+const MES_CURTO = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+const MES_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
 export function MeuFinanceiro({
-  perfilId, institutionId, mes, nomeMes, ano, meusPlantoes, nomeDoLocalPeloId,
+  perfilId, institutionId, mes, nomeMes, ano, nomeDoLocalPeloId,
 }: {
   perfilId: string;
   institutionId: string;
-  /** AAAA-MM. */
+  /** AAAA-MM. O mês vem da barra da Escala; não há um seletor a mais aqui. */
   mes: string;
   nomeMes: string;
   ano: number;
-  /** Já filtrados pela pessoa e sem os cancelados, pela tela que chama. */
-  meusPlantoes: PlantaoBruto[];
   nomeDoLocalPeloId: (id: string | null) => string;
 }) {
   /**
-   * Os dados carregam JUNTO com o mês a que pertencem.
+   * Os dados carregam JUNTO com o ano a que pertencem.
    *
    * Não há um "carregando" à parte, e isso não é economia de estado: enquanto
-   * ele existia, trocar de competência deixava por um instante os números de
-   * julho embaixo do cabeçalho de agosto. Guardando o mês junto, a tela não
-   * consegue mostrar um par errado — ou os dados são deste mês, ou ela ainda
-   * está carregando.
+   * ele existia, trocar de competência deixava por um instante os números de um
+   * período embaixo do cabeçalho de outro. Guardando o ano junto, a tela não
+   * consegue mostrar um par errado.
    */
   const [dados, setDados] = useState<{
-    mes: string; producao: ProducaoMinha[]; despesas: Despesa[];
+    ano: number; plantoes: PlantaoMeu[]; producao: ProducaoMinha[]; despesas: Despesa[];
   } | null>(null);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -74,39 +77,53 @@ export function MeuFinanceiro({
    * Só BUSCA. Quem grava é quem chamou.
    *
    * A separação existe para o efeito poder decidir se a resposta ainda vale: a
-   * consulta de julho pode voltar depois da de agosto se a rede demorar, e
-   * gravar ali dentro sobrescreveria a tela com o mês errado. De quebra, a
-   * função fica sem estado e o efeito fica com uma responsabilidade só.
+   * consulta de um ano pode voltar depois da do outro se a rede demorar, e
+   * gravar aqui dentro sobrescreveria a tela com o período errado.
+   *
+   * O ANO INTEIRO, e não o mês: o gráfico de doze colunas é o que mostra a
+   * sazonalidade do plantonista — o mês de férias, o mês em que cobriu dois
+   * hospitais — e é ele que faz o número de agosto querer dizer alguma coisa.
    */
   const buscar = useCallback(async () => {
     const cliente = createClient();
-    // Doze meses de despesa porque o lembrete do que se repete olha o
-    // histórico; a produção só precisa do mês que está na tela.
-    const doze = new Date();
-    doze.setMonth(doze.getMonth() - 12);
-    const desde = doze.toISOString().slice(0, 10);
-    const [{ data: prod, error: erroProd }, { data: desp, error: erroDesp }] = await Promise.all([
+    const de = `${ano}-01-01`;
+    const ate = `${ano}-12-31`;
+    const [
+      { data: plant, error: erroPlant },
+      { data: prod, error: erroProd },
+      { data: desp, error: erroDesp },
+    ] = await Promise.all([
+      cliente.from("plantoes")
+        .select("id,perfil_id,data,valor,horas,situacao,local_id,local_texto")
+        .eq("perfil_id", perfilId).gte("data", de).lte("data", ate).order("data"),
       cliente.from("producao_do_dia")
         .select("id,perfil_id,data,paciente,convenio,procedimento,valor,situacao")
-        .gte("data", `${mes}-01`).lte("data", `${mes}-31`).order("data"),
+        .gte("data", de).lte("data", ate).order("data"),
+      // As despesas vêm de doze meses PARA TRÁS, e não do ano: o lembrete do
+      // que se repete precisa enxergar dezembro passado quando se está em
+      // janeiro, senão toda conta fixa pareceria nova no começo do ano.
       cliente.from("despesas")
         .select("id,perfil_id,data,descricao,categoria,valor,recorrente")
-        .eq("perfil_id", perfilId).gte("data", desde).order("data", { ascending: false }),
+        .eq("perfil_id", perfilId).gte("data", `${ano - 1}-01-01`)
+        .order("data", { ascending: false }),
     ]);
     // 42P01 = a tabela não existe. Sem esta mensagem o erro cru do Postgres
     // mandaria a pessoa procurar defeito na tela, e não a migração que falta.
     if (erroDesp?.code === "42P01") {
       return { falha: "As despesas ainda não existem no banco. Rode a migração 202608270001_despesas.sql." };
     }
-    if (erroProd || erroDesp) return { falha: "Não foi possível carregar os seus números." };
+    if (erroPlant || erroProd || erroDesp) {
+      return { falha: "Não foi possível carregar os seus números." };
+    }
     return {
       pronto: {
-        mes,
+        ano,
+        plantoes: (plant ?? []) as PlantaoMeu[],
         producao: (prod ?? []) as ProducaoMinha[],
         despesas: (desp ?? []) as Despesa[],
       },
     };
-  }, [mes, perfilId]);
+  }, [ano, perfilId]);
 
   useEffect(() => {
     let vivo = true;
@@ -123,7 +140,7 @@ export function MeuFinanceiro({
   }, [buscar]);
 
   /** Recarrega depois de lançar ou apagar. Aqui não há corrida a evitar: a
-   *  pessoa acabou de agir nesta tela, neste mês. */
+   *  pessoa acabou de agir nesta tela, neste período. */
   async function recarregar() {
     const r = await buscar();
     if (r.falha) { setErro(r.falha); return; }
@@ -131,20 +148,56 @@ export function MeuFinanceiro({
     if (r.pronto) setDados(r.pronto);
   }
 
-  const pronto = dados?.mes === mes;
+  const pronto = dados?.ano === ano;
+  const plantoes = pronto ? dados.plantoes : [];
   const producao = pronto ? dados.producao : [];
   const despesas = pronto ? dados.despesas : [];
 
   // ── As contas ─────────────────────────────────────────────────────────────
 
+  const ondeFoi = (p: PlantaoMeu) =>
+    nomeDoLocalPeloId(p.local_id) || p.local_texto || "Plantões sem local";
+
   const receitas: Receita[] = [
-    ...meusPlantoes.map((p) => dePlantao({ ...p, local_nome: nomeDoLocalPeloId(p.local_id ?? null) })),
+    ...plantoes.map((p) => dePlantao({ ...p, local_nome: ondeFoi(p) })),
     ...producao.map(deProducao),
   ].filter((r): r is Receita => r !== null);
 
   const doMesAtual = doMes(receitas, mes);
   const total = somar(doMesAtual);
-  const origens = porOrigem(doMesAtual).filter((o) => o.origem !== "consulta");
+
+  // Doze colunas, sempre — inclusive as vazias. Mês sem barra é informação: é o
+  // mês de férias, ou o mês em que faltou lançar. Esconder as vazias faria o
+  // gráfico parecer cheio e mentir sobre o ano.
+  const porMes = MES_CURTO.map((_, i) => {
+    const competencia = `${ano}-${String(i + 1).padStart(2, "0")}`;
+    return { competencia, indice: i, ...somar(doMes(receitas, competencia)) };
+  });
+  const teto = Math.max(...porMes.map((m) => m.valor), 1);
+
+  // Horas e R$/h saem SÓ dos plantões: a anestesia avulsa não tem duração
+  // registrada, e dividir o faturamento inteiro pelas horas de plantão inflaria
+  // o valor da hora sem que nada tivesse mudado no trabalho.
+  const plantoesDoMes = plantoes.filter((p) =>
+    p.data.slice(0, 7) === mes && p.situacao !== "cancelado" && p.situacao !== "escalado");
+  const horas = plantoesDoMes.reduce((s, p) => s + Number(p.horas || 0), 0);
+  const valorDosPlantoes = plantoesDoMes.reduce((s, p) => s + Number(p.valor || 0), 0);
+  const porHora = horas > 0 ? valorDosPlantoes / horas : null;
+
+  const locais = Object.values(
+    plantoesDoMes.reduce<Record<string, {
+      nome: string; quantos: number; horas: number; valor: number; recebido: number;
+    }>>((acc, p) => {
+      const nome = ondeFoi(p);
+      const linha = acc[nome] ?? { nome, quantos: 0, horas: 0, valor: 0, recebido: 0 };
+      linha.quantos += 1;
+      linha.horas += Number(p.horas || 0);
+      linha.valor += Number(p.valor || 0);
+      if (p.situacao === "pago") linha.recebido += Number(p.valor || 0);
+      acc[nome] = linha;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b.valor - a.valor);
 
   const despesasMes = despesas.filter((d) => d.data.slice(0, 7) === mes);
   const gasto = somarDespesas(despesasMes);
@@ -155,13 +208,14 @@ export function MeuFinanceiro({
   const dinheiro = (v: number) =>
     mascara(Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
   const dataBR = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
+  const horasBR = (h: number) => `${h.toFixed(h % 1 ? 1 : 0).replace(".", ",")}h`;
 
-  async function lancar(dados: {
+  async function lancar(novo: {
     data: string; descricao: string; categoria: string; valor: number; recorrente: boolean;
   }) {
     setSalvando("nova"); setAviso("");
     const { error } = await createClient().from("despesas").insert({
-      institution_id: institutionId, perfil_id: perfilId, created_by: perfilId, ...dados,
+      institution_id: institutionId, perfil_id: perfilId, created_by: perfilId, ...novo,
     });
     setSalvando("");
     if (error) { setErro(`Não foi possível lançar: ${error.message}`); return false; }
@@ -183,41 +237,96 @@ export function MeuFinanceiro({
       {erro && <p className="clinicalError">{erro}</p>}
       {aviso && <p className="financeSuccess" role="status">{aviso}</p>}
 
-      <section className="metricGrid financeMetrics">
-        <MoedaCartao valor={total.valor} rotulo={`Seu faturamento em ${nomeMes} de ${ano}`} tom="blue" formatar={dinheiro} />
-        <MoedaCartao valor={total.recebido} rotulo="Já recebeu" tom="green" formatar={dinheiro} />
-        <MoedaCartao valor={total.aReceber} rotulo="Ainda a receber" tom={total.aReceber > 0 ? "amber" : "green"} formatar={dinheiro} />
-        <MoedaCartao valor={gasto} rotulo="Suas despesas" tom="red" formatar={dinheiro} />
-        <MoedaCartao valor={resultado.resultado} rotulo={resultado.margem === null
-          ? "Sobrou" : `Sobrou — ${resultado.margem.toFixed(0)}% do que faturou`}
-          tom={resultado.resultado < 0 ? "red" : "green"} formatar={dinheiro}
-          extra={<OlhoValores oculto={oculto} onAlternar={alternar} />} />
+      {/* O cartão do mês e o ano inteiro na mesma caixa: o número de agosto só
+          quer dizer alguma coisa ao lado dos outros onze. */}
+      <section className="mfResumo">
+        <header className="mfResumoTopo">
+          <div>
+            <strong>{nomeMes} de {ano}</strong>
+            <small>seus plantões e suas anestesias</small>
+          </div>
+          <OlhoValores oculto={oculto} onAlternar={alternar} />
+        </header>
+
+        <div className="mfNumeros">
+          <div className="mfTotal">
+            <b>{dinheiro(total.valor)}</b>
+            <span>Total</span>
+          </div>
+          <div><b className="mfVerde">{dinheiro(total.recebido)}</b><span>Recebido</span></div>
+          <div><b className={total.aReceber > 0 ? "mfAmbar" : ""}>{dinheiro(total.aReceber)}</b><span>A receber</span></div>
+        </div>
+
+        {horas > 0 && <p className="mfHora">
+          {horasBR(horas)} de plantão · {dinheiro(porHora ?? 0)}/h em média
+        </p>}
+
+        {/* Barras empilhadas: o recebido embaixo, em cor cheia, e o que falta
+            receber em cima, apagado. A altura conta o mês e a parte cheia conta
+            quanto dele já virou dinheiro — duas leituras numa figura só.
+
+            `role="img"` com a descrição inteira porque um gráfico feito de divs
+            é, para o leitor de tela, uma pilha de caixas vazias: sem o rótulo
+            ele anuncia nada. */}
+        <div className="mfGrafico" role="img"
+          aria-label={`Faturamento mês a mês em ${ano}: ${porMes
+            .filter((m) => m.valor > 0)
+            .map((m) => `${MES_LONGO[m.indice]}, ${dinheiro(m.valor)}`)
+            .join("; ") || "nenhum mês com lançamento"}`}>
+          {porMes.map((m) => (
+            <div className={m.competencia === mes ? "mfColuna atual" : "mfColuna"} key={m.competencia}>
+              <div className="mfBarra" title={`${MES_LONGO[m.indice]}: ${dinheiro(m.valor)}`}>
+                <i className="mfAReceber" style={{ height: `${(m.aReceber / teto) * 100}%` }} />
+                <i className="mfRecebido" style={{ height: `${(m.recebido / teto) * 100}%` }} />
+              </div>
+              <span>{MES_CURTO[m.indice]}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mfLegenda">
+          <span><i className="mfRecebido" aria-hidden="true" /> Recebido</span>
+          <span><i className="mfAReceber" aria-hidden="true" /> A receber</span>
+        </div>
       </section>
 
-      <PainelRecolhivel chave="meu-origem" titulo="De onde veio" abrePadrao
-        legenda="plantões e anestesias do mês — a consulta pré-anestésica é cobrada pelo serviço e aparece no Financeiro">
-        <div className="financeTabelaRolavel">
-          <table className="financeTabela">
-            <thead><tr><th>Origem</th><th className="num">Lançamentos</th><th className="num">Faturado</th><th className="num">Recebido</th><th className="num">A receber</th></tr></thead>
-            <tbody>{origens.map((o) => <tr key={o.origem}>
-              <td>{o.rotulo}</td>
-              <td className="num">{o.linhas}</td>
-              <td className="num">{dinheiro(o.valor)}</td>
-              <td className="num">{dinheiro(o.recebido)}</td>
-              <td className={o.aReceber > 0 ? "num alerta" : "num"}>{dinheiro(o.aReceber)}</td>
-            </tr>)}</tbody>
-            <tfoot><tr>
-              <td>Total</td><td className="num">{total.linhas}</td>
-              <td className="num">{dinheiro(total.valor)}</td>
-              <td className="num">{dinheiro(total.recebido)}</td>
-              <td className="num">{dinheiro(total.aReceber)}</td>
-            </tr></tfoot>
-          </table>
+      {locais.length > 0 && (
+        <section className="mfLocais">
+          <h3>Plantões por local</h3>
+          {locais.map((l) => (
+            <div className="mfLocal" key={l.nome}>
+              <header>
+                <span className="mfLocalMarca" aria-hidden="true">{l.nome.slice(0, 2).toUpperCase()}</span>
+                <div>
+                  <strong>{l.nome}</strong>
+                  <small>{l.quantos} plantã{l.quantos === 1 ? "o" : "es"} · {horasBR(l.horas)}</small>
+                </div>
+                <b>{dinheiro(l.valor)}</b>
+              </header>
+              <div className="mfLocalRodape">
+                <span>Recebido <em>{dinheiro(l.recebido)}</em></span>
+                <span>A receber <em>{dinheiro(Math.max(0, l.valor - l.recebido))}</em></span>
+                {l.horas > 0 && <span>{dinheiro(l.valor / l.horas)}/h</span>}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {total.aReceber > 0 && <p className="financeNota alerta">
+        <Icone nome="alerta" tamanho={15} /> {dinheiro(total.aReceber)} de trabalho já feito e ainda não pago. Plantão vira &quot;pago&quot; na Minha escala; anestesia vira &quot;recebido&quot; na Produção.
+      </p>}
+
+      {/* As despesas ficam depois: o plantonista abre esta tela para ver quanto
+          fez, e é isso que aparece primeiro. O que ele gasta vem em seguida, e
+          o "sobrou" fecha a conta. */}
+      <section className="metricGrid financeMetrics mfSaldo">
+        <div className="metricCard"><strong className="red">{dinheiro(gasto)}</strong>
+          <span>Suas despesas em {nomeMes}</span></div>
+        <div className="metricCard">
+          <strong className={resultado.resultado < 0 ? "red" : "green"}>{dinheiro(resultado.resultado)}</strong>
+          <span>{resultado.margem === null ? "Sobrou" : `Sobrou — ${resultado.margem.toFixed(0)}% do que faturou`}</span>
         </div>
-        {total.aReceber > 0 && <p className="financeNota">
-          <Icone nome="alerta" tamanho={15} /> {dinheiro(total.aReceber)} de trabalho já feito e ainda não pago. Plantão vira &quot;pago&quot; na Minha escala; anestesia vira &quot;recebido&quot; na Produção.
-        </p>}
-      </PainelRecolhivel>
+      </section>
 
       {faltando.length > 0 && <PainelRecolhivel chave="meu-recorrentes" abrePadrao
         titulo="Suas contas que se repetem e ainda não foram lançadas" legenda="o sistema lembra; quem lança é você">
@@ -232,7 +341,7 @@ export function MeuFinanceiro({
 
       <NovaDespesaPessoal key={mes} mes={mes} ocupado={salvando === "nova"} onLancar={lancar} />
 
-      <PainelRecolhivel chave="meu-despesas" titulo="Suas despesas do mês" abrePadrao
+      <PainelRecolhivel chave="meu-despesas" titulo="Suas despesas do mês"
         legenda={`${despesasMes.length} lançamento(s) — só você enxerga`} extra={<b>{dinheiro(gasto)}</b>}>
         {despesasMes.length === 0
           ? <div className="emptyClinical compactEmpty">Nenhuma despesa sua neste mês.</div>
@@ -255,13 +364,6 @@ export function MeuFinanceiro({
       </PainelRecolhivel>
     </>
   );
-}
-
-function MoedaCartao({ valor, rotulo, tom, formatar, extra }: {
-  valor: number; rotulo: string; tom: string;
-  formatar: (v: number) => string; extra?: React.ReactNode;
-}) {
-  return <div className="metricCard"><strong className={tom}>{formatar(valor)}</strong><span>{rotulo}</span>{extra}</div>;
 }
 
 /**

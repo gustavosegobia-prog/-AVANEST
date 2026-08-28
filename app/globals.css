@@ -2991,6 +2991,100 @@ button:disabled{cursor:not-allowed}
   color:var(--cor-tinta-fraca);display:flex;align-items:flex-start;gap:7px}
 .financeNota.alerta{color:var(--cor-perigo);font-weight:650}
 
+/* ── Meu financeiro: o resumo do plantonista ─────────────────────────────── */
+
+.mfResumo{background:#fff;border:1px solid #d3dee8;border-radius:17px;padding:20px 24px;
+  margin:22px 0}
+.mfResumoTopo{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+/* Só a primeira letra sobe. `capitalize` subiria também o "de" de "maio de
+   2026", que em português é minúsculo. */
+.mfResumoTopo strong{display:block;font-size:17px;letter-spacing:-.01em}
+.mfResumoTopo strong::first-letter{text-transform:uppercase}
+.mfResumoTopo small{display:block;color:var(--cor-tinta-fraca);font-size:13px;margin-top:3px}
+
+/* O total grande à esquerda, recebido e a receber menores à direita: a
+   hierarquia responde "quanto fiz" antes de "quanto já entrou". */
+.mfNumeros{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 30px;margin:16px 0 0}
+.mfNumeros>div{display:flex;flex-direction:column-reverse;gap:3px}
+.mfNumeros b{font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  white-space:nowrap}
+.mfNumeros span{color:var(--cor-tinta-fraca);font-size:13px}
+.mfTotal{margin-right:auto}
+.mfTotal b{font-size:clamp(26px,4vw,34px)}
+.mfVerde{color:var(--cor-sucesso)}
+.mfAmbar{color:var(--cor-atencao)}
+.mfHora{margin:9px 0 0;color:var(--cor-tinta-fraca);font-size:13.5px}
+
+/* Doze colunas de altura proporcional. Feito de divs, e não de SVG, pelo mesmo
+   motivo dos outros gráficos do sistema: barra é altura em porcentagem, e em
+   HTML ela é responsiva de graça e herda os tokens de cor. */
+.mfGrafico{display:flex;align-items:flex-end;gap:clamp(3px,1.2vw,10px);height:150px;
+  margin:20px 0 0;padding-top:6px}
+.mfColuna{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+/* A barra ocupa a altura toda da coluna e empilha de baixo para cima; o rótulo
+   do mês fica fora dela, com altura própria. */
+/* Sem trilho de fundo: um retângulo cinza atrás de cada coluna faz todo mês
+   parecer chegar ao topo, e o olho compara alturas de fundo em vez de alturas
+   de barra. O que é vazio fica vazio. */
+.mfBarra{flex:1;width:100%;max-width:34px;display:flex;flex-direction:column;
+  justify-content:flex-end;border-radius:6px;overflow:hidden}
+.mfBarra i{display:block;width:100%}
+.mfRecebido{background:var(--graf-1)}
+/* O que falta receber vem por cima, na mesma cor esmaecida: é a mesma coisa em
+   outro estado, e não outra categoria — cor nova aqui sugeriria outra origem. */
+.mfAReceber{background:color-mix(in srgb,var(--graf-1) 34%,transparent)}
+.mfColuna span{font-size:11.5px;color:var(--cor-tinta-fraca);font-weight:700;
+  width:22px;text-align:center;line-height:1.6;border-radius:6px}
+/* O mês aberto ganha a marca no rótulo, e não só na barra: com doze colunas
+   estreitas, achar a barra destacada leva mais tempo que ler o rótulo. */
+.mfColuna.atual span{background:var(--cor-marca);color:#fff}
+.mfLegenda{display:flex;gap:16px;margin:12px 0 0;font-size:12.5px;
+  color:var(--cor-tinta-fraca)}
+.mfLegenda span{display:inline-flex;align-items:center;gap:6px}
+.mfLegenda i{width:11px;height:11px;border-radius:3px}
+
+.mfLocais{margin:22px 0}
+.mfLocais h3{font-size:16px;margin:0 0 12px;letter-spacing:-.01em}
+.mfLocal{background:#fff;border:1px solid #d3dee8;border-radius:15px;padding:16px 18px;
+  margin-bottom:10px}
+.mfLocal header{display:flex;align-items:center;gap:12px}
+.mfLocal header div{flex:1;min-width:0}
+.mfLocal strong{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.mfLocal small{display:block;color:var(--cor-tinta-fraca);font-size:12.5px;margin-top:2px}
+.mfLocal header b{font-size:18px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mfLocalMarca{flex:none;width:38px;height:38px;border-radius:11px;display:grid;
+  place-items:center;background:var(--cor-superficie-suave);color:var(--cor-marca);
+  font-weight:850;font-size:13px}
+.mfLocalRodape{display:flex;flex-wrap:wrap;gap:6px 20px;margin:12px 0 0;padding-top:11px;
+  border-top:1px solid var(--cor-borda);font-size:12.5px;color:var(--cor-tinta-fraca)}
+.mfLocalRodape em{font-style:normal;font-weight:750;color:var(--cor-tinta);margin-left:5px;
+  font-variant-numeric:tabular-nums}
+/* Dois cartões, e não cinco: são o fecho da conta, não o painel principal. */
+.mfSaldo{grid-template-columns:repeat(2,minmax(0,260px))}
+
+@media(max-width:700px){
+  .mfResumo{padding:16px}
+  .mfGrafico{height:120px}
+  .mfSaldo{grid-template-columns:1fr 1fr}
+}
+@media(max-width:560px){
+  /* Em grade, e não em linha: com flex os três números empilhavam um por
+     linha e o resumo do mês ocupava meia tela antes do gráfico. O total ocupa
+     a linha inteira, recebido e a receber dividem a de baixo. */
+  .mfNumeros{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+  .mfTotal{grid-column:1/-1;margin-right:0}
+  .mfNumeros b{font-size:17px}
+
+  /* O valor desce para a linha de baixo. Enquanto ele disputava a linha com o
+     nome, "FUNDHOSPAR" saía cortado em "FUNDHO…" — e o nome do hospital é o
+     que identifica o cartão. */
+  .mfLocal header{flex-wrap:wrap}
+  .mfLocal header b{order:3;width:100%;margin-top:9px;font-size:20px}
+  .mfLocal strong{white-space:normal}
+  .mfLocalRodape{gap:5px 14px}
+}
+
 /* ── Despesas ────────────────────────────────────────────────────────────── */
 
 /* Cinco campos numa linha só no computador, empilhados no celular. Um
