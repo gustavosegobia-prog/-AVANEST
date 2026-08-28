@@ -5,14 +5,17 @@
 // outro: mandar por e-mail para quem emite a nota. Contador não redigita PDF,
 // e ninguém quer conferir vinte plantões a olho antes de somar.
 //
-// CSV, e não .xlsx. O formato do Excel é um zip de XML com estilos e relações
-// entre arquivos, e gerá-lo à mão significaria carregar uma biblioteca inteira
-// no navegador para um arquivo de trinta linhas. O CSV daqui abre com dois
-// cliques no Excel, no LibreOffice e no Google Planilhas, e é o que o contador
-// consegue reimportar no sistema dele.
+// Este arquivo monta o CONTEÚDO — as linhas, as colunas, os totais. Quem grava
+// no formato do Excel é lib/xlsx.ts, e o CSV continua aqui para quem preferir
+// importar em outro sistema.
 //
-// Três detalhes fazem esse CSV abrir certo em português, e cada um deles é um
-// bug conhecido de quem gera planilha:
+// A separação existe por um motivo prático: os montadores devolvem o dado CRU —
+// 2000, e não "2000,00". No Excel ele precisa continuar sendo número para o
+// contador somar a coluna; no CSV vira texto com vírgula decimal. Se o montador
+// já formatasse, o Excel receberia texto e a coluna de valor não somaria.
+//
+// Três detalhes fazem o CSV abrir certo em português, e cada um deles é um bug
+// conhecido de quem gera planilha:
 //
 //   BOM       sem ele o Excel do Windows lê UTF-8 como Latin-1 e "anestésica"
 //             vira "anestÃ©sica" na primeira coluna.
@@ -37,7 +40,14 @@ export const numeroBR = (valor: number) =>
  * justamente nesses. Aspas de dentro viram aspas dobradas, que é como o CSV as
  * escapa.
  */
-const celula = (valor: string | number) => `"${String(valor ?? "").replaceAll('"', '""')}"`;
+const celula = (valor: string | number) => {
+  // Número vira texto AQUI, e não no montador. Os montadores devolvem o dado
+  // cru — 2000, e não "2000,00" — para o mesmo conteúdo servir ao CSV e ao
+  // Excel, onde ele precisa continuar sendo NÚMERO para o contador somar a
+  // coluna. Cada formato escreve do seu jeito; o dado é um só.
+  const texto = typeof valor === "number" ? numeroBR(valor) : String(valor ?? "");
+  return `"${texto.replaceAll('"', '""')}"`;
+};
 
 /** Junta as linhas no texto final do arquivo. */
 export function paraCSV(linhas: LinhaDePlanilha[]) {
@@ -81,7 +91,7 @@ export function planilhaDePlantoes(plantoes: PlantaoParaPlanilha[]): LinhaDePlan
   const linhas: LinhaDePlanilha[] = [cabecalho];
   for (const p of plantoes) {
     const linha: LinhaDePlanilha = [
-      dataBR(p.data), p.local, p.turno, numeroBR(p.horas), numeroBR(p.valor),
+      dataBR(p.data), p.local, p.turno, Number(p.horas || 0), Number(p.valor || 0),
       SITUACAO_PLANTAO[p.situacao] ?? p.situacao,
     ];
     if (varios) linha.splice(1, 0, p.profissional ?? "");
@@ -90,7 +100,7 @@ export function planilhaDePlantoes(plantoes: PlantaoParaPlanilha[]): LinhaDePlan
 
   const horas = plantoes.reduce((s, p) => s + Number(p.horas || 0), 0);
   const valor = plantoes.reduce((s, p) => s + Number(p.valor || 0), 0);
-  const total: LinhaDePlanilha = ["TOTAL", "", "", numeroBR(horas), numeroBR(valor), ""];
+  const total: LinhaDePlanilha = ["TOTAL", "", "", horas, valor, ""];
   if (varios) total.splice(1, 0, "");
   linhas.push(total);
   return linhas;
@@ -138,7 +148,7 @@ export function planilhaDeFaturamento(itens: ProducaoParaPlanilha[]): LinhaDePla
     if (temLocal) linha.push(i.local ?? "");
     linha.push(
       i.pagador ? (ROTULO_PAGADOR[i.pagador] ?? i.pagador) : "",
-      numeroBR(i.valor),
+      Number(i.valor || 0),
       SITUACAO_PRODUCAO[i.situacao] ?? i.situacao,
     );
     linhas.push(linha);
@@ -148,7 +158,7 @@ export function planilhaDeFaturamento(itens: ProducaoParaPlanilha[]): LinhaDePla
   const total: LinhaDePlanilha = ["TOTAL", "", ""];
   if (temProcedimento) total.push("");
   if (temLocal) total.push("");
-  total.push("", numeroBR(valor), "");
+  total.push("", valor, "");
   linhas.push(total);
   return linhas;
 }
@@ -160,8 +170,8 @@ export function planilhaDeFaturamento(itens: ProducaoParaPlanilha[]): LinhaDePla
  * doze meses de plantão ficam em sequência em vez de agrupados por mês de anos
  * diferentes.
  */
-export const nomeDoArquivo = (assunto: string, mes: string) =>
-  `avanest-${assunto}-${mes}.csv`;
+export const nomeDoArquivo = (assunto: string, mes: string, extensao = "xlsx") =>
+  `avanest-${assunto}-${mes}.${extensao}`;
 
 /**
  * Manda o arquivo para a pasta de downloads.

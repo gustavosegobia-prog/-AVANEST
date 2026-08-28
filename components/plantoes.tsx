@@ -12,9 +12,8 @@ import {
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
-import {
-  baixarCSV, nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes,
-} from "@/lib/planilha";
+import { nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes } from "@/lib/planilha";
+import { baixarXLSX } from "@/lib/xlsx";
 import { MeuFinanceiro } from "@/components/meu-financeiro";
 import { feriadosDoMes } from "@/lib/feriados";
 
@@ -1059,7 +1058,7 @@ export function Plantoes({
   function baixarPlanilhaDePlantoes() {
     setErro(""); setAviso("");
     if (meus.length === 0) { setErro("Não há plantão seu neste mês para pôr em planilha."); return; }
-    baixarCSV(nomeDoArquivo("plantoes", mes), planilhaDePlantoes(
+    baixarXLSX(nomeDoArquivo("plantoes", mes), planilhaDePlantoes(
       meus.map((p) => ({
         data: p.data, local: ondeFica(p, localPorId, "Local não informado"),
         turno: `${p.hora_inicio.slice(0, 5)} às ${p.hora_fim.slice(0, 5)}`,
@@ -1071,14 +1070,14 @@ export function Plantoes({
   function baixarPlanilhaDeFaturamento(itens: Producao[]) {
     setErro(""); setAviso("");
     if (itens.length === 0) { setErro("Não há anotação neste mês para pôr em planilha."); return; }
-    baixarCSV(nomeDoArquivo("faturamento", mes), planilhaDeFaturamento(
+    baixarXLSX(nomeDoArquivo("faturamento", mes), planilhaDeFaturamento(
       itens.map((i) => ({
         data: i.data, paciente: i.paciente, convenio: i.convenio,
         procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
         local: (i.local_id && localPorId.get(i.local_id)) || lugarPeloPlantao(i.plantao_id),
         pagador: i.pagador ?? null,
       })),
-    ));
+    ), `Faturamento ${mes}`);
   }
 
   /**

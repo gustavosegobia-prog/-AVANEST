@@ -26,6 +26,12 @@ describe("o formato que o Excel em português abre certo", () => {
     assert.equal(numeroBR(1234.5), "1234,50");
     assert.equal(numeroBR(0), "0,00");
   });
+
+  it("o CSV formata o número que o montador entregou cru", () => {
+    // A divisão de trabalho: o montador devolve 2000, o CSV escreve "2000,00" e
+    // o Excel recebe o 2000 como número. Um dado, dois formatos.
+    assert.equal(paraCSV([[2000]]), "﻿\"2000,00\"");
+  });
 });
 
 describe("célula segura", () => {
@@ -62,7 +68,9 @@ describe("planilha de plantões", () => {
     const linhas = planilhaDePlantoes(plantoes);
     assert.equal(linhas.length, 4);
     assert.deepEqual(linhas[0], ["Data", "Local", "Turno", "Horas", "Valor", "Situação"]);
-    assert.deepEqual(linhas[3], ["TOTAL", "", "", "36,00", "2900,00", ""]);
+    // Números CRUS, e não "36,00": o Excel precisa deles como número para o
+    // contador somar a coluna. Quem formata é o serializador de cada formato.
+    assert.deepEqual(linhas[3], ["TOTAL", "", "", 36, 2900, ""]);
   });
 
   it("escreve a data no formato brasileiro", () => {
@@ -95,7 +103,7 @@ describe("planilha de plantões", () => {
   it("mês sem plantão devolve só cabeçalho e total zerado", () => {
     const linhas = planilhaDePlantoes([]);
     assert.equal(linhas.length, 2);
-    assert.deepEqual(linhas[1], ["TOTAL", "", "", "0,00", "0,00", ""]);
+    assert.deepEqual(linhas[1], ["TOTAL", "", "", 0, 0, ""]);
   });
 });
 
@@ -108,12 +116,12 @@ describe("planilha de faturamento", () => {
   it("traz o essencial de quem emite a nota", () => {
     const linhas = planilhaDeFaturamento(itens);
     assert.deepEqual(linhas[0], ["Data", "Paciente", "Convênio", "Quem paga", "Valor", "Situação"]);
-    assert.deepEqual(linhas[1], ["14/08/2026", "Cassilda", "Unimed", "Convênio", "800,00", "A cobrar"]);
+    assert.deepEqual(linhas[1], ["14/08/2026", "Cassilda", "Unimed", "Convênio", 800, "A cobrar"]);
   });
 
   it("soma o total", () => {
     const linhas = planilhaDeFaturamento(itens);
-    assert.equal(linhas[linhas.length - 1][linhas[0].length - 2], "1300,00");
+    assert.equal(linhas[linhas.length - 1][linhas[0].length - 2], 1300);
   });
 
   it("não cria coluna de procedimento quando ninguém preencheu", () => {
@@ -152,6 +160,10 @@ describe("planilha de faturamento", () => {
 
 describe("nome do arquivo", () => {
   it("põe o ano antes do mês, para a pasta ordenar em ordem cronológica", () => {
-    assert.equal(nomeDoArquivo("plantoes", "2026-08"), "avanest-plantoes-2026-08.csv");
+    assert.equal(nomeDoArquivo("plantoes", "2026-08"), "avanest-plantoes-2026-08.xlsx");
+  });
+
+  it("aceita outra extensão, para quem preferir CSV", () => {
+    assert.equal(nomeDoArquivo("plantoes", "2026-08", "csv"), "avanest-plantoes-2026-08.csv");
   });
 });
