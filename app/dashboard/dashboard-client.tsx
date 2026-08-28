@@ -18,10 +18,15 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { LocaisAdmin } from "@/components/locais-admin";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
-  FAIXAS_DE_IDADE, competenciaDoItem, envelhecimento, glosa, mesAnterior,
+  FAIXAS_DE_IDADE, envelhecimento, glosa, mesAnterior,
   prazoMedioPorConvenio, saldoAReceber, saldoVencido, totaisDoEnvelhecimento,
   variacao,
 } from "@/lib/financeiro-indicadores";
+import {
+  dePlantao, deProducao, deConsulta, doMes, porOrigem, porProfissional, somar,
+  type PlantaoBruto, type ProducaoBruta, type Receita,
+  paraRecebivel,
+} from "@/lib/receitas";
 import { ProducaoRecebida } from "@/components/producao-do-dia";
 
 const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
@@ -198,10 +203,19 @@ export function DashboardClient({
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
   avisos = [],
+  plantoesDaReceita = [], producaoDaReceita = [],
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
+  /**
+   * As duas outras fontes de receita do serviço, para o Financeiro.
+   *
+   * A tela nasceu enxergando só a consulta pré-anestésica cobrada por convênio,
+   * e para a maioria dos grupos de anestesia essa é a MENOR fatia: o plantão e
+   * a produção do dia existiam no sistema e não chegavam a conta nenhuma.
+   */
+  plantoesDaReceita?: PlantaoBruto[]; producaoDaReceita?: ProducaoBruta[];
   /** Onde a pessoa está atendendo agora. Null quando a organização ainda não cadastrou nenhum local. */
   localAtivo?:LocalDisponivel|null; totalDeLocais?:number; locais?:LocalDisponivel[];
   initialView?: DashboardView;
@@ -959,7 +973,7 @@ export function DashboardClient({
             </div>
           </div>
         </div>
-      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} onRefresh={()=>router.refresh()}/>
+      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} plantoesDaReceita={plantoesDaReceita} producaoDaReceita={producaoDaReceita} perfis={perfis} locais={locais} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin}/>}
 
       {contaAberta&&<div className="patientModalBackdrop" role="presentation">
@@ -1043,7 +1057,7 @@ export function DashboardClient({
   );
 }
 
-function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];onRefresh:()=>void}) {
+function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,plantoesDaReceita=[],producaoDaReceita=[],perfis=[],locais=[],ehGrupo=false,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];plantoesDaReceita?:PlantaoBruto[];producaoDaReceita?:ProducaoBruta[];perfis?:PerfilGerenciado[];locais?:LocalDisponivel[];ehGrupo?:boolean;onRefresh:()=>void}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const [configOpen,setConfigOpen]=useState(false);
@@ -1082,16 +1096,56 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // ainda está na rua, e uma tela que só olha o mês corrente faz uma operação
   // saudável e uma quebrada parecerem iguais.
   const hojeIso=new Date().toISOString().slice(0,10);
-  const aReceber=saldoAReceber(financeiro);
-  const vencido=saldoVencido(financeiro,hojeIso);
-  const linhasIdade=envelhecimento(financeiro,hojeIso);
-  const totaisIdade=totaisDoEnvelhecimento(linhasIdade);
-  const prazos=prazoMedioPorConvenio(financeiro,pagamentos);
   const glosaDoMes=glosa(periodItems);
   const anterior=mesAnterior(period);
-  const itensAnterior=financeiro.filter(item=>competenciaDoItem(item)===anterior);
-  const totalAnterior=itensAnterior.reduce((s,i)=>s+Number(i.valor),0);
-  const recebidoAnterior=itensAnterior.reduce((s,i)=>s+Number(i.recebido),0);
+
+  // As TRÊS fontes de receita do serviço, num formato só.
+  //
+  // A consulta pré-anestésica cobrada por convênio era a única que chegava aos
+  // números. O plantão e a produção do dia existiam no sistema — cada um com
+  // dono, data e valor — e não entravam em conta nenhuma: a produção era lista
+  // de leitura, o plantão vivia só na Escala. Para a maioria dos grupos de
+  // anestesia o plantão é a MAIOR fatia, então o painel vinha mostrando a menor
+  // e chamando de faturamento.
+  const nomeDoLocalPorId=new Map(locais.map(l=>[l.id,nomeDoLocal(l)]));
+  const receitas=useMemo(()=>{
+    const lista:Receita[]=[];
+    for(const item of financeiro){
+      const r=deConsulta(item,patientMap.get(item.patient_id)?.nome);
+      if(r) lista.push(r);
+    }
+    for(const item of producaoDaReceita){ const r=deProducao(item); if(r) lista.push(r); }
+    for(const item of plantoesDaReceita){
+      const r=dePlantao({...item,local_nome:item.local_id?nomeDoLocalPorId.get(item.local_id)??null:null});
+      if(r) lista.push(r);
+    }
+    return lista;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[financeiro,producaoDaReceita,plantoesDaReceita,locais,pacientes]);
+
+  const receitasDoMes=doMes(receitas,period);
+  const receitaTotal=somar(receitasDoMes);
+  const receitaAnterior=somar(doMes(receitas,anterior));
+  const origens=porOrigem(receitasDoMes);
+  const nomesDosPerfis=new Map(perfis.map(p=>[p.id,p.nome]));
+  const fatias=porProfissional(receitasDoMes,nomesDosPerfis);
+
+  const totalAnterior=receitaAnterior.valor;
+  const recebidoAnterior=receitaAnterior.recebido;
+
+  // Os indicadores de recebível passam a ler as TRÊS fontes, e não só a
+  // consulta. `paraRecebivel` traduz a receita para o formato que eles já
+  // sabiam ler — duplicar as funções para um segundo tipo é onde nasce a
+  // divergência silenciosa entre duas contas que deveriam ser a mesma.
+  const recebiveis=useMemo(()=>receitas.map(paraRecebivel),[receitas]);
+  const aReceber=saldoAReceber(recebiveis);
+  const vencido=saldoVencido(recebiveis,hojeIso);
+  const linhasIdade=envelhecimento(recebiveis,hojeIso);
+  const totaisIdade=totaisDoEnvelhecimento(linhasIdade);
+  // O prazo médio segue lendo só as consultas: ele conta da EMISSÃO da nota até
+  // o pagamento, e plantão e produção não passam por emissão dentro do sistema.
+  // Misturá-los devolveria "0 dias" para o hospital que paga em sessenta.
+  const prazos=prazoMedioPorConvenio(financeiro,pagamentos);
   const groups=Object.entries(periodItems.reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.convenio||"Particular"]??=[]).push(item);return acc},{}));
   const lots=Object.entries(periodItems.filter(item=>item.lote).reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.lote as string]??=[]).push(item);return acc},{}));
   const periodState=periodos.find(item=>item.periodo===period);
@@ -1242,10 +1296,14 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     <section className="metricGrid financeMetrics">
       <MoneyMetric value={aReceber} label="A receber" tone="blue" mascara={mascara}/>
       <MoneyMetric value={vencido} label="Vencido" tone={vencido>0?"red":"green"} mascara={mascara}/>
-      <MoneyMetric value={total} label="Faturado no mês" tone="blue" mascara={mascara}
-        extra={<Variacao atual={total} anterior={totalAnterior} oculto={oculto}/>}/>
-      <MoneyMetric value={received} label="Recebido no mês" tone="green" mascara={mascara}
-        extra={<Variacao atual={received} anterior={recebidoAnterior} oculto={oculto}/>}/>
+      {/* Faturado e recebido somam as TRÊS fontes — consulta, produção e
+          plantão. `total` e `received` continuam existindo com o recorte antigo
+          (só consultas) porque o fechamento do mês e o CSV falam do ciclo de
+          cobrança por convênio, que é outra coisa. */}
+      <MoneyMetric value={receitaTotal.valor} label="Faturado no mês" tone="blue" mascara={mascara}
+        extra={<Variacao atual={receitaTotal.valor} anterior={totalAnterior} oculto={oculto}/>}/>
+      <MoneyMetric value={receitaTotal.recebido} label="Recebido no mês" tone="green" mascara={mascara}
+        extra={<Variacao atual={receitaTotal.recebido} anterior={recebidoAnterior} oculto={oculto}/>}/>
       <MoneyMetric value={glosaDoMes.valor} label={glosaDoMes.percentual===null
         ? "Glosa no mês"
         : `Glosa no mês — ${glosaDoMes.percentual.toFixed(1).replace(".",",")}% do faturado`}
@@ -1266,6 +1324,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ["producao","Produção da equipe"],
           ["repasses","Repasses"],
           ["grupo","Análise"],
+          ["origem","De onde vem o dinheiro"],
           // O contador é o que está vencido, e não o total a receber: a coluna
           // conta o que pede ação hoje.
           ["idade","A receber por idade",linhasIdade.filter(l=>l.faixas.acima90>0).length],
@@ -1369,6 +1428,63 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       </>}
       {tarefa==="repasses"&&<>
     <PainelRecolhivel chave="fin-repasses" titulo="🩺 Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao={false}>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</PainelRecolhivel>
+      </>}
+      {tarefa==="origem"&&<>
+    {/* As três fontes de receita do serviço, lado a lado.
+        Sempre as três, mesmo zeradas: origem que some da tabela vira pergunta
+        ("cadê os plantões?") em vez de resposta ("os plantões deram zero"). */}
+    <PainelRecolhivel chave="fin-origem" titulo="De onde vem o dinheiro"
+      legenda={`receita de ${NOMES_MES[Number(period.slice(5,7))-1]??""} por fonte`} abrePadrao
+      extra={<b>{mascara(money(receitaTotal.valor))}</b>}>
+      <div className="financeTabelaRolavel">
+        <table className="financeTabela">
+          <thead><tr><th>Fonte</th><th className="num">Lançamentos</th><th className="num">Faturado</th><th className="num">Recebido</th><th className="num">A receber</th></tr></thead>
+          <tbody>{origens.map(o=><tr key={o.origem}>
+            <td>{o.rotulo}</td>
+            <td className="num">{o.linhas}</td>
+            <td className="num">{mascara(money(o.valor))}</td>
+            <td className="num">{mascara(money(o.recebido))}</td>
+            <td className="num">{mascara(money(o.aReceber))}</td>
+          </tr>)}</tbody>
+          <tfoot><tr>
+            <td>Total</td>
+            <td className="num">{receitaTotal.linhas}</td>
+            <td className="num">{mascara(money(receitaTotal.valor))}</td>
+            <td className="num">{mascara(money(receitaTotal.recebido))}</td>
+            <td className="num">{mascara(money(receitaTotal.aReceber))}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+      <p className="financeNota">Plantão entra quando está <strong>realizado</strong> — escalado ainda não aconteceu e não é receita. Produção entra assim que anotada, mesmo antes de cobrada.</p>
+    </PainelRecolhivel>
+
+    {/* Quanto é de cada um. Só faz sentido em grupo: sozinho, a tabela seria
+        uma linha repetindo o total que já está no cartão acima. */}
+    {ehGrupo&&<PainelRecolhivel chave="fin-profissional" titulo="Quanto é de cada um"
+      legenda="cada um leva o que produziu — plantão de quem plantonou, consulta de quem avaliou">
+      {fatias.length===0
+        ? <div className="emptyClinical compactEmpty">Nenhuma receita neste mês.</div>
+        : <div className="financeTabelaRolavel">
+            <table className="financeTabela">
+              <thead><tr><th>Profissional</th><th className="num">Lançamentos</th><th className="num">Faturado</th><th className="num">Recebido</th><th className="num">A receber</th></tr></thead>
+              <tbody>{fatias.map(f=><tr key={f.donoId??"sem"}>
+                <td>{f.nome}</td>
+                <td className="num">{f.linhas}</td>
+                <td className="num">{mascara(money(f.valor))}</td>
+                <td className="num">{mascara(money(f.recebido))}</td>
+                <td className="num">{mascara(money(f.aReceber))}</td>
+              </tr>)}</tbody>
+              <tfoot><tr>
+                <td>Total</td>
+                <td className="num">{receitaTotal.linhas}</td>
+                <td className="num">{mascara(money(receitaTotal.valor))}</td>
+                <td className="num">{mascara(money(receitaTotal.recebido))}</td>
+                <td className="num">{mascara(money(receitaTotal.aReceber))}</td>
+              </tr></tfoot>
+            </table>
+          </div>}
+      <p className="financeNota">A regra hoje é uma só: cada um leva o que produziu. Grupos que dividem por cotas de sociedade precisam de outro cálculo — quando isso existir, é aqui que muda.</p>
+    </PainelRecolhivel>}
       </>}
       {tarefa==="idade"&&<>
     {/* O instrumento nº 1 de recebíveis, e o que faltava.

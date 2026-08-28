@@ -108,13 +108,23 @@ export default async function DashboardPage({
   const needsClinicalData = initialView === "recepcao" || initialView === "medico";
   const needsFinanceData = initialView === "financeiro" && canFinance;
   const needsAdminData = initialView === "admin" && canManage;
-  const needsProfiles = needsAdminData || initialView === "plantoes" || (initialView === "medico" && canManage);
+  // O Financeiro entrou na lista porque a tela passou a dizer quanto é de cada
+  // um: sem os nomes, a tabela por profissional sairia com uma coluna de
+  // identificadores.
+  const needsProfiles = needsAdminData || initialView === "plantoes"
+    || needsFinanceData || (initialView === "medico" && canManage);
 
   // Seis meses para trás. O lembrete só olha os três últimos meses fechados;
   // o resto seria carregar anos de linhas para somar três números.
   const hoje = new Date().toISOString().slice(0, 10);
   const seisMesesAtras = new Date(Date.UTC(
     Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 7, 1,
+  )).toISOString().slice(0, 10);
+  // Doze meses para a receita do Financeiro: o envelhecimento olha o que está
+  // em aberto, e conta de mais de um ano é caso de perda contábil e não de
+  // cobrança.
+  const dozeMesesAtras = new Date(Date.UTC(
+    Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 13, 1,
   )).toISOString().slice(0, 10);
   // Dois meses cobrem a troca mais antiga que ainda faz sentido responder.
   const doisMesesAtras = new Date(Date.UTC(
@@ -140,6 +150,8 @@ export default async function DashboardPage({
     { data: avisosVistos },
     { data: producaoDoAviso },
     { data: plantoesDoDinheiro },
+    { data: plantoesDaReceita },
+    { data: producaoDaReceita },
   ] = await Promise.all([
     needsFinanceData && perfil.role === "financeiro"
       ? supabase.rpc("financeiro_listar_pacientes")
@@ -230,6 +242,27 @@ export default async function DashboardPage({
     // plantão", e sem o autor o coordenador receberia aviso da própria escala.
     supabase.from("plantoes").select("data,situacao,valor,confirmado_em,created_at,created_by")
       .eq("perfil_id", user.id).gte("data", seisMesesAtras),
+
+    // As outras duas fontes de receita do serviço, para o Financeiro.
+    //
+    // Sem `.eq("perfil_id", user.id)`, ao contrário das duas consultas acima:
+    // aquelas são lembretes da pessoa, esta é a conta do serviço. Quem pode ver
+    // é o RLS que decide — no individual só existe você, no grupo o financeiro
+    // precisa do todo para dividir.
+    //
+    // Doze meses para trás. O envelhecimento olha o que está em aberto, e uma
+    // conta de mais de um ano é caso de perda contábil, não de cobrança; puxar
+    // o histórico inteiro seria carregar anos de plantão para somar um mês.
+    needsFinanceData
+      ? supabase.from("plantoes")
+          .select("id,perfil_id,data,valor,situacao,local_id,local_texto")
+          .gte("data", dozeMesesAtras).order("data", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    needsFinanceData
+      ? supabase.from("producao_do_dia")
+          .select("id,perfil_id,data,paciente,convenio,procedimento,valor,situacao")
+          .gte("data", dozeMesesAtras).order("data", { ascending: false })
+      : Promise.resolve({ data: [] }),
   ]);
 
   // As mensagens da sala depois do seu último olhar. Vem em consulta separada
@@ -298,6 +331,8 @@ export default async function DashboardPage({
       auditoria={auditoria ?? []}
       periodos={periodos ?? []}
       convenioValores={convenioValores ?? []}
+      plantoesDaReceita={plantoesDaReceita ?? []}
+      producaoDaReceita={producaoDaReceita ?? []}
       initialView={initialView}
       initialNewPatient={novo === "1"}
       autoStartAssessment={novo === "1" && iniciar === "1"}
