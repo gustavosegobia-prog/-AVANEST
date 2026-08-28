@@ -176,20 +176,43 @@ export function MeuFinanceiro({
   const doMesAtual = doMes(receitas, mes);
   const total = somar(doMesAtual);
 
+  /**
+   * O que está escalado e ainda não aconteceu.
+   *
+   * `dePlantao` deixa o "escalado" de fora, e para o Financeiro do serviço isso
+   * está certo: não se conta como faturamento o que ainda pode ser cancelado.
+   * Aqui a pergunta é outra — quanto EU vou fazer este mês —, e a escala é o
+   * compromisso. Lançar a escala e ver zero é a tela dizendo que o mês não
+   * existe.
+   *
+   * Fica em número próprio, e não somado ao faturado: são coisas diferentes, e
+   * juntá-las esconderia quanto do mês já é trabalho feito.
+   */
+  const escalados = plantoes.filter((p) => p.data.slice(0, 7) === mes && p.situacao === "escalado");
+  const previsto = escalados.reduce((s, p) => s + Number(p.valor || 0), 0);
+
   // Doze colunas, sempre — inclusive as vazias. Mês sem barra é informação: é o
   // mês de férias, ou o mês em que faltou lançar. Esconder as vazias faria o
   // gráfico parecer cheio e mentir sobre o ano.
   const porMes = MES_CURTO.map((_, i) => {
     const competencia = `${ano}-${String(i + 1).padStart(2, "0")}`;
-    return { competencia, indice: i, ...somar(doMes(receitas, competencia)) };
+    const feito = somar(doMes(receitas, competencia));
+    const aFazer = plantoes
+      .filter((p) => p.data.slice(0, 7) === competencia && p.situacao === "escalado")
+      .reduce((s, p) => s + Number(p.valor || 0), 0);
+    return { competencia, indice: i, ...feito, previsto: aFazer };
   });
-  const teto = Math.max(...porMes.map((m) => m.valor), 1);
+  // O teto considera o previsto: sem isso, o mês que ainda está todo escalado
+  // ficaria com a barra estourando fora da caixa.
+  const teto = Math.max(...porMes.map((m) => m.valor + m.previsto), 1);
 
   // Horas e R$/h saem SÓ dos plantões: a anestesia avulsa não tem duração
   // registrada, e dividir o faturamento inteiro pelas horas de plantão inflaria
   // o valor da hora sem que nada tivesse mudado no trabalho.
+  // Escalado ENTRA aqui, e é o que faz a soma dos cartões por local fechar com
+  // o total do topo. Fora só o cancelado, que não aconteceu nem vai acontecer.
   const plantoesDoMes = plantoes.filter((p) =>
-    p.data.slice(0, 7) === mes && p.situacao !== "cancelado" && p.situacao !== "escalado");
+    p.data.slice(0, 7) === mes && p.situacao !== "cancelado");
   const horas = plantoesDoMes.reduce((s, p) => s + Number(p.horas || 0), 0);
   const valorDosPlantoes = plantoesDoMes.reduce((s, p) => s + Number(p.valor || 0), 0);
   const porHora = horas > 0 ? valorDosPlantoes / horas : null;
@@ -260,11 +283,15 @@ export function MeuFinanceiro({
 
         <div className="mfNumeros">
           <div className="mfTotal">
-            <b>{dinheiro(total.valor)}</b>
-            <span>Total</span>
+            {/* O total grande é tudo do mês, escalado incluído: é a resposta de
+                "quanto vou fazer em agosto". As três parcelas embaixo dizem em
+                que pé está cada pedaço. */}
+            <b>{dinheiro(total.valor + previsto)}</b>
+            <span>Total do mês</span>
           </div>
           <div><b className="mfVerde">{dinheiro(total.recebido)}</b><span>Recebido</span></div>
-          <div><b className={total.aReceber > 0 ? "mfAmbar" : ""}>{dinheiro(total.aReceber)}</b><span>A receber</span></div>
+          <div><b className={total.aReceber > 0 ? "mfAmbar" : ""}>{dinheiro(total.aReceber)}</b><span>Feito, a receber</span></div>
+          {previsto > 0 && <div><b className="mfCinza">{dinheiro(previsto)}</b><span>Ainda vai acontecer</span></div>}
         </div>
 
         {horas > 0 && <p className="mfHora">
@@ -287,11 +314,16 @@ export function MeuFinanceiro({
               key={m.competencia}
               className={m.competencia === mes ? "mfColuna atual" : "mfColuna"}
               aria-pressed={m.competencia === mes}
-              aria-label={`${MES_LONGO[m.indice]}: ${m.valor > 0 ? dinheiro(m.valor) : "sem lançamento"}`}
-              title={`${MES_LONGO[m.indice]}: ${dinheiro(m.valor)}`}
+              aria-label={`${MES_LONGO[m.indice]}: ${m.valor + m.previsto > 0
+                ? dinheiro(m.valor + m.previsto) : "sem lançamento"}`}
+              title={`${MES_LONGO[m.indice]}: ${dinheiro(m.valor + m.previsto)}`}
               onClick={() => onEscolherMes(m.competencia)}
             >
+              {/* De cima para baixo: o que ainda vai acontecer, o que foi feito
+                  e falta receber, e o que já está na conta. O olho lê a coluna
+                  do chão para o topo como a linha do tempo do mês. */}
               <span className="mfBarra">
+                <i className="mfPrevisto" style={{ height: `${(m.previsto / teto) * 100}%` }} />
                 <i className="mfAReceber" style={{ height: `${(m.aReceber / teto) * 100}%` }} />
                 <i className="mfRecebido" style={{ height: `${(m.recebido / teto) * 100}%` }} />
               </span>
@@ -301,7 +333,8 @@ export function MeuFinanceiro({
         </div>
         <div className="mfLegenda">
           <span><i className="mfRecebido" aria-hidden="true" /> Recebido</span>
-          <span><i className="mfAReceber" aria-hidden="true" /> A receber</span>
+          <span><i className="mfAReceber" aria-hidden="true" /> Feito, a receber</span>
+          <span><i className="mfPrevisto" aria-hidden="true" /> Ainda vai acontecer</span>
         </div>
       </section>
 

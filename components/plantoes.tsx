@@ -1455,7 +1455,10 @@ export function Plantoes({
                         + `${feriado ? ` feriado f-${feriado.tipo}` : ""}${diaAberto === dia ? " aberto" : ""}`}
                       onClick={() => setDiaAberto(diaAberto === dia ? null : dia)}
                       title={feriado ? `${feriado.nome}${feriado.tipo === "facultativo" ? " (ponto facultativo)" : ""}` : undefined}
-                      aria-label={`${i + 1}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? plural(doDia.length, "plantão", "plantões") : "sem plantão"}`}
+                      // Para quem usa leitor de tela, a pastilha azul do número
+                      // não existe: `aria-current="date"` é o que anuncia "hoje".
+                      aria-current={dia === hojeISO ? "date" : undefined}
+                      aria-label={`${i + 1}${dia === hojeISO ? " — hoje" : ""}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? plural(doDia.length, "plantão", "plantões") : "sem plantão"}`}
                     >
                       <b>{i + 1}</b>
                       {/* O nome do feriado, e não só uma cor. Cor sozinha diz
