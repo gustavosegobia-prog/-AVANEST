@@ -355,6 +355,14 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
           :saveState==="saving"?"Salvando..."
           :saveState==="pending"?"Alterações não salvas"
           :"Não foi possível salvar"}
+        {/* O MOTIVO, e não só o fato. `saveError` já trazia a frase útil — "o
+            rascunho foi alterado em outra tela, recarregue a página" — e ela
+            só aparecia lá embaixo, na etapa 9. Quem está na via aérea via
+            "Não foi possível salvar" e apertava "Tentar de novo" para sempre,
+            porque numa disputa de versão a repetição nunca resolve: só
+            recarregar resolve. Erro que não diz o que fazer é erro que faz a
+            pessoa repetir o que não funciona. */}
+        {saveState==="error"&&saveError&&<small className="evalSaveMotivo">{saveError}</small>}
         {saveState==="error"&&<button type="button" className="evalSaveRetry" onClick={()=>void save()}>Tentar de novo</button>}
       </span>
       <nav className="evalRoleNav">
@@ -907,7 +915,30 @@ function Airway({draft,set,rascunho}:{draft:Draft;set:(name:string,value:string|
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   const {total:count,risco:risk}=resumoViaAerea(draft);
-  const choice=(name:string,label:string,options:string[])=><label className="evalField"><span>{label}</span><select value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}><option value="">Selecione</option>{options.map(o=><option key={o}>{o}</option>)}</select></label>;
+  /**
+   * O "Selecione" só existe quando não há resposta.
+   *
+   * O padrão acima já grava o normal em toda ficha nova, então na prática o
+   * campo SEMPRE chega respondido — e uma primeira opção vazia ali só serve
+   * para duas coisas ruins: alongar a lista que o médico percorre no celular,
+   * e oferecer um jeito de apagar por engano uma resposta que já existe. A via
+   * aérea normal é a esmagadora maioria; quem tem de gastar toque é a exceção.
+   *
+   * Mas ele NÃO some de vez. Ficha concluída reaberta não recebe o padrão, de
+   * propósito — ela foi assinada com esses campos vazios. Se a opção vazia
+   * sumisse dessas, o navegador mostraria "Classe I" selecionado enquanto o
+   * banco guarda vazio, e a tela passaria a afirmar um exame que a ficha não
+   * afirma. Some quando há resposta; fica quando não há.
+   */
+  const choice=(name:string,label:string,options:string[])=>{
+    const atual=String(draft[name]??"");
+    return <label className="evalField"><span>{label}</span>
+      <select value={atual} onChange={e=>set(name,e.target.value)}>
+        {!atual&&<option value="">Selecione</option>}
+        {atual!==""&&!options.includes(atual)&&<option value={atual}>{atual}</option>}
+        {options.map(o=><option key={o}>{o}</option>)}
+      </select></label>;
+  };
   return <section className="evalSection"><h1>6 · Avaliação da via aérea</h1><div className="airwayGrid">
     {choice("mallampati","Mallampati",["Classe I","Classe II","Classe III","Classe IV"])}
     {choice("abertura_oral","Abertura oral",["> 4 cm","3–4 cm","< 3 cm"])}

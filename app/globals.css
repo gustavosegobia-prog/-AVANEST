@@ -3566,3 +3566,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   background:var(--cor-superficie);margin-left:6px}
 .producaoMesEscolha:focus-visible{outline:0;box-shadow:var(--foco);
   border-color:var(--cor-marca)}
+
+/* O motivo da falha de salvamento, ao lado do aviso. Quebra para a linha de
+   baixo em tela estreita — a frase é longa de propósito, porque ela diz o que
+   fazer, e cortá-la devolveria o problema que ela existe para resolver. */
+.evalSaveMotivo{display:block;flex-basis:100%;font-size:12px;font-weight:600;
+  line-height:1.35;margin-top:2px;opacity:.95}
