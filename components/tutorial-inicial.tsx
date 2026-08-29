@@ -103,20 +103,68 @@ export function TutorialInicial({
       });
     };
 
-    // Traz o elemento para a tela antes de medir: numa lista longa ele pode
-    // estar abaixo da dobra, e o holofote ficaria fora do campo de visão.
-    const t = setTimeout(() => {
-      document.querySelector(alvo)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    /**
+     * Esperar o elemento existir, em vez de apostar num atraso.
+     *
+     * A etapa troca de área, e a área nova monta em outro quadro — com
+     * `useTransition` no meio, isso pode levar bem mais que os 60ms que este
+     * código apostava antes. Quem apostava perdia calado: não achava o botão,
+     * não acendia nada, e a etapa virava um texto solto.
+     *
+     * Aqui ele procura de novo a cada 120ms por um segundo e meio. Achando,
+     * faz o trabalho e para. Não achando, desiste — e a janela ao centro
+     * continua sendo uma etapa válida.
+     */
+    let tentativas = 0;
+    let jaAbriu = false;
+    // Declarado antes de `procurar` porque ela o reagenda: deixá-lo depois
+    // funciona por sorte de tempo, e sorte de tempo é o que se paga depois.
+    let relogio: ReturnType<typeof setTimeout>;
+
+    const procurar = () => {
+      if (!vivo) return;
+      const el = document.querySelector(alvo);
+      if (!el) {
+        if (++tentativas < 12) { relogio = setTimeout(procurar, 120); }
+        else setFoco(null);
+        return;
+      }
+
+      /**
+       * ABRE O QUE ESTÁ APONTANDO.
+       *
+       * Acender o item "Cobranças em atraso" na coluna com o painel de
+       * Lançamentos atrás ensina metade: a pessoa vê onde clicar e não vê o
+       * que aparece depois do clique. O tutorial dá o clique por ela, que é
+       * exatamente o que ela faria.
+       *
+       * Só em `data-secao`, e a regra sai do próprio seletor em vez de uma
+       * marca à parte: essa marca existe só nos botões da coluna da esquerda,
+       * cujo trabalho é trocar de seção. Um `data-acao` — como o + Novo
+       * paciente — abriria um diálogo por cima do tutorial e o esconderia
+       * atrás do que ele estava explicando.
+       */
+      if (!jaAbriu && el instanceof HTMLElement && alvo.startsWith("[data-secao=")) {
+        jaAbriu = true;
+        el.click();
+      }
+
+      // Traz o elemento para a tela antes de medir: numa lista longa ele pode
+      // estar abaixo da dobra, e o holofote ficaria fora do campo de visão.
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
       medir();
-      // Segunda medição depois da rolagem suave terminar.
-      setTimeout(medir, 350);
-    }, 60);
+      // Segunda medição depois de a rolagem suave terminar e o painel novo
+      // acabar de desenhar.
+      relogio = setTimeout(medir, 350);
+    };
+
+    relogio = setTimeout(procurar, 60);
 
     window.addEventListener("resize", medir);
     window.addEventListener("scroll", medir, true);
     return () => {
       vivo = false;
-      clearTimeout(t);
+      clearTimeout(relogio);
       window.removeEventListener("resize", medir);
       window.removeEventListener("scroll", medir, true);
     };
