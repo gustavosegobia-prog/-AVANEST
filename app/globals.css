@@ -3538,3 +3538,14 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .pushConvite{flex-wrap:wrap;margin:12px 12px 0}
   .pushBotoes{width:100%;justify-content:flex-end}
 }
+
+/* ── Baixa da produção ───────────────────────────────────────────────────────
+   O seletor de situação de cada ato anestésico. A cor existe para a lista ser
+   lida de relance: conferir trinta linhas contra um extrato bancário é o que
+   se faz aqui, e ler a palavra em cada uma é mais lento que ver a cor. */
+.producaoSituacao{font-weight:650}
+.producaoSituacao.s-recebido{color:var(--cor-sucesso);border-color:var(--cor-sucesso)}
+.producaoSituacao.s-glosado{color:var(--cor-perigo);border-color:var(--cor-perigo)}
+.producaoSituacao.s-faturado{color:var(--cor-marca);border-color:var(--cor-marca)}
+/* "A cobrar" fica neutro de propósito: é o estado inicial de todo mundo, e
+   pintar a lista inteira de aviso não distingue nada de nada. */

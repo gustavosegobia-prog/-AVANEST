@@ -44,6 +44,29 @@ function apelidoDoAparelho() {
   return [sistema, navegador].filter(Boolean).join(" · ");
 }
 
+/**
+ * O convite já foi feito neste aparelho?
+ *
+ * O cartão do topo é um CONVITE, e convite se faz uma vez. Sem esta memória
+ * ele reaparecia a cada carregamento de página para quem tivesse desligado de
+ * propósito — perguntando de novo, todo dia, algo que a pessoa já respondeu.
+ * Aviso que insiste depois do "não" é aviso que ensina a ignorar avisos.
+ *
+ * Fica no `localStorage`, e não no banco, porque a decisão é DESTE aparelho:
+ * quem desligou no computador do consultório pode muito bem querer o convite
+ * no celular. O try/catch existe porque a janela anônima e o bloqueio de
+ * dados de site fazem o acessor lançar, e não devolver vazio.
+ */
+const CHAVE_CONVITE = "avanest-push-convite";
+
+const jaConvidado = () => {
+  try { return localStorage.getItem(CHAVE_CONVITE) === "visto"; } catch { return false; }
+};
+
+const marcarConvidado = () => {
+  try { localStorage.setItem(CHAVE_CONVITE, "visto"); } catch { /* janela anônima */ }
+};
+
 /** base64url → bytes, que é o formato que `subscribe` exige da chave VAPID. */
 function chaveEmBytes(base64url: string) {
   const preenchido = base64url.replace(/-/g, "+").replace(/_/g, "/")
@@ -91,6 +114,7 @@ export async function ligarPush(chavePublica: string): Promise<{ ok: true } | { 
     const dados = await resposta.json().catch(() => ({}));
     return { ok: false, erro: dados.error ?? "Não foi possível ligar agora." };
   }
+  marcarConvidado();
   return { ok: true };
 }
 
@@ -102,6 +126,8 @@ export async function ligarPush(chavePublica: string): Promise<{ ok: true } | { 
  * cada troca de plantão até o serviço de push devolver 410.
  */
 export async function desligarPush() {
+  // Desligar é uma resposta, e das mais claras. O cartão não volta a perguntar.
+  marcarConvidado();
   const registro = await navigator.serviceWorker.getRegistration("/sw.js");
   const inscricao = await registro?.pushManager.getSubscription();
   if (!inscricao) return;
@@ -123,13 +149,21 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
-  // Dispensar vale para esta sessão. Guardar "não quero" para sempre esconderia
-  // o recurso de quem mudou de ideia, e o menu do usuário não tem onde reabrir.
+  // Começa dispensado quando o convite já foi feito neste aparelho. Guardar o
+  // "não quero" deixou de esconder o recurso no dia em que o menu do perfil
+  // ganhou o interruptor: agora existe onde religar, e o cartão pode calar.
+  //
+  // `useState` com função porque o localStorage não existe no servidor — lê-lo
+  // durante o render do Next quebraria a página inteira.
   const [dispensado, setDispensado] = useState(false);
 
   useEffect(() => {
     let vivo = true;
     void (async () => {
+      // A leitura da memória mora DENTRO do efeito assíncrono, junto do resto.
+      // Num inicializador de useState ela quebraria a hidratação — o servidor
+      // não tem localStorage e renderizaria o cartão que o navegador esconde.
+      if (jaConvidado() && vivo) setDispensado(true);
       if (!chavePublica) { if (vivo) setEstado("indisponivel"); return; }
       const temPush = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
       if (!temPush) {
@@ -197,7 +231,8 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
             {ocupado ? "Ativando..." : "Ativar notificações"}
           </button>
         )}
-        <button type="button" className="pushDepois" onClick={() => setDispensado(true)}>
+        <button type="button" className="pushDepois"
+          onClick={() => { marcarConvidado(); setDispensado(true); }}>
           {estado === "desligado" ? "Agora não" : "Entendi"}
         </button>
       </div>

@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { money, plural } from "@/lib/escala";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-internacao";
-import { ultimoDiaDoMes } from "@/lib/data-local";
+import { hoje as hojeLocal, ultimoDiaDoMes } from "@/lib/data-local";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -28,6 +28,8 @@ export type Producao = {
   local_id?: string | null;
   /** Quem paga este ato. Nulo enquanto não se decidiu — ver PAGADORES. */
   pagador?: string | null;
+  /** O dia em que o dinheiro caiu. Nulo enquanto não foi recebido. */
+  recebido_em?: string | null;
 };
 
 const SITUACOES: Array<[string, string]> = [
@@ -36,9 +38,6 @@ const SITUACOES: Array<[string, string]> = [
   ["recebido", "Recebido"],
   ["glosado", "Glosado"],
 ];
-
-const rotuloSituacao = (s: string) =>
-  SITUACOES.find(([id]) => id === s)?.[1] ?? s;
 
 /**
  * Quem paga o ato anestésico.
@@ -905,7 +904,6 @@ export function ProducaoDoMes({
                 <strong>{i.paciente}</strong>
                 <small>
                   {i.convenio}{i.procedimento ? ` · ${i.procedimento}` : ""}
-                  {" · "}{rotuloSituacao(i.situacao)}
                 </small>
               </span>
               <select value={i.local_id ?? ""} aria-label={`Hospital de ${i.paciente}`}
@@ -919,6 +917,27 @@ export function ProducaoDoMes({
                 onChange={(e) => void definir(i.id, { pagador: e.target.value || null })}>
                 <option value="">Quem paga?</option>
                 {PAGADORES.map(([id, rotulo]) => (
+                  <option key={id} value={id}>{rotulo}</option>
+                ))}
+              </select>
+              {/* A BAIXA DA PRODUÇÃO.
+                  A coluna `situacao` existia desde o começo e o total de
+                  recebido já era somado — só faltava por onde marcar, e o
+                  dinheiro que caía na conta não tinha como ser registrado.
+                  Fica na linha, junto do resto, porque é onde a pessoa está
+                  olhando quando confere o extrato contra a lista. */}
+              <select value={i.situacao} aria-label={`Situação de ${i.paciente}`}
+                className={`producaoSituacao s-${i.situacao}`}
+                onChange={(e) => void definir(i.id, {
+                  situacao: e.target.value,
+                  // A data do recebimento entra AQUI, que é onde ela existe: o
+                  // dia em que se apertou o botão é o dia em que o dinheiro
+                  // caiu. Sem ela o fechamento não sabe em que mês somar — o
+                  // mesmo defeito que a Escala já teve com o `pago_em`.
+                  recebido_em: e.target.value === "recebido"
+                    ? (i.recebido_em ?? hojeLocal()) : null,
+                })}>
+                {SITUACOES.map(([id, rotulo]) => (
                   <option key={id} value={id}>{rotulo}</option>
                 ))}
               </select>
