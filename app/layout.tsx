@@ -31,6 +31,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             endereço e tudo — e aí não é um aplicativo, é um marcador. O
             manifesto já pede standalone, mas o iOS antigo só obedece a esta
             linha. */}
+        {/* As DUAS linhas, e não uma. O Chrome avisa no console que a versão
+            com prefixo `apple-` está obsoleta e pede a padronizada — mas quem
+            obedece só à `apple-` é justamente o Safari do iPhone, que é o
+            aparelho por que este trecho existe. Tirar a antiga para calar o
+            aviso devolveria o atalho do iOS para dentro do Safari, com barra
+            de endereço; e sem a nova o aviso continua. Convivem. */}
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         {/* Declarado à mão, apontando para /public, em vez de depender do
