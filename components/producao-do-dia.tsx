@@ -6,6 +6,7 @@ import { money, plural } from "@/lib/escala";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-internacao";
 import { hoje as hojeLocal, ultimoDiaDoMes } from "@/lib/data-local";
+import { lerDinheiro } from "@/lib/dinheiro";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -78,12 +79,15 @@ function erroDeColuna(erro: { code?: string; message?: string }): string {
     : "Não foi possível salvar a alteração.";
 }
 
-/** "1.100,00" ou "1100" -> 1100. Aceita o jeito que a pessoa digitar. */
-export function lerValor(bruto: string): number {
-  const v = Number(String(bruto ?? "").replace(/[^\d,.-]/g, "")
-    .replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
-  return Number.isFinite(v) && v >= 0 ? v : 0;
-}
+/**
+ * O nome antigo, apontando para a regra de verdade.
+ *
+ * A leitura do dinheiro digitado vivia aqui dentro, sem teste, e a recepção
+ * passou a precisar da mesma coisa ao registrar um particular. Duas cópias de
+ * uma regra que decide se R$ 1.100 vira mil e cem ou um e dez é o tipo de
+ * duplicação que só se descobre pelo extrato.
+ */
+export const lerValor = lerDinheiro;
 
 /**
  * Preparar a foto antes de reconhecer.

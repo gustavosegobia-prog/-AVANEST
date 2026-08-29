@@ -38,6 +38,7 @@ const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
 import { Plantoes } from "@/components/plantoes";
 import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
+import { lerDinheiro } from "@/lib/dinheiro";
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -69,6 +70,9 @@ export const areasExtras = (p: { role: string; permissoes?: string[] | null }) =
   );
 
 export const PRIVATE_PAY_CONVENIO = "Particular";
+
+/** As formas que o banco aceita — a lista é a mesma da restrição da tabela. */
+export const METODOS_DE_PAGAMENTO = ["PIX", "Dinheiro", "Cartão", "Transferência", "Outro"];
 export const CONVENIOS = [
   "Particular","Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde",
   "SulAmérica","Amil","CASSI","SANEPAR","COPEL",
@@ -425,6 +429,28 @@ export function DashboardClient({
     }
     const appointmentDate = text("data_consulta") || localDateKey();
     const supabase = createClient();
+
+    /**
+     * O recibo do balcão, se houve.
+     *
+     * NUNCA DERRUBA O CADASTRO. O paciente já está salvo quando isto roda, e a
+     * consulta é daqui a dez minutos: recusar o cadastro inteiro porque o
+     * lançamento financeiro falhou mandaria a recepção começar tudo de novo com
+     * a pessoa em pé no balcão. A falha vira aviso, e o valor se lança depois
+     * pelo Financeiro.
+     */
+    async function registrarParticular(patientId: string) {
+      if(convenio!==PRIVATE_PAY_CONVENIO) return;
+      const valor=lerDinheiro(text("valor_particular")??"");
+      if(!valor) return;
+      const {error:erroPagamento}=await supabase.rpc("receber_particular",{
+        p_patient_id:patientId, p_valor:valor,
+        p_metodo:text("metodo_particular")||"PIX", p_referencia:null,
+      });
+      if(erroPagamento){
+        setError(`Paciente salvo, mas o recebimento não foi registrado: ${erroPagamento.message}. Lance o valor pelo Financeiro.`);
+      }
+    }
     if(appointmentDate < localDateKey()){
       setError("A data da consulta não pode ser anterior à data de hoje.");
       setBusy(false);
@@ -486,11 +512,12 @@ export function DashboardClient({
       p_paciente: patientPayload, p_agendamento: appointmentPayload,
     });
     if (!atomic.error) {
+      const result = (Array.isArray(atomic.data) ? atomic.data[0] : atomic.data) as {
+        patient_id?: string;
+        appointment_id?: string | null;
+      } | null;
+      if (result?.patient_id) await registrarParticular(result.patient_id);
       if (autoStartAssessment) {
-        const result = (Array.isArray(atomic.data) ? atomic.data[0] : atomic.data) as {
-          patient_id?: string;
-          appointment_id?: string | null;
-        } | null;
         if (!result?.patient_id) {
           throw new Error("Paciente salvo, mas não foi possível identificar o novo cadastro.");
         }
@@ -518,6 +545,7 @@ export function DashboardClient({
         setBusy(false);
         return;
       }
+      await registrarParticular(created.id);
       if(autoStartAssessment){
         await openAssessment(created.id,createdAppointment?.id);
         return;
@@ -2582,6 +2610,8 @@ function Alert({ icone, title, text, action, danger=false, onClick }: { icone:Pa
 
 function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:boolean; error:string; convenios:string[]; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
   const [convenio,setConvenio]=useState<string>(PRIVATE_PAY_CONVENIO);
+  // PIX primeiro porque é o que mais se usa no balcão hoje.
+  const [metodoParticular,setMetodoParticular]=useState("PIX");
   const isPrivatePay=convenio===PRIVATE_PAY_CONVENIO;
   // O formulário deixa de ser um bloco único de dezoito campos e passa a ter
   // grupos com título: o preenchimento segue a ordem natural da conversa com
@@ -2636,7 +2666,29 @@ function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:bool
               <Field name="plano" label="Plano" autoComplete="off" span2/>
             </>}
           </div>
-          {isPrivatePay&&<p className="modalGrupoAjuda">Particular não exige carteirinha nem plano.</p>}
+          {/* O PARTICULAR PAGA NO BALCÃO, e é aqui que o dinheiro existe. O
+              convênio se cobra depois, e por isso entra no Financeiro só
+              quando o médico conclui a avaliação — pelo valor da TABELA. O
+              particular paga antes de entrar na sala, o valor é o que ele
+              efetivamente deu, e esperar a conclusão da avaliação para
+              registrar é deixar o caixa do dia errado até as 18h.
+
+              Os dois campos são OPCIONAIS: também se agenda particular que vai
+              pagar depois, e exigir o valor aqui travaria o cadastro por causa
+              de um recibo que ainda não existe. */}
+          {isPrivatePay&&<>
+            <div className="patientFormGrid" style={{marginTop:14}}>
+              <Field name="valor_particular" label="Valor pago R$" inputMode="numeric"
+                placeholder="Deixe em branco se ainda não pagou" span2/>
+              <SelectField name="metodo_particular" label="Forma de pagamento"
+                options={METODOS_DE_PAGAMENTO} value={metodoParticular}
+                onChange={setMetodoParticular} span2/>
+            </div>
+            <p className="modalGrupoAjuda">
+              Particular não exige carteirinha nem plano. Com o valor
+              preenchido, o recebimento entra no Financeiro na hora, já quitado.
+            </p>
+          </>}
         </fieldset>
 
         <fieldset className="modalGrupo">
@@ -2719,11 +2771,11 @@ function CamposIdade({nascimento:inicial="",idade:idadeInicial=""}:{nascimento?:
   </>;
 }
 
-function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue,autoComplete,mask,inputMode,autoFocus}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string;autoComplete?:string;mask?:keyof typeof MASCARAS;inputMode?:"numeric"|"text";autoFocus?:boolean}) {
+function Field({name,label,type="text",wide=false,span2=false,required=false,defaultValue,autoComplete,mask,inputMode,autoFocus,placeholder}:{name:string;label:string;type?:string;wide?:boolean;span2?:boolean;required?:boolean;defaultValue?:string;autoComplete?:string;mask?:keyof typeof MASCARAS;inputMode?:"numeric"|"text";autoFocus?:boolean;placeholder?:string}) {
   // Campo com máscara é controlado: o valor exibido é sempre o formatado,
   // sem depender de reescrever o valor dentro do evento.
   const [valor,setValor]=useState(defaultValue??"");
-  const comum={name,type,required,autoComplete,inputMode,autoFocus};
+  const comum={name,type,required,autoComplete,inputMode,autoFocus,placeholder};
   return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""} ${required?"obrigatorio":""}`.trim()}>
     <span>{label}</span>
     {mask

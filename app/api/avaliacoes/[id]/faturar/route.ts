@@ -102,6 +102,43 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const referenceDate =
     patient.data_consulta || assessment.concluida_at?.slice(0, 10) || hoje();
 
+  // A RECEPÇÃO PODE TER CHEGADO PRIMEIRO. Um particular que pagou no balcão já
+  // tem lançamento aberto, com o valor real e a forma de pagamento — e sem
+  // `avaliacao_id`, porque a avaliação ainda não existia. Inserir outra linha
+  // aqui contaria o mesmo paciente duas vezes no mês, e a chave única não
+  // impede: `(institution_id, patient_id, avaliacao_id)` aceita as duas,
+  // porque uma tem nulo e a outra não.
+  //
+  // O valor da recepção PREVALECE. Ele é o que a pessoa efetivamente pagou; o
+  // daqui é o da tabela de convênios, que para particular é uma referência.
+  const { data: jaAberto } = await admin
+    .rpc("atendimento_aberto_do_paciente", {
+      p_institution_id: actor.institution_id,
+      p_patient_id: patient.id,
+    });
+
+  if (jaAberto) {
+    const { data: amarrado } = await admin
+      .from("financeiro_atendimentos")
+      .update({
+        avaliacao_id: assessment.id,
+        medico_id: assessment.created_by || actor.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", jaAberto)
+      .select("id,valor")
+      .single();
+    if (amarrado) {
+      await admin.from("auditoria").insert({
+        institution_id: actor.institution_id, actor_id: actor.id,
+        entidade: "financeiro_atendimento", entidade_id: amarrado.id,
+        acao: "avaliacao_amarrada_ao_recebimento_da_recepcao",
+        detalhes: { avaliacao_id: assessment.id },
+      });
+      return NextResponse.json({ ok: true, created: false, atendimento: amarrado });
+    }
+  }
+
   const { data: atendimento, error } = await admin
     .from("financeiro_atendimentos")
     .insert({
