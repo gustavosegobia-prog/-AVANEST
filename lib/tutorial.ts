@@ -95,6 +95,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
     etapas.push({
       area: "recepcao",
+      alvo: '[data-acao="novo-paciente"]',
       titulo: "Novo paciente",
       texto: "O botão + Novo paciente abre a ficha inteira: dados pessoais, endereço, hospital e cirurgia. O CPF é conferido na hora — se já existir, o sistema avisa antes de duplicar o cadastro.",
     });
@@ -105,6 +106,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
     etapas.push({
       area: "recepcao",
+      alvo: '[data-secao="hoje"]',
       titulo: "Data, horário e a fila",
       texto: "Deixe o horário em branco e o sistema usa o próximo livre da agenda. Depois, quando a pessoa chegar, marque Presente em Consultas de hoje — é isso que a põe na fila do anestesiologista.",
     });
@@ -114,12 +116,13 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (tem("medico")) {
     etapas.push({
       area: "medico",
-      alvo: '[data-area="medico"]',
+      alvo: '[data-secao="agenda"]',
       titulo: "Médico: a sua fila",
       texto: "Aqui estão os pacientes que a recepção marcou como presentes. Em cada um: Seguir consulta, se a avaliação já foi começada, ou Nova avaliação.",
     });
     etapas.push({
       area: "medico",
+      alvo: '[data-acao="novo-paciente"]',
       titulo: "Paciente que não passou pela recepção",
       // O caso do hospital, que não tem balcão. Sem esta etapa a pessoa
       // conclui que precisa de uma recepcionista para avaliar alguém.
@@ -137,7 +140,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
     etapas.push({
       area: "medico",
-      alvo: '[data-area="medico"]',
+      alvo: '[data-secao="central"]',
       titulo: "Central Operacional e histórico",
       texto: "Na coluna da esquerda: Central Operacional reúne o que ficou para trás — avaliação começada e não concluída, exame pendente, alerta de alergia. E Histórico de avaliações guarda tudo o que já foi feito, com busca.",
     });
@@ -152,7 +155,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (tem("plantoes")) {
     etapas.push({
       area: "plantoes",
-      alvo: '[data-area="plantoes"]',
+      alvo: '[data-secao="minha"]',
       titulo: "Escala: uma por hospital",
       texto: "Na coluna da esquerda há uma escala para cada hospital cadastrado, e Minha escala, que junta todos os seus plantões de todos os lugares num calendário só.",
     });
@@ -171,21 +174,25 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
     etapas.push({
       area: "plantoes",
+      alvo: '[data-secao="trocas"]',
       titulo: "Trocas de plantão",
       texto: "Escala → Trocas. No plantão, use Trocar: ofereça ao grupo inteiro, e qualquer um assume, ou convide uma pessoa. Quem recebe vê na aba Trocas e no sino, e a escala se ajusta sozinha quando alguém aceita.",
     });
     etapas.push({
       area: "plantoes",
+      alvo: '[data-secao="producao"]',
       titulo: "Produção do dia",
       texto: "Escala → Produção. Anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos.",
     });
     etapas.push({
       area: "plantoes",
+      alvo: '[data-secao="producao"]',
       titulo: "Baixa e planilha para o contador",
       texto: "Ainda em Produção: quando o dinheiro cair, mude a situação da linha para Recebido — a data entra sozinha e o mês do caixa fica certo. Os botões Planilha baixam um Excel de verdade, por hospital, por quem paga ou por convênio, para mandar a quem emite a nota.",
     });
     etapas.push({
       area: "plantoes",
+      alvo: '[data-secao="meufinanceiro"]',
       titulo: "Meu financeiro",
       texto: "Escala → Meu financeiro. Mostra só o seu: quanto entrou, quanto falta receber, o gráfico do ano e o valor por hora de cada hospital. Mesmo num grupo, essa parte é sua e ninguém mais vê.",
     });
@@ -195,32 +202,37 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (tem("financeiro")) {
     etapas.push({
       area: "financeiro",
-      alvo: '[data-area="financeiro"]',
+      alvo: ".financeTarefas",
       titulo: "Financeiro: o caixa do serviço",
       texto: "A coluna da esquerda é a lista do que fazer, em três blocos: Operação, Análise e Configuração. Uma tarefa de cada vez, em vez de tudo empilhado numa tela só.",
     });
     etapas.push({
       area: "financeiro",
+      alvo: '[data-secao="lancamentos"]',
       titulo: "Operação: o dia a dia",
       texto: "Lançamentos traz o que veio da recepção, agrupado por convênio. Recebimentos mostra o que ainda falta receber e registra a baixa. Notas fiscais avisa quando uma nota passa de quinze dias sem pagamento.",
     });
     etapas.push({
       area: "financeiro",
+      alvo: '[data-secao="despesas"]',
       titulo: "Despesas, lotes e repasses",
       texto: "Despesas é o outro lado do caixa: aluguel, material, imposto — sem elas não é fluxo de caixa, é faturamento. Lotes de cobrança agrupa por convênio para enviar. Produção da equipe reúne o que os colegas anotaram, e Repasses divide o que cabe a cada um.",
     });
     etapas.push({
       area: "financeiro",
+      alvo: '[data-secao="resultado"]',
       titulo: "Análise: os números do mês",
       texto: "Resultado do mês fecha entradas menos saídas. Origem da receita mostra as três fontes — consulta, plantão e produção. Cobranças em atraso diz há quanto tempo cada convênio está devendo. Gráficos e Faturado por convênio mostram a evolução.",
     });
     etapas.push({
       area: "financeiro",
+      alvo: '[data-secao="valores"]',
       titulo: "Fechamento e configuração",
       texto: "Fechamento do mês tranca a competência e registra na auditoria. Extrato de pagamentos lista o que entrou. E Valores por convênio é onde se cadastra quanto vale cada um — enquanto essa tabela estiver vazia, todo atendimento entra valendo R$ 0,00.",
     });
     etapas.push({
       area: "financeiro",
+      alvo: ".plantaoOlho",
       titulo: "O olho esconde os números",
       texto: "O ícone de olho apaga os valores da tela. Use quando alguém estiver olhando junto — a tela do financeiro num consultório fica visível para mais gente do que se imagina.",
     });
@@ -230,22 +242,25 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (monta) {
     etapas.push({
       area: "admin",
-      alvo: '[data-area="admin"]',
+      alvo: '[data-secao="usuarios"]',
       titulo: "Admin: a sua organização",
       texto: "Aqui se monta a casa. Usuários e permissões lista a equipe: você adiciona, muda a função de cada um — anestesiologista, recepção, financeiro, administrador — e desativa quem saiu.",
     });
     etapas.push({
       area: "admin",
+      alvo: '[data-secao="convites"]',
       titulo: "Convites",
       texto: "Admin → Convites. Envie por e-mail ou gere um link para mandar no WhatsApp. Quem não usa o sistema pode ser cadastrado sem e-mail: entra na escala e no faturamento, e não recebe login.",
     });
     etapas.push({
       area: "admin",
+      alvo: '[data-secao="locais"]',
       titulo: "Locais de atendimento",
       texto: "Admin → Locais de atendimento. Cadastre cada hospital com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. Sem local cadastrado a escala não tem onde pendurar o plantão.",
     });
     etapas.push({
       area: "admin",
+      alvo: '[data-secao="dados"]',
       titulo: "Dados, assinatura e auditoria",
       texto: "Dados da organização guarda nome, CNPJ e contato, que saem nos documentos. Assinatura mostra o plano e a data de renovação. Auditoria registra quem fez o quê, e é consulta, não rotina.",
     });

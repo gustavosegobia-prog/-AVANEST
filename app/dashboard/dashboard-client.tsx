@@ -840,7 +840,7 @@ export function DashboardClient({
                 id==="grupo"
                   ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
                   : <button
-                      type="button" key={id}
+                      type="button" key={id} data-secao={id}
                       className={secaoMedico===id?"active":""}
                       aria-current={secaoMedico===id?"true":undefined}
                       onClick={()=>setSecaoMedico(id)}
@@ -1000,7 +1000,7 @@ export function DashboardClient({
               <h1>Recepção</h1>
               <p>Cadastro de pacientes e agenda — sem acesso a dados clínicos ou financeiros.</p>
             </div>
-            <button className="primaryClinical compact" onClick={()=>setOpen(true)}>+ Novo paciente</button>
+            <button className="primaryClinical compact" data-acao="novo-paciente" onClick={()=>setOpen(true)}>+ Novo paciente</button>
           </section>
           {error&&<p className="clinicalError">{error}</p>}
           <section className="metricGrid receptionMetrics"><Metric value={scheduledToday.length} label="Consultas hoje" tone="blue"/><Metric value={agendamentos.filter(a=>a.data>=today&&!["cancelado","reagendado"].includes(a.status)).length} label="Consultas agendadas" tone="blue"/><Metric value={completedThisMonth.length} label="Concluídas no mês" tone="green"/><Metric value={scheduledToday.filter(a=>a.status==="agendado").length} label="Aguardando confirmação" tone="amber"/><Metric value={agendamentos.filter(a=>a.data.slice(0,7)===today.slice(0,7)&&["faltou","cancelado"].includes(a.status)).length} label="Faltas/canceladas" tone="red"/></section>
@@ -1018,7 +1018,7 @@ export function DashboardClient({
                 id==="grupo"
                   ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
                   : <button
-                      type="button" key={id}
+                      type="button" key={id} data-secao={id}
                       className={secaoRecepcao===id?"active":""}
                       aria-current={secaoRecepcao===id?"true":undefined}
                       onClick={()=>{
@@ -1451,7 +1451,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           id==="grupo"
             ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
             : <button
-                type="button" key={id}
+                type="button" key={id} data-secao={id}
                 className={tarefa===id?"active":""}
                 aria-current={tarefa===id?"true":undefined}
                 onClick={()=>setTarefa(id)}
@@ -2280,7 +2280,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
           id==="grupo"
             ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
             : <button
-                type="button" key={id}
+                type="button" key={id} data-secao={id}
                 className={aba===id?"active":""}
                 aria-current={aba===id?"true":undefined}
                 onClick={()=>setAba(id)}

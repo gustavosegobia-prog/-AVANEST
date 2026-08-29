@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { passosDoTutorial } from "./tutorial.ts";
 
 const medico = { role: "medico", nome: "Dr. GUSTAVO SEGOBIA DA SILVA",
@@ -147,5 +149,32 @@ test("etapa que manda ir a outro lugar diz o CAMINHO", () => {
     const etapa = etapas.find((e) => e.titulo === titulo);
     assert.ok(etapa, `sumiu a etapa "${titulo}"`);
     assert.match(etapa!.texto, /→/, `"${titulo}" precisa dizer o caminho com →`);
+  }
+});
+
+test("todo alvo existe no código da interface", () => {
+  // O defeito que já apareceu DUAS vezes: um alvo que não existe não quebra
+  // nada — o destaque simplesmente não acontece, em silêncio, e a etapa vira
+  // um texto solto no meio da tela. Foi assim com `[data-secao="producao"]`
+  // antes de a marca existir de verdade.
+  //
+  // Este teste lê o código-fonte e procura cada alvo. Não é o DOM, então não
+  // garante que o elemento esteja VISÍVEL naquele passo — garante que ele
+  // exista em algum lugar, que é o erro que se comete ao renomear uma seção
+  // e esquecer do tutorial.
+  const fonte = ["app", "components"]
+    .flatMap((dir) => execSync(`find ${dir} -name '*.tsx'`, { encoding: "utf8" }).trim().split("\n"))
+    .map((f) => readFileSync(f, "utf8")).join("\n");
+
+  for (const etapa of passosDoTutorial(tudo)) {
+    if (!etapa.alvo) continue;
+    const porDado = etapa.alvo.match(/^\[data-(secao|area|acao)="(.+)"\]$/);
+    // As seções são declaradas como ["id","Rótulo"] e viram data-secao={id};
+    // procurar `data-secao="usuarios"` no fonte não acharia nada.
+    const procura = porDado
+      ? (porDado[1] === "secao" ? `["${porDado[2]}"` : `data-${porDado[1]}="${porDado[2]}"`)
+      : etapa.alvo.slice(1);
+    assert.ok(fonte.includes(procura),
+      `o alvo ${etapa.alvo} da etapa "${etapa.titulo}" não existe na interface`);
   }
 });
