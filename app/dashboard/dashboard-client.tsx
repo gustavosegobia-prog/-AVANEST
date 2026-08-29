@@ -1437,10 +1437,10 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ["repasses","Repasses"],
           ["grupo","Análise"],
           ["resultado","Resultado do mês"],
-          ["origem","De onde vem o dinheiro"],
+          ["origem","Origem da receita"],
           // O contador é o que está vencido, e não o total a receber: a coluna
           // conta o que pede ação hoje.
-          ["idade","A receber por idade",linhasIdade.filter(l=>l.faixas.acima90>0).length],
+          ["idade","Cobranças em atraso",linhasIdade.filter(l=>l.faixas.acima90>0).length],
           ["graficos","Gráficos"],
           ["faturamento","Faturado por convênio"],
           ["fechamento","Fechamento do mês"],
@@ -1583,7 +1583,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     {/* O número que fecha o mês, e que a tela não tinha.
         Usa o FATURADO e não o recebido: "o mês deu lucro" se responde com o
         trabalho daquele mês contra o custo daquele mês. "Tenho dinheiro em
-        caixa" é outra pergunta, e quem responde é A receber por idade — um
+        caixa" é outra pergunta, e quem responde é Cobranças em atraso — um
         serviço pode ter um mês excelente e o caixa apertado, e é isso que as
         duas telas juntas mostram. */}
     <PainelRecolhivel chave="fin-resultado" titulo="Resultado do mês"
@@ -1623,7 +1623,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     {/* As três fontes de receita do serviço, lado a lado.
         Sempre as três, mesmo zeradas: origem que some da tabela vira pergunta
         ("cadê os plantões?") em vez de resposta ("os plantões deram zero"). */}
-    <PainelRecolhivel chave="fin-origem" titulo="De onde vem o dinheiro"
+    <PainelRecolhivel chave="fin-origem" titulo="Origem da receita"
       legenda={`receita de ${NOMES_MES[Number(period.slice(5,7))-1]??""} por fonte`} abrePadrao
       extra={<b>{mascara(money(receitaTotal.valor))}</b>}>
       <div className="financeTabelaRolavel">
@@ -1681,7 +1681,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         "R$ 40.000 a receber" não diz nada sozinho: quarenta mil com trinta dias
         é operação saudável, quarenta mil com cento e vinte é dinheiro em risco.
         É esta tabela que diz para quem ligar na segunda-feira. */}
-    <PainelRecolhivel chave="fin-idade" titulo="A receber por idade"
+    <PainelRecolhivel chave="fin-idade" titulo="Cobranças em atraso"
       legenda="há quanto tempo cada convênio está devendo" abrePadrao
       extra={<b>{mascara(money(totaisIdade.total))}</b>}>
       {linhasIdade.length===0

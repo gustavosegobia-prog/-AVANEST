@@ -26,17 +26,22 @@ test("o anestesiologista aprende avaliação e escala, nesta ordem", () => {
   assert.deepEqual([...new Set(areas)], ["medico", "plantoes"]);
 });
 
-test("o preparo vem antes do trabalho, e só para quem administra", () => {
-  // Um serviço que entra sem valor de consulta cadastrado vê o Financeiro em
-  // R$ 0,00 e conclui que a conta está quebrada. Ensinar depois custa mais.
-  const doAdmin = passosDoTutorial(tudo);
-  const valores = doAdmin.findIndex((e) => /valores/i.test(e.titulo));
-  const trabalho = doAdmin.findIndex((e) => e.area === "medico");
-  assert.ok(valores > 0, "o passo dos valores precisa existir para quem administra");
-  assert.ok(valores < trabalho, "preparar a casa vem antes de usá-la");
+test("a ordem é a do dia de trabalho: recepção, médico, escala, financeiro, admin", () => {
+  // A ordem foi ditada por quem usa: o paciente entra pela recepção, passa
+  // pelo médico, o plantão vira escala, o dinheiro cai no financeiro, e o
+  // Admin fica por último porque é ajuste de casa e não rotina de quem entra
+  // pela primeira vez.
+  const blocos = passosDoTutorial(tudo).map((e) => e.area).filter(Boolean)
+    .filter((a, i, arr) => a !== arr[i - 1]);
+  assert.deepEqual(blocos, ["recepcao", "medico", "plantoes", "financeiro", "admin"]);
+});
 
-  // E o anestesiologista sem Admin não recebe: ele clicaria e seria recusado.
-  assert.equal(passosDoTutorial(medico).some((e) => /valores/i.test(e.titulo)), false);
+test("os valores por convênio são ensinados, com o aviso do R$ 0,00", () => {
+  // Sem essa tabela todo atendimento entra valendo zero e o Financeiro parece
+  // quebrado. É a pegadinha de setup que mais custa caro descobrir depois.
+  const texto = passosDoTutorial(tudo).map((e) => e.texto).join(" ");
+  assert.match(texto, /Valores por convênio/);
+  assert.match(texto, /R\$ 0,00/);
 });
 
 test("ensina o que mais gerou dúvida: baixa, planilha e troca", () => {
@@ -47,6 +52,8 @@ test("ensina o que mais gerou dúvida: baixa, planilha e troca", () => {
   assert.match(textos, /Planilha|Excel/, "a planilha para o contador");
   assert.match(textos, /Trocar|troca/i, "passar plantão a um colega");
   assert.match(textos, /Tela de Início/, "o iPhone precisa do app instalado");
+  assert.match(textos, /Central Operacional/, "o que ficou para trás");
+  assert.match(textos, /sem passar pela Recepção/, "o paciente do hospital");
 });
 
 test("o primeiro nome abre o tutorial, sem o título e sem gritar", () => {
@@ -133,8 +140,8 @@ test("etapa que manda ir a outro lugar diz o CAMINHO", () => {
   // silêncio e a etapa vira um texto solto. Quando não dá para apontar, o
   // texto tem de escrever o caminho — "Financeiro → Valores por convênio" —
   // em vez de só nomear a área.
-  const comCaminho = ["E os valores das consultas", "Antes de tudo: os locais",
-    "Depois, a equipe", "A produção do dia", "Meu financeiro"];
+  const comCaminho = ["Convites", "Locais de atendimento",
+    "Trocas de plantão", "Produção do dia", "Meu financeiro"];
   const etapas = passosDoTutorial(tudo);
   for (const titulo of comCaminho) {
     const etapa = etapas.find((e) => e.titulo === titulo);

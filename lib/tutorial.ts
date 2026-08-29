@@ -85,113 +85,104 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     texto: "",
   }];
 
-  // ── Preparo, só para quem administra ─────────────────────────────────────
-  //
-  // A ORDEM AQUI É POR ÁREA, e não pela sequência lógica das tarefas. O painel
-  // atrás da janela muda para acompanhar cada etapa, e as duas do Admin
-  // separadas por uma do Financeiro faziam o fundo ir e voltar — Admin,
-  // Financeiro, Admin — em três telas seguidas. A pessoa lê o texto e vê a
-  // tela piscar, e passa a olhar para o pisca em vez do texto.
-  if (monta) {
-    etapas.push({
-      area: "admin",
-      alvo: '[data-area="admin"]',
-      titulo: "Antes de tudo: os locais",
-      texto: "Admin → Locais de atendimento, na coluna da esquerda. Cadastre os hospitais com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. Sem local cadastrado, a escala não tem onde pendurar o plantão.",
-    });
-    etapas.push({
-      area: "admin",
-      alvo: '[data-area="admin"]',
-      titulo: "Depois, a equipe",
-      texto: "Admin → Usuários e permissões, e Convites logo abaixo. Quem não usa o sistema pode ser cadastrado sem e-mail: entra na escala e no faturamento, e não recebe login.",
-    });
-    // SEM ÁREA, de propósito. O painel dos valores mora no Financeiro, mas
-    // esta etapa é do PREPARO, e o Financeiro só é visitado no fim do
-    // tutorial. Marcá-la como financeiro faria o fundo ir ao Financeiro,
-    // voltar para a Recepção e ir ao Financeiro de novo — a pessoa lê o texto
-    // e vê a tela piscar. Sem área, o painel fica onde está e o caminho é
-    // dito por escrito, que é o que ela vai seguir depois de fechar o
-    // tutorial de qualquer jeito.
-    //
-    // Só entra para quem tem a área: numa organização que não contratou o
-    // módulo financeiro, essa tela não existe.
-    if (tem("financeiro")) {
-      etapas.push({
-        titulo: "E os valores das consultas",
-        // A etapa que evita o susto mais comum: tudo em R$ 0,00 e a conclusão
-        // de que o sistema não soma.
-        texto: "Financeiro → Valores por convênio, na coluna da esquerda. Cadastre quanto vale cada convênio antes de começar: enquanto essa tabela estiver vazia, todo atendimento entra valendo R$ 0,00 — e o Financeiro parece quebrado quando só falta o preço.",
-      });
-    }
-  }
-
-  // ── O dia de trabalho ────────────────────────────────────────────────────
+  // ── 1. Recepção: por onde o paciente entra ───────────────────────────────
   if (tem("recepcao")) {
     etapas.push({
       area: "recepcao",
       alvo: '[data-area="recepcao"]',
-      titulo: "A fila do dia",
-      texto: "Em Recepção ficam o cadastro do paciente e a agenda. Marque quem chegou como presente — é isso que põe o paciente na fila do anestesiologista.",
+      titulo: "Recepção: por onde o paciente entra",
+      texto: "É a primeira porta. Na coluna da esquerda: Agenda com as consultas do dia, Consultas de hoje para marcar quem chegou, e Pesquisar paciente para achar quem já é cadastrado.",
     });
     etapas.push({
       area: "recepcao",
-      titulo: "Particular paga no balcão",
-      texto: "No cadastro, escolhendo Particular aparecem o valor e a forma de pagamento. Preenchidos, o recebimento entra no Financeiro na hora, já quitado — não precisa esperar a avaliação terminar. Em branco, é só um agendamento.",
+      titulo: "Novo paciente",
+      texto: "O botão + Novo paciente abre a ficha inteira: dados pessoais, endereço, hospital e cirurgia. O CPF é conferido na hora — se já existir, o sistema avisa antes de duplicar o cadastro.",
+    });
+    etapas.push({
+      area: "recepcao",
+      titulo: "Convênio ou particular",
+      texto: "Escolhendo um convênio, aparecem carteirinha e plano. Escolhendo Particular, aparecem o valor e a forma de pagamento: preenchidos, o recebimento entra no Financeiro na hora, já quitado. Em branco, é só um agendamento.",
+    });
+    etapas.push({
+      area: "recepcao",
+      titulo: "Data, horário e a fila",
+      texto: "Deixe o horário em branco e o sistema usa o próximo livre da agenda. Depois, quando a pessoa chegar, marque Presente em Consultas de hoje — é isso que a põe na fila do anestesiologista.",
     });
   }
 
+  // ── 2. Médico: a avaliação ───────────────────────────────────────────────
   if (tem("medico")) {
     etapas.push({
       area: "medico",
       alvo: '[data-area="medico"]',
-      titulo: "A avaliação pré-anestésica",
-      texto: "Em Médico você cadastra o paciente e faz a avaliação em nove etapas. O texto é salvo enquanto você digita: fechar a tela no meio não perde nada.",
+      titulo: "Médico: a sua fila",
+      texto: "Aqui estão os pacientes que a recepção marcou como presentes. Em cada um: Seguir consulta, se a avaliação já foi começada, ou Nova avaliação.",
+    });
+    etapas.push({
+      area: "medico",
+      titulo: "Paciente que não passou pela recepção",
+      // O caso do hospital, que não tem balcão. Sem esta etapa a pessoa
+      // conclui que precisa de uma recepcionista para avaliar alguém.
+      texto: "Dentro do hospital não há balcão. Use + Novo paciente aqui mesmo: você cadastra e já entra na avaliação, sem passar pela Recepção.",
+    });
+    etapas.push({
+      area: "medico",
+      titulo: "A avaliação, em nove etapas",
+      texto: "Identificação, anamnese, medicamentos, exames, exame físico, via aérea, escores, plano anestésico e conclusão. O texto é salvo enquanto você digita: fechar a tela no meio não perde nada.",
     });
     etapas.push({
       area: "medico",
       titulo: "O que já vem respondido",
-      // A etapa que economiza mais toques por avaliação, e a que ninguém
-      // descobre sozinho.
-      texto: "A via aérea começa preenchida como normal — você só mexe no que for diferente. Os preditores são etiquetas: marque as presentes, o resto é ausência. E o risco de via aérea difícil é calculado sozinho, como sugestão.",
+      texto: "A via aérea começa preenchida como normal — você só mexe no que for diferente. Os preditores são etiquetas: marque as presentes, o resto é ausência. O risco de via aérea difícil e os escores ASA, Lee, STOP-Bang e Apfel são calculados sozinhos, como sugestão.",
+    });
+    etapas.push({
+      area: "medico",
+      alvo: '[data-area="medico"]',
+      titulo: "Central Operacional e histórico",
+      texto: "Na coluna da esquerda: Central Operacional reúne o que ficou para trás — avaliação começada e não concluída, exame pendente, alerta de alergia. E Histórico de avaliações guarda tudo o que já foi feito, com busca.",
     });
     etapas.push({
       area: "medico",
       titulo: "No fim, três papéis",
-      texto: "Concluída a avaliação, saem a ficha, o termo de consentimento e as orientações ao paciente, prontos para imprimir. O medicamento que precisa ser suspenso já sai com o prazo escrito.",
+      texto: "Concluída a avaliação saem a ficha, o termo de consentimento e as orientações ao paciente, prontos para imprimir. O medicamento que precisa ser suspenso já sai com o prazo escrito.",
     });
   }
 
+  // ── 3. Escala ────────────────────────────────────────────────────────────
   if (tem("plantoes")) {
     etapas.push({
       area: "plantoes",
       alvo: '[data-area="plantoes"]',
-      titulo: "A escala",
-      texto: "Na coluna da esquerda: a escala de cada hospital, e Minha escala, que reúne todos os seus plantões num calendário só. Clique num dia para lançar, passar um plantão a um colega ou confirmar o que você fez.",
+      titulo: "Escala: uma por hospital",
+      texto: "Na coluna da esquerda há uma escala para cada hospital cadastrado, e Minha escala, que junta todos os seus plantões de todos os lugares num calendário só.",
+    });
+    etapas.push({
+      area: "plantoes",
+      alvo: ".plantaoGrade",
+      titulo: "Montar a escala",
+      texto: "Clique num dia do calendário para lançar um plantão. Quem administra lança para qualquer colega; cada um lança para si. Modelos guarda os turnos que se repetem, para não redigitar horário toda vez.",
     });
     etapas.push({
       area: "plantoes",
       alvo: ".plantaoGrade",
       titulo: "Confirmar o plantão vale no dia",
-      // Esta etapa existe por causa de uma regra que surpreende, e surpresa
-      // sobre pagamento é a pior de todas. Melhor descobrir aqui do que no
-      // fim do mês.
+      // Regra que surpreende, e surpresa sobre pagamento é a pior de todas.
       texto: "A confirmação só pode ser feita no dia do plantão, até o fim do turno. É ela que faz o turno entrar no fechamento do mês — o que ninguém confirmar aparece no relatório marcado como pendente.",
     });
     etapas.push({
       area: "plantoes",
-      titulo: "Passar um plantão a um colega",
-      texto: "No plantão, use Trocar: ofereça ao grupo inteiro, e qualquer um assume, ou convide uma pessoa. Quem recebe vê na aba Trocas e no sino. A escala se ajusta sozinha quando alguém aceita.",
+      titulo: "Trocas de plantão",
+      texto: "Escala → Trocas. No plantão, use Trocar: ofereça ao grupo inteiro, e qualquer um assume, ou convide uma pessoa. Quem recebe vê na aba Trocas e no sino, e a escala se ajusta sozinha quando alguém aceita.",
     });
     etapas.push({
       area: "plantoes",
-      titulo: "A produção do dia",
-      texto: "Escala → Produção, na coluna da esquerda. Anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos.",
+      titulo: "Produção do dia",
+      texto: "Escala → Produção. Anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos.",
     });
     etapas.push({
       area: "plantoes",
       titulo: "Baixa e planilha para o contador",
-      // As duas perguntas que mais chegaram, e as duas moram na mesma tela.
-      texto: "Ainda em Produção: quando o dinheiro cair, mude a situação da linha para Recebido — a data entra sozinha e o mês do caixa fica certo. E os botões Planilha baixam um Excel de verdade, por hospital, por quem paga ou por convênio, para mandar a quem emite a nota.",
+      texto: "Ainda em Produção: quando o dinheiro cair, mude a situação da linha para Recebido — a data entra sozinha e o mês do caixa fica certo. Os botões Planilha baixam um Excel de verdade, por hospital, por quem paga ou por convênio, para mandar a quem emite a nota.",
     });
     etapas.push({
       area: "plantoes",
@@ -200,19 +191,33 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
   }
 
+  // ── 4. Financeiro ────────────────────────────────────────────────────────
   if (tem("financeiro")) {
     etapas.push({
       area: "financeiro",
       alvo: '[data-area="financeiro"]',
-      titulo: "O financeiro",
-      texto: "A coluna da esquerda é a lista do que fazer: lançamentos, recebimentos, notas fiscais, despesas, Resultado do mês e Fechamento do mês. Uma tarefa de cada vez, em vez de tudo empilhado numa tela só.",
+      titulo: "Financeiro: o caixa do serviço",
+      texto: "A coluna da esquerda é a lista do que fazer, em três blocos: Operação, Análise e Configuração. Uma tarefa de cada vez, em vez de tudo empilhado numa tela só.",
     });
     etapas.push({
       area: "financeiro",
-      titulo: "De onde vem o dinheiro",
-      // Sem isto a pessoa procura o plantão no faturamento e não acha, porque
-      // ele entra por outra porta.
-      texto: "São três fontes, e as três chegam aqui: a consulta pré-anestésica, o plantão da escala e a produção do dia. O que está a receber, o que venceu e o que foi glosado aparecem separados.",
+      titulo: "Operação: o dia a dia",
+      texto: "Lançamentos traz o que veio da recepção, agrupado por convênio. Recebimentos mostra o que ainda falta receber e registra a baixa. Notas fiscais avisa quando uma nota passa de quinze dias sem pagamento.",
+    });
+    etapas.push({
+      area: "financeiro",
+      titulo: "Despesas, lotes e repasses",
+      texto: "Despesas é o outro lado do caixa: aluguel, material, imposto — sem elas não é fluxo de caixa, é faturamento. Lotes de cobrança agrupa por convênio para enviar. Produção da equipe reúne o que os colegas anotaram, e Repasses divide o que cabe a cada um.",
+    });
+    etapas.push({
+      area: "financeiro",
+      titulo: "Análise: os números do mês",
+      texto: "Resultado do mês fecha entradas menos saídas. Origem da receita mostra as três fontes — consulta, plantão e produção. Cobranças em atraso diz há quanto tempo cada convênio está devendo. Gráficos e Faturado por convênio mostram a evolução.",
+    });
+    etapas.push({
+      area: "financeiro",
+      titulo: "Fechamento e configuração",
+      texto: "Fechamento do mês tranca a competência e registra na auditoria. Extrato de pagamentos lista o que entrou. E Valores por convênio é onde se cadastra quanto vale cada um — enquanto essa tabela estiver vazia, todo atendimento entra valendo R$ 0,00.",
     });
     etapas.push({
       area: "financeiro",
@@ -221,7 +226,32 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
   }
 
-  // ── Fecho ────────────────────────────────────────────────────────────────
+  // ── 5. Admin, no fim: é ajuste, não rotina ───────────────────────────────
+  if (monta) {
+    etapas.push({
+      area: "admin",
+      alvo: '[data-area="admin"]',
+      titulo: "Admin: a sua organização",
+      texto: "Aqui se monta a casa. Usuários e permissões lista a equipe: você adiciona, muda a função de cada um — anestesiologista, recepção, financeiro, administrador — e desativa quem saiu.",
+    });
+    etapas.push({
+      area: "admin",
+      titulo: "Convites",
+      texto: "Admin → Convites. Envie por e-mail ou gere um link para mandar no WhatsApp. Quem não usa o sistema pode ser cadastrado sem e-mail: entra na escala e no faturamento, e não recebe login.",
+    });
+    etapas.push({
+      area: "admin",
+      titulo: "Locais de atendimento",
+      texto: "Admin → Locais de atendimento. Cadastre cada hospital com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. Sem local cadastrado a escala não tem onde pendurar o plantão.",
+    });
+    etapas.push({
+      area: "admin",
+      titulo: "Dados, assinatura e auditoria",
+      texto: "Dados da organização guarda nome, CNPJ e contato, que saem nos documentos. Assinatura mostra o plano e a data de renovação. Auditoria registra quem fez o quê, e é consulta, não rotina.",
+    });
+  }
+
+  // ── Fecho: vale para qualquer papel ──────────────────────────────────────
   etapas.push({
     alvo: ".avisosSino",
     titulo: "O sino, no alto da tela",
@@ -264,4 +294,4 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
  * versão reapresenta o tutorial a quem já tinha visto o antigo; deixar como
  * estava esconderia o conteúdo novo justamente de quem já usa o sistema.
  */
-export const CHAVE_TUTORIAL = "avanest_tutorial_v2";
+export const CHAVE_TUTORIAL = "avanest_tutorial_v3";
