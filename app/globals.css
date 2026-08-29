@@ -3589,3 +3589,16 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .tutorialFundo{padding:14px}
   .tutorialJanela{width:min(460px,100%)}
 }
+
+/* O marcador do escalista, na edição do usuário. Caixa de seleção com o rótulo
+   ao lado, e não um seletor: é sim ou não, e um seletor de duas opções pede um
+   clique a mais para dizer a mesma coisa. */
+.adminEscalista{grid-column:span 2}
+.adminEscalistaMarca{display:flex;align-items:center;gap:9px;min-height:52px;
+  padding:0 13px;border:1px solid var(--cor-borda);border-radius:9px;
+  background:var(--cor-superficie-suave);font-size:14px;cursor:pointer}
+.adminEscalistaMarca input{width:18px;height:18px;flex:0 0 auto;cursor:pointer;
+  accent-color:var(--cor-marca)}
+/* A frase que explica a consequência antes do clique. */
+.adminEscalaAviso{grid-column:1/-1;margin:0;font-size:12.5px;line-height:1.5;
+  color:var(--cor-tinta-fraca)}

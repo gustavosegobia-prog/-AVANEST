@@ -39,6 +39,7 @@ import { Plantoes } from "@/components/plantoes";
 import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
 import { lerDinheiro } from "@/lib/dinheiro";
+import { explicarEscala, podeEscolherEscalista, podeMontarEscala } from "@/lib/escalista";
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -110,7 +111,9 @@ const ehEscalavel = (p: { status: string; role: string; crm: string | null; na_e
   p.status === "ativo" && !EQUIPE_DE_APOIO.includes(p.role)
   && Boolean((p.crm ?? "").trim()) && (p.na_escala ?? true);
 
-type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean };
+type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean;
+  /** Monta a escala do grupo sem ser administrador — ver lib/escalista. */
+  escalista?: boolean };
 type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null;
   // O que a organização contratou. Nulo = tudo, que é o caso de quase todas.
   modulos?: string[] | null };
@@ -138,7 +141,7 @@ type Avaliacao = { id: string; patient_id: string; created_by?: string | null; s
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
 type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
-type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; created_at:string; updated_at:string };
+type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
@@ -951,7 +954,7 @@ export function DashboardClient({
       ) : view === "plantoes" ? (
         <Plantoes
           perfilId={perfil.id} institutionId={perfil.institution_id}
-          locais={locais} ehAdmin={["owner","admin"].includes(perfil.role)}
+          locais={locais} ehAdmin={podeMontarEscala(perfil, perfis)}
           // Duas listas, e a diferença importa. `colegas` é todo mundo da
           // organização e serve para RESOLVER NOME: um plantão antigo de quem
           // hoje está inativo, ou de quem ainda não tem CRM no cadastro,
@@ -2241,8 +2244,20 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
       // precisa apagar as que havia.
       p_permissoes:areasExtras(item),
     });
+    // O marcador do escalista vai por fora da RPC, num update próprio.
+    //
+    // Não é preguiça de acrescentar um parâmetro: a RPC tem a assinatura
+    // travada em outra migração, e mudá-la exigiria revogar e reconceder a
+    // função — trabalho que uma coluna booleana não justifica. Quem confere
+    // se esta pessoa pode marcar é o gatilho `protege_escalista`, no banco,
+    // que devolve o valor antigo em vez de aceitar.
+    const antes=perfis.find(p=>p.id===item.id)?.escalista===true;
+    const erroEscalista=error||antes===(item.escalista===true) ? null
+      : (await createClient().from("perfis")
+          .update({escalista:item.escalista===true}).eq("id",item.id)).error;
     setBusy("");
     if(error)setMessage(`Não foi possível atualizar o acesso: ${error.message}`);
+    else if(erroEscalista)setMessage(`Perfil salvo, mas o escalista não mudou: ${erroEscalista.message}`);
     else{setMessage("Perfil atualizado e registrado na auditoria.");onRefresh()}
   }
 
@@ -2294,6 +2309,13 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
       {aba==="usuarios"&&<>
     <section className="clinicalPanel adminUsers">
       <div className="panelTitle"><strong>Usuários e permissões</strong></div>
+      {/* Quem monta a escala, dito antes de a pessoa procurar. Marcar o
+          primeiro escalista TIRA o poder dos administradores, inclusive de
+          quem está marcando — e descobrir isso pelo efeito é descobrir tarde,
+          no dia em que o plantão precisava ser lançado. */}
+      {podeEscolherEscalista(perfil)&&(
+        <p className="adminEscalaAviso">{explicarEscala(perfis)}</p>
+      )}
       <div className="adminFiltros">
         <input
           className="adminBusca" type="search" value={buscaUsuario}
@@ -2341,6 +2363,10 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
                 {/* Quem acumula área aparece acumulando: sem isso, a lista mostra
                     "Financeiro" para alguém que também abre a recepção. */}
                 {areasExtras(source).map(area=><span className="statusChip present" key={area} title="Área extra concedida">+ {ROLE_LABELS[area]??area}</span>)}
+                {/* O escalista aparece na linha fechada de propósito: é a
+                    resposta para "quem mexeu na escala?", e essa pergunta se
+                    faz olhando a lista, não abrindo cadastro por cadastro. */}
+                {source.escalista&&<span className="statusChip present" title="Monta a escala do grupo">Escalista</span>}
                 {/* CRM não é burocracia aqui: a contagem de profissionais do
                     plano só conta médico com CRM, e a ficha sai sem assinatura. */}
                 {source.role==="medico"&&!source.crm?.trim()&&<span className="statusChip waiting" title="Médico sem CRM não entra na contagem do plano e a ficha impressa sai sem o registro.">Sem CRM</span>}
@@ -2360,6 +2386,20 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
               <div className="adminUserCampos">
                 <label className="clinicalField"><span>Nome</span><input value={item.nome} onChange={e=>setItem({nome:e.target.value})}/></label>
                 <label className="clinicalField"><span>E-mail</span><input value={item.email||""} readOnly/></label>
+                {/* Marcar o escalista é decisão de quem responde pelo grupo:
+                    se o próprio escalista pudesse escolher outro, a decisão de
+                    quem manda na escala sairia de quem responde por ela — e
+                    ele poderia se desmarcar e trancar a escala sem querer. */}
+                {podeEscolherEscalista(perfil)&&!source.sem_acesso&&(
+                  <label className="clinicalField adminEscalista">
+                    <span>Escala do grupo</span>
+                    <label className="adminEscalistaMarca">
+                      <input type="checkbox" checked={item.escalista===true}
+                        onChange={e=>setItem({escalista:e.target.checked})}/>
+                      <span>Monta a escala do grupo</span>
+                    </label>
+                  </label>
+                )}
                 <label className="clinicalField"><span>Perfil</span><select value={item.role} disabled={source.role==="owner"&&perfil.role!=="owner"} onChange={e=>setItem({role:e.target.value})}><option value="recepcao">Recepção</option><option value="medico">Médico</option><option value="financeiro">Financeiro</option><option value="admin">Administrador</option>{perfil.role==="owner"&&<option value="owner">Proprietário</option>}</select></label>
                 <label className="clinicalField"><span>Status</span><select value={item.status} disabled={source.id===perfil.id} onChange={e=>setItem({status:e.target.value})}><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
                 <label className="clinicalField"><span>CRM / UF</span><input value={item.crm||""} onChange={e=>setItem({crm:e.target.value})} placeholder="Somente médico"/></label>

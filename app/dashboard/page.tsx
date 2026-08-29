@@ -20,7 +20,7 @@ export default async function DashboardPage({
 
   const { data: perfil } = await supabase
     .from("perfis")
-    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin")
+    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin, escalista")
     .eq("id", user.id)
     .maybeSingle();
   // Conta criada mas ainda sem organização: conclui o cadastro antes de entrar.
@@ -175,7 +175,7 @@ export default async function DashboardPage({
       : Promise.resolve({ data: [] }),
     needsFinanceData ? supabase.from("financeiro_atendimentos").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     needsFinanceData ? supabase.from("financeiro_pagamentos").select("*").order("paid_at", { ascending: false }) : Promise.resolve({ data: [] }),
-    needsProfiles ? supabase.from("perfis").select("id,institution_id,nome,email,role,status,crm,rqe,permissoes,sem_acesso,na_escala,created_at,updated_at").order("nome") : Promise.resolve({ data: [] }),
+    needsProfiles ? supabase.from("perfis").select("id,institution_id,nome,email,role,status,crm,rqe,permissoes,sem_acesso,na_escala,escalista,created_at,updated_at").order("nome") : Promise.resolve({ data: [] }),
     needsAdminData ? supabase.from("auditoria").select("id,actor_id,entidade,entidade_id,acao,detalhes,created_at").order("created_at", { ascending: false }).limit(100) : Promise.resolve({ data: [] }),
     needsFinanceData ? supabase.from("financeiro_periodos").select("*").order("periodo", { ascending: false }) : Promise.resolve({ data: [] }),
     // A recepção também precisa: é a lista de convênios do cadastro do
