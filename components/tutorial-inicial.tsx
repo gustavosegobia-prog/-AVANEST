@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CHAVE_TUTORIAL, passosDoTutorial, type Papel } from "@/lib/tutorial";
+import { posicaoDaJanela, type Recorte } from "@/lib/tutorial-posicao";
 import { Icone } from "@/components/icone";
 
 // O tutorial do primeiro acesso.
@@ -32,7 +33,6 @@ import { Icone } from "@/components/icone";
 // que pesa mais: nada de esquema novo no banco para uma janela que a pessoa vai
 // ver uma vez. Se um dia isto incomodar, o lugar certo é uma coluna em perfis.
 
-type Recorte = { topo: number; esquerda: number; largura: number; altura: number };
 
 /** Uma folga em volta do elemento: o holofote colado na borda parece erro. */
 const FOLGA = 8;
@@ -50,6 +50,15 @@ export function TutorialInicial({
   const janela = useRef<HTMLDivElement | null>(null);
   /** Onde está o elemento da etapa, em coordenadas da tela. Nulo = sem alvo. */
   const [foco, setFoco] = useState<Recorte | null>(null);
+  /**
+   * A altura real da janela, medida.
+   *
+   * Ela muda a cada etapa — "Bem-vindo" tem duas linhas e "Despesas, lotes e
+   * repasses" tem seis — e é ela que decide se a janela cabe embaixo do
+   * elemento ou tem de ir para cima. O código antigo supunha 240px para todas,
+   * e as etapas longas vazavam para fora da tela.
+   */
+  const [alturaJanela, setAlturaJanela] = useState(0);
 
   // Lido depois de montar, e não no useState inicial: esta tela é renderizada
   // no servidor, onde localStorage não existe, e inicializar por ele faria o
@@ -170,6 +179,25 @@ export function TutorialInicial({
     };
   }, [aberto, alvoDaEtapa]);
 
+  /**
+   * Acompanha a altura da janela enquanto ela existir.
+   *
+   * `ResizeObserver` e não uma medida única: o texto muda a cada etapa, a
+   * janela reflui ao girar o telefone, e uma altura medida uma vez só
+   * descolaria do conteúdo no passo seguinte.
+   */
+  useEffect(() => {
+    const el = janela.current;
+    if (!aberto || !el || typeof ResizeObserver === "undefined") return;
+    // Sem `eslint-disable` aqui: a escrita acontece no retorno de chamada do
+    // observador, e não no corpo do efeito — a regra não a alcança, e um
+    // disable desnecessário vira aviso por conta própria.
+    const observador = new ResizeObserver(() =>
+      setAlturaJanela(el.getBoundingClientRect().height));
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [aberto, passo]);
+
   useEffect(() => {
     if (!aberto) return;
     const aoTeclar = (e: KeyboardEvent) => { if (e.key === "Escape") fechar(); };
@@ -205,25 +233,19 @@ export function TutorialInicial({
    * A largura é limitada e a posição, presa às bordas: a janela encostada num
    * botão do canto direito sairia da tela, e a pessoa leria meia frase.
    */
-  const posicao = (() => {
-    if (!foco) return undefined;
-    const LARGURA = 340, MARGEM = 12;
-    const alturaTela = typeof window === "undefined" ? 800 : window.innerHeight;
-    const larguraTela = typeof window === "undefined" ? 1200 : window.innerWidth;
-    // Em tela estreita a janela ocupa a largura toda e vai para baixo: ao lado
-    // de um botão num celular sobram quarenta pixels de texto.
-    if (larguraTela < 560) return undefined;
-
-    const abaixo = foco.topo + foco.altura + MARGEM;
-    const cabeAbaixo = abaixo + 240 < alturaTela;
-    const esquerda = Math.min(
-      Math.max(MARGEM, foco.esquerda),
-      larguraTela - LARGURA - MARGEM,
-    );
-    return cabeAbaixo
-      ? { top: abaixo, left: esquerda, width: LARGURA }
-      : { bottom: alturaTela - foco.topo + MARGEM, left: esquerda, width: LARGURA };
-  })();
+  /**
+   * Onde a janela senta.
+   *
+   * A conta mora em lib/tutorial-posicao, fora do componente: foi ali que o
+   * defeito de sair da tela nasceu, e aritmética que decide se algo aparece
+   * merece teste — teste precisa de função pura, sem `window` e sem DOM. Aqui
+   * só se mede a tela e se entrega os números.
+   */
+  const posicao = posicaoDaJanela({
+    foco, altura: alturaJanela,
+    larguraTela: typeof window === "undefined" ? 1200 : window.innerWidth,
+    alturaTela: typeof window === "undefined" ? 800 : window.innerHeight,
+  }) ?? undefined;
 
   return (
     <div className={`tutorialFundo${foco ? " comFoco" : ""}`} role="presentation">

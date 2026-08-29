@@ -3572,3 +3572,20 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    fazer, e cortá-la devolveria o problema que ela existe para resolver. */
 .evalSaveMotivo{display:block;flex-basis:100%;font-size:12px;font-weight:600;
   line-height:1.35;margin-top:2px;opacity:.95}
+
+/* Ancorada e mais alta que a tela: o texto rola por dentro em vez de
+   transbordar. Sem isto, uma etapa longa num notebook de tela baixa empurra os
+   botões "Voltar" e "Próximo" para fora, e o tutorial fica sem saída. */
+.tutorialJanela.ancorada{display:flex;flex-direction:column;overflow:auto}
+.tutorialJanela.ancorada h2,
+.tutorialJanela.ancorada .tutorialTopo,
+.tutorialJanela.ancorada .tutorialPassos,
+.tutorialJanela.ancorada .tutorialBotoes{flex:0 0 auto}
+.tutorialJanela.ancorada p{flex:1 1 auto;min-height:0}
+/* Entre 700px e 900px a janela ancorada dividiria a tela com a coluna da
+   esquerda e sobraria uma tira de texto. Nessa faixa ela volta ao centro, que
+   é o mesmo caminho já usado no telefone. */
+@media(max-width:900px){
+  .tutorialFundo{padding:14px}
+  .tutorialJanela{width:min(460px,100%)}
+}
