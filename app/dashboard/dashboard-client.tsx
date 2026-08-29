@@ -38,6 +38,7 @@ const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
 import { Plantoes } from "@/components/plantoes";
 import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
+import { AtivarNotificacoes } from "@/components/ativar-notificacoes";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -214,6 +215,7 @@ export function DashboardClient({
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
   avisos = [],
+  chavePush = "",
   plantoesDaReceita = [], producaoDaReceita = [], despesas = [],
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
@@ -229,6 +231,8 @@ export function DashboardClient({
   plantoesDaReceita?: PlantaoBruto[]; producaoDaReceita?: ProducaoBruta[];
   /** O outro lado do caixa. Sem saída não é fluxo de caixa, é faturamento. */
   despesas?: Despesa[];
+  /** A chave pública do VAPID. Vazia = push não configurado, e o convite some. */
+  chavePush?: string;
   /** Onde a pessoa está atendendo agora. Null quando a organização ainda não cadastrou nenhum local. */
   localAtivo?:LocalDisponivel|null; totalDeLocais?:number; locais?:LocalDisponivel[];
   initialView?: DashboardView;
@@ -754,6 +758,11 @@ export function DashboardClient({
         </div>
         </div>
       </header>
+
+      {/* O convite para ligar as notificações. Some sozinho quando já estão
+          ligadas, quando o navegador não tem push, e quando o VAPID não foi
+          configurado — não é um recurso que se anuncia sem poder cumprir. */}
+      {chavePush && <AtivarNotificacoes chavePublica={chavePush}/>}
 
       {/* Pode não sobrar área nenhuma: um recepcionista numa organização que
           contratou só ficha e escala. Antes dos módulos isso era impossível e

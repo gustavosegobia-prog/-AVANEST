@@ -360,6 +360,11 @@ export default async function DashboardPage({
       producaoDaReceita={producaoDaReceita ?? []}
       despesas={despesas ?? []}
       initialView={initialView}
+      // A chave PÚBLICA do VAPID. Vem do servidor em vez de NEXT_PUBLIC_ para
+      // manter uma variável de ambiente só, e porque ela muda de valor no dia
+      // em que o par for trocado — prop é lida a cada render, NEXT_PUBLIC_ é
+      // congelada na compilação.
+      chavePush={process.env.VAPID_PUBLIC_KEY ?? ""}
       initialNewPatient={novo === "1"}
       autoStartAssessment={novo === "1" && iniciar === "1"}
     />

@@ -16,6 +16,7 @@ import { nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes } from "@/lib/
 import { baixarXLSX } from "@/lib/xlsx";
 import { MeuFinanceiro } from "@/components/meu-financeiro";
 import { feriadosDoMes } from "@/lib/feriados";
+import { avisarPush } from "@/components/ativar-notificacoes";
 import { hoje, dataLocal, mesAtual, somarMeses, ultimoDiaDoMes } from "@/lib/data-local";
 
 // Plantões: a escala, o valor e a troca.
@@ -732,15 +733,18 @@ export function Plantoes({
   async function pedirTroca(plantao: Plantao, destinatarioId: string, mensagem: string) {
     setErro(""); setAviso("");
     const supabase = createClient();
-    const { error } = await supabase.from("trocas_plantao").insert({
+    const { data: criada, error } = await supabase.from("trocas_plantao").insert({
       institution_id: institutionId, plantao_id: plantao.id,
       solicitante_id: perfilId,
       // String vazia significa "todo o grupo"; o banco guarda null, que é o
       // que aceitar_troca lê para saber que qualquer um pode assumir.
       destinatario_id: destinatarioId || null,
       mensagem: mensagem.trim() || null,
-    });
+    }).select("id").single();
     if (error) { setErro("Não foi possível registrar o pedido de troca."); return; }
+    // Depois de gravado, e sem esperar: o plantão já está oferecido: se a
+    // notificação falhar, o colega ainda vê na aba Trocas.
+    if (criada?.id) avisarPush({ tipo: "troca", id: criada.id });
     await supabase.from("plantoes").update({ aberto_para_troca: true }).eq("id", plantao.id);
     setPedindoTroca(null);
     setAviso(destinatarioId
@@ -750,10 +754,37 @@ export function Plantoes({
     onAvisosMudaram?.();
   }
 
+  /**
+   * "A escala do mês está pronta" — dito de propósito, e não adivinhado.
+   *
+   * O aviso vai só para quem TEM plantão no mês. Avisar a equipe inteira de
+   * uma escala em que a pessoa não entrou é o tipo de notificação que ensina
+   * a ignorar as próximas.
+   */
+  const [avisando, setAvisando] = useState(false);
+  async function avisarEquipe() {
+    setErro(""); setAviso(""); setAvisando(true);
+    try {
+      const resposta = await fetch("/api/push/avisar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "escala", mes }),
+      });
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) { setErro(dados.error ?? "Não foi possível avisar agora."); return; }
+      setAviso(dados.enviadas
+        ? `Aviso enviado para ${dados.enviadas} aparelho${dados.enviadas > 1 ? "s" : ""} da equipe.`
+        : "Ninguém da equipe ligou as notificações ainda — o aviso não saiu para nenhum aparelho.");
+    } finally {
+      setAvisando(false);
+    }
+  }
+
   async function responderTroca(trocaId: string, acao: "aceitar_troca" | "recusar_troca" | "cancelar_troca") {
     setErro(""); setAviso("");
     const { error } = await createClient().rpc(acao, { p_troca_id: trocaId });
     if (error) { setErro(error.message); return; }
+    // Cancelar é o próprio solicitante desistindo — não há a quem avisar.
+    if (acao !== "cancelar_troca") avisarPush({ tipo: "troca_resolvida", id: trocaId });
     setAviso(acao === "aceitar_troca"
       ? "Plantão assumido. A escala foi atualizada e a troca ficou registrada na auditoria."
       : acao === "recusar_troca" ? "Convite recusado." : "Pedido cancelado.");
@@ -1397,6 +1428,17 @@ export function Plantoes({
                 )}
               </div>
               <div className="plantaoBarraAcoes">
+                {/* Avisar a equipe é um BOTÃO, e não um efeito de lançar
+                    plantão. Montar a escala do mês são trinta inserções: um
+                    push por linha faria trinta telefones apitarem trinta
+                    vezes, e a equipe desligaria a notificação na mesma tarde.
+                    Quem monta decide quando a escala está pronta. */}
+                {ehAdmin && escopo !== "minha" && (
+                  <button className="outlineClinical" disabled={avisando} onClick={() => void avisarEquipe()}
+                    title="Toca o telefone de quem tem plantão neste mês">
+                    {avisando ? "Avisando..." : "Avisar a equipe"}
+                  </button>
+                )}
                 <button className="outlineClinical" onClick={exportarAgenda}
                   title="Baixa um arquivo .ics: o iPhone abre no Calendário e o Google Agenda importa">
                   Google/Apple

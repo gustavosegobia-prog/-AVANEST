@@ -3511,3 +3511,38 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* A chamada acima do calendário: a contagem à esquerda, o botão à direita. */
 .plantaoAdicionar{display:flex;align-items:center;justify-content:space-between;
   gap:14px;flex-wrap:wrap}
+
+/* ── Notificações (push) ─────────────────────────────────────────────────────
+   O convite para ligar os avisos. Aparece uma vez, no alto do painel, e some
+   assim que a pessoa decide — ligando ou dispensando. Cartão, e não faixa
+   colorida: faixa de alerta no topo de um sistema clínico é onde mora o aviso
+   de plano vencido, e este não é um problema a resolver. */
+.pushConvite{display:flex;gap:14px;align-items:flex-start;
+  margin:14px 20px 0;padding:14px 16px;border:1px solid var(--cor-borda);
+  border-radius:var(--raio-1);background:var(--cor-superficie);box-shadow:var(--sombra-1)}
+.pushSino{flex:0 0 auto;display:grid;place-items:center;width:38px;height:38px;
+  border-radius:50%;background:color-mix(in srgb,var(--cor-marca) 12%,transparent);
+  color:var(--cor-marca)}
+.pushTexto{flex:1 1 auto;min-width:0}
+.pushTexto strong{display:block;font-size:.95rem;margin-bottom:2px}
+.pushTexto p{margin:0;font-size:.85rem;line-height:1.45;color:var(--cor-tinta-fraca)}
+.pushErro{margin-top:6px!important;color:var(--cor-perigo)!important}
+.pushBotoes{flex:0 0 auto;display:flex;gap:8px;align-items:center}
+.pushDepois{background:none;border:0;padding:8px 10px;cursor:pointer;
+  font:inherit;font-weight:650;color:var(--cor-tinta-fraca);border-radius:8px}
+.pushDepois:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+
+/* Ligado: uma linha discreta de confirmação, com a saída à mão. */
+.pushAtivo{display:flex;gap:10px;align-items:center;margin:14px 20px 0;
+  padding:9px 14px;border:1px solid var(--cor-borda);border-radius:12px;
+  background:var(--cor-superficie);font-size:.85rem;color:var(--cor-tinta-fraca)}
+.pushAtivo>span{flex:1 1 auto}
+.pushAtivo>svg{color:var(--cor-marca)}
+
+/* No celular os botões passam para baixo do texto: lado a lado, "Ativar
+   notificações" fica com quatro letras por linha. */
+@media(max-width:640px){
+  .pushConvite{flex-wrap:wrap;margin:12px 12px 0}
+  .pushBotoes{width:100%;justify-content:flex-end}
+  .pushAtivo{margin:12px 12px 0}
+}
