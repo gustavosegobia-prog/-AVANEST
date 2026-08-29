@@ -52,6 +52,73 @@ function chaveEmBytes(base64url: string) {
   return Uint8Array.from(binario, (c) => c.charCodeAt(0));
 }
 
+/**
+ * Liga as notificações neste aparelho.
+ *
+ * Fora de qualquer componente porque DOIS lugares precisam dela: o cartão do
+ * topo, que convida quem nunca ligou, e o interruptor do menu, que religa quem
+ * desligou. Quando a lógica morava só no cartão, desligar era caminho de mão
+ * única — o cartão não voltava sem recarregar a página.
+ */
+export async function ligarPush(chavePublica: string): Promise<{ ok: true } | { ok: false; erro: string; bloqueado?: boolean }> {
+  const permissao = await Notification.requestPermission();
+  if (permissao !== "granted") {
+    return { ok: false, bloqueado: permissao === "denied", erro: "Permissão não concedida." };
+  }
+  const registro = await navigator.serviceWorker.register("/sw.js");
+  // `ready` porque `subscribe` num worker que ainda está instalando falha com
+  // um erro que não diz isso.
+  await navigator.serviceWorker.ready;
+  const inscricao = await registro.pushManager.subscribe({
+    // O navegador exige: sem isto, ele recusa por medo de push silencioso.
+    userVisibleOnly: true,
+    applicationServerKey: chaveEmBytes(chavePublica) as BufferSource,
+  });
+  const bruto = inscricao.toJSON() as { keys?: { p256dh?: string; auth?: string } };
+  const resposta = await fetch("/api/push/inscrever", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: inscricao.endpoint,
+      p256dh: bruto.keys?.p256dh, auth: bruto.keys?.auth,
+      aparelho: apelidoDoAparelho(),
+    }),
+  });
+  if (!resposta.ok) {
+    // Guardar no navegador e não no servidor deixaria a pessoa achando que
+    // ligou, sem receber nada. Desfaz para os dois lados contarem a mesma
+    // história.
+    await inscricao.unsubscribe().catch(() => {});
+    const dados = await resposta.json().catch(() => ({}));
+    return { ok: false, erro: dados.error ?? "Não foi possível ligar agora." };
+  }
+  return { ok: true };
+}
+
+/**
+ * Desliga neste aparelho.
+ *
+ * O SERVIDOR PRIMEIRO. Na ordem inversa, uma falha de rede no meio deixaria o
+ * navegador sem inscrição e o banco com um endereço morto, recebendo envio a
+ * cada troca de plantão até o serviço de push devolver 410.
+ */
+export async function desligarPush() {
+  const registro = await navigator.serviceWorker.getRegistration("/sw.js");
+  const inscricao = await registro?.pushManager.getSubscription();
+  if (!inscricao) return;
+  await fetch("/api/push/inscrever", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint: inscricao.endpoint, sair: true }),
+  });
+  await inscricao.unsubscribe().catch(() => {});
+}
+
+/** Se este navegador já está inscrito. */
+export async function estaLigado() {
+  if (!("serviceWorker" in navigator)) return false;
+  const registro = await navigator.serviceWorker.getRegistration("/sw.js").catch(() => null);
+  return Boolean(await registro?.pushManager.getSubscription().catch(() => null));
+}
+
 export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [ocupado, setOcupado] = useState(false);
@@ -86,39 +153,10 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
   const ligar = useCallback(async () => {
     setOcupado(true); setErro("");
     try {
-      const permissao = await Notification.requestPermission();
-      if (permissao !== "granted") {
-        setEstado(permissao === "denied" ? "bloqueado" : "desligado");
-        return;
-      }
-      const registro = await navigator.serviceWorker.register("/sw.js");
-      // `ready` porque `subscribe` num worker que ainda está instalando falha
-      // com um erro que não diz isso.
-      await navigator.serviceWorker.ready;
-      const inscricao = await registro.pushManager.subscribe({
-        // O navegador exige: sem isto, ele recusa por medo de push silencioso.
-        userVisibleOnly: true,
-        applicationServerKey: chaveEmBytes(chavePublica) as BufferSource,
-      });
-      const bruto = inscricao.toJSON() as { keys?: { p256dh?: string; auth?: string } };
-      const resposta = await fetch("/api/push/inscrever", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          endpoint: inscricao.endpoint,
-          p256dh: bruto.keys?.p256dh, auth: bruto.keys?.auth,
-          aparelho: apelidoDoAparelho(),
-        }),
-      });
-      if (!resposta.ok) {
-        // Guardar no navegador e não no servidor deixaria a pessoa achando que
-        // ligou, sem receber nada. Desfaz para os dois lados contarem a mesma
-        // história.
-        await inscricao.unsubscribe().catch(() => {});
-        const dados = await resposta.json().catch(() => ({}));
-        setErro(dados.error ?? "Não foi possível ligar agora.");
-        return;
-      }
-      setEstado("ligado");
+      const r = await ligarPush(chavePublica);
+      if (r.ok) { setEstado("ligado"); return; }
+      if (r.bloqueado) { setEstado("bloqueado"); return; }
+      if (r.erro !== "Permissão não concedida.") setErro(r.erro);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível ligar agora.");
     } finally {
@@ -168,53 +206,59 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
 }
 
 /**
- * "Desligar notificações", no menu do perfil.
+ * O interruptor das notificações, no menu do perfil.
  *
- * Some quando não há o que desligar, de propósito: um item permanentemente
- * cinza ensina a ignorar o menu inteiro. Mora aqui, e não numa faixa no topo
- * do painel, porque é uma preferência — procura-se junto do tema e da senha,
- * uma vez na vida, e não todo dia na primeira linha da tela.
+ * LIGA E DESLIGA, e não só desliga. A primeira versão só desligava, e isso
+ * fazia do menu um caminho de mão única: quem desligasse não tinha por onde
+ * voltar — o cartão do topo só reaparece ao recarregar a página, e some de vez
+ * se a pessoa tiver clicado em "Agora não". Preferência que se muda num
+ * sentido só não é preferência, é armadilha.
+ *
+ * Some inteiro quando não há o que oferecer: sem chave configurada, sem
+ * suporte do navegador, ou com a permissão já negada — nesse último caso quem
+ * resolve é a configuração do site no navegador, e um botão aqui só daria a
+ * impressão de estar quebrado.
  */
-export function DesligarNotificacoes({ aoDesligar }: { aoDesligar?: () => void }) {
-  const [ligado, setLigado] = useState(false);
+export function NotificacoesNoMenu({ chavePublica, aoMudar }: {
+  chavePublica: string; aoMudar?: () => void;
+}) {
+  const [ligado, setLigado] = useState<boolean | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   useEffect(() => {
     let vivo = true;
     void (async () => {
-      if (!("serviceWorker" in navigator)) return;
-      const registro = await navigator.serviceWorker.getRegistration("/sw.js").catch(() => null);
-      const inscricao = await registro?.pushManager.getSubscription().catch(() => null);
-      if (vivo) setLigado(Boolean(inscricao));
+      const disponivel = Boolean(chavePublica)
+        && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window
+        && Notification.permission !== "denied";
+      const atual = disponivel ? await estaLigado() : null;
+      if (vivo) setLigado(disponivel ? atual : null);
     })();
     return () => { vivo = false; };
-  }, []);
+  }, [chavePublica]);
 
-  if (!ligado) return null;
+  if (ligado === null) return null;
 
   return (
-    <button role="menuitem" disabled={ocupado} onClick={() => void (async () => {
-      setOcupado(true);
-      try {
-        const registro = await navigator.serviceWorker.getRegistration("/sw.js");
-        const inscricao = await registro?.pushManager.getSubscription();
-        if (inscricao) {
-          // O servidor primeiro. Ao contrário, um erro de rede deixaria o
-          // navegador sem inscrição e o banco com um endereço morto, que
-          // continuaria recebendo envio até o serviço de push devolver 410.
-          await fetch("/api/push/inscrever", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ endpoint: inscricao.endpoint, sair: true }),
-          });
-          await inscricao.unsubscribe().catch(() => {});
+    <button role="menuitemcheckbox" aria-checked={ligado} disabled={ocupado}
+      onClick={() => void (async () => {
+        setOcupado(true);
+        try {
+          if (ligado) { await desligarPush(); setLigado(false); }
+          else {
+            const r = await ligarPush(chavePublica);
+            if (r.ok) setLigado(true);
+            // Negou agora: o item some, porque o navegador não pergunta de novo
+            // e insistir com um botão que não faz nada é pior que não ter botão.
+            else if (r.bloqueado) setLigado(null);
+          }
+          aoMudar?.();
+        } finally {
+          setOcupado(false);
         }
-        setLigado(false);
-        aoDesligar?.();
-      } finally {
-        setOcupado(false);
-      }
-    })()}>
-      <Icone nome="sino"/> {ocupado ? "Desligando..." : "Desligar notificações"}
+      })()}>
+      <Icone nome="sino"/> {ocupado ? "Aguarde..."
+        : ligado ? "Desligar notificações" : "Ativar notificações"}
     </button>
   );
 }

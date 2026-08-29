@@ -38,7 +38,7 @@ const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
 import { Plantoes } from "@/components/plantoes";
 import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
-import { AtivarNotificacoes, DesligarNotificacoes } from "@/components/ativar-notificacoes";
+import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -732,8 +732,8 @@ export function DashboardClient({
               <button role="menuitem" onClick={()=>{setUserMenu(false);reabrirTutorial()}}>
                 <Icone nome="estrela"/> Ver o tutorial
               </button>
-              {/* Só aparece para quem ligou. Some sozinho depois de desligar. */}
-              <DesligarNotificacoes aoDesligar={()=>setUserMenu(false)}/>
+              {/* Liga E desliga: é aqui que se religa quem desligou. */}
+              <NotificacoesNoMenu chavePublica={chavePush} aoMudar={()=>setUserMenu(false)}/>
               <hr/>
               <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{setDark(value=>!value);setUserMenu(false)}}>
                 <Icone nome="tema"/> {dark?"Tema claro":"Tema escuro"}
