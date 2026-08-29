@@ -3532,17 +3532,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   font:inherit;font-weight:650;color:var(--cor-tinta-fraca);border-radius:8px}
 .pushDepois:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
 
-/* Ligado: uma linha discreta de confirmação, com a saída à mão. */
-.pushAtivo{display:flex;gap:10px;align-items:center;margin:14px 20px 0;
-  padding:9px 14px;border:1px solid var(--cor-borda);border-radius:12px;
-  background:var(--cor-superficie);font-size:.85rem;color:var(--cor-tinta-fraca)}
-.pushAtivo>span{flex:1 1 auto}
-.pushAtivo>svg{color:var(--cor-marca)}
-
 /* No celular os botões passam para baixo do texto: lado a lado, "Ativar
    notificações" fica com quatro letras por linha. */
 @media(max-width:640px){
   .pushConvite{flex-wrap:wrap;margin:12px 12px 0}
   .pushBotoes{width:100%;justify-content:flex-end}
-  .pushAtivo{margin:12px 12px 0}
 }

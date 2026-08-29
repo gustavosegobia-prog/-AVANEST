@@ -126,37 +126,14 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
     }
   }, [chavePublica]);
 
-  const desligar = useCallback(async () => {
-    setOcupado(true); setErro("");
-    try {
-      const registro = await navigator.serviceWorker.getRegistration("/sw.js");
-      const inscricao = await registro?.pushManager.getSubscription();
-      if (inscricao) {
-        await fetch("/api/push/inscrever", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint: inscricao.endpoint, sair: true }),
-        });
-        await inscricao.unsubscribe().catch(() => {});
-      }
-      setEstado("desligado");
-    } finally {
-      setOcupado(false);
-    }
-  }, []);
 
-  if (estado === "carregando" || estado === "indisponivel" || dispensado) return null;
-
-  if (estado === "ligado") {
-    return (
-      <div className="pushAtivo">
-        <Icone nome="sino" tamanho={15} />
-        <span>Notificações ligadas neste aparelho.</span>
-        <button type="button" className="outlineClinical" disabled={ocupado} onClick={() => void desligar()}>
-          {ocupado ? "Desligando..." : "Desligar"}
-        </button>
-      </div>
-    );
-  }
+  // LIGADO NÃO MOSTRA NADA. Uma faixa permanente dizendo "está ligado" ocupa a
+  // primeira linha do painel para sempre, todo dia, para informar algo que já
+  // se sabe — e a única coisa útil nela, o desligar, é usada uma vez na vida.
+  // Ela foi para o menu do perfil, junto do tema e da senha, que é onde se
+  // procura uma preferência.
+  if (estado === "carregando" || estado === "indisponivel"
+      || estado === "ligado" || dispensado) return null;
 
   return (
     <div className="pushConvite" role="region" aria-label="Notificações">
@@ -187,6 +164,58 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * "Desligar notificações", no menu do perfil.
+ *
+ * Some quando não há o que desligar, de propósito: um item permanentemente
+ * cinza ensina a ignorar o menu inteiro. Mora aqui, e não numa faixa no topo
+ * do painel, porque é uma preferência — procura-se junto do tema e da senha,
+ * uma vez na vida, e não todo dia na primeira linha da tela.
+ */
+export function DesligarNotificacoes({ aoDesligar }: { aoDesligar?: () => void }) {
+  const [ligado, setLigado] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      if (!("serviceWorker" in navigator)) return;
+      const registro = await navigator.serviceWorker.getRegistration("/sw.js").catch(() => null);
+      const inscricao = await registro?.pushManager.getSubscription().catch(() => null);
+      if (vivo) setLigado(Boolean(inscricao));
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  if (!ligado) return null;
+
+  return (
+    <button role="menuitem" disabled={ocupado} onClick={() => void (async () => {
+      setOcupado(true);
+      try {
+        const registro = await navigator.serviceWorker.getRegistration("/sw.js");
+        const inscricao = await registro?.pushManager.getSubscription();
+        if (inscricao) {
+          // O servidor primeiro. Ao contrário, um erro de rede deixaria o
+          // navegador sem inscrição e o banco com um endereço morto, que
+          // continuaria recebendo envio até o serviço de push devolver 410.
+          await fetch("/api/push/inscrever", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: inscricao.endpoint, sair: true }),
+          });
+          await inscricao.unsubscribe().catch(() => {});
+        }
+        setLigado(false);
+        aoDesligar?.();
+      } finally {
+        setOcupado(false);
+      }
+    })()}>
+      <Icone nome="sino"/> {ocupado ? "Desligando..." : "Desligar notificações"}
+    </button>
   );
 }
 
