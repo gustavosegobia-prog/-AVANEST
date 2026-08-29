@@ -86,27 +86,43 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   }];
 
   // ── Preparo, só para quem administra ─────────────────────────────────────
+  //
+  // A ORDEM AQUI É POR ÁREA, e não pela sequência lógica das tarefas. O painel
+  // atrás da janela muda para acompanhar cada etapa, e as duas do Admin
+  // separadas por uma do Financeiro faziam o fundo ir e voltar — Admin,
+  // Financeiro, Admin — em três telas seguidas. A pessoa lê o texto e vê a
+  // tela piscar, e passa a olhar para o pisca em vez do texto.
   if (monta) {
     etapas.push({
       area: "admin",
       alvo: '[data-area="admin"]',
       titulo: "Antes de tudo: os locais",
-      texto: "Em Admin, cadastre os hospitais onde o serviço atende. Cadastre com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. Sem local cadastrado, a escala não tem onde pendurar o plantão.",
-    });
-    etapas.push({
-      area: "admin",
-      alvo: ".convenioForm",
-      titulo: "E os valores das consultas",
-      // A etapa que evita o susto mais comum: tudo em R$ 0,00 e a conclusão
-      // de que o sistema não soma.
-      texto: "Cadastre quanto vale cada convênio, em Financeiro. Enquanto essa tabela estiver vazia, todo atendimento entra valendo R$ 0,00 — e o Financeiro parece quebrado quando só falta o preço.",
+      texto: "Admin → Locais de atendimento, na coluna da esquerda. Cadastre os hospitais com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. Sem local cadastrado, a escala não tem onde pendurar o plantão.",
     });
     etapas.push({
       area: "admin",
       alvo: '[data-area="admin"]',
       titulo: "Depois, a equipe",
-      texto: "Ainda em Admin, convide quem trabalha com você. Quem não usa o sistema pode ser cadastrado sem e-mail: entra na escala e no faturamento, e não recebe login.",
+      texto: "Admin → Usuários e permissões, e Convites logo abaixo. Quem não usa o sistema pode ser cadastrado sem e-mail: entra na escala e no faturamento, e não recebe login.",
     });
+    // SEM ÁREA, de propósito. O painel dos valores mora no Financeiro, mas
+    // esta etapa é do PREPARO, e o Financeiro só é visitado no fim do
+    // tutorial. Marcá-la como financeiro faria o fundo ir ao Financeiro,
+    // voltar para a Recepção e ir ao Financeiro de novo — a pessoa lê o texto
+    // e vê a tela piscar. Sem área, o painel fica onde está e o caminho é
+    // dito por escrito, que é o que ela vai seguir depois de fechar o
+    // tutorial de qualquer jeito.
+    //
+    // Só entra para quem tem a área: numa organização que não contratou o
+    // módulo financeiro, essa tela não existe.
+    if (tem("financeiro")) {
+      etapas.push({
+        titulo: "E os valores das consultas",
+        // A etapa que evita o susto mais comum: tudo em R$ 0,00 e a conclusão
+        // de que o sistema não soma.
+        texto: "Financeiro → Valores por convênio, na coluna da esquerda. Cadastre quanto vale cada convênio antes de começar: enquanto essa tabela estiver vazia, todo atendimento entra valendo R$ 0,00 — e o Financeiro parece quebrado quando só falta o preço.",
+      });
+    }
   }
 
   // ── O dia de trabalho ────────────────────────────────────────────────────
@@ -150,7 +166,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "plantoes",
       alvo: '[data-area="plantoes"]',
       titulo: "A escala",
-      texto: "Escala do serviço, uma por hospital, e Minha escala, que reúne todos os seus plantões num calendário só. Clique num dia para lançar, passar um plantão a um colega ou confirmar o que você fez.",
+      texto: "Na coluna da esquerda: a escala de cada hospital, e Minha escala, que reúne todos os seus plantões num calendário só. Clique num dia para lançar, passar um plantão a um colega ou confirmar o que você fez.",
     });
     etapas.push({
       area: "plantoes",
@@ -168,21 +184,19 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
     etapas.push({
       area: "plantoes",
-      alvo: ".producaoFolha",
       titulo: "A produção do dia",
-      texto: "Ainda na Escala, anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos.",
+      texto: "Escala → Produção, na coluna da esquerda. Anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos.",
     });
     etapas.push({
       area: "plantoes",
-      alvo: ".producaoFolha",
       titulo: "Baixa e planilha para o contador",
       // As duas perguntas que mais chegaram, e as duas moram na mesma tela.
-      texto: "Quando o dinheiro cair, mude a situação da linha para Recebido — a data entra sozinha e o mês do caixa fica certo. E os botões Planilha baixam um Excel de verdade, por hospital, por quem paga ou por convênio, para mandar a quem emite a nota.",
+      texto: "Ainda em Produção: quando o dinheiro cair, mude a situação da linha para Recebido — a data entra sozinha e o mês do caixa fica certo. E os botões Planilha baixam um Excel de verdade, por hospital, por quem paga ou por convênio, para mandar a quem emite a nota.",
     });
     etapas.push({
       area: "plantoes",
       titulo: "Meu financeiro",
-      texto: "Dentro da Escala, Meu financeiro mostra só o seu: quanto entrou, quanto falta receber, o gráfico do ano e o valor por hora de cada hospital. Mesmo num grupo, essa parte é sua e ninguém mais vê.",
+      texto: "Escala → Meu financeiro. Mostra só o seu: quanto entrou, quanto falta receber, o gráfico do ano e o valor por hora de cada hospital. Mesmo num grupo, essa parte é sua e ninguém mais vê.",
     });
   }
 
@@ -191,7 +205,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "financeiro",
       alvo: '[data-area="financeiro"]',
       titulo: "O financeiro",
-      texto: "A coluna da esquerda é a lista do que fazer: lançamentos, recebimentos, notas, despesas e fechamento. Uma tarefa de cada vez, em vez de tudo empilhado numa tela só.",
+      texto: "A coluna da esquerda é a lista do que fazer: lançamentos, recebimentos, notas fiscais, despesas, Resultado do mês e Fechamento do mês. Uma tarefa de cada vez, em vez de tudo empilhado numa tela só.",
     });
     etapas.push({
       area: "financeiro",

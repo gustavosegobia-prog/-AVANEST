@@ -112,3 +112,33 @@ test("todo alvo é um seletor plausível, e não uma classe inventada", () => {
     assert.match(etapa.alvo, /^[.[]/, `alvo estranho em "${etapa.titulo}": ${etapa.alvo}`);
   }
 });
+
+test("o painel de fundo não vai e volta entre áreas", () => {
+  // Foi o defeito relatado: a etapa dos valores dizia "cadastre em Financeiro"
+  // com o Admin ao fundo, e a sequência era Admin → Financeiro → Admin. A
+  // pessoa lê o texto e vê a tela piscar, e passa a olhar para o pisca.
+  //
+  // A regra: cada área aparece num bloco contínuo. Voltar a uma área já
+  // visitada significa que a ordem foi montada por assunto e não por tela.
+  for (const p of [tudo, medico, recepcao]) {
+    const areas = passosDoTutorial(p).map((e) => e.area).filter(Boolean) as string[];
+    const blocos = areas.filter((a, i) => a !== areas[i - 1]);
+    assert.equal(blocos.length, new Set(blocos).size,
+      `o fundo volta a uma área já visitada: ${blocos.join(" → ")}`);
+  }
+});
+
+test("etapa que manda ir a outro lugar diz o CAMINHO", () => {
+  // Um alvo escondido atrás de sub-aba nunca é encontrado: o destaque some em
+  // silêncio e a etapa vira um texto solto. Quando não dá para apontar, o
+  // texto tem de escrever o caminho — "Financeiro → Valores por convênio" —
+  // em vez de só nomear a área.
+  const comCaminho = ["E os valores das consultas", "Antes de tudo: os locais",
+    "Depois, a equipe", "A produção do dia", "Meu financeiro"];
+  const etapas = passosDoTutorial(tudo);
+  for (const titulo of comCaminho) {
+    const etapa = etapas.find((e) => e.titulo === titulo);
+    assert.ok(etapa, `sumiu a etapa "${titulo}"`);
+    assert.match(etapa!.texto, /→/, `"${titulo}" precisa dizer o caminho com →`);
+  }
+});
