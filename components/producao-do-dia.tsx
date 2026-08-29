@@ -558,8 +558,8 @@ export function ProducaoDoDia({
  * fim do mês, sentado — e por isso são duas telas e não uma.
  */
 export function ProducaoDoMes({
-  mes, nomeMes, ano, locais, lugarPeloPlantao, onMudarMes,
-  onImprimir, onImprimirFaturamento, onImprimirPlantoes,
+  mes, nomeMes, ano, locais, lugarPeloPlantao, onMudarMes, onEscolherMes,
+  onImprimir, onImprimirFaturamento, onPlanilhaConvenio, onImprimirPlantoes,
   onPlanilhaPlantoes, onPlanilhaFaturamento,
 }: {
   mes: string; nomeMes: string; ano: number;
@@ -572,6 +572,8 @@ export function ProducaoDoMes({
    * "nada anotado" sobre um mês que a pessoa nem escolheu.
    */
   onMudarMes: (passo: number) => void;
+  /** Pular direto para um mês qualquer, sem contar cliques na seta. */
+  onEscolherMes?: (mes: string) => void;
   /** Os hospitais da organização, para dizer de onde é cada ato. */
   locais: Array<{ id: string; nome: string }>;
   /**
@@ -583,6 +585,7 @@ export function ProducaoDoMes({
   onImprimir: (itens: Producao[]) => void;
   /** A nota do ato anestésico, por hospital e por quem paga. */
   onImprimirFaturamento: (itens: Producao[]) => void;
+  onPlanilhaConvenio: (itens: Producao[]) => void;
   /** A nota da hora à disposição. Sai dos plantões, não desta lista. */
   onImprimirPlantoes: () => void;
   /**
@@ -744,6 +747,17 @@ export function ProducaoDoMes({
           <strong>{nomeMes} de {ano}</strong>
           <button className="outlineClinical" onClick={() => onMudarMes(1)}
             aria-label="Próximo mês">›</button>
+          {/* As setas resolvem "o mês passado", que é o caso de quase todo dia.
+              Não resolvem "março": seriam cinco cliques, e a folha impressa
+              sai do mês em que a tela estiver. O seletor direto fica ao lado,
+              e não no lugar delas — quem quer o anterior continua com um
+              toque. */}
+          {onEscolherMes && (
+            <input type="month" className="producaoMesEscolha" value={mes}
+              aria-label="Escolher o mês" onChange={(e) => {
+                if (e.target.value) onEscolherMes(e.target.value);
+              }}/>
+          )}
         </div>
       </section>
 
@@ -844,6 +858,8 @@ export function ProducaoDoMes({
             <strong>Lista por convênio</strong>
             <small>Por operadora</small>
           </span>
+          <button className="outlineClinical" disabled={itens.length === 0}
+            onClick={() => onPlanilhaConvenio(itens)}>Planilha</button>
           <button className="outlineClinical"
             disabled={itens.length === 0} onClick={() => onImprimir(itens)}>
             Imprimir

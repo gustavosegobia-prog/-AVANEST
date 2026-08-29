@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   nomeDoArquivo, numeroBR, paraCSV, planilhaDeFaturamento, planilhaDePlantoes,
+  planilhaPorConvenio,
 } from "./planilha.ts";
 
 describe("o formato que o Excel em português abre certo", () => {
@@ -165,5 +166,75 @@ describe("nome do arquivo", () => {
 
   it("aceita outra extensão, para quem preferir CSV", () => {
     assert.equal(nomeDoArquivo("plantoes", "2026-08", "csv"), "avanest-plantoes-2026-08.csv");
+  });
+});
+
+describe("planilha por convênio", () => {
+  const itens = [
+    { data: "2026-08-28", paciente: "João", convenio: "UNIMED LOCAL", valor: 700, situacao: "a_cobrar" },
+    { data: "2026-08-01", paciente: "Gessica", convenio: "Unimed", valor: 900, situacao: "recebido" },
+    { data: "2026-08-14", paciente: "Édson", convenio: "UNIMED LOCAL", valor: 500, situacao: "a_cobrar" },
+  ];
+
+  it("agrupa numa COLUNA, e não em abas", () => {
+    // Quem recebe quer filtrar, ordenar e somar por conta própria. Três abas
+    // impedem exatamente isso.
+    const linhas = planilhaPorConvenio(itens);
+    assert.deepEqual(linhas[0], ["Convênio", "Data", "Paciente", "Valor", "Situação"]);
+    // Cada linha de dado carrega o convênio a que pertence.
+    assert.equal(linhas[1][0], "Unimed");
+  });
+
+  it("junta os pacientes do mesmo convênio, em blocos", () => {
+    // A ordem ENTRE convênios é a alfabética do pt-BR — que põe "Unimed"
+    // antes de "UNIMED LOCAL", por ser prefixo mais curto. O que o teste
+    // garante é que os do mesmo convênio ficam juntos, e não intercalados.
+    const linhas = planilhaPorConvenio(itens).slice(1, -1)
+      .filter((l) => !String(l[0]).startsWith("Total"));
+    const convenios = linhas.map((l) => l[0]);
+    assert.deepEqual([...new Set(convenios)].length, convenios.length - 1,
+      "os dois da UNIMED LOCAL têm de estar em sequência");
+  });
+
+  it("dentro do convênio, ordena por data", () => {
+    // Édson é do dia 14 e João do 28, e vieram na ordem inversa na entrada.
+    const daUnimedLocal = planilhaPorConvenio(itens)
+      .filter((l) => l[0] === "UNIMED LOCAL").map((l) => l[2]);
+    assert.deepEqual(daUnimedLocal, ["Édson", "João"]);
+  });
+
+  it("fecha cada convênio com o subtotal, que é o que se confere com a operadora", () => {
+    const linhas = planilhaPorConvenio(itens);
+    const subtotal = linhas.find((l) => l[0] === "Total UNIMED LOCAL");
+    assert.ok(subtotal, "faltou o subtotal");
+    assert.equal(subtotal[subtotal.length - 2], 1200);
+  });
+
+  it("termina com o total geral", () => {
+    const linhas = planilhaPorConvenio(itens);
+    const ultima = linhas[linhas.length - 1];
+    assert.equal(ultima[0], "TOTAL GERAL");
+    assert.equal(ultima[ultima.length - 2], 2100);
+  });
+
+  it("sem convênio cai em Particular, e não numa célula vazia", () => {
+    const linhas = planilhaPorConvenio([{ ...itens[0], convenio: "  " }]);
+    assert.equal(linhas[1][0], "Particular");
+  });
+
+  it("todas as linhas têm a mesma largura", () => {
+    // Uma linha mais curta desloca tudo à direita dela quando o Excel abre.
+    const linhas = planilhaPorConvenio(itens.map((i, n) =>
+      n === 0 ? { ...i, procedimento: "Colecistectomia" } : i));
+    const largura = linhas[0].length;
+    for (const [n, linha] of linhas.entries()) {
+      assert.equal(linha.length, largura, `a linha ${n} tem largura diferente`);
+    }
+  });
+
+  it("mês vazio devolve cabeçalho e total zerado", () => {
+    const linhas = planilhaPorConvenio([]);
+    assert.equal(linhas.length, 2);
+    assert.equal(linhas[1][0], "TOTAL GERAL");
   });
 });

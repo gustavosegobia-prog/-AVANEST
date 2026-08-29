@@ -189,3 +189,52 @@ export function baixarCSV(nome: string, linhas: LinhaDePlanilha[]) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * A lista do mês agrupada por convênio.
+ *
+ * A terceira folha, e a que serve a uma conversa diferente das outras duas: a
+ * nota de plantões responde ao hospital, a de faturamento a quem emite a nota,
+ * e esta responde à OPERADORA — é a que se usa para conferir um lote da Unimed
+ * contra o que ela pagou.
+ *
+ * O agrupamento vira uma coluna, e não abas separadas: quem recebe a planilha
+ * quer filtrar, ordenar e somar por conta própria, e três abas impedem
+ * exatamente isso. A ordem é por convênio e depois por data, com um subtotal
+ * ao fim de cada bloco — que é o número que se compara com o extrato da
+ * operadora.
+ */
+export function planilhaPorConvenio(itens: ProducaoParaPlanilha[]): LinhaDePlanilha[] {
+  const temProcedimento = itens.some((i) => i.procedimento?.trim());
+
+  const cabecalho = ["Convênio", "Data", "Paciente"];
+  if (temProcedimento) cabecalho.push("Procedimento");
+  cabecalho.push("Valor", "Situação");
+  const largura = cabecalho.length;
+
+  const grupos = new Map<string, ProducaoParaPlanilha[]>();
+  for (const i of itens) {
+    const chave = i.convenio?.trim() || "Particular";
+    grupos.set(chave, [...(grupos.get(chave) ?? []), i]);
+  }
+
+  const linhas: LinhaDePlanilha[] = [cabecalho];
+  const vazias = (n: number) => Array.from({ length: n }, () => "");
+
+  for (const [convenio, doConvenio] of [...grupos.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))) {
+    for (const i of [...doConvenio].sort((a, b) => a.data.localeCompare(b.data))) {
+      const linha: LinhaDePlanilha = [convenio, dataBR(i.data), i.paciente];
+      if (temProcedimento) linha.push(i.procedimento ?? "");
+      linha.push(Number(i.valor || 0), SITUACAO_PRODUCAO[i.situacao] ?? i.situacao);
+      linhas.push(linha);
+    }
+    const soma = doConvenio.reduce((s, i) => s + Number(i.valor || 0), 0);
+    const subtotal: LinhaDePlanilha = [`Total ${convenio}`, ...vazias(largura - 3), soma, ""];
+    linhas.push(subtotal);
+  }
+
+  const total = itens.reduce((s, i) => s + Number(i.valor || 0), 0);
+  linhas.push(["TOTAL GERAL", ...vazias(largura - 3), total, ""]);
+  return linhas;
+}

@@ -12,7 +12,9 @@ import {
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
-import { nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes } from "@/lib/planilha";
+import {
+  nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes, planilhaPorConvenio,
+} from "@/lib/planilha";
 import { baixarXLSX } from "@/lib/xlsx";
 import { MeuFinanceiro } from "@/components/meu-financeiro";
 import { feriadosDoMes } from "@/lib/feriados";
@@ -1109,6 +1111,25 @@ export function Plantoes({
   }
 
   /**
+   * A lista do mês por operadora, em planilha.
+   *
+   * A terceira folha impressa ganhou o par que as outras duas já tinham. Ela
+   * serve a uma conversa diferente: a nota de plantões responde ao hospital, a
+   * de faturamento a quem emite a nota, e esta responde à OPERADORA — é a que
+   * se abre ao lado do extrato da Unimed para conferir um lote.
+   */
+  function baixarPlanilhaPorConvenio(itens: Producao[]) {
+    setErro(""); setAviso("");
+    if (itens.length === 0) { setErro("Não há anotação neste mês para pôr em planilha."); return; }
+    baixarXLSX(nomeDoArquivo("convenios", mes), planilhaPorConvenio(
+      itens.map((i) => ({
+        data: i.data, paciente: i.paciente, convenio: i.convenio,
+        procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
+      })),
+    ), `Convênios ${mes}`);
+  }
+
+  /**
    * O lugar de um plantão que não é hospital cadastrado.
    *
    * Plantão de fora — sedação em consultório, cobertura particular, hospital
@@ -1800,12 +1821,13 @@ export function Plantoes({
         <ProducaoDoMes
           mes={mes} nomeMes={MESES[m - 1]} ano={ano}
           locais={locais.map((l) => ({ id: l.id, nome: nomeDoLocal(l) }))}
-          lugarPeloPlantao={lugarPeloPlantao} onMudarMes={mudarMes}
+          lugarPeloPlantao={lugarPeloPlantao} onMudarMes={mudarMes} onEscolherMes={setMes}
           onImprimir={imprimirProducao}
           onImprimirFaturamento={imprimirFaturamento}
           onImprimirPlantoes={imprimirPlantoesParaNota}
           onPlanilhaPlantoes={baixarPlanilhaDePlantoes}
           onPlanilhaFaturamento={baixarPlanilhaDeFaturamento}
+          onPlanilhaConvenio={baixarPlanilhaPorConvenio}
         />
       )}
 
