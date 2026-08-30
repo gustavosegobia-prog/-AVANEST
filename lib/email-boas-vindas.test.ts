@@ -46,6 +46,21 @@ describe("o que o cliente lê depois de pagar", () => {
     }
   });
 
+  it("com cupom, o código aparece nos dois formatos", () => {
+    // O valor já vem descontado. Sem o código escrito, o cliente lê um número
+    // que não é o anunciado e não tem como saber de onde ele veio.
+    const m = boasVindas({ ...base, valorMensal: 103.2, cupom: "HACKANESTESIA" });
+    assert.match(m.texto, /Cupom HACKANESTESIA aplicado/);
+    assert.match(m.html, /Cupom HACKANESTESIA aplicado/);
+    assert.match(m.texto, /103,20/);
+  });
+
+  it("sem cupom, não sobra frase solta nem espaço duplo", () => {
+    const m = boasVindas(base);
+    assert.equal(/Cupom/.test(m.texto), false);
+    assert.equal(/ {2}/.test(m.texto), false, "espaço duplo denuncia concatenação vazia");
+  });
+
   it("diz por onde entrar", () => {
     const m = boasVindas(base);
     assert.match(m.texto, /avanest\.com\.br/);

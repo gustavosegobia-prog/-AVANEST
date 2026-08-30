@@ -29,6 +29,8 @@ export type BoasVindas = {
   valorMensal: number;
   /** "AAAA-MM-DD" do primeiro dia cobrado. Nulo quando não há período grátis. */
   primeiraCobranca?: string | null;
+  /** O cupom usado, quando houve. Aparece por escrito para dar rastro. */
+  cupom?: string | null;
   /** Onde entrar. */
   url?: string;
 };
@@ -59,10 +61,18 @@ export function boasVindas(dados: BoasVindas) {
       + `A partir dessa data, ${money(dados.valorMensal)} por mês.`
     : `${money(dados.valorMensal)} por mês, a partir de agora.`;
 
+  // O cupom escrito no e-mail, e não só na fatura.
+  //
+  // O valor acima já vem com o desconto aplicado, então sem esta linha o
+  // cliente lê "R$ 103,20" sem nenhuma explicação de por que não são os
+  // R$ 129,00 anunciados — e quem não entende de onde veio um número não sabe
+  // reclamar quando ele mudar. Com o código escrito, ele tem o que citar.
+  const cupom = dados.cupom ? `Cupom ${dados.cupom} aplicado.` : "";
+
   const linhas = [
     ola,
     `A sua assinatura do AVANEST está ativa — plano ${dados.plano}, para ${dados.organizacao}.`,
-    cobranca,
+    cupom ? `${cobranca} ${cupom}` : cobranca,
     `Entre em ${url}`,
     "Você pode cancelar quando quiser, em Admin → Assinatura, sem falar com ninguém.",
     "Qualquer dúvida, é só responder este e-mail.",
@@ -80,7 +90,9 @@ export function boasVindas(dados: BoasVindas) {
       // O quadro do dinheiro é destacado de propósito: é a informação que a
       // pessoa vai procurar quando reabrir este e-mail daqui a dois meses.
       + `<p style="margin:0 0 22px;padding:14px 16px;background:#f1f6fb;border-radius:10px;`
-      + `font-size:15px">${cobranca}</p>`
+      + `font-size:15px">${cobranca}`
+      + (cupom ? `<br><strong>${cupom}</strong>` : "")
+      + `</p>`
       + `<p style="margin:0 0 22px"><a href="${url}" style="display:inline-block;`
       + `background:#0f5fa8;color:#fff;text-decoration:none;padding:12px 22px;`
       + `border-radius:9px;font-weight:700;font-size:15px">Entrar no AVANEST</a></p>`

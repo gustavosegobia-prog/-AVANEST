@@ -10,6 +10,9 @@
 // "cancelled" e "paused" são os únicos status que o banco entende, e é o
 // adaptador que traduz PAYMENT_CONFIRMED, authorized_payment e o que vier.
 
+import type { Cupom } from "./cupom.ts";
+export type { Cupom } from "./cupom.ts";
+
 // Um só hoje. A união continua sendo um tipo, e não uma string solta, porque é
 // ela que faz o compilador apontar todo lugar a acertar quando entrar o
 // próximo — foi assim que a entrada do Stripe não deixou ponta faltando.
@@ -29,6 +32,14 @@ export type NovaAssinatura = {
    * quem decide o valor é o banco, e quem decide a data é a campanha.
    */
   mesesGratis?: number;
+  /**
+   * O cupom de desconto, já conferido no gateway.
+   *
+   * Objeto, e não uma string com o código: quem chama tem de ter ido buscar o
+   * cupom antes, e não pode simplesmente repassar o que o navegador digitou.
+   * Aceitar texto solto aqui seria aceitar desconto inventado pelo cliente.
+   */
+  cupom?: Cupom | null;
   /** Para onde o cliente volta quando termina de pagar. */
   retornoSucesso: string;
   /** Para onde ele volta se desistir no meio. */
@@ -85,6 +96,14 @@ export type EventoDeCobranca = {
    * `meses` fica de reserva para os gateways que não informam período.
    */
   acessoAte?: number | null;
+  /**
+   * Quanto a assinatura vai custar por mês, já com desconto, quando o aviso
+   * diz. Existe para o e-mail de boas-vindas: o banco guarda o preço de
+   * tabela, e quem assinou com cupom precisa ler no e-mail o que vai pagar.
+   */
+  valorMensal?: number | null;
+  /** O código do cupom usado, quando houve. */
+  cupom?: string | null;
   payload: Record<string, unknown>;
 };
 
@@ -104,4 +123,13 @@ export interface AdaptadorDePagamento {
   configurado(): boolean;
   criarAssinatura(dados: NovaAssinatura): Promise<AssinaturaCriada>;
   cancelarAssinatura(assinaturaId: string): Promise<void>;
+  /**
+   * Procura um cupom pelo código digitado. Opcional de propósito: nem todo
+   * gateway tem cupom — o Mercado Pago nunca teve — e um provedor sem isto
+   * simplesmente não oferece o campo, em vez de fingir que oferece.
+   *
+   * Devolve null para código inválido, e só lança quando o problema é o
+   * gateway. Digitar errado é o caso normal, não uma falha de sistema.
+   */
+  buscarCupom?(codigo: string): Promise<Cupom | null>;
 }

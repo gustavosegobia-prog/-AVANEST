@@ -1916,6 +1916,38 @@ button:disabled{cursor:not-allowed}
 .aceiteTermos input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--cor-marca);cursor:pointer}
 .aceiteTermos a{color:var(--cor-marca);font-weight:650}
 
+/* Cupom de desconto.
+
+   O gatilho é um link discreto, e não um campo aberto: um campo "cupom" à
+   mostra faz quem NÃO tem cupom parar e ir procurar um na internet, e parte
+   dessa gente não volta para terminar o pagamento. */
+.avnCupomLink{display:block;margin:var(--esp-3) 0 0;padding:0;border:0;background:none;
+  font-size:12.5px;font-weight:650;color:var(--cor-marca);text-decoration:underline;cursor:pointer}
+.avnCupomCampo{display:flex;gap:8px;margin:var(--esp-3) 0 0}
+.avnCupomCampo input{flex:1;min-width:0;padding:11px 13px;border:1px solid var(--cor-borda);
+  border-radius:10px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--cor-fundo);color:var(--cor-tinta)}
+.avnCupomCampo input:focus{outline:2px solid var(--cor-marca);outline-offset:-1px}
+.avnCupomCampo button{flex:none;padding:11px 18px;border:1px solid var(--cor-marca);border-radius:10px;
+  background:none;color:var(--cor-marca);font-size:13.5px;font-weight:700;cursor:pointer}
+.avnCupomCampo button:disabled{opacity:.5;cursor:default}
+.avnCupomAplicado{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:var(--esp-3) 0 0;padding:11px 14px;border-radius:10px;
+  background:var(--cor-sucesso-suave);border:1px solid var(--cor-sucesso)}
+.avnCupomAplicado strong{display:block;font-size:13.5px;letter-spacing:.06em;color:var(--cor-sucesso)}
+.avnCupomAplicado small{display:block;margin-top:2px;font-size:12px;color:var(--cor-tinta-fraca)}
+.avnCupomAplicado button{flex:none;padding:0;border:0;background:none;font-size:12.5px;
+  font-weight:650;color:var(--cor-tinta-fraca);text-decoration:underline;cursor:pointer}
+.avnCupomTotal{margin:var(--esp-2) 0 0;font-size:13px;text-align:center;color:var(--cor-tinta-fraca)}
+.avnCupomTotal strong{font-size:15px;color:var(--cor-tinta)}
+
+/* Numa tela estreita o campo e o "Aplicar" lado a lado espremem o input a
+   ponto de o código não caber inteiro na vista. */
+@media(max-width:420px){
+  .avnCupomCampo{flex-wrap:wrap}
+  .avnCupomCampo button{width:100%}
+}
+
 @media(max-width:640px){
   .legalCorpo{padding:36px 0 56px}
   .legalCorpo h1{font-size:22px}

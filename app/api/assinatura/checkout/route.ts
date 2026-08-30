@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { provedorAtivo } from "@/lib/pagamentos";
+import { normalizarCupom } from "@/lib/pagamentos/cupom";
 
 // A data de vigência dos documentos publicados. Fica junto do código que
 // grava o aceite para não sair de sincronia com o texto: mudou /termos ou
@@ -30,7 +31,8 @@ export async function POST(request: NextRequest) {
   const excedeu = enforceRateLimit(`assinatura-checkout:${user.id}`, { limit: 8, windowMs: 600_000 });
   if (excedeu) return excedeu;
 
-  const corpo = await request.json().catch(() => null) as { plano?: unknown; aceite?: unknown } | null;
+  const corpo = await request.json().catch(() => null) as
+    { plano?: unknown; aceite?: unknown; cupom?: unknown } | null;
   const codigo = typeof corpo?.plano === "string" ? corpo.plano.trim() : "";
   if (!codigo) {
     return NextResponse.json({ error: "Escolha um plano antes de continuar." }, { status: 400 });
@@ -125,6 +127,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível registrar o aceite dos termos." }, { status: 500 });
   }
 
+  // O cupom é procurado DE NOVO aqui, pelo código, e nunca aceito pronto do
+  // navegador. A rota /cupom serve para a tela mostrar o desconto; se este
+  // valor viesse de lá sem conferência, qualquer pessoa daria a si mesma 90%
+  // de desconto editando o corpo da requisição.
+  const codigoCupom = normalizarCupom(corpo?.cupom);
+  let cupom = null;
+  if (codigoCupom) {
+    try {
+      cupom = provedor.buscarCupom ? await provedor.buscarCupom(codigoCupom) : null;
+    } catch (erro) {
+      console.error("[assinatura/checkout] cupom", erro);
+      return NextResponse.json({ error: "Não foi possível conferir o cupom agora. Tente de novo." }, { status: 502 });
+    }
+    // Cupom digitado e inválido PARA a contratação, em vez de seguir sem ele.
+    // Cobrar o valor cheio de quem acabou de ver "cupom aplicado" na tela é
+    // pior do que recusar: a pessoa só descobre na fatura.
+    if (!cupom) {
+      return NextResponse.json({ error: "Cupom não encontrado ou já encerrado." }, { status: 400 });
+    }
+  }
+
   const { data: assinaturaData } = await supabase.rpc("minha_assinatura");
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://avanest.com.br";
@@ -138,6 +161,7 @@ export async function POST(request: NextRequest) {
       emailPagador: user.email ?? "",
       valorMensal,
       mesesGratis,
+      cupom,
       retornoSucesso: `${site}/assinatura/retorno`,
       retornoCancelado: `${site}/dashboard`,
     });

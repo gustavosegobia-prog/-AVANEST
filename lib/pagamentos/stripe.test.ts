@@ -319,32 +319,38 @@ describe("lerEvento", () => {
 // Stripe, o outro lê a sessão como ela chega de verdade.
 // ===========================================================================
 
-describe("o que o checkout manda ao Stripe", () => {
-  const ORG2 = "7b1f0c2e-9a44-4d1e-8f30-6c5b2a9d1e77";
+// Abre uma sessão de checkout de verdade contra um `fetch` de mentira, e
+// devolve o corpo do formulário que teria ido para o Stripe. Fica no escopo
+// do arquivo porque tanto as asserções de campanha quanto as de cupom leem o
+// MESMO corpo — duas cópias divergiriam no dia em que uma fosse ajustada.
+const ORG_CHECKOUT = "7b1f0c2e-9a44-4d1e-8f30-6c5b2a9d1e77";
 
-  async function corpoEnviado() {
-    const fetchOriginal = globalThis.fetch;
-    const chaveOriginal = process.env.STRIPE_SECRET_KEY;
-    let corpo = "";
-    process.env.STRIPE_SECRET_KEY = "sk_test_fake";
-    globalThis.fetch = (async (_url: string, init: { body?: string }) => {
-      corpo = String(init?.body ?? "");
-      return { ok: true, status: 200, text: async () => JSON.stringify({ id: "cs_x", url: "https://x" }) };
-    }) as unknown as typeof fetch;
-    try {
-      const { criarAssinatura } = await import("./stripe.ts");
-      await criarAssinatura({
-        institutionId: ORG2, organizacao: "Teste", plano: "Solo",
-        valorMensal: 129, mesesGratis: 2, emailPagador: "a@b.c",
-        retornoSucesso: "https://x/ok", retornoCancelado: "https://x/no",
-      } as Parameters<typeof criarAssinatura>[0]);
-    } finally {
-      globalThis.fetch = fetchOriginal;
-      if (chaveOriginal === undefined) delete process.env.STRIPE_SECRET_KEY;
-      else process.env.STRIPE_SECRET_KEY = chaveOriginal;
-    }
-    return decodeURIComponent(corpo);
+async function corpoEnviado(cupom?: Parameters<typeof import("./stripe.ts").criarAssinatura>[0]["cupom"]) {
+  const fetchOriginal = globalThis.fetch;
+  const chaveOriginal = process.env.STRIPE_SECRET_KEY;
+  let corpo = "";
+  process.env.STRIPE_SECRET_KEY = "sk_test_fake";
+  globalThis.fetch = (async (_url: string, init: { body?: string }) => {
+    corpo = String(init?.body ?? "");
+    return { ok: true, status: 200, text: async () => JSON.stringify({ id: "cs_x", url: "https://x" }) };
+  }) as unknown as typeof fetch;
+  try {
+    const { criarAssinatura } = await import("./stripe.ts");
+    await criarAssinatura({
+      institutionId: ORG_CHECKOUT, organizacao: "Teste", plano: "Solo",
+      valorMensal: 129, mesesGratis: 2, emailPagador: "a@b.c", cupom,
+      retornoSucesso: "https://x/ok", retornoCancelado: "https://x/no",
+    } as Parameters<typeof criarAssinatura>[0]);
+  } finally {
+    globalThis.fetch = fetchOriginal;
+    if (chaveOriginal === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = chaveOriginal;
   }
+  return decodeURIComponent(corpo);
+}
+
+describe("o que o checkout manda ao Stripe", () => {
+
 
   it("os meses grátis vão no metadata DA SESSÃO, que é o que o webhook lê", async () => {
     // A linha que faltava. Sem ela o cliente da campanha fica com a validade
@@ -423,5 +429,176 @@ describe("a sessão como ela chega de verdade", () => {
     const dois = lerEvento({ id: "b", type: "customer.subscription.updated",
       data: { object: { id: "sub_1", trial_end: trial, metadata: { institution_id: ORG3 } } } });
     assert.equal(um?.idUnico, dois?.idUnico);
+  });
+});
+
+// ===========================================================================
+// Cupom de desconto
+// ===========================================================================
+
+/** A resposta do Stripe para `GET /v1/promotion_codes`, como ela chega. */
+function respostaDeCupom(promo: Record<string, unknown> | null) {
+  return { data: promo ? [promo] : [] };
+}
+
+const HACK = {
+  id: "promo_1abc",
+  code: "HACKANESTESIA",
+  active: true,
+  expires_at: null,
+  max_redemptions: null,
+  times_redeemed: 0,
+  coupon: {
+    percent_off: 20,
+    amount_off: null,
+    currency: null,
+    duration: "forever",
+    duration_in_months: null,
+    valid: true,
+  },
+};
+
+async function procurar(promo: Record<string, unknown> | null, codigo = "HACKANESTESIA") {
+  const fetchOriginal = globalThis.fetch;
+  const chaveOriginal = process.env.STRIPE_SECRET_KEY;
+  const urls: string[] = [];
+  process.env.STRIPE_SECRET_KEY = "sk_test_fake";
+  globalThis.fetch = (async (url: string) => {
+    urls.push(String(url));
+    return { ok: true, status: 200, text: async () => JSON.stringify(respostaDeCupom(promo)) };
+  }) as unknown as typeof fetch;
+  try {
+    const { buscarCupom } = await import("./stripe.ts");
+    return { cupom: await buscarCupom(codigo), urls };
+  } finally {
+    globalThis.fetch = fetchOriginal;
+    if (chaveOriginal === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = chaveOriginal;
+  }
+}
+
+describe("procurar o cupom no Stripe", () => {
+  it("traduz um promotion_code de verdade", async () => {
+    const { cupom } = await procurar(HACK);
+    assert.equal(cupom?.id, "promo_1abc");
+    assert.equal(cupom?.codigo, "HACKANESTESIA");
+    assert.equal(cupom?.percentual, 20);
+    assert.equal(cupom?.duracao, "forever");
+  });
+
+  it("NÃO pede expand do coupon", async () => {
+    // No promotion_code o `coupon` já vem inteiro, e não é expansível. Pedir
+    // expand faria o Stripe recusar a chamada com 400 — e todo cupom válido
+    // apareceria como inválido na tela.
+    const { urls } = await procurar(HACK);
+    assert.equal(urls.some((u) => u.includes("expand")), false, `pediu expand: ${urls[0]}`);
+    assert.match(urls[0], /code=HACKANESTESIA/);
+    assert.match(urls[0], /active=true/);
+  });
+
+  it("recusa o que não presta, sem lançar", async () => {
+    const casos: Array<[string, Record<string, unknown>]> = [
+      ["código desligado", { ...HACK, active: false }],
+      ["cupom inválido", { ...HACK, coupon: { ...HACK.coupon, valid: false } }],
+      ["vencido", { ...HACK, expires_at: 1 }],
+      ["esgotado", { ...HACK, max_redemptions: 50, times_redeemed: 50 }],
+      ["sem desconto nenhum", { ...HACK, coupon: { ...HACK.coupon, percent_off: null } }],
+    ];
+    for (const [nome, promo] of casos) {
+      const { cupom } = await procurar(promo);
+      assert.equal(cupom, null, `devia recusar: ${nome}`);
+    }
+    const { cupom: nenhum } = await procurar(null);
+    assert.equal(nenhum, null, "lista vazia é cupom inexistente");
+  });
+
+  it("desconto em dólar não vira desconto em real", async () => {
+    // O Stripe recusaria no checkout de qualquer jeito; recusar aqui dá nome
+    // ao problema em vez de derrubar o pagamento lá na frente.
+    const dolar = { ...HACK, coupon: { ...HACK.coupon, percent_off: null, amount_off: 2000, currency: "usd" } };
+    assert.equal((await procurar(dolar)).cupom, null);
+    const real = { ...HACK, coupon: { ...HACK.coupon, percent_off: null, amount_off: 2500, currency: "brl" } };
+    assert.equal((await procurar(real)).cupom?.valorFixo, 25, "amount_off vem em centavos");
+  });
+
+  it("esgotado é conferido no CÓDIGO, não só no cupom", async () => {
+    // O `valid` do cupom não olha o limite de resgates do promotion_code. Sem
+    // esta conferência, a 51ª pessoa de uma campanha de 50 veria "cupom
+    // aplicado" na tela e só seria recusada dentro do Stripe.
+    const esgotado = { ...HACK, max_redemptions: 50, times_redeemed: 50, coupon: { ...HACK.coupon, valid: true } };
+    assert.equal((await procurar(esgotado)).cupom, null);
+  });
+});
+
+describe("o cupom dentro do checkout", () => {
+  const CUPOM = {
+    id: "promo_1abc", codigo: "HACKANESTESIA", percentual: 20,
+    valorFixo: null, duracao: "forever" as const, meses: null,
+  };
+
+  it("vai como desconto do Stripe, e o preço de tabela não muda", async () => {
+    // Baixar o `unit_amount` daria 20% PARA SEMPRE num cupom que pode valer
+    // três meses, e sem nada registrando que aquilo era promoção.
+    const corpo = await corpoEnviado(CUPOM);
+    assert.match(corpo, /discounts\[0\]\[promotion_code\]=promo_1abc/);
+    assert.match(corpo, /price_data\]\[unit_amount\]=12900/,
+      "o preço da linha continua sendo o cheio");
+  });
+
+  it("discounts e allow_promotion_codes NUNCA vão juntos", async () => {
+    // São excludentes no Stripe: mandar os dois derruba a sessão inteira, e o
+    // cliente vê um erro no lugar do pagamento.
+    const comCupom = await corpoEnviado(CUPOM);
+    assert.equal(/allow_promotion_codes/.test(comCupom), false,
+      "com cupom aplicado, o campo aberto do Stripe não pode ir junto");
+
+    const semCupom = await corpoEnviado();
+    assert.match(semCupom, /allow_promotion_codes=true/,
+      "sem cupom, quem recebeu o código depois ainda digita no Stripe");
+    assert.equal(/discounts/.test(semCupom), false);
+  });
+
+  it("o valor JÁ DESCONTADO viaja para o e-mail de boas-vindas", async () => {
+    // O webhook só conhece o preço de tabela do banco. Sem isto, quem assinou
+    // com 20% de desconto receberia por escrito R$ 129,00 — e o e-mail que
+    // existe para evitar contestação de cartão viraria o motivo dela.
+    const corpo = await corpoEnviado(CUPOM);
+    assert.match(corpo, /(^|&)metadata\[valor_mensal\]=103\.20/);
+    assert.match(corpo, /(^|&)metadata\[cupom\]=HACKANESTESIA/);
+  });
+
+  it("sem cupom, o valor gravado é o cheio", async () => {
+    assert.match(await corpoEnviado(), /(^|&)metadata\[valor_mensal\]=129\.00/);
+  });
+});
+
+describe("o cupom voltando pelo webhook", () => {
+  const ORG4 = "7b1f0c2e-9a44-4d1e-8f30-6c5b2a9d1e77";
+
+  it("o e-mail lê o valor com desconto, e não o amount_total", () => {
+    // Com período grátis o `amount_total` é ZERO: verdade do momento, mentira
+    // do mês que vem. Quem escreve o e-mail precisa da mensalidade.
+    const evento = lerEvento({
+      id: "evt_cupom", type: "checkout.session.completed",
+      data: { object: {
+        id: "cs_cupom", client_reference_id: ORG4, subscription: "sub_c",
+        amount_total: 0, trial_end: 1_800_000_000,
+        metadata: { institution_id: ORG4, meses_gratis: "2", cupom: "HACKANESTESIA", valor_mensal: "103.20" },
+      } },
+    });
+    assert.equal(evento?.valor, 0, "amount_total continua sendo o que foi cobrado agora");
+    assert.equal(evento?.valorMensal, 103.2, "e a mensalidade é a que vai no e-mail");
+    assert.equal(evento?.cupom, "HACKANESTESIA");
+  });
+
+  it("sessão antiga, sem os campos novos, não inventa valor", () => {
+    // As sessões abertas antes desta mudança continuam chegando por meses.
+    const evento = lerEvento({
+      id: "evt_velho", type: "checkout.session.completed",
+      data: { object: { id: "cs_velho", client_reference_id: ORG4, trial_end: 1_800_000_000,
+                        metadata: { institution_id: ORG4, meses_gratis: "2" } } },
+    });
+    assert.equal(evento?.valorMensal, null, "sem valor, o webhook cai no preço do banco");
+    assert.equal(evento?.cupom, null);
   });
 });

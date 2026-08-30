@@ -5,6 +5,7 @@ import type {
   EventoDeCobranca,
   NovaAssinatura,
 } from "./tipos.ts";
+import { comDesconto, normalizarCupom, type Cupom, type Duracao } from "./cupom.ts";
 
 // Stripe — assinatura mensal no cartão.
 //
@@ -102,12 +103,100 @@ export function fimDoPeriodoGratis(mesesGratis: number, agora = new Date()): num
   return Math.floor(fim.getTime() / 1000);
 }
 
+type PromotionCode = {
+  id: string;
+  code: string;
+  active: boolean;
+  expires_at?: number | null;
+  max_redemptions?: number | null;
+  times_redeemed?: number;
+  coupon?: {
+    percent_off?: number | null;
+    amount_off?: number | null;
+    currency?: string | null;
+    duration?: string | null;
+    duration_in_months?: number | null;
+    valid?: boolean;
+  } | null;
+};
+
+/**
+ * Procura um cupom pelo código que o cliente digitou.
+ *
+ * Devolve null para tudo que não presta — código inexistente, desligado,
+ * vencido, esgotado ou em outra moeda. NUNCA lança por cupom inválido: digitar
+ * errado é a situação normal, não um erro de sistema, e a tela precisa poder
+ * dizer "cupom não encontrado" sem virar uma página de erro.
+ *
+ * Só lança se o Stripe estiver fora do ar ou a chave errada, que é quando o
+ * problema é nosso mesmo.
+ */
+export async function buscarCupom(codigoDigitado: string): Promise<Cupom | null> {
+  const codigo = normalizarCupom(codigoDigitado);
+  if (!codigo) return null;
+
+  // Duas tentativas quando a pessoa digitou em minúscula: o Checkout do Stripe
+  // aceita o código sem ligar para maiúscula, mas o filtro da API compara o
+  // texto exato. Recusar um cupom válido por causa disso seria perder a venda
+  // no capricho da digitação.
+  const tentativas = codigo === codigoDigitado.trim() ? [codigo] : [codigo, codigoDigitado.trim()];
+  for (const tentativa of tentativas) {
+    // Sem `expand` no coupon: no promotion_code ele JÁ vem inteiro, e pedir
+    // para expandir o que não é expansível faz o Stripe recusar a chamada.
+    const busca = form({ code: tentativa, active: true, limit: 1 }).join("&");
+    const lista = await chamar<{ data?: PromotionCode[] }>(`/promotion_codes?${busca}`, undefined, "GET");
+    const achado = lista?.data?.[0];
+    if (achado) return traduzirCupom(achado);
+  }
+  return null;
+}
+
+/** Do vocabulário do Stripe para o nosso — e recusando o que não serve. */
+function traduzirCupom(promo: PromotionCode): Cupom | null {
+  const cupom = promo.coupon;
+  if (!promo.active || !cupom?.valid) return null;
+
+  const agora = Math.floor(Date.now() / 1000);
+  if (promo.expires_at && promo.expires_at <= agora) return null;
+  // O limite de resgates do CÓDIGO é separado do limite do cupom, e o
+  // `valid` do cupom não olha para ele. Sem esta linha, uma campanha de 50
+  // vagas continuaria aceitando a 51ª na nossa tela e só seria recusada
+  // depois, dentro do Stripe — com o cliente já a caminho do pagamento.
+  if (promo.max_redemptions && (promo.times_redeemed ?? 0) >= promo.max_redemptions) return null;
+
+  const percentual = typeof cupom.percent_off === "number" ? cupom.percent_off : null;
+  const centavosOff = typeof cupom.amount_off === "number" ? cupom.amount_off : null;
+  // Desconto em dólar num plano em real não é conversão, é engano: o Stripe
+  // recusaria na hora do checkout, e melhor recusar aqui com nome.
+  if (centavosOff !== null && String(cupom.currency ?? "").toLowerCase() !== "brl") return null;
+  if (percentual === null && centavosOff === null) return null;
+
+  const duracao = (["once", "repeating", "forever"] as const)
+    .find((d) => d === cupom.duration) ?? "once";
+
+  return {
+    id: promo.id,
+    codigo: promo.code,
+    percentual,
+    valorFixo: centavosOff === null ? null : centavosOff / 100,
+    duracao: duracao as Duracao,
+    meses: typeof cupom.duration_in_months === "number" ? cupom.duration_in_months : null,
+  };
+}
+
 type SessaoCheckout = { id: string; url: string | null };
 
 export async function criarAssinatura(dados: NovaAssinatura): Promise<AssinaturaCriada> {
   const trialEm = fimDoPeriodoGratis(dados.mesesGratis ?? 0);
   const centavos = Math.round(dados.valorMensal * 100);
   if (!(centavos > 0)) throw new Error("Valor mensal inválido para o Stripe.");
+
+  // O PREÇO DE TABELA CONTINUA SENDO O PREÇO. O cupom entra como desconto do
+  // Stripe, e não como um `unit_amount` menor: desconto tem duração, e preço
+  // não tem. Baixar o valor da linha daria 20% para sempre num cupom que vale
+  // três meses, sem nada no sistema registrando que aquilo era promoção.
+  const cupomId = dados.cupom?.id ?? null;
+  const valorCobrado = comDesconto(dados.valorMensal, dados.cupom ?? null);
 
   const sessao = await chamar<SessaoCheckout>("/checkout/sessions", {
     mode: "subscription",
@@ -136,6 +225,15 @@ export async function criarAssinatura(dados: NovaAssinatura): Promise<Assinatura
         },
       },
     }],
+    // O desconto, quando há.
+    //
+    // `discounts` e `allow_promotion_codes` SÃO EXCLUDENTES no Stripe — mandar
+    // os dois derruba a sessão inteira. A escolha aqui é deliberada: com cupom
+    // conferido, ele já vai aplicado, e a pessoa não digita de novo numa tela
+    // que ela não conhece; sem cupom, o campo do Stripe fica aberto para quem
+    // recebeu o código depois de já estar no pagamento.
+    discounts: cupomId ? [{ promotion_code: cupomId }] : undefined,
+    allow_promotion_codes: cupomId ? undefined : true,
     subscription_data: {
       trial_end: trialEm,
       metadata: {
@@ -144,6 +242,7 @@ export async function criarAssinatura(dados: NovaAssinatura): Promise<Assinatura
         // dados sem ter de recalcular a campanha — a campanha pode ter mudado
         // entre o checkout e o aviso.
         meses_gratis: String(dados.mesesGratis ?? 0),
+        cupom: dados.cupom?.codigo ?? "",
       },
     },
     // A MESMA informação nos DOIS lugares, e não é redundância.
@@ -157,6 +256,15 @@ export async function criarAssinatura(dados: NovaAssinatura): Promise<Assinatura
     metadata: {
       institution_id: dados.institutionId,
       meses_gratis: String(dados.mesesGratis ?? 0),
+      cupom: dados.cupom?.codigo ?? "",
+      // Quanto a pessoa vai pagar por mês DEPOIS do desconto.
+      //
+      // Vai gravado porque quem escreve o e-mail de boas-vindas é o webhook, e
+      // o webhook só conhece o preço de tabela do banco. Sem isto, quem
+      // assinou com 20% de desconto receberia por escrito o valor cheio — e o
+      // e-mail que existe para EVITAR contestação de cartão viraria o motivo
+      // dela.
+      valor_mensal: valorCobrado.toFixed(2),
     },
   });
 
@@ -321,6 +429,10 @@ export function lerEvento(corpo: unknown): EventoDeCobranca | null {
       // conta do banco soma os meses da campanha à validade que houver.
       const ate = typeof objeto.trial_end === "number" ? objeto.trial_end
         : fimDoPeriodo(objeto);
+      // O valor JÁ COM DESCONTO, gravado por nós na hora de abrir a sessão.
+      // Não dá para tirar do `amount_total`: com período grátis ele vem zero,
+      // que é a verdade do momento e a mentira do mês que vem.
+      const mensal = Number(meta?.valor_mensal ?? NaN);
       return {
         ...base,
         idUnico: `stripe:checkout:${objeto.id}`,
@@ -328,6 +440,8 @@ export function lerEvento(corpo: unknown): EventoDeCobranca | null {
         valor: typeof objeto.amount_total === "number" ? objeto.amount_total / 100 : null,
         meses: Number.isFinite(meses) && meses > 0 ? meses : 0,
         acessoAte: ate,
+        valorMensal: Number.isFinite(mensal) && mensal > 0 ? mensal : null,
+        cupom: meta?.cupom ? String(meta.cupom) : null,
       };
     }
 
@@ -401,4 +515,5 @@ export const stripe: AdaptadorDePagamento = {
   configurado: stripeConfigurado,
   criarAssinatura,
   cancelarAssinatura,
+  buscarCupom,
 };

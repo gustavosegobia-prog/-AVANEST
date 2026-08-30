@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     // escrito uma assinatura que o sistema não conhece.
     if (evento.tipo === "pagamento" && evento.status === "approved"
         && evento.idUnico.startsWith("stripe:checkout:")) {
-      await avisarPorEmail(supabase, institutionId, evento.acessoAte);
+      await avisarPorEmail(supabase, institutionId, evento);
     }
 
     return NextResponse.json({ ok: true });
@@ -140,8 +140,13 @@ type Admin = ReturnType<typeof admin>;
  * está gravada. O resultado seria um cliente pago, um webhook eternamente
  * vermelho no painel, e nenhum e-mail assim mesmo. Falhou, registra e segue.
  */
-async function avisarPorEmail(supabase: Admin, institutionId: string, acessoAte: number | null | undefined) {
+async function avisarPorEmail(
+  supabase: Admin,
+  institutionId: string,
+  evento: { acessoAte?: number | null; valorMensal?: number | null; cupom?: string | null },
+) {
   if (!emailConfigurado()) return;
+  const acessoAte = evento.acessoAte;
   try {
     const { data: instituicao } = await supabase
       .from("instituicoes").select("nome, tipo, email, valor_por_profissional")
@@ -158,7 +163,12 @@ async function avisarPorEmail(supabase: Admin, institutionId: string, acessoAte:
       nome: dono?.nome ?? null,
       organizacao: instituicao.nome,
       plano: instituicao.tipo === "grupo" ? "Grupo" : "Solo",
-      valorMensal: Number(instituicao.valor_por_profissional ?? 0),
+      // O valor da SESSÃO manda sobre o do banco. O banco guarda o preço de
+      // tabela; quem assinou com cupom vai pagar menos, e escrever o valor
+      // cheio num e-mail de boas-vindas é a receita da contestação que este
+      // e-mail existe para evitar.
+      valorMensal: evento.valorMensal ?? Number(instituicao.valor_por_profissional ?? 0),
+      cupom: evento.cupom ?? null,
       primeiraCobranca: acessoAte
         ? new Date(acessoAte * 1000).toISOString().slice(0, 10) : null,
     });
