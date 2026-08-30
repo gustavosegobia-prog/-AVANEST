@@ -36,12 +36,13 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
     }
 
     const supabase = createClient();
+    const marca = await captcha.esperarToken();
     const { data, error } = await supabase.auth.signUp({
       email: endereco,
       password: senha,
       options: {
         emailRedirectTo: `${window.location.origin}${destino}`,
-        ...(captcha.token ? { captchaToken: captcha.token } : {}),
+        ...(marca ? { captchaToken: marca } : {}),
       },
     });
     if (error) {
@@ -121,7 +122,7 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
         </span>
       </label>
       {captcha.widget}
-      <button className="avnLoginSubmit" type="submit" disabled={busy || !aceite || !captcha.pronto}>
+      <button className="avnLoginSubmit" type="submit" disabled={busy || !aceite}>
         {busy ? "Criando..." : "Criar conta e continuar"}
       </button>
       <Link className="avnLoginCancel" href={porConvite

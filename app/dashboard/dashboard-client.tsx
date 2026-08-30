@@ -1096,9 +1096,10 @@ export function DashboardClient({
             // Confere a senha atual antes de trocar. Sem isso, quem sentasse
             // numa tela destravada assumiria a conta alheia em dois cliques —
             // e o dono perderia o acesso sem nunca saber por quê.
+            const marca=await captchaSenha.esperarToken();
             const {error:erroAtual}=await cliente.auth.signInWithPassword({
               email,password:senha.atual,
-              options:captchaSenha.token?{captchaToken:captchaSenha.token}:undefined,
+              options:marca?{captchaToken:marca}:undefined,
             });
             if(erroAtual){
               setSenhaBusy(false);
@@ -1140,7 +1141,7 @@ export function DashboardClient({
             <div className="patientModalActions">
               <button type="button" className="outlineClinical" onClick={()=>setContaAberta(false)}>Fechar</button>
               {captchaSenha.widget}
-              <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email||!captchaSenha.pronto}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
+              <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
             </div>
           </form>
         </section>

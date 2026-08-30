@@ -17,9 +17,10 @@ export function RecoveryForm({ invalidLink = false }: { invalidLink?: boolean })
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") ?? "").trim();
     const redirectTo = `${window.location.origin}/auth/callback?next=/atualizar-senha`;
+    const marca = await captcha.esperarToken();
     const { error: resetError } = await createClient().auth.resetPasswordForEmail(email, {
       redirectTo,
-      ...(captcha.token ? { captchaToken: captcha.token } : {}),
+      ...(marca ? { captchaToken: marca } : {}),
     });
     setLoading(false);
     if (resetError) {

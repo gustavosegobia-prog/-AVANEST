@@ -23,16 +23,24 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
     setError("");
     const form = new FormData(event.currentTarget);
     const supabase = createClient();
+    // Espera o token aqui, e não travando o botão: se ele não vier, seguimos
+    // e o servidor diz o motivo. Botão preso não tem saída.
+    const marca = await captcha.esperarToken();
     const { data: entrada, error: signInError } = await supabase.auth.signInWithPassword({
       email: String(form.get("email") ?? ""),
       password: String(form.get("password") ?? ""),
-      options: captcha.token ? { captchaToken: captcha.token } : undefined,
+      options: marca ? { captchaToken: marca } : undefined,
     });
     if (signInError) {
       // A recusa do CAPTCHA é dita com todas as letras. Escondê-la atrás de
       // "senha inválida" mandaria a pessoa trocar uma senha que estava certa.
+      // Quando o Turnstile recusou, a razão DELE vale mais do que a do
+      // Supabase: o servidor só sabe dizer "faltou o token", e o navegador
+      // sabe por quê o token não existiu.
       setError(/captcha/i.test(signInError.message)
-        ? "A verificação de segurança falhou. Tente de novo em alguns segundos."
+        ? captcha.recusa
+          ? `A verificação de segurança falhou: ${captcha.recusa}.`
+          : "A verificação de segurança falhou. Tente de novo em alguns segundos."
         : "E-mail ou senha inválidos.");
       captcha.reiniciar();
       setLoading(false);
@@ -83,10 +91,16 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
         </button>
       </div>
       {captcha.widget}
+      {/* Sem esperar o clique: se o Turnstile já recusou, dizer agora poupa a
+          pessoa de tentar entrar e receber a culpa por uma senha que está
+          certa. */}
+      {!error && captcha.recusa && (
+        <p className="loginError" role="alert">Verificação de segurança: {captcha.recusa}.</p>
+      )}
       {error && <p className="loginError" role="alert">{error}</p>}
       <Link className="avnForgotPassword" href="/recuperar-senha">Esqueci minha senha</Link>
-      <button className="avnLoginSubmit" type="submit" disabled={loading || !captcha.pronto}>
-        {loading ? "Entrando..." : !captcha.pronto ? "Verificando segurança..." : "Entrar"}
+      <button className="avnLoginSubmit" type="submit" disabled={loading}>
+        {loading ? "Entrando..." : "Entrar"}
       </button>
     </form>
   );
