@@ -6,6 +6,16 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // Permite `import ... from "./escala.ts"`, com a extensão.
+    //
+    // Sem isto, um arquivo de lib não podia importar outro: o Next resolve
+    // "./escala" sem extensão, e o executor de testes do Node — que roda os
+    // .ts direto, sem empacotador — resolve por caminho real e não acha. Era
+    // escolher entre compilar e testar.
+    //
+    // Só é aceito porque `noEmit` está ligado: o TypeScript aqui só confere
+    // tipos, e quem gera o JavaScript é o Next.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

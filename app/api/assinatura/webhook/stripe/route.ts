@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { conferirWebhook, lerEvento } from "@/lib/pagamentos/stripe";
+import { emailConfigurado, enviarEmail } from "@/lib/email";
+import { boasVindas } from "@/lib/email-boas-vindas";
 
 // Aviso de cobrança do Stripe.
 //
@@ -109,6 +111,15 @@ export async function POST(request: NextRequest) {
     });
     if (error) throw error;
 
+    // O e-mail de boas-vindas, e só no checkout — as faturas dos meses
+    // seguintes não são novidade para ninguém. Depois de gravar, nunca antes:
+    // se o e-mail viesse primeiro e a gravação falhasse, o cliente teria por
+    // escrito uma assinatura que o sistema não conhece.
+    if (evento.tipo === "pagamento" && evento.status === "approved"
+        && evento.idUnico.startsWith("stripe:checkout:")) {
+      await avisarPorEmail(supabase, institutionId, evento.acessoAte);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (erro) {
     // 500 faz o Stripe reenviar, que é exatamente o que se quer: pagamento não
@@ -120,6 +131,43 @@ export async function POST(request: NextRequest) {
 }
 
 type Admin = ReturnType<typeof admin>;
+
+/**
+ * Diz ao cliente, por escrito, o que ele acabou de contratar.
+ *
+ * NUNCA DERRUBA O WEBHOOK. Uma falha aqui devolveria 500, o Stripe reenviaria
+ * o aviso, e o reenvio não reprocessaria nada — a chave de idempotência já
+ * está gravada. O resultado seria um cliente pago, um webhook eternamente
+ * vermelho no painel, e nenhum e-mail assim mesmo. Falhou, registra e segue.
+ */
+async function avisarPorEmail(supabase: Admin, institutionId: string, acessoAte: number | null | undefined) {
+  if (!emailConfigurado()) return;
+  try {
+    const { data: instituicao } = await supabase
+      .from("instituicoes").select("nome, tipo, email, valor_por_profissional")
+      .eq("id", institutionId).maybeSingle();
+    if (!instituicao?.email) return;
+
+    // O nome de quem responde pela organização, para o cumprimento. Nulo é
+    // aceitável: a mensagem tem um "Olá." sem nome preparado para isso.
+    const { data: dono } = await supabase
+      .from("perfis").select("nome").eq("institution_id", institutionId)
+      .eq("role", "owner").maybeSingle();
+
+    const mensagem = boasVindas({
+      nome: dono?.nome ?? null,
+      organizacao: instituicao.nome,
+      plano: instituicao.tipo === "grupo" ? "Grupo" : "Solo",
+      valorMensal: Number(instituicao.valor_por_profissional ?? 0),
+      primeiraCobranca: acessoAte
+        ? new Date(acessoAte * 1000).toISOString().slice(0, 10) : null,
+    });
+    const r = await enviarEmail({ para: instituicao.email, ...mensagem });
+    if (!r.ok) console.error("[webhook/stripe] e-mail de boas-vindas", r.erro);
+  } catch (erro) {
+    console.error("[webhook/stripe] e-mail de boas-vindas", erro);
+  }
+}
 
 /**
  * De quem é este pagamento.
