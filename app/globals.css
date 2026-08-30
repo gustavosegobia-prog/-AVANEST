@@ -1796,6 +1796,20 @@ button:disabled{cursor:not-allowed}
   padding-left:14px;border-left:4px solid var(--avn-teal)}
 /* auto-fit com minmax, e não três colunas fixas: os blocos têm de dois a seis
    itens, e coluna fixa deixaria um cartão sozinho esticado numa linha. */
+/* Lista de tópicos dentro de um bloco de conteúdo.
+
+   Marcador próprio em vez do `list-style` do navegador: o padrão alinha o
+   texto pela margem da lista, e num parágrafo de três linhas a segunda volta
+   para debaixo do ponto. Com o marcador posicionado, todas as linhas do item
+   ficam alinhadas entre si — que é o que faz uma lista longa continuar
+   legível. */
+.recLista{margin:0;padding:0;list-style:none;display:grid;gap:14px}
+.recLista li{position:relative;padding-left:20px;line-height:1.72;font-size:15px;
+  color:var(--avn-muted)}
+.recLista li::before{content:"";position:absolute;left:2px;top:11px;width:6px;height:6px;
+  border-radius:50%;background:var(--cor-marca)}
+.recLista strong{color:var(--avn-ink)}
+
 .recGrade{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(310px,100%),1fr));gap:16px}
 .recGrade article{padding:22px 24px;border:1px solid var(--avn-line);border-radius:16px;
   background:#fff}
