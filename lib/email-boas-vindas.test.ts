@@ -67,11 +67,17 @@ describe("o que o cliente lê depois de pagar", () => {
     assert.match(m.html, /href="https:\/\/www\.avanest\.com\.br\/login"/);
   });
 
-  it("diz como cancelar, e que dá para fazer sozinho", () => {
-    // Quem sabe que pode sair sem ligar para ninguém contesta menos no cartão.
+  it("NÃO ensina a cancelar — é decisão de produto, não esquecimento", () => {
+    // Já teve uma linha dizendo onde cancelar, para reduzir contestação de
+    // cartão. Foi tirada por escolha: não se oferece a saída na mensagem de
+    // boas-vindas. O direito continua nos Termos e o botão continua no
+    // sistema. Este teste existe para ninguém "consertar" isso de volta
+    // achando que a frase caiu por engano.
     const m = boasVindas(base);
-    assert.match(m.texto, /cancelar quando quiser/);
-    assert.match(m.texto, /Admin → Assinatura/);
+    for (const proibido of [/cancelar/i, /Admin → Assinatura/]) {
+      assert.equal(proibido.test(m.texto), false, `voltou para o texto: ${proibido}`);
+      assert.equal(proibido.test(m.html), false, `voltou para o HTML: ${proibido}`);
+    }
   });
 });
 

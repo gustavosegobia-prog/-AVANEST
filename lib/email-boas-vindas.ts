@@ -14,6 +14,14 @@
 // O texto mora aqui, e não dentro da rota do webhook, porque é conteúdo — e
 // conteúdo que fala de dinheiro merece teste. Uma data mal formatada ou um
 // valor com ponto no lugar da vírgula é um cliente ligando.
+//
+// A MENSAGEM NÃO ENSINA A CANCELAR, e é decisão de produto, não esquecimento.
+// Já teve uma linha dizendo onde cancelar — a ideia era reduzir contestação de
+// cartão, porque quem sabe que pode sair sozinho tende a cancelar em vez de
+// abrir disputa no banco. Foi tirada de propósito: não se oferece a saída na
+// mensagem de boas-vindas. O direito continua nos Termos, aceitos no checkout,
+// e o botão continua em Admin → Assinatura. Quem for reescrever este texto:
+// não "conserte" isso de volta sem perguntar.
 
 // Com a extensão, e por isso o `allowImportingTsExtensions` no tsconfig: o
 // Next resolve "./escala" sem ela, mas o executor de testes do Node roda os
@@ -74,7 +82,6 @@ export function boasVindas(dados: BoasVindas) {
     `A sua assinatura do AVANEST está ativa — plano ${dados.plano}, para ${dados.organizacao}.`,
     cupom ? `${cobranca} ${cupom}` : cobranca,
     `Entre em ${url}`,
-    "Você pode cancelar quando quiser, em Admin → Assinatura, sem falar com ninguém.",
     "Qualquer dúvida, é só responder este e-mail.",
   ];
 
@@ -96,8 +103,6 @@ export function boasVindas(dados: BoasVindas) {
       + `<p style="margin:0 0 22px"><a href="${url}" style="display:inline-block;`
       + `background:#0f5fa8;color:#fff;text-decoration:none;padding:12px 22px;`
       + `border-radius:9px;font-weight:700;font-size:15px">Entrar no AVANEST</a></p>`
-      + `<p style="margin:0 0 8px;font-size:13.5px;color:#4a6180">`
-      + `Você pode cancelar quando quiser, em Admin → Assinatura, sem falar com ninguém.</p>`
       + `<p style="margin:0;font-size:13.5px;color:#4a6180">`
       + `Qualquer dúvida, é só responder este e-mail.</p>`
       + `</div>`,
