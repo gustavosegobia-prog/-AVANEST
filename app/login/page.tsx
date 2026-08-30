@@ -1,3 +1,18 @@
+import type { Metadata } from "next";
+
+// Título próprio, e não o da capa.
+//
+// Esta página herdava "AVANEST | Gestão em anestesiologia" — o MESMO título e a
+// mesma descrição da capa, de /criar-conta e de /comecar. Quatro endereços
+// idênticos aos olhos do buscador é o caminho mais curto para ele escolher um
+// e ignorar os outros. E "avanest login" é busca real: quem já é cliente
+// procura assim, e merece cair aqui em vez de na vitrine.
+export const metadata: Metadata = {
+  title: "Entrar no AVANEST",
+  description: "Acesso ao AVANEST, sistema de gestão em anestesiologia: avaliação pré-anestésica, escala do serviço e controle do que foi faturado e recebido.",
+  alternates: { canonical: "/login" },
+};
+
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LoginForm } from "./login-form";

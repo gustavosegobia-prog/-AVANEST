@@ -2,6 +2,15 @@ import type { Metadata } from "next";
 import { PaginaLegal } from "@/components/pagina-legal";
 
 export const metadata: Metadata = {
+  // O endereço oficial desta página.
+  //
+  // Sem canonical, `avanest.com.br/x`, `www.avanest.com.br/x` e a mesma página
+  // com `?utm_source=...` são três endereços distintos para o buscador, que
+  // então divide entre eles a força que deveria ser de um só — e escolhe
+  // sozinho qual mostrar. O canonical não fica no layout de propósito: no Next
+  // ele é HERDADO, e um canonical no layout apontaria TODAS as páginas para a
+  // capa, que é bem pior do que não ter nenhum.
+  alternates: { canonical: "/privacidade" },
   title: "Política de Privacidade | AVANEST",
   description: "Como o AVANEST trata dados pessoais e dados de saúde, conforme a LGPD.",
 };

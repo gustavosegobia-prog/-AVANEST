@@ -7,7 +7,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.avanest.com.br"),
   title: "AVANEST | Gestão em anestesiologia",
-  description: "Sistema de gestão para serviços de anestesiologia: avaliação pré-anestésica em nove etapas, escala por instituição e controle do que foi produzido, faturado e recebido.",
+  // 155 caracteres, e o número tem motivo: o Google corta a descrição perto de
+  // 160 na busca. A versão anterior tinha 168 e terminava em "…faturado e
+  // rece…" — a última coisa que a pessoa lia era uma palavra partida.
+  description: "Sistema de gestão para serviços de anestesiologia: avaliação pré-anestésica em nove etapas, escala por instituição e controle do que você tem a receber.",
   openGraph: {
     title: "AVANEST | Gestão em anestesiologia",
     description: "Da avaliação pré-anestésica ao fluxo de caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",

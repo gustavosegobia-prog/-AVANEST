@@ -1,3 +1,13 @@
+import type { Metadata } from "next";
+
+// A capa herda título e descrição do layout; o que ela precisa por conta
+// própria é o canonical. Sem ele, a capa responde em quatro endereços — com e
+// sem www, com e sem barra final, e com qualquer `?utm_...` colado por uma
+// campanha — e o buscador reparte entre eles a força que deveria ser de um só.
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 

@@ -25,7 +25,12 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   { caminho: "/escores/apfel", prioridade: 0.8, frequencia: "monthly" },
   { caminho: "/escores/indice-de-lee", prioridade: 0.8, frequencia: "monthly" },
   { caminho: "/escores/classificacao-asa", prioridade: 0.8, frequencia: "monthly" },
-  { caminho: "/comecar", prioridade: 0.7, frequencia: "monthly" },
+  // `/comecar` NÃO entra, e é a regra escrita no topo deste arquivo sendo
+  // cumprida: a página exige sessão e redireciona para /login quando não há.
+  // O buscador chega anônimo, leva o redirecionamento, e o Search Console
+  // registra "Página com redirecionamento" — um endereço que nunca vai ser
+  // indexado ocupando espaço num arquivo que existe para dizer o que vale a
+  // pena ler. Estava na lista contradizendo o comentário logo acima dela.
   { caminho: "/criar-conta", prioridade: 0.5, frequencia: "monthly" },
   { caminho: "/login", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/termos", prioridade: 0.3, frequencia: "yearly" },

@@ -1,3 +1,13 @@
+import type { Metadata } from "next";
+
+// Título próprio: herdava o da capa, igual ao de /login e /comecar. Ver o
+// comentário em app/login/page.tsx.
+export const metadata: Metadata = {
+  title: "Criar conta no AVANEST",
+  description: "Crie sua conta no AVANEST e comece a usar a avaliação pré-anestésica, a escala do serviço e o controle financeiro em um sistema só.",
+  alternates: { canonical: "/criar-conta" },
+};
+
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
