@@ -33,6 +33,15 @@ type Api = {
   remove: (id: string) => void;
   /** O jeito oficial de pedir outro token sem destruir o quadro. */
   reset: (id: string) => void;
+  /**
+   * Avisa quando a biblioteca está DE FATO pronta.
+   *
+   * Existe porque `window.turnstile` passa a existir antes de terminar de se
+   * inicializar. Chamar `render` nessa janela funciona quase sempre — e o
+   * "quase" é um quadro que simplesmente não aparece, sem erro no console e
+   * sem nada na tela para a pessoa olhar.
+   */
+  ready?: (pronto: () => void) => void;
 };
 declare global {
   interface Window { turnstile?: Api }
@@ -90,8 +99,23 @@ export function Turnstile({ onToken, onFalha, aoMontar }: {
     let id: string | null = null;
     let vivo = true;
 
+    // Espera a biblioteca existir de verdade. `ready` é o caminho oficial; a
+    // sondagem é a rede para o dia em que ele não estiver lá.
+    const quandoPronto = (fazer: () => void) => {
+      const api = window.turnstile;
+      if (api?.ready) { api.ready(fazer); return; }
+      let tentativas = 0;
+      const olhar = () => {
+        if (!vivo) return;
+        if (window.turnstile) { fazer(); return; }
+        if (++tentativas < 40) setTimeout(olhar, 100);
+        else falha.current?.("script-nao-carregou");
+      };
+      olhar();
+    };
+
     carregarScript()
-      .then(() => {
+      .then(() => quandoPronto(() => {
         if (!vivo || !caixa.current || !window.turnstile) return;
         const api = window.turnstile;
         id = api.render(caixa.current, {
@@ -126,8 +150,11 @@ export function Turnstile({ onToken, onFalha, aoMontar }: {
         // desafio seguinte falhar com "Falha na verificação", porque o widget
         // é arrancado no meio do trabalho dele.
         if (id) montou.current?.(() => api.reset(id!));
-      })
-      .catch(() => aviso.current(""));
+      }))
+      .catch(() => {
+        aviso.current("");
+        falha.current?.("script-nao-carregou");
+      });
 
     return () => {
       vivo = false;
@@ -245,6 +272,9 @@ export function explicarErro(codigo: string): string {
   }
   if (c.startsWith("1060") || c.startsWith("3000") || c.startsWith("6")) {
     return `o desafio expirou ou foi recusado; recarregar a página costuma resolver (${c})`;
+  }
+  if (c === "script-nao-carregou") {
+    return "o script do Cloudflare não carregou nesta rede ou foi bloqueado por uma extensão do navegador";
   }
   if (c.startsWith("2")) return `falha de rede ao falar com o Cloudflare (${c})`;
   // O código cru sempre acompanha. Uma tradução que engole o número original
