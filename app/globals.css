@@ -1916,6 +1916,12 @@ button:disabled{cursor:not-allowed}
 .aceiteTermos input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--cor-marca);cursor:pointer}
 .aceiteTermos a{color:var(--cor-marca);font-weight:650}
 
+/* Conferência do e-mail da assinatura: manutenção, não decisão. Separada por
+   uma linha do bloco de cancelamento para não competir com ele. */
+.assinaturaTeste{margin:var(--esp-4) 0 0;padding:var(--esp-4) 0 0;border-top:1px solid var(--cor-borda)}
+.assinaturaTeste strong{display:block;font-size:14px;color:var(--cor-tinta)}
+.assinaturaTeste p{margin:6px 0 var(--esp-3);font-size:12.5px;line-height:1.55;color:var(--cor-tinta-fraca)}
+
 /* Cupom de desconto.
 
    O gatilho é um link discreto, e não um campo aberto: um campo "cupom" à

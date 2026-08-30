@@ -1839,6 +1839,9 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
   const [aviso,setAviso]=useState("");
   const [erro,setErro]=useState("");
   const [versao,setVersao]=useState(0);
+  const [testando,setTestando]=useState(false);
+  const [testeAviso,setTesteAviso]=useState("");
+  const [testeErro,setTesteErro]=useState("");
 
   useEffect(()=>{
     let ativo=true;
@@ -1875,6 +1878,28 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
     setAviso("Assinatura reativada. A cobrança volta a renovar normalmente.");
     setVersao(v=>v+1);
     onRefresh();
+  }
+
+  // Prova o caminho do e-mail sem esperar um cliente pagante. O destino é
+  // sempre o endereço de quem está logado — a rota não aceita outro.
+  async function mandarTeste(){
+    setTestando(true); setTesteAviso(""); setTesteErro("");
+    try{
+      const resposta=await fetch("/api/admin/email-teste",{
+        method:"POST",headers:{"Content-Type":"application/json"},body:"{}",
+      });
+      const corpo=await resposta.json().catch(()=>null);
+      if(!resposta.ok){
+        // A dica vem junto do motivo cru: um diz o que houve, o outro o que fazer.
+        setTesteErro([corpo?.error,corpo?.dica].filter(Boolean).join(" ")||"Não consegui mandar o teste.");
+        return;
+      }
+      setTesteAviso(`E-mail de teste enviado para ${corpo?.para}. Se não chegar em alguns minutos, veja também o spam.`);
+    }catch{
+      setTesteErro("Sem conexão com o servidor. Tente de novo.");
+    }finally{
+      setTestando(false);
+    }
   }
 
   if(carregando) return null;
@@ -1947,6 +1972,27 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
         >{encerrando?"Cancelando...":"Cancelar assinatura"}</button>
       </div>
     )}
+
+    {/* Conferir o e-mail da assinatura.
+
+        Fica depois do bloco de cancelamento, e separado por uma linha, porque
+        é manutenção e não decisão: quem abre este painel quase sempre veio
+        tratar da cobrança, e um botão de teste no meio do caminho competiria
+        com isso. Ao mesmo tempo é aqui que mora — o e-mail testado é o da
+        assinatura. */}
+    <div className="assinaturaTeste">
+      <strong>Conferir o e-mail de boas-vindas</strong>
+      <p>
+        Manda para o seu endereço a mesma mensagem que o cliente recebe ao assinar.
+        Serve para provar que o envio funciona antes de alguém depender dele — e
+        para conferir de novo sempre que a chave ou o texto mudarem.
+      </p>
+      {testeAviso&&<p className="financeSuccess assinaturaRecado">{testeAviso}</p>}
+      {testeErro&&<p className="clinicalError assinaturaRecado">{testeErro}</p>}
+      <button className="outlineClinical" disabled={testando} onClick={mandarTeste}>
+        {testando?"Enviando...":"Mandar e-mail de teste para mim"}
+      </button>
+    </div>
   </PainelRecolhivel>;
 }
 
