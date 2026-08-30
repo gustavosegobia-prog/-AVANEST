@@ -38,9 +38,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
       // Supabase: o servidor só sabe dizer "faltou o token", e o navegador
       // sabe por quê o token não existiu.
       setError(/captcha/i.test(signInError.message)
-        ? captcha.recusa
-          ? `A verificação de segurança falhou: ${captcha.recusa}.`
-          : "A verificação de segurança falhou. Tente de novo em alguns segundos."
+        ? "A verificação de segurança falhou. Tente de novo em alguns segundos."
         : "E-mail ou senha inválidos.");
       captcha.reiniciar();
       setLoading(false);
@@ -91,10 +89,12 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
         </button>
       </div>
       {captcha.widget}
-      {/* Sem esperar o clique: se o Turnstile já recusou, dizer agora poupa a
-          pessoa de tentar entrar e receber a culpa por uma senha que está
-          certa. */}
-      {!error && captcha.recusa && (
+      {/* A recusa do Turnstile aparece SEMPRE que existe, e não só quando não
+          há outro erro. Escondê-la atrás de "e-mail ou senha inválidos" foi um
+          engano: são causas independentes, as duas podem estar acontecendo ao
+          mesmo tempo, e a do CAPTCHA é a única que a pessoa não tem como
+          adivinhar sozinha. */}
+      {captcha.recusa && (
         <p className="loginError" role="alert">Verificação de segurança: {captcha.recusa}.</p>
       )}
       {error && <p className="loginError" role="alert">{error}</p>}

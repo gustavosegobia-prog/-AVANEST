@@ -31,6 +31,8 @@ export const captchaLigado = () => Boolean(CHAVE);
 type Api = {
   render: (alvo: HTMLElement, opcoes: Record<string, unknown>) => string;
   remove: (id: string) => void;
+  /** O jeito oficial de pedir outro token sem destruir o quadro. */
+  reset: (id: string) => void;
 };
 declare global {
   interface Window { turnstile?: Api }
@@ -66,10 +68,12 @@ function carregarScript(): Promise<void> {
  * Por isso quem chama passa `key={tentativa}` e incrementa a cada erro: o
  * componente é remontado, o quadro antigo é removido e nasce um token novo.
  */
-export function Turnstile({ onToken, onFalha }: {
+export function Turnstile({ onToken, onFalha, aoMontar }: {
   onToken: (token: string) => void;
   /** O código de erro do Turnstile, quando ele recusa. Ver `explicarErro`. */
   onFalha?: (codigo: string) => void;
+  /** Entrega ao pai a função de pedir outro token. Ver `useCaptcha`. */
+  aoMontar?: (resetar: () => void) => void;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   // O callback numa ref para o efeito não depender da identidade dele — sem
@@ -78,7 +82,8 @@ export function Turnstile({ onToken, onFalha }: {
   // render quebra a renderização concorrente do React.
   const aviso = useRef(onToken);
   const falha = useRef(onFalha);
-  useEffect(() => { aviso.current = onToken; falha.current = onFalha; });
+  const montou = useRef(aoMontar);
+  useEffect(() => { aviso.current = onToken; falha.current = onFalha; montou.current = aoMontar; });
 
   useEffect(() => {
     if (!CHAVE || !caixa.current) return;
@@ -88,7 +93,8 @@ export function Turnstile({ onToken, onFalha }: {
     carregarScript()
       .then(() => {
         if (!vivo || !caixa.current || !window.turnstile) return;
-        id = window.turnstile.render(caixa.current, {
+        const api = window.turnstile;
+        id = api.render(caixa.current, {
           sitekey: CHAVE,
           language: "pt-BR",
           theme: "auto",
@@ -114,6 +120,12 @@ export function Turnstile({ onToken, onFalha }: {
             falha.current?.(String(codigo ?? "sem código"));
           },
         });
+        // Entrega o "me dê outro token" para quem usa o componente. É o método
+        // do próprio Cloudflare, e é por isso que ele existe: destruir e
+        // recriar o quadro a cada erro — o que este código fazia antes — faz o
+        // desafio seguinte falhar com "Falha na verificação", porque o widget
+        // é arrancado no meio do trabalho dele.
+        if (id) montou.current?.(() => api.reset(id!));
       })
       .catch(() => aviso.current(""));
 
@@ -165,19 +177,28 @@ const ESPERA = 6000;
 export function useCaptcha() {
   const [token, setToken] = useState("");
   const [erro, setErro] = useState("");
-  const [tentativa, setTentativa] = useState(0);
   // O mesmo token numa ref: `esperarToken` roda dentro do envio, fora do
   // ciclo de render, e lá o valor do estado estaria congelado no do clique.
   const agora = useRef("");
+  const resetar = useRef<(() => void) | null>(null);
 
   const guardar = useCallback((valor: string) => {
     agora.current = valor;
     setToken(valor);
   }, []);
 
+  const registrar = useCallback((fn: () => void) => { resetar.current = fn; }, []);
+
   return {
-    /** O quadro. A chave o remonta a cada tentativa, para nascer token novo. */
-    widget: <Turnstile key={tentativa} onToken={guardar} onFalha={setErro} />,
+    /**
+     * O quadro. Montado UMA vez e reaproveitado.
+     *
+     * A versão anterior o remontava a cada erro, com uma `key` que mudava.
+     * Parecia certo — quadro novo, token novo — e produzia "Falha na
+     * verificação" na segunda tentativa: o widget era arrancado no meio do
+     * desafio. Renovar é `reset`, e é o Cloudflare quem oferece.
+     */
+    widget: <Turnstile onToken={guardar} onFalha={setErro} aoMontar={registrar} />,
     /**
      * Espera um token por alguns segundos e devolve o que houver.
      *
@@ -201,7 +222,7 @@ export function useCaptcha() {
      */
     recusa: erro ? explicarErro(erro) : "",
     /** Chame depois de CADA erro: gasta o token velho e pede outro. */
-    reiniciar: () => { guardar(""); setErro(""); setTentativa((n) => n + 1); },
+    reiniciar: () => { guardar(""); setErro(""); resetar.current?.(); },
     /** Só para depuração e testes. */
     token,
   };
@@ -217,14 +238,17 @@ export function useCaptcha() {
 export function explicarErro(codigo: string): string {
   const c = String(codigo ?? "");
   if (c.startsWith("1102")) {
-    return "o domínio deste site não está na lista do widget, no painel do Cloudflare";
+    return `o domínio deste site não está na lista do widget, no painel do Cloudflare (${c})`;
   }
   if (c.startsWith("1100") || c.startsWith("1101")) {
-    return "a chave do site (Site Key) é inválida ou é de outro widget";
+    return `a chave do site (Site Key) é inválida ou é de outro widget (${c})`;
   }
   if (c.startsWith("1060") || c.startsWith("3000") || c.startsWith("6")) {
-    return "o desafio expirou ou foi recusado; recarregar a página costuma resolver";
+    return `o desafio expirou ou foi recusado; recarregar a página costuma resolver (${c})`;
   }
-  if (c.startsWith("2")) return "falha de rede ao falar com o Cloudflare";
-  return `código ${c}`;
+  if (c.startsWith("2")) return `falha de rede ao falar com o Cloudflare (${c})`;
+  // O código cru sempre acompanha. Uma tradução que engole o número original
+  // devolve o problema de onde ele veio: dá para procurar "300010" na
+  // documentação do Cloudflare, não dá para procurar "falhou".
+  return `o Cloudflare recusou o desafio (código ${c})`;
 }
