@@ -23,8 +23,14 @@ import { hoje, somarDias } from "./data-local.ts";
  * No assunto, e não no corpo. O corpo precisa ser idêntico ao real para o
  * teste valer alguma coisa; o assunto é o bastante para ninguém confundir,
  * meses depois, um teste com a prova de que alguém assinou.
+ *
+ * SEM COLCHETES E SEM CAIXA ALTA. "[TESTE]" no começo do assunto é um padrão
+ * clássico de mala direta, e filtro de spam pontua isso — o primeiro teste
+ * caiu na caixa de lixo do iCloud. O e-mail do cliente nunca leva esta marca,
+ * então isso não afeta a entrega em produção; afeta a de quem usa o botão, que
+ * é justamente quem precisa que ele chegue.
  */
-export const MARCA_TESTE = "[TESTE] ";
+export const MARCA_TESTE = "Teste — ";
 
 export type DadosDeTeste = {
   nome?: string | null;

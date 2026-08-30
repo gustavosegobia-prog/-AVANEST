@@ -24,6 +24,14 @@ describe("o e-mail de teste", () => {
     assert.match(teste.assunto, /INOVANEST/);
   });
 
+  it("a marca não usa o formato que filtro de spam pontua", () => {
+    // "[TESTE]" no começo do assunto é padrão de mala direta, e o primeiro
+    // envio caiu na caixa de lixo do iCloud. Quem usa o botão é justamente
+    // quem precisa que o e-mail chegue.
+    assert.equal(/^\[/.test(MARCA_TESTE), false, "colchete no começo do assunto");
+    assert.equal(MARCA_TESTE, MARCA_TESTE.replace(/[A-Z]{3,}/g, ""), "palavra em caixa alta");
+  });
+
   it("a data de cobrança é do fuso de São Paulo, não de Greenwich", () => {
     // O mesmo defeito que marcava o dia seguinte às 21h. Aqui apareceria como
     // uma data um dia à frente — e o teste existe justamente para conferir

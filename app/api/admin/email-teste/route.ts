@@ -49,14 +49,27 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: instituicao } = await supabase
-    .from("instituicoes").select("nome,tipo,valor_por_profissional")
+    .from("instituicoes").select("nome,tipo,preco_contratado,valor_por_profissional")
     .eq("id", perfil.institution_id).maybeSingle();
 
+  // `preco_contratado` PRIMEIRO, e a ordem não é detalhe.
+  //
+  // `valor_por_profissional` é o preço de UMA pessoa; num plano de grupo o
+  // contratado é outro número inteiro. Ler o campo errado fazia o teste
+  // mostrar R$ 49,99 onde a organização paga R$ 399,00 — e um teste que mente
+  // justamente na linha do dinheiro é pior do que não ter teste: dá confiança
+  // de que o cliente vai ler certo, sem ter conferido isso.
+  //
+  // O e-mail de verdade não passa por aqui: ele usa o valor que o checkout
+  // gravou na sessão do Stripe, já com desconto de cupom. Este é o valor mais
+  // próximo disso que existe sem uma assinatura em curso.
   const mensagem = emailDeTeste({
     nome: perfil.nome,
     organizacao: instituicao?.nome ?? "Sua organização",
     plano: instituicao?.tipo === "grupo" ? "Grupo" : "Solo",
-    valorMensal: Number(instituicao?.valor_por_profissional ?? 0) || 129,
+    valorMensal: Number(instituicao?.preco_contratado ?? 0)
+      || Number(instituicao?.valor_por_profissional ?? 0)
+      || 129,
   });
 
   const resultado = await enviarEmail({ para: user.email, ...mensagem });
