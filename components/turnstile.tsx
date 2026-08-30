@@ -33,15 +33,9 @@ type Api = {
   remove: (id: string) => void;
   /** O jeito oficial de pedir outro token sem destruir o quadro. */
   reset: (id: string) => void;
-  /**
-   * Avisa quando a biblioteca está DE FATO pronta.
-   *
-   * Existe porque `window.turnstile` passa a existir antes de terminar de se
-   * inicializar. Chamar `render` nessa janela funciona quase sempre — e o
-   * "quase" é um quadro que simplesmente não aparece, sem erro no console e
-   * sem nada na tela para a pessoa olhar.
-   */
-  ready?: (pronto: () => void) => void;
+  // `ready` existe no objeto do Cloudflare e NÃO entra neste tipo de
+  // propósito: chamá-lo com o script carregado em `async` lança exceção, e é
+  // assim que este arquivo carrega. Fora do tipo, ninguém chama por engano.
 };
 declare global {
   interface Window { turnstile?: Api }
@@ -99,11 +93,23 @@ export function Turnstile({ onToken, onFalha, aoMontar }: {
     let id: string | null = null;
     let vivo = true;
 
-    // Espera a biblioteca existir de verdade. `ready` é o caminho oficial; a
-    // sondagem é a rede para o dia em que ele não estiver lá.
+    // Espera a biblioteca existir, SONDANDO — e nunca com `turnstile.ready()`.
+    //
+    // O `ready` parece o caminho certo e é uma armadilha aqui: ele LANÇA quando
+    // o script foi carregado com `async`, que é exatamente como este arquivo o
+    // carrega. Está escrito no próprio api.js do Cloudflare:
+    //
+    //   ready: function(i){ g.scriptWasLoadedAsync && (…, E("Remove async/defer
+    //   from the Turnstile api.js script tag before using turnstile.ready()", 3857))
+    //
+    // O erro caía no catch abaixo e a tela acusava "o script não carregou" —
+    // com o script carregado e funcionando. Custou caro: mandou procurar
+    // bloqueador de anúncios e problema de rede que não existiam.
+    //
+    // E o `ready` não faz falta: ele serve ao script SÍNCRONO, em que o objeto
+    // aparece antes de terminar de inicializar. Carregado dinamicamente, quando
+    // o `onload` dispara o módulo já rodou até o fim e se registrou.
     const quandoPronto = (fazer: () => void) => {
-      const api = window.turnstile;
-      if (api?.ready) { api.ready(fazer); return; }
       let tentativas = 0;
       const olhar = () => {
         if (!vivo) return;
