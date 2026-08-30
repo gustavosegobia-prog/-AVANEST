@@ -37,6 +37,8 @@ export type QuemMonta = {
   role: string;
   /** O marcador. Verdadeiro só para quem foi escolhido. */
   escalista?: boolean | null;
+  /** Conta da plataforma. É a saída de emergência quando a escala trava. */
+  super_admin?: boolean | null;
 };
 
 /**
@@ -59,6 +61,13 @@ export const temEscalista = (equipe: readonly QuemMonta[]) =>
 export function podeMontarEscala(pessoa: QuemMonta, equipe: readonly QuemMonta[]) {
   if (pessoa.role === "owner") return true;
   if (pessoa.escalista === true) return true;
+  // A saída de emergência, e ela precisa existir aqui TAMBÉM.
+  //
+  // Esta função decide se a tela mostra o botão; a policy do banco decide se a
+  // gravação passa. Divergir faz uma das duas coisas ruins: botão escondido de
+  // quem podia, ou — pior — botão visível que dá erro ao salvar. Foi por não
+  // ter proprietário nenhum que a INOVANEST ficou dependendo de uma pessoa só.
+  if (pessoa.super_admin === true) return true;
   // Ninguém eleito: segue como sempre foi.
   if (!temEscalista(equipe)) return pessoa.role === "admin";
   return false;

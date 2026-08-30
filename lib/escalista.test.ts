@@ -122,3 +122,26 @@ describe("dados imperfeitos não mudam a resposta", () => {
     assert.equal(podeMontarEscala(dono, []), true);
   });
 });
+
+describe("a saída de emergência", () => {
+  it("o super-admin monta escala mesmo com escalista eleito", () => {
+    // O caso real: a INOVANEST nasceu sem proprietário. Eleito o escalista, os
+    // 4 administradores perderam o poder e não sobrou ninguém para destravar —
+    // 13 anestesiologistas dependendo de uma pessoa só não faltar.
+    const equipe = [
+      { role: "admin", escalista: true },
+      { role: "admin", escalista: false },
+      { role: "admin", escalista: false, super_admin: true },
+    ];
+    assert.equal(podeMontarEscala(equipe[1], equipe), false, "admin comum perde, como projetado");
+    assert.equal(podeMontarEscala(equipe[2], equipe), true, "o super-admin destrava");
+  });
+
+  it("a tela e o banco precisam concordar", () => {
+    // Esta função decide se o botão aparece; a policy decide se a gravação
+    // passa. Botão visível que dá erro ao salvar é pior que botão escondido.
+    const so = [{ role: "medico", escalista: true }];
+    assert.equal(podeMontarEscala({ role: "medico", super_admin: true }, so), true);
+    assert.equal(podeMontarEscala({ role: "medico" }, so), false);
+  });
+});
