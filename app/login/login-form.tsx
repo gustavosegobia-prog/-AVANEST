@@ -16,7 +16,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
   // precisa de um token NOVO — e o botão espera por ele em vez de enviar sem,
   // que era o que fazia a tela dizer "a verificação de segurança falhou" para
   // quem tinha acabado de digitar a senha certa.
-  const captcha = useCaptcha();
+  const captcha = useCaptcha("light");  // o cartão de login é sempre branco, mesmo no tema escuro
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

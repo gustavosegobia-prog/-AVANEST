@@ -16,7 +16,7 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
   const [confirmeEmail, setConfirmeEmail] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [aceite, setAceite] = useState(false);
-  const captcha = useCaptcha();
+  const captcha = useCaptcha("light");  // o cartão de login é sempre branco, mesmo no tema escuro
   const porConvite = Boolean(token);
   const destino = porConvite
     ? `/convite/${encodeURIComponent(token)}`

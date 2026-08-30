@@ -8,7 +8,7 @@ export function RecoveryForm({ invalidLink = false }: { invalidLink?: boolean })
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(invalidLink ? "O link expirou ou é inválido. Solicite um novo e-mail." : "");
   const [sent, setSent] = useState(false);
-  const captcha = useCaptcha();
+  const captcha = useCaptcha("light");  // o cartão de login é sempre branco, mesmo no tema escuro
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

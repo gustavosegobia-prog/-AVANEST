@@ -71,12 +71,21 @@ function carregarScript(): Promise<void> {
  * Por isso quem chama passa `key={tentativa}` e incrementa a cada erro: o
  * componente é remontado, o quadro antigo é removido e nasce um token novo.
  */
-export function Turnstile({ onToken, onFalha, aoMontar }: {
+export function Turnstile({ onToken, onFalha, aoMontar, tema = "auto" }: {
   onToken: (token: string) => void;
   /** O código de erro do Turnstile, quando ele recusa. Ver `explicarErro`. */
   onFalha?: (codigo: string) => void;
   /** Entrega ao pai a função de pedir outro token. Ver `useCaptcha`. */
   aoMontar?: (resetar: () => void) => void;
+  /**
+   * Claro, escuro ou pelo sistema.
+   *
+   * O padrão `auto` segue o SISTEMA OPERACIONAL, não o fundo em que o quadro
+   * está — então num computador em modo escuro ele saía preto em cima do
+   * cartão branco do login. Quem sabe a cor do fundo é quem coloca o
+   * componente na tela, e por isso a escolha vem de fora.
+   */
+  tema?: "auto" | "light" | "dark";
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   // O callback numa ref para o efeito não depender da identidade dele — sem
@@ -127,7 +136,7 @@ export function Turnstile({ onToken, onFalha, aoMontar }: {
         id = api.render(caixa.current, {
           sitekey: CHAVE,
           language: "pt-BR",
-          theme: "auto",
+          theme: tema,
           // VISÍVEL, e não mais "interaction-only".
           //
           // Invisível é melhor quando funciona e péssimo quando não funciona:
@@ -166,7 +175,10 @@ export function Turnstile({ onToken, onFalha, aoMontar }: {
       vivo = false;
       if (id && window.turnstile) window.turnstile.remove(id);
     };
-  }, []);
+    // `tema` entra nas dependências, e na prática é constante: cada formulário
+    // passa um valor fixo. Se um dia virar dinâmico, trocar de cor exige
+    // desenhar o quadro de novo mesmo — e a limpeza acima já cuida disso.
+  }, [tema]);
 
   if (!CHAVE) return null;
   return <div className="avnCaptcha" ref={caixa} />;
@@ -207,7 +219,7 @@ const ESPERA = 6000;
  * (entrar, criar conta, recuperar senha, trocar senha) e a que ficasse de fora
  * seria justamente a que ninguém testa.
  */
-export function useCaptcha() {
+export function useCaptcha(tema: "auto" | "light" | "dark" = "auto") {
   const [token, setToken] = useState("");
   const [erro, setErro] = useState("");
   // O mesmo token numa ref: `esperarToken` roda dentro do envio, fora do
@@ -231,7 +243,7 @@ export function useCaptcha() {
      * verificação" na segunda tentativa: o widget era arrancado no meio do
      * desafio. Renovar é `reset`, e é o Cloudflare quem oferece.
      */
-    widget: <Turnstile onToken={guardar} onFalha={setErro} aoMontar={registrar} />,
+    widget: <Turnstile onToken={guardar} onFalha={setErro} aoMontar={registrar} tema={tema} />,
     /**
      * Espera um token por alguns segundos e devolve o que houver.
      *
