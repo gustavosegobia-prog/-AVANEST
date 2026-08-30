@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { comoJson, migalhas } from "@/lib/schema";
 import { ASA_CLASSES, ASA_EMERGENCIA } from "@/lib/escores";
 import { PaginaDeEscore, dadosDeEscore } from "@/components/pagina-de-escore";
 
 const CAMINHO = "/escores/classificacao-asa";
+const TRILHA = [
+  { nome: "Início", caminho: "/" },
+  { nome: "Escores", caminho: "/escores" },
+  { nome: "Classificação ASA", caminho: CAMINHO },
+];
 const REVISADO_EM = "2026-08-27";
 
 export const metadata: Metadata = {
@@ -24,6 +30,10 @@ export default function ClassificacaoAsaPage() {
           caminho: CAMINHO,
           revisadoEm: REVISADO_EM,
         })) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <PaginaDeEscore
         sobretitulo="ESCORES NA AVALIAÇÃO PRÉ-ANESTÉSICA"

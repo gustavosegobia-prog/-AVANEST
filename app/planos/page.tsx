@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { comoJson, migalhas } from "@/lib/schema";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
@@ -10,6 +11,11 @@ import { Icone } from "@/components/icone";
 // vêm do banco, e o preço que a pessoa vê é o mesmo que reservar_plano vai
 // cobrar no checkout. Trocar um valor é mexer na tela administrativa, não no
 // código.
+
+// A trilha que aparece no lugar da URL crua no resultado do Google.
+// "avanest.com.br › Planos e preços" diz que existe um site em volta;
+// a URL crua não diz nada.
+const TRILHA = [{ nome: "Início", caminho: "/" }, { nome: "Planos e preços", caminho: "/planos" }];
 
 export const metadata: Metadata = {
   // O endereço oficial desta página.
@@ -171,6 +177,11 @@ export default async function PlanosPage() {
   const planoDaCampanha = vagas?.plano_codigo ?? "";
 
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
+      />
     <main className="avnLanding planosPage">
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
@@ -327,5 +338,6 @@ export default async function PlanosPage() {
         </nav>
       </footer>
     </main>
+    </>
   );
 }

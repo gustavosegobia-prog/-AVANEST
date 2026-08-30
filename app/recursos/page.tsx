@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
+import { comoJson, migalhas } from "@/lib/schema";
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
+
+// A trilha que aparece no lugar da URL crua no resultado do Google.
+// Breadcrumb é dos poucos dados estruturados que ainda mudam o que se
+// VÊ na busca — ao contrário do FAQPage, cujo suporte o Google encerrou
+// em junho de 2026.
+const TRILHA = [{ nome: "Início", caminho: "/" }, { nome: "O que o AVANEST faz", caminho: "/recursos" }];
 
 export const metadata: Metadata = {
   // O endereço oficial desta página.
@@ -188,6 +195,11 @@ export default function RecursosPage() {
     "https://wa.me/5541997870810?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20conversa%20de%2015%20minutos%20sobre%20o%20AVANEST.";
 
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
+      />
     <main className="avnLanding">
       <header className="avnNav">
         <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
@@ -246,5 +258,6 @@ export default function RecursosPage() {
         </nav>
       </footer>
     </main>
+    </>
   );
 }

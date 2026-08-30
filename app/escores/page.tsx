@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { comoJson, migalhas } from "@/lib/schema";
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 
 const CAMINHO = "/escores";
+
+const TRILHA = [
+  { nome: "Início", caminho: "/" },
+  { nome: "Escores", caminho: "/escores" },
+];
 
 export const metadata: Metadata = {
   title: "Escores da avaliação pré-anestésica | AVANEST",
@@ -75,6 +81,10 @@ export default function EscoresPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(DADOS_ESTRUTURADOS) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <header className="avnNav">
         <Link href="/" aria-label="AVANEST"><AppLogo /></Link>

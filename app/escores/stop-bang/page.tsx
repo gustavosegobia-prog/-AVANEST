@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { comoJson, migalhas } from "@/lib/schema";
 import { CalculadoraDeEscore } from "@/components/calculadora-de-escore";
 import { PaginaDeEscore, dadosDeEscore } from "@/components/pagina-de-escore";
 
 const CAMINHO = "/escores/stop-bang";
+const TRILHA = [
+  { nome: "Início", caminho: "/" },
+  { nome: "Escores", caminho: "/escores" },
+  { nome: "STOP-Bang", caminho: CAMINHO },
+];
 const REVISADO_EM = "2026-08-27";
 
 export const metadata: Metadata = {
@@ -24,6 +30,10 @@ export default function StopBangPage() {
           caminho: CAMINHO,
           revisadoEm: REVISADO_EM,
         })) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <PaginaDeEscore
         sobretitulo="ESCORES NA AVALIAÇÃO PRÉ-ANESTÉSICA"
