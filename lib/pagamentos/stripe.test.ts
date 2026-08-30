@@ -299,3 +299,129 @@ describe("lerEvento", () => {
     assert.equal(lerEvento({ type: "invoice.paid", data: { object: {} } }), null);
   });
 });
+
+// ===========================================================================
+// O defeito que custou quase um cliente pagante
+// ===========================================================================
+// A primeira assinante real pagou, viu "acesso liberado", entrou no sistema —
+// e ficou com `plano = 'ativo'` e a data do teste de 14 dias em vez dos 60
+// dias que ela comprou. Seria bloqueada treze dias depois, pagante.
+//
+// A causa: `meses_gratis` era gravado em `subscription_data[metadata]`, que
+// vai para a ASSINATURA, e o evento `checkout.session.completed` entrega a
+// SESSÃO. O webhook lia zero mês e somava zero à validade.
+//
+// O TESTE QUE EXISTIA PASSAVA. Ele montava a sessão à mão, com `meses_gratis`
+// no metadata — um payload que a produção nunca gerou. Testar contra um
+// payload inventado é testar a própria suposição.
+//
+// Os dois abaixo amarram as pontas: um confere o que o nosso código MANDA ao
+// Stripe, o outro lê a sessão como ela chega de verdade.
+// ===========================================================================
+
+describe("o que o checkout manda ao Stripe", () => {
+  const ORG2 = "7b1f0c2e-9a44-4d1e-8f30-6c5b2a9d1e77";
+
+  async function corpoEnviado() {
+    const fetchOriginal = globalThis.fetch;
+    const chaveOriginal = process.env.STRIPE_SECRET_KEY;
+    let corpo = "";
+    process.env.STRIPE_SECRET_KEY = "sk_test_fake";
+    globalThis.fetch = (async (_url: string, init: { body?: string }) => {
+      corpo = String(init?.body ?? "");
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: "cs_x", url: "https://x" }) };
+    }) as unknown as typeof fetch;
+    try {
+      const { criarAssinatura } = await import("./stripe.ts");
+      await criarAssinatura({
+        institutionId: ORG2, organizacao: "Teste", plano: "Solo",
+        valorMensal: 129, mesesGratis: 2, emailPagador: "a@b.c",
+        retornoSucesso: "https://x/ok", retornoCancelado: "https://x/no",
+      } as Parameters<typeof criarAssinatura>[0]);
+    } finally {
+      globalThis.fetch = fetchOriginal;
+      if (chaveOriginal === undefined) delete process.env.STRIPE_SECRET_KEY;
+      else process.env.STRIPE_SECRET_KEY = chaveOriginal;
+    }
+    return decodeURIComponent(corpo);
+  }
+
+  it("os meses grátis vão no metadata DA SESSÃO, que é o que o webhook lê", async () => {
+    // A linha que faltava. Sem ela o cliente da campanha fica com a validade
+    // do teste de 14 dias, "ativo", e é bloqueado antes de a campanha acabar.
+    const corpo = await corpoEnviado();
+    assert.match(corpo, /(^|&)metadata\[meses_gratis\]=2/,
+      "meses_gratis precisa estar no metadata da sessão");
+  });
+
+  it("e também no da assinatura, que é o que as renovações leem", async () => {
+    const corpo = await corpoEnviado();
+    assert.match(corpo, /subscription_data\[metadata\]\[meses_gratis\]=2/);
+  });
+
+  it("a organização viaja nos três lugares que o webhook consulta", async () => {
+    const corpo = await corpoEnviado();
+    assert.match(corpo, /client_reference_id=7b1f0c2e/);
+    assert.match(corpo, /(^|&)metadata\[institution_id\]=7b1f0c2e/);
+    assert.match(corpo, /subscription_data\[metadata\]\[institution_id\]=7b1f0c2e/);
+  });
+});
+
+describe("a sessão como ela chega de verdade", () => {
+  const ORG3 = "7b1f0c2e-9a44-4d1e-8f30-6c5b2a9d1e77";
+
+  it("a data do Stripe manda, e é a mesma que o cliente leu na tela", () => {
+    // 29/10/2026 — a data que apareceu no checkout da primeira assinante.
+    const trial = Math.floor(Date.UTC(2026, 9, 29) / 1000);
+    const evento = lerEvento({
+      id: "evt_trial", type: "checkout.session.completed",
+      data: { object: {
+        id: "cs_real", object: "checkout_session", client_reference_id: ORG3,
+        subscription: "sub_real", customer: "cus_real", amount_total: 0,
+        trial_end: trial,
+        metadata: { institution_id: ORG3, meses_gratis: "2" },
+      } },
+    });
+    assert.equal(evento?.acessoAte, trial,
+      "a validade tem de sair do Stripe, e não de uma conta nossa");
+  });
+
+  it("sessão SEM meses_gratis não fica sem validade nenhuma", () => {
+    // O caso exato do defeito: metadata só com institution_id. Antes isto
+    // devolvia zero mês e nenhuma data — e o banco somava zero.
+    const trial = Math.floor(Date.UTC(2026, 9, 29) / 1000);
+    const evento = lerEvento({
+      id: "evt_sem", type: "checkout.session.completed",
+      data: { object: {
+        id: "cs_sem", client_reference_id: ORG3, subscription: "sub_sem",
+        trial_end: trial, metadata: { institution_id: ORG3 },
+      } },
+    });
+    assert.equal(evento?.status, "approved");
+    assert.equal(evento?.acessoAte, trial, "a data do Stripe salva o caso");
+  });
+
+  it("a assinatura criada acerta a validade, como rede", () => {
+    const trial = Math.floor(Date.UTC(2026, 9, 29) / 1000);
+    const evento = lerEvento({
+      id: "evt_sub", type: "customer.subscription.created",
+      data: { object: { id: "sub_1", object: "subscription", trial_end: trial,
+                        metadata: { institution_id: ORG3 } } },
+    });
+    assert.equal(evento?.status, "approved");
+    assert.equal(evento?.acessoAte, trial);
+    assert.equal(evento?.institutionId, ORG3);
+  });
+
+  it("a chave do evento de assinatura é por DATA, não por disparo", () => {
+    // O Stripe manda `subscription.updated` várias vezes com o mesmo período.
+    // Uma chave nova a cada disparo faria o unique do banco parar de proteger,
+    // e a validade seria estendida de novo a cada aviso repetido.
+    const trial = 1_800_600_000;
+    const um = lerEvento({ id: "a", type: "customer.subscription.updated",
+      data: { object: { id: "sub_1", trial_end: trial, metadata: { institution_id: ORG3 } } } });
+    const dois = lerEvento({ id: "b", type: "customer.subscription.updated",
+      data: { object: { id: "sub_1", trial_end: trial, metadata: { institution_id: ORG3 } } } });
+    assert.equal(um?.idUnico, dois?.idUnico);
+  });
+});

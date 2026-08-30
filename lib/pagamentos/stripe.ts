@@ -146,7 +146,18 @@ export async function criarAssinatura(dados: NovaAssinatura): Promise<Assinatura
         meses_gratis: String(dados.mesesGratis ?? 0),
       },
     },
-    metadata: { institution_id: dados.institutionId },
+    // A MESMA informação nos DOIS lugares, e não é redundância.
+    //
+    // `subscription_data.metadata` vai para a ASSINATURA, e é de lá que as
+    // renovações a leem. O evento `checkout.session.completed` entrega a
+    // SESSÃO, que tem o metadata próprio — e foi exatamente aqui que o
+    // primeiro cliente pagante quase se perdeu: sem `meses_gratis` na sessão,
+    // o webhook leu zero mês, somou zero à validade, e a assinatura ficou
+    // "ativa" com a data do teste de 14 dias em vez dos 60 dias comprados.
+    metadata: {
+      institution_id: dados.institutionId,
+      meses_gratis: String(dados.mesesGratis ?? 0),
+    },
   });
 
   if (!sessao?.url) throw new Error("O Stripe não devolveu o link do checkout.");
@@ -301,13 +312,47 @@ export function lerEvento(corpo: unknown): EventoDeCobranca | null {
     // ficaria sem acesso até a primeira fatura — 46 dias depois.
     case "checkout.session.completed": {
       const meses = Number(meta?.meses_gratis ?? 0);
+      // A DATA DO STRIPE MANDA, quando ela vem. `trial_end` é o dia em que o
+      // período grátis acaba e a primeira cobrança sai — é a mesma data que o
+      // cliente leu na tela do checkout, e discordar dela é prometer uma coisa
+      // e entregar outra.
+      //
+      // O `meses` fica de reserva, para a sessão que chegar sem período: aí a
+      // conta do banco soma os meses da campanha à validade que houver.
+      const ate = typeof objeto.trial_end === "number" ? objeto.trial_end
+        : fimDoPeriodo(objeto);
       return {
         ...base,
         idUnico: `stripe:checkout:${objeto.id}`,
         status: "approved",
         valor: typeof objeto.amount_total === "number" ? objeto.amount_total / 100 : null,
         meses: Number.isFinite(meses) && meses > 0 ? meses : 0,
-        acessoAte: null,
+        acessoAte: ate,
+      };
+    }
+
+    // A assinatura nasceu ou mudou de período. Trazem `trial_end` e
+    // `current_period_end` — a data autoritativa, direto da fonte. Entram
+    // aqui como rede: se a sessão do checkout vier sem data por qualquer
+    // motivo, é este evento que acerta a validade.
+    case "customer.subscription.created":
+    case "customer.subscription.updated": {
+      const ate = typeof objeto.trial_end === "number" ? objeto.trial_end
+        : fimDoPeriodo(objeto);
+      // Sem data, o evento é só ruído: registra e não move validade nenhuma.
+      if (!ate) {
+        return { ...base, idUnico: `stripe:${evento}:${objeto.id}`, status: "outro", valor: null, meses: 0, acessoAte: null };
+      }
+      return {
+        ...base,
+        // Uma chave por DATA, e não por evento: o Stripe dispara
+        // `subscription.updated` várias vezes com o mesmo período, e uma
+        // chave nova a cada disparo faria o unique do banco parar de proteger.
+        idUnico: `stripe:periodo:${objeto.id}:${ate}`,
+        status: "approved",
+        valor: null,
+        meses: 0,
+        acessoAte: ate,
       };
     }
 
