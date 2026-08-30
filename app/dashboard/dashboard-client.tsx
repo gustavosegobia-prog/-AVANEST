@@ -270,9 +270,16 @@ export function DashboardClient({
     // existe no código, a condição nunca é verdadeira, e a aba simplesmente
     // não nasce — sem erro, sem aviso, sem nada para investigar.
     //
-    // A ordem tem uma terceira gêmea: a dos botões no JSX da barra, mais
-    // abaixo, que é escrita à mão. Mudar a ordem aqui sem mudar lá deixa a
-    // barra numa ordem e a área de entrada noutra.
+    // ATENÇÃO À ORDEM. Esta lista decide em que área o sistema ABRE, pelo
+    // primeiro item — e o Médico está na frente de propósito: um
+    // anestesiologista que também tem Recepção quer abrir na fila dele, não no
+    // balcão.
+    //
+    // A BARRA DO TOPO SEGUE OUTRA ORDEM — Recepção, Médico, Escala,
+    // Financeiro, Admin —, que é a do dia de trabalho, igual à do tutorial. As
+    // duas divergem DE PROPÓSITO: uma responde "por onde começo a ler", a
+    // outra "onde eu caio ao entrar". Igualá-las para "arrumar" faria todo
+    // mundo que tem Recepção passar a abrir no balcão.
     const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin", "plantoes"];
     const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
     // O segundo filtro é o da ORGANIZAÇÃO, e vem depois do papel: um hospital
@@ -666,10 +673,19 @@ export function DashboardClient({
             dizendo que ela existia noutro tamanho de janela. Área que some é
             área que o usuário conclui que o sistema não tem. */}
         <nav className="roleNav" aria-label="Áreas do sistema">
-          {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
+          {/* A ORDEM AQUI É A DO DIA DE TRABALHO, e não a do menu antigo: o
+              paciente entra pela Recepção, passa pelo Médico, o plantão vira
+              Escala, o dinheiro cai no Financeiro, e o Admin fica por último
+              porque é ajuste de casa e não rotina. É a mesma ordem do
+              tutorial — barra e tutorial discordando ensinariam dois caminhos.
+
+              ELA NÃO DECIDE ONDE O SISTEMA ABRE. Quem decide é o
+              `permissionOrder`, logo acima, pelo primeiro item — e lá o Médico
+              continua na frente de propósito: um anestesiologista que também
+              tem Recepção quer abrir na fila dele, não no balcão. As duas
+              ordens respondem perguntas diferentes e por isso são duas. */}
           {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
-          {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
-          {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
+          {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
           {/* O contador de trocas fica AQUI, no topo, e não só dentro da
               Escala. Um plantão oferecido que ninguém vê é o buraco chegando
               no dia da cirurgia — e quem está na Recepção ou no Financeiro
@@ -679,6 +695,8 @@ export function DashboardClient({
             Escala
             {trocasEsperando>0&&<b className="navAviso" title={`${trocasEsperando===1?"Um plantão oferecido espera":"Plantões oferecidos esperam"} a sua resposta`}>{trocasEsperando}</b>}
           </button>}
+          {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
+          {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
         </nav>
         {/* Sino e menu do usuário viajam JUNTOS, num item só.
             A barra é um grid de quatro colunas, e não um flex: acrescentar o

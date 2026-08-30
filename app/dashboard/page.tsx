@@ -83,13 +83,13 @@ export default async function DashboardPage({
   // que recebem paciente e faturam. Quem tem acesso clínico tem Escala:
   // recepção e financeiro não fazem plantão.
   //
-  // A ordem desta lista também decide em que área o sistema ABRE, pelo
-  // primeiro item. Médico continua na frente — mover a Escala para o fim não
-  // muda a tela de entrada de ninguém.
+  // A ordem desta lista decide em que área o sistema ABRE, pelo primeiro
+  // item. Médico continua na frente: quem também tem Recepção quer abrir na
+  // fila dele, não no balcão.
   //
-  // ATENÇÃO: esta lista tem uma gêmea em dashboard-client.tsx. Área nova
-  // acrescentada só aqui carrega os dados e não desenha o botão; só lá,
-  // desenha o botão e não carrega os dados. As duas precisam concordar.
+  // A BARRA DO TOPO, em dashboard-client, segue outra ordem — a do dia de
+  // trabalho, igual à do tutorial. Divergem de propósito; igualá-las para
+  // "arrumar" mudaria a tela de entrada de todo mundo.
   const permissionOrder: DashboardView[] = ["medico", "recepcao", "financeiro", "admin", "plantoes"];
   const assignedPermissions = Array.isArray(perfil.permissoes) ? perfil.permissoes : [];
   const hasLegacyFullAccess = ["admin", "owner"].includes(perfil.role) || assignedPermissions.includes("todos");
