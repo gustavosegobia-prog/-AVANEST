@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
-import { Turnstile } from "@/components/turnstile";
+import { useCaptcha } from "@/components/turnstile";
 import { Icone } from "@/components/icone";
 import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { ChatFlutuante } from "@/components/chat-flutuante";
@@ -332,8 +332,7 @@ export function DashboardClient({
   const [senhaBusy, setSenhaBusy] = useState(false);
   // A troca de senha confere a senha atual com um login de verdade, e por isso
   // também precisa do CAPTCHA quando ele estiver ligado no Supabase.
-  const [captchaSenha, setCaptchaSenha] = useState("");
-  const [tentativaSenha, setTentativaSenha] = useState(0);
+  const captchaSenha = useCaptcha();
   const [busy, setBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState("");
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
@@ -1099,7 +1098,7 @@ export function DashboardClient({
             // e o dono perderia o acesso sem nunca saber por quê.
             const {error:erroAtual}=await cliente.auth.signInWithPassword({
               email,password:senha.atual,
-              options:captchaSenha?{captchaToken:captchaSenha}:undefined,
+              options:captchaSenha.token?{captchaToken:captchaSenha.token}:undefined,
             });
             if(erroAtual){
               setSenhaBusy(false);
@@ -1110,7 +1109,7 @@ export function DashboardClient({
               setSenhaMsg(/captcha/i.test(erroAtual.message)
                 ?"A verificação de segurança falhou. Tente de novo em alguns segundos."
                 :"A senha atual não confere.");
-              setCaptchaSenha(""); setTentativaSenha(n=>n+1);
+              captchaSenha.reiniciar();
               return;
             }
             // A senha atual vai junto da nova, e não só na conferência acima: o
@@ -1140,8 +1139,8 @@ export function DashboardClient({
             {senhaMsg&&<p className={senhaMsg.startsWith("Senha alterada")?"financeSuccess":"clinicalError"} role="status">{senhaMsg}</p>}
             <div className="patientModalActions">
               <button type="button" className="outlineClinical" onClick={()=>setContaAberta(false)}>Fechar</button>
-              <Turnstile key={tentativaSenha} onToken={setCaptchaSenha}/>
-              <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
+              {captchaSenha.widget}
+              <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email||!captchaSenha.pronto}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
             </div>
           </form>
         </section>

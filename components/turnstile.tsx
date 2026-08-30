@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // CAPTCHA no login — Cloudflare Turnstile.
 //
@@ -106,4 +106,60 @@ export function Turnstile({ onToken }: { onToken: (token: string) => void }) {
 
   if (!CHAVE) return null;
   return <div className="avnCaptcha" ref={caixa} />;
+}
+
+/**
+ * Quanto esperar por um token antes de liberar o botão assim mesmo.
+ *
+ * Existe porque o contrário é pior. Se o script do Turnstile não carregar —
+ * bloqueador de anúncios, rede corporativa, Cloudflare fora do ar — e o botão
+ * ficasse preso para sempre, a pessoa não teria como entrar NUNCA, e a tela
+ * não diria por quê. Liberando, ela pelo menos tenta e lê o motivo real vindo
+ * do servidor.
+ */
+const ESPERA = 8000;
+
+/**
+ * O CAPTCHA inteiro, pronto para um formulário.
+ *
+ * Nasceu de um defeito real em produção: o token vale uma vez só, e depois de
+ * uma senha errada a segunda tentativa saía SEM token nenhum — porque o token
+ * novo ainda estava sendo gerado quando a pessoa clicou de novo. O servidor
+ * recusava, e a tela dizia "a verificação de segurança falhou" para quem tinha
+ * acabado de digitar a senha certa.
+ *
+ * A correção não é gerar o token mais rápido: é não deixar enviar sem ele.
+ * Por isso o `pronto` — o botão espera, e diz que está esperando.
+ *
+ * Fica num hook, e não repetido em cada formulário, porque são quatro telas
+ * (entrar, criar conta, recuperar senha, trocar senha) e a que ficasse de fora
+ * seria justamente a que ninguém testa.
+ */
+export function useCaptcha() {
+  const [token, setToken] = useState("");
+  const [tentativa, setTentativa] = useState(0);
+  // Guarda QUAL tentativa desistiu de esperar, em vez de um sim/não que
+  // precisaria ser zerado no começo do efeito. Zerar ali é escrever estado
+  // durante a renderização, e o React reclama com razão: dispara um render em
+  // cascata a cada montagem do quadro.
+  const [desistiuNa, setDesistiu] = useState(-1);
+
+  useEffect(() => {
+    if (!CHAVE) return;
+    const relogio = setTimeout(() => setDesistiu(tentativa), ESPERA);
+    return () => clearTimeout(relogio);
+  }, [tentativa]);
+
+  const cansouDeEsperar = desistiuNa === tentativa;
+
+  return {
+    /** O token a mandar junto da chamada de auth. Vazio = não há. */
+    token,
+    /** Pode enviar? Sem CAPTCHA configurado, sempre. */
+    pronto: !CHAVE || Boolean(token) || cansouDeEsperar,
+    /** O quadro. Já vem com a chave que o remonta a cada tentativa. */
+    widget: <Turnstile key={tentativa} onToken={setToken} />,
+    /** Chame depois de CADA erro: gasta o token velho e pede outro. */
+    reiniciar: () => { setToken(""); setTentativa((n) => n + 1); },
+  };
 }

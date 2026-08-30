@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Turnstile } from "@/components/turnstile";
+import { useCaptcha } from "@/components/turnstile";
 import Link from "next/link";
 
 export function LoginForm({ passwordChanged = false, convite = "", plano = "" }: { passwordChanged?: boolean; convite?: string; plano?: string }) {
@@ -11,11 +11,11 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [captcha, setCaptcha] = useState("");
-  // Cada erro remonta o quadro do CAPTCHA. O token vale UMA vez: sem isto, a
-  // pessoa que errou a senha e corrigiu levaria "e-mail ou senha inválidos"
-  // pela segunda vez — agora por causa do token gasto, com a senha certa.
-  const [tentativa, setTentativa] = useState(0);
+  // O token vale UMA vez. Depois de uma senha errada, a segunda tentativa
+  // precisa de um token NOVO — e o botão espera por ele em vez de enviar sem,
+  // que era o que fazia a tela dizer "a verificação de segurança falhou" para
+  // quem tinha acabado de digitar a senha certa.
+  const captcha = useCaptcha();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,7 +26,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
     const { data: entrada, error: signInError } = await supabase.auth.signInWithPassword({
       email: String(form.get("email") ?? ""),
       password: String(form.get("password") ?? ""),
-      options: captcha ? { captchaToken: captcha } : undefined,
+      options: captcha.token ? { captchaToken: captcha.token } : undefined,
     });
     if (signInError) {
       // A recusa do CAPTCHA é dita com todas as letras. Escondê-la atrás de
@@ -34,8 +34,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
       setError(/captcha/i.test(signInError.message)
         ? "A verificação de segurança falhou. Tente de novo em alguns segundos."
         : "E-mail ou senha inválidos.");
-      setCaptcha("");
-      setTentativa((n) => n + 1);
+      captcha.reiniciar();
       setLoading(false);
       return;
     }
@@ -83,11 +82,11 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
           {showPassword ? "Ocultar" : "Mostrar"}
         </button>
       </div>
-      <Turnstile key={tentativa} onToken={setCaptcha} />
+      {captcha.widget}
       {error && <p className="loginError" role="alert">{error}</p>}
       <Link className="avnForgotPassword" href="/recuperar-senha">Esqueci minha senha</Link>
-      <button className="avnLoginSubmit" type="submit" disabled={loading}>
-        {loading ? "Entrando..." : "Entrar"}
+      <button className="avnLoginSubmit" type="submit" disabled={loading || !captcha.pronto}>
+        {loading ? "Entrando..." : !captcha.pronto ? "Verificando segurança..." : "Entrar"}
       </button>
     </form>
   );

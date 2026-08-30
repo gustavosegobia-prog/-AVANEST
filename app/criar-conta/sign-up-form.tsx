@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { Turnstile } from "@/components/turnstile";
+import { useCaptcha } from "@/components/turnstile";
 
 // Dois modos. Com token, o e-mail vem do convite e não pode ser trocado — a
 // conta precisa nascer no endereço convidado. Com plano, o visitante digita o
@@ -16,8 +16,7 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
   const [confirmeEmail, setConfirmeEmail] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [aceite, setAceite] = useState(false);
-  const [captcha, setCaptcha] = useState("");
-  const [tentativa, setTentativa] = useState(0);
+  const captcha = useCaptcha();
   const porConvite = Boolean(token);
   const destino = porConvite
     ? `/convite/${encodeURIComponent(token)}`
@@ -42,15 +41,14 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
       password: senha,
       options: {
         emailRedirectTo: `${window.location.origin}${destino}`,
-        ...(captcha ? { captchaToken: captcha } : {}),
+        ...(captcha.token ? { captchaToken: captcha.token } : {}),
       },
     });
     if (error) {
       const texto = error.message.toLowerCase();
       // O token vale uma vez. Sem zerar aqui, a segunda tentativa falharia
       // pelo CAPTCHA com a mensagem do erro anterior na tela.
-      setCaptcha("");
-      setTentativa((n) => n + 1);
+      captcha.reiniciar();
       setErro(
         texto.includes("captcha")
           ? "A verificação de segurança falhou. Tente de novo em alguns segundos."
@@ -122,8 +120,8 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
           <Link href="/privacidade" target="_blank">Política de Privacidade</Link>.
         </span>
       </label>
-      <Turnstile key={tentativa} onToken={setCaptcha} />
-      <button className="avnLoginSubmit" type="submit" disabled={busy || !aceite}>
+      {captcha.widget}
+      <button className="avnLoginSubmit" type="submit" disabled={busy || !aceite || !captcha.pronto}>
         {busy ? "Criando..." : "Criar conta e continuar"}
       </button>
       <Link className="avnLoginCancel" href={porConvite
