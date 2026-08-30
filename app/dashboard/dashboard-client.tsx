@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
+import { Turnstile } from "@/components/turnstile";
 import { Icone } from "@/components/icone";
 import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 import { ChatFlutuante } from "@/components/chat-flutuante";
@@ -329,6 +330,10 @@ export function DashboardClient({
   const [senha, setSenha] = useState({atual:"",nova:"",confirma:""});
   const [senhaMsg, setSenhaMsg] = useState("");
   const [senhaBusy, setSenhaBusy] = useState(false);
+  // A troca de senha confere a senha atual com um login de verdade, e por isso
+  // também precisa do CAPTCHA quando ele estiver ligado no Supabase.
+  const [captchaSenha, setCaptchaSenha] = useState("");
+  const [tentativaSenha, setTentativaSenha] = useState(0);
   const [busy, setBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState("");
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
@@ -1092,8 +1097,22 @@ export function DashboardClient({
             // Confere a senha atual antes de trocar. Sem isso, quem sentasse
             // numa tela destravada assumiria a conta alheia em dois cliques —
             // e o dono perderia o acesso sem nunca saber por quê.
-            const {error:erroAtual}=await cliente.auth.signInWithPassword({email,password:senha.atual});
-            if(erroAtual){setSenhaBusy(false);setSenhaMsg("A senha atual não confere.");return}
+            const {error:erroAtual}=await cliente.auth.signInWithPassword({
+              email,password:senha.atual,
+              options:captchaSenha?{captchaToken:captchaSenha}:undefined,
+            });
+            if(erroAtual){
+              setSenhaBusy(false);
+              // A conferência acima é um login de verdade, então o CAPTCHA
+              // do Supabase também vale aqui. Sem distinguir, o erro diria
+              // "a senha atual não confere" — e mandaria a pessoa procurar
+              // defeito numa senha que está certa.
+              setSenhaMsg(/captcha/i.test(erroAtual.message)
+                ?"A verificação de segurança falhou. Tente de novo em alguns segundos."
+                :"A senha atual não confere.");
+              setCaptchaSenha(""); setTentativaSenha(n=>n+1);
+              return;
+            }
             // A senha atual vai junto da nova, e não só na conferência acima: o
             // Supabase deste projeto exige as duas na mesma chamada, e sem ela
             // recusava a troca com uma mensagem em inglês.
@@ -1121,6 +1140,7 @@ export function DashboardClient({
             {senhaMsg&&<p className={senhaMsg.startsWith("Senha alterada")?"financeSuccess":"clinicalError"} role="status">{senhaMsg}</p>}
             <div className="patientModalActions">
               <button type="button" className="outlineClinical" onClick={()=>setContaAberta(false)}>Fechar</button>
+              <Turnstile key={tentativaSenha} onToken={setCaptchaSenha}/>
               <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
             </div>
           </form>

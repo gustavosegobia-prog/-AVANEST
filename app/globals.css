@@ -1916,6 +1916,12 @@ button:disabled{cursor:not-allowed}
 .aceiteTermos input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--cor-marca);cursor:pointer}
 .aceiteTermos a{color:var(--cor-marca);font-weight:650}
 
+/* O quadro do CAPTCHA. Em `interaction-only` ele fica com altura zero na
+   imensa maioria das entradas — só ocupa espaço quando de fato desafia. Por
+   isso a margem é do próprio quadro, e não uma reservada aqui: espaço vazio
+   guardado para algo que quase nunca aparece deixaria um buraco no formulário. */
+.avnCaptcha:not(:empty){margin:var(--esp-3) 0 0;display:flex;justify-content:center}
+
 /* Conferência do e-mail da assinatura: manutenção, não decisão. Separada por
    uma linha do bloco de cancelamento para não competir com ele. */
 .assinaturaTeste{margin:var(--esp-4) 0 0;padding:var(--esp-4) 0 0;border-top:1px solid var(--cor-borda)}

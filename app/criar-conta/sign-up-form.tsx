@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { Turnstile } from "@/components/turnstile";
 
 // Dois modos. Com token, o e-mail vem do convite e não pode ser trocado — a
 // conta precisa nascer no endereço convidado. Com plano, o visitante digita o
@@ -15,6 +16,8 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
   const [confirmeEmail, setConfirmeEmail] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [aceite, setAceite] = useState(false);
+  const [captcha, setCaptcha] = useState("");
+  const [tentativa, setTentativa] = useState(0);
   const porConvite = Boolean(token);
   const destino = porConvite
     ? `/convite/${encodeURIComponent(token)}`
@@ -37,12 +40,21 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
     const { data, error } = await supabase.auth.signUp({
       email: endereco,
       password: senha,
-      options: { emailRedirectTo: `${window.location.origin}${destino}` },
+      options: {
+        emailRedirectTo: `${window.location.origin}${destino}`,
+        ...(captcha ? { captchaToken: captcha } : {}),
+      },
     });
     if (error) {
       const texto = error.message.toLowerCase();
+      // O token vale uma vez. Sem zerar aqui, a segunda tentativa falharia
+      // pelo CAPTCHA com a mensagem do erro anterior na tela.
+      setCaptcha("");
+      setTentativa((n) => n + 1);
       setErro(
-        texto.includes("already")
+        texto.includes("captcha")
+          ? "A verificação de segurança falhou. Tente de novo em alguns segundos."
+          : texto.includes("already")
           ? "Já existe uma conta com este e-mail. Use a opção de entrar."
           // O cadastro é desligado no painel do Supabase, não no código; sem
           // esta mensagem a pessoa recebe "Signups not allowed" em inglês.
@@ -110,6 +122,7 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
           <Link href="/privacidade" target="_blank">Política de Privacidade</Link>.
         </span>
       </label>
+      <Turnstile key={tentativa} onToken={setCaptcha} />
       <button className="avnLoginSubmit" type="submit" disabled={busy || !aceite}>
         {busy ? "Criando..." : "Criar conta e continuar"}
       </button>
