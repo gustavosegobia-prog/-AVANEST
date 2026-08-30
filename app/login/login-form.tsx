@@ -11,6 +11,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [tentou, setTentou] = useState(false);
   // O token vale UMA vez. Depois de uma senha errada, a segunda tentativa
   // precisa de um token NOVO — e o botão espera por ele em vez de enviar sem,
   // que era o que fazia a tela dizer "a verificação de segurança falhou" para
@@ -20,6 +21,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
+    setTentou(true);
     setError("");
     const form = new FormData(event.currentTarget);
     const supabase = createClient();
@@ -89,12 +91,16 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
         </button>
       </div>
       {captcha.widget}
-      {/* A recusa do Turnstile aparece SEMPRE que existe, e não só quando não
-          há outro erro. Escondê-la atrás de "e-mail ou senha inválidos" foi um
-          engano: são causas independentes, as duas podem estar acontecendo ao
-          mesmo tempo, e a do CAPTCHA é a única que a pessoa não tem como
-          adivinhar sozinha. */}
-      {captcha.recusa && (
+      {/* A recusa do Turnstile só aparece DEPOIS de uma tentativa de entrar.
+          Antes disso é alarme falso: o navegador não tem como saber se o
+          servidor exige CAPTCHA, e com ele desligado a pessoa entraria sem
+          problema nenhum — mas leria um aviso vermelho dizendo que a
+          verificação de segurança falhou. Assustar quem vai conseguir entrar é
+          pior do que não avisar.
+
+          Depois de falhar, a informação vira a mais útil da tela: é a única
+          causa que ninguém adivinha sozinho. */}
+      {tentou && captcha.recusa && (
         <p className="loginError" role="alert">Verificação de segurança: {captcha.recusa}.</p>
       )}
       {error && <p className="loginError" role="alert">{error}</p>}
