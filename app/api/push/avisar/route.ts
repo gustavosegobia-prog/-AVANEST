@@ -5,6 +5,7 @@ import { validateMutationRequest } from "@/lib/request-security";
 import { chavesDoAmbiente, enviar, type Inscricao, type Notificacao } from "@/lib/push";
 import { nomeCurto } from "@/lib/escala";
 import { ultimoDiaDoMes } from "@/lib/data-local";
+import { ondeEQuando, quantosPlantoes } from "@/lib/aviso-plantao";
 
 // Toca o telefone de quem precisa saber.
 //
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     // aviso precisa dizer ONDE — "o plantão de 05/09" sem hospital não ajuda
     // quem cobre três casas na mesma semana.
     const { data: plantao } = await supabase
-      .from("plantoes").select("data, hora_inicio, local_texto, local_id")
+      .from("plantoes").select("data, hora_inicio, hora_fim, local_texto, local_id")
       .eq("id", troca.plantao_id).maybeSingle();
     let nomeDoLocal = plantao?.local_texto ?? "";
     if (!nomeDoLocal && plantao?.local_id) {
@@ -77,16 +78,22 @@ export async function POST(request: NextRequest) {
         .from("locais_atendimento").select("nome_fantasia, nome").eq("id", plantao.local_id).maybeSingle();
       nomeDoLocal = local?.nome_fantasia || local?.nome || "";
     }
-    const quando = plantao?.data
-      ? `${plantao.data.split("-").reverse().slice(0, 2).join("/")}${plantao.hora_inicio ? ` às ${String(plantao.hora_inicio).slice(0, 5)}` : ""}`
-      : "";
-    const onde = nomeDoLocal ? ` no ${nomeDoLocal}` : "";
+    // "Quarta, 02/09 · 07:00–19:00 · Santa Casa" — ver lib/aviso-plantao.
+    const linhaDoPlantao = ondeEQuando(plantao ?? {}, nomeDoLocal);
     const eu = nomeCurto(euPerfil.nome ?? "");
 
     if (tipo === "troca") {
+      // QUEM e O QUÊ no título; QUANDO e ONDE no corpo.
+      //
+      // Antes o título dizia "Convite de plantão" e o corpo repetia "convidou
+      // você para o plantão" — metade da linha visível gasta dizendo duas
+      // vezes a mesma coisa. Na tela bloqueada cabem duas linhas: o que estiver
+      // depois do corte não existe.
       const notificacao: Notificacao = {
-        titulo: troca.destinatario_id ? "Convite de plantão" : "Plantão oferecido",
-        corpo: `${eu} ${troca.destinatario_id ? "convidou você para" : "ofereceu"} o plantão de ${quando}${onde}.`,
+        titulo: troca.destinatario_id
+          ? `${eu} convidou você para um plantão`
+          : `${eu} ofereceu um plantão`,
+        corpo: linhaDoPlantao || "Toque para ver os detalhes.",
         url: "/dashboard?area=plantoes",
         tag: `troca-${troca.id}`,
       };
@@ -104,8 +111,8 @@ export async function POST(request: NextRequest) {
       alvos.push({
         perfilId: troca.solicitante_id,
         notificacao: {
-          titulo: troca.status === "aceita" ? "Plantão assumido" : "Plantão recusado",
-          corpo: `${eu} ${troca.status === "aceita" ? "assumiu" : "recusou"} o seu plantão de ${quando}${onde}.`,
+          titulo: `${eu} ${troca.status === "aceita" ? "assumiu" : "recusou"} o seu plantão`,
+          corpo: linhaDoPlantao || "Toque para ver os detalhes.",
           url: "/dashboard?area=plantoes",
           tag: `troca-${troca.id}`,
         },
@@ -134,16 +141,30 @@ export async function POST(request: NextRequest) {
     }
     const nomeDoMes = new Date(`${mes}-02T12:00:00Z`)
       .toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
-    const notificacao: Notificacao = {
-      titulo: "Escala publicada",
-      corpo: `A escala de ${nomeDoMes} está no ar. Confira os seus plantões.`,
-      url: "/dashboard?area=plantoes",
-      // Uma tag por mês: republicar a escala substitui o aviso anterior em vez
-      // de empilhar mais um.
-      tag: `escala-${mes}`,
-    };
-    for (const p of new Set((plantoes ?? []).map((x) => x.perfil_id))) {
-      if (p && p !== euPerfil.id) alvos.push({ perfilId: p, notificacao });
+
+    // UMA MENSAGEM POR PESSOA, com o número dela.
+    //
+    // Antes era a mesma frase para todo mundo — "a escala está no ar, confira
+    // os seus plantões" —, que manda abrir o sistema para descobrir a única
+    // coisa que a pessoa quer saber. Quem tem doze plantões e quem tem um
+    // recebiam o mesmo aviso, e os dois precisavam abrir para saber qual era.
+    const quantos = new Map<string, number>();
+    for (const linha of plantoes ?? []) {
+      if (linha.perfil_id) quantos.set(linha.perfil_id, (quantos.get(linha.perfil_id) ?? 0) + 1);
+    }
+    for (const [perfilId, total] of quantos) {
+      if (perfilId === euPerfil.id) continue;
+      alvos.push({
+        perfilId,
+        notificacao: {
+          titulo: `Escala de ${nomeDoMes} publicada`,
+          corpo: `${quantosPlantoes(total, mes)} Toque para conferir.`,
+          url: "/dashboard?area=plantoes",
+          // Uma tag por mês: republicar a escala substitui o aviso anterior em
+          // vez de empilhar mais um.
+          tag: `escala-${mes}`,
+        },
+      });
     }
   } else {
     return NextResponse.json({ error: "Tipo desconhecido." }, { status: 400 });
