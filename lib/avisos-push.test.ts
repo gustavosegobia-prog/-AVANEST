@@ -9,6 +9,16 @@ import { readFileSync } from "node:fs";
 // que esta correção veio eliminar.
 
 const rota = readFileSync("app/api/push/avisar/route.ts", "utf8");
+/**
+ * A rota SEM os comentários.
+ *
+ * Necessário porque os comentários deste projeto citam o código errado para
+ * explicar por que ele era errado — e um teste que procura o padrão proibido
+ * no arquivo inteiro reprova justamente a documentação da correção.
+ */
+const rotaSemComentarios = rota
+  .split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*"))
+  .join("\n");
 const tela = readFileSync("components/plantoes.tsx", "utf8");
 
 /**
@@ -54,5 +64,24 @@ describe("quando nenhum aviso sai, a tela sabe explicar", () => {
     const semChave = tela.slice(tela.indexOf('"sem-chave"'), tela.indexOf('"sem-alvo"'));
     assert.match(semChave, /servidor|configura/i,
       "quem lê precisa saber que o problema é do sistema, não dos colegas");
+  });
+});
+
+describe("o fim do mês na busca de quem avisar", () => {
+  it("NUNCA usa 31 fixo", () => {
+    // "2026-09-31" não existe. O Postgres recusa a comparação inteira, a
+    // consulta volta vazia, e o sistema conclui que não há ninguém a avisar —
+    // em abril, junho, setembro, novembro e fevereiro. Cinco meses dos doze,
+    // em silêncio, culpando a equipe pela ausência de avisos.
+    assert.equal(/\$\{mes\}-31/.test(rotaSemComentarios), false,
+      "o fim do mês precisa vir do calendário, não de um 31 fixo");
+    assert.ok(rota.includes("ultimoDiaDoMes"), "use o helper que já existe em lib/data-local");
+  });
+
+  it("erro de consulta não vira 'ninguém para avisar'", () => {
+    // Confundir os dois foi o que escondeu o defeito acima: a consulta falhava
+    // e a tela dizia que a equipe não tinha ligado as notificações.
+    assert.ok(rota.includes("erroPlantoes"), "o erro da consulta precisa ser lido");
+    assert.ok(rota.includes("falha-consulta"), "e ter motivo próprio");
   });
 });

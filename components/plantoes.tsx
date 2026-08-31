@@ -774,6 +774,9 @@ const EXPLICA_ZERO: Record<string, string> = {
   "sem-aparelho":
     "A escala tem gente, mas nenhum deles ligou as notificações no aparelho — "
     + "o aviso não tinha para onde ir.",
+  "falha-consulta":
+    "Não consegui ler a escala do mês para saber quem avisar. Tente de novo; "
+    + "se repetir, me avise.",
   desconhecido:
     "O aviso não saiu e o servidor não disse por quê. Me avise se repetir.",
 };

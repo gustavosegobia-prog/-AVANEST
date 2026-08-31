@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { validateMutationRequest } from "@/lib/request-security";
 import { chavesDoAmbiente, enviar, type Inscricao, type Notificacao } from "@/lib/push";
 import { nomeCurto } from "@/lib/escala";
+import { ultimoDiaDoMes } from "@/lib/data-local";
 
 // Toca o telefone de quem precisa saber.
 //
@@ -115,9 +116,22 @@ export async function POST(request: NextRequest) {
     // Quem tem plantão no mês recebe. Ninguém mais: avisar a equipe inteira de
     // uma escala em que a pessoa não entrou é o tipo de aviso que ensina a
     // ignorar os próximos.
-    const { data: plantoes } = await supabase
+    // O FIM DO MÊS VEM DO CALENDÁRIO, e não de um "31" fixo.
+    //
+    // Era `${mes}-31`, e "2026-09-31" não existe: o Postgres recusa a
+    // comparação inteira, a consulta volta vazia, e o sistema conclui que não
+    // há ninguém a avisar. Quebrava em abril, junho, setembro, novembro e
+    // fevereiro — cinco meses dos doze —, sempre em silêncio e sempre culpando
+    // a equipe pela ausência de avisos.
+    const { data: plantoes, error: erroPlantoes } = await supabase
       .from("plantoes").select("perfil_id")
-      .gte("data", `${mes}-01`).lte("data", `${mes}-31`).neq("situacao", "cancelado");
+      .gte("data", `${mes}-01`).lte("data", ultimoDiaDoMes(mes)).neq("situacao", "cancelado");
+    // Erro de consulta não é "ninguém para avisar". Confundir os dois foi
+    // exatamente o que escondeu o defeito acima por semanas.
+    if (erroPlantoes) {
+      console.error("[api/push/avisar] plantões do mês", erroPlantoes);
+      return NextResponse.json({ ok: true, enviadas: 0, motivo: "falha-consulta" });
+    }
     const nomeDoMes = new Date(`${mes}-02T12:00:00Z`)
       .toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
     const notificacao: Notificacao = {
