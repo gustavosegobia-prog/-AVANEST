@@ -12,7 +12,7 @@ import { ChatFlutuante } from "@/components/chat-flutuante";
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
 import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
 import { iniciais } from "@/lib/escala";
-import type { Aviso } from "@/lib/avisos";
+import { DIAS_ADIADO, chaveDoAviso, type Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { GraficosFinanceiro } from "@/components/graficos-financeiro";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
@@ -746,6 +746,22 @@ export function DashboardClient({
             // O token recarrega a Escala de qualquer forma, para quando ela for
             // aberta — e imediatamente, se já for a tela em que a pessoa está.
             setAberturaDaEscala({ aba: "trocas", token: Date.now() });
+          }}
+          // ADIAR NÃO É APAGAR, e é por isso que grava.
+          //
+          // O aviso é derivado da pendência: um botão de descartar voltaria
+          // atrás sozinho no recarregamento seguinte. Aqui a decisão vira uma
+          // linha em `avisos_adiados` com a data de volta — a pendência
+          // continua, o lembrete cala pelo prazo, e reaparece.
+          onAdiar={async (aviso) => {
+            const volta = somarDias(hoje(), DIAS_ADIADO);
+            const { error } = await createClient().from("avisos_adiados").upsert({
+              perfil_id: perfil.id,
+              chave: chaveDoAviso(aviso),
+              ate: volta,
+            });
+            if (error) { window.alert(`Não consegui adiar: ${error.message}`); return; }
+            router.refresh();
           }}
           onIr={(aviso) => {
             // O clique tem de RESOLVER, não só informar. Um aviso que abre uma

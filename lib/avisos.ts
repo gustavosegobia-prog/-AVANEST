@@ -426,3 +426,72 @@ export function escalaPublicada(entrada: {
 export function quantosPedemResposta(avisos: Aviso[]): number {
   return avisos.filter((a) => a.acao).length;
 }
+
+// ===========================================================================
+// Adiar
+// ===========================================================================
+// O sino não guarda notificação: cada aviso é derivado do que é verdade agora.
+// Isso torna "apagar" impossível de fazer honestamente — o aviso voltaria no
+// recarregamento seguinte, com a pendência intacta.
+//
+// O que dá para prometer é ADIAR: "já sei dos plantões de julho, me lembre
+// daqui a uma semana". A pendência continua, o lembrete cala pelo prazo, e
+// volta. É uma decisão, e decisão se guarda.
+
+/** Quantos dias um aviso adiado fica calado. */
+export const DIAS_ADIADO = 7;
+
+/**
+ * O que pode ser adiado.
+ *
+ * REGRA DE PRODUTO, e a exclusão que importa é a primeira: pedido de troca
+ * NUNCA se adia. Do outro lado há um colega esperando resposta para saber se
+ * consegue faltar — silenciar o pedido o deixaria no vácuo sem que ele
+ * soubesse. Para esse caso existem Assumir e Recusar, no próprio sino.
+ *
+ * Resposta do suporte também fica de fora: quem abriu o chamado quer a
+ * resposta, e adiar a própria pergunta não faz sentido.
+ *
+ * Sobra o que se repete todo dia e que ninguém mais está esperando — os
+ * lembretes de dinheiro e o de confirmação. São exatamente os que incomodam,
+ * porque não se resolvem num clique.
+ */
+const ADIAVEIS = new Set<TipoDeAviso>([
+  "a_faturar", "a_receber", "plantao_a_receber", "a_confirmar",
+]);
+
+export const podeAdiar = (aviso: Aviso) => ADIAVEIS.has(aviso.tipo);
+
+/**
+ * A chave do adiamento.
+ *
+ * `tipo:id`, e o tipo entra de propósito: os ids são gerados por quem monta o
+ * aviso e nada garante que não se repitam entre tipos — "plantao-2026-07"
+ * poderia nascer em dois lugares diferentes, e adiar um calaria o outro.
+ */
+export const chaveDoAviso = (aviso: Aviso) => `${aviso.tipo}:${aviso.id}`;
+
+/**
+ * Tira da lista o que está adiado e ainda dentro do prazo.
+ *
+ * `hoje` entra como parâmetro em vez de ser lido do relógio: a data do sistema
+ * é a de São Paulo, e uma comparação feita com o relógio do servidor devolveria
+ * o aviso um dia antes para quem estivesse do outro lado do fuso.
+ */
+export function semOsAdiados(
+  avisos: Aviso[],
+  adiados: ReadonlyMap<string, string>,
+  hoje: string,
+): Aviso[] {
+  return avisos.filter((a) => {
+    const ate = adiados.get(chaveDoAviso(a));
+    // Sem adiamento, ou já vencido: o aviso volta. `ate` é o último dia
+    // ESCONDIDO, então ele reaparece no dia seguinte.
+    return !ate || ate < hoje;
+  });
+}
+
+/** "Volta em 08/09" — o que a tela diz depois de adiar. */
+export function quandoVolta(ate: string): string {
+  return `Volta em ${ate.slice(0, 10).split("-").reverse().slice(0, 2).join("/")}`;
+}

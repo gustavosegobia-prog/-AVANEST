@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
 import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/local-ativo";
-import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos } from "@/lib/avisos";
+import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, semOsAdiados } from "@/lib/avisos";
 import { nomeCurto } from "@/lib/escala";
 import { hoje as hojeNoBrasil, mesAtual, somarMeses } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao } from "@/lib/modulos";
@@ -156,6 +156,7 @@ export default async function DashboardPage({
     { data: leituraDoChat },
     { data: chamadosDoAviso },
     { data: avisosVistos },
+    { data: adiadosDoAviso },
     { data: producaoDoAviso },
     { data: plantoesDoDinheiro },
     { data: plantoesDaReceita },
@@ -234,6 +235,11 @@ export default async function DashboardPage({
       .select("id,assunto,status,ultima_em,visto_autor_em")
       .eq("aberto_por", user.id).order("ultima_em", { ascending: false }).limit(20),
     supabase.from("avisos_leitura").select("lido_em").eq("perfil_id", user.id).maybeSingle(),
+    // Os avisos que a pessoa mandou voltar depois. Só os que ainda estão no
+    // prazo: o filtro por data aqui evita trazer anos de adiamentos vencidos
+    // para a memória a cada carregamento do painel.
+    supabase.from("avisos_adiados").select("chave, ate")
+      .eq("perfil_id", user.id).gte("ate", hoje),
 
     // Os lembretes de dinheiro saem daqui: o que você anestesiou e ainda não
     // cobrou, o que cobrou e não recebeu, o plantão que trabalhou e não foi
@@ -334,6 +340,16 @@ export default async function DashboardPage({
     hoje,
   })).sort((a, b) => b.quando.localeCompare(a.quando));
 
+  // O que a pessoa mandou voltar depois sai da lista aqui, no FIM — depois de
+  // montado tudo, e não dentro de cada montador. Espalhar o filtro por cinco
+  // funções faria a sexta nascer sem ele, e o adiamento passaria a funcionar em
+  // alguns avisos e não em outros, o que é pior que não existir.
+  const avisosVisiveis = semOsAdiados(
+    avisos,
+    new Map((adiadosDoAviso ?? []).map((a) => [a.chave as string, a.ate as string])),
+    hoje,
+  );
+
   return (
     <DashboardClient
       perfil={perfil}
@@ -352,7 +368,7 @@ export default async function DashboardPage({
       pagamentos={pagamentos ?? []}
       perfis={perfis ?? []}
       trocasEsperando={trocasEsperando ?? 0}
-      avisos={avisos}
+      avisos={avisosVisiveis}
       auditoria={auditoria ?? []}
       periodos={periodos ?? []}
       convenioValores={convenioValores ?? []}

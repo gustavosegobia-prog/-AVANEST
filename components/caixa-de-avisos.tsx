@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { quantosPedemResposta, type Aviso } from "@/lib/avisos";
+import { DIAS_ADIADO, chaveDoAviso, podeAdiar, quantosPedemResposta, type Aviso } from "@/lib/avisos";
 import { Icone } from "@/components/icone";
 
 // A caixa de avisos: o sino da barra do topo.
@@ -40,6 +40,9 @@ const ICONE = {
  * "28/07" ao lado de "pacientes de julho sem cobrança" só faria a pessoa
  * procurar que evento foi aquele.
  */
+/** O quanto o dedo precisa andar para o adiar valer. */
+const LIMITE_ARRASTO = 90;
+
 const SEM_RELOGIO = new Set(["a_faturar", "a_receber", "plantao_a_receber", "a_confirmar"]);
 
 function quandoFoi(iso: string, agora = Date.now()): string {
@@ -56,7 +59,7 @@ function quandoFoi(iso: string, agora = Date.now()): string {
 }
 
 export function CaixaDeAvisos({
-  avisos, onIr, onResponderTroca,
+  avisos, onIr, onResponderTroca, onAdiar,
 }: {
   avisos: Aviso[];
   /** Leva para a área do aviso. O clique tem de RESOLVER, não só informar. */
@@ -73,11 +76,28 @@ export function CaixaDeAvisos({
    * aba de Trocas.
    */
   onResponderTroca?: (trocaId: string, acao: "aceitar_troca" | "recusar_troca") => Promise<void>;
+  /**
+   * Adiar o lembrete por alguns dias.
+   *
+   * NÃO é apagar, e a diferença não é filosófica: o aviso é derivado da
+   * pendência, então apagá-lo faria voltar no recarregamento seguinte. Adiar
+   * grava a decisão — a pendência continua, o lembrete cala pelo prazo, e volta.
+   */
+  onAdiar?: (aviso: Aviso) => Promise<void>;
 }) {
   const [aberta, setAberta] = useState(false);
   const [lidos, setLidos] = useState(false);
   /** Qual troca está sendo respondida agora, para travar os dois botões dela. */
   const [respondendo, setRespondendo] = useState("");
+  /**
+   * O quanto cada aviso foi arrastado para a esquerda, em pixels.
+   *
+   * Só o toque arrasta. No computador não existe o gesto, e por isso há também
+   * um botão — recurso que só funciona no celular é recurso que metade da
+   * equipe nunca descobre.
+   */
+  const [arrasto, setArrasto] = useState<Record<string, number>>({});
+  const inicioDoToque = useRef<Record<string, number>>({});
   const caixa = useRef<HTMLDivElement | null>(null);
 
   const pedemResposta = quantosPedemResposta(avisos);
@@ -149,7 +169,43 @@ export function CaixaDeAvisos({
                a caixa está funcionando ou se ninguém mexeu em nada. */
             ? <p className="avisosVazio">Nada esperando você. Aparecem aqui: a escala do mês quando ela entra, plantão oferecido por um colega, resposta do suporte, mensagem da equipe, e o que ficou para trás no faturamento e no recebimento.</p>
             : avisos.map((a) => (
-              <div key={`${a.tipo}-${a.id}`} className={`avisoItem${a.acao ? " pede" : ""}`}>
+              <div
+                key={`${a.tipo}-${a.id}`}
+                className={`avisoItem${a.acao ? " pede" : ""}${podeAdiar(a) && onAdiar ? " adiavel" : ""}`}
+                style={arrasto[chaveDoAviso(a)]
+                  ? { transform: `translateX(-${arrasto[chaveDoAviso(a)]}px)` }
+                  : undefined}
+                // O arrasto só existe onde o dedo existe. `passive` fica no
+                // padrão: não chamamos preventDefault, então a rolagem da lista
+                // continua funcionando enquanto o dedo se move — arrastar um
+                // aviso não pode prender a lista inteira.
+                onTouchStart={podeAdiar(a) && onAdiar
+                  ? (e) => { inicioDoToque.current[chaveDoAviso(a)] = e.touches[0].clientX; }
+                  : undefined}
+                onTouchMove={podeAdiar(a) && onAdiar
+                  ? (e) => {
+                      const de = inicioDoToque.current[chaveDoAviso(a)];
+                      if (de === undefined) return;
+                      // Só para a esquerda, e no máximo o limite: puxar para a
+                      // direita não significa nada aqui, e deixar o item voar
+                      // para fora da caixa faria o gesto parecer um erro.
+                      const andou = Math.min(Math.max(de - e.touches[0].clientX, 0), LIMITE_ARRASTO);
+                      setArrasto((antes) => ({ ...antes, [chaveDoAviso(a)]: andou }));
+                    }
+                  : undefined}
+                onTouchEnd={podeAdiar(a) && onAdiar
+                  ? async () => {
+                      const chave = chaveDoAviso(a);
+                      const andou = arrasto[chave] ?? 0;
+                      delete inicioDoToque.current[chave];
+                      setArrasto((antes) => ({ ...antes, [chave]: 0 }));
+                      // Passou do meio do caminho, adia. Aquém disso volta ao
+                      // lugar — arrastar dois dedos sem querer não pode sumir
+                      // com um lembrete de dinheiro.
+                      if (andou >= LIMITE_ARRASTO * 0.6) await onAdiar(a);
+                    }
+                  : undefined}
+              >
                 <button
                   type="button" role="menuitem" className="avisoAbrir"
                   onClick={() => { setAberta(false); onIr(a); }}
@@ -165,6 +221,17 @@ export function CaixaDeAvisos({
                     confirmação pedem uma tela — marcar catorze plantões como
                     confirmados não cabe num menu suspenso, e um botão que abre
                     outra coisa seria pior do que o item inteiro levar para lá. */}
+                {/* O mesmo adiar, para quem não tem dedo na tela. Um recurso
+                    que só funciona no celular é um recurso que metade da equipe
+                    nunca descobre. */}
+                {podeAdiar(a) && onAdiar && (
+                  <button
+                    type="button" className="avisoAdiar"
+                    title={`Adiar por ${DIAS_ADIADO} dias`}
+                    aria-label={`Adiar "${a.titulo}" por ${DIAS_ADIADO} dias`}
+                    onClick={() => void onAdiar(a)}
+                  >Adiar {DIAS_ADIADO} dias</button>
+                )}
                 {a.tipo === "troca_pedida" && onResponderTroca && (
                   <div className="avisoAcoes">
                     <button

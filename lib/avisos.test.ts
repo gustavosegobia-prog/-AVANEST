@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, quantosPedemResposta, type EntradaDeAvisos, type TrocaParaAviso } from "./avisos.ts";
+import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, quantosPedemResposta, type EntradaDeAvisos, type TrocaParaAviso, podeAdiar, chaveDoAviso, semOsAdiados, type Aviso } from "./avisos.ts";
 
 const EU = "eu-1";
 const LUCAS = "lucas-1";
@@ -402,4 +402,70 @@ test("quatro meses de uma vez viram três avisos, e não um muro", () => {
                lancado("2027-01-01", LUCAS), lancado("2027-02-01", LUCAS)],
   });
   assert.equal(avisos.length, 3);
+});
+
+// ===========================================================================
+// Adiar
+// ===========================================================================
+
+test("pedido de troca NUNCA pode ser adiado", () => {
+  // Do outro lado há um colega esperando resposta para saber se consegue
+  // faltar. Silenciar o pedido o deixaria no vácuo sem que ele soubesse — e
+  // para esse caso existem Assumir e Recusar, no próprio sino.
+  const troca: Aviso = { id: "t1", tipo: "troca_pedida", area: "plantoes",
+    acao: true, quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
+  assert.equal(podeAdiar(troca), false);
+});
+
+test("resposta do suporte também não se adia", () => {
+  // Quem abriu o chamado quer a resposta. Adiar a própria pergunta não faz
+  // sentido nenhum.
+  const s: Aviso = { id: "c1", tipo: "suporte", area: "suporte",
+    acao: true, quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
+  assert.equal(podeAdiar(s), false);
+});
+
+test("os lembretes que se repetem podem ser adiados", () => {
+  // São os que incomodam: aparecem todo dia e não se resolvem num clique.
+  for (const tipo of ["a_faturar", "a_receber", "plantao_a_receber", "a_confirmar"] as const) {
+    const a: Aviso = { id: "x", tipo, area: "producao", acao: true,
+      quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
+    assert.equal(podeAdiar(a), true, tipo);
+  }
+});
+
+test("a chave inclui o TIPO, e não só o id", () => {
+  // Os ids são gerados por quem monta o aviso; nada garante que não se repitam
+  // entre tipos. "plantao-2026-07" poderia nascer em dois lugares, e adiar um
+  // calaria o outro.
+  const base = { id: "2026-07", area: "producao" as const, acao: true,
+    quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
+  const um = chaveDoAviso({ ...base, tipo: "a_receber" });
+  const outro = chaveDoAviso({ ...base, tipo: "plantao_a_receber" });
+  assert.notEqual(um, outro);
+});
+
+test("adiado some até a data, e volta DEPOIS dela", () => {
+  const a: Aviso = { id: "2026-07", tipo: "a_receber", area: "producao", acao: true,
+    quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
+  const adiados = new Map([[chaveDoAviso(a), "2026-09-08"]]);
+
+  assert.equal(semOsAdiados([a], adiados, "2026-09-01").length, 0, "dentro do prazo, some");
+  assert.equal(semOsAdiados([a], adiados, "2026-09-08").length, 0, "no último dia, ainda some");
+  assert.equal(semOsAdiados([a], adiados, "2026-09-09").length, 1, "no dia seguinte, volta");
+});
+
+test("adiar um não esconde os outros", () => {
+  const a: Aviso = { id: "2026-07", tipo: "a_receber", area: "producao", acao: true,
+    quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
+  const b: Aviso = { ...a, tipo: "a_faturar" };
+  const adiados = new Map([[chaveDoAviso(a), "2026-12-31"]]);
+  const sobrou = semOsAdiados([a, b], adiados, "2026-09-01");
+  assert.deepEqual(sobrou.map((x) => x.tipo), ["a_faturar"]);
+});
+
+test("sem nenhum adiamento, a lista passa inteira", () => {
+  const a: Aviso = { id: "1", tipo: "a_receber", area: "producao", acao: true,
+    quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
+  assert.equal(semOsAdiados([a], new Map(), "2026-09-01").length, 1);
 });

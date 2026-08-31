@@ -1072,6 +1072,26 @@ button:disabled{cursor:not-allowed}
 
    Recuados até a coluna do texto, e não colados à esquerda: alinhados com o
    título, leem-se como parte daquele aviso e não como rodapé da lista. */
+/* Arrastar para a esquerda adia o lembrete.
+
+   A transição fica FORA do movimento do dedo: durante o arrasto o item precisa
+   acompanhar o toque sem atraso, e uma transição de 160ms nesse momento produz
+   aquela sensação de arrastar algo preso num elástico. Ela só entra quando o
+   dedo sai — para o item voltar deslizando em vez de pular. */
+.avisoItem{transition:transform 160ms ease}
+.avisoItem:has(+ *):active,
+.avisoItem.arrastando{transition:none}
+/* O fundo que aparece por baixo enquanto o item desliza. Sem ele o aviso
+   parece estar saindo para o nada, e o gesto não diz o que vai fazer. */
+.avisoItem.adiavel{position:relative}
+.avisoAdiar{align-self:end;margin:0 9px 9px;padding:5px 10px;border-radius:8px;
+  border:1px solid var(--cor-borda);background:none;color:var(--cor-tinta-fraca);
+  font-size:11.5px;font-weight:650;cursor:pointer;justify-self:start}
+.avisoAdiar:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+/* No toque o botão sai: lá o gesto é o caminho, e os dois juntos empilhariam
+   um rodapé em cada lembrete numa lista que já é longa. */
+@media (hover:none){ .avisoAdiar{display:none} }
+
 .avisoAcoes{display:flex;gap:7px;padding:0 9px 9px 40px}
 .avisoAcoes button{flex:1;padding:6px 10px;border-radius:8px;font-size:12px;
   font-weight:700;cursor:pointer;border:1px solid var(--cor-borda)}
