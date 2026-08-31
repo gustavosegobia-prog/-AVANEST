@@ -178,3 +178,46 @@ test("todo alvo existe no código da interface", () => {
       `o alvo ${etapa.alvo} da etapa "${etapa.titulo}" não existe na interface`);
   }
 });
+
+// ===========================================================================
+// Ligar a notificação no telefone
+// ===========================================================================
+// Estas etapas nasceram de um caso real: o usuário via o sino funcionando,
+// concluía que a notificação estava ligada, e não recebia nada no aparelho. E
+// no iPhone a opção de ligar NEM APARECE enquanto o site não estiver na Tela de
+// Início — some sem explicar, o que a pessoa lê como sistema quebrado.
+//
+// O texto anterior dizia tudo isso numa frase só, com o passo do iPhone
+// espremido numa oração subordinada. Estes testes existem para que a próxima
+// pessoa a "enxugar" o tutorial não devolva o problema.
+
+test("todo papel aprende a ligar a notificação no telefone", () => {
+  for (const [nome, papel] of [["médico", medico], ["recepção", recepcao], ["admin", tudo]] as const) {
+    const texto = passosDoTutorial(papel).map((e) => `${e.titulo} ${e.texto}`).join(" ");
+    assert.match(texto, /Tela de In[íi]cio/,
+      `${nome}: sem o passo da Tela de Início, o iPhone não liga e parece defeito`);
+    assert.match(texto, /Safari/, `${nome}: precisa dizer que é no Safari, não no Chrome`);
+    assert.match(texto, /Permitir/, `${nome}: precisa dizer o que responder ao navegador`);
+  }
+});
+
+test("o tutorial separa o sino da notificação do aparelho", () => {
+  // Confundir os dois foi a origem do chamado: sino funcionando não significa
+  // notificação ligada, e quem acha que significa nunca vai ligar.
+  const etapas = passosDoTutorial(tudo);
+  const doSino = etapas.findIndex((e) => /sino/i.test(e.titulo));
+  const doTelefone = etapas.findIndex((e) => /telefone/i.test(e.titulo));
+  assert.ok(doSino >= 0 && doTelefone >= 0, "as duas etapas precisam existir");
+  assert.ok(doTelefone > doSino,
+    "a do telefone vem DEPOIS da do sino, para poder dizer que não é a mesma coisa");
+  assert.match(etapas[doTelefone].texto, /fechado/,
+    "o que distingue as duas é o aplicativo estar fechado — precisa estar escrito");
+});
+
+test("o passo do iPhone tem etapa própria, e não uma observação no meio", () => {
+  // Passo que aparece como oração subordinada não é executado por quem lê
+  // corrido — e este é obrigatório.
+  const iphone = passosDoTutorial(tudo).filter((e) => /iPhone/i.test(e.titulo));
+  assert.equal(iphone.length, 1, "o iPhone precisa de uma etapa só dele");
+  assert.match(iphone[0].texto, /compartilhar/, "o caminho inteiro, não o resumo");
+});

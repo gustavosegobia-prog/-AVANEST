@@ -273,10 +273,36 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     texto: "Plantão oferecido por um colega, resposta do suporte, mensagem da equipe e o que ficou para trás no faturamento aparecem ali. O número conta só o que espera resposta sua.",
   });
 
+  // ── Notificação no telefone: TRÊS etapas, e não uma ──────────────────────
+  //
+  // Era uma frase só, com o passo do iPhone espremido numa oração subordinada
+  // ("é preciso antes adicionar à Tela de Início"). Quem lê corrido não
+  // executa um passo que aparece como observação — e sem ele a opção de ligar
+  // NEM APARECE no Safari, o que a pessoa interpreta como sistema quebrado.
+  //
+  // A separação também resolve outra confusão real: sino e telefone são coisas
+  // diferentes, e quem vê o sino funcionando conclui que a notificação está
+  // ligada. A etapa anterior acabou de mostrar o sino; esta começa dizendo que
+  // não é a mesma coisa.
   etapas.push({
     alvo: ".userMenuTrigger",
-    titulo: "Avisos no telefone",
-    texto: "No menu do seu nome você liga as notificações: escala publicada e troca de plantão chegam com o aplicativo fechado. No iPhone é preciso antes adicionar o AVANEST à Tela de Início — o Safari só entrega aviso assim.",
+    titulo: "Avisos no telefone são outra coisa",
+    texto: "O sino avisa dentro do sistema, com ele aberto. A notificação no telefone chega com o AVANEST fechado — escala publicada e troca de plantão tocam o aparelho. É preciso ligar UMA vez em cada aparelho seu, e ninguém liga pelos outros: o navegador só aceita a permissão da própria pessoa.",
+  });
+
+  etapas.push({
+    alvo: ".userMenuTrigger",
+    titulo: "No computador: dois cliques",
+    texto: "Clique no seu nome, aqui em cima, e ligue a chave em Notificações. O navegador pergunta se permite — responda Permitir. Se você recusar sem querer, o navegador não pergunta de novo: é preciso reabrir a permissão no cadeado ao lado do endereço do site.",
+  });
+
+  // O iPhone é o único aparelho em que a opção some quando o passo anterior
+  // não foi feito — e some sem explicar. É por isso que ele tem etapa própria,
+  // com o caminho inteiro escrito.
+  etapas.push({
+    alvo: ".userMenuTrigger",
+    titulo: "No iPhone, um passo antes",
+    texto: "O Safari só entrega notificação de site que está na Tela de Início — regra da Apple, não do AVANEST. Abra avanest.com.br no Safari (não no Chrome), toque no botão de compartilhar, escolha Adicionar à Tela de Início, e depois entre pelo ícone novo. Só então a opção Notificações aparece no menu do seu nome. Sem esse passo ela nem existe, e parece defeito.",
   });
 
   etapas.push({
