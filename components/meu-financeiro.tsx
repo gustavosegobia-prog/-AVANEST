@@ -361,8 +361,20 @@ export function MeuFinanceiro({
         </section>
       )}
 
-      {total.aReceber > 0 && <p className="financeNota alerta">
-        <Icone nome="alerta" tamanho={15} /> {dinheiro(total.aReceber)} de trabalho já feito e ainda não pago. Plantão vira &quot;pago&quot; na Minha escala; anestesia vira &quot;recebido&quot; na Produção.
+      {/* A frase antiga dizia o que acontece com os rótulos — "plantão vira
+          pago", "anestesia vira recebido" — e não o que a pessoa precisa
+          fazer. Lida em vermelho, parecia denúncia de erro: era só a conta do
+          que já está trabalhado e ainda não caiu.
+          Agora diz de quem é o dinheiro, por que ele ainda não apareceu como
+          recebido, e onde marcar quando cair. */}
+      {/* O texto inteiro num <span>: .financeNota é flex, e cada filho vira um
+          item. Solto, cada <strong> e cada pedaço de frase entre eles viraria
+          uma coluna própria. São dois itens — o ícone e a frase. */}
+      {total.aReceber > 0 && <p className="financeNota aReceber">
+        <Icone nome="ampulheta" tamanho={15} />
+        <span><strong>{dinheiro(total.aReceber)}</strong> já é seu: o trabalho está
+          feito, o pagamento ainda não entrou. Quando cair, marque como recebido —
+          plantão em <b>Minha escala</b>, anestesia em <b>Produção</b>.</span>
       </p>}
 
       {/* As despesas ficam depois: o plantonista abre esta tela para ver quanto

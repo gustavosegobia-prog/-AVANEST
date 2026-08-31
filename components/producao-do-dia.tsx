@@ -748,20 +748,26 @@ export function ProducaoDoMes({
         <div className="plantaoMesNav">
           <button className="outlineClinical" onClick={() => onMudarMes(-1)}
             aria-label="Mês anterior">‹</button>
-          <strong>{nomeMes} de {ano}</strong>
-          <button className="outlineClinical" onClick={() => onMudarMes(1)}
-            aria-label="Próximo mês">›</button>
-          {/* As setas resolvem "o mês passado", que é o caso de quase todo dia.
-              Não resolvem "março": seriam cinco cliques, e a folha impressa
-              sai do mês em que a tela estiver. O seletor direto fica ao lado,
-              e não no lugar delas — quem quer o anterior continua com um
-              toque. */}
-          {onEscolherMes && (
+          {/* Um mês escrito uma vez só. O <input type="month"> já escreve
+              "outubro de 2026" sozinho — ao lado de um <strong> com o mesmo
+              texto, a barra dizia a mesma coisa duas vezes, e a segunda ainda
+              saía com a capitalização do CSS ("Outubro De 2026").
+              Onde há seletor, ele É o título, entre as setas. Onde não há
+              (a produção da equipe, que não troca de mês por aqui), o
+              <strong> continua sendo o título.
+              As setas resolvem "o mês passado", que é o caso de quase todo
+              dia; o seletor resolve "março", que de seta em seta seriam cinco
+              cliques. */}
+          {onEscolherMes ? (
             <input type="month" className="producaoMesEscolha" value={mes}
-              aria-label="Escolher o mês" onChange={(e) => {
+              aria-label="Mês" onChange={(e) => {
                 if (e.target.value) onEscolherMes(e.target.value);
               }}/>
+          ) : (
+            <strong>{nomeMes} de {ano}</strong>
           )}
+          <button className="outlineClinical" onClick={() => onMudarMes(1)}
+            aria-label="Próximo mês">›</button>
         </div>
       </section>
 

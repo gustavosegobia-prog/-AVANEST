@@ -286,6 +286,19 @@
 @media(max-width:1050px){.roleBadge{display:none}.metricGrid{grid-template-columns:repeat(3,1fr)}.patientFormGrid{grid-template-columns:repeat(2,1fr)}.clinicalField.wide,.clinicalField.span2{grid-column:auto}.queueRow{grid-template-columns:65px 1fr auto}.queueRow .statusChip{display:none}.alertGrid{grid-template-columns:1fr}.alertItem:nth-child(odd){border-right:0}.agendaHead{flex-wrap:wrap}.agendaHead input{flex-basis:100%}}
 @media(max-width:680px){.clinicalTopbar{padding:0 14px}.clinicalBrand small{display:none}.roleNav .themePill{display:none}.clinicalMain{width:calc(100% - 24px);padding-top:24px}.clinicalWelcome{align-items:flex-start;flex-direction:column}.metricGrid{grid-template-columns:1fr 1fr}.queueRow{grid-template-columns:55px 1fr;padding:13px}.queueRow .primaryClinical{grid-column:1/-1}.agendaRow{grid-template-columns:45px 1fr}.agendaRow time,.agendaRow .statusChip{display:none}.searchPanel{align-items:flex-start;flex-direction:column}.searchPanel input{width:100%}.patientFormGrid{grid-template-columns:1fr}.metricCard{padding:18px}.clinicalWelcome h1,.receptionMain h1{font-size:24px}}
 
+/* "Semana" caía sozinho numa terceira linha. A barra é um flex com quebra, e
+   numa tela de 360px os quatro filhos — o título, os três filtros e a busca —
+   não cabiam: "Agenda" comia uns 80px do começo da primeira linha, e sobrava
+   espaço para dois botões e meio.
+   O título passa a ocupar a linha inteira, e os três filtros dividem a
+   seguinte em partes iguais. Não é o gap que estava errado: mesmo colado, o
+   título mais os três rótulos passavam da largura. */
+@media(max-width:680px){
+  .agendaHead{gap:8px}
+  .agendaHead strong{flex-basis:100%;margin-right:0}
+  .agendaHead button{flex:1 1 0;min-width:0;padding:10px 6px;text-align:center}
+}
+
 /* Fluxo de avaliação clínica */
 .evalShell{min-height:100vh;background:var(--cor-fundo);color:var(--cor-tinta);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.evalTopbar{height:88px;background:#fff;border-bottom:1px solid #d5e0e8;padding:0 40px;display:flex;align-items:center;gap:35px;position:sticky;top:0;z-index:50}.evalSave{margin-left:auto;color:var(--cor-sucesso);font-size:13px;white-space:nowrap}.evalSave i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cor-sucesso);margin-right:6px}.evalSave.pending,.evalSave.saving{color:#a16b00}.evalSave.error{color:#c6343a}.evalRoleNav{display:flex;align-items:center;gap:12px}.evalRoleNav button{border:1px solid var(--cor-borda);background:#fff;border-radius:11px;padding:12px 17px;color:var(--cor-tinta-fraca);font-weight:650}.evalRoleNav button.active{background:var(--cor-marca);color:#fff}.evalRoleNav b{background:var(--cor-marca-suave);color:var(--cor-marca-forte);border-radius:22px;padding:11px 18px;font-size:12px;letter-spacing:.08em}.allergyBanner{height:43px;background:var(--cor-perigo-suave);color:#c6353a;display:grid;place-items:center;font-weight:850;letter-spacing:.03em;position:sticky;top:88px;z-index:49}.evalProgress{height:4px;background:#dfe7ed;position:sticky;top:131px;z-index:49}.evalProgress i{display:block;height:100%;background:var(--cor-marca);transition:width .25s}.evalMain{width:min(1350px,calc(100% - 48px));margin:auto;padding:36px 0 70px}.evalSteps{display:flex;justify-content:center;gap:7px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;margin-bottom:10px}.evalSteps button{border:1px solid var(--cor-borda);background:#fff;border-radius:24px;padding:10px 14px;color:var(--cor-tinta-fraca);font-weight:700;white-space:nowrap}.evalSteps button.active{background:var(--cor-marca);color:#fff;border-color:var(--cor-marca)}.evalSteps i{display:inline-block;width:10px;height:10px;border-radius:50%;background:#d6a00d;margin-right:7px}.evalSteps i.done{background:#198a69}.evalControls{display:flex;gap:10px;margin:8px 0 44px}.evalControls button,.evalFooterActions>button:not(.primaryClinical){border:1px solid #d5e0e8;background:#fff;border-radius:22px;padding:10px 18px;color:var(--cor-tinta-fraca);font-weight:700}.evalControls .pauseButton{border-color:#af7200;color:#946000}.evalSection,.questionCard{background:#fff;border:1px solid var(--cor-borda);border-radius:17px;padding:28px;margin:0 0 20px}.evalSection h1{font-size:22px;margin:0 0 25px}.evalSection.evalIntro p{color:#577087;margin:0}.evalFormGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:18px}.evalField{display:grid;gap:8px}.evalField.span2{grid-column:span 2}.evalField.span3{grid-column:span 3}.evalField>span{color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}.evalField input,.evalField select,.evalField textarea,.detailInput{width:100%;min-width:0;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:10px;padding:14px;font:inherit;color:var(--cor-tinta)}.evalField input,.evalField select{height:54px}.evalField input[readonly]{color:var(--cor-tinta)}.clinicalCalculations{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:22px}.clinicalCalculations>div{background:var(--cor-marca-suave);border-radius:12px;padding:20px}.clinicalCalculations>div.amber{background:var(--cor-atencao-suave)}.clinicalCalculations small,.clinicalCalculations span{display:block;color:var(--cor-tinta-fraca)}.clinicalCalculations strong{display:block;color:var(--cor-marca-forte);font-size:24px;margin:5px 0}.clinicalCalculations .amber strong{color:#a66d00}.evalHint{color:#5b7288;margin:22px 0 0}.anamnesisList{display:grid;gap:15px}.questionCard{margin:0;padding:20px 25px}.questionHead{display:flex;align-items:center;justify-content:space-between;gap:20px}.answerButtons{display:flex;gap:8px}.answerButtons button{border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);border-radius:10px;padding:12px 23px;font-weight:750}.answerButtons button.active{background:var(--cor-marca);color:#fff;border-color:var(--cor-marca)}.detailChips{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0 10px}.detailChips button{border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);border-radius:22px;padding:8px 16px}.detailInput{height:48px}.evalFooterActions{display:flex;justify-content:space-between;margin-top:28px}.evalFooterActions .primaryClinical{box-shadow:none;padding:13px 24px}
 @media(max-width:1100px){.evalRoleNav button:not(.active),.evalRoleNav b{display:none}.evalFormGrid{grid-template-columns:repeat(3,1fr)}.evalField.span3{grid-column:span 3}.evalField.span2{grid-column:span 2}.evalSteps{flex-wrap:nowrap;overflow:auto;padding-bottom:8px}.evalSteps button{white-space:nowrap}}
@@ -498,6 +511,22 @@
 @media(max-width:680px){.evalSteps{top:72px;padding:9px 12px}.receptionMain .queueRow{grid-template-columns:55px 1fr}.receptionMain .queueRow .statusChip,.receptionMain .queueRow .outlineClinical{grid-column:1/-1}.conditionalDetails{grid-template-columns:1fr}}
 @media(max-width:1120px){.adminInvite form{grid-template-columns:1fr 1fr}.adminUserRow{grid-template-columns:1fr 1fr 1fr}.adminUserRow>button{height:44px}.auditRow{grid-template-columns:150px 1fr}}
 @media(max-width:700px){.financeHeading{align-items:flex-start;flex-direction:column}.financeHeadingActions{width:100%}.financeConfigList{grid-template-columns:1fr}.adminMetrics{grid-template-columns:1fr 1fr}.adminInvite form,.adminUserRow{grid-template-columns:1fr}.auditRow{grid-template-columns:1fr;gap:5px}.roleNav{min-width:0}.clinicalTopbar{gap:8px}.clinicalBrand strong{font-size:17px}.clinicalBrandMark{width:34px;height:34px}}
+
+/* O buraco entre o título e a Competência. `flex:1 1 320px` foi escrito para
+   a barra em linha, onde 320px é a largura mínima do bloco de texto. Quando a
+   regra acima vira `flex-direction:column`, o eixo principal passa a ser o
+   vertical e os mesmos 320px viram ALTURA: o título e a frase ocupam uns
+   100px, e os outros 220px ficavam em branco.
+   Em coluna o bloco volta a ter a altura do que tem dentro.
+   E as ações passam a quebrar: em 360px, "Competência", "Exportar CSV" e
+   "Configurar valores das consultas" numa linha só saíam pela direita da
+   tela. */
+@media(max-width:700px){
+  .financeHeading>div:first-child{flex:0 0 auto}
+  .financeHeadingActions{flex-wrap:wrap}
+  .financeHeadingActions>label{flex:1 1 100%}
+  .financeHeadingActions>button{flex:1 1 auto}
+}
 
 /* Identidade AVANEST: monograma A aberto em azul e verde */
 .avnMark{width:58px;height:58px;border:0;border-radius:0;display:grid;place-items:center;flex:0 0 auto}
@@ -2628,7 +2657,10 @@ button:disabled{cursor:not-allowed}
    Plantões
    =========================================================================== */
 .plantaoMesNav{display:flex;align-items:center;gap:12px}
-.plantaoMesNav strong{min-width:150px;text-align:center;font-size:17px;text-transform:capitalize}
+/* `capitalize` põe maiúscula em TODA palavra, e o rótulo é "outubro de
+   2026": saía "Outubro De 2026". Só a primeira letra sobe. */
+.plantaoMesNav strong{min-width:150px;text-align:center;font-size:17px}
+.plantaoMesNav strong::first-letter{text-transform:uppercase}
 .plantaoMetrics{grid-template-columns:repeat(5,1fr)}
 
 .plantaoCalendario{padding:18px 20px 22px}
@@ -3105,6 +3137,14 @@ button:disabled{cursor:not-allowed}
 .financeNota{margin:10px 25px 18px;font-size:13.5px;line-height:1.65;
   color:var(--cor-tinta-fraca);display:flex;align-items:flex-start;gap:7px}
 .financeNota.alerta{color:var(--cor-perigo);font-weight:650}
+/* "A receber" não é erro. Vermelho é para o que está errado — glosa, vencido,
+   falha de salvamento. Dinheiro que ainda vai cair é espera, e espera é
+   âmbar. A linha ganha fundo próprio porque ela pede uma ação futura, e não
+   é mais só uma nota de rodapé. */
+.financeNota.aReceber{color:var(--cor-tinta);background:var(--cor-atencao-suave);
+  border-radius:12px;padding:12px 14px;font-weight:600}
+.financeNota.aReceber svg{color:var(--cor-atencao);flex:none;margin-top:3px}
+.financeNota.aReceber strong{color:var(--cor-atencao);font-weight:850}
 
 /* ── Meu financeiro: o resumo do plantonista ─────────────────────────────── */
 
@@ -3656,11 +3696,15 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* "A cobrar" fica neutro de propósito: é o estado inicial de todo mundo, e
    pintar a lista inteira de aviso não distingue nada de nada. */
 
-/* O seletor direto de mês, ao lado das setas. As setas resolvem "o mês
-   passado"; ele resolve "março", que de seta em seta seriam cinco cliques. */
-.producaoMesEscolha{height:36px;font:inherit;color:inherit;padding:0 10px;
+/* O seletor de mês é o TÍTULO da barra, entre as setas — não um campo ao lado
+   de um título que repetia o mesmo mês. Daí o tamanho de cabeçalho e a largura
+   mínima: ele ocupa o lugar que o <strong> ocupava.
+   As setas resolvem "o mês passado", que é quase todo dia; ele resolve
+   "março", que de seta em seta seriam cinco cliques. */
+.producaoMesEscolha{height:40px;min-width:172px;font:inherit;font-size:17px;
+  font-weight:800;color:inherit;text-align:center;padding:0 10px;
   border:1px solid var(--cor-borda);border-radius:9px;
-  background:var(--cor-superficie);margin-left:6px}
+  background:var(--cor-superficie);cursor:pointer}
 .producaoMesEscolha:focus-visible{outline:0;box-shadow:var(--foco);
   border-color:var(--cor-marca)}
 
