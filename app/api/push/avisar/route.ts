@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
   // Sem chave configurada o sistema segue funcionando sem notificar. Notificação
   // é acessório: derrubar o pedido de troca porque o push não está configurado
   // seria trocar a função pela decoração.
-  if (!chaves || !serviceKey) return NextResponse.json({ ok: true, enviadas: 0, motivo: "push desligado" });
+  if (!chaves || !serviceKey) {
+    return NextResponse.json({ ok: true, enviadas: 0, motivo: "sem-chave" });
+  }
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -133,7 +135,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Tipo desconhecido." }, { status: 400 });
   }
 
-  if (alvos.length === 0) return NextResponse.json({ ok: true, enviadas: 0 });
+  // ZERO ALVOS NÃO É ZERO APARELHOS, e a diferença é a informação inteira.
+  //
+  // A tela dizia "ninguém da equipe ligou as notificações" sempre que o total
+  // saía zero — culpando a equipe por três situações diferentes, duas das
+  // quais não têm nada a ver com ela: a chave do push faltando no servidor, e
+  // não haver ninguém a avisar. Quem lê aquilo vai cobrar os colegas por um
+  // defeito de configuração.
+  if (alvos.length === 0) {
+    return NextResponse.json({ ok: true, enviadas: 0, motivo: "sem-alvo" });
+  }
 
   const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
     auth: { persistSession: false },
@@ -150,6 +161,7 @@ export async function POST(request: NextRequest) {
   for (const alvo of alvos) porPerfil.set(alvo.perfilId, alvo.notificacao);
 
   const mortas: string[] = [];
+  const entregues: string[] = [];
   let enviadas = 0;
   // Em paralelo: dez aparelhos em série somariam dez idas ao serviço de push
   // dentro do clique de quem ofereceu o plantão.
@@ -157,7 +169,7 @@ export async function POST(request: NextRequest) {
     const notificacao = porPerfil.get(linha.perfil_id);
     if (!notificacao) return;
     const resultado = await enviar(chaves, linha as unknown as Inscricao, notificacao);
-    if (resultado.ok) { enviadas++; return; }
+    if (resultado.ok) { enviadas++; entregues.push(linha.id); return; }
     // 404 e 410 = navegador desinstalado ou dados limpos. A inscrição morreu e
     // insistir nela é gastar uma requisição por aviso, para sempre.
     if (resultado.expirou) mortas.push(linha.id);
@@ -166,5 +178,23 @@ export async function POST(request: NextRequest) {
 
   if (mortas.length) await admin.from("push_inscricoes").delete().in("id", mortas);
 
-  return NextResponse.json({ ok: true, enviadas, removidas: mortas.length });
+  // Carimba quem recebeu. A coluna existia e NINGUÉM a preenchia: `ultimo_envio_em`
+  // ficava nula para sempre, e olhar a tabela dava a impressão de que nada
+  // nunca tinha sido enviado. Uma coluna que mente é pior que uma coluna que
+  // falta — a que falta pelo menos não engana quem for investigar.
+  if (entregues.length) {
+    await admin.from("push_inscricoes")
+      .update({ ultimo_envio_em: new Date().toISOString() })
+      .in("id", entregues);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    enviadas,
+    removidas: mortas.length,
+    // Alvos existiam e nenhum tinha aparelho: ESTE é o caso em que a mensagem
+    // sobre a equipe não ter ligado as notificações é verdadeira.
+    motivo: enviadas === 0 ? "sem-aparelho" : undefined,
+    alvos: alvos.length,
+  });
 }

@@ -756,6 +756,27 @@ export function Plantoes({
     onAvisosMudaram?.();
   }
 
+
+/**
+ * Por que nenhum aviso saiu.
+ *
+ * Cada motivo pede uma ação DIFERENTE de uma pessoa diferente: a chave é do
+ * dono do sistema, o alvo vazio é de quem monta a escala, e o aparelho é de
+ * cada colega. Uma frase só para os três mandava sempre cobrar a pessoa errada.
+ */
+const EXPLICA_ZERO: Record<string, string> = {
+  "sem-chave":
+    "As notificações não estão configuradas no servidor — nada foi enviado. "
+    + "Isso é configuração do sistema, não da equipe.",
+  "sem-alvo":
+    "Ninguém a avisar neste mês: o aviso vai só para quem tem plantão lançado, "
+    + "e você não é avisado dos seus próprios. Lance a escala antes de avisar.",
+  "sem-aparelho":
+    "A escala tem gente, mas nenhum deles ligou as notificações no aparelho — "
+    + "o aviso não tinha para onde ir.",
+  desconhecido:
+    "O aviso não saiu e o servidor não disse por quê. Me avise se repetir.",
+};
   /**
    * "A escala do mês está pronta" — dito de propósito, e não adivinhado.
    *
@@ -773,9 +794,14 @@ export function Plantoes({
       });
       const dados = await resposta.json().catch(() => ({}));
       if (!resposta.ok) { setErro(dados.error ?? "Não foi possível avisar agora."); return; }
-      setAviso(dados.enviadas
-        ? `Aviso enviado para ${dados.enviadas} aparelho${dados.enviadas > 1 ? "s" : ""} da equipe.`
-        : "Ninguém da equipe ligou as notificações ainda — o aviso não saiu para nenhum aparelho.");
+      if (dados.enviadas) {
+        setAviso(`Aviso enviado para ${dados.enviadas} aparelho${dados.enviadas > 1 ? "s" : ""} da equipe.`);
+        return;
+      }
+      // Zero enviados tem TRÊS causas, e duas não são culpa da equipe. A
+      // mensagem antiga dizia sempre a terceira — mandando o dono do serviço
+      // cobrar os colegas por uma chave que faltava no servidor.
+      setErro(EXPLICA_ZERO[String(dados.motivo ?? "")] ?? EXPLICA_ZERO.desconhecido);
     } finally {
       setAvisando(false);
     }
