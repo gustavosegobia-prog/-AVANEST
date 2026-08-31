@@ -459,6 +459,15 @@ export function Plantoes({
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
   const [adicionando, setAdicionando] = useState(false);
   const [trocas, setTrocas] = useState<Troca[]>([]);
+  /**
+   * Os plantões citados pelas trocas pendentes, de QUALQUER mês.
+   *
+   * Separado de `plantoes` de propósito: aquele é o mês na tela e alimenta o
+   * calendário. Misturar um plantão de setembro na lista de agosto seria
+   * arriscar que ele apareça onde não devia. Aqui ele serve só para a aba de
+   * Trocas conseguir desenhar a linha.
+   */
+  const [plantoesDeTrocas, setPlantoesDeTrocas] = useState<Plantao[]>([]);
   // Escala do grupo ou só a minha. Duas leituras da mesma tela: "onde eu
   // trabalho este mês" e "quem está de plantão no dia 12".
   const [escopo, setEscopo] = useState<"minha" | "grupo">("minha");
@@ -589,6 +598,23 @@ export function Plantoes({
     setModelos((mods ?? []) as Modelo[]);
     setPlantoes((plans ?? []) as Plantao[]);
     setTrocas((trs ?? []) as Troca[]);
+
+    // TROCA DE OUTRO MÊS PRECISA DO PLANTÃO DELA.
+    //
+    // Os plantões vêm só do mês aberto; as trocas pendentes vêm de todos. Em
+    // 31 de agosto, um convite para um plantão de 2 de setembro chegava no
+    // sino, no telefone — e a lista de Pedidos recebidos aparecia VAZIA,
+    // porque a linha não achava o plantão e desistia de se desenhar. Não havia
+    // onde aceitar, e nada na tela dizia por quê.
+    const pendentes = (trs ?? []) as Troca[];
+    const jaTenho = new Set(((plans ?? []) as Plantao[]).map((x) => x.id));
+    const faltam = [...new Set(pendentes.map((x) => x.plantao_id))].filter((id) => !jaTenho.has(id));
+    if (faltam.length) {
+      const { data: extras } = await supabase.from("plantoes").select("*").in("id", faltam);
+      setPlantoesDeTrocas((extras ?? []) as Plantao[]);
+    } else {
+      setPlantoesDeTrocas([]);
+    }
   }, [mes]);
 
   useEffect(() => { void carregar(); }, [carregar]);
@@ -1870,7 +1896,7 @@ const EXPLICA_ZERO: Record<string, string> = {
 
       {aba === "trocas" && (
         <TrocasPainel
-          trocas={trocas} plantoes={plantoes} perfilId={perfilId}
+          trocas={trocas} plantoes={[...plantoes, ...plantoesDeTrocas]} perfilId={perfilId}
           nomePorId={nomePorId} localPorId={localPorId} onResponder={responderTroca}
         />
       )}
@@ -2667,7 +2693,39 @@ function TrocasPainel({
 
   function Linha({ troca, lado }: { troca: Troca; lado: "recebido" | "enviado" }) {
     const p = plantaoPorId.get(troca.plantao_id);
-    if (!p) return null;
+    // SEM O PLANTÃO, A LINHA APARECE ASSIM MESMO.
+    //
+    // Antes era `return null`: a troca existia, o sino a anunciava, e a seção
+    // ficava com o título e um vazio embaixo — nem a linha, nem o "Nenhum
+    // pedido no momento", que só aparece quando a lista está de fato vazia. O
+    // usuário via um convite no telefone e nenhum lugar para aceitá-lo.
+    //
+    // Agora isso não deveria acontecer (o plantão da troca é carregado de
+    // qualquer mês), e mesmo assim a linha degrada em vez de sumir: some o
+    // detalhe, ficam os botões de aceitar e recusar, que são o que a pessoa
+    // veio fazer.
+    if (!p) {
+      return (
+        <div className="plantaoLinha">
+          <span className="plantaoQuando"><strong>—</strong></span>
+          <span className="plantaoOnde">
+            <strong>{nomePorId.get(troca.solicitante_id) ?? "Um colega"}</strong>
+            <small>Não consegui carregar os dados deste plantão.</small>
+          </span>
+          {lado === "recebido" ? (
+            <>
+              <button className="primaryClinical compact"
+                onClick={() => onResponder(troca.id, "aceitar_troca")}>Assumir</button>
+              <button className="outlineClinical compacto"
+                onClick={() => onResponder(troca.id, "recusar_troca")}>Recusar</button>
+            </>
+          ) : (
+            <button className="outlineClinical red"
+              onClick={() => onResponder(troca.id, "cancelar_troca")}>Cancelar pedido</button>
+          )}
+        </div>
+      );
+    }
     const dirigido = troca.destinatario_id !== null;
     return (
       <div className="plantaoLinha">
