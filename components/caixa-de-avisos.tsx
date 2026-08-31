@@ -56,14 +56,28 @@ function quandoFoi(iso: string, agora = Date.now()): string {
 }
 
 export function CaixaDeAvisos({
-  avisos, onIr,
+  avisos, onIr, onResponderTroca,
 }: {
   avisos: Aviso[];
   /** Leva para a área do aviso. O clique tem de RESOLVER, não só informar. */
   onIr: (aviso: Aviso) => void;
+  /**
+   * Assumir ou recusar o plantão SEM sair do sino.
+   *
+   * Não é um jeito de apagar o aviso — é fazer a coisa. A troca deixa de estar
+   * pendente e o aviso some sozinho, porque ele é derivado da pendência e não
+   * guardado numa tabela. Um botão de "apagar" seria mentira: no recarregamento
+   * seguinte a pendência continuaria lá e o aviso voltaria.
+   *
+   * Opcional: sem ele o item continua funcionando como antes, levando para a
+   * aba de Trocas.
+   */
+  onResponderTroca?: (trocaId: string, acao: "aceitar_troca" | "recusar_troca") => Promise<void>;
 }) {
   const [aberta, setAberta] = useState(false);
   const [lidos, setLidos] = useState(false);
+  /** Qual troca está sendo respondida agora, para travar os dois botões dela. */
+  const [respondendo, setRespondendo] = useState("");
   const caixa = useRef<HTMLDivElement | null>(null);
 
   const pedemResposta = quantosPedemResposta(avisos);
@@ -135,18 +149,43 @@ export function CaixaDeAvisos({
                a caixa está funcionando ou se ninguém mexeu em nada. */
             ? <p className="avisosVazio">Nada esperando você. Aparecem aqui: a escala do mês quando ela entra, plantão oferecido por um colega, resposta do suporte, mensagem da equipe, e o que ficou para trás no faturamento e no recebimento.</p>
             : avisos.map((a) => (
-              <button
-                key={`${a.tipo}-${a.id}`} role="menuitem"
-                className={`avisoItem${a.acao ? " pede" : ""}`}
-                onClick={() => { setAberta(false); onIr(a); }}
-              >
-                <span className="avisoIcone" aria-hidden="true"><Icone nome={ICONE[a.tipo] ?? "conversa"} tamanho={17} /></span>
-                <span className="avisoTexto">
-                  <strong>{a.titulo}</strong>
-                  <small>{a.detalhe}</small>
-                </span>
-                <span className="avisoQuando">{SEM_RELOGIO.has(a.tipo) ? "" : quandoFoi(a.quando)}</span>
-              </button>
+              <div key={`${a.tipo}-${a.id}`} className={`avisoItem${a.acao ? " pede" : ""}`}>
+                <button
+                  type="button" role="menuitem" className="avisoAbrir"
+                  onClick={() => { setAberta(false); onIr(a); }}
+                >
+                  <span className="avisoIcone" aria-hidden="true"><Icone nome={ICONE[a.tipo] ?? "conversa"} tamanho={17} /></span>
+                  <span className="avisoTexto">
+                    <strong>{a.titulo}</strong>
+                    <small>{a.detalhe}</small>
+                  </span>
+                  <span className="avisoQuando">{SEM_RELOGIO.has(a.tipo) ? "" : quandoFoi(a.quando)}</span>
+                </button>
+                {/* Só a troca ganha botões aqui. Os lembretes de dinheiro e de
+                    confirmação pedem uma tela — marcar catorze plantões como
+                    confirmados não cabe num menu suspenso, e um botão que abre
+                    outra coisa seria pior do que o item inteiro levar para lá. */}
+                {a.tipo === "troca_pedida" && onResponderTroca && (
+                  <div className="avisoAcoes">
+                    <button
+                      type="button" className="assumir" disabled={respondendo === a.id}
+                      onClick={async () => {
+                        setRespondendo(a.id);
+                        try { await onResponderTroca(a.id, "aceitar_troca"); }
+                        finally { setRespondendo(""); }
+                      }}
+                    >{respondendo === a.id ? "Assumindo..." : "Assumir"}</button>
+                    <button
+                      type="button" className="recusar" disabled={respondendo === a.id}
+                      onClick={async () => {
+                        setRespondendo(a.id);
+                        try { await onResponderTroca(a.id, "recusar_troca"); }
+                        finally { setRespondendo(""); }
+                      }}
+                    >Recusar</button>
+                  </div>
+                )}
+              </div>
             ))}
         </div>
       </>}

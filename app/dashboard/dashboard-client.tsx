@@ -720,6 +720,33 @@ export function DashboardClient({
             resposta é dada. */}
         <CaixaDeAvisos
           avisos={avisos}
+          // ASSUMIR PELO SINO NÃO É APAGAR O AVISO — é fazer a coisa.
+          //
+          // A troca deixa de estar pendente, e o aviso some sozinho porque é
+          // derivado da pendência. Foi por isso que este caminho ficou melhor
+          // do que um botão de descartar: descartar seria mentira, o aviso
+          // voltaria no recarregamento seguinte.
+          //
+          // Depois de responder, DUAS recargas, e ambas são necessárias:
+          // `router.refresh()` remonta o sino no servidor, e o salto para a
+          // aba de Trocas faz a Escala — que carrega no navegador — redesenhar
+          // o calendário com o novo dono do plantão.
+          onResponderTroca={async (trocaId, acao) => {
+            const { error } = await createClient().rpc(acao, { p_troca_id: trocaId });
+            if (error) {
+              // O RPC recusa por motivo legítimo: alguém assumiu antes, o
+              // plantão foi cancelado. A pessoa precisa saber disso, e não ver
+              // o aviso simplesmente continuar ali.
+              window.alert(error.message);
+              return;
+            }
+            router.refresh();
+            // Sem mudar de área: quem respondeu de dentro da Recepção não quer
+            // ser jogado na Escala por ter resolvido um pedido em dez segundos.
+            // O token recarrega a Escala de qualquer forma, para quando ela for
+            // aberta — e imediatamente, se já for a tela em que a pessoa está.
+            setAberturaDaEscala({ aba: "trocas", token: Date.now() });
+          }}
           onIr={(aviso) => {
             // O clique tem de RESOLVER, não só informar. Um aviso que abre uma
             // lista onde a pessoa ainda precisa procurar do que ele falava é

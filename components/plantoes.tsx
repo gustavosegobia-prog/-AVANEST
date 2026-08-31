@@ -962,7 +962,15 @@ const EXPLICA_ZERO: Record<string, string> = {
     if (!abrirEm) return;
     setAba(abrirEm.aba);
     if (abrirEm.aba === "escala") setEscopo("minha");
-  }, [abrirEm]);
+    // RECARREGA JUNTO COM O SALTO.
+    //
+    // Assumir um plantão pelo sino muda o dono do turno, e o calendário desta
+    // tela é carregado no navegador — `router.refresh()` remonta o servidor e
+    // não toca nele. Sem esta linha, quem assume pelo sino vê o aviso sumir e
+    // o calendário continuar mostrando o nome do colega, e conclui que não
+    // pegou.
+    void carregar();
+  }, [abrirEm, carregar]);
 
   const secaoAtiva = aba === "escala"
     ? (escopo === "minha" ? "minha" : `grupo:${hospitalAtivo}`)
