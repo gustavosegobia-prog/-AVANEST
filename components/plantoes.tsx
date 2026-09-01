@@ -9,7 +9,8 @@ import { Icone } from "@/components/icone";
 import {
   corpoDaFolha, cssDasCores, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
-  apelidosDaEquipe, coresDaFolha, filtroDeHospital, iniciais, montarICS, nomeCurto, nomeDoPeriodo,
+  apelidosDaEquipe, coresDaFolha, emTurnos, filtroDeHospital, iniciais, montarICS, nomeCurto, nomeDoPeriodo,
+  turnosEscrito,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
@@ -757,7 +758,12 @@ export function Plantoes({
     const total = meus.reduce((s, p) => s + Number(p.valor), 0);
     const pago = meus.filter((p) => p.situacao === "pago").reduce((s, p) => s + Number(p.valor), 0);
     const horas = meus.reduce((s, p) => s + Number(p.horas), 0);
-    return { total, pago, aberto: total - pago, horas, turnos: meus.length };
+    // Plantão é 12 horas, e a contagem sai das HORAS — não do número de
+    // lançamentos. O de 24 horas conta por dois; dois de 6 horas contam por um.
+    // É a mesma regra do fechamento e das folhas de nota: o cartão da tela e o
+    // papel que vai para o financeiro não podem dizer números diferentes sobre
+    // o mesmo mês.
+    return { total, pago, aberto: total - pago, horas, turnos: emTurnos(horas) };
   }, [meus]);
 
   function mudarMes(passo: number) {
@@ -1525,7 +1531,7 @@ const EXPLICA_ZERO: Record<string, string> = {
         // qualquer que ele seja: na escala do grupo os três de dinheiro não
         // existem, e um botão preso ao "A receber" sumiria junto com eles.
         const cartoes = [
-          { chave: "turnos", valor: String(resumo.turnos), rotulo: "Plantões no mês", cor: "" },
+          { chave: "turnos", valor: turnosEscrito(resumo.horas), rotulo: "Plantões no mês", cor: "" },
           { chave: "horas", valor: `${resumo.horas.toLocaleString("pt-BR")}h`, rotulo: "Horas", cor: "" },
           { chave: "total", valor: money(resumo.total), rotulo: "Total do mês", cor: "blue" },
           { chave: "pago", valor: money(resumo.pago), rotulo: "Recebido", cor: "green" },

@@ -10,6 +10,7 @@ import {
   CATEGORIAS, NOME_DA_CATEGORIA, porCategoria, recorrentesFaltando,
   resultadoDoMes, somarDespesas, type Despesa,
 } from "@/lib/despesas";
+import { plantoesEscrito } from "@/lib/escala";
 
 // A conta de UMA pessoa, mesmo dentro de um grupo.
 //
@@ -347,7 +348,11 @@ export function MeuFinanceiro({
                 <span className="mfLocalMarca" aria-hidden="true">{l.nome.slice(0, 2).toUpperCase()}</span>
                 <div>
                   <strong>{l.nome}</strong>
-                  <small>{l.quantos} plantã{l.quantos === 1 ? "o" : "es"} · {horasBR(l.horas)}</small>
+                  {/* A contagem sai das HORAS: plantão é 12h, o de 24 conta por
+                      dois e dois de 6 contam por um. Mesma regra do fechamento
+                      e das folhas de nota — a tela e o papel não podem dizer
+                      números diferentes sobre o mesmo mês. */}
+                  <small>{plantoesEscrito(l.horas)} · {horasBR(l.horas)}</small>
                 </div>
                 <b>{dinheiro(l.valor)}</b>
               </header>

@@ -5,6 +5,7 @@ import {
   apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS, partesDoPlantao,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
   coresDaFolha, cssDasCores, legendaDaFolha, PALETA_DA_FOLHA, emTurnos, turnosEscrito,
+  plantoesEscrito,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -1014,4 +1015,39 @@ test("a pastilha usa o apelido da tela, e não o nome com sobrenome", () => {
 test("sem apelido combinado, a pastilha cai no nome curto", () => {
   const { corpo } = folhaDoGrupo([turno("Santa Casa", "ANA PAULA DE SOUZA")]);
   assert.match(corpo, /<i class="p c\d">Ana Souza<\/i>/);
+});
+
+test("plantoesEscrito: a contagem sai das horas, e não das linhas", () => {
+  // Seis lançamentos que somam 120 horas são dez plantões, e é assim que eles
+  // são pagos. Dizer "6 plantões · 120,0 h" ao lado de um valor obriga quem
+  // confere a dividir de cabeça para descobrir qual dos dois números conversa
+  // com o dinheiro.
+  assert.equal(plantoesEscrito(120), "10 plantões");
+  assert.equal(plantoesEscrito(24), "2 plantões");
+  assert.equal(plantoesEscrito(36), "3 plantões");
+  assert.equal(plantoesEscrito(12), "1 plantão");
+  // 6h + 6h = 1 plantão; 6h sozinho é meio.
+  assert.equal(plantoesEscrito(6), "0,5 plantões");
+  assert.equal(plantoesEscrito(0), "0 plantões");
+});
+
+test("a folha de plantões para nota conta por 12 horas", () => {
+  // O caso do print: seis lançamentos, dois deles de 12h e quatro de 24h,
+  // somando 120 horas. A folha dizia "6 plantões" ao lado de R$ 10.000,00.
+  const doDia = (data: string, ini: string, fim: string, horas: number, valor: number) => ({
+    data, hora_inicio: ini, hora_fim: fim, horas, valor,
+    situacao: "realizado", local: "FUNDHOSPAR", profissional: "Gustavo Segobia",
+  });
+  const { corpo } = folhaDePlantoesPorLocal([
+    doDia("2026-08-01", "07:00", "07:00", 24, 2000),
+    doDia("2026-08-02", "07:00", "07:00", 24, 2000),
+    doDia("2026-08-28", "07:00", "19:00", 12, 1000),
+    doDia("2026-08-28", "19:00", "07:00", 12, 1000),
+    doDia("2026-08-29", "07:00", "07:00", 24, 2000),
+    doDia("2026-08-30", "07:00", "07:00", 24, 2000),
+  ], "agosto", 2026, new Date("2026-09-01T12:00:00"));
+  assert.match(corpo, /FUNDHOSPAR <small>10 plantões · 120,0 h/);
+  // A tabela continua listando os seis lançamentos como foram feitos: o de 24
+  // horas é uma linha só, porque foi um plantão de trabalho corrido.
+  assert.equal(corpo.match(/<tr><td>\d+\/08<\/td>/g)?.length, 6);
 });

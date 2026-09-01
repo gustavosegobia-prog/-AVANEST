@@ -788,7 +788,8 @@ ${legendaDaFolha(new Map(rotulos.map((r) => [r, cores.get(r) ?? PALETA_DA_FOLHA.
 <table class="mes"><thead><tr>${["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
     .map((d) => `<th>${d}</th>`).join("")}</tr></thead><tbody>${semanas.join("")}</tbody></table>
 ${depois}
-<div class="rodape"><span>${plural(plantoes.length, "plantão", "plantões")} · ${
+<div class="rodape"><span>${plantoesEscrito(
+    plantoes.reduce((s, p) => s + Number(p.horas), 0))} · ${
     plantoes.reduce((s, p) => s + Number(p.horas), 0).toLocaleString("pt-BR")}h${
     doGrupo ? "" : ` · ${money(plantoes.reduce((s, p) => s + Number(p.valor), 0))}`
   }</span><span>AVANEST · impresso em ${opts.impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
@@ -818,6 +819,23 @@ export function emTurnos(horas: number): number {
 /** O mesmo número, escrito como se lê no Brasil: "2", "0,5", "7,3". */
 export function turnosEscrito(horas: number): string {
   return emTurnos(horas).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+}
+
+/**
+ * "10 plantões", a partir das horas.
+ *
+ * A contagem de plantão sai das HORAS em toda folha, e não do número de linhas
+ * da tabela. Seis lançamentos que somam 120 horas são dez plantões, e é assim
+ * que eles são pagos — dizer "6 plantões · 120,0 h" ao lado de um valor obriga
+ * quem confere a dividir de cabeça para descobrir qual dos dois números
+ * conversa com o dinheiro.
+ *
+ * A tabela continua listando os lançamentos como foram feitos: o de 24 horas é
+ * uma linha só, porque foi um plantão só de trabalho corrido. O que muda é o
+ * total, que é o que vai para a nota.
+ */
+export function plantoesEscrito(horas: number): string {
+  return `${turnosEscrito(horas)} ${emTurnos(horas) === 1 ? "plantão" : "plantões"}`;
 }
 
 export type PlantaoDoFechamento = PlantaoImpresso & {
@@ -1112,8 +1130,7 @@ export function folhaDePlantoesPorLocal(
           + `<td>${escaparHTML(p.hora_inicio.slice(0, 5))}–${escaparHTML(p.hora_fim.slice(0, 5))}</td>`
           + `<td class="num">${Number(p.horas).toFixed(1).replace(".", ",")} h</td>`
           + `<td class="num">${escaparHTML(money(p.valor))}</td></tr>`).join("");
-      return `<h2>${escaparHTML(local)} <small>${
-        plural(lista.length, "plantão", "plantões")} · ${
+      return `<h2>${escaparHTML(local)} <small>${plantoesEscrito(horas)} · ${
         horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(soma))}</small></h2>`
         // A coluna elástica é a do horário, e não a do valor: a folga cabe
         // melhor depois de um texto do que antes de um número, que fica
@@ -1141,7 +1158,7 @@ export function folhaDePlantoesPorLocal(
   const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
 <p class="sub">Plantões do mês, separados por hospital — um total por nota.</p>
 ${blocos || '<p class="sub">Nenhum plantão neste mês.</p>'}
-<div class="rodape"><span>${plural(plantoes.length, "plantão", "plantões")} · ${
+<div class="rodape"><span>${plantoesEscrito(horas)} · ${
     horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(total))}</span><span>AVANEST · impresso em ${
     impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
 
