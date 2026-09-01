@@ -4,7 +4,7 @@ import type { PlantaoDoFechamento, PlantaoImpresso } from "./escala.ts";
 import {
   apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS, partesDoPlantao,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
-  coresDaFolha, cssDasCores, legendaDaFolha, PALETA_DA_FOLHA,
+  coresDaFolha, cssDasCores, legendaDaFolha, PALETA_DA_FOLHA, emTurnos, turnosEscrito,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -592,8 +592,37 @@ test("o fechamento soma horas e valor por profissional", () => {
   // comum falha sem que nada esteja errado.
   assert.ok(corpo.includes(`Lucas Queiroz</td><td>2</td><td>2</td><td class="num">24h</td>`
     + `<td class="num">${money(2200)}</td>`));
-  assert.ok(corpo.includes(`Matheus Gomes</td><td>1</td><td>1</td><td class="num">6h</td>`
+  // Seis horas é MEIO turno, e não um. A coluna conta turnos de 12 horas, e
+  // não linhas da tabela — arredondar para 1 seria a folha inventando meio
+  // plantão que ninguém trabalhou, num papel que serve para pagar.
+  assert.ok(corpo.includes(`Matheus Gomes</td><td>0,5</td><td>0,5</td><td class="num">6h</td>`
     + `<td class="num">${money(600)}</td>`));
+});
+
+test("um turno é 12 horas: o de 24 conta por dois, dois de 6 contam por um", () => {
+  // Contar LINHAS media outra coisa: o plantão de 24 horas aparecia como "1
+  // turno" e era pago como dois; dois de 6 horas apareciam como "2 turnos" e
+  // juntos valiam um. Quem conferia somava horas de cabeça para descobrir que
+  // a coluna estava errada — e quem não conferia pagava errado.
+  const { corpo } = fechamento([
+    turnoDe("a", "ANA SOUZA", "2026-08-03", { horas: 24, valor: 3600 }),
+    turnoDe("b", "GUSTAVO SILVA", "2026-08-04", { horas: 6, valor: 900 }),
+    turnoDe("b", "GUSTAVO SILVA", "2026-08-05", { horas: 6, valor: 900 }),
+  ]);
+  assert.ok(corpo.includes("Ana Souza</td><td>2</td>"), "24h tinham de ser 2 turnos");
+  assert.ok(corpo.includes("Gustavo Silva</td><td>1</td>"), "6h + 6h tinham de ser 1 turno");
+  // E o total do rodapé fala a mesma língua: 36 horas são três turnos.
+  assert.match(corpo, /<span>3 turnos · /);
+});
+
+test("emTurnos e turnosEscrito: a conta e como ela se lê", () => {
+  assert.equal(emTurnos(24), 2);
+  assert.equal(emTurnos(6), 0.5);
+  assert.equal(emTurnos(0), 0);
+  // Vírgula, e não ponto: a folha é lida no Brasil.
+  assert.equal(turnosEscrito(6), "0,5");
+  assert.equal(turnosEscrito(24), "2");
+  assert.equal(turnosEscrito(948), "79");
 });
 
 test("só o CONFIRMADO entra no total a pagar", () => {

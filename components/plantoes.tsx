@@ -166,13 +166,13 @@ function imprimirFolha(titulo: string, corpo: string,
 <title>${escaparHTML(titulo)}</title><style>
 @page{size:A4 ${orientacao};margin:${MARGEM_MM}mm}
 *{box-sizing:border-box}
-body{margin:0;font:12px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#111}
+body{margin:0;font:10.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#111}
 /* O zoom vive em #papel; #folha é a moldura do tamanho da página que impede a
    quebra. Transform na raiz do documento é tratado de forma diferente por cada
    motor na hora de imprimir, e a caixa de layout não acompanha o desenho. */
 #papel{transform-origin:top left}
-h1{font-size:17px;margin:0 0 2px}
-.sub{color:#555;font-size:11.5px;margin:0 0 12px}
+h1{font-size:15px;margin:0 0 2px}
+.sub{color:#555;font-size:10.5px;margin:0 0 7px}
 /* O timbre da instituição. Centralizado, como o da ficha do paciente: é o
    mesmo papel, saído da mesma clínica, e duas convenções diferentes de
    cabeçalho no mesmo consultório parecem dois sistemas. */
@@ -181,14 +181,18 @@ h1{font-size:17px;margin:0 0 2px}
 .marca img{max-height:40px;max-width:170px;object-fit:contain}
 .marca b{font-size:14px;letter-spacing:.3px;text-transform:uppercase}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
-th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#444;
-   padding:5px 4px;border:1px solid #bbb;background:#f1f1f1}
+th{font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:#444;
+   padding:3px 4px;border:1px solid #bbb;background:#f1f1f1}
 /* Altura MÍNIMA da célula, e não fixa: um mês tranquilo continua enchendo a
    folha em vez de virar uma tira de tabela no alto de uma página vazia, e um
    mês cheio pode crescer — quem devolve o crescimento para dentro da página é
-   o zoom de caberNumaFolha. 76px porque com 6 semanas, que é o pior mês do
-   ano, 6x76 mais o cabeçalho ainda cabem sem zoom nenhum. */
-td{border:1px solid #bbb;vertical-align:top;height:76px;padding:4px 5px}
+   o zoom de caberNumaFolha.
+   Eram 76px, dimensionados para a célula antiga, que trazia uma linha por
+   turno. Com as três faixas M/T/N e uma pastilha por pessoa, a célula cheia
+   passou a ter o triplo da altura: o mês pesado batia no piso de 55% do zoom e
+   ainda saía em três folhas. 46px é o piso de um dia vago; o dia cheio cresce
+   por conta própria. */
+td{border:1px solid #bbb;vertical-align:top;height:46px;padding:3px 4px}
 td.vazio{background:#fafafa}
 /* Fim de semana e feriado com fundo próprio, como na tela. Numa grade de sete
    colunas iguais a virada da semana só se descobre lendo o cabeçalho lá em
@@ -197,9 +201,9 @@ td.vazio{background:#fafafa}
    As COR dessas faixas — e a das pastilhas, e a do número do dia — não está
    aqui: vem de cssDasCores(), que tem uma resposta para a folha colorida e
    outra para a preto e branco. Aqui fica só o que não muda com a escolha. */
-td .d{font-size:11.5px;font-weight:800;display:block;margin-bottom:2px}
-td .fer{display:block;font-style:normal;text-decoration:none;font-size:8.5px;
-  font-weight:800;line-height:1.2;margin-bottom:2px}
+td .d{font-size:10px;font-weight:800;display:block;margin-bottom:1px}
+td .fer{display:block;font-style:normal;text-decoration:none;font-size:7.5px;
+  font-weight:800;line-height:1.15;margin-bottom:1px}
 td .t{display:block;margin-bottom:3px;line-height:1.25}
 td .t b{font-size:10.5px;display:block}
 td .t span{font-size:10px;color:#333}
@@ -207,19 +211,19 @@ td .t span{font-size:10px;color:#333}
    uma coluna fixa para que M, T e N fiquem alinhados de célula em célula — é
    esse alinhamento que deixa ler "quem faz as noites" correndo o olho na
    horizontal, em vez de dia por dia. */
-.fx{display:flex;align-items:flex-start;gap:4px;margin-bottom:2px}
-.fx>b{flex:none;width:9px;font-size:8.5px;font-weight:800;color:#777;
-  line-height:1.6;text-align:center}
+.fx{display:flex;align-items:flex-start;gap:3px;margin-bottom:1px}
+.fx>b{flex:none;width:8px;font-size:7.5px;font-weight:800;color:#777;
+  line-height:1.7;text-align:center}
 .fx .q{display:flex;flex-wrap:wrap;align-items:center;gap:0;min-width:0}
-.fx .vago{font-style:normal;font-size:9px;color:#aaa;line-height:1.5}
+.fx .vago{font-style:normal;font-size:8px;color:#aaa;line-height:1.6}
 /* O hospital, quando a folha cobre mais de um. Ocupa a linha inteira do bloco:
    sem isso, o nome do serviço entraria na fileira das pastilhas e pareceria
    mais um plantonista. */
-.fx u{flex-basis:100%;font-style:normal;text-decoration:none;font-size:8px;
-  font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:#666}
+.fx u{flex-basis:100%;font-style:normal;text-decoration:none;font-size:7px;
+  font-weight:800;letter-spacing:.2px;text-transform:uppercase;color:#666}
 /* A tira de nomes embaixo do título, com as mesmas pastilhas do calendário. */
-.legenda{display:flex;flex-wrap:wrap;gap:0;margin:0 0 9px}
-.legenda .p{font-size:10px;padding:2px 6px}
+.legenda{display:flex;flex-wrap:wrap;gap:0;margin:0 0 6px}
+.legenda .p{font-size:9px;padding:1px 5px}
 ${cssDasCores(emCores)}
 /* A linha do turno que ninguém confirmou fica marcada no papel. Sem fundo ela
    se distingue só pela palavra "Aguardando" na quinta coluna, que é justamente
@@ -254,7 +258,7 @@ h3.pendente,p.sub.pendente{color:#8a4b00;font-weight:700}
 p.sub.pendente{background:#fff4e0;border-left:3px solid #d98200;padding:7px 10px;
   border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .num{text-align:right}
-.rodape{margin-top:10px;font-size:9.5px;color:#666;display:flex;justify-content:space-between}
+.rodape{margin-top:7px;font-size:8.5px;color:#666;display:flex;justify-content:space-between}
 tr,td,th{break-inside:avoid;page-break-inside:avoid}
 </style></head><body><div id="folha"><div id="papel">${corpo}</div></div></body></html>`);
   janela.document.close();

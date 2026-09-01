@@ -539,8 +539,8 @@ export function coresDaFolha(nomes: readonly string[]): Map<string, number> {
  * semana também são fundo.
  */
 export function cssDasCores(emCores = true): string {
-  const base = ".p{display:inline-block;border-radius:3px;padding:1px 4px;margin:0 3px 2px 0;"
-    + "font-style:normal;font-weight:700;font-size:9.5px;line-height:1.3;"
+  const base = ".p{display:inline-block;border-radius:3px;padding:0 3px;margin:0 2px 1px 0;"
+    + "font-style:normal;font-weight:700;font-size:8px;line-height:1.45;"
     + "-webkit-print-color-adjust:exact;print-color-adjust:exact}\n"
     + "td.dia{-webkit-print-color-adjust:exact;print-color-adjust:exact}\n";
   if (!emCores) {
@@ -772,6 +772,30 @@ ${depois}
   return { titulo, corpo };
 }
 
+/**
+ * Quantos turnos há em N horas.
+ *
+ * Um turno é 12 horas, e o fechamento é pago por turno. Contar LINHAS, que é o
+ * que esta folha fazia, mede outra coisa: o plantão de 24 horas aparecia como
+ * "1 turno" e era pago como dois; dois de 6 horas apareciam como "2 turnos" e
+ * juntos valiam um. Quem confere a folha somava horas de cabeça para descobrir
+ * que a coluna estava errada — e quem não conferia pagava errado.
+ *
+ * Meio turno existe de verdade: o de 6 horas. Por isso o número sai com casa
+ * decimal em vez de arredondado para cima — "0,5" é uma quantia que se paga,
+ * e "1" seria a folha inventando meio plantão que ninguém trabalhou.
+ */
+export const HORAS_DO_TURNO = 12;
+
+export function emTurnos(horas: number): number {
+  return Number(horas || 0) / HORAS_DO_TURNO;
+}
+
+/** O mesmo número, escrito como se lê no Brasil: "2", "0,5", "7,3". */
+export function turnosEscrito(horas: number): string {
+  return emTurnos(horas).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+}
+
 export type PlantaoDoFechamento = PlantaoImpresso & {
   perfilId: string;
   /** ISO, ou null enquanto ninguém confirmou que trabalhou. */
@@ -817,8 +841,10 @@ export function folhaDeFechamento(
       return {
         id, lista,
         nome: nomeCurto(lista[0].profissional) || "Profissional",
-        turnos: lista.length,
-        confirmados: confirmados.length,
+        // Turnos, e não linhas: um plantão de 24 horas são dois turnos, e dois
+        // de 6 horas são um. Ver `emTurnos`.
+        turnos: emTurnos(somar(lista, "horas")),
+        confirmados: emTurnos(somar(confirmados, "horas")),
         horas: somar(confirmados, "horas"),
         valor: somar(confirmados, "valor"),
         horasPrevistas: somar(lista, "horas"),
@@ -838,15 +864,16 @@ export function folhaDeFechamento(
     + '<th class="num">Horas</th><th class="num">A pagar</th></tr></thead><tbody>'
     + gente.map((g) => "<tr>"
       + `<td>${escaparHTML(g.nome)}</td>`
-      + `<td>${g.turnos}</td>`
+      + `<td>${turnosEscrito(g.horasPrevistas)}</td>`
       // O pendente aparece ao lado do confirmado, e não no lugar dele: "8 de
       // 10" diz de uma vez que falta confirmar dois, sem uma segunda tabela.
-      + `<td>${g.confirmados}${g.confirmados < g.turnos ? ` <b>de ${g.turnos}</b>` : ""}</td>`
+      + `<td>${turnosEscrito(g.horas)}${
+        g.confirmados < g.turnos ? ` <b>de ${turnosEscrito(g.horasPrevistas)}</b>` : ""}</td>`
       + `<td class="num">${g.horas.toLocaleString("pt-BR")}h</td>`
       + `<td class="num">${escaparHTML(money(g.valor))}</td></tr>`).join("")
     + "</tbody><tfoot><tr>"
-    + `<td><b>Total</b></td><td>${gente.reduce((s, g) => s + g.turnos, 0)}</td>`
-    + `<td>${gente.reduce((s, g) => s + g.confirmados, 0)}</td>`
+    + `<td><b>Total</b></td><td>${turnosEscrito(gente.reduce((s, g) => s + g.horasPrevistas, 0))}</td>`
+    + `<td>${turnosEscrito(gente.reduce((s, g) => s + g.horas, 0))}</td>`
     + `<td class="num"><b>${gente.reduce((s, g) => s + g.horas, 0).toLocaleString("pt-BR")}h</b></td>`
     + `<td class="num"><b>${escaparHTML(money(gente.reduce((s, g) => s + g.valor, 0)))}</b></td>`
     + "</tr></tfoot></table>";
@@ -861,8 +888,8 @@ export function folhaDeFechamento(
         + `<td>${escaparHTML(p.local || "—")}</td>`
         + `<td>${p.confirmadoEm ? "Confirmado" : "Aguardando confirmação"}</td>`
         + `<td class="num">${escaparHTML(money(p.valor))}</td></tr>`).join("");
-    return `<h2>${escaparHTML(g.nome)} <small>${
-      plural(g.confirmados, "turno confirmado", "turnos confirmados")} · ${
+    return `<h2>${escaparHTML(g.nome)} <small>${turnosEscrito(g.horas)} ${
+      g.confirmados === 1 ? "turno confirmado" : "turnos confirmados"} · ${
       g.horas.toLocaleString("pt-BR")}h · ${escaparHTML(money(g.valor))}</small></h2>`
       + '<table class="lista"><colgroup><col style="width:9%"><col style="width:16%">'
       + '<col style="width:9%"><col><col style="width:21%"><col style="width:15%">'
@@ -871,18 +898,21 @@ export function folhaDeFechamento(
       + `<tbody>${linhas}</tbody></table>`;
   }).join("");
 
-  const aConfirmar = gente.reduce((s, g) => s + (g.turnos - g.confirmados), 0);
+  const horasAConfirmar = gente.reduce((s, g) => s + (g.horasPrevistas - g.horas), 0);
+  const aConfirmar = emTurnos(horasAConfirmar);
 
   const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
 <p class="sub">Plantões por profissional, para o fechamento do mês.${
     aConfirmar > 0
       // O aviso é o primeiro texto da folha porque muda o que se faz com ela:
       // pagar um fechamento com turnos pendentes é pagar um plano.
-      ? ` <b>${plural(aConfirmar, "turno ainda não foi confirmado", "turnos ainda não foram confirmados")
+      ? ` <b>${turnosEscrito(horasAConfirmar)} ${
+        aConfirmar === 1 ? "turno ainda não foi confirmado" : "turnos ainda não foram confirmados"
         } por quem trabalhou — esses valores não entram no total.</b>`
       : " Todos os turnos foram confirmados por quem trabalhou."}</p>
 ${gente.length ? resumo + detalhe : '<p class="sub">Nenhum plantão neste mês.</p>'}
-<div class="rodape"><span>${plural(plantoes.length, "turno", "turnos")} · ${
+<div class="rodape"><span>${turnosEscrito(
+    gente.reduce((s, g) => s + g.horasPrevistas, 0))} turnos · ${
     gente.reduce((s, g) => s + g.horas, 0).toLocaleString("pt-BR")}h confirmadas de ${
     gente.reduce((s, g) => s + g.horasPrevistas, 0).toLocaleString("pt-BR")}h previstas</span><span>AVANEST · impresso em ${
     impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
