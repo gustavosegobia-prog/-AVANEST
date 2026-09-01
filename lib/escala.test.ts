@@ -64,19 +64,16 @@ test("ondeFica: o cadastro, o escrito à mão, ou nada", () => {
   assert.equal(ondeFica({ local_id: null }, nomes, ""), "");
 });
 
-test("apelidosDaEquipe: primeiro nome mais a inicial do sobrenome", () => {
-  // A inicial entra sempre, e não só para desempatar: num serviço de treze
-  // pessoas "Matheus" deixa de ser um nome e vira apelido de corredor — quem é
-  // novo no plantão lê e não sabe qual. Três caracteres devolvem a
-  // identificação.
+test("apelidosDaEquipe: o primeiro nome, e só ele, quando não colide", () => {
+  // O sobrenome custa três caracteres em cada pastilha, e três caracteres numa
+  // coluna que é um sétimo da página decidem se dois nomes cabem lado a lado.
   const a = apelidosDaEquipe([
     { id: "1", nome: "Dr. Gustavo Segobia da Silva" },
     { id: "2", nome: "Bruna Alencar" },
     { id: "3", nome: "Ana" },
   ]);
-  assert.equal(a.get("1"), "Gustavo S.");
-  assert.equal(a.get("2"), "Bruna A.");
-  // Um nome só no cadastro não tem sobrenome para abreviar.
+  assert.equal(a.get("1"), "Gustavo");
+  assert.equal(a.get("2"), "Bruna");
   assert.equal(a.get("3"), "Ana");
 });
 
@@ -90,7 +87,7 @@ test("apelidosDaEquipe: dois de primeiro nome igual não podem virar o mesmo bot
   ]);
   assert.equal(a.get("1"), "Marcos A.");
   assert.equal(a.get("2"), "Marcos S.");
-  assert.equal(a.get("3"), "Marcelo P.");
+  assert.equal(a.get("3"), "Marcelo");
   assert.equal(new Set(a.values()).size, 3);
 });
 
