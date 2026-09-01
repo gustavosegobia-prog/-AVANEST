@@ -166,20 +166,27 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
   // Por isso as duas condições entram na MESMA busca. As duas melhoram na
   // mesma direção — zoom menor cabe mais fácil e quebra menos —, então a busca
   // binária continua valendo com o teste dobrado.
-  // DUAS pastilhas têm de caber lado a lado; três, não.
+  // NENHUMA faixa quebra, e a conta é fechada.
   //
-  // Exigir três numa linha só é resolver o dia mais cheio do mês encolhendo a
-  // folha inteira: a coluna de um dia é um sétimo da largura da página, e três
-  // nomes ali dentro obrigam a uma letra menor do que a que a escala tinha
-  // antes de tudo isso. O dia de duas pessoas é o comum, e é o que quebrava.
+  // A primeira versão desta regra abria exceção para as faixas de três nomes:
+  // exigir três numa linha só puxava o zoom da folha inteira de 124% para 94%,
+  // e a letra saía menor do que era antes. Quem quebrava a folha era o dia mais
+  // cheio do mês.
+  //
+  // A saída não foi encolher a folha, foi encolher a PASTILHA — e só a da faixa
+  // cheia. A regra de tamanho por quantidade está na folha de estilo: com três
+  // nomes a pastilha cai para 6,6px, com quatro ou mais para 5,4px, e o resto
+  // da folha continua no tamanho que estava. Quem paga a conta do dia lotado é
+  // o dia lotado.
   const semQuebra = () => {
-    // A altura de uma pastilha é a régua. Comparar com 1,5 dela dá folga para
-    // o arredondamento do navegador sem deixar passar uma segunda linha, que
-    // dobraria a altura.
-    const umaLinha = doc.querySelector<HTMLElement>(".fx .p")?.offsetHeight ?? 0;
+    // A régua é a MAIOR pastilha da folha, e não a primeira que aparecer: as
+    // pastilhas passaram a ter tamanhos diferentes conforme a faixa esteja
+    // cheia, e medir pela primeira compararia a altura de uma faixa apertada
+    // com a régua de uma folgada.
+    const umaLinha = Math.max(0, ...[...doc.querySelectorAll<HTMLElement>(".fx .p")]
+      .map((p) => p.offsetHeight));
     if (!umaLinha) return true;
     return [...doc.querySelectorAll<HTMLElement>(".fx .q")]
-      .filter((f) => f.querySelectorAll(".p").length <= 2)
       .every((f) => f.offsetHeight <= umaLinha * 1.5);
   };
 
@@ -200,7 +207,28 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
 
   // A última medida vale, e não a última tentativa: a busca acima termina numa
   // aplicação que pode ser a que não serviu.
-  const usado = aplicar(cabe);
+  let usado = aplicar(cabe);
+
+  // A sobra de altura vai para as linhas do calendário.
+  //
+  // Com a regra de não quebrar, quem manda no zoom passou a ser a LARGURA da
+  // coluna, e não mais a altura da página: o mês pára de crescer quando o nome
+  // encosta na borda, e aí sobra um terço da folha em branco embaixo. Esticar
+  // as semanas gasta essa sobra sem mexer na largura de nada — a quebra é
+  // horizontal, e altura não a provoca.
+  //
+  // A conta é feita no espaço de ANTES da ampliação, que é onde o navegador
+  // desenha: a caixa de `caixa.altura` no papel vale `caixa.altura / k` aqui
+  // dentro. Os 2px de folga são contra o arredondamento — meio pixel a mais
+  // viraria uma segunda página em branco.
+  const tabela = papel.querySelector<HTMLElement>("table.mes");
+  if (tabela) {
+    const sobra = caixa.altura / cabe - papel.scrollHeight - 2;
+    if (sobra > 0) {
+      tabela.style.height = `${tabela.offsetHeight + sobra}px`;
+      usado = papel.scrollHeight * cabe;
+    }
+  }
 
   folha.style.height = `${caixa.altura}px`;
   // O corte só entra quando o conteúdo comprovadamente cabe. No mês que nem no
@@ -270,6 +298,21 @@ td .t span{font-size:10px;color:#333}
   line-height:1.7;text-align:center}
 .fx .q{display:flex;flex-wrap:wrap;align-items:center;gap:0;min-width:0}
 .fx .vago{font-style:normal;font-size:8px;color:#aaa;line-height:1.6}
+/* Pastilha menor, e SÓ na faixa cheia.
+   Três nomes numa coluna de um sétimo da página não cabem no tamanho normal, e
+   exigir que coubessem encolhia a folha inteira — o dia mais lotado do mês
+   ditava a letra de todos os outros. Aqui quem paga a conta do dia lotado é o
+   dia lotado, e o resto da folha fica no tamanho que estava.
+   "first-child + nth-last-child(n)" é como se conta irmãos em CSS: a primeira
+   pastilha que também é a n-ésima de trás para frente só existe quando há
+   exatamente n delas. O "~" estende o tamanho às irmãs.
+   Numa folha de vários hospitais o <u> com o nome do serviço é o primeiro
+   filho, a contagem não bate e a faixa fica no tamanho normal — pode quebrar,
+   e é o certo: ali a linha extra é do hospital, e não de um nome perdido. */
+.fx .q .p:first-child:nth-last-child(3),
+.fx .q .p:first-child:nth-last-child(3)~.p{font-size:6.6px}
+.fx .q .p:first-child:nth-last-child(n+4),
+.fx .q .p:first-child:nth-last-child(n+4)~.p{font-size:5.4px}
 /* O hospital, quando a folha cobre mais de um. Ocupa a linha inteira do bloco:
    sem isso, o nome do serviço entraria na fileira das pastilhas e pareceria
    mais um plantonista. */
@@ -316,7 +359,22 @@ h3.pendente,p.sub.pendente{color:#8a4b00;font-weight:700}
 p.sub.pendente{background:#fff4e0;border-left:3px solid #d98200;padding:7px 10px;
   border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .num{text-align:right}
-.rodape{margin-top:7px;font-size:8.5px;color:#666;display:flex;justify-content:space-between}
+.rodape{margin-top:7px;font-size:8.5px;color:#666;display:flex;
+  align-items:flex-end;justify-content:space-between;gap:16px}
+/* A assinatura no canto inferior direito. Marca d'água, e não carimbo: cinza
+   claro e pequena, no canto que o olho varre por último. A folha é da clínica;
+   a assinatura diz de onde ela saiu, sem disputar espaço com o que está
+   impresso.
+   O print-color-adjust é obrigatório no traço do "A": ele é um gradiente, e
+   sem isto o navegador o descarta ao imprimir — sobraria o texto sem o
+   desenho. */
+.assinatura{display:flex;align-items:center;gap:6px;flex:none;text-align:right;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.assinatura svg{width:15px;height:15px;flex:none}
+.assinatura>span{display:flex;flex-direction:column;line-height:1.2}
+.assinatura b{font-size:9px;font-weight:850;letter-spacing:.06em;color:#4a5a6a}
+.assinatura i{font-style:normal;font-size:7.5px;color:#8a97a4}
+.assinatura small{font-size:7px;color:#a3adb8;margin-top:1px}
 tr,td,th{break-inside:avoid;page-break-inside:avoid}
 </style></head><body><div id="folha"><div id="papel">${corpo}</div></div></body></html>`);
   janela.document.close();

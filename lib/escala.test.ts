@@ -5,7 +5,7 @@ import {
   apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS, partesDoPlantao,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
   coresDaFolha, cssDasCores, legendaDaFolha, PALETA_DA_FOLHA, emTurnos, turnosEscrito,
-  plantoesEscrito,
+  plantoesEscrito, assinaturaDaFolha, SLOGAN,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -1050,4 +1050,33 @@ test("a folha de plantões para nota conta por 12 horas", () => {
   // A tabela continua listando os seis lançamentos como foram feitos: o de 24
   // horas é uma linha só, porque foi um plantão de trabalho corrido.
   assert.equal(corpo.match(/<tr><td>\d+\/08<\/td>/g)?.length, 6);
+});
+
+test("a assinatura vai no pé de toda folha, com o slogan", () => {
+  // O canto inferior direito é o que o olho varre por último: a folha é da
+  // clínica, e a assinatura diz de onde ela saiu sem disputar espaço com o que
+  // está impresso.
+  const impressoEm = new Date("2026-09-01T12:00:00");
+  const folhas = [
+    folhaDoGrupo([turno("Santa Casa", "ANA PAULA DE SOUZA")]).corpo,
+    folhaDeFechamento([], "agosto", 2026, impressoEm).corpo,
+    folhaDePlantoesPorLocal([], "agosto", 2026, impressoEm).corpo,
+    folhaDeProducao([], "agosto", 2026, impressoEm).corpo,
+    folhaDeFaturamento([], "agosto", 2026, impressoEm).corpo,
+  ];
+  for (const corpo of folhas) {
+    assert.match(corpo, /class="assinatura"/);
+    assert.match(corpo, new RegExp(SLOGAN));
+    // A data genérica: a folha do grupo é montada por um ajudante que usa
+    // outro dia, e o que se protege aqui é que ela EXISTA em toda folha.
+    assert.match(corpo, /impresso em \d\d\/\d\d\/\d{4}/);
+  }
+});
+
+test("o desenho da marca vai embutido, e não como imagem de rede", () => {
+  // A janela de impressão abre e fecha em segundos: uma imagem que ainda está
+  // chegando sai como um quadrado vazio no papel.
+  const assinatura = assinaturaDaFolha(new Date("2026-09-01T12:00:00"));
+  assert.match(assinatura, /<svg viewBox="0 0 128 128"/);
+  assert.ok(!assinatura.includes("<img"), "a marca não pode depender da rede");
 });

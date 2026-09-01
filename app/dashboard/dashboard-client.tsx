@@ -336,10 +336,6 @@ export function DashboardClient({
   const [busy, setBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState("");
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
-  // Qual agendamento está com a pergunta de exclusão aberta. Um por vez: a
-  // confirmação abre DENTRO da linha, e duas abertas ao mesmo tempo deixariam
-  // a fila com dois avisos vermelhos disputando a atenção.
-  const [aExcluir, setAExcluir] = useState("");
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   // O "Pesquisar paciente" da área Médico focava o campo da Recepção, que não
@@ -643,30 +639,6 @@ export function DashboardClient({
       setError(`Não foi possível atualizar a presença: ${result.error.message}`);
     }
     else router.refresh();
-  }
-
-  /**
-   * Apaga um agendamento criado por engano.
-   *
-   * Desmarcar e excluir são coisas diferentes. O paciente que desistiu vira
-   * "cancelado": a linha continua na agenda, em cinza, porque saber que a
-   * consulta das 13:30 caiu é informação. Já a duplicata, o horário errado, o
-   * nome digitado duas vezes — não é história de ninguém, e guardá-la em cinza
-   * para sempre suja a agenda com um evento que nunca aconteceu.
-   *
-   * Quem recusa e quem registra é a função do banco, e não esta tela: ela
-   * barra o agendamento que já tem avaliação clínica pendurada (apagar
-   * deixaria o documento órfão) e grava a auditoria antes de apagar, com o
-   * nome do paciente e o horário dentro — depois da linha apagada, o id
-   * sozinho não diria nada a quem for conferir.
-   */
-  async function excluirAgendamento(appointmentId:string) {
-    setAttendanceBusy(appointmentId); setError("");
-    const {error:erro}=await createClient().rpc("excluir_agendamento",{p_agendamento_id:appointmentId});
-    setAttendanceBusy("");
-    if(erro){ setError(`Não foi possível excluir: ${erro.message}`); return; }
-    setAExcluir("");
-    router.refresh();
   }
 
   async function logout() {
@@ -993,10 +965,10 @@ export function DashboardClient({
                     na recepção faria as duas telas discordarem sobre onde a
                     coluna começa, e elas usam a mesma linha.
 
-                    Desmarcar e excluir NÃO ficam aqui: são trabalho de quem
-                    atende o telefone do paciente que desmarca. Quem administra
-                    alcança os dois pela visão Recepção, que admin e
-                    proprietário já enxergam. */}
+                    Desmarcar NÃO fica aqui: é trabalho de quem atende o
+                    telefone do paciente que desmarcou. Quem administra alcança
+                    pela visão Recepção, que admin e proprietário já
+                    enxergam. */}
                 <div className="queueAcoes">
                   {/* O botão de ação era exclusivo da fila de hoje. Trazê-lo
                       para cá é o ganho da fusão: dá para adiantar na véspera a
@@ -1159,7 +1131,7 @@ export function DashboardClient({
           {secaoRecepcao==="hoje"&&
           <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=attendanceOverrides[appointment.id]??appointment.status;const updating=attendanceBusy===appointment.id;return <div className="queueRow" key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div><span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":"waiting"}`}>{updating?"SALVANDO...":agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><div className="queueAcoes"><button aria-busy={updating} disabled={updating||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button aria-busy={updating} disabled={updating||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button>{/* A recepção é quem atende o telefone do paciente que desmarca, então é
     aqui que desmarcar precisa existir antes de qualquer lugar. */}
-<button aria-busy={updating} disabled={updating} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,agendaStatus==="cancelado"?"agendado":"cancelado")} title={agendaStatus==="cancelado"?"Volta a consulta para a agenda":"O paciente desmarcou: a linha fica em cinza e sai dos contadores"}>{agendaStatus==="cancelado"?"Reativar":"Desmarcar"}</button>{!appointment.avaliacao_id&&<button aria-busy={updating} disabled={updating} className="outlineClinical red" onClick={()=>setAExcluir(appointment.id)} title="Apaga o agendamento. Para o que foi erro de digitação.">Excluir</button>}</div>{aExcluir===appointment.id&&<div className="queueConfirma"><p><strong>Excluir o agendamento de {p.nome}</strong>, {brDate(appointment.data)} às {appointment.horario?.slice(0,5)||"—"}? Ele some da agenda e não volta. Se o paciente só desmarcou, use <strong>Desmarcar</strong> — assim fica o registro de que a consulta existiu.</p><div><button type="button" onClick={()=>setAExcluir("")}>Manter</button><button type="button" className="perigo" disabled={updating} onClick={()=>void excluirAgendamento(appointment.id)}>{updating?"Excluindo…":"Excluir"}</button></div></div>}</div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>}
+<button aria-busy={updating} disabled={updating} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,agendaStatus==="cancelado"?"agendado":"cancelado")} title={agendaStatus==="cancelado"?"Volta a consulta para a agenda":"O paciente desmarcou: a linha fica em cinza e sai dos contadores"}>{agendaStatus==="cancelado"?"Reativar":"Desmarcar"}</button></div></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>}
             </div>
           </div>
         </div>

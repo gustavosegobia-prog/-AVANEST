@@ -590,6 +590,37 @@ export function legendaDaFolha(cores: Map<string, number>): string {
 }
 
 /**
+ * A assinatura do AVANEST no pé da folha, à direita.
+ *
+ * O mesmo desenho da marca da tela, e não uma imagem: o "A" é um traço só num
+ * SVG de 128 unidades, e escrevê-lo aqui dispensa uma requisição de rede na
+ * hora de imprimir — a janela de impressão abre e fecha em segundos, e uma
+ * imagem que ainda está chegando sai como um quadrado vazio no papel.
+ *
+ * É marca d'água, e não carimbo: cinza claro, pequena, no canto que o olho
+ * varre por último. A folha é da clínica; a assinatura diz de onde ela saiu,
+ * sem disputar espaço com o que está impresso.
+ *
+ * A data de impressão fica junto, e não solta noutro canto. As duas informações
+ * respondem à mesma pergunta — de onde veio este papel e de quando ele é —, e
+ * uma folha de escala de dois meses atrás pregada na parede é problema comum o
+ * bastante para a data valer o espaço.
+ */
+export const SLOGAN = "Gestão em anestesiologia";
+
+export function assinaturaDaFolha(impressoEm: Date): string {
+  return '<span class="assinatura">'
+    + '<svg viewBox="0 0 128 128" aria-hidden="true">'
+    + '<defs><linearGradient id="avn-a" x1="18" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">'
+    + '<stop stop-color="#0879c9"/><stop offset=".55" stop-color="#0d8ce1"/>'
+    + '<stop offset="1" stop-color="#2bc5a8"/></linearGradient></defs>'
+    + '<path d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="url(#avn-a)"'
+    + ' stroke-linecap="round" stroke-linejoin="round" stroke-width="14"/></svg>'
+    + `<span><b>AVANEST</b><i>${escaparHTML(SLOGAN)}</i>`
+    + `<small>impresso em ${impressoEm.toLocaleDateString("pt-BR")}</small></span></span>`;
+}
+
+/**
  * O corpo da folha da escala.
  *
  * Duas folhas diferentes, e não uma com um filtro. A do grupo é a que se prega
@@ -792,7 +823,7 @@ ${depois}
     plantoes.reduce((s, p) => s + Number(p.horas), 0))} · ${
     plantoes.reduce((s, p) => s + Number(p.horas), 0).toLocaleString("pt-BR")}h${
     doGrupo ? "" : ` · ${money(plantoes.reduce((s, p) => s + Number(p.valor), 0))}`
-  }</span><span>AVANEST · impresso em ${opts.impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+  }</span>${assinaturaDaFolha(opts.impressoEm)}</div>`;
 
   return { titulo, corpo };
 }
@@ -956,8 +987,7 @@ ${gente.length ? resumo + detalhe : '<p class="sub">Nenhum plantão neste mês.<
 <div class="rodape"><span>${turnosEscrito(
     gente.reduce((s, g) => s + g.horasPrevistas, 0))} turnos · ${
     gente.reduce((s, g) => s + g.horas, 0).toLocaleString("pt-BR")}h confirmadas de ${
-    gente.reduce((s, g) => s + g.horasPrevistas, 0).toLocaleString("pt-BR")}h previstas</span><span>AVANEST · impresso em ${
-    impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+    gente.reduce((s, g) => s + g.horasPrevistas, 0).toLocaleString("pt-BR")}h previstas</span>${assinaturaDaFolha(impressoEm)}</div>`;
 
   return { titulo, corpo };
 }
@@ -1025,8 +1055,7 @@ export function folhaDeProducao(
 ${blocos || '<p class="sub">Nada anotado neste mês.</p>'}
 <div class="rodape"><span>${plural(itens.length, "paciente", "pacientes")} · ${
     escaparHTML(money(total))} · recebido ${escaparHTML(money(recebido))} · a receber ${
-    escaparHTML(money(total - recebido))}</span><span>AVANEST · impresso em ${
-    impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+    escaparHTML(money(total - recebido))}</span>${assinaturaDaFolha(impressoEm)}</div>`;
 
   return { titulo, corpo };
 }
@@ -1159,8 +1188,7 @@ export function folhaDePlantoesPorLocal(
 <p class="sub">Plantões do mês, separados por hospital — um total por nota.</p>
 ${blocos || '<p class="sub">Nenhum plantão neste mês.</p>'}
 <div class="rodape"><span>${plantoesEscrito(horas)} · ${
-    horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(total))}</span><span>AVANEST · impresso em ${
-    impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+    horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(total))}</span>${assinaturaDaFolha(impressoEm)}</div>`;
 
   return { titulo, corpo };
 }
@@ -1262,8 +1290,7 @@ export function folhaDeFaturamento(
 <p class="sub">Atos anestésicos do mês, separados por hospital e por quem paga — um total por nota.</p>
 ${aviso}${blocos || '<p class="sub">Nada anotado neste mês.</p>'}
 <div class="rodape"><span>${plural(itens.length, "paciente", "pacientes")} · ${
-    escaparHTML(money(total))}</span><span>AVANEST · impresso em ${
-    impressoEm.toLocaleDateString("pt-BR")}</span></div>`;
+    escaparHTML(money(total))}</span>${assinaturaDaFolha(impressoEm)}</div>`;
 
   return { titulo, corpo };
 }

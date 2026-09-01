@@ -1,0 +1,11 @@
+-- Sai a exclusão de agendamento, criada horas atrás e nunca usada.
+--
+-- Desmarcar cobre o caso: a consulta sai dos contadores e do fluxo de
+-- atendimento, e a linha fica em cinza na agenda. A diferença que sobra é o
+-- agendamento digitado errado, que passa a ficar registrado como cancelado em
+-- vez de sumir — e essa foi a escolha de quem usa a agenda todo dia.
+--
+-- A função é removida, e não apenas desligada da tela: uma rota de DELETE que
+-- nenhum botão chama continua chamável por quem tiver a chave da API. Código
+-- morto num banco de dados de saúde não é neutro.
+drop function if exists public.excluir_agendamento(uuid);
