@@ -15,3 +15,12 @@ coverage/
 # O projeto nunca versionou lockfile, e a Vercel resolve pelo package.json.
 # Versionar agora significaria manter 5 mil linhas em dia por copiar e colar.
 package-lock.json
+
+# Amostras da folha impressa, geradas para conferência. Nascem fora do
+# projeto; estas linhas existem porque uma vez elas nasceram dentro e um
+# `git add -A` as levou para o repositório.
+/amostra-*
+/pior-caso.*
+/A-*.pdf
+/B-*.pdf
+/modal*.png

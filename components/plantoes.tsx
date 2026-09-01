@@ -150,21 +150,56 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
     return papel.scrollHeight * k;
   };
 
-  // Busca binária pelo maior zoom que ainda cabe. Doze passos levam a diferença
+  // Nenhuma faixa pode quebrar para uma segunda linha.
+  //
+  // A letra M, T ou N fica à esquerda da fileira de nomes. Quando os nomes
+  // passam da largura da coluna e caem para a linha de baixo, a letra alinha
+  // com a primeira metade e a segunda fica solta embaixo — quem lê a folha na
+  // parede não sabe mais se aquele nome é da manhã ou da tarde, e é essa
+  // pergunta que a folha existe para responder.
+  //
+  // E a quebra é causada pelo PRÓPRIO zoom. Em `scale(k)` a caixa é desenhada
+  // com `largura/k`: quanto mais se amplia, mais estreita a coluna fica antes
+  // de ser ampliada, e mais cedo os nomes quebram. Ampliar demais é, ao mesmo
+  // tempo, o que deixa a letra grande e o que parte a faixa em duas.
+  //
+  // Por isso as duas condições entram na MESMA busca. As duas melhoram na
+  // mesma direção — zoom menor cabe mais fácil e quebra menos —, então a busca
+  // binária continua valendo com o teste dobrado.
+  // DUAS pastilhas têm de caber lado a lado; três, não.
+  //
+  // Exigir três numa linha só é resolver o dia mais cheio do mês encolhendo a
+  // folha inteira: a coluna de um dia é um sétimo da largura da página, e três
+  // nomes ali dentro obrigam a uma letra menor do que a que a escala tinha
+  // antes de tudo isso. O dia de duas pessoas é o comum, e é o que quebrava.
+  const semQuebra = () => {
+    // A altura de uma pastilha é a régua. Comparar com 1,5 dela dá folga para
+    // o arredondamento do navegador sem deixar passar uma segunda linha, que
+    // dobraria a altura.
+    const umaLinha = doc.querySelector<HTMLElement>(".fx .p")?.offsetHeight ?? 0;
+    if (!umaLinha) return true;
+    return [...doc.querySelectorAll<HTMLElement>(".fx .q")]
+      .filter((f) => f.querySelectorAll(".p").length <= 2)
+      .every((f) => f.offsetHeight <= umaLinha * 1.5);
+  };
+
+  const serve = (k: number) => aplicar(k) <= caixa.altura && semQuebra();
+
+  // Busca binária pelo maior zoom que serve. Doze passos levam a diferença
   // abaixo de meio por cento — mais fino que isso não se enxerga no papel.
   let cabe = MENOR;
-  if (aplicar(MAIOR) <= caixa.altura) {
+  if (serve(MAIOR)) {
     cabe = MAIOR;
   } else {
     let alto = MAIOR;
     for (let i = 0; i < 12; i++) {
       const meio = (cabe + alto) / 2;
-      if (aplicar(meio) <= caixa.altura) cabe = meio; else alto = meio;
+      if (serve(meio)) cabe = meio; else alto = meio;
     }
   }
 
   // A última medida vale, e não a última tentativa: a busca acima termina numa
-  // aplicação que pode ser a que NÃO coube.
+  // aplicação que pode ser a que não serviu.
   const usado = aplicar(cabe);
 
   folha.style.height = `${caixa.altura}px`;
