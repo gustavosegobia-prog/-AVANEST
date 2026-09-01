@@ -5,10 +5,11 @@ import { createClient } from "@/utils/supabase/client";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
+import { Icone } from "@/components/icone";
 import {
   corpoDaFolha, cssDasCores, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
-  apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
+  apelidosDaEquipe, filtroDeHospital, iniciais, montarICS, nomeCurto, nomeDoPeriodo,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
@@ -2959,6 +2960,7 @@ function QuemEntraNaEscala({
     () => Object.fromEntries(equipe.map((p) => [p.id, p.naEscala])),
   );
   const [salvando, setSalvando] = useState("");
+  const [busca, setBusca] = useState("");
 
   async function alternar(id: string, entra: boolean) {
     setSalvando(id);
@@ -2967,11 +2969,22 @@ function QuemEntraNaEscala({
     if (deuCerto) setEstado((antes) => ({ ...antes, [id]: entra }));
   }
 
-  const dentro = equipe.filter((p) => estado[p.id] && (p.crm ?? "").trim()).length;
+  const temCRM = (p: { crm: string | null }) => Boolean((p.crm ?? "").trim());
+  const dentro = equipe.filter((p) => estado[p.id] && temCRM(p)).length;
+  const aptos = equipe.filter(temCRM).length;
+
+  // A busca aparece só quando há lista para percorrer. Num serviço de cinco
+  // pessoas ela seria um campo a mais para ler e nada para filtrar; num de
+  // vinte, é a diferença entre marcar um nome e caçá-lo rolando.
+  const temBusca = equipe.length > 6;
+  const alvo = busca.trim().toLowerCase();
+  const visiveis = alvo
+    ? equipe.filter((p) => `${p.nome} ${p.crm ?? ""}`.toLowerCase().includes(alvo))
+    : equipe;
 
   return (
     <div className="patientModalBackdrop" role="presentation">
-      <section className="localModal" role="dialog" aria-modal="true" aria-labelledby="quem-escala">
+      <section className="localModal escalaModal" role="dialog" aria-modal="true" aria-labelledby="quem-escala">
         <div className="patientModalHead">
           <div>
             <h2 id="quem-escala">Quem entra na escala</h2>
@@ -2983,31 +2996,60 @@ function QuemEntraNaEscala({
           <button type="button" onClick={onFechar} aria-label="Fechar">×</button>
         </div>
 
+        {temBusca && (
+          <div className="escalaBusca">
+            <Icone nome="busca" tamanho={16} />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar pelo nome ou CRM" aria-label="Buscar na equipe" />
+            {busca && (
+              <button type="button" onClick={() => setBusca("")} aria-label="Limpar a busca">×</button>
+            )}
+          </div>
+        )}
+
         {equipe.length === 0 ? (
-          <p className="plantaoNota">
+          <p className="plantaoNota escalaVazio">
             Ninguém cadastrado como anestesiologista ainda. O cadastro é em{" "}
             <strong>Admin → Convidar</strong>, com nome, CRM e e-mail.
           </p>
+        ) : visiveis.length === 0 ? (
+          <p className="plantaoNota escalaVazio">
+            Ninguém com <strong>{busca}</strong> no nome ou no CRM.
+          </p>
         ) : (
           <ul className="escalaMembros">
-            {equipe.map((p) => {
-              const semCRM = !(p.crm ?? "").trim();
+            {visiveis.map((p) => {
+              const semCRM = !temCRM(p);
+              const marcado = Boolean(estado[p.id]);
               return (
-                <li key={p.id} className={semCRM ? "semCRM" : ""}>
+                <li key={p.id} className={`${semCRM ? "semCRM" : ""}${marcado && !semCRM ? " dentro" : ""}`}>
                   <label>
                     <input
                       type="checkbox"
-                      checked={Boolean(estado[p.id])}
+                      checked={marcado}
                       disabled={semCRM || salvando === p.id}
                       onChange={(e) => void alternar(p.id, e.target.checked)}
                     />
-                    <span>
+                    {/* As iniciais dão à linha um ponto de apoio à esquerda.
+                        Sem elas a linha era uma caixa de seleção solta com
+                        texto ao lado e um palmo de branco à direita. */}
+                    <span className="escalaAvatar" aria-hidden="true">{iniciais(p.nome)}</span>
+                    <span className="escalaQuem">
                       <strong>{p.nome}</strong>
                       <small>
                         {semCRM
                           ? "sem CRM no cadastro — preencha em Admin → Equipe"
                           : `CRM ${p.crm}`}
                       </small>
+                    </span>
+                    {/* O estado ESCRITO, e não só a caixa marcada. Marcado e
+                        desmarcado se distinguiam por um quadradinho de 20px, e
+                        numa lista de vinte nomes conferir quem está dentro
+                        virava caça ao detalhe. A palavra responde de longe. */}
+                    <span className="escalaEstado">
+                      {salvando === p.id ? "Salvando…"
+                        : semCRM ? "Falta CRM"
+                          : marcado ? "Na escala" : "Fora"}
                     </span>
                   </label>
                 </li>
@@ -3017,8 +3059,8 @@ function QuemEntraNaEscala({
         )}
 
         <div className="modalActions">
-          <span className="plantaoNota" style={{ marginRight: "auto" }}>
-            {plural(dentro, "profissional na escala", "profissionais na escala")}.
+          <span className="escalaContagem">
+            <strong>{dentro}</strong> de {aptos} na escala
           </span>
           <button type="button" className="primaryClinical compact" onClick={onFechar}>
             Pronto

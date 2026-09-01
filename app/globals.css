@@ -3650,20 +3650,88 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    coordenador precisa VER que o colega existe e ler por que ele não pode ser
    marcado, senão conclui que o cadastro sumiu.
    ========================================================================== */
-.escalaMembros{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:2px;
-  max-height:52vh;overflow:auto}
-.escalaMembros li{border-bottom:1px solid var(--cor-borda)}
-.escalaMembros li:last-child{border-bottom:0}
-.escalaMembros label{display:flex;align-items:center;gap:14px;padding:12px 4px;
-  cursor:pointer;min-height:52px}
+/* A janela tinha uma barra de rolagem HORIZONTAL, e ela não vinha da lista.
+   `.localModal .modalActions` tem `margin:0 -26px` para a barra de baixo
+   desfazer o recuo do formulário e encostar nas bordas do modal — e funciona
+   lá, onde o `<form>` tem 26px de recuo para desfazer. Aqui não há formulário
+   nenhum: a margem negativa deixava a barra 52px mais larga que a janela, e o
+   navegador punha a rolagem. Quem recua agora é cada bloco, por dentro. */
+.escalaModal>.escalaMembros,.escalaModal>.escalaVazio{padding-left:var(--esp-6);padding-right:var(--esp-6)}
+.escalaModal .modalActions{margin:0}
+
+/* A busca não precisa ser fixa: quem rola é a LISTA, dentro da altura máxima
+   dela, e não a janela. O campo fica sempre à vista sem grudar em nada — e um
+   `position:sticky` aqui dependeria de saber a altura do cabeçalho, que muda
+   com a quebra do parágrafo. */
+.escalaBusca{display:flex;align-items:center;gap:9px;margin:14px var(--esp-6) 0;
+  padding:0 12px;border:1px solid var(--cor-borda-forte);border-radius:var(--raio-1);
+  background:var(--cor-superficie-suave)}
+.escalaBusca svg{flex:none;color:var(--cor-tinta-fraca)}
+.escalaBusca input{flex:1;min-width:0;height:44px;border:0;background:none;font:inherit;
+  color:var(--cor-tinta)}
+.escalaBusca input:focus{outline:0}
+.escalaBusca:focus-within{border-color:var(--cor-marca);box-shadow:var(--foco)}
+.escalaBusca>button{flex:none;border:0;background:none;font-size:19px;line-height:1;
+  color:var(--cor-tinta-fraca);cursor:pointer;padding:6px}
+
+.escalaVazio{margin-top:16px}
+
+/* Uma linha por pessoa, e cada linha é um cartão que se acende quando marcado.
+   Antes eram linhas separadas por um risco, e marcado ou desmarcado se
+   distinguia por um quadradinho de 20px na ponta: conferir quem está na escala
+   numa lista de vinte nomes virava caça ao detalhe. Agora o cartão inteiro
+   muda de cor, e a palavra "Na escala" fecha a resposta.
+   Quem está sem CRM aparece apagado e travado — visível, e não escondido: o
+   coordenador precisa VER que o colega existe e ler por que ele não pode ser
+   marcado, senão conclui que o cadastro sumiu. */
+.escalaMembros{list-style:none;margin:14px 0 0;display:grid;gap:8px;
+  max-height:min(52vh,420px);overflow:auto}
+.escalaMembros li{border:1px solid var(--cor-borda);border-radius:var(--raio-2);
+  background:var(--cor-superficie);transition:border-color var(--transicao),background var(--transicao)}
+.escalaMembros li:hover:not(.semCRM){border-color:var(--cor-borda-forte);background:var(--cor-superficie-suave)}
+.escalaMembros li.dentro{border-color:var(--cor-marca);background:var(--cor-marca-suave)}
+.escalaMembros li:focus-within{box-shadow:var(--foco)}
+.escalaMembros label{display:flex;align-items:center;gap:12px;padding:10px 14px;
+  cursor:pointer;min-height:58px}
 .escalaMembros input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--cor-marca);
   cursor:pointer}
-.escalaMembros span{display:grid;gap:2px;min-width:0}
-.escalaMembros strong{font-size:15px}
-.escalaMembros small{color:var(--cor-tinta-fraca);font-size:12px}
+/* As iniciais dão à linha um ponto de apoio à esquerda; sem elas era uma caixa
+   de seleção solta com texto ao lado e um palmo de branco à direita. */
+.escalaAvatar{flex:none;width:38px;height:38px;border-radius:50%;
+  display:grid;place-items:center;font-size:13px;font-weight:800;
+  background:var(--cor-fundo);color:var(--cor-tinta-fraca);
+  border:1px solid var(--cor-borda)}
+.escalaMembros li.dentro .escalaAvatar{background:var(--cor-marca);color:#fff;
+  border-color:var(--cor-marca)}
+.escalaQuem{display:grid;gap:2px;min-width:0;flex:1}
+.escalaQuem strong{font-size:15px;overflow-wrap:anywhere}
+.escalaQuem small{color:var(--cor-tinta-fraca);font-size:12px}
+/* O estado escrito, à direita. Some no celular: ali a linha tem largura para
+   o nome ou para o rótulo, e o nome ganha — a caixa marcada continua dizendo
+   a mesma coisa a um toque de distância. */
+.escalaEstado{flex:none;font-size:11px;font-weight:800;letter-spacing:.02em;
+  padding:5px 10px;border-radius:999px;white-space:nowrap;
+  background:var(--cor-fundo);color:var(--cor-tinta-fraca)}
+.escalaMembros li.dentro .escalaEstado{background:var(--cor-marca);color:#fff}
 .escalaMembros li.semCRM label{cursor:not-allowed}
+.escalaMembros li.semCRM{background:var(--cor-fundo);border-style:dashed}
 .escalaMembros li.semCRM strong{color:var(--cor-tinta-fraca)}
 .escalaMembros li.semCRM small{color:var(--cor-atencao)}
+.escalaMembros li.semCRM .escalaEstado{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+/* "8 de 13", e não "8 profissionais na escala": o número sozinho não diz se
+   falta alguém, e é exatamente isso que se quer saber antes de fechar. */
+.escalaContagem{margin-right:auto;font-size:13px;color:var(--cor-tinta-fraca)}
+.escalaContagem strong{font-size:16px;color:var(--cor-tinta)}
+@media(max-width:560px){
+  .escalaEstado{display:none}
+  .escalaMembros label{gap:10px;padding:10px}
+  /* A barra de baixo empilha em `column-reverse` no geral, que joga o botão
+     para cima do texto — ali o texto é um rótulo do botão, e faz sentido.
+     Aqui é a contagem, que é uma conclusão: "7 de 8" embaixo do "Pronto" se lê
+     como legenda do botão, e não como o resumo do que se acabou de marcar. */
+  .escalaModal .modalActions{flex-direction:column;align-items:stretch}
+  .escalaContagem{margin:0 0 4px}
+}
 
 /* A chamada acima do calendário: a contagem à esquerda, o botão à direita. */
 .plantaoAdicionar{display:flex;align-items:center;justify-content:space-between;
