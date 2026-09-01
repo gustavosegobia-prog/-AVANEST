@@ -9,7 +9,7 @@ import { Icone } from "@/components/icone";
 import {
   corpoDaFolha, cssDasCores, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
-  apelidosDaEquipe, filtroDeHospital, iniciais, montarICS, nomeCurto, nomeDoPeriodo,
+  apelidosDaEquipe, coresDaFolha, filtroDeHospital, iniciais, montarICS, nomeCurto, nomeDoPeriodo,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
@@ -639,11 +639,46 @@ export function Plantoes({
   const emCores = useSyncExternalStore(
     assinarModoDaFolha, modoDaFolha, modoDaFolhaNoServidor) === "cor";
 
+  // O nome curto de cada colega para os botões de escalar rápido — e para a
+  // cor logo abaixo, que precisa da mesma palavra que a etiqueta mostra.
+  const apelidos = useMemo(() => apelidosDaEquipe(colegas), [colegas]);
+
+  /**
+   * A cor de cada colega no calendário.
+   *
+   * As cores são disputadas por quem está na escala DESTE MÊS, e não
+   * distribuídas pela posição da pessoa no cadastro.
+   *
+   * A posição no cadastro era `i % 8`, e com treze cadastrados para oito cores
+   * ela repetia — não em teoria: numa escala de sete pessoas saíam Ana e
+   * Matheus no mesmo verde e Eder e Luana no mesmo âmbar. Duas manchas iguais
+   * na mesma folha é pior do que folha sem cor nenhuma: a cor deixa de ser
+   * atalho e vira armadilha, porque quem confere de longe lê a mancha e não o
+   * nome.
+   *
+   * Quem NÃO tem plantão no mês fica com a sobra. Ele só aparece nos botões de
+   * escalar, onde a cor é enfeite e não identificação — e disputar cor com
+   * quem está na escala seria tirar do trabalho para dar ao enfeite.
+   *
+   * Acima de oito pessoas no mesmo mês as cores repetem, e não há o que fazer:
+   * a paleta tem oito tons que o olho separa de relance, e um nono tom
+   * espremido entre dois deles não separaria nada. Aí quem identifica volta a
+   * ser o nome, que está escrito em toda pastilha.
+   */
   const corPorMedico = useMemo(() => {
+    const comoSeChama = (c: Colega) => apelidos.get(c.id) ?? nomeCurto(c.nome);
+    const noMes = new Set(plantoes.filter((p) => p.situacao !== "cancelado").map((p) => p.perfil_id));
     const m = new Map<string, string>();
-    colegas.forEach((c, i) => m.set(c.id, CORES_MEDICO[i % CORES_MEDICO.length]));
+    // `coresDaFolha` é a mesma função que decide as cores da folha impressa:
+    // preferência tirada do nome, e o primeiro livre quando ela está tomada.
+    // Duas listas seriam duas verdades, e a folha na parede tem de bater com o
+    // calendário na mão.
+    for (const grupo of [colegas.filter((c) => noMes.has(c.id)), colegas.filter((c) => !noMes.has(c.id))]) {
+      const cores = coresDaFolha(grupo.map(comoSeChama));
+      for (const c of grupo) m.set(c.id, CORES_MEDICO[cores.get(comoSeChama(c)) ?? CORES_MEDICO.length - 1]);
+    }
     return m;
-  }, [colegas]);
+  }, [colegas, plantoes, apelidos]);
 
   /**
    * A cor de cada hospital, para o calendário da escala pessoal.
@@ -668,8 +703,6 @@ export function Plantoes({
   // deixa de funcionar exatamente no plantão em que a rede do hospital cai.
   const feriados = useMemo(() => feriadosDoMes(mes), [mes]);
 
-  // O nome curto de cada colega para os botões de escalar rápido.
-  const apelidos = useMemo(() => apelidosDaEquipe(colegas), [colegas]);
 
   const carregar = useCallback(async () => {
     const supabase = createClient();
@@ -1438,7 +1471,14 @@ const EXPLICA_ZERO: Record<string, string> = {
       // `corpoDaFolha` procura a cor. O índice é o mesmo `i % 8` que gera as
       // classes med-m1…m8 da tela.
       cores: escopo === "grupo"
-        ? new Map(colegas.map((c, i) => [apelidos.get(c.id) ?? nomeCurto(c.nome), i % CORES_MEDICO.length]))
+        // Tirado do MESMO mapa que pinta o calendário, e não recalculado aqui:
+        // recalcular é o jeito garantido de o papel e a tela discordarem no dia
+        // em que uma das duas contas mudar.
+        ? new Map(colegas.map((c) => [
+            apelidos.get(c.id) ?? nomeCurto(c.nome),
+            Math.max(0, CORES_MEDICO.indexOf(
+              (corPorMedico.get(c.id) ?? "m8") as (typeof CORES_MEDICO)[number])),
+          ]))
         : new Map([...locais].sort((a, b) => a.id.localeCompare(b.id))
             .map((l, i) => [nomeDoLocal(l), i % CORES_MEDICO.length])),
       // O mesmo apelido dos botões de escalar e das etiquetas do calendário —
