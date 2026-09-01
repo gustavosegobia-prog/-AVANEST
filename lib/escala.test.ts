@@ -4,7 +4,7 @@ import type { PlantaoDoFechamento, PlantaoImpresso } from "./escala.ts";
 import {
   apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS, partesDoPlantao,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
-  coresDaFolha, cssDaPaleta, legendaDaFolha, PALETA_DA_FOLHA,
+  coresDaFolha, cssDasCores, legendaDaFolha, PALETA_DA_FOLHA,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -887,18 +887,38 @@ test("coresDaFolha: ignora nome em branco", () => {
   assert.equal(coresDaFolha(["", "   ", "Ana Souza"]).size, 1);
 });
 
-test("cssDaPaleta: uma classe para cada cor da paleta", () => {
-  const css = cssDaPaleta();
+test("cssDasCores: uma classe para cada cor da paleta", () => {
+  const css = cssDasCores(true);
   PALETA_DA_FOLHA.forEach((cor, i) => {
     assert.ok(css.includes(`.c${i}{background:${cor}}`), `faltou .c${i}`);
   });
 });
 
-test("cssDaPaleta: manda o navegador imprimir os fundos", () => {
+test("cssDasCores: manda o navegador imprimir os fundos, nas duas versões", () => {
   // Sem isto o navegador descarta TODO fundo na hora de imprimir: a folha sai
   // colorida na pré-visualização e branca no papel, que é exatamente o
-  // problema que este código existe para resolver.
-  assert.match(cssDaPaleta(), /print-color-adjust:\s*exact/);
+  // problema que este código existe para resolver. Vale também para a preto e
+  // branco, cujos cinzas de fim de semana também são fundo.
+  assert.match(cssDasCores(true), /print-color-adjust:\s*exact/);
+  assert.match(cssDasCores(false), /print-color-adjust:\s*exact/);
+});
+
+test("cssDasCores: em preto e branco nenhuma cor da paleta sobra na folha", () => {
+  // O modo P&B não é a folha colorida passada num filtro: as pastilhas
+  // invertem para fundo branco com letra preta, porque letra branca sobre
+  // cinza médio é justamente o nome — a informação — saindo pior.
+  const css = cssDasCores(false);
+  for (const cor of PALETA_DA_FOLHA) {
+    assert.ok(!css.includes(cor), `a cor ${cor} vazou para a folha preto e branco`);
+  }
+  assert.match(css, /\.p\{background:#fff;color:#111/);
+});
+
+test("cssDasCores: a legenda some na folha preto e branco", () => {
+  // Sete pastilhas idênticas embaixo do título não explicam código nenhum —
+  // seria tinta gasta para ensinar um atalho que não existe nessa versão.
+  assert.match(cssDasCores(false), /\.legenda\{display:none\}/);
+  assert.doesNotMatch(cssDasCores(true), /\.legenda\{display:none\}/);
 });
 
 test("legendaDaFolha: os nomes em ordem, com a cor de cada um", () => {
@@ -916,4 +936,26 @@ test("legendaDaFolha: uma pessoa só não tem o que legendar", () => {
 
 test("legendaDaFolha: escapa o nome", () => {
   assert.ok(!legendaDaFolha(new Map([["<b>x</b>", 0], ["Ana", 1]])).includes("<b>x</b>"));
+});
+
+test("a legenda traz só quem está na escala do mês", () => {
+  // A equipe tem treze pessoas; o mês em que oito não pegaram plantão nenhum
+  // não é um mês com treze nomes na parede. O mapa de cores vem da tela e
+  // cobre o cadastro inteiro — quem manda na legenda é a folha, não o cadastro.
+  const equipe = ["Ana Souza", "Bruna Miyamoto", "Gustavo Silva", "Taylor Salomon"];
+  const { corpo } = corpoDaFolha({
+    doGrupo: true, mes: "2026-08", nomeMes: "agosto", ano: 2026,
+    diasNoMes: 31, primeiroDiaSemana: 6,
+    impressoEm: new Date("2026-08-24T12:00:00"),
+    cores: new Map(equipe.map((n, i) => [n, i])),
+    plantoes: [
+      turno("Santa Casa", "ANA PAULA DE SOUZA"),
+      turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
+    ],
+  });
+  const legenda = corpo.slice(corpo.indexOf('<div class="legenda">'), corpo.indexOf("<table"));
+  assert.match(legenda, /Ana Souza/);
+  assert.match(legenda, /Gustavo Silva/);
+  assert.doesNotMatch(legenda, /Bruna Miyamoto/);
+  assert.doesNotMatch(legenda, /Taylor Salomon/);
 });

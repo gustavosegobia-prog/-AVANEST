@@ -511,22 +511,54 @@ export function coresDaFolha(nomes: readonly string[]): Map<string, number> {
 }
 
 /**
- * As regras de cor, prontas para entrar na folha.
+ * As regras de cor, prontas para entrar na folha — nas duas versões dela.
  *
- * Nasce aqui, e não na folha de estilo de quem imprime, porque a paleta e o
- * número da classe são a mesma decisão: separados, uma cor a mais numa ponta
+ * Nascem aqui, e não na folha de estilo de quem imprime, porque a paleta e o
+ * número da classe são a mesma decisão: separadas, uma cor a mais numa ponta
  * viraria uma etiqueta sem cor na outra.
+ *
+ * **Colorida** é a folha igual à tela: fundo forte, letra branca.
+ *
+ * **Preto e branco** não é a colorida passada num filtro cinza, e é por isso
+ * que ela existe como versão própria. Numa impressora monocromática, o azul e
+ * o verde da tela viram dois cinzas médios que ninguém separa, e a letra
+ * branca em cima deles perde quase todo o contraste — o nome, que é a
+ * informação, é justamente o que sai pior. Aqui a pastilha inverte: fundo
+ * branco, letra preta, contorno fino. Todas ficam iguais, e é honesto que
+ * fiquem: sem cor não há código de cor, e quem identifica passa a ser o nome
+ * escrito — que sempre esteve lá. A folha perde o atalho e não perde nada.
+ *
+ * A legenda some junto. Uma tira de sete pastilhas idênticas embaixo do título
+ * não explica coisa nenhuma; seria tinta gasta para ensinar um código que não
+ * existe nessa versão.
  *
  * O `print-color-adjust` não é enfeite: sem ele o navegador joga fora TODO
  * fundo na hora de imprimir. A folha sairia colorida na janela de
  * pré-visualização e branca no papel — que é exatamente o problema que este
- * código existe para resolver.
+ * código existe para resolver. Vale para as duas versões: os cinzas do fim de
+ * semana também são fundo.
  */
-export function cssDaPaleta(): string {
-  return ".p{display:inline-block;border-radius:3px;padding:1px 4px;margin:0 3px 2px 0;"
-    + "font-style:normal;font-weight:700;font-size:9.5px;line-height:1.3;color:#fff;"
+export function cssDasCores(emCores = true): string {
+  const base = ".p{display:inline-block;border-radius:3px;padding:1px 4px;margin:0 3px 2px 0;"
+    + "font-style:normal;font-weight:700;font-size:9.5px;line-height:1.3;"
     + "-webkit-print-color-adjust:exact;print-color-adjust:exact}\n"
-    + PALETA_DA_FOLHA.map((cor, i) => `.c${i}{background:${cor}}`).join("\n");
+    + "td.dia{-webkit-print-color-adjust:exact;print-color-adjust:exact}\n";
+  if (!emCores) {
+    return base
+      + ".p{background:#fff;color:#111;border:1px solid #8a8a8a}\n"
+      + ".legenda{display:none}\n"
+      + "td.fds{background:#f2f2f2}\n"
+      + "td.feriado{background:#e6e6e6}\n"
+      + "td .d{color:#000}\n"
+      + "td .fer{color:#000}";
+  }
+  return base
+    + ".p{color:#fff}\n"
+    + PALETA_DA_FOLHA.map((cor, i) => `.c${i}{background:${cor}}`).join("\n") + "\n"
+    + "td.fds{background:#f2f6fa}\n"
+    + "td.feriado{background:#fdf1f1}\n"
+    + "td .d{color:#1668b3}\n"
+    + "td .fer{color:#b0202b}";
 }
 
 /**
@@ -599,9 +631,13 @@ export function corpoDaFolha(opts: {
   // Na do grupo, pregada na parede, a pergunta é "quando eu entro?" — cor por
   // pessoa. Na pessoal, que é só sua, todo turno é seu e pintar o seu nome não
   // separaria nada; ali a pergunta é "em que hospital?", e a cor vai no local.
-  const cores = opts.cores ?? coresDaFolha(doGrupo
+  // O que esta folha de fato escreve nas pastilhas. Sai dos plantões impressos,
+  // e não do cadastro: a equipe tem treze pessoas, e o mês em que oito delas
+  // não pegaram plantão nenhum não é um mês com treze nomes na parede.
+  const rotulos = [...new Set((doGrupo
     ? plantoes.map((p) => nomeCurto(p.profissional))
-    : plantoes.map((p) => p.local || "Sem local"));
+    : plantoes.map((p) => p.local || "Sem local")).filter(Boolean))];
+  const cores = opts.cores ?? coresDaFolha(rotulos);
   // Sem cor combinada, cai na última — a ardósia, que é a mesma que a tela usa
   // como reserva. É o caso do plantão de fora, num lugar escrito à mão que não
   // está no cadastro: ele não tem cor de ninguém, e fingir que tem seria pior.
@@ -724,7 +760,7 @@ export function corpoDaFolha(opts: {
 <p class="sub">${doGrupo
     ? "Escala da equipe. Trocas já aceitas estão refletidas nesta folha."
     : "Sua escala pessoal, com o valor combinado de cada turno."}</p>
-${legendaDaFolha(cores)}
+${legendaDaFolha(new Map(rotulos.map((r) => [r, cores.get(r) ?? PALETA_DA_FOLHA.length - 1])))}
 <table class="mes"><thead><tr>${["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
     .map((d) => `<th>${d}</th>`).join("")}</tr></thead><tbody>${semanas.join("")}</tbody></table>
 ${depois}

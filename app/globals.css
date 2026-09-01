@@ -3475,6 +3475,17 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .plantaoBarra{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding:15px 20px;border-bottom:1px solid var(--cor-borda)}
 .plantaoBarraAcoes{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+/* Colorida ou preto e branco, colado no botão de imprimir. Os dois segmentos
+   dividem a mesma moldura: separados por um espaço eles pareceriam dois botões
+   de ação — "faça isso" e "faça aquilo" —, e são um estado só com duas
+   posições. A borda em volta é o que diz "escolha uma das duas". */
+.folhaModo{display:inline-flex;border:1px solid var(--cor-borda);border-radius:9px;
+  overflow:hidden;flex:none}
+.folhaModo button{border:0;background:var(--cor-superficie);color:var(--cor-tinta-fraca);
+  padding:9px 12px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+.folhaModo button+button{border-left:1px solid var(--cor-borda)}
+.folhaModo button.ativo{background:var(--cor-marca);color:#fff}
+.folhaModo button:focus-visible{outline:0;box-shadow:var(--foco)}
 @media(max-width:760px){
   .plantaoBarra{flex-direction:column;align-items:stretch}
   .plantaoMesNav{justify-content:center}

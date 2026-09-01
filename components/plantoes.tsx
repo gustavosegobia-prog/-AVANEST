@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
-  corpoDaFolha, cssDaPaleta, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
+  corpoDaFolha, cssDasCores, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
@@ -159,7 +159,7 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
 
 function imprimirFolha(titulo: string, corpo: string,
                        orientacao: "landscape" | "portrait" = "landscape",
-                       umaFolhaSo = false): boolean {
+                       umaFolhaSo = false, emCores = true): boolean {
   const janela = window.open("", "_blank", "width=1100,height=800");
   if (!janela) return false;
   janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -193,14 +193,13 @@ td.vazio{background:#fafafa}
 /* Fim de semana e feriado com fundo próprio, como na tela. Numa grade de sete
    colunas iguais a virada da semana só se descobre lendo o cabeçalho lá em
    cima e contando para baixo — e é no fim de semana que a escala fica mais
-   apertada e mais conferida. Sem print-color-adjust o navegador descarta os
-   dois fundos ao imprimir, e a marca existiria só na pré-visualização. */
-td.fds{background:#f2f6fa}
-td.feriado{background:#fdf1f1}
-td.dia{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-td .d{font-size:11.5px;font-weight:800;color:#1668b3;display:block;margin-bottom:2px}
+   apertada e mais conferida.
+   As COR dessas faixas — e a das pastilhas, e a do número do dia — não está
+   aqui: vem de cssDasCores(), que tem uma resposta para a folha colorida e
+   outra para a preto e branco. Aqui fica só o que não muda com a escolha. */
+td .d{font-size:11.5px;font-weight:800;display:block;margin-bottom:2px}
 td .fer{display:block;font-style:normal;text-decoration:none;font-size:8.5px;
-  font-weight:800;color:#b0202b;line-height:1.2;margin-bottom:2px}
+  font-weight:800;line-height:1.2;margin-bottom:2px}
 td .t{display:block;margin-bottom:3px;line-height:1.25}
 td .t b{font-size:10.5px;display:block}
 td .t span{font-size:10px;color:#333}
@@ -221,7 +220,7 @@ td .t span{font-size:10px;color:#333}
 /* A tira de nomes embaixo do título, com as mesmas pastilhas do calendário. */
 .legenda{display:flex;flex-wrap:wrap;gap:0;margin:0 0 9px}
 .legenda .p{font-size:10px;padding:2px 6px}
-${cssDaPaleta()}
+${cssDasCores(emCores)}
 /* A linha do turno que ninguém confirmou fica marcada no papel. Sem fundo ela
    se distingue só pela palavra "Aguardando" na quinta coluna, que é justamente
    a que o olho não percorre ao conferir uma folha de pagamento. O
@@ -315,6 +314,50 @@ function baixar(nome: string, conteudo: string, tipo: string) {
  * ajuda a reconhecer ninguém — vira enfeite.
  */
 const CORES_MEDICO = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"] as const;
+
+/**
+ * Colorida ou preto e branco, guardado no navegador.
+ *
+ * A impressora do centro cirúrgico é a mesma todo mês. Perguntar de novo a cada
+ * impressão seria um clique repetido trinta vezes por ano para dizer a mesma
+ * coisa; e escolher por ele, errado, gasta uma folha e a paciência de quem já
+ * mandou imprimir.
+ *
+ * Isto é um estado que mora FORA do React — no localStorage —, e é por isso que
+ * a leitura passa por `useSyncExternalStore` em vez de um efeito que chama
+ * setState. No servidor não há localStorage: o instantâneo de lá é sempre
+ * "colorida", e o React reconcilia sozinho depois da hidratação, sem a
+ * renderização em cascata que um efeito provocaria.
+ *
+ * O evento `storage` entra porque a escolha é do aparelho, e não da aba: quem
+ * troca para P&B numa aba e imprime na outra tem de imprimir em P&B.
+ */
+const MODO_DA_FOLHA = "avanest:escala-impressa";
+const ouvintesDoModo = new Set<() => void>();
+
+function assinarModoDaFolha(avisar: () => void): () => void {
+  ouvintesDoModo.add(avisar);
+  const doNavegador = () => avisar();
+  window.addEventListener("storage", doNavegador);
+  return () => { ouvintesDoModo.delete(avisar); window.removeEventListener("storage", doNavegador); };
+}
+
+// Devolve string, e não objeto: `useSyncExternalStore` compara o instantâneo
+// com o anterior, e um objeto novo a cada leitura seria sempre "mudou" — o
+// componente renderizaria sem parar.
+function modoDaFolha(): string {
+  try { return localStorage.getItem(MODO_DA_FOLHA) === "pb" ? "pb" : "cor"; } catch { return "cor"; }
+}
+
+// Sai colorida por padrão porque é a que casa com a tela. Quem tem impressora
+// monocromática troca uma vez, e não pensa mais no assunto.
+const modoDaFolhaNoServidor = () => "cor";
+
+function guardarModoDaFolha(cores: boolean) {
+  try { localStorage.setItem(MODO_DA_FOLHA, cores ? "cor" : "pb"); }
+  catch { /* navegador com armazenamento bloqueado imprime colorido */ }
+  for (const avisar of ouvintesDoModo) avisar();
+}
 
 /** Quanto o dedo precisa andar para a gaveta abrir, e a largura dela. */
 const ARRASTO_ABRE = 44;
@@ -566,6 +609,9 @@ export function Plantoes({
     })();
     return () => { vivo = false; };
   }, []);
+
+  const emCores = useSyncExternalStore(
+    assinarModoDaFolha, modoDaFolha, modoDaFolhaNoServidor) === "cor";
 
   const corPorMedico = useMemo(() => {
     const m = new Map<string, string>();
@@ -1379,7 +1425,7 @@ const EXPLICA_ZERO: Record<string, string> = {
     // Uma folha só, sempre. A escala é pregada na parede: a segunda página com
     // os quatro últimos dias do mês não é pregada por ninguém, e o mês some
     // pela metade.
-    if (!imprimirFolha(titulo, corpo, "landscape", true)) {
+    if (!imprimirFolha(titulo, corpo, "landscape", true, emCores)) {
       setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
     }
   }
@@ -1569,6 +1615,20 @@ const EXPLICA_ZERO: Record<string, string> = {
                   title="Baixa um arquivo .ics: o iPhone abre no Calendário e o Google Agenda importa">
                   Google/Apple
                 </button>
+                {/* A escolha fica COLADA no botão, e não numa tela de
+                    configuração: ela só existe no instante de imprimir, e é
+                    ali que se lembra qual é a impressora da sala. Os dois
+                    rótulos ficam visíveis o tempo todo — um interruptor que
+                    mostra só o estado atual obriga a decifrar se "Colorida"
+                    é o que está ligado ou o que o clique vai fazer. */}
+                <span className="folhaModo" role="group" aria-label="Como imprimir a escala">
+                  <button type="button" className={emCores ? "ativo" : ""}
+                    aria-pressed={emCores} onClick={() => guardarModoDaFolha(true)}
+                    title="Uma cor por pessoa, como no calendário da tela">Colorida</button>
+                  <button type="button" className={emCores ? "" : "ativo"}
+                    aria-pressed={!emCores} onClick={() => guardarModoDaFolha(false)}
+                    title="Para impressora monocromática: pastilhas brancas com o nome em preto">P&amp;B</button>
+                </span>
                 <button className="outlineClinical" onClick={imprimirEscala}>Imprimir</button>
                 {/* Só para quem monta a escala, e só na visão do grupo. É uma
                     folha de pagamento: traz o nome e o valor de cada colega, e
