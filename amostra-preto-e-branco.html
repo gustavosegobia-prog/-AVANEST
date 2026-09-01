@@ -1,0 +1,114 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Escala da equipe — HOSPITAL SANTA CASA — setembro de 2026</title><style>
+@page{size:A4 ${orientacao};margin:8mm}
+*{box-sizing:border-box}
+body{margin:0;font:10.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#111}
+/* O zoom vive em #papel; #folha é a moldura do tamanho da página que impede a
+   quebra. Transform na raiz do documento é tratado de forma diferente por cada
+   motor na hora de imprimir, e a caixa de layout não acompanha o desenho. */
+#papel{transform-origin:top left}
+h1{font-size:15px;margin:0 0 2px}
+.sub{color:#555;font-size:10.5px;margin:0 0 7px}
+/* O timbre da instituição. Centralizado, como o da ficha do paciente: é o
+   mesmo papel, saído da mesma clínica, e duas convenções diferentes de
+   cabeçalho no mesmo consultório parecem dois sistemas. */
+.marca{display:flex;align-items:center;justify-content:center;gap:9px;
+       padding-bottom:6px;margin-bottom:9px;border-bottom:1.5px solid #333}
+.marca img{max-height:40px;max-width:170px;object-fit:contain}
+.marca b{font-size:14px;letter-spacing:.3px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:#444;
+   padding:3px 4px;border:1px solid #bbb;background:#f1f1f1}
+/* Altura MÍNIMA da célula, e não fixa: um mês tranquilo continua enchendo a
+   folha em vez de virar uma tira de tabela no alto de uma página vazia, e um
+   mês cheio pode crescer — quem devolve o crescimento para dentro da página é
+   o zoom de caberNumaFolha.
+   Eram 76px, dimensionados para a célula antiga, que trazia uma linha por
+   turno. Com as três faixas M/T/N e uma pastilha por pessoa, a célula cheia
+   passou a ter o triplo da altura: o mês pesado batia no piso de 55% do zoom e
+   ainda saía em três folhas. 46px é o piso de um dia vago; o dia cheio cresce
+   por conta própria. */
+td{border:1px solid #bbb;vertical-align:top;height:46px;padding:3px 4px}
+td.vazio{background:#fafafa}
+/* Fim de semana e feriado com fundo próprio, como na tela. Numa grade de sete
+   colunas iguais a virada da semana só se descobre lendo o cabeçalho lá em
+   cima e contando para baixo — e é no fim de semana que a escala fica mais
+   apertada e mais conferida.
+   As COR dessas faixas — e a das pastilhas, e a do número do dia — não está
+   aqui: vem de cssDasCores(), que tem uma resposta para a folha colorida e
+   outra para a preto e branco. Aqui fica só o que não muda com a escolha. */
+td .d{font-size:10px;font-weight:800;display:block;margin-bottom:1px}
+td .fer{display:block;font-style:normal;text-decoration:none;font-size:7.5px;
+  font-weight:800;line-height:1.15;margin-bottom:1px}
+td .t{display:block;margin-bottom:3px;line-height:1.25}
+td .t b{font-size:10.5px;display:block}
+td .t span{font-size:10px;color:#333}
+/* A faixa do turno: a letra à esquerda, quem está nela à direita. A letra é
+   uma coluna fixa para que M, T e N fiquem alinhados de célula em célula — é
+   esse alinhamento que deixa ler "quem faz as noites" correndo o olho na
+   horizontal, em vez de dia por dia. */
+.fx{display:flex;align-items:flex-start;gap:3px;margin-bottom:1px}
+.fx>b{flex:none;width:8px;font-size:7.5px;font-weight:800;color:#777;
+  line-height:1.7;text-align:center}
+.fx .q{display:flex;flex-wrap:wrap;align-items:center;gap:0;min-width:0}
+.fx .vago{font-style:normal;font-size:8px;color:#aaa;line-height:1.6}
+/* O hospital, quando a folha cobre mais de um. Ocupa a linha inteira do bloco:
+   sem isso, o nome do serviço entraria na fileira das pastilhas e pareceria
+   mais um plantonista. */
+.fx u{flex-basis:100%;font-style:normal;text-decoration:none;font-size:7px;
+  font-weight:800;letter-spacing:.2px;text-transform:uppercase;color:#666}
+/* A tira de nomes embaixo do título, com as mesmas pastilhas do calendário. */
+.legenda{display:flex;flex-wrap:wrap;gap:0;margin:0 0 6px}
+.legenda .p{font-size:9px;padding:1px 5px}
+.p{display:inline-block;border-radius:3px;padding:0 3px;margin:0 2px 1px 0;font-style:normal;font-weight:700;font-size:8px;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+td.dia{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.p{background:#fff;color:#111;border:1px solid #8a8a8a}
+.legenda{display:none}
+td.fds{background:#f2f2f2}
+td.feriado{background:#e6e6e6}
+td .d{color:#000}
+td .fer{color:#000}
+/* A linha do turno que ninguém confirmou fica marcada no papel. Sem fundo ela
+   se distingue só pela palavra "Aguardando" na quinta coluna, que é justamente
+   a que o olho não percorre ao conferir uma folha de pagamento. O
+   print-color-adjust é obrigatório: sem ele o navegador descarta fundos ao
+   imprimir, e a marca existiria só na tela. */
+.pendente td{background:#fff4e0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lista{margin-top:10px}
+/* O relatório de fechamento é uma lista longa — trinta dias vezes sete
+   pessoas —, e ele não é lido a um passo da parede como a escala: é conferido
+   na mesa, com o extrato do lado. Letra menor aqui é folha a menos no grampo,
+   e não legibilidade a menos. */
+.lista td,.lista th{height:auto;padding:3px 6px;font-size:9.5px}
+.lista td{vertical-align:middle}
+/* O resumo do grupo tem três colunas curtas: em largura total elas viram três
+   faixas de 9cm com uma palavra dentro cada. */
+.lista.resumo{max-width:460px}
+h2{font-size:11.5px;margin:11px 0 3px;padding-bottom:2px;border-bottom:1.5px solid #333;
+   break-after:avoid;page-break-after:avoid}
+h2 small{font-weight:400;color:#555;font-size:9.5px;margin-left:6px}
+/* A quebra de dentro do hospital: quem paga. Sem régua, e não em versalete —
+   ela divide, mas não pode competir com o nome do hospital, que é o que
+   separa uma nota da outra. */
+h3{font-size:10.5px;margin:9px 0 2px;break-after:avoid;page-break-after:avoid}
+h3 small{font-weight:400;color:#555;font-size:9.5px;margin-left:6px}
+/* O que ainda não tem pagador. Some da soma de todo mundo e precisa saltar aos
+   olhos na folha, senão a pessoa emite as três notas e descobre o quarto bloco
+   no mês seguinte. */
+/* A linha de total, no pé de cada tabela. É o número que vai para o campo de
+   valor da nota, então ela é a única linha em negrito da tabela e leva um
+   traço grosso em cima — o olho encontra o fim da coluna sem ler as outras. */
+tfoot tr.total td{font-weight:700;background:#f1f1f1;border-top:2px solid #333;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+tfoot tr.total.pendente td{background:#fff4e0;color:#8a4b00}
+h3.pendente,p.sub.pendente{color:#8a4b00;font-weight:700}
+p.sub.pendente{background:#fff4e0;border-left:3px solid #d98200;padding:7px 10px;
+  border-radius:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.num{text-align:right}
+.rodape{margin-top:7px;font-size:8.5px;color:#666;display:flex;justify-content:space-between}
+tr,td,th{break-inside:avoid;page-break-inside:avoid}
+</style></head><body><div id="folha"><div id="papel"><header class="marca"><b>Hospital Santa Casa</b></header><h1>Escala da equipe — HOSPITAL SANTA CASA — setembro de 2026</h1>
+<p class="sub">Escala da equipe. Trocas já aceitas estão refletidas nesta folha.</p>
+<div class="legenda"><i class="p c6">Ana L.</i><i class="p c3">Eder O.</i><i class="p c5">Gerusa S.</i><i class="p c4">Luana Z.</i><i class="p c1">Lucas Q.</i><i class="p c0">Matheus G.</i><i class="p c2">Thais S.</i></div>
+<table class="mes"><thead><tr><th>Domingo</th><th>Segunda</th><th>Terça</th><th>Quarta</th><th>Quinta</th><th>Sexta</th><th>Sábado</th></tr></thead><tbody><tr><td class="vazio"></td><td class="vazio"></td><td class="dia"><span class="d">1</span><span class="fx"><b>M</b><span class="q"><i class="p c6">Ana L.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c6">Ana L.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c3">Eder O.</i></span></span></td><td class="dia"><span class="d">2</span><span class="fx"><b>M</b><span class="q"><i class="p c2">Thais S.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c2">Thais S.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c1">Lucas Q.</i></span></span></td><td class="dia"><span class="d">3</span><span class="fx"><b>M</b><span class="q"><i class="p c1">Lucas Q.</i><i class="p c1">Lucas Q.</i><i class="p c3">Eder O.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c1">Lucas Q.</i><i class="p c1">Lucas Q.</i><i class="p c3">Eder O.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c5">Gerusa S.</i></span></span></td><td class="dia"><span class="d">4</span><span class="fx"><b>M</b><span class="q"><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c3">Eder O.</i></span></span></td><td class="dia fds"><span class="d">5</span><span class="fx"><b>M</b><span class="q"><i class="p c0">Matheus G.</i><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c0">Matheus G.</i><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c3">Eder O.</i></span></span></td></tr><tr><td class="dia fds"><span class="d">6</span><span class="fx"><b>M</b><span class="q"><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c4">Luana Z.</i></span></span></td><td class="dia feriado"><span class="d">7</span><u class="fer">Independência do Brasil</u><span class="fx"><b>M</b><span class="q"><i class="p c6">Ana L.</i><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c6">Ana L.</i><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c2">Thais S.</i></span></span></td><td class="dia"><span class="d">8</span><span class="fx"><b>M</b><span class="q"><i class="p c2">Thais S.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c2">Thais S.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c0">Matheus G.</i></span></span></td><td class="dia"><span class="d">9</span><span class="fx"><b>M</b><span class="q"><i class="p c2">Thais S.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c2">Thais S.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c4">Luana Z.</i></span></span></td><td class="dia"><span class="d">10</span><span class="fx"><b>M</b><span class="q"><i class="p c2">Thais S.</i><i class="p c0">Matheus G.</i><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c2">Thais S.</i><i class="p c0">Matheus G.</i><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c1">Lucas Q.</i></span></span></td><td class="dia"><span class="d">11</span><span class="fx"><b>M</b><span class="q"><i class="p c0">Matheus G.</i><i class="p c4">Luana Z.</i><i class="p c2">Thais S.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c0">Matheus G.</i><i class="p c4">Luana Z.</i><i class="p c2">Thais S.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c6">Ana L.</i></span></span></td><td class="dia fds"><span class="d">12</span><span class="fx"><b>M</b><span class="q"><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c6">Ana L.</i></span></span></td></tr><tr><td class="dia fds"><span class="d">13</span><span class="fx"><b>M</b><span class="q"><i class="p c5">Gerusa S.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c5">Gerusa S.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c6">Ana L.</i></span></span></td><td class="dia"><span class="d">14</span><span class="fx"><b>M</b><span class="q"><i class="p c2">Thais S.</i><i class="p c1">Lucas Q.</i><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c2">Thais S.</i><i class="p c1">Lucas Q.</i><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c3">Eder O.</i></span></span></td><td class="dia"><span class="d">15</span><span class="fx"><b>M</b><span class="q"><i class="p c3">Eder O.</i><i class="p c2">Thais S.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c3">Eder O.</i><i class="p c2">Thais S.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c3">Eder O.</i></span></span></td><td class="dia"><span class="d">16</span><span class="fx"><b>M</b><span class="q"><i class="p c6">Ana L.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c6">Ana L.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c3">Eder O.</i></span></span></td><td class="dia"><span class="d">17</span><span class="fx"><b>M</b><span class="q"><i class="p c6">Ana L.</i><i class="p c6">Ana L.</i><i class="p c6">Ana L.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c6">Ana L.</i><i class="p c6">Ana L.</i><i class="p c6">Ana L.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c3">Eder O.</i></span></span></td><td class="dia"><span class="d">18</span><span class="fx"><b>M</b><span class="q"><i class="p c5">Gerusa S.</i><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c5">Gerusa S.</i><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c3">Eder O.</i></span></span></td><td class="dia fds"><span class="d">19</span><span class="fx"><b>M</b><span class="q"><i class="p c1">Lucas Q.</i><i class="p c5">Gerusa S.</i><i class="p c6">Ana L.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c1">Lucas Q.</i><i class="p c5">Gerusa S.</i><i class="p c6">Ana L.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c0">Matheus G.</i></span></span></td></tr><tr><td class="dia fds"><span class="d">20</span><span class="fx"><b>M</b><span class="q"><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c5">Gerusa S.</i></span></span></td><td class="dia"><span class="d">21</span><span class="fx"><b>M</b><span class="q"><i class="p c1">Lucas Q.</i><i class="p c5">Gerusa S.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c1">Lucas Q.</i><i class="p c5">Gerusa S.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c1">Lucas Q.</i></span></span></td><td class="dia"><span class="d">22</span><span class="fx"><b>M</b><span class="q"><i class="p c3">Eder O.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c3">Eder O.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c4">Luana Z.</i></span></span></td><td class="dia"><span class="d">23</span><span class="fx"><b>M</b><span class="q"><i class="p c6">Ana L.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c6">Ana L.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c5">Gerusa S.</i></span></span></td><td class="dia"><span class="d">24</span><span class="fx"><b>M</b><span class="q"><i class="p c5">Gerusa S.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c5">Gerusa S.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c2">Thais S.</i></span></span></td><td class="dia"><span class="d">25</span><span class="fx"><b>M</b><span class="q"><i class="p c6">Ana L.</i><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c6">Ana L.</i><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c5">Gerusa S.</i></span></span></td><td class="dia fds"><span class="d">26</span><span class="fx"><b>M</b><span class="q"><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c4">Luana Z.</i></span></span></td></tr><tr><td class="dia fds"><span class="d">27</span><span class="fx"><b>M</b><span class="q"><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c0">Matheus G.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c5">Gerusa S.</i></span></span></td><td class="dia"><span class="d">28</span><span class="fx"><b>M</b><span class="q"><i class="p c0">Matheus G.</i><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c0">Matheus G.</i><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c2">Thais S.</i></span></span></td><td class="dia"><span class="d">29</span><span class="fx"><b>M</b><span class="q"><i class="p c1">Lucas Q.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c1">Lucas Q.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c6">Ana L.</i></span></span></td><td class="dia"><span class="d">30</span><span class="fx"><b>M</b><span class="q"><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>T</b><span class="q"><i class="p c4">Luana Z.</i></span></span><span class="fx"><b>N</b><span class="q"><i class="p c1">Lucas Q.</i></span></span></td><td class="vazio"></td><td class="vazio"></td><td class="vazio"></td></tr></tbody></table>
+
+<div class="rodape"><span>79 plantões · 948h</span><span>AVANEST · impresso em 01/09/2026</span></div></div></div></body></html>

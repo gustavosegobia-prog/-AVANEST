@@ -241,10 +241,18 @@ export function ondeFica(
  * numa planilha alguém percebe e corrige, aqui vira a escala oficial do
  * serviço.
  *
- * Então o apelido é o primeiro nome INTEIRO, e só cresce quando precisa: com
- * dois Marcos entra a inicial do sobrenome, e com dois Marcos Silva entra o
- * sobrenome por extenso. Curto por padrão, sem nunca ficar ambíguo — a
- * desambiguação é calculada sobre a equipe de verdade, não adivinhada.
+ * Então o apelido é o primeiro nome INTEIRO mais a inicial do sobrenome —
+ * "Marcos S." —, e só cresce quando precisa: com dois Marcos S. entra o
+ * sobrenome por extenso, e com dois Marcos Silva entra o nome inteiro.
+ *
+ * A inicial do sobrenome entra sempre, e não só para desempatar. Só o primeiro
+ * nome era mais curto, mas num serviço de treze pessoas ele deixa de ser um
+ * nome e vira um apelido de corredor: quem é novo no plantão lê "Matheus" e
+ * não sabe qual. A inicial custa três caracteres e devolve a identificação —
+ * é o mesmo motivo pelo qual não se corta em "MAT".
+ *
+ * Curto por padrão, sem nunca ficar ambíguo — e a desambiguação é calculada
+ * sobre a equipe de verdade, não adivinhada.
  *
  * Devolve na mesma ordem que recebeu, para o chamador casar com a lista dele.
  */
@@ -252,14 +260,16 @@ export function apelidosDaEquipe(equipe: { id: string; nome: string }[]): Map<st
   const capitalizar = (p: string) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
   const partes = equipe.map((c) => partesDoNome(c.nome).map(capitalizar));
 
-  // Os degraus, do mais curto ao mais longo: "Marcos", "Marcos S.",
-  // "Marcos Silva", e por fim o nome inteiro que veio do cadastro.
+  // Os degraus, do mais curto ao mais longo: "Marcos S.", "Marcos Silva", e
+  // por fim o nome inteiro que veio do cadastro. O primeiro nome sozinho não
+  // é degrau nenhum — quem só tem um nome no cadastro fica com ele, e não há
+  // sobrenome para abreviar.
   const degraus = (p: string[]): string[] => {
     if (!p.length) return ["—"];
     const primeiro = p[0];
     if (p.length === 1) return [primeiro];
     const ultimo = p[p.length - 1];
-    return [primeiro, `${primeiro} ${ultimo[0]}.`, `${primeiro} ${ultimo}`, p.join(" ")];
+    return [`${primeiro} ${ultimo[0]}.`, `${primeiro} ${ultimo}`, p.join(" ")];
   };
 
   // Quantas pessoas este apelido alcançaria. Enquanto for mais de uma, o
