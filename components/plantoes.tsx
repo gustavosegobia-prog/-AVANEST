@@ -6,7 +6,7 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
-  corpoDaFolha, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
+  corpoDaFolha, cssDaPaleta, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, filtroDeHospital, montarICS, nomeCurto, nomeDoPeriodo,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
@@ -190,10 +190,38 @@ th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#444;
    ano, 6x76 mais o cabeçalho ainda cabem sem zoom nenhum. */
 td{border:1px solid #bbb;vertical-align:top;height:76px;padding:4px 5px}
 td.vazio{background:#fafafa}
-td .d{font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:3px}
+/* Fim de semana e feriado com fundo próprio, como na tela. Numa grade de sete
+   colunas iguais a virada da semana só se descobre lendo o cabeçalho lá em
+   cima e contando para baixo — e é no fim de semana que a escala fica mais
+   apertada e mais conferida. Sem print-color-adjust o navegador descarta os
+   dois fundos ao imprimir, e a marca existiria só na pré-visualização. */
+td.fds{background:#f2f6fa}
+td.feriado{background:#fdf1f1}
+td.dia{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+td .d{font-size:11.5px;font-weight:800;color:#1668b3;display:block;margin-bottom:2px}
+td .fer{display:block;font-style:normal;text-decoration:none;font-size:8.5px;
+  font-weight:800;color:#b0202b;line-height:1.2;margin-bottom:2px}
 td .t{display:block;margin-bottom:3px;line-height:1.25}
 td .t b{font-size:10.5px;display:block}
 td .t span{font-size:10px;color:#333}
+/* A faixa do turno: a letra à esquerda, quem está nela à direita. A letra é
+   uma coluna fixa para que M, T e N fiquem alinhados de célula em célula — é
+   esse alinhamento que deixa ler "quem faz as noites" correndo o olho na
+   horizontal, em vez de dia por dia. */
+.fx{display:flex;align-items:flex-start;gap:4px;margin-bottom:2px}
+.fx>b{flex:none;width:9px;font-size:8.5px;font-weight:800;color:#777;
+  line-height:1.6;text-align:center}
+.fx .q{display:flex;flex-wrap:wrap;align-items:center;gap:0;min-width:0}
+.fx .vago{font-style:normal;font-size:9px;color:#aaa;line-height:1.5}
+/* O hospital, quando a folha cobre mais de um. Ocupa a linha inteira do bloco:
+   sem isso, o nome do serviço entraria na fileira das pastilhas e pareceria
+   mais um plantonista. */
+.fx u{flex-basis:100%;font-style:normal;text-decoration:none;font-size:8px;
+  font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:#666}
+/* A tira de nomes embaixo do título, com as mesmas pastilhas do calendário. */
+.legenda{display:flex;flex-wrap:wrap;gap:0;margin:0 0 9px}
+.legenda .p{font-size:10px;padding:2px 6px}
+${cssDaPaleta()}
 /* A linha do turno que ninguém confirmou fica marcada no papel. Sem fundo ela
    se distingue só pela palavra "Aguardando" na quinta coluna, que é justamente
    a que o olho não percorre ao conferir uma folha de pagamento. O
@@ -1327,6 +1355,20 @@ const EXPLICA_ZERO: Record<string, string> = {
       mes, nomeMes: MESES[m - 1], ano, diasNoMes, primeiroDiaSemana,
       impressoEm: new Date(),
       instituicao: unico && !unico.startsWith("fora:") ? marcaDe(unico) : null,
+      // As cores do papel são as MESMAS da tela, e vêm daqui de propósito.
+      // Quem confere a escala está com a folha na parede e o celular na mão:
+      // se a folha sorteasse as cores por conta própria, o Matheus verde do
+      // calendário sairia roxo no papel, e a cor deixaria de ser atalho para
+      // virar mais uma coisa a conferir.
+      //
+      // As chaves são o texto que a folha escreve na pastilha — nome curto na
+      // escala do grupo, nome do hospital na pessoal —, porque é por ele que
+      // `corpoDaFolha` procura a cor. O índice é o mesmo `i % 8` que gera as
+      // classes med-m1…m8 da tela.
+      cores: escopo === "grupo"
+        ? new Map(colegas.map((c, i) => [nomeCurto(c.nome), i % CORES_MEDICO.length]))
+        : new Map([...locais].sort((a, b) => a.id.localeCompare(b.id))
+            .map((l, i) => [nomeDoLocal(l), i % CORES_MEDICO.length])),
       plantoes: daEscala.map((p) => ({
         data: p.data, hora_inicio: p.hora_inicio, hora_fim: p.hora_fim,
         horas: Number(p.horas), valor: Number(p.valor), situacao: p.situacao,

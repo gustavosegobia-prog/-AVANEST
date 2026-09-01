@@ -4,6 +4,7 @@ import type { PlantaoDoFechamento, PlantaoImpresso } from "./escala.ts";
 import {
   apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS, partesDoPlantao,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
+  coresDaFolha, cssDaPaleta, legendaDaFolha, PALETA_DA_FOLHA,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -382,11 +383,10 @@ test("hospitais diferentes no mesmo horário não viram um turno só", () => {
     turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
     turno("Hospital da Unimed", "ANA PAULA DE SOUZA"),
   ]);
-  // Duas etiquetas, e não uma com os dois nomes dentro.
-  assert.equal(corpo.match(/<span class="t">/g)?.length, 2);
-  assert.match(corpo, /07-19h · Santa Casa/);
-  assert.match(corpo, /07-19h · Hospital da Unimed/);
-  assert.doesNotMatch(corpo, /Gustavo Silva, Ana Souza/);
+  // Dois blocos dentro da faixa da manhã, cada um com o nome do seu hospital
+  // em cima — e não uma fileira de nomes que junta as duas equipes.
+  assert.match(corpo, /<u>Santa Casa<\/u><i class="p c\d">Gustavo Silva<\/i>/);
+  assert.match(corpo, /<u>Hospital da Unimed<\/u><i class="p c\d">Ana Souza<\/i>/);
 });
 
 test("mesmo hospital e mesmo horário continuam juntos", () => {
@@ -394,8 +394,31 @@ test("mesmo hospital e mesmo horário continuam juntos", () => {
     turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
     turno("Santa Casa", "ANA PAULA DE SOUZA"),
   ]);
-  assert.equal(corpo.match(/<span class="t">/g)?.length, 1);
-  assert.match(corpo, /Gustavo Silva, Ana Souza/);
+  // Um bloco só, com as duas pastilhas coladas: mesmo hospital, mesmo turno.
+  assert.match(corpo, /<i class="p c\d">Ana Souza<\/i><i class="p c\d">Gustavo Silva<\/i>/);
+  // Um hospital só na folha: o nome não se repete em cada célula.
+  assert.doesNotMatch(corpo, /<u>Santa Casa<\/u>/);
+});
+
+test("a célula do grupo sai em faixas M, T e N, como na tela", () => {
+  // Quem para na frente da folha na parede quer saber quem está de manhã, de
+  // tarde e de noite — e não decorar que "07-19h" cobre as duas primeiras.
+  // As três faixas ficam sempre na mesma altura da célula: é isso que deixa
+  // ler "quem faz as noites desta semana" correndo o olho na horizontal.
+  const { corpo } = folhaDoGrupo([turno("Santa Casa", "ANA PAULA DE SOUZA")]);
+  assert.match(corpo, /<span class="fx"><b>M<\/b>.*Ana Souza/);
+  assert.match(corpo, /<span class="fx"><b>T<\/b>.*Ana Souza/);
+  // O turno das 07h às 19h não cobre a noite: a faixa existe, e vazia.
+  assert.match(corpo, /<span class="fx"><b>N<\/b><span class="q"><em class="vago">/);
+  assert.doesNotMatch(corpo, /07-19h/);
+});
+
+test("dia sem plantão nenhum não desenha faixa vazia", () => {
+  // Três traços num dia vago é ruído, não informação: o alinhamento das faixas
+  // só serve onde há o que alinhar.
+  const { corpo } = folhaDoGrupo([turno("Santa Casa", "ANA PAULA DE SOUZA")]);
+  // O plantão está no dia 1; o dia 2 fica limpo.
+  assert.match(corpo, /<span class="d">2<\/span><\/td>/);
 });
 
 test("folha de um hospital só leva o nome dele no título e não o repete nas células", () => {
@@ -765,8 +788,8 @@ test("o papel diz o mesmo que a tela sobre o plantão de 24 horas", () => {
       local: "FUNDHOSPAR", profissional: "Gustavo Segobia",
     }],
   });
-  assert.match(corpo, /<b>Diurno<\/b><span>FUNDHOSPAR<\/span>/);
-  assert.match(corpo, /<b>Noturno<\/b><span>FUNDHOSPAR<\/span>/);
+  assert.match(corpo, /<b>Diurno<\/b><span><i class="p c\d">FUNDHOSPAR<\/i><\/span>/);
+  assert.match(corpo, /<b>Noturno<\/b><span><i class="p c\d">FUNDHOSPAR<\/i><\/span>/);
   assert.doesNotMatch(corpo, /<b>07-07h<\/b>/);
 });
 
@@ -816,4 +839,81 @@ test("mês sem nada não imprime folha em branco sem explicação", () => {
   assert.match(p.corpo, /Nenhum plantão neste mês/);
   const f = folhaDeFaturamento([], "agosto", 2026, new Date("2026-09-01T12:00:00"));
   assert.match(f.corpo, /Nada anotado neste mês/);
+});
+
+// ---------------------------------------------------------------------------
+// As cores da folha impressa
+// ---------------------------------------------------------------------------
+// O que se protege aqui não é a aparência: é que duas pessoas na mesma folha
+// nunca saiam com a mesma cor, e que a cor de cada uma seja a mesma no mês que
+// vem. Uma folha em que a cor muda todo mês é pior do que uma folha sem cor —
+// ela ensina um atalho e depois mente sobre ele.
+
+test("coresDaFolha: cada pessoa da folha com a sua cor", () => {
+  const equipe = ["Matheus Gomes", "Lucas Quijo", "Thais Staniszewski",
+                  "Eder Oliveira", "Luana Zanettin", "Gerusa Sampaio", "Ana Souza"];
+  const cores = coresDaFolha(equipe);
+  assert.equal(cores.size, equipe.length);
+  assert.equal(new Set(cores.values()).size, equipe.length, "duas pessoas com a mesma cor");
+});
+
+test("coresDaFolha: a mesma equipe sai com as mesmas cores todo mês", () => {
+  // "eu sou o verde" só vira atalho se continuar verdadeiro no mês seguinte.
+  // A garantia é esta, e não mais que esta: enquanto a equipe for a mesma, a
+  // folha de outubro repete as cores da de setembro. Entrando gente nova, quem
+  // esbarrar numa cor já tomada anda para a próxima — não repetir cor na mesma
+  // folha vale mais do que congelar a cor de todo mundo para sempre.
+  const setembro = coresDaFolha(["Matheus Gomes", "Lucas Quijo", "Thais Staniszewski"]);
+  const outubro = coresDaFolha(["Lucas Quijo", "Thais Staniszewski", "Matheus Gomes"]);
+  assert.deepEqual([...setembro.entries()].sort(), [...outubro.entries()].sort());
+});
+
+test("coresDaFolha: não depende da ordem em que os plantões vieram do banco", () => {
+  const a = coresDaFolha(["Lucas Quijo", "Matheus Gomes", "Lucas Quijo", "Ana Souza"]);
+  const b = coresDaFolha(["Ana Souza", "Lucas Quijo", "Matheus Gomes"]);
+  assert.deepEqual([...a.entries()].sort(), [...b.entries()].sort());
+});
+
+test("coresDaFolha: repete cor em vez de deixar alguém de fora", () => {
+  const dez = Array.from({ length: 10 }, (_, i) => `Pessoa ${i}`);
+  const cores = coresDaFolha(dez);
+  assert.equal(cores.size, 10, "ninguém pode ficar sem cor");
+  for (const c of cores.values()) {
+    assert.ok(c >= 0 && c < PALETA_DA_FOLHA.length, `cor ${c} fora da paleta`);
+  }
+});
+
+test("coresDaFolha: ignora nome em branco", () => {
+  assert.equal(coresDaFolha(["", "   ", "Ana Souza"]).size, 1);
+});
+
+test("cssDaPaleta: uma classe para cada cor da paleta", () => {
+  const css = cssDaPaleta();
+  PALETA_DA_FOLHA.forEach((cor, i) => {
+    assert.ok(css.includes(`.c${i}{background:${cor}}`), `faltou .c${i}`);
+  });
+});
+
+test("cssDaPaleta: manda o navegador imprimir os fundos", () => {
+  // Sem isto o navegador descarta TODO fundo na hora de imprimir: a folha sai
+  // colorida na pré-visualização e branca no papel, que é exatamente o
+  // problema que este código existe para resolver.
+  assert.match(cssDaPaleta(), /print-color-adjust:\s*exact/);
+});
+
+test("legendaDaFolha: os nomes em ordem, com a cor de cada um", () => {
+  const legenda = legendaDaFolha(new Map([["Matheus Gomes", 3], ["Ana Souza", 1]]));
+  assert.ok(legenda.indexOf("Ana Souza") < legenda.indexOf("Matheus Gomes"));
+  assert.match(legenda, /class="p c1">Ana Souza/);
+  assert.match(legenda, /class="p c3">Matheus Gomes/);
+});
+
+test("legendaDaFolha: uma pessoa só não tem o que legendar", () => {
+  // Uma pastilha sozinha embaixo do título não distingue coisa alguma de
+  // coisa nenhuma — é tinta gasta.
+  assert.equal(legendaDaFolha(new Map([["Ana Souza", 0]])), "");
+});
+
+test("legendaDaFolha: escapa o nome", () => {
+  assert.ok(!legendaDaFolha(new Map([["<b>x</b>", 0], ["Ana", 1]])).includes("<b>x</b>"));
 });

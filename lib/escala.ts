@@ -1,3 +1,5 @@
+import { feriadosDoMes } from "./feriados.ts";
+
 // ===========================================================================
 // Escala: as contas e os formatos, longe da tela
 // ===========================================================================
@@ -424,6 +426,128 @@ export function timbreDaFolha(instituicao?: Instituicao | null): string {
 }
 
 /**
+ * As cores da folha impressa.
+ *
+ * São as MESMAS oito da tela, e a lista está aqui de propósito. A escala é
+ * conferida com o papel na parede e o celular na mão, e o dia em que as duas
+ * discordarem a folha deixa de valer: "eu sou o verde" tem de ser verdade nos
+ * dois. Duas listas de cor seriam duas verdades.
+ *
+ * Fundo forte com letra branca, como na tela. Sai bem em impressora colorida,
+ * que é o caso de quem pediu isto; em impressora preto e branco as pastilhas
+ * viram blocos de cinza com letra branca — legíveis, mas sem o atalho da cor.
+ * Nada se perde: o nome continua escrito por extenso dentro de cada pastilha,
+ * e a cor nunca é o único canal.
+ */
+export const PALETA_DA_FOLHA: readonly string[] = [
+  "#1668b3", // m1 azul
+  "#0d7a5b", // m2 verde
+  "#7a4bbd", // m3 roxo
+  "#8f6100", // m4 âmbar
+  "#a33b6e", // m5 rosa
+  "#0f6d78", // m6 ciano
+  "#b0472b", // m7 laranja
+  "#4b5563", // m8 ardósia
+];
+
+/**
+ * O número que transforma um nome numa cor.
+ *
+ * FNV-1a, e não a soma dos códigos das letras: "Ana Souza" e "Sana Auza" têm a
+ * mesma soma, e numa equipe pequena dois nomes parecidos caindo na mesma cor é
+ * justamente o caso que estraga a folha.
+ */
+function embaralhar(texto: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < texto.length; i++) {
+    h ^= texto.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+}
+
+/**
+ * Quem fica com qual cor, quando quem chama não disse.
+ *
+ * O caminho normal é a tela mandar o mapa dela — é assim que o papel sai igual
+ * ao celular. Esta função é a rede de baixo: serve às folhas que não passam
+ * pela tela da escala e mantém `corpoDaFolha` conferível sem componente
+ * nenhum.
+ *
+ * Duas exigências que brigam entre si, e uma delas ganha.
+ *
+ * A que ganha: dois nomes não podem sair com a mesma cor na mesma folha. Duas
+ * pessoas verdes na parede é uma folha que mente, e mentir é pior do que não
+ * ter cor. Um sorteio puro colide muito — em sete pessoas e oito cores, quase
+ * sempre.
+ *
+ * A que cede: a cor de cada um seria idealmente a mesma para sempre. Aqui ela
+ * é a mesma ENQUANTO a equipe for a mesma — a função depende só do conjunto de
+ * nomes, então setembro e outubro saem iguais. Mas a preferência de cada nome
+ * pode estar tomada, e aí ele anda para a próxima livre: a entrada de um
+ * colega novo pode, sim, empurrar a cor de um colega antigo. É o preço de não
+ * repetir cor na mesma folha, e é o preço certo.
+ *
+ * A ordem alfabética é o que torna o resultado previsível: a ordem em que os
+ * plantões vieram do banco não influi.
+ *
+ * Passando de oito nomes as cores repetem. É o comportamento certo: recusar o
+ * nono seria imprimir uma escala incompleta para proteger uma decoração.
+ */
+export function coresDaFolha(nomes: readonly string[]): Map<string, number> {
+  const distintos = [...new Set(nomes.filter((n) => n.trim()))]
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const tomadas = new Set<number>();
+  const cores = new Map<string, number>();
+  for (const nome of distintos) {
+    let cor = embaralhar(nome) % PALETA_DA_FOLHA.length;
+    if (tomadas.size < PALETA_DA_FOLHA.length) {
+      while (tomadas.has(cor)) cor = (cor + 1) % PALETA_DA_FOLHA.length;
+      tomadas.add(cor);
+    }
+    cores.set(nome, cor);
+  }
+  return cores;
+}
+
+/**
+ * As regras de cor, prontas para entrar na folha.
+ *
+ * Nasce aqui, e não na folha de estilo de quem imprime, porque a paleta e o
+ * número da classe são a mesma decisão: separados, uma cor a mais numa ponta
+ * viraria uma etiqueta sem cor na outra.
+ *
+ * O `print-color-adjust` não é enfeite: sem ele o navegador joga fora TODO
+ * fundo na hora de imprimir. A folha sairia colorida na janela de
+ * pré-visualização e branca no papel — que é exatamente o problema que este
+ * código existe para resolver.
+ */
+export function cssDaPaleta(): string {
+  return ".p{display:inline-block;border-radius:3px;padding:1px 4px;margin:0 3px 2px 0;"
+    + "font-style:normal;font-weight:700;font-size:9.5px;line-height:1.3;color:#fff;"
+    + "-webkit-print-color-adjust:exact;print-color-adjust:exact}\n"
+    + PALETA_DA_FOLHA.map((cor, i) => `.c${i}{background:${cor}}`).join("\n");
+}
+
+/**
+ * A tira de nomes embaixo do título.
+ *
+ * Sem ela a cor seria adivinhação para quem pega a folha pela primeira vez.
+ * Com ela, a pessoa acha o próprio nome uma vez, no alto, e depois procura só
+ * a cor no calendário.
+ *
+ * Com um nome só não há o que legendar: uma pastilha sozinha embaixo do título
+ * não distingue coisa alguma de coisa nenhuma.
+ */
+export function legendaDaFolha(cores: Map<string, number>): string {
+  if (cores.size < 2) return "";
+  const tira = [...cores.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .map(([nome, cor]) => `<i class="p c${cor}">${escaparHTML(nome)}</i>`).join("");
+  return `<div class="legenda">${tira}</div>`;
+}
+
+/**
  * O corpo da folha da escala.
  *
  * Duas folhas diferentes, e não uma com um filtro. A do grupo é a que se prega
@@ -454,6 +578,15 @@ export function corpoDaFolha(opts: {
    * do que está impresso não aconteceu.
    */
   instituicao?: Instituicao | null;
+  /**
+   * As cores que a tela já está usando, por nome curto.
+   *
+   * Quem imprime está com o celular na mão e o papel na parede. Se a folha
+   * sorteasse as cores por conta própria, o Matheus verde da tela sairia roxo
+   * no papel — e aí a cor deixaria de ser atalho e viraria mais uma coisa para
+   * conferir. Sem o mapa, `coresDaFolha` decide sozinha.
+   */
+  cores?: Map<string, number>;
 }): { titulo: string; corpo: string } {
   const { doGrupo, mes, nomeMes, ano, diasNoMes, primeiroDiaSemana, plantoes } = opts;
 
@@ -461,6 +594,26 @@ export function corpoDaFolha(opts: {
   // assim o título e as células nunca discordam do que está impresso.
   const hospitais = [...new Set(plantoes.map((p) => p.local).filter(Boolean))];
   const variosHospitais = hospitais.length > 1;
+
+  // O que ganha cor muda com a folha, porque a pergunta muda com ela.
+  // Na do grupo, pregada na parede, a pergunta é "quando eu entro?" — cor por
+  // pessoa. Na pessoal, que é só sua, todo turno é seu e pintar o seu nome não
+  // separaria nada; ali a pergunta é "em que hospital?", e a cor vai no local.
+  const cores = opts.cores ?? coresDaFolha(doGrupo
+    ? plantoes.map((p) => nomeCurto(p.profissional))
+    : plantoes.map((p) => p.local || "Sem local"));
+  // Sem cor combinada, cai na última — a ardósia, que é a mesma que a tela usa
+  // como reserva. É o caso do plantão de fora, num lugar escrito à mão que não
+  // está no cadastro: ele não tem cor de ninguém, e fingir que tem seria pior.
+  const etiqueta = (texto: string) =>
+    `<i class="p c${cores.get(texto) ?? PALETA_DA_FOLHA.length - 1}">${escaparHTML(texto)}</i>`;
+
+  // O feriado com o NOME, e não só uma cor. Cor sozinha diz "tem algo diferente
+  // aqui" e obriga a procurar o que é; numa escala o que importa é qual
+  // feriado — o plantão de Natal não se negocia como o de Corpus Christi. É a
+  // mesma regra da tela, e a folha impressa é justamente onde ela mais serve:
+  // no papel não há como passar o dedo em cima para ver o resto.
+  const feriados = feriadosDoMes(mes);
 
   const celulas: string[] = Array.from({ length: primeiroDiaSemana }, () => '<td class="vazio"></td>');
   for (let d = 1; d <= diasNoMes; d++) {
@@ -470,31 +623,69 @@ export function corpoDaFolha(opts: {
     // "07-19h / Gustavo Silva, Ana Souza". É como a escala é lida na parede —
     // pelo turno, não por pessoa —, e num serviço com seis anestesistas de dia
     // a lista por pessoa não caberia na célula.
+    // A célula do grupo sai em três faixas — M, T, N —, iguais às da tela.
+    //
+    // Antes ela listava os horários crus ("07-19h", "19-07h"), e horário é a
+    // pergunta errada para uma folha pregada na parede: quem para na frente
+    // dela quer saber quem está de manhã, quem está de tarde e quem passa a
+    // noite. As três faixas ficam sempre na mesma altura da célula, então "quem
+    // faz as noites desta semana" se lê correndo o olho por uma linha só, na
+    // horizontal, em vez de ler dia por dia.
+    //
+    // As faixas vazias entram com um traço quando o dia tem algum plantão: é o
+    // alinhamento que faz a leitura horizontal funcionar. Dia inteiramente
+    // vago não desenha nada — três traços num dia vago é ruído, não informação.
     const conteudo = doGrupo
-      ? Object.values(doDia.reduce<Record<string, {
-          local: string; inicio: string; fim: string; gente: string[];
-        }>>((acc, p) => {
-          // O hospital entra na chave. Sem ele, o turno das 07h da Santa Casa e
-          // o das 07h do Hospital da Unimed viravam uma linha só, com as duas
-          // equipes juntas — uma escala que não existe em lugar nenhum.
-          const chave = `${p.local}|${p.hora_inicio}|${p.hora_fim}`;
-          acc[chave] ??= { local: p.local, inicio: p.hora_inicio, fim: p.hora_fim, gente: [] };
-          acc[chave].gente.push(nomeCurto(p.profissional));
-          return acc;
-        }, {}))
-        .sort((a, b) => a.inicio.localeCompare(b.inicio) || a.local.localeCompare(b.local))
-        .map((t) => `<span class="t"><b>${escaparHTML(faixa(t.inicio, t.fim))}`
-          // Numa folha de um hospital só, repetir o nome em cada célula é ruído;
-          // numa folha com vários, é a única coisa que separa os serviços.
-          + `${variosHospitais && t.local ? ` · ${escaparHTML(t.local)}` : ""}</b>`
-          + `<span>${escaparHTML(t.gente.join(", "))}</span></span>`).join("")
+      ? (() => {
+          const turnos = Object.values(doDia.reduce<Record<string, {
+            local: string; inicio: string; fim: string; gente: string[];
+          }>>((acc, p) => {
+            // O hospital entra na chave. Sem ele, o turno das 07h da Santa Casa
+            // e o das 07h do Hospital da Unimed viravam uma linha só, com as
+            // duas equipes juntas — uma escala que não existe em lugar nenhum.
+            const chave = `${p.local}|${p.hora_inicio}|${p.hora_fim}`;
+            acc[chave] ??= { local: p.local, inicio: p.hora_inicio, fim: p.hora_fim, gente: [] };
+            acc[chave].gente.push(nomeCurto(p.profissional));
+            return acc;
+          }, {}));
+          if (!turnos.length) return "";
+          return TURNOS_DO_DIA.map((faixaDoDia) => {
+            const blocos = turnos
+              .filter((t) => turnosCobertos(t.inicio, t.fim).includes(faixaDoDia.id))
+              .sort((a, b) => a.inicio.localeCompare(b.inicio) || a.local.localeCompare(b.local));
+            const dentro = blocos.length
+              ? blocos.map((t) =>
+                  // Numa folha de um hospital só, repetir o nome em cada célula
+                  // é ruído; numa folha com vários, é a única coisa que separa
+                  // os serviços.
+                  (variosHospitais && t.local ? `<u>${escaparHTML(t.local)}</u>` : "")
+                  // Uma pastilha por pessoa, e não um texto com vírgulas: a cor
+                  // precisa parar no fim do nome. "Lucas Quijo, Matheus Gomes"
+                  // num fundo só seria uma mancha para dois, que é o contrário
+                  // do que a cor serve.
+                  + t.gente.map(etiqueta).join("")).join("")
+              : '<em class="vago">—</em>';
+            return `<span class="fx"><b>${faixaDoDia.letra}</b>`
+              + `<span class="q">${dentro}</span></span>`;
+          }).join("");
+        })()
       // O mesmo corte da tela: o de 24 horas sai em Diurno e Noturno. A folha
       // é conferida ao lado do calendário aberto no celular, e duas leituras
       // diferentes do mesmo dia fazem duvidar das duas.
       : doDia.flatMap((p) => partesDoPlantao(p.hora_inicio, p.hora_fim)
           .map((parte) => `<span class="t"><b>${escaparHTML(parte.rotulo)}</b>`
-            + `<span>${escaparHTML(p.local || "Sem local")}</span></span>`)).join("");
-    celulas.push(`<td><span class="d">${d}</span>${conteudo}</td>`);
+            + `<span>${etiqueta(p.local || "Sem local")}</span></span>`)).join("");
+    // Sábado e domingo com fundo próprio. Numa grade de sete colunas iguais, a
+    // virada da semana só se descobre lendo o cabeçalho lá em cima e contando
+    // para baixo — e é justamente no fim de semana que a escala fica mais
+    // apertada e mais conferida.
+    const coluna = celulas.length % 7;
+    const fds = coluna === 0 || coluna === 6 ? " fds" : "";
+    const feriado = feriados.get(dia);
+    celulas.push(`<td class="dia${fds}${feriado ? " feriado" : ""}">`
+      + `<span class="d">${d}</span>`
+      + (feriado ? `<u class="fer">${escaparHTML(feriado.nome)}</u>` : "")
+      + `${conteudo}</td>`);
   }
   // A última semana completa sete colunas: sem isto o navegador estica a
   // célula do dia 31 por toda a largura restante da folha.
@@ -533,6 +724,7 @@ export function corpoDaFolha(opts: {
 <p class="sub">${doGrupo
     ? "Escala da equipe. Trocas já aceitas estão refletidas nesta folha."
     : "Sua escala pessoal, com o valor combinado de cada turno."}</p>
+${legendaDaFolha(cores)}
 <table class="mes"><thead><tr>${["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
     .map((d) => `<th>${d}</th>`).join("")}</tr></thead><tbody>${semanas.join("")}</tbody></table>
 ${depois}
