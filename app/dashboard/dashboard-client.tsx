@@ -987,11 +987,16 @@ export function DashboardClient({
                 <time>{soHoje ? hora : <><span>{brDate(appointment.data)}</span><small>{hora}</small></>}</time>
                 <div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></div>
                 <span className={`statusChip ${statusTone}`}>{statusLabel}</span>
-                {/* Os três botões numa caixa só, e não soltos na linha.
-                    A grade da fila tem QUATRO colunas porque a linha tem quatro
-                    filhos — hora, paciente, situação e ação. Pendurar mais dois
-                    botões direto na linha faria seis filhos para quatro
-                    colunas, e a fila voltaria a descer em escada. */}
+                {/* A caixa fica mesmo com um botão só dentro.
+                    A grade da fila tem quatro colunas para quatro filhos, e a
+                    caixa é o quarto — trocá-la pelo botão solto aqui e mantê-la
+                    na recepção faria as duas telas discordarem sobre onde a
+                    coluna começa, e elas usam a mesma linha.
+
+                    Desmarcar e excluir NÃO ficam aqui: são trabalho de quem
+                    atende o telefone do paciente que desmarca. Quem administra
+                    alcança os dois pela visão Recepção, que admin e
+                    proprietário já enxergam. */}
                 <div className="queueAcoes">
                   {/* O botão de ação era exclusivo da fila de hoje. Trazê-lo
                       para cá é o ganho da fusão: dá para adiantar na véspera a
@@ -999,36 +1004,7 @@ export function DashboardClient({
                       tinha por onde. Desmarcado não abre — não há o que
                       atender. */}
                   <button className="primaryClinical compact" disabled={busy||attendance==="faltou"||desmarcado} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>{a?.status==="concluida"?"Ver documentos":a?.status==="rascunho"?"Continuar avaliação":"Iniciar avaliação"}</button>
-                  {/* Desmarcar e reativar são o mesmo botão em dois estados:
-                      quem desmarcou por engano precisa do caminho de volta na
-                      mesma linha, e não de procurar onde desfazer. */}
-                  <button className="outlineClinical" disabled={attendanceBusy===appointment.id}
-                    onClick={()=>void updateAttendance(appointment.id,desmarcado?"agendado":"cancelado")}
-                    title={desmarcado?"Volta a consulta para a agenda":"O paciente desmarcou: a linha fica em cinza e sai dos contadores"}>
-                    {desmarcado?"Reativar":"Desmarcar"}
-                  </button>
-                  {/* Excluir só existe enquanto não há avaliação: com avaliação
-                      ligada, apagar deixaria o documento clínico órfão. O banco
-                      recusa de qualquer forma — esconder o botão é não oferecer
-                      um caminho que termina em erro. */}
-                  {!appointment.avaliacao_id&&(
-                    <button className="outlineClinical red" disabled={attendanceBusy===appointment.id}
-                      onClick={()=>setAExcluir(appointment.id)}
-                      title="Apaga o agendamento. Para o que foi erro de digitação.">Excluir</button>
-                  )}
                 </div>
-                {aExcluir===appointment.id&&(
-                  <div className="queueConfirma">
-                    <p><strong>Excluir o agendamento de {p.nome}</strong>, {brDate(appointment.data)} às {hora}? Ele some da agenda e não volta. Se o paciente só desmarcou, use <strong>Desmarcar</strong> — assim fica o registro de que a consulta existiu.</p>
-                    <div>
-                      <button type="button" onClick={()=>setAExcluir("")}>Manter</button>
-                      <button type="button" className="perigo" disabled={attendanceBusy===appointment.id}
-                        onClick={()=>void excluirAgendamento(appointment.id)}>
-                        {attendanceBusy===appointment.id?"Excluindo…":"Excluir"}
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>;
             })}
             {filteredAgenda.length===0&&<div className="emptyClinical">{agendaRange==="hoje"?"Nenhuma consulta agendada para hoje.":"Nenhum agendamento neste período."}</div>}
