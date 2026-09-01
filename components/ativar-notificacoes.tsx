@@ -45,26 +45,48 @@ function apelidoDoAparelho() {
 }
 
 /**
- * O convite já foi feito neste aparelho?
+ * O convite já foi feito neste aparelho, e até quando ele fica calado?
  *
- * O cartão do topo é um CONVITE, e convite se faz uma vez. Sem esta memória
- * ele reaparecia a cada carregamento de página para quem tivesse desligado de
- * propósito — perguntando de novo, todo dia, algo que a pessoa já respondeu.
- * Aviso que insiste depois do "não" é aviso que ensina a ignorar avisos.
+ * "Agora não" ADIA, e não cancela para sempre. Era para sempre, e o efeito
+ * disso era o contrário do que se queria: quem tocasse em "Agora não" uma vez,
+ * de passagem, num dia corrido, nunca mais via o convite — e passava a não
+ * receber aviso de escala publicada nem de troca oferecida sem nunca ter
+ * decidido isso. A escala é o produto; ficar sem o aviso dela por causa de um
+ * toque distraído é caro demais.
+ *
+ * Duas semanas é o intervalo: mais curto vira insistência — e aviso que
+ * insiste depois do "não" ensina a ignorar avisos —, mais longo passa da
+ * publicação da escala do mês seguinte, que é justamente quando a falta faz
+ * diferença.
+ *
+ * Quem não quer de jeito nenhum tem o interruptor no menu do perfil, que é
+ * onde se procura uma preferência, e ali o "não" vale enquanto não for
+ * mudado.
  *
  * Fica no `localStorage`, e não no banco, porque a decisão é DESTE aparelho:
- * quem desligou no computador do consultório pode muito bem querer o convite
- * no celular. O try/catch existe porque a janela anônima e o bloqueio de
- * dados de site fazem o acessor lançar, e não devolver vazio.
+ * quem adiou no computador do consultório pode muito bem querer o convite no
+ * celular. O try/catch existe porque a janela anônima e o bloqueio de dados de
+ * site fazem o acessor lançar, e não devolver vazio.
  */
 const CHAVE_CONVITE = "avanest-push-convite";
+const DIAS_ADIANDO_O_CONVITE = 14;
 
 const jaConvidado = () => {
-  try { return localStorage.getItem(CHAVE_CONVITE) === "visto"; } catch { return false; }
+  try {
+    const ate = Number(localStorage.getItem(CHAVE_CONVITE));
+    // O valor antigo era o texto "visto", que vira NaN aqui — e NaN em
+    // qualquer comparação é falso, então quem adiou na versão anterior volta a
+    // ser convidado uma vez. É o comportamento certo: é justamente essa gente
+    // que ficou sem aviso nenhum.
+    return Number.isFinite(ate) && ate > Date.now();
+  } catch { return false; }
 };
 
 const marcarConvidado = () => {
-  try { localStorage.setItem(CHAVE_CONVITE, "visto"); } catch { /* janela anônima */ }
+  try {
+    localStorage.setItem(CHAVE_CONVITE,
+      String(Date.now() + DIAS_ADIANDO_O_CONVITE * 24 * 60 * 60 * 1000));
+  } catch { /* janela anônima */ }
 };
 
 /** base64url → bytes, que é o formato que `subscribe` exige da chave VAPID. */
@@ -176,6 +198,24 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
         const registro = await navigator.serviceWorker.register("/sw.js");
         const inscricao = await registro.pushManager.getSubscription();
         if (!vivo) return;
+        // JÁ AUTORIZADO, MAS SEM INSCRIÇÃO: liga sozinho, sem pedir nada.
+        //
+        // Acontece mais do que parece — a inscrição do navegador expira, o
+        // service worker é recadastrado, a pessoa autorizou num aparelho e o
+        // registro se perdeu. O estado ficava "desligado" e dependia de um
+        // clique em "Ativar notificações" para voltar; quem já tinha dito
+        // "pode" uma vez ficava sem aviso esperando dizer "pode" de novo.
+        //
+        // Aqui não há caixa de permissão nenhuma: `requestPermission` devolve
+        // "granted" na hora quando a permissão já existe. O navegador nunca
+        // deixa ligar push sem um toque na PRIMEIRA vez — isso é regra dele, e
+        // é por isso que o cartão de convite continua existindo —, mas da
+        // segunda em diante quem já autorizou não precisa autorizar de novo.
+        if (!inscricao) {
+          const r = await ligarPush(chavePublica).catch(() => ({ ok: false as const, erro: "" }));
+          if (!vivo) return;
+          if (r.ok) { setEstado("ligado"); return; }
+        }
         setEstado(inscricao ? "ligado" : "desligado");
       } catch {
         if (vivo) setEstado("indisponivel");
@@ -233,7 +273,7 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
         )}
         <button type="button" className="pushDepois"
           onClick={() => { marcarConvidado(); setDispensado(true); }}>
-          {estado === "desligado" ? "Agora não" : "Entendi"}
+          {estado === "desligado" ? "Depois" : "Entendi"}
         </button>
       </div>
     </div>

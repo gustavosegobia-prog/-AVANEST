@@ -231,20 +231,24 @@ ${cssDasCores(emCores)}
    print-color-adjust é obrigatório: sem ele o navegador descarta fundos ao
    imprimir, e a marca existiria só na tela. */
 .pendente td{background:#fff4e0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.lista{margin-top:14px}
-.lista td,.lista th{height:auto;padding:5px 7px;font-size:11px}
+.lista{margin-top:10px}
+/* O relatório de fechamento é uma lista longa — trinta dias vezes sete
+   pessoas —, e ele não é lido a um passo da parede como a escala: é conferido
+   na mesa, com o extrato do lado. Letra menor aqui é folha a menos no grampo,
+   e não legibilidade a menos. */
+.lista td,.lista th{height:auto;padding:3px 6px;font-size:9.5px}
 .lista td{vertical-align:middle}
 /* O resumo do grupo tem três colunas curtas: em largura total elas viram três
    faixas de 9cm com uma palavra dentro cada. */
 .lista.resumo{max-width:460px}
-h2{font-size:13px;margin:16px 0 5px;padding-bottom:3px;border-bottom:1.5px solid #333;
+h2{font-size:11.5px;margin:11px 0 3px;padding-bottom:2px;border-bottom:1.5px solid #333;
    break-after:avoid;page-break-after:avoid}
-h2 small{font-weight:400;color:#555;font-size:11px;margin-left:7px}
+h2 small{font-weight:400;color:#555;font-size:9.5px;margin-left:6px}
 /* A quebra de dentro do hospital: quem paga. Sem régua, e não em versalete —
    ela divide, mas não pode competir com o nome do hospital, que é o que
    separa uma nota da outra. */
-h3{font-size:12px;margin:12px 0 3px;break-after:avoid;page-break-after:avoid}
-h3 small{font-weight:400;color:#555;font-size:11px;margin-left:7px}
+h3{font-size:10.5px;margin:9px 0 2px;break-after:avoid;page-break-after:avoid}
+h3 small{font-weight:400;color:#555;font-size:9.5px;margin-left:6px}
 /* O que ainda não tem pagador. Some da soma de todo mundo e precisa saltar aos
    olhos na folha, senão a pessoa emite as três notas e descobre o quarto bloco
    no mês seguinte. */
