@@ -619,6 +619,19 @@ export function corpoDaFolha(opts: {
    * conferir. Sem o mapa, `coresDaFolha` decide sozinha.
    */
   cores?: Map<string, number>;
+  /**
+   * Como escrever cada nome na pastilha, por nome completo.
+   *
+   * A tela escreve "Matheus"; o papel escrevia "Matheus Gomes", e o sobrenome
+   * custava caro: duas pastilhas não cabiam lado a lado na coluna de um dia, e
+   * cada turno com dois plantonistas virava duas linhas. A célula dobrava de
+   * altura, e como o zoom da folha é calculado pela altura, a escala inteira
+   * saía impressa menor — o sobrenome de cada um encolhia o nome de todo mundo.
+   *
+   * É o mesmo apelido dos botões de escalar, então ele já resolve o caso de
+   * dois Lucas: vira "Lucas Q." e "Lucas M.". Sem o mapa, cai em `nomeCurto`.
+   */
+  apelidos?: Map<string, string>;
 }): { titulo: string; corpo: string } {
   const { doGrupo, mes, nomeMes, ano, diasNoMes, primeiroDiaSemana, plantoes } = opts;
 
@@ -634,8 +647,9 @@ export function corpoDaFolha(opts: {
   // O que esta folha de fato escreve nas pastilhas. Sai dos plantões impressos,
   // e não do cadastro: a equipe tem treze pessoas, e o mês em que oito delas
   // não pegaram plantão nenhum não é um mês com treze nomes na parede.
+  const comoEscrever = (nome: string) => opts.apelidos?.get(nome) || nomeCurto(nome);
   const rotulos = [...new Set((doGrupo
-    ? plantoes.map((p) => nomeCurto(p.profissional))
+    ? plantoes.map((p) => comoEscrever(p.profissional))
     : plantoes.map((p) => p.local || "Sem local")).filter(Boolean))];
   const cores = opts.cores ?? coresDaFolha(rotulos);
   // Sem cor combinada, cai na última — a ardósia, que é a mesma que a tela usa
@@ -681,7 +695,7 @@ export function corpoDaFolha(opts: {
             // duas equipes juntas — uma escala que não existe em lugar nenhum.
             const chave = `${p.local}|${p.hora_inicio}|${p.hora_fim}`;
             acc[chave] ??= { local: p.local, inicio: p.hora_inicio, fim: p.hora_fim, gente: [] };
-            acc[chave].gente.push(nomeCurto(p.profissional));
+            acc[chave].gente.push(comoEscrever(p.profissional));
             return acc;
           }, {}));
           if (!turnos.length) return "";

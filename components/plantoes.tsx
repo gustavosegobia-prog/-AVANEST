@@ -120,40 +120,57 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
   if (!folha || !papel) return;
 
   folha.style.width = `${caixa.largura}px`;
-  papel.style.width = `${caixa.largura}px`;
-  const alto = papel.scrollHeight;
-  if (alto <= caixa.altura) return;
+  papel.style.transformOrigin = "top left";
 
-  // O 0,995 é folga contra arredondamento: a conta prova que cabe, e meio
-  // pixel de sobra transformaria "cabe exatamente" em segunda página em branco.
+  // O zoom AUMENTA também, e não só diminui.
+  //
+  // Encolher era metade do trabalho, e a metade que faltava era a que se via:
+  // um mês tranquilo saía desenhado no tamanho que a folha de estilo escolheu e
+  // deixava um terço da página em branco embaixo. A escala é lida em pé, a um
+  // passo da parede do centro cirúrgico — ali o que importa não é o tamanho da
+  // letra no CSS, é o tamanho dela no papel, e todo milímetro sobrando na folha
+  // é letra que podia estar maior.
+  //
+  // O teto de 1,8 existe porque um mês com quatro plantões não deve virar um
+  // cartaz: passando disso a folha fica com quatro palavras enormes e muito
+  // branco, que é feio de um jeito diferente.
+  const MENOR = 0.55;
+  const MAIOR = 1.8;
+
+  // Largura e zoom andam juntos: em `scale(k)` a caixa é desenhada com
+  // `largura/k` e depois multiplicada por k, então a largura final é sempre a
+  // da folha. Aumentar k estreita a caixa antes de ampliar — os nomes quebram
+  // mais, e a altura sobe. É por isso que não dá para calcular o zoom de uma
+  // vez: cada tentativa muda o texto que se está medindo.
   const aplicar = (k: number) => {
     papel.style.transform = `scale(${k})`;
     papel.style.width = `${caixa.largura / k}px`;
     return papel.scrollHeight * k;
   };
 
-  papel.style.transformOrigin = "top left";
-  let k = Math.max(0.55, (caixa.altura / alto) * 0.995);
-  const usado = aplicar(k);
-
-  // Segunda tentativa, só para não encolher mais do que precisa. Alargar o
-  // papel costuma derrubar a altura bem abaixo do necessário — um mês pesado
-  // saía a 63% quando 85% bastavam, e 20% de letra a menos numa folha lida a um
-  // passo da parede é diferença que se sente. A tentativa é conferida antes de
-  // valer: se a nova altura não couber, volta para a primeira, que é a que tem
-  // prova. Melhor uma folha um pouco pequena do que uma folha cortada.
-  if (usado < caixa.altura * 0.92) {
-    const maior = Math.min(1, k * (caixa.altura / usado) * 0.99);
-    if (aplicar(maior) <= caixa.altura) k = maior;
-    else aplicar(k);
+  // Busca binária pelo maior zoom que ainda cabe. Doze passos levam a diferença
+  // abaixo de meio por cento — mais fino que isso não se enxerga no papel.
+  let cabe = MENOR;
+  if (aplicar(MAIOR) <= caixa.altura) {
+    cabe = MAIOR;
+  } else {
+    let alto = MAIOR;
+    for (let i = 0; i < 12; i++) {
+      const meio = (cabe + alto) / 2;
+      if (aplicar(meio) <= caixa.altura) cabe = meio; else alto = meio;
+    }
   }
+
+  // A última medida vale, e não a última tentativa: a busca acima termina numa
+  // aplicação que pode ser a que NÃO coube.
+  const usado = aplicar(cabe);
 
   folha.style.height = `${caixa.altura}px`;
   // O corte só entra quando o conteúdo comprovadamente cabe. No mês que nem no
-  // piso de 55% couber — algo além de qualquer escala real —, a folha volta a
-  // quebrar em duas páginas em vez de esconder um dia do mês. Perder um dia
-  // caladamente numa escala de plantão é pior do que qualquer folha feia.
-  folha.style.overflow = papel.scrollHeight * k <= caixa.altura ? "hidden" : "visible";
+  // piso couber — algo além de qualquer escala real —, a folha volta a quebrar
+  // em duas páginas em vez de esconder um dia do mês. Perder um dia caladamente
+  // numa escala de plantão é pior do que qualquer folha feia.
+  folha.style.overflow = usado <= caixa.altura ? "hidden" : "visible";
   if (folha.style.overflow === "visible") folha.style.height = "auto";
 }
 
@@ -1420,9 +1437,14 @@ const EXPLICA_ZERO: Record<string, string> = {
       // `corpoDaFolha` procura a cor. O índice é o mesmo `i % 8` que gera as
       // classes med-m1…m8 da tela.
       cores: escopo === "grupo"
-        ? new Map(colegas.map((c, i) => [nomeCurto(c.nome), i % CORES_MEDICO.length]))
+        ? new Map(colegas.map((c, i) => [apelidos.get(c.id) ?? nomeCurto(c.nome), i % CORES_MEDICO.length]))
         : new Map([...locais].sort((a, b) => a.id.localeCompare(b.id))
             .map((l, i) => [nomeDoLocal(l), i % CORES_MEDICO.length])),
+      // O mesmo apelido dos botões de escalar e das etiquetas do calendário —
+      // "Matheus", e não "Matheus Gomes". No papel o sobrenome não identifica
+      // ninguém a mais e empilha as pastilhas uma por linha, o que dobra a
+      // altura da célula e faz a folha inteira sair impressa menor.
+      apelidos: new Map(colegas.map((c) => [c.nome, apelidos.get(c.id) ?? nomeCurto(c.nome)])),
       plantoes: daEscala.map((p) => ({
         data: p.data, hora_inicio: p.hora_inicio, hora_fim: p.hora_fim,
         horas: Number(p.horas), valor: Number(p.valor), situacao: p.situacao,

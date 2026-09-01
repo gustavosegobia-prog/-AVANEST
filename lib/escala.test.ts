@@ -372,9 +372,9 @@ const turno = (local: string, profissional: string, hora_inicio = "07:00"): Plan
   valor: 0, situacao: "escalado", local, profissional,
 });
 
-const folhaDoGrupo = (plantoes: PlantaoImpresso[]) => corpoDaFolha({
+const folhaDoGrupo = (plantoes: PlantaoImpresso[], apelidos?: Map<string, string>) => corpoDaFolha({
   doGrupo: true, mes: "2026-08", nomeMes: "agosto", ano: 2026,
-  diasNoMes: 31, primeiroDiaSemana: 6, plantoes,
+  diasNoMes: 31, primeiroDiaSemana: 6, plantoes, apelidos,
   impressoEm: new Date("2026-08-24T12:00:00"),
 });
 
@@ -987,4 +987,26 @@ test("a legenda traz só quem está na escala do mês", () => {
   assert.match(legenda, /Gustavo Silva/);
   assert.doesNotMatch(legenda, /Bruna Miyamoto/);
   assert.doesNotMatch(legenda, /Taylor Salomon/);
+});
+
+test("a pastilha usa o apelido da tela, e não o nome com sobrenome", () => {
+  // O sobrenome custava caro no papel: duas pastilhas não cabiam lado a lado na
+  // coluna de um dia, cada turno com dois plantonistas virava duas linhas, e a
+  // célula dobrava de altura. Como o zoom da folha é calculado pela altura, o
+  // sobrenome de cada um encolhia o nome de TODO MUNDO na folha inteira.
+  const { corpo } = folhaDoGrupo([
+    turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
+    turno("Santa Casa", "ANA PAULA DE SOUZA"),
+  ], new Map([["GUSTAVO SEGOBIA DA SILVA", "Gustavo"], ["ANA PAULA DE SOUZA", "Ana"]]));
+  assert.match(corpo, /<i class="p c\d">Gustavo<\/i>/);
+  assert.doesNotMatch(corpo, /Gustavo Silva/);
+  // A legenda fala a mesma língua da célula: nomes diferentes nos dois lugares
+  // fariam a tira do topo deixar de explicar o calendário embaixo dela.
+  const legenda = corpo.slice(corpo.indexOf('<div class="legenda">'), corpo.indexOf("<table"));
+  assert.match(legenda, /Ana<\/i>/);
+});
+
+test("sem apelido combinado, a pastilha cai no nome curto", () => {
+  const { corpo } = folhaDoGrupo([turno("Santa Casa", "ANA PAULA DE SOUZA")]);
+  assert.match(corpo, /<i class="p c\d">Ana Souza<\/i>/);
 });
