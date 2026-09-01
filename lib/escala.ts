@@ -550,7 +550,7 @@ export function coresDaFolha(nomes: readonly string[]): Map<string, number> {
  */
 export function cssDasCores(emCores = true): string {
   const base = ".p{display:inline-block;border-radius:3px;padding:0 3px;margin:0 2px 1px 0;"
-    + "font-style:normal;font-weight:700;font-size:8px;line-height:1.45;"
+    + "font-style:normal;font-weight:700;font-size:9.5px;line-height:1.4;"
     + "-webkit-print-color-adjust:exact;print-color-adjust:exact}\n"
     + "td.dia{-webkit-print-color-adjust:exact;print-color-adjust:exact}\n";
   if (!emCores) {
@@ -823,7 +823,7 @@ ${depois}
     plantoes.reduce((s, p) => s + Number(p.horas), 0))} · ${
     plantoes.reduce((s, p) => s + Number(p.horas), 0).toLocaleString("pt-BR")}h${
     doGrupo ? "" : ` · ${money(plantoes.reduce((s, p) => s + Number(p.valor), 0))}`
-  }</span>${assinaturaDaFolha(opts.impressoEm)}</div>`;
+  }</span></div>`;
 
   return { titulo, corpo };
 }
@@ -987,7 +987,7 @@ ${gente.length ? resumo + detalhe : '<p class="sub">Nenhum plantão neste mês.<
 <div class="rodape"><span>${turnosEscrito(
     gente.reduce((s, g) => s + g.horasPrevistas, 0))} turnos · ${
     gente.reduce((s, g) => s + g.horas, 0).toLocaleString("pt-BR")}h confirmadas de ${
-    gente.reduce((s, g) => s + g.horasPrevistas, 0).toLocaleString("pt-BR")}h previstas</span>${assinaturaDaFolha(impressoEm)}</div>`;
+    gente.reduce((s, g) => s + g.horasPrevistas, 0).toLocaleString("pt-BR")}h previstas</span></div>`;
 
   return { titulo, corpo };
 }
@@ -1055,7 +1055,7 @@ export function folhaDeProducao(
 ${blocos || '<p class="sub">Nada anotado neste mês.</p>'}
 <div class="rodape"><span>${plural(itens.length, "paciente", "pacientes")} · ${
     escaparHTML(money(total))} · recebido ${escaparHTML(money(recebido))} · a receber ${
-    escaparHTML(money(total - recebido))}</span>${assinaturaDaFolha(impressoEm)}</div>`;
+    escaparHTML(money(total - recebido))}</span></div>`;
 
   return { titulo, corpo };
 }
@@ -1188,7 +1188,7 @@ export function folhaDePlantoesPorLocal(
 <p class="sub">Plantões do mês, separados por hospital — um total por nota.</p>
 ${blocos || '<p class="sub">Nenhum plantão neste mês.</p>'}
 <div class="rodape"><span>${plantoesEscrito(horas)} · ${
-    horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(total))}</span>${assinaturaDaFolha(impressoEm)}</div>`;
+    horas.toFixed(1).replace(".", ",")} h · ${escaparHTML(money(total))}</span></div>`;
 
   return { titulo, corpo };
 }
@@ -1290,7 +1290,7 @@ export function folhaDeFaturamento(
 <p class="sub">Atos anestésicos do mês, separados por hospital e por quem paga — um total por nota.</p>
 ${aviso}${blocos || '<p class="sub">Nada anotado neste mês.</p>'}
 <div class="rodape"><span>${plural(itens.length, "paciente", "pacientes")} · ${
-    escaparHTML(money(total))}</span>${assinaturaDaFolha(impressoEm)}</div>`;
+    escaparHTML(money(total))}</span></div>`;
 
   return { titulo, corpo };
 }

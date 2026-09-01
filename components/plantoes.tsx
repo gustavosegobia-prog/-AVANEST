@@ -9,7 +9,8 @@ import { Icone } from "@/components/icone";
 import {
   corpoDaFolha, cssDasCores, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
-  apelidosDaEquipe, coresDaFolha, emTurnos, filtroDeHospital, iniciais, montarICS, nomeCurto, nomeDoPeriodo,
+  apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, emTurnos, filtroDeHospital, iniciais, montarICS,
+  nomeCurto, nomeDoPeriodo,
   turnosEscrito,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
@@ -81,6 +82,11 @@ const DURACOES = [6, 12, 24] as const;
 const MARGEM_MM = 8;
 /** A4 em pixels de CSS: 1px = 1/96 pol, 1 pol = 25,4 mm. */
 const MM = 96 / 25.4;
+/* A altura da faixa que a assinatura ocupa, em pixels de tela. É a mesma
+   medida em dois lugares — o vão reservado pelo <tfoot> e a caixa do elemento
+   fixo —, e separá-las faria a assinatura desenhar fora do vão. */
+const ALTURA_ASSINATURA = 34;
+
 const FOLHA = {
   landscape: { largura: (297 - 2 * MARGEM_MM) * MM, altura: (210 - 2 * MARGEM_MM) * MM },
   portrait: { largura: (210 - 2 * MARGEM_MM) * MM, altura: (297 - 2 * MARGEM_MM) * MM },
@@ -166,19 +172,24 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
   // Por isso as duas condições entram na MESMA busca. As duas melhoram na
   // mesma direção — zoom menor cabe mais fácil e quebra menos —, então a busca
   // binária continua valendo com o teste dobrado.
-  // NENHUMA faixa quebra, e a conta é fechada.
+  // Uma linha; duas, no máximo, e só no dia cheio.
   //
-  // A primeira versão desta regra abria exceção para as faixas de três nomes:
-  // exigir três numa linha só puxava o zoom da folha inteira de 124% para 94%,
-  // e a letra saía menor do que era antes. Quem quebrava a folha era o dia mais
-  // cheio do mês.
+  // As duas regras vieram de tropeços medidos, e cada uma corrige a anterior.
   //
-  // A saída não foi encolher a folha, foi encolher a PASTILHA — e só a da faixa
-  // cheia. A regra de tamanho por quantidade está na folha de estilo: com três
-  // nomes a pastilha cai para 6,6px, com quatro ou mais para 5,4px, e o resto
-  // da folha continua no tamanho que estava. Quem paga a conta do dia lotado é
-  // o dia lotado.
-  const semQuebra = () => {
+  // Exigir UMA linha de todo mundo deixa o dia mais lotado do mês ditar a letra
+  // de todos os outros: o zoom da folha inteira caía para 108% por causa de um
+  // punhado de dias com três nomes numa faixa.
+  //
+  // Permitir DUAS de todo mundo devolve o zoom, e devolve junto o defeito que
+  // começou isto: seis faixas de dois nomes voltaram a quebrar, com o M
+  // alinhado só com a primeira metade.
+  //
+  // Então o teto depende de quantos são. Até dois nomes, uma linha — é o caso
+  // comum, e é o que se lê de longe. De três em diante, duas linhas valem: a
+  // pastilha ainda encolhe na faixa cheia, e é isso que faz a maioria desses
+  // dias caber numa linha mesmo assim; quando não couber, quem paga a conta é a
+  // altura daquela célula, e não o tamanho da letra na folha toda.
+  const noLimiteDeLinhas = () => {
     // A régua é a MAIOR pastilha da folha, e não a primeira que aparecer: as
     // pastilhas passaram a ter tamanhos diferentes conforme a faixa esteja
     // cheia, e medir pela primeira compararia a altura de uma faixa apertada
@@ -186,11 +197,13 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
     const umaLinha = Math.max(0, ...[...doc.querySelectorAll<HTMLElement>(".fx .p")]
       .map((p) => p.offsetHeight));
     if (!umaLinha) return true;
-    return [...doc.querySelectorAll<HTMLElement>(".fx .q")]
-      .every((f) => f.offsetHeight <= umaLinha * 1.5);
+    return [...doc.querySelectorAll<HTMLElement>(".fx .q")].every((f) => {
+      const teto = f.querySelectorAll(".p").length <= 2 ? 1.5 : 2.5;
+      return f.offsetHeight <= umaLinha * teto;
+    });
   };
 
-  const serve = (k: number) => aplicar(k) <= caixa.altura && semQuebra();
+  const serve = (k: number) => aplicar(k) <= caixa.altura && noLimiteDeLinhas();
 
   // Busca binária pelo maior zoom que serve. Doze passos levam a diferença
   // abaixo de meio por cento — mais fino que isso não se enxerga no papel.
@@ -246,7 +259,32 @@ function imprimirFolha(titulo: string, corpo: string,
   if (!janela) return false;
   janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <title>${escaparHTML(titulo)}</title><style>
+/* A assinatura no pé de TODA página, e as duas técnicas somadas.
+   Nenhuma sozinha resolve, e as três tentativas foram medidas:
+   - <tfoot> reserva espaço em toda página, mas o Chrome só o DESENHA no fim:
+     a assinatura saía só na página 3 de 3;
+   - position:fixed desenha em toda página, mas não reserva nada: pousava em
+     cima da última linha das folhas cheias;
+   - position:fixed com recuo negativo, para cair na margem, é jogado pelo
+     Chrome para o topo da página SEGUINTE.
+   Então o <tfoot> vira um vão invisível — reserva a faixa e não desenha nada —,
+   e o elemento fixo desenha dentro dela. Cada um faz a metade que sabe fazer.
+   Fora do #papel de propósito: um position:fixed dentro de um elemento com
+   transform se ancora nele, e não na página. */
 @page{size:A4 ${orientacao};margin:${MARGEM_MM}mm}
+#folhaCorrida{width:100%;border-collapse:collapse}
+/* As regras de td/tr mais abaixo são das tabelas do DOCUMENTO. A moldura tem de
+   desfazê-las em cima de si mesma: a borda desenharia um retângulo em volta da
+   folha, a altura mínima viria da célula do calendário, e o break-inside:avoid
+   impediria a página de quebrar — o documento inteiro tentaria caber numa folha
+   só. */
+#folhaCorrida>tbody>tr,#folhaCorrida>tfoot>tr,
+#folhaCorrida>tbody>tr>td,#folhaCorrida>tfoot>tr>td{
+  border:0;padding:0;height:auto;vertical-align:top;
+  break-inside:auto;page-break-inside:auto;background:none}
+#vao{height:${ALTURA_ASSINATURA}px}
+#assinatura{position:fixed;right:0;bottom:0;
+  display:flex;justify-content:flex-end;height:${ALTURA_ASSINATURA}px;align-items:center}
 *{box-sizing:border-box}
 body{margin:0;font:10.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#111}
 /* O zoom vive em #papel; #folha é a moldura do tamanho da página que impede a
@@ -310,9 +348,9 @@ td .t span{font-size:10px;color:#333}
    filho, a contagem não bate e a faixa fica no tamanho normal — pode quebrar,
    e é o certo: ali a linha extra é do hospital, e não de um nome perdido. */
 .fx .q .p:first-child:nth-last-child(3),
-.fx .q .p:first-child:nth-last-child(3)~.p{font-size:6.6px}
+.fx .q .p:first-child:nth-last-child(3)~.p{font-size:7.4px}
 .fx .q .p:first-child:nth-last-child(n+4),
-.fx .q .p:first-child:nth-last-child(n+4)~.p{font-size:5.4px}
+.fx .q .p:first-child:nth-last-child(n+4)~.p{font-size:6.4px}
 /* O hospital, quando a folha cobre mais de um. Ocupa a linha inteira do bloco:
    sem isso, o nome do serviço entraria na fileira das pastilhas e pareceria
    mais um plantonista. */
@@ -376,7 +414,10 @@ p.sub.pendente{background:#fff4e0;border-left:3px solid #d98200;padding:7px 10px
 .assinatura i{font-style:normal;font-size:7.5px;color:#8a97a4}
 .assinatura small{font-size:7px;color:#a3adb8;margin-top:1px}
 tr,td,th{break-inside:avoid;page-break-inside:avoid}
-</style></head><body><div id="folha"><div id="papel">${corpo}</div></div></body></html>`);
+</style></head><body><table id="folhaCorrida">
+<tfoot><tr><td><div id="vao"></div></td></tr></tfoot>
+<tbody><tr><td><div id="folha"><div id="papel">${corpo}</div></div></td></tr></tbody>
+</table><div id="assinatura">${assinaturaDaFolha(new Date())}</div></body></html>`);
   janela.document.close();
   janela.focus();
   // O print imediato pega a folha antes de o navegador medir a tabela, e sai
@@ -402,7 +443,15 @@ tr,td,th{break-inside:avoid;page-break-inside:avoid}
     // O ajuste vem DEPOIS do logo carregar. Medir antes dá uma altura sem a
     // imagem, e o zoom sairia calculado para uma folha que não é a que
     // imprime — com o logo dentro, ela voltaria a passar para a segunda página.
-    if (umaFolhaSo) caberNumaFolha(janela.document, FOLHA[orientacao]);
+    if (umaFolhaSo) {
+      // A área útil encolhe pela faixa da assinatura: sem descontar, o
+      // calendário seria esticado até a borda e empurraria o vão para uma
+      // segunda folha em branco.
+      caberNumaFolha(janela.document, {
+        largura: FOLHA[orientacao].largura,
+        altura: FOLHA[orientacao].altura - ALTURA_ASSINATURA,
+      });
+    }
     janela.print();
   }, 300));
   return true;

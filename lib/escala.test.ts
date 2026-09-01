@@ -1052,10 +1052,20 @@ test("a folha de plantões para nota conta por 12 horas", () => {
   assert.equal(corpo.match(/<tr><td>\d+\/08<\/td>/g)?.length, 6);
 });
 
-test("a assinatura vai no pé de toda folha, com o slogan", () => {
-  // O canto inferior direito é o que o olho varre por último: a folha é da
-  // clínica, e a assinatura diz de onde ela saiu sem disputar espaço com o que
-  // está impresso.
+test("a assinatura traz a marca, o slogan e a data", () => {
+  // Ela não mora mais no corpo das folhas: quem a coloca é a janela de
+  // impressão, uma vez, fora do papel ampliado — só assim ela se repete em
+  // TODA página de um documento de várias.
+  const assinatura = assinaturaDaFolha(new Date("2026-09-01T12:00:00"));
+  assert.match(assinatura, /class="assinatura"/);
+  assert.match(assinatura, /<b>AVANEST<\/b>/);
+  assert.match(assinatura, new RegExp(SLOGAN));
+  assert.match(assinatura, /impresso em 01\/09\/2026/);
+});
+
+test("o corpo da folha não repete a assinatura", () => {
+  // Repetida no corpo, ela sairia duas vezes na última página — a do rodapé
+  // fixo e a do texto.
   const impressoEm = new Date("2026-09-01T12:00:00");
   const folhas = [
     folhaDoGrupo([turno("Santa Casa", "ANA PAULA DE SOUZA")]).corpo,
@@ -1064,13 +1074,7 @@ test("a assinatura vai no pé de toda folha, com o slogan", () => {
     folhaDeProducao([], "agosto", 2026, impressoEm).corpo,
     folhaDeFaturamento([], "agosto", 2026, impressoEm).corpo,
   ];
-  for (const corpo of folhas) {
-    assert.match(corpo, /class="assinatura"/);
-    assert.match(corpo, new RegExp(SLOGAN));
-    // A data genérica: a folha do grupo é montada por um ajudante que usa
-    // outro dia, e o que se protege aqui é que ela EXISTA em toda folha.
-    assert.match(corpo, /impresso em \d\d\/\d\d\/\d{4}/);
-  }
+  for (const corpo of folhas) assert.doesNotMatch(corpo, /class="assinatura"/);
 });
 
 test("o desenho da marca vai embutido, e não como imagem de rede", () => {
