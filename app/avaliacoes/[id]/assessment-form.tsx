@@ -71,6 +71,9 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     return {
       sexo: paciente.sexo ?? "", convenio: paciente.convenio ?? "", hospital: paciente.hospital ?? "",
       cirurgia: paciente.cirurgia ?? paciente.procedimento ?? "", data_cirurgia: paciente.data_consulta ?? "",
+      // A especialidade estava no cadastro e não chegava aqui: era o único
+      // campo que a recepção preenchia e o médico tinha de digitar de novo.
+      especialidade: paciente.especialidade ?? "",
       ...saved,
       anestesiologista: String(saved.anestesiologista || perfil.nome),
       crm: String(saved.crm || perfil.crm || ""),
