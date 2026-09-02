@@ -589,6 +589,37 @@ export function legendaDaFolha(cores: Map<string, number>): string {
 }
 
 /**
+ * A ordem dos nomes dentro das faixas de um dia.
+ *
+ * Quem cobre mais turnos vai primeiro — em TODAS as faixas.
+ *
+ * A razão é de leitura, e não de arrumação. Quem faz manhã e tarde aparece nas
+ * duas linhas da célula, e antes caía em posições diferentes em cada uma: numa
+ * "Luana, Matheus", na outra "Matheus, Lucas". Para saber que era o mesmo
+ * Matheus emendando doze horas, o olho tinha de ler os quatro nomes e comparar.
+ * Ordenando pela quantidade de turnos, ele encosta na esquerda das duas linhas
+ * e a emenda se lê na vertical, sem ler nome nenhum.
+ *
+ * O empate é desfeito pelo nome, e não pela ordem em que o banco devolveu: sem
+ * isso, duas impressões do mesmo mês sairiam com as pastilhas trocadas de lugar.
+ *
+ * Não é garantia absoluta, e vale dizer onde falha: se duas pessoas cobrirem
+ * DOIS turnos cada, mas pares diferentes — uma de manhã e tarde, outra de manhã
+ * e noite —, elas empatam na contagem e a de nome menor passa à frente nas duas
+ * faixas em que aparece, desalinhando a outra. É um arranjo raro, e o preço de
+ * resolvê-lo seria reservar uma coluna fixa por pessoa no dia: a célula ficaria
+ * com a largura do dia mais cheio, quase toda vazia, e a folha inteira
+ * encolheria por causa disso.
+ */
+export function ordemDentroDoDia(porFaixa: readonly (readonly string[])[]): (a: string, b: string) => number {
+  const turnosDe = new Map<string, number>();
+  for (const faixa of porFaixa) {
+    for (const nome of new Set(faixa)) turnosDe.set(nome, (turnosDe.get(nome) ?? 0) + 1);
+  }
+  return (a, b) => (turnosDe.get(b) ?? 0) - (turnosDe.get(a) ?? 0) || (a < b ? -1 : a > b ? 1 : 0);
+}
+
+/**
  * A assinatura do AVANEST no pé da folha, à direita.
  *
  * O mesmo desenho da marca da tela, e não uma imagem: o "A" é um traço só num
@@ -739,6 +770,11 @@ export function corpoDaFolha(opts: {
             return acc;
           }, {}));
           if (!turnos.length) return "";
+          // Quem cobre mais turnos do dia vem primeiro em todas as faixas, para
+          // a emenda de manhã com tarde se ler na vertical. Ver `ordemDentroDoDia`.
+          const ordem = ordemDentroDoDia(TURNOS_DO_DIA.map((f) => turnos
+            .filter((t) => turnosCobertos(t.inicio, t.fim).includes(f.id))
+            .flatMap((t) => t.gente)));
           return TURNOS_DO_DIA.map((faixaDoDia) => {
             const blocos = turnos
               .filter((t) => turnosCobertos(t.inicio, t.fim).includes(faixaDoDia.id))
@@ -753,7 +789,7 @@ export function corpoDaFolha(opts: {
                   // precisa parar no fim do nome. "Lucas Quijo, Matheus Gomes"
                   // num fundo só seria uma mancha para dois, que é o contrário
                   // do que a cor serve.
-                  + t.gente.map(etiqueta).join("")).join("")
+                  + [...t.gente].sort(ordem).map(etiqueta).join("")).join("")
               : '<em class="vago">—</em>';
             return `<span class="fx"><b>${faixaDoDia.letra}</b>`
               + `<span class="q">${dentro}</span></span>`;

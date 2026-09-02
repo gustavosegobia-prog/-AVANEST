@@ -5,7 +5,7 @@ import {
   apelidosDaEquipe, carimboICS, TURNOS_RAPIDOS, corpoDaFolha, timbreDaFolha, folhaDeFechamento, money, podeConfirmar, filtroDeHospital, plantaoNaEscala, escaparHTML, faixa, folhaDeProducao, folhaDePlantoesPorLocal, folhaDeFaturamento, iniciais, montarICS, partesDoPlantao,
   nomeCurto, nomeDoPeriodo, ondeFica, plural, rotuloSituacao, somarHoras, textoICS, turnosCobertos,
   coresDaFolha, cssDasCores, legendaDaFolha, PALETA_DA_FOLHA, emTurnos, turnosEscrito,
-  plantoesEscrito, assinaturaDaFolha, SLOGAN,
+  plantoesEscrito, assinaturaDaFolha, SLOGAN, ordemDentroDoDia,
 } from "./escala.ts";
 
 // ---------------------------------------------------------------------------
@@ -1080,4 +1080,41 @@ test("o desenho da marca vai embutido, e não como imagem de rede", () => {
   const assinatura = assinaturaDaFolha(new Date("2026-09-01T12:00:00"));
   assert.match(assinatura, /<svg viewBox="0 0 128 128"/);
   assert.ok(!assinatura.includes("<img"), "a marca não pode depender da rede");
+});
+
+test("quem cobre mais turnos do dia vem primeiro em todas as faixas", () => {
+  // O caso do dia 7: Matheus faz manhã e tarde. Antes ele saía em segundo na
+  // manhã e em primeiro na tarde, e para ver que era o mesmo Matheus emendando
+  // doze horas o olho tinha de ler os quatro nomes e comparar.
+  const ordem = ordemDentroDoDia([
+    ["Luana", "Matheus"],   // manhã
+    ["Matheus", "Lucas"],   // tarde
+    ["Eder"],               // noite
+  ]);
+  assert.deepEqual(["Luana", "Matheus"].sort(ordem), ["Matheus", "Luana"]);
+  assert.deepEqual(["Matheus", "Lucas"].sort(ordem), ["Matheus", "Lucas"]);
+  // Encostado na esquerda das duas faixas: a emenda se lê na vertical.
+});
+
+test("o empate é desfeito pelo nome, e não pela ordem do banco", () => {
+  // Sem isso, duas impressões do mesmo mês sairiam com as pastilhas trocadas
+  // de lugar, e a folha da parede deixaria de bater com a da gaveta.
+  const ordem = ordemDentroDoDia([["Bruna", "Ana", "Carla"]]);
+  assert.deepEqual(["Carla", "Ana", "Bruna"].sort(ordem), ["Ana", "Bruna", "Carla"]);
+});
+
+test("a folha do grupo alinha quem emenda dois turnos", () => {
+  const dia = (ini: string, fim: string, quem: string) => ({
+    data: "2026-08-01", hora_inicio: ini, hora_fim: fim, horas: 6, valor: 900,
+    situacao: "escalado", local: "Santa Casa", profissional: quem,
+  });
+  const { corpo } = folhaDoGrupo([
+    dia("07:00", "13:00", "LUANA ZANETTIN"),
+    dia("07:00", "13:00", "MATHEUS GOMES"),
+    dia("13:00", "19:00", "MATHEUS GOMES"),
+    dia("13:00", "19:00", "LUCAS QUIJO"),
+  ], new Map([["LUANA ZANETTIN", "Luana"], ["MATHEUS GOMES", "Matheus"], ["LUCAS QUIJO", "Lucas"]]));
+  // Matheus é a primeira pastilha da manhã E da tarde.
+  assert.match(corpo, /<b>M<\/b><span class="q">(<u>[^<]*<\/u>)?<i class="p c\d">Matheus<\/i>/);
+  assert.match(corpo, /<b>T<\/b><span class="q">(<u>[^<]*<\/u>)?<i class="p c\d">Matheus<\/i>/);
 });

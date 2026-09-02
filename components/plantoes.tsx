@@ -10,6 +10,7 @@ import {
   corpoDaFolha, cssDasCores, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, emTurnos, filtroDeHospital, iniciais, montarICS,
+  ordemDentroDoDia,
   nomeCurto, nomeDoPeriodo,
   turnosEscrito,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
@@ -1332,7 +1333,7 @@ const EXPLICA_ZERO: Record<string, string> = {
   const faixasDoDia = useCallback((dia: string) => {
     const turnos = turnosDoDia(dia);
     if (turnos.length === 0) return [];
-    return TURNOS_DO_DIA.map((faixaDoDia) => {
+    const faixas = TURNOS_DO_DIA.map((faixaDoDia) => {
       const blocos = turnos.filter((t) => turnosCobertos(t.inicio, t.fim).includes(faixaDoDia.id));
       // Vendo hospitais diferentes de uma vez, duas equipes na mesma faixa
       // viram uma fileira só de iniciais — e uma escala que não existe em
@@ -1341,6 +1342,16 @@ const EXPLICA_ZERO: Record<string, string> = {
       const locais = new Set(blocos.map((b) => b.localId ?? "-"));
       return { ...faixaDoDia, blocos, separarPorLocal: mostraLocalNaCelula && locais.size > 1 };
     });
+    // Quem cobre mais turnos do dia vem primeiro em TODAS as faixas: assim quem
+    // emenda manhã com tarde encosta na esquerda das duas linhas, e a emenda se
+    // lê na vertical sem ler nome nenhum. Mesma regra da folha impressa — o
+    // papel é conferido ao lado desta tela. Ver `ordemDentroDoDia`.
+    const ordem = ordemDentroDoDia(faixas.map((f) =>
+      f.blocos.flatMap((t) => t.gente.map((g) => g.perfil_id))));
+    return faixas.map((f) => ({
+      ...f,
+      blocos: f.blocos.map((t) => ({ ...t, gente: [...t.gente].sort((a, b) => ordem(a.perfil_id, b.perfil_id)) })),
+    }));
   }, [turnosDoDia, mostraLocalNaCelula]);
 
   /**
