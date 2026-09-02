@@ -3,18 +3,24 @@
  *
  *     node scripts/gerar-tela-de-abertura.mjs
  *
- * POR QUE ELAS MOSTRAM SÓ O NOME, e não a marca inteira. A imagem do iOS é o
- * PRIMEIRO QUADRO da abertura animada do site — e naquele quadro o Λ ainda não
- * foi desenhado. A sequência que a pessoa vê atravessa dois programas:
+ * POR QUE ELAS MOSTRAM SÓ O NOME, sem o Λ e sem o slogan. A imagem do iOS é o
+ * PRIMEIRO QUADRO da abertura animada do site — e naquele quadro só o nome
+ * está desenhado. A sequência que a pessoa vê atravessa dois programas:
  *
- *     iOS desenha o nome  →  o site assume  →  o Λ se desenha por cima
+ *     iOS desenha o nome  →  o site assume  →  o Λ se desenha  →  o slogan
  *
  * Se a imagem trouxesse a marca pronta, o site logo em seguida a desmontaria
  * para remontá-la. Leria como falha, não como abertura.
  *
- * O ESPAÇO DO Λ FICA GUARDADO, vazio, em cima do nome. Sem isso o nome sairia
- * centralizado na imagem e desceria no instante em que o site assumisse — um
- * tranco bem no meio da emenda, que é o único lugar onde ele apareceria.
+ * O ESPAÇO DOS DOIS FICA GUARDADO, vazio: o do Λ em cima do nome, o do slogan
+ * embaixo. Sem isso o nome sairia centralizado na imagem e se mexeria no
+ * instante em que o site assumisse — um tranco bem no meio da emenda, que é o
+ * único lugar onde ele apareceria.
+ *
+ * O slogan é escondido com `visibility`, e não com `display` nem apagando o
+ * texto: só `visibility` tira a tinta MANTENDO o espaço. Com `display:none` a
+ * linha sumiria do cálculo e o nome desceria — exatamente o tranco que este
+ * parágrafo existe para evitar.
  *
  * A lista de aparelhos vem de lib/tela-de-abertura.ts: uma fonte só para os
  * tamanhos, senão um aparelho novo entra na lista e não ganha arquivo — e o
@@ -87,7 +93,9 @@ ${FOLHA_DA_FONTE}
   .nome span:nth-child(-n+4){color:#0879c9}
   .nome span:nth-child(n+5){color:#2bc5a8}
   .slogan{margin:8.4px 0 0;font-size:clamp(7.5px,2.28vw,9.5px);font-weight:600;line-height:1;
-    letter-spacing:.317em;text-transform:uppercase;color:#7c95a8;text-indent:.317em}
+    letter-spacing:.317em;text-transform:uppercase;color:#7c95a8;text-indent:.317em;
+    /* Sem tinta, com o lugar guardado — veja o cabeçalho. */
+    visibility:hidden}
 </style></head><body><div class="marca"><span class="vao"></span>
 <p class="nome">${[..."AVANEST"].map((l) => `<span>${l}</span>`).join("")}</p>
 <p class="slogan">Gestão em anestesiologia</p></div></body></html>`;

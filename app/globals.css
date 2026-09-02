@@ -3982,10 +3982,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* ============================================================================
    A abertura animada da marca
    ----------------------------------------------------------------------------
-   A ordem e o pedido: PRIMEIRO O NOME, DEPOIS O SIMBOLO. E a razao de o
-   simbolo ja ter o espaco dele reservado desde o quadro zero — se ele
-   entrasse empurrando, o nome escorregaria para baixo no meio da animacao e o
-   olho leria um tranco, nao uma revelacao.
+   A ordem e o pedido: O NOME, DEPOIS O Λ, E O SLOGAN POR ULTIMO. E a razao de
+   o simbolo E o slogan ja terem o espaco deles reservado desde o quadro zero —
+   se entrassem empurrando, o nome escorregaria no meio da animacao e o olho
+   leria um tranco, nao uma revelacao. O slogan ocupa o lugar dele o tempo
+   todo; o que muda e so ele estar ou nao pintado.
 
    A emenda com a tela de abertura do iPhone: aquela imagem mostra so o nome,
    que e exatamente o primeiro quadro daqui. O iOS desenha o nome, o site
@@ -3996,15 +3997,16 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    veria o painel e entao uma cortina caindo por cima dele.
 
    O RELOGIO INTEIRO, e ele e curto de proposito: o nome termina de entrar em
-   0,54s, o slogan em 0,62s, o Λ em 0,98s, e a cortina saiu em 1,35s. A
+   0,49s, o Λ em 0,80s, o slogan em 1,04s, e a cortina saiu em 1,38s. A
    primeira versao levava 2,65s e ficou lenta de ver — abertura de marca e
-   assinatura, nao espera. Quem entra pelo icone ve so o Λ e sai em 0,92s.
+   assinatura, nao espera. Quem entra pelo icone ja tem o nome desenhado pela
+   imagem do iOS e sai em 1,10s.
    ========================================================================== */
 .abertura{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
   background:#fff;
   /* `forwards` e o que faz a cortina sumir SEM JavaScript. Se o roteiro
      falhar, a abertura termina do mesmo jeito e ninguem fica preso atras. */
-  animation:aberturaSai .3s ease-in 1.05s forwards}
+  animation:aberturaSai .28s ease-in 1.10s forwards}
 /* Quem ja viu nesta sessao nao ve de novo. A classe e posta por um roteiro
    embutido no <head>, antes da primeira pintura — depois dela ja seria tarde,
    a cortina teria piscado. */
@@ -4045,18 +4047,18 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 
 /* --- o quadro zero: o nome invisivel, o simbolo com o espaco ja guardado --- */
 .marcaAvanest.animada .marcaNome span{opacity:0;transform:translateY(10px);
-  animation:aberturaLetra .3s cubic-bezier(.2,.7,.3,1) forwards}
+  animation:aberturaLetra .28s cubic-bezier(.2,.7,.3,1) forwards}
 .marcaAvanest.animada .marcaNome span:nth-child(1){animation-delay:0s}
-.marcaAvanest.animada .marcaNome span:nth-child(2){animation-delay:.04s}
-.marcaAvanest.animada .marcaNome span:nth-child(3){animation-delay:.08s}
-.marcaAvanest.animada .marcaNome span:nth-child(4){animation-delay:.12s}
-.marcaAvanest.animada .marcaNome span:nth-child(5){animation-delay:.16s}
-.marcaAvanest.animada .marcaNome span:nth-child(6){animation-delay:.20s}
-.marcaAvanest.animada .marcaNome span:nth-child(7){animation-delay:.24s}
+.marcaAvanest.animada .marcaNome span:nth-child(2){animation-delay:.035s}
+.marcaAvanest.animada .marcaNome span:nth-child(3){animation-delay:.07s}
+.marcaAvanest.animada .marcaNome span:nth-child(4){animation-delay:.105s}
+.marcaAvanest.animada .marcaNome span:nth-child(5){animation-delay:.14s}
+.marcaAvanest.animada .marcaNome span:nth-child(6){animation-delay:.175s}
+.marcaAvanest.animada .marcaNome span:nth-child(7){animation-delay:.21s}
 @keyframes aberturaLetra{to{opacity:1;transform:translateY(0)}}
 
 .marcaAvanest.animada .marcaSlogan{opacity:0;
-  animation:aberturaSlogan .32s ease-out .30s forwards}
+  animation:aberturaSlogan .26s ease-out .78s forwards}
 @keyframes aberturaSlogan{from{opacity:0;letter-spacing:.45em}
   to{opacity:1;letter-spacing:.317em}}
 
@@ -4070,19 +4072,22 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    deslocamento descesse de 224, e o primeiro terco da animacao seria tela
    parada. Foi exatamente o que aconteceu na primeira versao disto. */
 .marcaAvanest.animada .marcaSimbolo path{stroke-dasharray:226;stroke-dashoffset:226;
-  animation:aberturaTraco .52s cubic-bezier(.4,0,.25,1) .46s forwards}
+  animation:aberturaTraco .46s cubic-bezier(.4,0,.25,1) .34s forwards}
 @keyframes aberturaTraco{to{stroke-dashoffset:0}}
 
 /* --- chegando pelo icone: o nome ja veio pronto na imagem do iOS ---
    Quem abre pelo icone acabou de ver o nome desenhado. Repetir a entrada das
    letras seria montar duas vezes a mesma palavra, e o olho le isso como
-   travamento. Aqui o nome ja entra pronto e so o Λ se desenha — que e
-   exatamente onde a imagem do iOS parou. A cortina tambem sai antes, porque a
-   parte que ela ainda tem para mostrar e mais curta. */
-.vindoDoIcone .abertura{animation-delay:.62s}
-.vindoDoIcone .marcaAvanest.animada .marcaNome span,
-.vindoDoIcone .marcaAvanest.animada .marcaSlogan{opacity:1;transform:none;animation:none}
+   travamento. Aqui o nome ja entra pronto e a animacao continua de onde a
+   imagem do iOS parou: o Λ se desenha, e o slogan fecha a marca.
+
+   O SLOGAN CONTINUA ANIMANDO NESTE CAMINHO, ao contrario do nome — a imagem do
+   iOS tambem nao o traz, entao ele nao foi visto antes e nao ha o que repetir.
+   A cortina sai antes so porque a parte que falta e mais curta. */
+.vindoDoIcone .abertura{animation-delay:.82s}
+.vindoDoIcone .marcaAvanest.animada .marcaNome span{opacity:1;transform:none;animation:none}
 .vindoDoIcone .marcaAvanest.animada .marcaSimbolo path{animation-delay:.05s}
+.vindoDoIcone .marcaAvanest.animada .marcaSlogan{animation-delay:.49s}
 
 /* Quem pediu menos movimento recebe a marca pronta, e a cortina sai logo. Nao
    e "sem animacao nenhuma": sumir de uma vez seria um pisca-pisca, que e
