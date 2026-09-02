@@ -723,7 +723,11 @@ export function assinaturaDaFolha(impressoEm: Date): string {
  * na parede do centro cirúrgico, e nela não entra valor nenhum: quanto cada um
  * recebe é assunto dele com quem paga, e uma folha na parede é lida por todo
  * mundo que passa — inclusive por quem não deveria ver aquilo. A pessoal é a
- * que vai junto do talão, e essa traz o valor porque é para isso que serve.
+ * que vai junto do talão, e essa PODE trazer o valor — `comValores` decide.
+ *
+ * A escolha existe porque a folha pessoal é impressa para mais de uma coisa:
+ * conferir o que se tem a receber, e mostrar o mês para alguém. Na segunda, a
+ * coluna de dinheiro é lida por quem estiver por perto.
  *
  * A função devolve texto e não imprime nada: assim ela pode ser conferida sem
  * abrir navegador, que é o único jeito de garantir que o dia 31 não escorregou
@@ -769,8 +773,27 @@ export function corpoDaFolha(opts: {
    * dois Lucas: vira "Lucas Q." e "Lucas M.". Sem o mapa, cai em `nomeCurto`.
    */
   apelidos?: Map<string, string>;
+  /**
+   * Se a folha pessoal traz o valor de cada turno.
+   *
+   * A folha pessoal nasceu para ir junto do talão, e por isso trazia o valor
+   * sempre. Mas ela também é impressa para outras coisas — mostrar o mês a
+   * alguém, levar para o hospital, pregar em casa —, e nesses casos a coluna
+   * de dinheiro é lida por quem passar perto.
+   *
+   * Quando é falso, o valor sai dos TRÊS lugares: a coluna da lista, o total
+   * do rodapé e a frase de subtítulo. Tirar de um e esquecer dos outros é o
+   * defeito clássico aqui — o total no rodapé sozinho já entrega o mês
+   * inteiro, e ele é o mais fácil de esquecer, porque não parece uma coluna.
+   *
+   * Não vale nada na folha do grupo: aquela nunca teve valor nenhum.
+   */
+  comValores?: boolean;
 }): { titulo: string; corpo: string } {
   const { doGrupo, mes, nomeMes, ano, diasNoMes, primeiroDiaSemana, plantoes } = opts;
+  // Padrão verdadeiro: quem chama esta função sem dizer nada continua tendo a
+  // folha de sempre. Quem decide o contrário é a tela, que sabe da escolha.
+  const comValores = opts.comValores !== false;
 
   // Quantos hospitais esta folha cobre. Sai dos dados, e não de um parâmetro:
   // assim o título e as células nunca discordam do que está impresso.
@@ -899,8 +922,9 @@ export function corpoDaFolha(opts: {
   const depois = doGrupo
     ? ""
     : `<table class="lista"><colgroup><col style="width:8%"><col style="width:14%"><col style="width:8%">`
-      + `<col><col style="width:15%"><col style="width:13%"></colgroup>`
-      + `<thead><tr><th>Dia</th><th>Horário</th><th>Horas</th><th>Local</th><th>Valor</th><th>Situação</th></tr></thead><tbody>${
+      + `<col>${comValores ? `<col style="width:15%">` : ""}<col style="width:13%"></colgroup>`
+      + `<thead><tr><th>Dia</th><th>Horário</th><th>Horas</th><th>Local</th>${
+        comValores ? "<th>Valor</th>" : ""}<th>Situação</th></tr></thead><tbody>${
         [...plantoes]
           .sort((a, b) => a.data.localeCompare(b.data) || a.hora_inicio.localeCompare(b.hora_inicio))
           .map((p) => "<tr>"
@@ -908,14 +932,16 @@ export function corpoDaFolha(opts: {
             + `<td>${escaparHTML(`${hhmm(p.hora_inicio)}–${hhmm(p.hora_fim)}`)}</td>`
             + `<td>${p.horas}h</td>`
             + `<td>${escaparHTML(p.local || "Sem local")}</td>`
-            + `<td>${escaparHTML(money(p.valor))}</td>`
+            + (comValores ? `<td>${escaparHTML(money(p.valor))}</td>` : "")
             + `<td>${escaparHTML(rotuloSituacao(p.situacao))}</td></tr>`).join("")
       }</tbody></table>`;
 
   const corpo = `${timbreDaFolha(opts.instituicao)}<h1>${escaparHTML(titulo)}</h1>
 <p class="sub">${doGrupo
     ? "Escala da equipe. Trocas já aceitas estão refletidas nesta folha."
-    : "Sua escala pessoal, com o valor combinado de cada turno."}</p>
+    : comValores
+      ? "Sua escala pessoal, com o valor combinado de cada turno."
+      : "Sua escala pessoal, turno a turno."}</p>
 ${legendaDaFolha(new Map(rotulos.map((r) => [r, cores.get(r) ?? PALETA_DA_FOLHA.length - 1])))}
 <table class="mes"><thead><tr>${["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
     .map((d) => `<th>${d}</th>`).join("")}</tr></thead><tbody>${semanas.join("")}</tbody></table>
@@ -923,7 +949,9 @@ ${depois}
 <div class="rodape"><span>${plantoesEscrito(
     plantoes.reduce((s, p) => s + Number(p.horas), 0))} · ${
     plantoes.reduce((s, p) => s + Number(p.horas), 0).toLocaleString("pt-BR")}h${
-    doGrupo ? "" : ` · ${money(plantoes.reduce((s, p) => s + Number(p.valor), 0))}`
+    doGrupo || !comValores
+      ? ""
+      : ` · ${money(plantoes.reduce((s, p) => s + Number(p.valor), 0))}`
   }</span></div>`;
 
   return { titulo, corpo };

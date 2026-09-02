@@ -550,6 +550,33 @@ function guardarModoDaFolha(cores: boolean) {
   for (const avisar of ouvintesDoModo) avisar();
 }
 
+/**
+ * Se a folha PESSOAL sai com o valor de cada turno.
+ *
+ * Mesmo molde da escolha de cor, e pelo mesmo motivo: é decisão de aparelho,
+ * lembrada entre uma impressão e outra.
+ *
+ * O PADRÃO É SEM VALOR, e isso inverte o que a folha fazia antes. O motivo é
+ * qual dos dois erros dá para desfazer: imprimir sem o valor e precisar dele
+ * custa um clique e outra folha; imprimir com o valor na frente de quem não
+ * devia ver não tem desfazer nenhum — o papel já saiu, e quem leu, leu.
+ *
+ * Quem usa a folha junto do talão liga uma vez, e ela fica ligada.
+ */
+const VALORES_DA_FOLHA = "avanest:escala-valores";
+
+function valoresDaFolha(): string {
+  try { return localStorage.getItem(VALORES_DA_FOLHA) === "sim" ? "sim" : "nao"; }
+  catch { return "nao"; }
+}
+const valoresDaFolhaNoServidor = () => "nao";
+
+function guardarValoresDaFolha(mostra: boolean) {
+  try { localStorage.setItem(VALORES_DA_FOLHA, mostra ? "sim" : "nao"); }
+  catch { /* armazenamento bloqueado imprime sem valor, que é o lado seguro */ }
+  for (const avisar of ouvintesDoModo) avisar();
+}
+
 /** Quanto o dedo precisa andar para a gaveta abrir, e a largura dela. */
 const ARRASTO_ABRE = 44;
 const ARRASTO_LARGURA = 92;
@@ -803,6 +830,8 @@ export function Plantoes({
 
   const emCores = useSyncExternalStore(
     assinarModoDaFolha, modoDaFolha, modoDaFolhaNoServidor) === "cor";
+  const comValores = useSyncExternalStore(
+    assinarModoDaFolha, valoresDaFolha, valoresDaFolhaNoServidor) === "sim";
 
   // O nome curto de cada colega para os botões de escalar rápido — e para a
   // cor logo abaixo, que precisa da mesma palavra que a etiqueta mostra.
@@ -1700,6 +1729,8 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
 
     const { titulo, corpo } = corpoDaFolha({
       doGrupo: escopo === "grupo",
+      // Só pesa na folha pessoal; na do grupo nunca houve valor nenhum.
+      comValores,
       mes, nomeMes: MESES[m - 1], ano, diasNoMes, primeiroDiaSemana,
       impressoEm: new Date(),
       instituicao: unico && !unico.startsWith("fora:") ? marcaDe(unico) : null,
@@ -1944,6 +1975,20 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     aria-pressed={!emCores} onClick={() => guardarModoDaFolha(false)}
                     title="Para impressora monocromática: pastilhas brancas com o nome em preto">P&amp;B</button>
                 </span>
+                {/* Só na escala pessoal: a do grupo nunca traz valor, e um
+                    interruptor que não muda nada é pior do que interruptor
+                    nenhum — quem o vê passa a duvidar se a folha do grupo
+                    também sai com dinheiro. */}
+                {escopo !== "grupo" && (
+                  <span className="folhaModo" role="group" aria-label="Se a folha sai com o valor dos turnos">
+                    <button type="button" className={comValores ? "" : "ativo"}
+                      aria-pressed={!comValores} onClick={() => guardarValoresDaFolha(false)}
+                      title="A folha sai sem o valor de cada turno e sem o total do mês">Sem valores</button>
+                    <button type="button" className={comValores ? "ativo" : ""}
+                      aria-pressed={comValores} onClick={() => guardarValoresDaFolha(true)}
+                      title="Traz o valor de cada turno e o total do mês — para conferir com o talão">Com valores</button>
+                  </span>
+                )}
                 <button className="outlineClinical" onClick={imprimirEscala}>Imprimir</button>
                 {/* Só para quem monta a escala, e só na visão do grupo. É uma
                     folha de pagamento: traz o nome e o valor de cada colega, e

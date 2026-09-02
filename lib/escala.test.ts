@@ -825,6 +825,66 @@ test("o papel diz o mesmo que a tela sobre o plantão de 24 horas", () => {
   assert.doesNotMatch(corpo, /<b>07-07h<\/b>/);
 });
 
+// ---------------------------------------------------------------------------
+// A folha pessoal com e sem o valor
+// ---------------------------------------------------------------------------
+
+/** A mesma folha pessoal, com o valor ligado ou desligado. */
+const folhaPessoal = (comValores?: boolean) => corpoDaFolha({
+  doGrupo: false, comValores, mes: "2026-08", nomeMes: "agosto", ano: 2026,
+  diasNoMes: 31, primeiroDiaSemana: 6, impressoEm: new Date("2026-09-01T12:00:00"),
+  plantoes: [
+    { data: "2026-08-03", hora_inicio: "07:00", hora_fim: "19:00", horas: 12,
+      valor: 1500, situacao: "realizado", local: "Santa Casa", profissional: "Gustavo" },
+    { data: "2026-08-11", hora_inicio: "19:00", hora_fim: "07:00", horas: 12,
+      valor: 1800, situacao: "confirmado", local: "FUNDHOSPAR", profissional: "Gustavo" },
+  ],
+}).corpo;
+
+test("folha pessoal sem valores: nenhum real sobra em lugar nenhum", () => {
+  // O TOTAL DO RODAPÉ É O QUE SE ESQUECE. Tirar a coluna da lista é o gesto
+  // óbvio; o total continua embaixo, sozinho, e entrega o mês inteiro de uma
+  // vez — pior do que a coluna, porque é um número só e salta aos olhos.
+  const corpo = folhaPessoal(false);
+  assert.doesNotMatch(corpo, /R\$/, "não pode sobrar nenhum valor na folha");
+  assert.doesNotMatch(corpo, /<th>Valor<\/th>/);
+  assert.doesNotMatch(corpo, /valor combinado/);
+  // E o que a folha existe para mostrar continua lá.
+  assert.match(corpo, /Santa Casa/);
+  assert.match(corpo, /FUNDHOSPAR/);
+  assert.match(corpo, /<th>Situação<\/th>/);
+  assert.match(corpo, /24h/, "as horas do mês não são dinheiro e ficam");
+});
+
+test("folha pessoal com valores: continua trazendo tudo o que trazia", () => {
+  const corpo = folhaPessoal(true);
+  assert.match(corpo, /<th>Valor<\/th>/);
+  assert.match(corpo, /1\.500,00/);
+  assert.match(corpo, /1\.800,00/);
+  assert.match(corpo, /3\.300,00/, "o total do rodapé é a soma dos dois turnos");
+  assert.match(corpo, /valor combinado/);
+});
+
+test("folha pessoal: sem dizer nada, o valor vem — quem chama de fora não muda de comportamento", () => {
+  // `comValores` foi acrescentado depois. Um padrão que sumisse com o valor
+  // mudaria calado o que as outras chamadas já faziam.
+  assert.equal(folhaPessoal(undefined), folhaPessoal(true));
+});
+
+test("folha do grupo: o valor nunca entra, com ou sem a opção", () => {
+  // A da parede é lida por todo mundo que passa no corredor. A opção não
+  // existe para ela, e pedir o contrário não pode abrir uma porta.
+  for (const escolha of [true, false, undefined]) {
+    const { corpo } = corpoDaFolha({
+      doGrupo: true, comValores: escolha, mes: "2026-08", nomeMes: "agosto", ano: 2026,
+      diasNoMes: 31, primeiroDiaSemana: 6, impressoEm: new Date("2026-09-01T12:00:00"),
+      plantoes: [{ data: "2026-08-03", hora_inicio: "07:00", hora_fim: "19:00", horas: 12,
+        valor: 1500, situacao: "realizado", local: "Santa Casa", profissional: "Gustavo" }],
+    });
+    assert.doesNotMatch(corpo, /R\$/, `comValores=${escolha} não pode pôr dinheiro na folha do grupo`);
+  }
+});
+
 test("o plantão de 24 horas vira duas etiquetas: Diurno e Noturno", () => {
   // Quem faz o plantão inteiro está lá de dia e de noite. Numa etiqueta só,
   // "07-07h" não se distingue de um diurno no calendário — e é justamente a
