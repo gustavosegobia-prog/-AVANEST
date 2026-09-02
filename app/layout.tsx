@@ -123,6 +123,23 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             pessoa já começou a ler. Some sozinha, sem JavaScript. */}
         <AberturaAnimada />
         {children}
+        {/* REGISTRA O SERVICE WORKER EM TODA VISITA.
+            Antes ele só era registrado quando a pessoa ligava as notificações,
+            em components/ativar-notificacoes.tsx — e quem nunca ligou não
+            tinha service worker nenhum. Como é ele que guarda os arquivos de
+            build, o aplicativo abria do zero toda vez.
+
+            No `load`, e não agora: registrar durante o carregamento faz o
+            service worker disputar banda com a página que ainda está
+            chegando — atrasa exatamente o que ele existe para acelerar.
+
+            `register` é idempotente: chamar de novo devolve o registro que já
+            existe, então a chamada das notificações continua valendo. E o
+            `catch` vazio é porque navegação privada e alguns navegadores
+            recusam registrar — ali o site funciona igual, só sem cache. */}
+        <script dangerouslySetInnerHTML={{ __html:
+          "if('serviceWorker' in navigator){addEventListener('load',function(){"
+          + "navigator.serviceWorker.register('/sw.js').catch(function(){})})}" }} />
       </body>
     </html>
   );
