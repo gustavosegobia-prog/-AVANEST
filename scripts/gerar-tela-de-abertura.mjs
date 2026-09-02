@@ -97,8 +97,8 @@ ${FOLHA_DA_FONTE}
      instante seguinte. Um pixel de diferenca vira um salto na emenda. */
   .marca{display:grid;justify-items:center;padding:0 24px;max-width:420px;width:100%;
     transform:translateY(-1.7vh)}
-  /* O trilho do Λ — é o que esta imagem mostra. Mesmo traçado da abertura do
-     site e da assinatura das folhas impressas, na mesma cor de trilho. */
+  /* O trilho do Λ — é o que esta imagem mostra. Mesmo traçado e mesmo degradê
+     da abertura do site, só que claro: é sobre ele que o traço cheio corre. */
   .vao{width:min(25.9vw,108px);height:auto;display:block}
   .nome{display:flex;justify-content:center;margin:0.35px 0 0;line-height:1;
     font-size:clamp(23px,7.551vw,32px);font-weight:800;letter-spacing:.1012em;text-indent:.1012em;
@@ -112,8 +112,11 @@ ${FOLHA_DA_FONTE}
     visibility:hidden}
 </style></head><body><div class="marca">
 <svg class="vao" viewBox="0 0 128 128">
-<path d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="#dde6ee"
- stroke-linecap="round" stroke-linejoin="round" stroke-width="14"/></svg>
+<defs><linearGradient id="avn" x1="18" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+<stop stop-color="#0879c9"/><stop offset=".55" stop-color="#0d8ce1"/>
+<stop offset="1" stop-color="#2bc5a8"/></linearGradient></defs>
+<path d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="url(#avn)"
+ opacity=".22" stroke-linecap="round" stroke-linejoin="round" stroke-width="14"/></svg>
 <p class="nome">${[..."AVANEST"].map((l) => `<span>${l}</span>`).join("")}</p>
 <p class="slogan">Gestão em anestesiologia</p></div></body></html>`;
 

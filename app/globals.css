@@ -4079,7 +4079,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    vê no codigo: com 320, o desenho so comecaria a aparecer depois que o
    deslocamento descesse de 224, e o primeiro terco da animacao seria tela
    parada. Foi exatamente o que aconteceu na primeira versao disto. */
-.marcaTrilho{stroke:#dde6ee}
+/* O TRILHO É COLORIDO, e não cinza: ele é a primeira coisa que a pessoa vê ao
+   tocar no ícone, e um Λ cinza ali não lê como "ainda vou ser desenhado" — lê
+   como logo que não carregou. Mesmo degradê da marca, claro o bastante para o
+   traço cheio aparecer por cima dele. */
+.marcaTrilho{stroke:url(#marcaAvn);opacity:.22}
 .marcaAvanest.animada .marcaSimbolo path:not(.marcaTrilho){stroke-dasharray:226;stroke-dashoffset:226;
   animation:aberturaTraco .64s cubic-bezier(.4,0,.25,1) 0s forwards}
 @keyframes aberturaTraco{to{stroke-dashoffset:0}}

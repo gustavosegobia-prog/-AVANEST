@@ -87,14 +87,17 @@ export function MarcaAvanest({ animada = true }: { animada?: boolean }) {
             <stop offset="1" stopColor="#2bc5a8" />
           </linearGradient>
         </defs>
-        {/* O TRILHO — o mesmo caminho, em cinza claro, por baixo.
+        {/* O TRILHO — o mesmo caminho, na cor da marca e mais claro, por baixo.
             Ele existe para que a imagem do iOS não precise ficar em branco nem
             mostrar o Λ já pintado. Mostrando o trilho, o aparelho tem o que
             desenhar no toque do ícone, e o site continua exatamente dali:
             o traço colorido corre POR CIMA do trilho.
             Sem ele, das duas uma — ou a imagem era branca, e o aplicativo
             parecia travado, ou trazia o Λ pronto, e aí não havia o que
-            desenhar depois. */}
+            desenhar depois.
+
+            Colorido, e não cinza: é a primeira coisa que se vê ao tocar no
+            ícone, e um Λ cinza ali parece logo que não carregou. */}
         <path className="marcaTrilho" d={CAMINHO_DO_LAMBDA} fill="none"
           strokeLinecap="round" strokeLinejoin="round" strokeWidth={14} />
         <path d={CAMINHO_DO_LAMBDA} fill="none" stroke="url(#marcaAvn)"
