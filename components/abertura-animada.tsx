@@ -30,10 +30,10 @@
  * `pointer-events:none`. Se o JavaScript falhar, a abertura ainda termina e
  * ninguém fica preso atrás dela.
  *
- * O ÚNICO JavaScript é o roteiro embutido abaixo, e ele decide duas coisas: se
- * esta sessão já viu a abertura, e de onde a pessoa está chegando. Precisa
- * rodar antes da primeira pintura — daí ser embutido e bloqueante —, porque
- * decidir isso depois já seria tarde: a cortina teria piscado.
+ * O ÚNICO JavaScript é o roteiro embutido abaixo, e ele decide uma coisa só:
+ * se esta sessão já viu a abertura. Precisa rodar antes da primeira pintura —
+ * daí ser embutido e bloqueante —, porque decidir isso depois já seria tarde:
+ * a cortina teria piscado.
  */
 
 /**
@@ -48,21 +48,16 @@
  * O try/catch não é decorativo: em navegação privada e com cookies bloqueados,
  * só de LER o `sessionStorage` alguns navegadores lançam. Sem ele, a exceção
  * subiria num roteiro bloqueante do <head> e derrubaria a página inteira antes
- * de qualquer coisa aparecer. Se der erro, a abertura simplesmente toca. São
- * dois try/catch separados de propósito: uma falha na leitura do armazenamento
- * não pode levar junto a detecção de onde a pessoa veio.
+ * de qualquer coisa aparecer. Se der erro, a abertura simplesmente toca.
  *
- * E É POR ISSO QUE HÁ UM `display-mode: standalone` AQUI. Quem abre pelo ícone
- * já viu o nome desenhado — foi a imagem que o iOS mostrou. Repetir a entrada
- * das letras ali seria montar duas vezes a mesma palavra, e o olho lê isso
- * como travamento, não como abertura. Nesse caminho o nome já entra pronto e
- * só o Λ se desenha, que é exatamente onde a imagem do iOS parou. No navegador
- * comum não houve imagem nenhuma antes, e a animação toca inteira.
+ * NÃO HÁ MAIS DETECÇÃO DE "VEIO PELO ÍCONE" AQUI, e a remoção foi o conserto
+ * de um defeito real. Ela existia para não redesenhar o que a imagem do iOS já
+ * mostrava — mas o efeito prático era que, no aplicativo instalado, o Λ NUNCA
+ * se desenhava: a pessoa via ação só no nome. Como agora a imagem do iOS traz
+ * apenas o TRILHO do Λ, e não o traço pintado, não há nada repetido a evitar:
+ * uma linha do tempo só, igual para todo mundo.
  */
 const ROTEIRO_DA_ABERTURA = `try{
-if(matchMedia('(display-mode: standalone)').matches){document.documentElement.className+=' vindoDoIcone'}
-}catch(e){}
-try{
 if(sessionStorage.getItem('avanest:abertura')){document.documentElement.className+=' semAbertura'}
 else{sessionStorage.setItem('avanest:abertura','1')}
 }catch(e){}`;
@@ -92,6 +87,16 @@ export function MarcaAvanest({ animada = true }: { animada?: boolean }) {
             <stop offset="1" stopColor="#2bc5a8" />
           </linearGradient>
         </defs>
+        {/* O TRILHO — o mesmo caminho, em cinza claro, por baixo.
+            Ele existe para que a imagem do iOS não precise ficar em branco nem
+            mostrar o Λ já pintado. Mostrando o trilho, o aparelho tem o que
+            desenhar no toque do ícone, e o site continua exatamente dali:
+            o traço colorido corre POR CIMA do trilho.
+            Sem ele, das duas uma — ou a imagem era branca, e o aplicativo
+            parecia travado, ou trazia o Λ pronto, e aí não havia o que
+            desenhar depois. */}
+        <path className="marcaTrilho" d={CAMINHO_DO_LAMBDA} fill="none"
+          strokeLinecap="round" strokeLinejoin="round" strokeWidth={14} />
         <path d={CAMINHO_DO_LAMBDA} fill="none" stroke="url(#marcaAvn)"
           strokeLinecap="round" strokeLinejoin="round" strokeWidth={14} />
       </svg>

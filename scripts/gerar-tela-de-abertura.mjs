@@ -3,20 +3,25 @@
  *
  *     node scripts/gerar-tela-de-abertura.mjs
  *
- * POR QUE ELAS MOSTRAM SÓ O Λ, sem o nome e sem o slogan. A imagem do iOS é o
- * quadro da animação em que o Λ acabou de se desenhar — e naquele quadro nada
- * mais está pintado. A sequência que a pessoa vê atravessa dois programas:
+ * POR QUE ELAS MOSTRAM O TRILHO DO Λ, e não o Λ pintado. A imagem do iOS é o
+ * QUADRO ZERO da animação: o caminho do Λ em cinza claro, sem o traço colorido
+ * por cima, e o espaço do nome e do slogan guardado, vazio. A sequência que a
+ * pessoa vê atravessa dois programas:
  *
- *     iOS mostra o Λ  →  o site assume  →  o nome entra  →  o slogan fecha
+ *     iOS pinta o trilho  →  o site assume  →  o traço corre por cima
+ *                         →  o nome entra   →  o slogan fecha
  *
- * Se a imagem trouxesse a marca pronta, o site logo em seguida a desmontaria
- * para remontá-la. Leria como falha, não como abertura.
+ * O TRILHO EXISTE PARA RESOLVER UM IMPASSE, e as duas saídas óbvias estão
+ * erradas. Imagem em branco é o problema que estas imagens existem para
+ * evitar: o aplicativo pareceria travado, e um segundo de tela vazia basta
+ * para a pessoa achar que não abriu e tocar de novo. Já a imagem com o Λ
+ * pintado obriga o site a NÃO desenhá-lo — senão risca duas vezes o mesmo
+ * traço —, e foi o que aconteceu: no aplicativo instalado o Λ nunca se
+ * desenhava, e a ação só acontecia no nome.
  *
- * E POR QUE NÃO O QUADRO ZERO, que seria a tela vazia: porque tela branca é
- * exatamente o problema que estas imagens existem para resolver. O aplicativo
- * pareceria travado por um segundo, e um segundo de tela vazia basta para a
- * pessoa achar que não abriu e tocar de novo. O primeiro quadro DESENHADO é o
- * Λ pronto, e é ele que a imagem mostra.
+ * Com o trilho, o aparelho tem o que pintar no toque do ícone e o site tem o
+ * que desenhar em cima. Ninguém repete nada, e a animação é a mesma para quem
+ * abre pelo ícone e para quem abre pelo navegador.
  *
  * O ESPAÇO DOS TRÊS FICA GUARDADO: o do Λ, o do nome embaixo dele e o do
  * slogan por último. Sem isso o Λ sairia centralizado na imagem e se mexeria
@@ -92,8 +97,8 @@ ${FOLHA_DA_FONTE}
      instante seguinte. Um pixel de diferenca vira um salto na emenda. */
   .marca{display:grid;justify-items:center;padding:0 24px;max-width:420px;width:100%;
     transform:translateY(-1.7vh)}
-  /* O Λ, desenhado — é o que esta imagem mostra. Mesmo traçado e mesmo
-     degradê da assinatura das folhas impressas e da abertura do site. */
+  /* O trilho do Λ — é o que esta imagem mostra. Mesmo traçado da abertura do
+     site e da assinatura das folhas impressas, na mesma cor de trilho. */
   .vao{width:min(25.9vw,108px);height:auto;display:block}
   .nome{display:flex;justify-content:center;margin:0.35px 0 0;line-height:1;
     font-size:clamp(23px,7.551vw,32px);font-weight:800;letter-spacing:.1012em;text-indent:.1012em;
@@ -107,10 +112,7 @@ ${FOLHA_DA_FONTE}
     visibility:hidden}
 </style></head><body><div class="marca">
 <svg class="vao" viewBox="0 0 128 128">
-<defs><linearGradient id="avn" x1="18" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">
-<stop stop-color="#0879c9"/><stop offset=".55" stop-color="#0d8ce1"/>
-<stop offset="1" stop-color="#2bc5a8"/></linearGradient></defs>
-<path d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="url(#avn)"
+<path d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="#dde6ee"
  stroke-linecap="round" stroke-linejoin="round" stroke-width="14"/></svg>
 <p class="nome">${[..."AVANEST"].map((l) => `<span>${l}</span>`).join("")}</p>
 <p class="slogan">Gestão em anestesiologia</p></div></body></html>`;
