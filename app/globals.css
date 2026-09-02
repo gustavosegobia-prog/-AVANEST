@@ -3978,3 +3978,113 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* A frase que explica a consequência antes do clique. */
 .adminEscalaAviso{grid-column:1/-1;margin:0;font-size:12.5px;line-height:1.5;
   color:var(--cor-tinta-fraca)}
+
+/* ============================================================================
+   A abertura animada da marca
+   ----------------------------------------------------------------------------
+   A ordem e o pedido: PRIMEIRO O NOME, DEPOIS O SIMBOLO. E a razao de o
+   simbolo ja ter o espaco dele reservado desde o quadro zero — se ele
+   entrasse empurrando, o nome escorregaria para baixo no meio da animacao e o
+   olho leria um tranco, nao uma revelacao.
+
+   A emenda com a tela de abertura do iPhone: aquela imagem mostra so o nome,
+   que e exatamente o primeiro quadro daqui. O iOS desenha o nome, o site
+   assume, e o Λ se desenha por cima. Sao dois programas e uma animacao so.
+
+   Tudo em CSS, e nao em JavaScript: a cortina precisa estar no PRIMEIRO quadro
+   pintado, e um componente de cliente so monta depois da hidratacao — a pessoa
+   veria o painel e entao uma cortina caindo por cima dele.
+   ========================================================================== */
+.abertura{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
+  background:#fff;
+  /* `forwards` e o que faz a cortina sumir SEM JavaScript. Se o roteiro
+     falhar, a abertura termina do mesmo jeito e ninguem fica preso atras. */
+  animation:aberturaSai .5s ease-in 2.15s forwards}
+/* Quem ja viu nesta sessao nao ve de novo. A classe e posta por um roteiro
+   embutido no <head>, antes da primeira pintura — depois dela ja seria tarde,
+   a cortina teria piscado. */
+.semAbertura .abertura{display:none}
+@keyframes aberturaSai{
+  from{opacity:1;visibility:visible}
+  99%{opacity:0;visibility:visible}
+  to{opacity:0;visibility:hidden;pointer-events:none}
+}
+
+/* AS MEDIDAS SAO CALIBRADAS, NAO ESCOLHIDAS. Foram obtidas medindo o logo
+   original da tela de abertura, pixel a pixel, e ajustando estes valores ate a
+   marca desenhada aqui cair sobre ele: simbolo com 22,5% da largura da tela,
+   nome com 45,3% e 65px de altura de caixa, slogan com 48,9%. Chutar "parece
+   igual" produziria uma marca ligeiramente diferente da que ele ja conhece —
+   e o unico lugar onde as duas aparecem coladas e justamente a emenda entre a
+   imagem do iOS e o site, que e onde a diferenca saltaria. */
+.marcaAvanest{display:grid;justify-items:center;gap:0;
+  padding:0 var(--esp-5);max-width:420px;width:100%;
+  /* O conjunto nao fica no meio exato: no logo original ele e um pouco acima,
+     e este deslocamento e a diferenca medida. */
+  transform:translateY(-1.7vh)}
+.marcaSimbolo{width:min(25.9vw,108px);height:auto;display:block}
+.marcaNome{display:flex;justify-content:center;margin:0.35px 0 0;
+  font-size:clamp(23px,7.551vw,32px);font-weight:800;letter-spacing:.1012em;
+  line-height:1;
+  /* O recuo compensa o espacamento entre letras, que sobra depois da ultima e
+     empurraria a palavra inteira meio caractere para a esquerda. */
+  text-indent:.1012em}
+/* As quatro primeiras letras no azul, as tres ultimas no verde: e a marca. O
+   degrade nao serve aqui — texto com degrade recortado some em impressao e em
+   modo de alto contraste, e este nome tambem aparece parado. */
+.marcaNome span:nth-child(-n+4){color:#0879c9}
+.marcaNome span:nth-child(n+5){color:#2bc5a8}
+.marcaSlogan{margin:8.4px 0 0;font-size:clamp(7.5px,2.28vw,9.5px);font-weight:600;
+  line-height:1;letter-spacing:.317em;text-transform:uppercase;color:#7c95a8;
+  text-indent:.317em}
+
+/* --- o quadro zero: o nome invisivel, o simbolo com o espaco ja guardado --- */
+.marcaAvanest.animada .marcaNome span{opacity:0;transform:translateY(10px);
+  animation:aberturaLetra .5s cubic-bezier(.2,.7,.3,1) forwards}
+.marcaAvanest.animada .marcaNome span:nth-child(1){animation-delay:.10s}
+.marcaAvanest.animada .marcaNome span:nth-child(2){animation-delay:.16s}
+.marcaAvanest.animada .marcaNome span:nth-child(3){animation-delay:.22s}
+.marcaAvanest.animada .marcaNome span:nth-child(4){animation-delay:.28s}
+.marcaAvanest.animada .marcaNome span:nth-child(5){animation-delay:.34s}
+.marcaAvanest.animada .marcaNome span:nth-child(6){animation-delay:.40s}
+.marcaAvanest.animada .marcaNome span:nth-child(7){animation-delay:.46s}
+@keyframes aberturaLetra{to{opacity:1;transform:translateY(0)}}
+
+.marcaAvanest.animada .marcaSlogan{opacity:0;
+  animation:aberturaSlogan .55s ease-out .62s forwards}
+@keyframes aberturaSlogan{from{opacity:0;letter-spacing:.45em}
+  to{opacity:1;letter-spacing:.317em}}
+
+/* O Λ se desenha. `stroke-dasharray` vira o traco num risco que corre do
+   comeco ao fim.
+
+   O NUMERO E MEDIDO, nao chutado: getTotalLength() do caminho da 224,23, e o
+   valor aqui e 226 — o minimo que cobre o traco inteiro mais a sobra das
+   pontas arredondadas. Chutar para cima custa caro e de um jeito que nao se
+   vê no codigo: com 320, o desenho so comecaria a aparecer depois que o
+   deslocamento descesse de 224, e o primeiro terco da animacao seria tela
+   parada. Foi exatamente o que aconteceu na primeira versao disto. */
+.marcaAvanest.animada .marcaSimbolo path{stroke-dasharray:226;stroke-dashoffset:226;
+  animation:aberturaTraco .85s cubic-bezier(.4,0,.25,1) .95s forwards}
+@keyframes aberturaTraco{to{stroke-dashoffset:0}}
+
+/* --- chegando pelo icone: o nome ja veio pronto na imagem do iOS ---
+   Quem abre pelo icone acabou de ver o nome desenhado. Repetir a entrada das
+   letras seria montar duas vezes a mesma palavra, e o olho le isso como
+   travamento. Aqui o nome ja entra pronto e so o Λ se desenha — que e
+   exatamente onde a imagem do iOS parou. A cortina tambem sai antes, porque a
+   parte que ela ainda tem para mostrar e mais curta. */
+.vindoDoIcone .abertura{animation-delay:1.35s}
+.vindoDoIcone .marcaAvanest.animada .marcaNome span,
+.vindoDoIcone .marcaAvanest.animada .marcaSlogan{opacity:1;transform:none;animation:none}
+.vindoDoIcone .marcaAvanest.animada .marcaSimbolo path{animation-delay:.15s}
+
+/* Quem pediu menos movimento recebe a marca pronta, e a cortina sai logo. Nao
+   e "sem animacao nenhuma": sumir de uma vez seria um pisca-pisca, que e
+   justamente o que essa preferencia existe para evitar. */
+@media(prefers-reduced-motion:reduce){
+  .abertura{animation:aberturaSai .4s ease-in .5s forwards}
+  .marcaAvanest.animada .marcaNome span,
+  .marcaAvanest.animada .marcaSlogan{opacity:1;transform:none;animation:none}
+  .marcaAvanest.animada .marcaSimbolo path{stroke-dashoffset:0;animation:none}
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   TELAS_DE_ABERTURA, arquivoDaAbertura, consultaDaAbertura,
 } from "@/lib/tela-de-abertura";
+import { AberturaAnimada, RoteiroDaAbertura } from "@/components/abertura-animada";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -69,8 +70,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
         />
+        {/* Decide se ESTA sessão já viu a abertura, e tem de decidir antes da
+            primeira pintura — depois dela a cortina já teria piscado. É o
+            único JavaScript da abertura inteira. */}
+        <RoteiroDaAbertura />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* Antes de tudo, e no HTML do servidor: assim a marca está no
+            primeiro quadro pintado, e não caindo por cima de um painel que a
+            pessoa já começou a ler. Some sozinha, sem JavaScript. */}
+        <AberturaAnimada />
+        {children}
+      </body>
     </html>
   );
 }
