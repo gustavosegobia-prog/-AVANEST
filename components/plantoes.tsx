@@ -7,7 +7,7 @@ import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/produc
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { Icone } from "@/components/icone";
 import {
-  corpoDaFolha, cssDasCores, escaparHTML, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
+  corpoDaFolha, cssDasCores, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, emTurnos, filtroDeHospital, iniciais, montarICS,
   ordemDentroDoDia,
@@ -261,13 +261,71 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
   if (folha.style.overflow === "visible") folha.style.height = "auto";
 }
 
+/**
+ * Manda a folha para a impressora — DENTRO da própria página.
+ *
+ * ===========================================================================
+ * POR QUE NÃO ABRE MAIS UMA JANELA
+ * ===========================================================================
+ * Abria: `window.open("", "_blank")`, escrevia a folha lá e chamava `print()`.
+ * Funciona no computador e TRAVA O APLICATIVO NO IPHONE, que foi como o
+ * problema apareceu: "aparece a outra página e não tem como voltar".
+ *
+ * O motivo é que, instalado na tela de início, o AVANEST roda em modo
+ * standalone — SEM barra de endereço, sem botão de voltar e sem abas. A página
+ * que o `window.open` abre não tem nenhum controle em volta: quem chega nela
+ * não tem como sair, e o aplicativo fica preso ali até ser fechado à força.
+ * Não é lentidão nem erro de código; é uma tela sem saída.
+ *
+ * Aqui a folha é montada na PÁGINA QUE JÁ ESTÁ ABERTA, num bloco escondido, e
+ * `window.print()` é chamado nela mesma. Nada abre, então não há de onde
+ * voltar — e no fim o bloco é removido e a tela continua exatamente onde
+ * estava.
+ *
+ * COMO A FOLHA DE ESTILO NÃO CONTAMINA O SITE. Ela é escrita como sempre foi —
+ * `td{...}`, `h1{...}`, seletores nus —, e isso só é seguro porque o bloco
+ * inteiro vai dentro de `@media print`. Na tela, nenhuma dessas regras existe.
+ * Na impressão, tudo o que não é a folha some (`display:none`), então os
+ * seletores nus alcançarem as tabelas do site não tem efeito nenhum: elas não
+ * estão sendo desenhadas. Prefixar sessenta seletores à mão seria a alternativa
+ * — e o primeiro esquecido seria um defeito silencioso no papel.
+ *
+ * A FOLHA PRECISA SER MEDÍVEL ANTES DE IMPRIMIR. `caberNumaFolha` calcula o
+ * zoom a partir da altura real do conteúdo, e conteúdo com `display:none` mede
+ * zero. Por isso, na tela, o bloco não é escondido: ele é estacionado fora da
+ * vista, à esquerda do zero. Desenhado, medível, e invisível para quem usa.
+ *
+ * Devolve `false` quando o navegador não deixa imprimir, para quem chamou
+ * poder avisar em vez de não fazer nada.
+ */
+const CAIXA_DA_FOLHA = "folhaParaImprimir";
+
 function imprimirFolha(titulo: string, corpo: string,
                        orientacao: "landscape" | "portrait" = "landscape",
                        umaFolhaSo = false, emCores = true): boolean {
-  const janela = window.open("", "_blank", "width=1100,height=800");
-  if (!janela) return false;
-  janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
-<title>${escaparHTML(titulo)}</title><style>
+  if (typeof window === "undefined" || typeof window.print !== "function") return false;
+  // Uma impressão anterior que não tenha sido limpa não pode sair junto desta.
+  document.getElementById(CAIXA_DA_FOLHA)?.remove();
+
+  const caixa = document.createElement("div");
+  caixa.id = CAIXA_DA_FOLHA;
+  caixa.setAttribute("aria-hidden", "true");
+  const estilo = `
+/* NA TELA: estacionado fora da vista, e não escondido — escondido mede zero, e
+   o zoom da folha depende de medir a altura de verdade. */
+#${CAIXA_DA_FOLHA}{position:fixed;left:-20000px;top:0;width:${Math.ceil(FOLHA[orientacao].largura)}px;
+  z-index:-1;pointer-events:none;visibility:hidden}
+@media print{
+/* NA IMPRESSÃO: some tudo o que não é a folha, e ela volta ao fluxo normal.
+   O !important existe porque as telas do site trazem as próprias regras de
+   impressão, e aqui não se está competindo — se está desligando. */
+body>*:not(#${CAIXA_DA_FOLHA}){display:none!important}
+#${CAIXA_DA_FOLHA}{position:static!important;left:auto!important;top:auto!important;
+  width:auto!important;visibility:visible!important;z-index:auto!important}
+/* Sem transform em nenhum ancestral do #assinatura: um position:fixed dentro
+   de um elemento transformado se ancora nele, e não na página. */
+html,body{margin:0!important;padding:0!important;background:#fff!important;
+  height:auto!important;min-height:0!important;overflow:visible!important}
 /* A assinatura no pé de TODA página, e as duas técnicas somadas.
    Nenhuma sozinha resolve, e as três tentativas foram medidas:
    - <tfoot> reserva espaço em toda página, mas o Chrome só o DESENHA no fim:
@@ -423,22 +481,32 @@ p.sub.pendente{background:#fff4e0;border-left:3px solid #d98200;padding:7px 10px
 .assinatura i{font-style:normal;font-size:7.5px;color:#8a97a4}
 .assinatura small{font-size:7px;color:#a3adb8;margin-top:1px}
 tr,td,th{break-inside:avoid;page-break-inside:avoid}
-</style></head><body><table id="folhaCorrida">
+}`;
+
+  caixa.innerHTML = `<style>${estilo}</style><table id="folhaCorrida">
 <tfoot><tr><td><div id="vao"></div></td></tr></tfoot>
 <tbody><tr><td><div id="folha"><div id="papel">${corpo}</div></div></td></tr></tbody>
-</table><div id="assinatura">${assinaturaDaFolha(new Date())}</div></body></html>`);
-  janela.document.close();
-  janela.focus();
-  // O print imediato pega a folha antes de o navegador medir a tabela, e sai
-  // com a primeira linha cortada.
-  //
+</table><div id="assinatura">${assinaturaDaFolha(new Date())}</div>`;
+  document.body.appendChild(caixa);
+
+  // O nome do arquivo, quando a pessoa escolhe "Salvar em PDF", vem do título
+  // do documento. Sem trocá-lo, trinta escalas salvas viram trinta arquivos
+  // chamados "AVANEST | Gestão em anestesiologia".
+  const tituloAntes = document.title;
+  document.title = titulo;
+
+  const limpar = () => {
+    document.title = tituloAntes;
+    document.getElementById(CAIXA_DA_FOLHA)?.remove();
+  };
+
   // Desde que o timbre da instituição entrou, há uma imagem a esperar — e ela
   // vem da rede. Imprimir no tempo fixo de antes sairia com o logo faltando ou
   // com a altura dele ainda em zero, empurrando a tabela para cima. Daí a
   // espera pelo `load` do logo; o teto de 4s existe porque um logo que não
   // carrega não pode segurar a impressão da escala: a folha sai sem ele, que é
   // exatamente o que sai hoje para quem não cadastrou logo nenhum.
-  const logo = janela.document.querySelector<HTMLImageElement>(".marca img");
+  const logo = caixa.querySelector<HTMLImageElement>(".marca img");
   const pronto = !logo || logo.complete
     ? Promise.resolve()
     : Promise.race([
@@ -448,6 +516,7 @@ tr,td,th{break-inside:avoid;page-break-inside:avoid}
         }),
         new Promise<void>((ok) => setTimeout(ok, 4000)),
       ]);
+
   void pronto.then(() => setTimeout(() => {
     // O ajuste vem DEPOIS do logo carregar. Medir antes dá uma altura sem a
     // imagem, e o zoom sairia calculado para uma folha que não é a que
@@ -456,12 +525,31 @@ tr,td,th{break-inside:avoid;page-break-inside:avoid}
       // A área útil encolhe pela faixa da assinatura: sem descontar, o
       // calendário seria esticado até a borda e empurraria o vão para uma
       // segunda folha em branco.
-      caberNumaFolha(janela.document, {
+      caberNumaFolha(document, {
         largura: FOLHA[orientacao].largura,
         altura: FOLHA[orientacao].altura - ALTURA_ASSINATURA,
       });
     }
-    janela.print();
+
+    // A LIMPEZA POR DOIS CAMINHOS, e os dois são necessários.
+    //
+    // `afterprint` é o certo, e dispara no computador quando a caixa de
+    // impressão fecha. No iPhone ele é irregular: a folha de compartilhamento
+    // do iOS pode fechar sem que o evento chegue. Sem o segundo caminho, o
+    // bloco ficaria pendurado no documento até a próxima impressão.
+    //
+    // E a limpeza não pode ser rápida demais: remover o bloco enquanto o
+    // navegador ainda está montando as páginas imprime folha em branco. Por
+    // isso o tempo é largo — é uma faxina, não um passo da impressão.
+    window.addEventListener("afterprint", limpar, { once: true });
+    setTimeout(limpar, 60_000);
+
+    try {
+      window.print();
+    } catch {
+      // Navegador que recusa imprimir não pode deixar o bloco para trás.
+      limpar();
+    }
   }, 300));
   return true;
 }
@@ -547,33 +635,6 @@ const modoDaFolhaNoServidor = () => "cor";
 function guardarModoDaFolha(cores: boolean) {
   try { localStorage.setItem(MODO_DA_FOLHA, cores ? "cor" : "pb"); }
   catch { /* navegador com armazenamento bloqueado imprime colorido */ }
-  for (const avisar of ouvintesDoModo) avisar();
-}
-
-/**
- * Se a folha PESSOAL sai com o valor de cada turno.
- *
- * Mesmo molde da escolha de cor, e pelo mesmo motivo: é decisão de aparelho,
- * lembrada entre uma impressão e outra.
- *
- * O PADRÃO É SEM VALOR, e isso inverte o que a folha fazia antes. O motivo é
- * qual dos dois erros dá para desfazer: imprimir sem o valor e precisar dele
- * custa um clique e outra folha; imprimir com o valor na frente de quem não
- * devia ver não tem desfazer nenhum — o papel já saiu, e quem leu, leu.
- *
- * Quem usa a folha junto do talão liga uma vez, e ela fica ligada.
- */
-const VALORES_DA_FOLHA = "avanest:escala-valores";
-
-function valoresDaFolha(): string {
-  try { return localStorage.getItem(VALORES_DA_FOLHA) === "sim" ? "sim" : "nao"; }
-  catch { return "nao"; }
-}
-const valoresDaFolhaNoServidor = () => "nao";
-
-function guardarValoresDaFolha(mostra: boolean) {
-  try { localStorage.setItem(VALORES_DA_FOLHA, mostra ? "sim" : "nao"); }
-  catch { /* armazenamento bloqueado imprime sem valor, que é o lado seguro */ }
   for (const avisar of ouvintesDoModo) avisar();
 }
 
@@ -830,8 +891,6 @@ export function Plantoes({
 
   const emCores = useSyncExternalStore(
     assinarModoDaFolha, modoDaFolha, modoDaFolhaNoServidor) === "cor";
-  const comValores = useSyncExternalStore(
-    assinarModoDaFolha, valoresDaFolha, valoresDaFolhaNoServidor) === "sim";
 
   // O nome curto de cada colega para os botões de escalar rápido — e para a
   // cor logo abaixo, que precisa da mesma palavra que a etiqueta mostra.
@@ -1729,8 +1788,6 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
 
     const { titulo, corpo } = corpoDaFolha({
       doGrupo: escopo === "grupo",
-      // Só pesa na folha pessoal; na do grupo nunca houve valor nenhum.
-      comValores,
       mes, nomeMes: MESES[m - 1], ano, diasNoMes, primeiroDiaSemana,
       impressoEm: new Date(),
       instituicao: unico && !unico.startsWith("fora:") ? marcaDe(unico) : null,
@@ -1975,20 +2032,6 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     aria-pressed={!emCores} onClick={() => guardarModoDaFolha(false)}
                     title="Para impressora monocromática: pastilhas brancas com o nome em preto">P&amp;B</button>
                 </span>
-                {/* Só na escala pessoal: a do grupo nunca traz valor, e um
-                    interruptor que não muda nada é pior do que interruptor
-                    nenhum — quem o vê passa a duvidar se a folha do grupo
-                    também sai com dinheiro. */}
-                {escopo !== "grupo" && (
-                  <span className="folhaModo" role="group" aria-label="Se a folha sai com o valor dos turnos">
-                    <button type="button" className={comValores ? "" : "ativo"}
-                      aria-pressed={!comValores} onClick={() => guardarValoresDaFolha(false)}
-                      title="A folha sai sem o valor de cada turno e sem o total do mês">Sem valores</button>
-                    <button type="button" className={comValores ? "ativo" : ""}
-                      aria-pressed={comValores} onClick={() => guardarValoresDaFolha(true)}
-                      title="Traz o valor de cada turno e o total do mês — para conferir com o talão">Com valores</button>
-                  </span>
-                )}
                 <button className="outlineClinical" onClick={imprimirEscala}>Imprimir</button>
                 {/* Só para quem monta a escala, e só na visão do grupo. É uma
                     folha de pagamento: traz o nome e o valor de cada colega, e
