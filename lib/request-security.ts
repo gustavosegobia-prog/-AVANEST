@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  contarTentativa, formatoAceito, origemAceita, tamanhoAceito, TAMANHO_MAXIMO,
+} from "./portaria.ts";
 
 type RateLimitEntry = {
   count: number;
@@ -21,37 +24,39 @@ function expectedOrigin(request: NextRequest) {
   return host ? `${protocol}://${host}` : request.nextUrl.origin;
 }
 
+/**
+ * Este arquivo lê cabeçalhos e monta respostas de erro. QUEM DECIDE é
+ * `lib/portaria.ts`.
+ *
+ * A divisão não é enfeite de arquitetura: o import de `next/server` aqui em
+ * cima impede este arquivo de carregar fora do Next, e foi por isso que o
+ * código que guarda todas as rotas de API passou a existir sem um único teste.
+ * As regras mudaram de casa para poderem ser conferidas; a encanação ficou.
+ */
 export function validateMutationRequest(
   request: NextRequest,
   options: { requireJson?: boolean; maxBytes?: number } = {},
 ) {
-  const origin = request.headers.get("origin");
-  const fetchSite = request.headers.get("sec-fetch-site");
-
-  if (
-    !origin ||
-    (origin !== expectedOrigin(request) && origin !== request.nextUrl.origin) ||
-    fetchSite === "cross-site"
-  ) {
+  if (!origemAceita({
+    origin: request.headers.get("origin"),
+    esperada: expectedOrigin(request),
+    doNextUrl: request.nextUrl.origin,
+    fetchSite: request.headers.get("sec-fetch-site"),
+  })) {
     return NextResponse.json(
       { error: "A origem desta solicitação não é permitida." },
       { status: 403, headers: { "Cache-Control": "no-store" } },
     );
   }
 
-  if (options.requireJson) {
-    const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
-    if (!contentType.startsWith("application/json")) {
-      return NextResponse.json(
-        { error: "Formato de solicitação inválido." },
-        { status: 415, headers: { "Cache-Control": "no-store" } },
-      );
-    }
+  if (!formatoAceito(request.headers.get("content-type"), Boolean(options.requireJson))) {
+    return NextResponse.json(
+      { error: "Formato de solicitação inválido." },
+      { status: 415, headers: { "Cache-Control": "no-store" } },
+    );
   }
 
-  const contentLength = Number(request.headers.get("content-length") ?? "0");
-  const maxBytes = options.maxBytes ?? 32_768;
-  if (!Number.isFinite(contentLength) || contentLength < 0 || contentLength > maxBytes) {
+  if (!tamanhoAceito(request.headers.get("content-length"), options.maxBytes ?? TAMANHO_MAXIMO)) {
     return NextResponse.json(
       { error: "A solicitação é maior que o limite permitido." },
       { status: 413, headers: { "Cache-Control": "no-store" } },
@@ -86,28 +91,21 @@ export function enforceRateLimit(
 ) {
   const now = Date.now();
   limparVencidas(now);
-  const current = rateLimitStore.get(key);
+  const veredito = contarTentativa(rateLimitStore.get(key), now, options.limit, options.windowMs);
 
-  if (!current || current.resetAt <= now) {
-    rateLimitStore.set(key, { count: 1, resetAt: now + options.windowMs });
-    return null;
-  }
-
-  if (current.count >= options.limit) {
-    const retryAfter = Math.max(1, Math.ceil((current.resetAt - now) / 1000));
+  if (!veredito.permitido) {
     return NextResponse.json(
       { error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." },
       {
         status: 429,
         headers: {
           "Cache-Control": "no-store",
-          "Retry-After": String(retryAfter),
+          "Retry-After": String(veredito.esperarSegundos),
         },
       },
     );
   }
 
-  current.count += 1;
-  rateLimitStore.set(key, current);
+  rateLimitStore.set(key, veredito.entrada);
   return null;
 }
