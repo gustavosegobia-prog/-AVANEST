@@ -62,8 +62,83 @@ if(sessionStorage.getItem('avanest:abertura')){document.documentElement.classNam
 else{sessionStorage.setItem('avanest:abertura','1')}
 }catch(e){}`;
 
+/**
+ * A folha de estilo da abertura, EMBUTIDA no HTML — e é aqui que ela precisa
+ * estar, não no globals.css.
+ *
+ * O motivo é medido: o CSS do site tem 217 KB. Ele é uma folha externa, e
+ * folha externa BLOQUEIA A PRIMEIRA PINTURA — o navegador não desenha nada
+ * enquanto ela não chega inteira. Com a abertura lá dentro, ela só começava
+ * depois desses 217 KB: no aplicativo instalado, isso é a imagem do iOS
+ * parada na tela por um tempo que numa rede de hospital não é pouco.
+ *
+ * Embutida, ela é lida no mesmo instante em que o HTML chega — 30 KB, uma
+ * conexão só, sem ida e volta nenhuma. A animação começa no primeiro quadro
+ * pintado, que é o que ela existe para fazer.
+ *
+ * Os comentários ficaram no globals.css? Não: ficaram no arquivo de onde este
+ * texto saiu. Aqui vai a versão sem comentários, porque este trecho viaja em
+ * TODA resposta HTML do site, e explicação em bytes que atravessam a rede
+ * trinta vezes por dia é explicação no lugar errado. O porquê de cada regra
+ * está no comentário do componente, logo acima.
+ *
+ * A FONTE É DECLARADA AQUI, com pilha de reserva. Sem isso a marca herdaria a
+ * fonte do body — que vem do globals.css, o arquivo que ainda não chegou.
+ */
+const ESTILO_DA_ABERTURA = `.abertura{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
+  background:#fff;
+  animation:aberturaSai .34s ease-in 1.60s forwards}
+.semAbertura .abertura{display:none}
+@keyframes aberturaSai{
+  from{opacity:1;visibility:visible}
+  99%{opacity:0;visibility:visible}
+  to{opacity:0;visibility:hidden;pointer-events:none}
+}
+.marcaAvanest{font-family:Outfit,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;display:grid;justify-items:center;gap:0;
+  padding:0 var(--esp-5);max-width:420px;width:100%;
+  transform:translateY(-1.7vh)}
+.marcaSimbolo{width:min(25.9vw,108px);height:auto;display:block}
+.marcaNome{display:flex;justify-content:center;margin:0.35px 0 0;
+  font-size:clamp(23px,7.551vw,32px);font-weight:800;letter-spacing:.1012em;
+  line-height:1;
+  text-indent:.1012em}
+.marcaNome span:nth-child(-n+4){color:#0879c9}
+.marcaNome span:nth-child(n+5){color:#2bc5a8}
+.marcaSlogan{margin:8.4px 0 0;font-size:clamp(7.5px,2.28vw,9.5px);font-weight:600;
+  line-height:1;letter-spacing:.317em;text-transform:uppercase;color:#7c95a8;
+  text-indent:.317em}
+.marcaAvanest.animada .marcaNome span{opacity:0;transform:translateY(10px);
+  animation:aberturaLetra .36s cubic-bezier(.2,.7,.3,1) forwards}
+.marcaAvanest.animada .marcaNome span:nth-child(1){animation-delay:.54s}
+.marcaAvanest.animada .marcaNome span:nth-child(2){animation-delay:.59s}
+.marcaAvanest.animada .marcaNome span:nth-child(3){animation-delay:.64s}
+.marcaAvanest.animada .marcaNome span:nth-child(4){animation-delay:.69s}
+.marcaAvanest.animada .marcaNome span:nth-child(5){animation-delay:.74s}
+.marcaAvanest.animada .marcaNome span:nth-child(6){animation-delay:.79s}
+.marcaAvanest.animada .marcaNome span:nth-child(7){animation-delay:.84s}
+@keyframes aberturaLetra{to{opacity:1;transform:translateY(0)}}
+.marcaAvanest.animada .marcaSlogan{opacity:0;
+  animation:aberturaSlogan .36s ease-out 1.14s forwards}
+@keyframes aberturaSlogan{from{opacity:0;letter-spacing:.45em}
+  to{opacity:1;letter-spacing:.317em}}
+.marcaTrilho{stroke:url(#marcaAvn);opacity:.22}
+.marcaAvanest.animada .marcaSimbolo path:not(.marcaTrilho){stroke-dasharray:226;stroke-dashoffset:226;
+  animation:aberturaTraco .64s cubic-bezier(.4,0,.25,1) 0s forwards}
+@keyframes aberturaTraco{to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){
+  .abertura{animation:aberturaSai .3s ease-in .25s forwards}
+  .marcaAvanest.animada .marcaNome span,
+  .marcaAvanest.animada .marcaSlogan{opacity:1;transform:none;animation:none}
+  .marcaAvanest.animada .marcaSimbolo path:not(.marcaTrilho){stroke-dashoffset:0;animation:none}
+}`;
+
 export function RoteiroDaAbertura() {
-  return <script dangerouslySetInnerHTML={{ __html: ROTEIRO_DA_ABERTURA }} />;
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: ESTILO_DA_ABERTURA }} />
+      <script dangerouslySetInnerHTML={{ __html: ROTEIRO_DA_ABERTURA }} />
+    </>
+  );
 }
 
 /**

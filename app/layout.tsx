@@ -66,10 +66,52 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta name="theme-color" content="#0879c9" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* A FOLHA DA FONTE NÃO BLOQUEIA MAIS A PRIMEIRA PINTURA.
+            Toda <link rel="stylesheet"> no <head> segura o desenho da página
+            até chegar inteira — e esta vai buscar noutro domínio: DNS, TLS e
+            ida e volta ao Google antes de o navegador pintar o primeiro
+            pixel. Numa rede de hospital isso é o tempo em que a abertura da
+            marca fica sem começar.
+
+            `media="print"` faz o navegador baixá-la SEM bloquear, porque ela
+            não se aplica à tela; o `onLoad` a devolve para `all` assim que
+            chega. É o truque padrão, e custa pouco aqui porque a fonte já é
+            `display=swap`: o texto sempre apareceu na fonte de reserva antes
+            de trocar para a Outfit. O que muda é só quando a troca acontece.
+
+            O <noscript> repõe a versão bloqueante para quem desligou o
+            JavaScript — sem ele, esse navegador ficaria com a folha em
+            `media="print"` para sempre, e o site inteiro na fonte de reserva. */}
         <link
+          id="fonteDoSite"
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
+          media="print"
         />
+        {/* A VOLTA PARA `all` VEM DAQUI, e não de um `onLoad` no <link>.
+            Foi tentado: o React descarta esse atributo ao renderizar no
+            servidor — conferido no HTML gerado, onde ele simplesmente não
+            aparece. A folha ficaria em `media="print"` para sempre e o site
+            inteiro rodaria na fonte de reserva, sem nenhum erro no console.
+
+            `l.sheet` cobre o caso de a folha já ter chegado antes deste
+            roteiro rodar; o ouvinte cobre o normal. */}
+        <script dangerouslySetInnerHTML={{ __html:
+          "(function(){var l=document.getElementById('fonteDoSite');if(!l)return;"
+          + "var liga=function(){l.media='all'};"
+          + "if(l.sheet){liga()}else{l.addEventListener('load',liga,{once:true});"
+          + "l.addEventListener('error',liga,{once:true})}})()" }} />
+        <noscript>
+          {/* O mesmo <link> de cima, e o eslint conta os dois. A regra que ele
+              dispara é do Pages Router (`pages/_document.js`), que este projeto
+              não usa — e a duplicata aqui é proposital: uma folha por caminho,
+              e só um dos dois caminhos existe em cada navegador. */}
+          {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
+          />
+        </noscript>
         {/* Decide se ESTA sessão já viu a abertura, e tem de decidir antes da
             primeira pintura — depois dela a cortina já teria piscado. É o
             único JavaScript da abertura inteira. */}
