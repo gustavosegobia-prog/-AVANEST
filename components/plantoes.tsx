@@ -910,6 +910,9 @@ export function Plantoes({
   }, [meus]);
 
   function mudarMes(passo: number) {
+    // O recado fala de um mês específico ("as onze pessoas com plantão neste
+    // mês"); deixá-lo na tela depois de virar o mês seria falar do mês errado.
+    setRecado("");
     setMes(somarMeses(mes, passo));
   }
 
@@ -1072,21 +1075,49 @@ export function Plantoes({
  * dono do sistema, o alvo vazio é de quem monta a escala, e o aparelho é de
  * cada colega. Uma frase só para os três mandava sempre cobrar a pessoa errada.
  */
-const EXPLICA_ZERO: Record<string, string> = {
-  "sem-chave":
-    "As notificações não estão configuradas no servidor — nada foi enviado. "
-    + "Isso é configuração do sistema, não da equipe.",
-  "sem-alvo":
-    "Ninguém a avisar neste mês: o aviso vai só para quem tem plantão lançado, "
-    + "e você não é avisado dos seus próprios. Lance a escala antes de avisar.",
-  "sem-aparelho":
-    "A escala tem gente, mas nenhum deles ligou as notificações no aparelho — "
-    + "o aviso não tinha para onde ir.",
-  "falha-consulta":
-    "Não consegui ler a escala do mês para saber quem avisar. Tente de novo; "
-    + "se repetir, me avise.",
-  desconhecido:
-    "O aviso não saiu e o servidor não disse por quê. Me avise se repetir.",
+/**
+ * Por que nenhum aviso saiu — e o que fazer a respeito.
+ *
+ * Nem todo zero é erro. "Sem chave" e "falha ao consultar" são defeito do
+ * sistema, e vão em vermelho. "Ninguém a avisar" e "ninguém ligou o aviso" são
+ * RESULTADOS: a operação funcionou e não havia para onde mandar. Vermelho neles
+ * ensina a ignorar o vermelho.
+ *
+ * `alarme` diz qual é qual, e o texto de cada um termina no que a pessoa pode
+ * fazer. A versão anterior de "sem-aparelho" dizia "o aviso não tinha para onde
+ * ir" e parava ali: quem lia ficava com um fato e nenhuma saída — e o fato
+ * ainda soava como acusação à equipe, que não fez nada de errado.
+ */
+const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: boolean }> = {
+  "sem-chave": {
+    alarme: true,
+    texto: () => "As notificações não estão configuradas no servidor — nada foi enviado. "
+      + "Isso é configuração do sistema, não da equipe.",
+  },
+  "sem-alvo": {
+    alarme: false,
+    texto: () => "Ninguém a avisar neste mês: o aviso vai só para quem tem plantão lançado, "
+      + "e você não é avisado dos seus próprios. Lance a escala antes de avisar.",
+  },
+  "sem-aparelho": {
+    alarme: false,
+    // O número importa: "onze pessoas" mede o tamanho do problema, e sem ele a
+    // frase serve tanto para um colega quanto para o serviço inteiro.
+    texto: (alvos) => `${alvos === 1 ? "A pessoa que tem" : `As ${alvos} pessoas que têm`} `
+      + `plantão neste mês ainda não ${alvos === 1 ? "ligou" : "ligaram"} o aviso no próprio aparelho, `
+      + "e só quem liga recebe — isso ninguém pode fazer por elas. "
+      + "Peça que abram o AVANEST e toquem em Ativar notificações; o passo a passo está no tutorial, "
+      + "no menu do perfil. A escala já está publicada de qualquer forma.",
+  },
+  "falha-consulta": {
+    alarme: true,
+    texto: () => "Não consegui ler a escala do mês para saber quem avisar. Tente de novo; "
+      + "se repetir, me avise.",
+  },
+  desconhecido: {
+    alarme: true,
+    texto: () => "O aviso não saiu e o servidor não disse por quê. Me avise se repetir.",
+  },
 };
   /**
    * "A escala do mês está pronta" — dito de propósito, e não adivinhado.
@@ -1096,8 +1127,17 @@ const EXPLICA_ZERO: Record<string, string> = {
    * a ignorar as próximas.
    */
   const [avisando, setAvisando] = useState(false);
+  /**
+   * O resultado que não é sucesso nem erro.
+   *
+   * "Ninguém ligou o aviso no aparelho" não é verde e não é vermelho: a
+   * operação fez o que devia e não havia para onde mandar. Em verde parece que
+   * a equipe foi avisada; em vermelho, que algo quebrou — e vermelho gasto em
+   * resultado correto é vermelho que se aprende a ignorar.
+   */
+  const [recado, setRecado] = useState("");
   async function avisarEquipe() {
-    setErro(""); setAviso(""); setAvisando(true);
+    setErro(""); setAviso(""); setRecado(""); setAvisando(true);
     try {
       const resposta = await fetch("/api/push/avisar", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -1109,10 +1149,12 @@ const EXPLICA_ZERO: Record<string, string> = {
         setAviso(`Aviso enviado para ${dados.enviadas} aparelho${dados.enviadas > 1 ? "s" : ""} da equipe.`);
         return;
       }
-      // Zero enviados tem TRÊS causas, e duas não são culpa da equipe. A
-      // mensagem antiga dizia sempre a terceira — mandando o dono do serviço
-      // cobrar os colegas por uma chave que faltava no servidor.
-      setErro(EXPLICA_ZERO[String(dados.motivo ?? "")] ?? EXPLICA_ZERO.desconhecido);
+      // Zero enviados tem causas diferentes, e nem todas são defeito. As que
+      // não são vão para o aviso neutro: pintar de vermelho um resultado
+      // correto ensina a ignorar o vermelho de quando algo quebra de verdade.
+      const explicacao = EXPLICA_ZERO[String(dados.motivo ?? "")] ?? EXPLICA_ZERO.desconhecido;
+      const texto = explicacao.texto(Number(dados.alvos ?? 0));
+      if (explicacao.alarme) setErro(texto); else setRecado(texto);
     } finally {
       setAvisando(false);
     }
@@ -1673,6 +1715,7 @@ const EXPLICA_ZERO: Record<string, string> = {
 
       {erro && <p className="clinicalError">{erro}</p>}
       {aviso && <p className="financeSuccess" role="status">{aviso}</p>}
+      {recado && <p className="plantaoRecado" role="status">{recado}</p>}
 
       {/* O olho esconde TUDO, e não só o dinheiro: quantos plantões alguém faz
           no mês é informação de quem faz, e a escala é aberta no corredor do
@@ -1826,7 +1869,7 @@ const EXPLICA_ZERO: Record<string, string> = {
                 <button className="outlineClinical" onClick={() => mudarMes(1)} aria-label="Próximo mês">›</button>
                 {/* Depois de folhear três meses para trás, voltar é um toque. */}
                 {mes !== mesAtual() && (
-                  <button className="outlineClinical" onClick={() => setMes(mesAtual())}>Hoje</button>
+                  <button className="outlineClinical" onClick={() => { setRecado(""); setMes(mesAtual()); }}>Hoje</button>
                 )}
               </div>
               <div className="plantaoBarraAcoes">
