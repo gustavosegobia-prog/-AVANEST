@@ -497,39 +497,65 @@ function embaralhar(texto: string): number {
 }
 
 /**
- * Quem fica com qual cor, quando quem chama não disse.
+ * Quem fica com qual cor.
  *
- * O caminho normal é a tela mandar o mapa dela — é assim que o papel sai igual
- * ao celular. Esta função é a rede de baixo: serve às folhas que não passam
- * pela tela da escala e mantém `corpoDaFolha` conferível sem componente
- * nenhum.
+ * Duas exigências brigam entre si, e a ordem em que elas ganham é a regra
+ * inteira desta função.
  *
- * Duas exigências que brigam entre si, e uma delas ganha.
+ * A PRIMEIRA, que sempre ganha: dois nomes não podem sair com a mesma cor na
+ * mesma folha. Duas pessoas verdes na parede é uma folha que mente, e mentir é
+ * pior do que não ter cor.
  *
- * A que ganha: dois nomes não podem sair com a mesma cor na mesma folha. Duas
- * pessoas verdes na parede é uma folha que mente, e mentir é pior do que não
- * ter cor. Um sorteio puro colide muito — em sete pessoas e oito cores, quase
- * sempre.
+ * A SEGUNDA: a cor escolhida a dedo vale mais que a sorteada. Quem escolheu a
+ * própria cor tem um motivo — e o sorteio, que não tem nenhum, é quem cede o
+ * lugar. Por isso as fixadas entram primeiro, todas de uma vez, antes de
+ * qualquer nome sorteado encostar na paleta.
  *
- * A que cede: a cor de cada um seria idealmente a mesma para sempre. Aqui ela
- * é a mesma ENQUANTO a equipe for a mesma — a função depende só do conjunto de
- * nomes, então setembro e outubro saem iguais. Mas a preferência de cada nome
- * pode estar tomada, e aí ele anda para a próxima livre: a entrada de um
- * colega novo pode, sim, empurrar a cor de um colega antigo. É o preço de não
- * repetir cor na mesma folha, e é o preço certo.
+ * O sorteio é o que sobra: FNV-1a sobre o nome dá a cor preferida, e se ela já
+ * estiver tomada o nome anda para a próxima livre. É por isso que a entrada de
+ * um colega novo pode empurrar a cor de um colega antigo — o preço de não
+ * repetir cor na mesma folha, e é o preço certo. Quem não quer ser empurrado
+ * fixa a sua, que é justamente para isso que fixar existe.
  *
- * A ordem alfabética é o que torna o resultado previsível: a ordem em que os
- * plantões vieram do banco não influi.
+ * DUAS FIXADAS NA MESMA COR: a segunda perde e é sorteada como as outras. Não
+ * é palpite meu sobre quem tem mais direito — é a primeira regra vencendo a
+ * segunda, como está escrito acima. A ordem alfabética decide qual é "a
+ * primeira", pelo mesmo motivo de sempre: ser previsível.
  *
- * Passando de oito nomes as cores repetem. É o comportamento certo: recusar o
- * nono seria imprimir uma escala incompleta para proteger uma decoração.
+ * FIXADA FORA DA PALETA (um índice que não existe mais, de uma paleta antiga)
+ * é ignorada em silêncio e o nome volta ao sorteio. Guardar no banco um número
+ * que a paleta não tem é o que acontece quando a paleta encolhe, e uma folha
+ * que quebra por causa disso seria pior do que uma cor diferente da esperada.
+ *
+ * A ordem alfabética é o que torna tudo previsível: a ordem em que os plantões
+ * vieram do banco não influi.
+ *
+ * Passando de catorze nomes as cores repetem. É o comportamento certo: recusar
+ * o décimo quinto seria imprimir uma escala incompleta para proteger uma
+ * decoração.
  */
-export function coresDaFolha(nomes: readonly string[]): Map<string, number> {
+export function coresDaFolha(
+  nomes: readonly string[],
+  fixadas?: ReadonlyMap<string, number>,
+): Map<string, number> {
   const distintos = [...new Set(nomes.filter((n) => n.trim()))]
     .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const tomadas = new Set<number>();
   const cores = new Map<string, number>();
+
+  // Primeira passada: só as escolhidas a dedo. Todas antes de qualquer
+  // sorteada — senão um sorteio poderia ocupar a cor que alguém pediu.
+  const sorteados: string[] = [];
   for (const nome of distintos) {
+    const pedida = fixadas?.get(nome);
+    const vale = pedida !== undefined && Number.isInteger(pedida)
+      && pedida >= 0 && pedida < PALETA_DA_FOLHA.length && !tomadas.has(pedida);
+    if (vale) { tomadas.add(pedida); cores.set(nome, pedida); }
+    else sorteados.push(nome);
+  }
+
+  // Segunda passada: o resto, pelo hash, andando até achar cor livre.
+  for (const nome of sorteados) {
     let cor = embaralhar(nome) % PALETA_DA_FOLHA.length;
     if (tomadas.size < PALETA_DA_FOLHA.length) {
       while (tomadas.has(cor)) cor = (cor + 1) % PALETA_DA_FOLHA.length;

@@ -180,7 +180,7 @@ type Avaliacao = { id: string; patient_id: string; created_by?: string | null; s
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
 type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
-type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; created_at:string; updated_at:string };
+type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; cor_escala?:number|null; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
@@ -1089,8 +1089,8 @@ export function DashboardClient({
           // `escalaveis` é quem pode ENTRAR na escala: médico com CRM. Quem
           // anestesia responde pelo ato com o registro dele, e escala é
           // documento de quem responde — recepção e financeiro não entram.
-          colegas={perfis.map(p=>({id:p.id,nome:p.nome}))}
-          escalaveis={perfis.filter(ehEscalavel).map(p=>({id:p.id,nome:p.nome}))}
+          colegas={perfis.map(p=>({id:p.id,nome:p.nome,cor_escala:p.cor_escala??null}))}
+          escalaveis={perfis.filter(ehEscalavel).map(p=>({id:p.id,nome:p.nome,cor_escala:p.cor_escala??null}))}
           // Quem é da clínica, está ativo e ainda não tem CRM no cadastro.
           // Não some da lista em silêncio: vira aviso com o nome, porque
           // "fulano não aparece para escalar" sem explicação é o tipo de coisa
@@ -1114,7 +1114,7 @@ export function DashboardClient({
           // travado, com o motivo escrito.
           equipe={perfis
             .filter(p=>p.status==="ativo" && !EQUIPE_DE_APOIO.includes(p.role))
-            .map(p=>({id:p.id,nome:p.nome,crm:p.crm,naEscala:p.na_escala??true}))}
+            .map(p=>({id:p.id,nome:p.nome,crm:p.crm,naEscala:p.na_escala??true,cor:p.cor_escala??null}))}
           onEquipeMudou={()=>router.refresh()}
           // Respondeu a troca, confirmou o plantão, ofereceu um turno: o sino
           // precisa ser remontado no servidor, senão o alerta continua lá

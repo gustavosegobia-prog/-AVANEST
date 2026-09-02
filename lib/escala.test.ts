@@ -919,6 +919,71 @@ test("coresDaFolha: ignora nome em branco", () => {
   assert.equal(coresDaFolha(["", "   ", "Ana Souza"]).size, 1);
 });
 
+// ---------------------------------------------------------------------------
+// A cor escolhida a dedo
+// ---------------------------------------------------------------------------
+
+test("cor fixada: quem escolheu fica com a que escolheu", () => {
+  const equipe = ["Ana", "Bruno", "Carla"];
+  const cores = coresDaFolha(equipe, new Map([["Bruno", 5]]));
+  assert.equal(cores.get("Bruno"), 5);
+});
+
+test("cor fixada: o sorteado sai da frente de quem escolheu", () => {
+  // O caso que motivou tudo: a cor pedida ja e a de outra pessoa. Quem cede e
+  // o sorteio, que nao tem motivo nenhum para estar naquela cor.
+  const equipe = ["Ana", "Bruno", "Carla", "Dan", "Eva"];
+  const semFixar = coresDaFolha(equipe);
+  const dono = [...semFixar.entries()].find(([n]) => n !== "Ana")!;
+  const cores = coresDaFolha(equipe, new Map([["Ana", dono[1]]]));
+  assert.equal(cores.get("Ana"), dono[1], "quem fixou tem de ficar com a cor");
+  assert.notEqual(cores.get(dono[0]), dono[1], "o sorteado tinha de sair de la");
+  assert.equal(new Set(cores.values()).size, equipe.length, "e ninguem pode repetir");
+});
+
+test("cor fixada: duas pessoas na mesma cor — a segunda volta ao sorteio", () => {
+  // Nao repetir cor vale mais do que respeitar a escolha: duas pastilhas iguais
+  // na parede e uma folha que mente. A ordem alfabetica decide quem fica.
+  const cores = coresDaFolha(["Ana", "Bruno"], new Map([["Ana", 3], ["Bruno", 3]]));
+  assert.equal(cores.get("Ana"), 3, "alfabeticamente a primeira fica com a cor pedida");
+  assert.notEqual(cores.get("Bruno"), 3);
+});
+
+test("cor fixada: indice que a paleta nao tem e ignorado, e ninguem fica sem cor", () => {
+  // Acontece quando a paleta encolhe e o banco guarda um numero de antes.
+  // Quebrar a folha por causa disso seria pior do que sair numa cor diferente.
+  for (const invalida of [-1, 99, PALETA_DA_FOLHA.length, 1.5, Number.NaN]) {
+    const cores = coresDaFolha(["Ana", "Bruno"], new Map([["Ana", invalida]]));
+    assert.equal(cores.size, 2, `indice ${invalida} nao pode tirar ninguem da folha`);
+    const cor = cores.get("Ana")!;
+    assert.ok(Number.isInteger(cor) && cor >= 0 && cor < PALETA_DA_FOLHA.length,
+      `indice ${invalida} devolveu ${cor}, que nao esta na paleta`);
+  }
+});
+
+test("cor fixada: nome que nao esta na folha nao ocupa cor de ninguem", () => {
+  // O mapa vem da equipe inteira; a folha do mes tem so quem plantao.
+  const so = coresDaFolha(["Ana"], new Map([["Ana", 2], ["Fantasma", 3]]));
+  assert.equal(so.size, 1);
+  assert.equal(so.get("Ana"), 2);
+});
+
+test("cor fixada: sem mapa nenhum, nada muda em relacao ao que ja saia", () => {
+  const equipe = ["Ana Souza", "Lucas Quijo", "Matheus Gomes", "Thais Staniszewski"];
+  assert.deepEqual([...coresDaFolha(equipe, new Map()).entries()],
+                   [...coresDaFolha(equipe).entries()]);
+});
+
+test("cor fixada: com a paleta cheia de fixadas, ninguem fica sem cor", () => {
+  const equipe = Array.from({ length: PALETA_DA_FOLHA.length + 2 }, (_, i) => `P${i}`);
+  const todas = new Map(equipe.slice(0, PALETA_DA_FOLHA.length).map((n, i) => [n, i]));
+  const cores = coresDaFolha(equipe, todas);
+  assert.equal(cores.size, equipe.length, "ninguem pode ficar de fora");
+  for (const c of cores.values()) {
+    assert.ok(c >= 0 && c < PALETA_DA_FOLHA.length, `cor ${c} fora da paleta`);
+  }
+});
+
 test("cssDasCores: uma classe para cada cor da paleta", () => {
   const css = cssDasCores(true);
   PALETA_DA_FOLHA.forEach((cor, i) => {

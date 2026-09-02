@@ -54,7 +54,15 @@ type Plantao = {
   // fechamento do mês não paga plano.
   confirmado_em: string | null;
 };
-type Colega = { id: string; nome: string };
+type Colega = {
+  id: string;
+  nome: string;
+  /**
+   * A cor escolhida a dedo, se houver. Nulo é o normal e quer dizer "sorteia
+   * pelo meu nome" — que é como todo mundo começa.
+   */
+  cor_escala?: number | null;
+};
 type Troca = {
   id: string; plantao_id: string; solicitante_id: string;
   destinatario_id: string | null; status: string; mensagem: string | null;
@@ -490,6 +498,14 @@ function baixar(nome: string, conteudo: string, tipo: string) {
 const CORES_MEDICO = ["m1", "m2", "m3", "m4", "m5", "m6", "m7",
                       "m8", "m9", "m10", "m11", "m12", "m13", "m14"] as const;
 
+// O nome de cada tom, na ordem da paleta. Existe para quem escolhe a cor não
+// depender de enxergá-la: é o que o leitor de tela anuncia e o que aparece ao
+// parar o cursor em cima. Uma fileira de catorze botões sem rótulo é, para
+// quem usa leitor de tela, uma fileira de catorze botões idênticos.
+const NOMES_DAS_CORES = ["Azul", "Verde", "Roxo", "Âmbar", "Rosa", "Ciano",
+  "Laranja", "Ardósia", "Verde-limão", "Marrom", "Índigo", "Magenta",
+  "Vinho", "Verde-floresta"] as const;
+
 /**
  * Colorida ou preto e branco, guardado no navegador.
  *
@@ -647,7 +663,7 @@ export function Plantoes({
    * Todo mundo do cadastro que PODE entrar na escala — médico ativo — com o
    * estado atual de cada um. É a lista que a janela de composição mostra.
    */
-  equipe?: { id: string; nome: string; crm: string | null; naEscala: boolean }[];
+  equipe?: { id: string; nome: string; crm: string | null; naEscala: boolean; cor: number | null }[];
   /** Ativos sem CRM no cadastro. Não some da tela: vira aviso. */
   semCRM?: string[];
   localAtivoId?: string | null;
@@ -809,21 +825,27 @@ export function Plantoes({
    * escalar, onde a cor é enfeite e não identificação — e disputar cor com
    * quem está na escala seria tirar do trabalho para dar ao enfeite.
    *
-   * Acima de oito pessoas no mesmo mês as cores repetem, e não há o que fazer:
-   * a paleta tem oito tons que o olho separa de relance, e um nono tom
-   * espremido entre dois deles não separaria nada. Aí quem identifica volta a
-   * ser o nome, que está escrito em toda pastilha.
+   * Acima de catorze pessoas no mesmo mês as cores repetem, e não há o que
+   * fazer: a paleta tem catorze tons que o olho separa de relance, e um décimo
+   * quinto espremido entre dois deles não separaria nada. Aí quem identifica
+   * volta a ser o nome, que está escrito em toda pastilha.
+   *
+   * QUEM ESCOLHEU A PRÓPRIA COR fica com ela, e o sorteio é quem sai da frente
+   * — a regra inteira está em `coresDaFolha`, e não aqui. Isto é o que faz a
+   * cor de quem escolheu parar de mudar quando um colega novo entra na escala.
    */
   const corPorMedico = useMemo(() => {
     const comoSeChama = (c: Colega) => apelidos.get(c.id) ?? nomeCurto(c.nome);
     const noMes = new Set(plantoes.filter((p) => p.situacao !== "cancelado").map((p) => p.perfil_id));
     const m = new Map<string, string>();
     // `coresDaFolha` é a mesma função que decide as cores da folha impressa:
-    // preferência tirada do nome, e o primeiro livre quando ela está tomada.
+    // as escolhidas primeiro, e o resto por preferência tirada do nome.
     // Duas listas seriam duas verdades, e a folha na parede tem de bater com o
     // calendário na mão.
     for (const grupo of [colegas.filter((c) => noMes.has(c.id)), colegas.filter((c) => !noMes.has(c.id))]) {
-      const cores = coresDaFolha(grupo.map(comoSeChama));
+      const fixadas = new Map<string, number>();
+      for (const c of grupo) if (c.cor_escala != null) fixadas.set(comoSeChama(c), c.cor_escala);
+      const cores = coresDaFolha(grupo.map(comoSeChama), fixadas);
       for (const c of grupo) m.set(c.id, CORES_MEDICO[cores.get(comoSeChama(c)) ?? CORES_MEDICO.length - 1]);
     }
     return m;
@@ -1640,6 +1662,21 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
    * A troca vale na hora na lista aberta, e o painel é recarregado ao fechar:
    * marcar cinco nomes não pode custar cinco recarregamentos da página.
    */
+  /**
+   * Fixa a cor de alguém na escala, ou solta (com nulo) para voltar ao sorteio.
+   *
+   * Quem decide se pode é o banco: a própria pessoa sempre, o administrador na
+   * equipe dele. A tela não repete a conta — ela só mostra ou não o seletor.
+   */
+  async function definirCor(id: string, cor: number | null) {
+    setErro("");
+    const { error } = await createClient().rpc("definir_cor_escala", {
+      p_perfil_id: id, p_cor: cor,
+    });
+    if (error) { setErro(error.message); return false; }
+    return true;
+  }
+
   async function alternarNaEscala(id: string, entra: boolean) {
     setErro("");
     const { error } = await createClient().rpc("definir_na_escala", {
@@ -1674,8 +1711,8 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       //
       // As chaves são o texto que a folha escreve na pastilha — nome curto na
       // escala do grupo, nome do hospital na pessoal —, porque é por ele que
-      // `corpoDaFolha` procura a cor. O índice é o mesmo `i % 8` que gera as
-      // classes med-m1…m8 da tela.
+      // `corpoDaFolha` procura a cor. O índice é o mesmo que gera as classes
+      // med-m1…m14 da tela, escolha fixada inclusive.
       cores: escopo === "grupo"
         // Tirado do MESMO mapa que pinta o calendário, e não recalculado aqui:
         // recalcular é o jeito garantido de o papel e a tela discordarem no dia
@@ -2323,6 +2360,10 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
         <QuemEntraNaEscala
           equipe={equipe}
           onAlternar={alternarNaEscala}
+          onCor={definirCor}
+          corAtual={corPorMedico}
+          perfilId={perfilId}
+          ehAdmin={ehAdmin}
           onFechar={() => { setAdicionando(false); onEquipeMudou?.(); }}
         />
       )}
@@ -3197,10 +3238,15 @@ function TrocasPainel({
  * nomes não pode custar cinco recarregamentos.
  */
 function QuemEntraNaEscala({
-  equipe, onAlternar, onFechar,
+  equipe, onAlternar, onCor, corAtual, perfilId, ehAdmin, onFechar,
 }: {
-  equipe: { id: string; nome: string; crm: string | null; naEscala: boolean }[];
+  equipe: { id: string; nome: string; crm: string | null; naEscala: boolean; cor: number | null }[];
   onAlternar: (id: string, entra: boolean) => Promise<boolean>;
+  onCor: (id: string, cor: number | null) => Promise<boolean>;
+  /** A cor que cada um TEM hoje na escala, escolhida ou sorteada. */
+  corAtual: Map<string, string>;
+  perfilId: string;
+  ehAdmin: boolean;
   onFechar: () => void;
 }) {
   const [estado, setEstado] = useState<Record<string, boolean>>(
@@ -3208,6 +3254,12 @@ function QuemEntraNaEscala({
   );
   const [salvando, setSalvando] = useState("");
   const [busca, setBusca] = useState("");
+  // Qual linha está com a paleta aberta. Uma de cada vez: catorze pastilhas
+  // abertas em vinte linhas seria uma parede de cor sem nenhuma pergunta.
+  const [paletaDe, setPaletaDe] = useState("");
+  const [cores, setCores] = useState<Record<string, number | null>>(
+    () => Object.fromEntries(equipe.map((p) => [p.id, p.cor])),
+  );
 
   async function alternar(id: string, entra: boolean) {
     setSalvando(id);
@@ -3216,7 +3268,17 @@ function QuemEntraNaEscala({
     if (deuCerto) setEstado((antes) => ({ ...antes, [id]: entra }));
   }
 
+  async function escolherCor(id: string, cor: number | null) {
+    setSalvando(id);
+    const deuCerto = await onCor(id, cor);
+    setSalvando("");
+    if (deuCerto) { setCores((antes) => ({ ...antes, [id]: cor })); setPaletaDe(""); }
+  }
+
   const temCRM = (p: { crm: string | null }) => Boolean((p.crm ?? "").trim());
+  // A mesma conta que `definir_cor_escala` faz no banco. Repetida aqui só para
+  // não oferecer um botão que seria recusado — a decisão continua sendo de lá.
+  const podeMexerNaCor = (id: string) => ehAdmin || id === perfilId;
   const dentro = equipe.filter((p) => estado[p.id] && temCRM(p)).length;
   const aptos = equipe.filter(temCRM).length;
 
@@ -3299,6 +3361,54 @@ function QuemEntraNaEscala({
                           : marcado ? "Na escala" : "Fora"}
                     </span>
                   </label>
+
+                  {/* A COR.
+                      Fora do <label>: dentro dele, clicar numa pastilha
+                      marcaria a caixa de seleção junto — o rótulo repassa o
+                      clique ao campo que ele nomeia. Já custou isso uma vez.
+
+                      Quem vê o seletor: cada um na sua linha, sempre, e o
+                      administrador em todas. É a mesma conta que o banco faz;
+                      esconder o botão evita oferecer o que seria recusado. */}
+                  {podeMexerNaCor(p.id) && (
+                    <div className="escalaCor">
+                      <button type="button"
+                        className={`escalaCorAtual med-${corAtual.get(p.id) ?? "m8"}`}
+                        aria-expanded={paletaDe === p.id}
+                        disabled={salvando === p.id}
+                        onClick={() => setPaletaDe(paletaDe === p.id ? "" : p.id)}
+                        title={cores[p.id] == null
+                          ? "Cor sorteada pelo nome. Clique para escolher."
+                          : "Cor escolhida. Clique para trocar."}>
+                        <span aria-hidden="true" />
+                        {cores[p.id] == null ? "Cor sorteada" : "Cor escolhida"}
+                      </button>
+
+                      {paletaDe === p.id && (
+                        <div className="escalaPaleta" role="group"
+                          aria-label={`Cor de ${p.nome} na escala`}>
+                          {CORES_MEDICO.map((classe, i) => (
+                            <button key={classe} type="button"
+                              className={`escalaTom med-${classe}${cores[p.id] === i ? " escolhida" : ""}`}
+                              aria-pressed={cores[p.id] === i}
+                              aria-label={NOMES_DAS_CORES[i]}
+                              title={NOMES_DAS_CORES[i]}
+                              disabled={salvando === p.id}
+                              onClick={() => void escolherCor(p.id, i)} />
+                          ))}
+                          {/* Soltar é diferente de escolher outra: devolve a
+                              pessoa ao sorteio, que é o padrão de quem nunca
+                              mexeu nisso. Sem esta saída, uma escolha feita por
+                              engano não teria como ser desfeita. */}
+                          <button type="button" className="escalaTomSolta"
+                            disabled={salvando === p.id || cores[p.id] == null}
+                            onClick={() => void escolherCor(p.id, null)}>
+                            Deixar sorteada
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}
