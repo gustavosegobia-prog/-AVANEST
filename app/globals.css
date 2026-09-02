@@ -514,7 +514,10 @@
 .receptionMain .queueRow{grid-template-columns:80px minmax(190px,1fr) 180px 250px}
 .alertItem{width:100%;border-top:0;border-left:0;background:#fff;text-align:left;font:inherit;cursor:pointer}.alertItem:disabled{cursor:default}.alertItem:not(:disabled):hover{background:#f6f9fb}.alertItem:focus-visible{outline:3px solid var(--cor-marca);outline-offset:-3px}
 .financeHeading{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap}.financeHeading>div:first-child{flex:1 1 320px;min-width:0}.financeHeading label{display:grid;gap:6px;color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}.financeHeading input{height:44px;border:1px solid var(--cor-borda);background:#fff;border-radius:9px;padding:0 12px;font:inherit}
-.financeHeadingActions{display:flex;align-items:flex-end;gap:12px;flex-wrap:nowrap;flex:0 0 auto}.financeHeadingActions button{height:44px}.financeConfigModal{width:min(760px,calc(100vw - 32px));max-height:90vh;overflow:auto;background:#fff;border-radius:24px;padding:24px}.financeConfigList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}.financeConfigItem{display:flex;align-items:center;gap:8px}.financeConfigItem>label{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 14px;border:1px solid #d7e1ec;border-radius:12px}.financeConfigList label>div{display:flex;align-items:center;gap:6px}.financeConfigList input{width:120px;padding:10px 12px;border:1px solid #cbd8e6;border-radius:10px}.billingPlanTable{overflow-x:auto;padding:0 24px 24px}.billingPlanTable table{width:100%;border-collapse:collapse;min-width:720px}.billingPlanTable th,.billingPlanTable td{text-align:left;padding:13px;border-bottom:1px solid #dce5ee}.billingPlanTable th{font-size:.78rem;text-transform:uppercase;color:#5a6d82}
+.financeHeadingActions{display:flex;align-items:flex-end;gap:12px;flex-wrap:nowrap;flex:0 0 auto}.financeHeadingActions button{height:44px}.financeConfigModal{width:min(760px,calc(100vw - 32px));max-height:90vh;overflow:hidden;background:#fff;border-radius:24px;padding:0}
+/* O recuo e a rolagem descem para a caixa de dentro. A de fora só tem o
+   raio e o corte — é ela que apara a barra de rolagem no canto. */
+.modalRolagem{max-height:90vh;overflow:auto;padding:24px}.financeConfigList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}.financeConfigItem{display:flex;align-items:center;gap:8px}.financeConfigItem>label{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 14px;border:1px solid #d7e1ec;border-radius:12px}.financeConfigList label>div{display:flex;align-items:center;gap:6px}.financeConfigList input{width:120px;padding:10px 12px;border:1px solid #cbd8e6;border-radius:10px}.billingPlanTable{overflow-x:auto;padding:0 24px 24px}.billingPlanTable table{width:100%;border-collapse:collapse;min-width:720px}.billingPlanTable th,.billingPlanTable td{text-align:left;padding:13px;border-bottom:1px solid #dce5ee}.billingPlanTable th{font-size:.78rem;text-transform:uppercase;color:#5a6d82}
 .completionWarning{background:var(--cor-atencao-suave);color:#835500;border-radius:10px;padding:12px 15px;font-weight:750}
 .adminMain>section:first-child h1{font-size:29px;margin:0 0 5px}.adminMain>section:first-child p{color:var(--cor-tinta-fraca);margin:0}.adminMetrics{grid-template-columns:repeat(4,1fr)}
 .adminInvite form{display:grid;grid-template-columns:1.2fr 1.2fr .8fr auto;gap:14px;align-items:end;padding:20px 25px}.adminInvite label,.adminUserRow label{display:grid;gap:6px}.adminInvite label span,.adminUserRow label span{font-size:11px;color:#5b7084;font-weight:750}.adminInvite input,.adminInvite select,.adminUserRow input,.adminUserRow select{height:44px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 11px;font:inherit;min-width:0}.adminUserRow{display:grid;grid-template-columns:1.35fr 1.3fr .8fr .7fr .8fr .7fr auto;gap:12px;align-items:end;padding:16px 25px;border-bottom:1px solid var(--cor-borda)}.adminUserRow:last-child{border-bottom:0}.adminUserRow input[readonly]{color:#6b7d8e}.auditRow{display:grid;grid-template-columns:180px 1fr;gap:18px;padding:14px 25px;border-bottom:1px solid var(--cor-borda)}.auditRow time{color:#5b7185;font-size:12px}.auditRow strong{display:block;text-transform:capitalize}.auditRow small{display:block;color:var(--cor-tinta-fraca);margin-top:3px}
@@ -2541,6 +2544,34 @@ button:disabled{cursor:not-allowed}
    lado de um canto vivo.
    O recuo passa para dentro: quem rola não tem padding, e cada bloco cuida
    do próprio espaçamento. */
+/* O canto que parecia quadrado.
+   A janela tem raio de 18 a 24px, mas ela também é quem rola — e o navegador
+   desenha a barra de rolagem DENTRO dela, como um bloco cinza de ponta a
+   ponta. O bloco não tem raio nenhum: ele encosta na borda e quadra o canto de
+   baixo, deixando um lado redondo e o outro reto.
+   O trilho fica transparente e o polegar ganha o próprio raio, recuado da
+   borda por uma faixa de fundo. Aí quem desenha o canto volta a ser a janela.
+   As duas declarações existem porque são dois padrões: `scrollbar-*` é o do
+   CSS, que o Firefox implementa, e `::-webkit-scrollbar` é o do Chrome e do
+   Safari — que é onde a escala é impressa e o painel é usado. */
+.patientModal,.localModal,.financeConfigModal,.escalaMembros{
+  scrollbar-width:thin;scrollbar-color:var(--cor-tinta-fraca) transparent}
+.patientModal::-webkit-scrollbar,.localModal::-webkit-scrollbar,
+.financeConfigModal::-webkit-scrollbar,.escalaMembros::-webkit-scrollbar{width:11px}
+.patientModal::-webkit-scrollbar-track,.localModal::-webkit-scrollbar-track,
+.financeConfigModal::-webkit-scrollbar-track,.escalaMembros::-webkit-scrollbar-track{
+  background:transparent}
+/* O polegar precisa APARECER. A primeira tentativa usou a cor de borda com 3px
+   de recuo: o canto ficou redondo e a barra sumiu — janela que rola sem dizer
+   que rola é troca de um defeito por outro, e pior, porque o conteúdo escondido
+   deixa de existir para quem olha. */
+.patientModal::-webkit-scrollbar-thumb,.localModal::-webkit-scrollbar-thumb,
+.financeConfigModal::-webkit-scrollbar-thumb,.escalaMembros::-webkit-scrollbar-thumb{
+  background:var(--cor-tinta-fraca);border-radius:99px;
+  border:2px solid transparent;background-clip:content-box}
+.patientModal::-webkit-scrollbar-thumb:hover,.localModal::-webkit-scrollbar-thumb:hover,
+.financeConfigModal::-webkit-scrollbar-thumb:hover,.escalaMembros::-webkit-scrollbar-thumb:hover{
+  background:var(--cor-tinta);background-clip:content-box}
 .localModal{width:min(620px,100%);max-height:92vh;overflow:auto;background:var(--cor-superficie);
   border-radius:18px;padding:0}
 .localModal>.patientModalHead{border-radius:18px 18px 0 0}

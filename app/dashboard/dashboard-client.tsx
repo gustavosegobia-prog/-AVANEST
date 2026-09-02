@@ -1929,6 +1929,15 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       </div>
     </div>
     {configOpen&&<div className="patientModalBackdrop" role="presentation"><section className="financeConfigModal" role="dialog" aria-modal="true" aria-labelledby="finance-config-title">
+      {/* Quem rola é a caixa de dentro, e não a janela.
+          A janela é quem tem o canto arredondado, e o navegador desenha a barra
+          de rolagem DENTRO de quem rola — um bloco reto de ponta a ponta, que
+          encostava na borda e quadrava o canto de baixo: um lado redondo, o
+          outro em esquadro. Com a rolagem por dentro e `overflow:hidden` por
+          fora, a barra é aparada pelo raio da janela, e quem desenha o canto
+          volta a ser ela. Não depende de estilizar a barra — que muda de
+          navegador para navegador e nem existe em alguns. */}
+      <div className="modalRolagem">
       <div className="patientModalHead"><div><strong id="finance-config-title">Configurar valores das consultas</strong><span>Adicione os convênios que você atende e remova os que não usa.</span></div><button type="button" onClick={()=>setConfigOpen(false)} aria-label="Fechar">×</button></div>
       {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"} role="status">{message}</p>}
       <form className="financeConfigNovo" onSubmit={e=>{e.preventDefault();void addConvenio()}}>
@@ -1949,6 +1958,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         </div>;
       })}</div>
       <div className="patientModalActions"><button className="outlineClinical" type="button" onClick={()=>setConfigOpen(false)}>Fechar</button><button className="primaryClinical compact" type="button" disabled={busy==="prices"} onClick={savePrices}>{busy==="prices"?"Salvando...":"Salvar valores"}</button></div>
+    </div>
     </section></div>}
   </div>
 }
