@@ -9,7 +9,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // `enforceRateLimit` que protege as outras rotas não alcança o login. Quem
 // segura tentativa em massa de senha é o próprio Supabase, e o jeito que ele
 // oferece para apertar isso é o CAPTCHA: o token viaja junto da chamada de
-// auth e é conferido do lado dele, com a chave secreta que nunca sai da Vercel.
+// auth e é conferido do lado dele.
+//
+// AS DUAS CHAVES MORAM EM LUGARES DIFERENTES, e confundi-las custa uma
+// madrugada procurando no painel errado:
+//
+//   A site key é PÚBLICA e vai na Vercel, em NEXT_PUBLIC_TURNSTILE_SITE_KEY —
+//   ela é lida logo abaixo e sai no HTML, como tem de sair.
+//
+//   A secret key vai no painel do SUPABASE, em Authentication → Attack
+//   Protection → CAPTCHA. Não na Vercel: nenhuma linha deste projeto chama o
+//   `siteverify` do Cloudflare, porque quem confere o token é o Supabase, na
+//   mesma chamada de login. Procurar por ela nas variáveis da Vercel não
+//   encontra nada — e não encontrar é o resultado certo.
 //
 // `interaction-only`: o quadro só aparece quando o Turnstile desconfia. Para
 // quem entra todo dia do mesmo lugar, no mesmo computador, não há nada na
