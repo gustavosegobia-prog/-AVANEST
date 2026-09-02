@@ -2,21 +2,61 @@
 
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { useCaptcha } from "@/components/turnstile";
 import { Icone } from "@/components/icone";
 import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
-import { ChatFlutuante } from "@/components/chat-flutuante";
+
+/**
+ * O que só chega quando é aberto.
+ *
+ * Tudo isto vinha no primeiro carregamento do painel, num pedaço só de 273 KB:
+ * a recepcionista que passa o dia na fila de hoje baixava e processava a
+ * Escala inteira, os gráficos do Financeiro e o cadastro de locais sem abrir
+ * nenhum dos três. É trabalho de rede e de processador gasto antes da primeira
+ * tela aparecer — e num celular de corredor de hospital, com a rede do
+ * hospital, é ele que decide se o painel abre em um segundo ou em quatro.
+ *
+ * `ssr: false` porque nenhum dos quatro é conteúdo: são telas de trabalho atrás
+ * de um clique, e renderizá-las no servidor para depois hidratá-las seria pagar
+ * duas vezes por algo que ninguém pediu ainda.
+ *
+ * O aviso de "abrindo" existe para o clique não parecer perdido enquanto o
+ * pedaço chega. Sem ele, a primeira abertura da Escala numa rede ruim é um
+ * botão que não responde.
+ */
+const carregando = (nome: string) => {
+  // Com nome, e não anônimo: é este rótulo que aparece na árvore do React
+  // quando alguém for investigar por que uma tela demorou a abrir.
+  const Abrindo = () => <div className="emptyClinical">Abrindo {nome}…</div>;
+  Abrindo.displayName = `Abrindo(${nome})`;
+  return Abrindo;
+};
+
+const Plantoes = dynamic(() => import("@/components/plantoes").then((m) => m.Plantoes),
+  { ssr: false, loading: carregando("a escala") });
+const GraficosFinanceiro = dynamic(
+  () => import("@/components/graficos-financeiro").then((m) => m.GraficosFinanceiro),
+  { ssr: false, loading: carregando("os gráficos") });
+const LocaisAdmin = dynamic(() => import("@/components/locais-admin").then((m) => m.LocaisAdmin),
+  { ssr: false, loading: carregando("os locais") });
+const ProducaoRecebida = dynamic(
+  () => import("@/components/producao-do-dia").then((m) => m.ProducaoRecebida),
+  { ssr: false, loading: carregando("a produção") });
+// O chat não tem aviso de carregamento: ele é um botão flutuante que aparece
+// quando estiver pronto, e um "abrindo" solto no canto da tela seria ruído.
+const ChatFlutuante = dynamic(() => import("@/components/chat-flutuante").then((m) => m.ChatFlutuante),
+  { ssr: false });
+
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
 import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
 import { iniciais } from "@/lib/escala";
 import { DIAS_ADIADO, chaveDoAviso, type Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
-import { GraficosFinanceiro } from "@/components/graficos-financeiro";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
-import { LocaisAdmin } from "@/components/locais-admin";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
   FAIXAS_DE_IDADE, envelhecimento, glosa, mesAnterior,
@@ -32,11 +72,9 @@ import {
   CATEGORIAS, NOME_DA_CATEGORIA, despesasDoMes, porCategoria,
   recorrentesFaltando, resultadoDoMes, somarDespesas, type Despesa,
 } from "@/lib/despesas";
-import { ProducaoRecebida } from "@/components/producao-do-dia";
 
 const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
                    "julho","agosto","setembro","outubro","novembro","dezembro"];
-import { Plantoes } from "@/components/plantoes";
 import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
 import { lerDinheiro } from "@/lib/dinheiro";

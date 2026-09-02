@@ -27,11 +27,28 @@ export default async function DashboardPage({
   if (!perfil) redirect("/comecar");
   if (perfil.status !== "ativo") redirect("/login");
 
-  const { data: instituicao } = await supabase
-    .from("instituicoes")
-    .select("nome, tipo, telefone, email, modulos")
-    .eq("id", perfil.institution_id)
-    .maybeSingle();
+  // AS TRÊS JUNTAS, e não uma depois da outra.
+  //
+  // Nenhuma depende do resultado das outras: as três precisam só da sessão e do
+  // `perfil` que acabou de chegar. Em série eram três idas e voltas ao banco
+  // antes de a primeira linha do painel ser desenhada — e numa rede de hospital
+  // cada ida custa mais do que a consulta em si. Em paralelo, custam uma.
+  //
+  // A ordem das decisões que vêm DEPOIS delas continua a mesma, e importa:
+  // primeiro o local da sessão, depois a trava da assinatura. Trocar isso
+  // mandaria para a tela de assinatura quem só precisava escolher o hospital.
+  const [
+    { data: instituicao },
+    { data: locaisData },
+    { data: assinaturaData },
+  ] = await Promise.all([
+    supabase.from("instituicoes")
+      .select("nome, tipo, telefone, email, modulos")
+      .eq("id", perfil.institution_id)
+      .maybeSingle(),
+    supabase.rpc("meus_locais"),
+    supabase.rpc("minha_assinatura"),
+  ]);
 
   // Trava comercial: assinatura vencida ou suspensa impede o uso do sistema.
   // O isolamento entre organizações continua a cargo do RLS.
@@ -47,7 +64,6 @@ export default async function DashboardPage({
   // O erro da RPC é engolido de propósito: enquanto a migration não tiver
   // rodado, a função não existe, e derrubar o painel inteiro por causa disso
   // seria trocar um recurso novo por todos os antigos.
-  const { data: locaisData } = await supabase.rpc("meus_locais");
   const locais = (locaisData ?? []) as LocalDisponivel[];
   const disponiveis = locais.filter((item) => item.ativo);
 
@@ -69,7 +85,6 @@ export default async function DashboardPage({
   if (precisaEscolher) redirect("/locais");
   const localAtivo = localEscolhido;
 
-  const { data: assinaturaData } = await supabase.rpc("minha_assinatura");
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   if (assinatura && assinatura.liberada === false) redirect("/assinatura");
 
@@ -306,13 +321,18 @@ export default async function DashboardPage({
   // antigos. Sem os dados, a caixa fica vazia — que é exatamente o que ela
   // mostra quando não há aviso nenhum.
   const desde = leituraDoChat?.lido_em ?? null;
-  const { count: chatNovas } = await supabase.from("sala_mensagens")
-    .select("id", { count: "exact", head: true })
-    .neq("autor_id", user.id)
-    .gt("created_at", desde ?? "1970-01-01T00:00:00Z");
-  const { data: ultimaDoChat } = await supabase.from("sala_mensagens")
-    .select("created_at").neq("autor_id", user.id)
-    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  // As duas do chat também vão juntas: uma conta as não lidas, a outra pega a
+  // data da última: nenhuma precisa do resultado da outra, e em série eram mais
+  // duas idas ao banco depois de tudo o resto já ter chegado.
+  const [{ count: chatNovas }, { data: ultimaDoChat }] = await Promise.all([
+    supabase.from("sala_mensagens")
+      .select("id", { count: "exact", head: true })
+      .neq("autor_id", user.id)
+      .gt("created_at", desde ?? "1970-01-01T00:00:00Z"),
+    supabase.from("sala_mensagens")
+      .select("created_at").neq("autor_id", user.id)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
 
   // O nome já sai encurtado daqui. "GUSTAVO SEGOBIA DA SILVA" é como o cadastro
   // guarda; "Gustavo Segobia" é como o colega é chamado — e é o mesmo nome que
