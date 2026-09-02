@@ -3,24 +3,30 @@
  *
  *     node scripts/gerar-tela-de-abertura.mjs
  *
- * POR QUE ELAS MOSTRAM SÓ O NOME, sem o Λ e sem o slogan. A imagem do iOS é o
- * PRIMEIRO QUADRO da abertura animada do site — e naquele quadro só o nome
- * está desenhado. A sequência que a pessoa vê atravessa dois programas:
+ * POR QUE ELAS MOSTRAM SÓ O Λ, sem o nome e sem o slogan. A imagem do iOS é o
+ * quadro da animação em que o Λ acabou de se desenhar — e naquele quadro nada
+ * mais está pintado. A sequência que a pessoa vê atravessa dois programas:
  *
- *     iOS desenha o nome  →  o site assume  →  o Λ se desenha  →  o slogan
+ *     iOS mostra o Λ  →  o site assume  →  o nome entra  →  o slogan fecha
  *
  * Se a imagem trouxesse a marca pronta, o site logo em seguida a desmontaria
  * para remontá-la. Leria como falha, não como abertura.
  *
- * O ESPAÇO DOS DOIS FICA GUARDADO, vazio: o do Λ em cima do nome, o do slogan
- * embaixo. Sem isso o nome sairia centralizado na imagem e se mexeria no
- * instante em que o site assumisse — um tranco bem no meio da emenda, que é o
- * único lugar onde ele apareceria.
+ * E POR QUE NÃO O QUADRO ZERO, que seria a tela vazia: porque tela branca é
+ * exatamente o problema que estas imagens existem para resolver. O aplicativo
+ * pareceria travado por um segundo, e um segundo de tela vazia basta para a
+ * pessoa achar que não abriu e tocar de novo. O primeiro quadro DESENHADO é o
+ * Λ pronto, e é ele que a imagem mostra.
  *
- * O slogan é escondido com `visibility`, e não com `display` nem apagando o
- * texto: só `visibility` tira a tinta MANTENDO o espaço. Com `display:none` a
- * linha sumiria do cálculo e o nome desceria — exatamente o tranco que este
- * parágrafo existe para evitar.
+ * O ESPAÇO DOS TRÊS FICA GUARDADO: o do Λ, o do nome embaixo dele e o do
+ * slogan por último. Sem isso o Λ sairia centralizado na imagem e se mexeria
+ * no instante em que o site assumisse — um tranco bem no meio da emenda, que é
+ * o único lugar onde ele apareceria.
+ *
+ * O nome e o slogan são escondidos com `visibility`, e não com `display` nem
+ * apagando o texto: só `visibility` tira a tinta MANTENDO o espaço. Com
+ * `display:none` as linhas sumiriam do cálculo e o Λ desceria — exatamente o
+ * tranco que este parágrafo existe para evitar.
  *
  * A lista de aparelhos vem de lib/tela-de-abertura.ts: uma fonte só para os
  * tamanhos, senão um aparelho novo entra na lista e não ganha arquivo — e o
@@ -86,17 +92,26 @@ ${FOLHA_DA_FONTE}
      instante seguinte. Um pixel de diferenca vira um salto na emenda. */
   .marca{display:grid;justify-items:center;padding:0 24px;max-width:420px;width:100%;
     transform:translateY(-1.7vh)}
-  /* O espaço do Λ, guardado e vazio: é onde o site vai desenhá-lo. */
-  .vao{width:min(25.9vw,108px);aspect-ratio:1;display:block}
+  /* O Λ, desenhado — é o que esta imagem mostra. Mesmo traçado e mesmo
+     degradê da assinatura das folhas impressas e da abertura do site. */
+  .vao{width:min(25.9vw,108px);height:auto;display:block}
   .nome{display:flex;justify-content:center;margin:0.35px 0 0;line-height:1;
-    font-size:clamp(23px,7.551vw,32px);font-weight:800;letter-spacing:.1012em;text-indent:.1012em}
+    font-size:clamp(23px,7.551vw,32px);font-weight:800;letter-spacing:.1012em;text-indent:.1012em;
+    /* Sem tinta, com o lugar guardado — veja o cabeçalho. */
+    visibility:hidden}
   .nome span:nth-child(-n+4){color:#0879c9}
   .nome span:nth-child(n+5){color:#2bc5a8}
   .slogan{margin:8.4px 0 0;font-size:clamp(7.5px,2.28vw,9.5px);font-weight:600;line-height:1;
     letter-spacing:.317em;text-transform:uppercase;color:#7c95a8;text-indent:.317em;
     /* Sem tinta, com o lugar guardado — veja o cabeçalho. */
     visibility:hidden}
-</style></head><body><div class="marca"><span class="vao"></span>
+</style></head><body><div class="marca">
+<svg class="vao" viewBox="0 0 128 128">
+<defs><linearGradient id="avn" x1="18" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+<stop stop-color="#0879c9"/><stop offset=".55" stop-color="#0d8ce1"/>
+<stop offset="1" stop-color="#2bc5a8"/></linearGradient></defs>
+<path d="M15 110 51 25c3-8 8-13 14-13s11 5 15 14l32 84" fill="none" stroke="url(#avn)"
+ stroke-linecap="round" stroke-linejoin="round" stroke-width="14"/></svg>
 <p class="nome">${[..."AVANEST"].map((l) => `<span>${l}</span>`).join("")}</p>
 <p class="slogan">Gestão em anestesiologia</p></div></body></html>`;
 
