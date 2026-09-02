@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { money, plural } from "@/lib/escala";
+import { mesEmMaiusculas, money, plural } from "@/lib/escala";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-internacao";
 import { hoje as hojeLocal, ultimoDiaDoMes } from "@/lib/data-local";
@@ -764,7 +764,7 @@ export function ProducaoDoMes({
                 if (e.target.value) onEscolherMes(e.target.value);
               }}/>
           ) : (
-            <strong>{nomeMes} de {ano}</strong>
+            <strong>{mesEmMaiusculas(nomeMes)} de {ano}</strong>
           )}
           <button className="outlineClinical" onClick={() => onMudarMes(1)}
             aria-label="Próximo mês">›</button>
@@ -1049,7 +1049,7 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
 
       <section className="clinicalPanel">
         <div className="panelTitle">
-          <strong>Produção da equipe em {nomeMes} de {ano}</strong>
+          <strong>Produção da equipe em {mesEmMaiusculas(nomeMes)} de {ano}</strong>
         </div>
         {linhas.length === 0
           ? <div className="emptyClinical">

@@ -1297,6 +1297,8 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const [methods,setMethods]=useState<Record<string,string>>({});
   const [filtroReceb,setFiltroReceb]=useState<"todos"|"aberto"|"quitado">("todos");
   const [novoConvenio,setNovoConvenio]=useState("");
+  // Qual lançamento está com a confirmação de exclusão aberta. Um de cada vez.
+  const [lancamentoAExcluir,setLancamentoAExcluir]=useState("");
   const currentMonth=mesAtual();
   const [period,setPeriod]=useState(currentMonth);
   // Qual tarefa está aberta na coluna da esquerda. Uma de cada vez: a tela
@@ -1508,6 +1510,28 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     setBusy(id); setMessage(""); const {error}=await createClient().from("financeiro_atendimentos").update({...changes,updated_at:new Date().toISOString()}).eq("id",id);
     setBusy(""); if(error)setMessage(`Não foi possível atualizar: ${error.message}`);else onRefresh();
   }
+  /**
+   * Apaga um lançamento do Financeiro.
+   *
+   * Só administrador e proprietário: excluir é diferente de corrigir valor. A
+   * linha some do fechamento do mês, e quem confere a conta depois não tem como
+   * saber que ela existiu. A recepção lança e corrige; apagar é de quem responde
+   * pelo caixa.
+   *
+   * Quem recusa e quem registra é a função do banco, não esta tela: ela barra
+   * período já fechado, barra lançamento com pagamento registrado — dinheiro que
+   * entrou é história, e o caminho ali é estornar primeiro — e grava a auditoria
+   * com paciente, convênio e valor antes de apagar.
+   */
+  const podeExcluirLancamento=["admin","owner"].includes(perfil.role);
+  async function excluirLancamento(id:string) {
+    setBusy(id); setMessage("");
+    const {error}=await createClient().rpc("excluir_lancamento_financeiro",{p_atendimento_id:id});
+    setBusy("");
+    if(error){setMessage(`Não foi possível excluir: ${error.message}`);return}
+    setLancamentoAExcluir(""); setMessage("Lançamento excluído."); onRefresh();
+  }
+
   async function registerPayment(item:Financeiro) {
     const amount=parseMoney(values[item.id]||"");
     const balance=Math.max(0,Number(item.valor)-Number(item.recebido));
@@ -1654,7 +1678,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         // O botão só habilita quando o valor digitado é aceitável — antes ele
         // ficava aceso e só reclamava depois do clique.
         const valorValido=Number.isFinite(digitado)&&digitado>0&&digitado<=balance;
-        return <div className="paymentRow" id={`recebimento-${item.id}`} key={item.id}>
+        return <div className={`paymentRow${podeExcluirLancamento?" comExcluir":""}`} id={`recebimento-${item.id}`} key={item.id}>
           <span className="paymentQuem">
             <strong>{patient?.nome||"Paciente"}</strong>
             <small>{item.convenio}{item.hospital?` · ${item.hospital}`:""}</small>
@@ -1683,6 +1707,28 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
                   {busy===item.id?"Registrando...":"Registrar"}
                 </button>
               </>}
+          {/* O excluir é a última coluna, depois do registrar, e só para quem
+              administra. É a saída para o lançamento que ficou sem paciente:
+              ele aparece como "quitado · R$ 0,00", não há o que registrar nele,
+              e a linha continua ocupando o fechamento do mês sem dizer nada.
+              A confirmação abre embaixo, em linha inteira, porque apagar aqui
+              não tem volta — e o texto repete o nome e o valor para que não se
+              confirme a linha errada. */}
+          {podeExcluirLancamento&&<button type="button" className="paymentExcluir"
+            disabled={busy===item.id}
+            onClick={()=>setLancamentoAExcluir(lancamentoAExcluir===item.id?"":item.id)}
+            aria-expanded={lancamentoAExcluir===item.id}
+            title="Apaga este lançamento do Financeiro">Excluir</button>}
+          {podeExcluirLancamento&&lancamentoAExcluir===item.id&&<div className="paymentConfirma">
+            <p><strong>Excluir o lançamento de {patient?.nome||"paciente"}</strong> — {item.convenio}, {money(item.valor)}. Ele sai do fechamento do mês e não volta.</p>
+            <div>
+              <button type="button" className="outlineClinical" onClick={()=>setLancamentoAExcluir("")}>Manter</button>
+              <button type="button" className="paymentExcluirConfirma" disabled={busy===item.id}
+                onClick={()=>void excluirLancamento(item.id)}>
+                {busy===item.id?"Excluindo...":"Excluir de vez"}
+              </button>
+            </div>
+          </div>}
         </div>;
       })}
       {financeiro.length===0&&<div className="emptyClinical">

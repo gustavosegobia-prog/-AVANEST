@@ -447,16 +447,37 @@ export function timbreDaFolha(instituicao?: Instituicao | null): string {
  * viram blocos de cinza com letra branca — legíveis, mas sem o atalho da cor.
  * Nada se perde: o nome continua escrito por extenso dentro de cada pastilha,
  * e a cor nunca é o único canal.
+ *
+ * QUATORZE, e não oito. Com oito, uma equipe de treze pessoas — que é a de
+ * quem usa isto — punha duas em cada cor: Matheus e Taylor no mesmo azul,
+ * Flavio e Lucas no mesmo verde, cinco pares no total. Duas manchas iguais na
+ * mesma folha é pior do que folha sem cor, porque quem confere de longe lê a
+ * mancha e não o nome.
+ *
+ * As seis novas não foram escolhidas por matiz, e sim por DISTÂNCIA
+ * PERCEPTUAL: cada uma é a candidata mais distante, em CIE Lab, de todas as já
+ * escolhidas. Matiz sozinho engana — um laranja e um vermelho separados por
+ * catorze graus parecem irmãos, e um marrom escuro e um laranja vivo separados
+ * por seis graus não se confundem, porque a diferença está no brilho.
+ *
+ * O par mais parecido da paleta final tem ΔE 19, e todas as catorze passam de
+ * 4,5:1 de contraste com a letra branca.
  */
 export const PALETA_DA_FOLHA: readonly string[] = [
-  "#1668b3", // m1 azul
-  "#0d7a5b", // m2 verde
-  "#7a4bbd", // m3 roxo
-  "#8f6100", // m4 âmbar
-  "#a33b6e", // m5 rosa
-  "#0f6d78", // m6 ciano
-  "#b0472b", // m7 laranja
-  "#4b5563", // m8 ardósia
+  "#1668b3", // m1  azul
+  "#0d7a5b", // m2  verde
+  "#7a4bbd", // m3  roxo
+  "#8f6100", // m4  âmbar
+  "#a33b6e", // m5  rosa
+  "#0f6d78", // m6  ciano
+  "#b0472b", // m7  laranja
+  "#4b5563", // m8  ardósia
+  "#4a7310", // m9  verde-limão
+  "#6b4230", // m10 marrom
+  "#3d2f7a", // m11 índigo
+  "#8e2a8e", // m12 magenta
+  "#8a1f38", // m13 vinho
+  "#1f6b2e", // m14 verde-floresta
 ];
 
 /**
@@ -586,6 +607,25 @@ export function legendaDaFolha(cores: Map<string, number>): string {
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
     .map(([nome, cor]) => `<i class="p c${cor}">${escaparHTML(nome)}</i>`).join("");
   return `<div class="legenda">${tira}</div>`;
+}
+
+/**
+ * O mês, como ele aparece no título de uma folha impressa.
+ *
+ * MAIÚSCULAS porque o título é lido de longe, e porque ele é o que separa uma
+ * folha da outra numa pilha: "SETEMBRO" salta, "setembro" some no meio da
+ * frase. É a mesma razão pela qual o nome do hospital já sai assim.
+ *
+ * Só o mês sobe. O "de 2026" continua em minúsculas — é ligação, não nome, e
+ * uma linha inteira em caixa alta se lê mais devagar do que uma com uma
+ * palavra destacada.
+ *
+ * `toLocaleUpperCase("pt-BR")` e não `toUpperCase()`: a diferença aparece em
+ * "março", cujo ç precisa virar Ç, e o caminho genérico já erra em outras
+ * línguas por regras que não são as nossas.
+ */
+export function mesEmMaiusculas(nomeMes: string): string {
+  return nomeMes.toLocaleUpperCase("pt-BR");
 }
 
 /**
@@ -822,8 +862,8 @@ export function corpoDaFolha(opts: {
   // Folha de um hospital só leva o nome dele no título: é o que se lê primeiro
   // quando ela está pregada na parede daquele centro cirúrgico.
   const titulo = doGrupo
-    ? `Escala da equipe${hospitais.length === 1 ? ` — ${hospitais[0]}` : ""} — ${nomeMes} de ${ano}`
-    : `Meus plantões — ${nomeMes} de ${ano}`;
+    ? `Escala da equipe${hospitais.length === 1 ? ` — ${hospitais[0]}` : ""} — ${mesEmMaiusculas(nomeMes)} de ${ano}`
+    : `Meus plantões — ${mesEmMaiusculas(nomeMes)} de ${ano}`;
 
   // Na folha do grupo, o calendário É a folha, e mais nada. A lista turno a
   // turno de um serviço com seis anestesistas passa de noventa linhas e
@@ -934,7 +974,7 @@ export function folhaDeFechamento(
   plantoes: PlantaoDoFechamento[], nomeMes: string, ano: number, impressoEm: Date,
   instituicao?: Instituicao | null,
 ): { titulo: string; corpo: string } {
-  const titulo = `Fechamento de plantões — ${nomeMes} de ${ano}`;
+  const titulo = `Fechamento de plantões — ${mesEmMaiusculas(nomeMes)} de ${ano}`;
 
   const porPessoa = new Map<string, PlantaoDoFechamento[]>();
   for (const p of plantoes) {
@@ -1052,7 +1092,7 @@ export function folhaDeProducao(
   itens: ItemDeProducao[], nomeMes: string, ano: number, impressoEm: Date,
   instituicao?: Instituicao | null,
 ): { titulo: string; corpo: string } {
-  const titulo = `Produção — ${nomeMes} de ${ano}`;
+  const titulo = `Produção — ${mesEmMaiusculas(nomeMes)} de ${ano}`;
 
   const grupos = new Map<string, ItemDeProducao[]>();
   for (const i of itens) {
@@ -1174,7 +1214,7 @@ export function folhaDePlantoesPorLocal(
   plantoes: PlantaoParaNota[], nomeMes: string, ano: number, impressoEm: Date,
   instituicao?: Instituicao | null,
 ): { titulo: string; corpo: string } {
-  const titulo = `Plantões para nota — ${nomeMes} de ${ano}`;
+  const titulo = `Plantões para nota — ${mesEmMaiusculas(nomeMes)} de ${ano}`;
 
   const grupos = new Map<string, PlantaoParaNota[]>();
   for (const p of plantoes) {
@@ -1261,7 +1301,7 @@ export function folhaDeFaturamento(
   itens: ItemDeFaturamento[], nomeMes: string, ano: number, impressoEm: Date,
   instituicao?: Instituicao | null,
 ): { titulo: string; corpo: string } {
-  const titulo = `Faturamento para nota — ${nomeMes} de ${ano}`;
+  const titulo = `Faturamento para nota — ${mesEmMaiusculas(nomeMes)} de ${ano}`;
 
   const porLocal = new Map<string, ItemDeFaturamento[]>();
   for (const i of itens) {

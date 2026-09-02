@@ -1491,7 +1491,7 @@ button:disabled{cursor:not-allowed}
 /* ============================================================================
    Financeiro: recebimentos alinhados e acao so quando valida
    ========================================================================== */
-.paymentRow{display:grid;grid-template-columns:minmax(0,1.6fr) 130px 130px 110px 120px 150px auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda)}
+.paymentRow{display:grid;grid-template-columns:minmax(0,1.6fr) 130px 130px 110px 120px 150px 118px;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda)}
 .paymentRow:first-of-type{border-top:0}
 .paymentQuem{min-width:0}
 .paymentQuem strong{display:block;font-size:14.5px}
@@ -1506,9 +1506,25 @@ button:disabled{cursor:not-allowed}
 .paymentButton{height:var(--alt-botao-compacto);border:0;border-radius:var(--raio-1);background:var(--cor-marca);color:var(--cor-marca-contraste);font-weight:700;padding:0 var(--esp-4);cursor:pointer;white-space:nowrap}
 .paymentButton:hover:not(:disabled){background:var(--cor-marca-forte)}
 .paymentButton:disabled{background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca);cursor:not-allowed}
+/* A coluna do excluir so existe para quem administra: sem a classe a linha
+   continua com as sete colunas de antes, sem sobra nem vao no fim. */
+.paymentRow.comExcluir{grid-template-columns:minmax(0,1.6fr) 130px 130px 110px 120px 150px 118px 82px}
+/* Discreto de proposito. E acao rara e sem volta: nao disputa atencao com o
+   registrar, que e o que se faz todo dia nesta tela. */
+.paymentExcluir{height:var(--alt-botao-compacto);border:1px solid var(--cor-borda-forte);border-radius:var(--raio-1);background:transparent;color:var(--cor-tinta-fraca);font:inherit;font-size:13px;padding:0 var(--esp-3);cursor:pointer;white-space:nowrap}
+.paymentExcluir:hover:not(:disabled){border-color:var(--cor-perigo);color:var(--cor-perigo)}
+.paymentExcluir:disabled{opacity:.45;cursor:not-allowed}
+/* A confirmacao ocupa a linha inteira, abaixo da linha do lancamento: o texto
+   repete nome e valor, e nao ha como ler no lugar da linha vizinha. */
+.paymentConfirma{grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:var(--esp-3);margin-top:var(--esp-2);padding:var(--esp-3);border:1px solid var(--cor-perigo);border-radius:var(--raio-2);background:color-mix(in srgb,var(--cor-perigo) 7%,var(--cor-superficie))}
+.paymentConfirma p{margin:0;font-size:13px;min-width:0;flex:1 1 260px}
+.paymentConfirma strong{display:inline}
+.paymentConfirma>div{display:flex;gap:var(--esp-2);flex:0 0 auto}
+.paymentExcluirConfirma{height:var(--alt-botao-compacto);border:0;border-radius:var(--raio-1);background:var(--cor-perigo);color:#fff;font:inherit;font-weight:700;padding:0 var(--esp-4);cursor:pointer;white-space:nowrap}
+.paymentExcluirConfirma:disabled{opacity:.55;cursor:not-allowed}
 
 @media(max-width:1100px){
-  .paymentRow{grid-template-columns:minmax(0,1fr) auto auto;row-gap:var(--esp-2)}
+  .paymentRow,.paymentRow.comExcluir{grid-template-columns:minmax(0,1fr) auto auto;row-gap:var(--esp-2)}
   .paymentQuem{grid-column:1/-1}
   .paymentValores,.paymentSaldo{text-align:left}
   .paymentRow input,.paymentRow select,.paymentButton{grid-column:auto}
@@ -2904,6 +2920,20 @@ button:disabled{cursor:not-allowed}
 .med-m6{--med-cor:#0f6d78}
 .med-m7{--med-cor:#b0472b}
 .med-m8{--med-cor:#4b5563}
+/* Seis cores a mais, e a razão é aritmética: a equipe tem treze pessoas, e com
+   oito duas caíam sempre na mesma — Matheus e Taylor no mesmo azul, Flavio e
+   Lucas no mesmo verde. Escolhidas por distância perceptual em CIE Lab, e não
+   por matiz: um laranja e um vermelho separados por catorze graus parecem
+   irmãos, e um marrom escuro e um laranja vivo separados por seis não se
+   confundem, porque a diferença está no brilho.
+   Os mesmos tons, na mesma ordem, de PALETA_DA_FOLHA — o papel e a tela têm de
+   dar a mesma cor à mesma pessoa. */
+.med-m9{--med-cor:#4a7310}
+.med-m10{--med-cor:#6b4230}
+.med-m11{--med-cor:#3d2f7a}
+.med-m12{--med-cor:#8e2a8e}
+.med-m13{--med-cor:#8a1f38}
+.med-m14{--med-cor:#1f6b2e}
 /* No escuro a mesma cor escura sumiria no fundo: clareia e o texto vira tinta
    escura. Todas passam de 7:1 contra o fundo do tema. */
 .clinicalDark .plantaoQuem em{--med-tinta:#0b1220}
@@ -2915,6 +2945,14 @@ button:disabled{cursor:not-allowed}
 .clinicalDark .med-m6{--med-cor:#4fb8c4}
 .clinicalDark .med-m7{--med-cor:#e08a6e}
 .clinicalDark .med-m8{--med-cor:#9aa5b4}
+/* No escuro cada uma clareia até passar de 7:1 contra a tinta #0b1220 — o
+   mesmo piso das oito antigas. */
+.clinicalDark .med-m9{--med-cor:#70b114}
+.clinicalDark .med-m10{--med-cor:#c7937c}
+.clinicalDark .med-m11{--med-cor:#a397d9}
+.clinicalDark .med-m12{--med-cor:#db7bdb}
+.clinicalDark .med-m13{--med-cor:#e58098}
+.clinicalDark .med-m14{--med-cor:#32b94c}
 
 /* O painel recebe foco por código quando o dia abre, para o próximo Tab cair
    dentro dele. Foco por código não é foco de teclado: o contorno só aparece

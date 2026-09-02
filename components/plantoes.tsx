@@ -483,7 +483,12 @@ function baixar(nome: string, conteudo: string, tipo: string) {
  * pessoa precisa ter a mesma cor toda vez que a tela abre, senão a cor não
  * ajuda a reconhecer ninguém — vira enfeite.
  */
-const CORES_MEDICO = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"] as const;
+// Quatorze cores, e não oito: a equipe tem treze pessoas, e com oito duas
+// caíam sempre na mesma. A ordem e os tons são os de PALETA_DA_FOLHA — a
+// folha impressa e o calendário têm de mostrar a mesma cor para a mesma
+// pessoa, e duas listas seriam duas verdades.
+const CORES_MEDICO = ["m1", "m2", "m3", "m4", "m5", "m6", "m7",
+                      "m8", "m9", "m10", "m11", "m12", "m13", "m14"] as const;
 
 /**
  * Colorida ou preto e branco, guardado no navegador.

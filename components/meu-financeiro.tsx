@@ -10,7 +10,7 @@ import {
   CATEGORIAS, NOME_DA_CATEGORIA, porCategoria, recorrentesFaltando,
   resultadoDoMes, somarDespesas, type Despesa,
 } from "@/lib/despesas";
-import { plantoesEscrito } from "@/lib/escala";
+import { mesEmMaiusculas, plantoesEscrito } from "@/lib/escala";
 
 // A conta de UMA pessoa, mesmo dentro de um grupo.
 //
@@ -276,7 +276,7 @@ export function MeuFinanceiro({
       <section className="mfResumo">
         <header className="mfResumoTopo">
           <div>
-            <strong>{nomeMes} de {ano}</strong>
+            <strong>{mesEmMaiusculas(nomeMes)} de {ano}</strong>
             <small>seus plantões e suas anestesias</small>
           </div>
           <OlhoValores oculto={oculto} onAlternar={alternar} />
