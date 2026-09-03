@@ -3602,7 +3602,33 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 @media(max-width:760px){
   .plantaoBarra{flex-direction:column;align-items:stretch}
   .plantaoMesNav{justify-content:center}
-  .plantaoBarraAcoes>*{flex:1}
+  /* NO CELULAR A FILA VIRA GRADE, e o motivo é um defeito que dava para ver na
+     tela: aqui havia `.plantaoBarraAcoes>*{flex:1}`.
+
+     `flex:1` é `flex:1 1 0%` — todo botão passa a ter largura BASE ZERO e
+     recebe só a sua fatia do espaço que sobra. Com rótulos de tamanhos bem
+     diferentes ("Imprimir" ao lado de "Fechamento do mês"), o texto do longo
+     não cabia na fatia e escapava por cima do vizinho. E `flex:1` alcançava
+     também o seletor Colorida/P&B, apagando o `flex:none` dele: as duas
+     opções espremiam-se numa tira azul de dois pixels, que não dava nem para
+     ler nem para tocar.
+
+     Grade de duas colunas resolve pela raiz: a largura é da COLUNA, e não do
+     conteúdo, então nenhum botão fica menor do que a sua palavra. */
+  .plantaoBarraAcoes{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:stretch}
+  .plantaoBarraAcoes>*{width:100%;min-width:0}
+  /* O rótulo QUEBRA em duas linhas em vez de virar reticências. "Fechamento
+     do m…" obriga a adivinhar, e a economia era de meia palavra; na grade os
+     botões esticam todos até a altura do mais alto, então a linha extra não
+     desalinha nada. */
+  .plantaoBarraAcoes>button{white-space:normal;line-height:1.2;padding:8px 10px;
+    height:auto;min-height:var(--alt-botao-compacto)}
+  /* Os dois que não cabem em meia largura ocupam a linha inteira: o seletor,
+     porque são duas palavras dentro de uma moldura só, e o lançar plantão,
+     porque é a ação principal da tela e merece o alvo maior. */
+  .plantaoBarraAcoes>.folhaModo{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr}
+  .plantaoBarraAcoes>.folhaModo button{padding:10px 8px}
+  .plantaoBarraAcoes>.primaryClinical{grid-column:1/-1}
 }
 
 /* --- Linha da escala ----------------------------------------------------
