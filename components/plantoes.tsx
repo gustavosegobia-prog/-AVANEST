@@ -299,6 +299,7 @@ function caberNumaFolha(doc: Document, caixa: { largura: number; altura: number 
  * poder avisar em vez de não fazer nada.
  */
 const CAIXA_DA_FOLHA = "folhaParaImprimir";
+const ESTILO_DA_FOLHA = "estiloDaFolhaImpressa";
 
 function imprimirFolha(titulo: string, corpo: string,
                        orientacao: "landscape" | "portrait" = "landscape",
@@ -306,6 +307,7 @@ function imprimirFolha(titulo: string, corpo: string,
   if (typeof window === "undefined" || typeof window.print !== "function") return false;
   // Uma impressão anterior que não tenha sido limpa não pode sair junto desta.
   document.getElementById(CAIXA_DA_FOLHA)?.remove();
+  document.getElementById(ESTILO_DA_FOLHA)?.remove();
 
   const caixa = document.createElement("div");
   caixa.id = CAIXA_DA_FOLHA;
@@ -483,7 +485,28 @@ p.sub.pendente{background:#fff4e0;border-left:3px solid #d98200;padding:7px 10px
 tr,td,th{break-inside:avoid;page-break-inside:avoid}
 }`;
 
-  caixa.innerHTML = `<style>${estilo}</style><table id="folhaCorrida">
+  // A FOLHA DE ESTILO VAI PARA O <head>, POR ELEMENTO PRÓPRIO — e não dentro do
+  // `innerHTML` da caixa, que foi como estava e é o que quebrou no iPhone.
+  //
+  // O sintoma veio num PDF de TREZE PÁGINAS: saiu a tela do aplicativo, com a
+  // barra de botões, a lista inteira de plantões e o endereço do site no
+  // rodapé. Ou seja, nem o `display:none` que apaga a página nem uma linha
+  // sequer do resto pegou — o bloco `@media print` não existia para o
+  // navegador. A caixa estava lá (o Λ da assinatura aparecia solto no meio da
+  // primeira página), só o estilo é que não.
+  //
+  // A causa: `innerHTML` era atribuído com a caixa AINDA FORA do documento, e
+  // o WebKit não registra a folha de um <style> criado assim quando o nó é
+  // anexado depois. No Chrome funciona, e foi por isso que passou pelo teste.
+  //
+  // Um <style> de verdade no <head> não depende desse comportamento em
+  // navegador nenhum. É também onde uma folha de estilo devia estar.
+  const folhaDeEstilo = document.createElement("style");
+  folhaDeEstilo.id = ESTILO_DA_FOLHA;
+  folhaDeEstilo.textContent = estilo;
+  document.head.appendChild(folhaDeEstilo);
+
+  caixa.innerHTML = `<table id="folhaCorrida">
 <tfoot><tr><td><div id="vao"></div></td></tr></tfoot>
 <tbody><tr><td><div id="folha"><div id="papel">${corpo}</div></div></td></tr></tbody>
 </table><div id="assinatura">${assinaturaDaFolha(new Date())}</div>`;
@@ -498,6 +521,9 @@ tr,td,th{break-inside:avoid;page-break-inside:avoid}
   const limpar = () => {
     document.title = tituloAntes;
     document.getElementById(CAIXA_DA_FOLHA)?.remove();
+    // O estilo sai junto: esquecido no <head>, ele continuaria escondendo a
+    // página inteira na PRÓXIMA impressão que alguém fizesse pelo navegador.
+    document.getElementById(ESTILO_DA_FOLHA)?.remove();
   };
 
   // Desde que o timbre da instituição entrou, há uma imagem a esperar — e ela
