@@ -283,9 +283,24 @@ export default async function DashboardPage({
     // Doze meses para trás. O envelhecimento olha o que está em aberto, e uma
     // conta de mais de um ano é caso de perda contábil, não de cobrança; puxar
     // o histórico inteiro seria carregar anos de plantão para somar um mês.
+    //
+    // `privado = false` NÃO É DETALHE, e a falta dele foi um defeito de
+    // verdade: o plantão privado é o que a escala promete que "entra só na sua
+    // escala e no seu mês — ninguém do grupo enxerga", e ele estava sendo
+    // somado no Financeiro do grupo. Aparecia lá o hospital de fora, com o
+    // valor combinado, na tabela de cobranças em atraso.
+    //
+    // E o pior não era o vazamento, era o NÚMERO MUDAR DE PESSOA PARA PESSOA.
+    // A política de RLS já esconde o plantão privado dos outros
+    // (`privado = false OR perfil_id = auth.uid()`), então quem via o próprio
+    // privado somava, e o colega ao lado não — dois administradores abriam o
+    // mesmo mês e liam dois "A receber" diferentes, sem nada na tela
+    // explicando a diferença. Um total que depende de quem olha não é um
+    // total. Filtrando aqui, a conta do grupo é a mesma para todo mundo.
     needsFinanceData
       ? supabase.from("plantoes")
           .select("id,perfil_id,data,valor,situacao,local_id,local_texto")
+          .eq("privado", false)
           .gte("data", dozeMesesAtras).order("data", { ascending: false })
       : Promise.resolve({ data: [] }),
     // Pela função, e NÃO pela tabela.
