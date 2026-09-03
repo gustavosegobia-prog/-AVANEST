@@ -2905,10 +2905,60 @@ button:disabled{cursor:not-allowed}
    O nome não quebra no meio. "Matheus" partido em "Mat / heus" em duas linhas
    é pior que a etiqueta transbordar, e o ellipsis mantém a célula do dia com a
    altura que o mês inteiro tem. */
+/* As duas versões do nome na etiqueta. No computador, o primeiro nome; no
+   telefone, as iniciais — em sete colunas de 393px sobram uns vinte pixels por
+   etiqueta, e o primeiro nome saía "M..", que não é nome nem código.
+   As duas são desenhadas e o CSS escolhe: decidir por JavaScript exigiria
+   medir a tela, e a medida chega depois da primeira pintura — a etiqueta
+   apareceria de um jeito e pularia para o outro. */
+.plantaoQuem em .nomeEstreito{display:none}
+@media(max-width:760px){
+  .plantaoQuem em .nomeLargo{display:none}
+  .plantaoQuem em .nomeEstreito{display:inline}
+}
+/* A LEGENDA das iniciais. Só no telefone: no computador o nome está escrito
+   dentro da etiqueta, e repetir a lista ali seria ruído. */
+.plantaoLegenda{display:none}
+@media(max-width:760px){
+  .plantaoLegenda{display:flex;flex-wrap:wrap;gap:6px;
+    padding:10px 14px 0}
+  .plantaoLegendaItem{display:inline-flex;align-items:center;gap:5px;
+    font-size:11.5px;font-weight:700;color:var(--cor-tinta-fraca);
+    background:var(--cor-superficie-suave);border-radius:999px;padding:3px 9px 3px 3px}
+  /* A pastilha da cor leva as MESMAS duas letras da etiqueta do calendário. A
+     legenda liga três coisas — as letras, a cor e o nome —, e sem as letras
+     ela ligaria só duas, deixando justamente a ponta que precisa ser decifrada. */
+  .plantaoLegendaItem>i{font-style:normal;font-size:9.5px;font-weight:850;
+    min-width:20px;height:18px;padding:0 4px;border-radius:999px;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--med-cor,var(--cor-tinta-fraca));color:var(--med-tinta,#fff)}
+}
 .plantaoQuem em{font-style:normal;font-size:10px;font-weight:800;line-height:1.25;
   padding:2px 5px;border-radius:3px;letter-spacing:.1px;
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   background:var(--med-cor,var(--cor-tinta-fraca));color:var(--med-tinta,#fff)}
+/* As medidas do telefone vêm DEPOIS da regra acima de propósito: `@media` não
+   aumenta especificidade, então entre dois `.plantaoQuem em` vence o que está
+   por último no arquivo. Escritas antes, elas eram simplesmente ignoradas —
+   e a etiqueta continuava com 16px, cortando "TS" em "T.". */
+@media(max-width:760px){
+  /* TROCAR O TEXTO NÃO BASTOU, e a primeira versão provou isso: com as duas
+     letras dentro do mesmo espaço de antes, a etiqueta media 16px e cortava
+     em "T." — uma letra e reticências, que é pior do que o nome truncado que
+     eu tinha ido consertar.
+
+     Então o espaço em volta encolhe para caber o que importa: a coluna da
+     letra do turno passa de 11px para 9px, e as folgas de 5px para 3px. São
+     onze pixels por etiqueta, e a etiqueta precisa de vinte e dois.
+
+     `flex:none` com `max-width:none` é a parte que faz a conta fechar: sem
+     eles duas etiquetas na mesma faixa dividiam a largura e voltavam a ser
+     cortadas. Assim cada uma fica do tamanho do seu conteúdo, e a segunda
+     desce para a linha de baixo quando não couber — a célula cresce um pouco,
+     e ninguém fica ilegível. */
+  .plantaoFaixa{grid-template-columns:9px minmax(0,1fr);gap:3px;padding:2px 3px}
+  .plantaoQuem em{padding:2px 3px;letter-spacing:0;flex:none;max-width:none}
+}
 /* O contorno marca o seu turno. Entre seis iniciais coloridas, achar a sua
    pela cor exigiria lembrar qual é a sua — o contorno dispensa a memória. */
 .plantaoQuem em.eu{box-shadow:0 0 0 1.5px var(--cor-tinta)}

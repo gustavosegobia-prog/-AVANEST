@@ -1394,6 +1394,23 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     [plantoes, escopo, perfilId, hospitalAtivo],
   );
 
+  /**
+   * Quem tem plantão no mês em vista — a chave da legenda do telefone.
+   *
+   * Sai de `daEscala`, e não da equipe: a legenda existe para decifrar as
+   * etiquetas DESTA tela, e um nome que não aparece em dia nenhum seria uma
+   * linha a procurar sem nada para achar.
+   *
+   * Ordenado pelo mesmo apelido que a etiqueta mostra, para a tira ficar em
+   * ordem alfabética do que se lê — e não da ordem em que os plantões vieram
+   * do banco, que muda a cada carregamento.
+   */
+  const pessoasDoMes = useMemo(() => {
+    const comoSeChama = (id: string) => apelidos.get(id) ?? nomeCurto(nomePorId.get(id) ?? "");
+    return [...new Set(daEscala.filter((p) => p.data.startsWith(mes)).map((p) => p.perfil_id))]
+      .sort((a, b) => comoSeChama(a).localeCompare(comoSeChama(b), "pt-BR"));
+  }, [daEscala, mes, apelidos, nomePorId]);
+
   // O sino manda em que aba esta tela abre. Um aviso de troca que caísse no
   // calendário deixaria a pessoa procurando o pedido dia a dia — e o pedido
   // está a uma aba de distância, com o dia, o horário e os dois botões.
@@ -2050,6 +2067,26 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 </button>
               </div>
             </div>
+            {/* A LEGENDA, e ela só aparece no telefone.
+                No computador o nome está escrito dentro de cada etiqueta e uma
+                tira repetindo os mesmos nomes seria ruído. No telefone a
+                etiqueta traz duas letras, e sem esta tira elas seriam um código
+                sem chave — o que é pior do que não mostrar nada.
+
+                Só quem tem plantão no mês em vista: uma legenda com a equipe
+                inteira faria procurar, entre treze nomes, os cinco que estão
+                nesta tela. */}
+            {pessoasDoMes.length > 0 && (
+              <div className="plantaoLegenda" role="list" aria-label="Quem é cada cor no calendário">
+                {pessoasDoMes.map((id) => (
+                  <span role="listitem" key={id}
+                    className={`plantaoLegendaItem med-${corPorMedico.get(id) ?? "m8"}`}>
+                    <i aria-hidden="true">{iniciais(nomePorId.get(id) ?? "")}</i>
+                    {apelidos.get(id) ?? nomeCurto(nomePorId.get(id) ?? "")}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="plantaoCalendario">
               <div className="plantaoSemana">{DIAS.map((d, i) => <span key={i}>{d}</span>)}</div>
               <div className="plantaoGrade">
@@ -2133,9 +2170,40 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                                             então o nome no calendário é
                                             exatamente o nome do chip que se
                                             tocou para escalar. */}
+                                        {/* NO TELEFONE, INICIAIS — e é a mesma
+                                            regra acima, não o contrário dela.
+                                            O primeiro nome ganha ENQUANTO CABE.
+                                            Em sete colunas num aparelho de
+                                            393px sobram uns vinte pixels por
+                                            etiqueta, e "Matheus" saía "M.." —
+                                            que não é nome nem código, e não se
+                                            lê de jeito nenhum. Duas letras
+                                            cabem, e a legenda logo acima diz
+                                            de quem são.
+
+                                            As duas versões são desenhadas e o
+                                            CSS escolhe: trocar por JavaScript
+                                            exigiria medir a tela, e a medida
+                                            chega depois da primeira pintura —
+                                            a etiqueta apareceria de um jeito e
+                                            pularia para o outro.
+
+                                            O nome INTEIRO vai no aria-label, e
+                                            as duas versões saem da árvore de
+                                            acessibilidade: assim quem usa
+                                            leitor de tela ouve "Dr. Matheus
+                                            Fantim Gomes" nos dois tamanhos, em
+                                            vez de ouvir "MG" no telefone. */}
                                         {t.gente.slice(0, 3).map((g) => (
-                                          <em key={g.id} className={`med-${corPorMedico.get(g.perfil_id) ?? "m8"}${g.perfil_id === perfilId ? " eu" : ""}`}>
-                                            {apelidos.get(g.perfil_id) ?? nomeCurto(nomePorId.get(g.perfil_id) ?? "")}
+                                          <em key={g.id}
+                                            aria-label={nomePorId.get(g.perfil_id) ?? ""}
+                                            className={`med-${corPorMedico.get(g.perfil_id) ?? "m8"}${g.perfil_id === perfilId ? " eu" : ""}`}>
+                                            <span className="nomeLargo" aria-hidden="true">
+                                              {apelidos.get(g.perfil_id) ?? nomeCurto(nomePorId.get(g.perfil_id) ?? "")}
+                                            </span>
+                                            <span className="nomeEstreito" aria-hidden="true">
+                                              {iniciais(nomePorId.get(g.perfil_id) ?? "")}
+                                            </span>
                                           </em>
                                         ))}
                                         {/* Três, e não quatro: nome ocupa cinco
