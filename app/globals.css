@@ -3094,7 +3094,22 @@ button:disabled{cursor:not-allowed}
 .plantaoModeloForm{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:20px 25px;
   border-bottom:1px solid var(--cor-borda);align-items:end}
 .plantaoModeloForm .clinicalField.wide{grid-column:span 2}
-.plantaoDuracoes{grid-column:1/-1;display:flex;align-items:center;gap:9px}
+/* A FILA DE ATALHOS QUEBRA, e não quebrava. Sem `flex-wrap` os seis itens
+   — o rótulo, Diurno, Noturno, o corte e 6h/12h/24h — tentavam caber numa
+   linha só: no telefone o "12h" saía pela borda e o "24h" nem aparecia.
+
+   E `flex:none` nos botões é a outra metade. Item de flex encolhe por padrão,
+   então antes de transbordar eles espremiam — "🌞 Diurno" quebrava em duas
+   linhas dentro de um botão de altura fixa, e o texto vazava por baixo da
+   borda. Era isso que estava fora do lugar na tela. */
+.plantaoDuracoes{grid-column:1/-1;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.plantaoDuracoes>button{flex:none;white-space:nowrap}
+/* A barrinha separa os turnos com nome das durações soltas. Quando a fila
+   quebra, os dois grupos já ficam em linhas diferentes — e aí ela sobra
+   pendurada no fim da primeira linha, separando o nada do nada. */
+@media(max-width:640px){
+  .plantaoDuracoes>.plantaoFilaCorte{display:none}
+}
 .plantaoDuracoes>span{font-size:12px;color:var(--cor-tinta-fraca)}
 .plantaoModeloForm .localCompartilhar,.plantaoModeloForm>button{grid-column:1/-1}
 
