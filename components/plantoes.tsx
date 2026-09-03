@@ -524,7 +524,62 @@ tr,td,th{break-inside:avoid;page-break-inside:avoid}
   const tituloAntes = document.title;
   document.title = titulo;
 
+  /**
+   * ESCONDER A PÁGINA POR ESTILO EM LINHA, e não só pela folha de impressão.
+   *
+   * A folha continua lá e faz o trabalho fino — margens, zoom, a assinatura no
+   * pé. Mas O QUE DECIDE se a página sai junto no papel passou a ser isto: um
+   * `display:none` escrito no próprio elemento, um por um.
+   *
+   * O motivo é o histórico. Já saíram do iPhone um PDF de treze páginas e outro
+   * de cinco com a TELA do aplicativo impressa — a barra de botões, a lista de
+   * plantões, tudo. Nas duas vezes a causa foi a mesma família de problema: o
+   * `@media print` não valia, seja porque o <style> não tinha registrado, seja
+   * por qualquer outra diferença do WebKit que eu não consigo reproduzir daqui.
+   *
+   * Estilo em linha não depende de nada disso. Não passa por folha, por
+   * cascata, por especificidade nem por registro de stylesheet — o elemento
+   * simplesmente não é desenhado. É o único caminho que eu posso garantir sem
+   * ter o aparelho na mão.
+   */
+  const escondidos: HTMLElement[] = [];
+  const prepararParaImprimir = () => {
+    for (const filho of Array.from(document.body.children)) {
+      if (filho.id === CAIXA_DA_FOLHA || !(filho instanceof HTMLElement)) continue;
+      escondidos.push(filho);
+      filho.dataset.antesDeImprimir = filho.style.display;
+      filho.style.display = "none";
+    }
+    // E A FOLHA VOLTA AO FLUXO, também por estilo em linha.
+    //
+    // Sem isto, esconder a página resolveria metade e criaria a outra: na tela
+    // a folha fica estacionada fora da vista (`position:fixed`, a vinte mil
+    // pixels à esquerda, `visibility:hidden`), e quem a traz de volta para o
+    // papel é justamente a regra do `@media print`. Se a folha de estilo
+    // falhar — que é a situação de que este código inteiro se defende —, o
+    // resultado seria papel EM BRANCO: a tela escondida e a escala invisível.
+    //
+    // Com as duas metades em linha, o pior caso deixa de ser "não imprime" e
+    // passa a ser "imprime sem os enfeites", que é um resultado com que se
+    // pode trabalhar.
+    caixa.style.position = "static";
+    caixa.style.left = "auto";
+    caixa.style.top = "auto";
+    caixa.style.width = "auto";
+    caixa.style.visibility = "visible";
+  };
+  const devolverOResto = () => {
+    for (const el of escondidos.splice(0)) {
+      el.style.display = el.dataset.antesDeImprimir ?? "";
+      delete el.dataset.antesDeImprimir;
+    }
+  };
+
   const limpar = () => {
+    // A DEVOLUÇÃO VEM PRIMEIRO, e sempre. Se ela falhar, a pessoa fica com a
+    // tela em branco e o aplicativo parece morto — é o pior estado possível,
+    // pior do que qualquer folha impressa errada.
+    devolverOResto();
     document.title = tituloAntes;
     document.getElementById(CAIXA_DA_FOLHA)?.remove();
     // O estilo sai junto: esquecido no <head>, ele continuaria escondendo a
@@ -550,37 +605,61 @@ tr,td,th{break-inside:avoid;page-break-inside:avoid}
       ]);
 
   void pronto.then(() => setTimeout(() => {
-    // O ajuste vem DEPOIS do logo carregar. Medir antes dá uma altura sem a
-    // imagem, e o zoom sairia calculado para uma folha que não é a que
-    // imprime — com o logo dentro, ela voltaria a passar para a segunda página.
+    // O ZOOM VAI DENTRO DE UM try, e essa é a lição do PDF de treze páginas.
+    // Se `caberNumaFolha` tropeçar num aparelho que eu não tenho para testar,
+    // a exceção interrompia a função ANTES do `print()` — e a folha ficava
+    // pendurada no documento, sem estilo, esperando que alguém imprimisse a
+    // tela pelo próprio navegador. Era exatamente o que o papel mostrava.
+    //
+    // Uma folha com o zoom errado é um defeito; uma folha que não imprime, e
+    // ainda suja a próxima impressão, é outro. Aqui o segundo não acontece.
     if (umaFolhaSo) {
-      // A área útil encolhe pela faixa da assinatura: sem descontar, o
-      // calendário seria esticado até a borda e empurraria o vão para uma
-      // segunda folha em branco.
-      caberNumaFolha(document, {
-        largura: FOLHA[orientacao].largura,
-        altura: FOLHA[orientacao].altura - ALTURA_ASSINATURA,
-      });
+      try {
+        // A área útil encolhe pela faixa da assinatura: sem descontar, o
+        // calendário seria esticado até a borda e empurraria o vão para uma
+        // segunda folha em branco.
+        caberNumaFolha(document, {
+          largura: FOLHA[orientacao].largura,
+          altura: FOLHA[orientacao].altura - ALTURA_ASSINATURA,
+        });
+      } catch (erro) {
+        console.error("[imprimirFolha] não deu para ajustar o zoom", erro);
+      }
     }
 
-    // A LIMPEZA POR DOIS CAMINHOS, e os dois são necessários.
+    // A DEVOLUÇÃO POR QUATRO CAMINHOS, e nenhum deles é confiável sozinho.
     //
-    // `afterprint` é o certo, e dispara no computador quando a caixa de
-    // impressão fecha. No iPhone ele é irregular: a folha de compartilhamento
-    // do iOS pode fechar sem que o evento chegue. Sem o segundo caminho, o
-    // bloco ficaria pendurado no documento até a próxima impressão.
+    // `afterprint` é o certo, e dispara no computador. No iPhone é irregular:
+    // a folha de compartilhamento do iOS pode fechar sem que o evento chegue.
+    // `focus` e `visibilitychange` cobrem a volta para o aplicativo, que é o
+    // instante em que a pessoa precisa da tela de volta. E o relógio é o
+    // último recurso.
     //
-    // E a limpeza não pode ser rápida demais: remover o bloco enquanto o
-    // navegador ainda está montando as páginas imprime folha em branco. Por
-    // isso o tempo é largo — é uma faxina, não um passo da impressão.
-    window.addEventListener("afterprint", limpar, { once: true });
-    setTimeout(limpar, 60_000);
+    // O tempo é de 20 segundos, e não de 60: com a página escondida por estilo
+    // em linha, cada segundo a mais de atraso é um segundo de tela em branco
+    // se todos os eventos falharem. Antes o atraso só deixava um bloco
+    // invisível pendurado, e podia ser longo.
+    const devolver = () => {
+      window.removeEventListener("afterprint", devolver);
+      window.removeEventListener("focus", devolver);
+      document.removeEventListener("visibilitychange", aoVoltar);
+      limpar();
+    };
+    const aoVoltar = () => { if (!document.hidden) devolver(); };
+    window.addEventListener("afterprint", devolver);
+    window.addEventListener("focus", devolver);
+    document.addEventListener("visibilitychange", aoVoltar);
+    setTimeout(devolver, 20_000);
 
+    // Preparar é a ÚLTIMA coisa antes de imprimir, e a primeira a ser desfeita.
+    // Assim a janela em que a tela fica escondida é exatamente a da caixa de
+    // impressão, e não um instante a mais.
+    prepararParaImprimir();
     try {
       window.print();
     } catch {
-      // Navegador que recusa imprimir não pode deixar o bloco para trás.
-      limpar();
+      // Navegador que recusa imprimir não pode deixar a tela escondida.
+      devolver();
     }
   }, 300));
   return true;
