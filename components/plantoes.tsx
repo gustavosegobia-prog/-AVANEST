@@ -7,7 +7,7 @@ import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/produc
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { Icone } from "@/components/icone";
 import {
-  corpoDaFolha, cssDasCores, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
+  cssDasCores, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, emTurnos, filtroDeHospital, iniciais, montarICS,
   ordemDentroDoDia,
@@ -19,6 +19,7 @@ import {
 import {
   nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes, planilhaPorConvenio,
 } from "@/lib/planilha";
+import { escalaEmPdf, tituloDaFolha } from "@/lib/escala-pdf";
 import { baixarXLSX } from "@/lib/xlsx";
 import { MeuFinanceiro } from "@/components/meu-financeiro";
 import { feriadosDoMes } from "@/lib/feriados";
@@ -681,6 +682,69 @@ function baixar(nome: string, conteudo: string, tipo: string) {
   // aba até ela fechar. O atraso existe porque revogar antes de o download
   // começar cancela o próprio download no Safari.
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+/**
+ * Entrega a escala em PDF do jeito que o aparelho de quem clicou sabe receber.
+ *
+ * ===========================================================================
+ * POR QUE ISTO NÃO É SÓ UM `<a download>`
+ * ===========================================================================
+ * São três situações, e cada uma quebra de um jeito diferente:
+ *
+ * NO APLICATIVO INSTALADO (iPhone, tela de início). Não há barra de endereço,
+ * nem botão de voltar, nem abas. Abrir o PDF numa janela nova é uma tela sem
+ * saída — foi assim que este problema começou, com "aparece a outra página e
+ * não tem como voltar". Aqui vai pela folha de compartilhamento do próprio
+ * sistema: ela é um painel que sobe por cima do aplicativo, tem "Imprimir"
+ * dentro, e fecha voltando exatamente para onde a pessoa estava.
+ *
+ * NO NAVEGADOR, no computador ou no celular. Aí existe aba e existe voltar, e
+ * abrir o PDF numa aba é o melhor: o leitor de PDF do próprio navegador já traz
+ * o botão de imprimir, e a folha já está deitada.
+ *
+ * SE A JANELA FOR BLOQUEADA. Cai no download, que sempre funciona.
+ *
+ * Devolve o que aconteceu, para quem chamou poder explicar em vez de deixar a
+ * pessoa achando que o botão não fez nada.
+ */
+async function entregarPdf(nomeDoArquivo: string, titulo: string, pdf: string):
+    Promise<"compartilhado" | "aberto" | "baixado"> {
+  // O PDF é montado como texto de bytes — ver `montarPdf`. Aqui ele vira
+  // bytes de verdade; `& 0xff` porque um caractere fora do WinAnsi já virou
+  // "?" lá atrás e não pode virar dois bytes agora.
+  const bytes = new Uint8Array(pdf.length);
+  for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 0xff;
+  const arquivo = new File([bytes], nomeDoArquivo, { type: "application/pdf" });
+
+  const instalado = typeof window !== "undefined"
+    && (window.matchMedia?.("(display-mode: standalone)").matches
+      || (window.navigator as { standalone?: boolean }).standalone === true);
+
+  if (instalado && navigator.canShare?.({ files: [arquivo] })) {
+    try {
+      await navigator.share({ files: [arquivo], title: titulo });
+      return "compartilhado";
+    } catch (erro) {
+      // Fechar a folha de compartilhamento sem escolher nada é um "AbortError",
+      // e não um defeito: a pessoa desistiu. Não se cai para o download por
+      // causa disso, senão desistir de imprimir baixaria um arquivo.
+      if ((erro as { name?: string }).name === "AbortError") return "compartilhado";
+    }
+  }
+
+  const url = URL.createObjectURL(arquivo);
+  const aba = instalado ? null : window.open(url, "_blank");
+  if (!aba) {
+    const a = document.createElement("a");
+    a.href = url; a.download = nomeDoArquivo;
+    document.body.appendChild(a); a.click(); a.remove();
+    // Revogar antes de o download começar cancela o próprio download no Safari.
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    return "baixado";
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return "aberto";
 }
 
 /**
@@ -1914,7 +1978,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     const ondeEsteve = new Set(daEscala.map((p) => p.local_id ?? `fora:${(p.local_texto ?? "").trim()}`));
     const unico = ondeEsteve.size === 1 ? [...ondeEsteve][0] : null;
 
-    const { titulo, corpo } = corpoDaFolha({
+    const folha = {
       doGrupo: escopo === "grupo",
       mes, nomeMes: MESES[m - 1], ano, diasNoMes, primeiroDiaSemana,
       impressoEm: new Date(),
@@ -1927,7 +1991,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       //
       // As chaves são o texto que a folha escreve na pastilha — nome curto na
       // escala do grupo, nome do hospital na pessoal —, porque é por ele que
-      // `corpoDaFolha` procura a cor. O índice é o mesmo que gera as classes
+      // `escalaEmPdf` procura a cor. O índice é o mesmo que gera as classes
       // med-m1…m14 da tela, escolha fixada inclusive.
       cores: escopo === "grupo"
         // Tirado do MESMO mapa que pinta o calendário, e não recalculado aqui:
@@ -1951,13 +2015,27 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
         local: ondeFica(p, localPorId, ""),
         profissional: nomePorId.get(p.perfil_id) ?? "",
       })),
-    });
-    // Uma folha só, sempre. A escala é pregada na parede: a segunda página com
-    // os quatro últimos dias do mês não é pregada por ninguém, e o mês some
-    // pela metade.
-    if (!imprimirFolha(titulo, corpo, "landscape", true, emCores)) {
-      setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
-    }
+      emCores,
+    };
+    // O PDF É DESENHADO AQUI, e não pedido ao navegador.
+    //
+    // A escala é a única folha do sistema que precisa sair DEITADA e numa
+    // página só — e é justamente isso que o WebKit do iPhone não faz: ele não
+    // implementa o descritor `@page { size }`, então não há como pedir paisagem.
+    // Cinco tentativas de contorno saíram no papel como a TELA do aplicativo.
+    // Ver o cabeçalho de `lib/pdf.ts`, que tem a lista.
+    //
+    // As outras folhas continuam em `imprimirFolha`: são retrato, aceitam mais
+    // de uma página, e a impressão do navegador dá conta delas.
+    const nome = `${escopo === "grupo" ? "escala-da-equipe" : "meus-plantoes"}-${mes}.pdf`;
+    void entregarPdf(nome, tituloDaFolha(folha), escalaEmPdf(folha))
+      .then((como) => {
+        if (como === "baixado")
+          setAviso("A escala foi baixada em PDF. Abra o arquivo para imprimir — ele já está deitado, numa folha só.");
+        else if (como === "compartilhado")
+          setAviso("A escala saiu em PDF. Escolha \u201cImprimir\u201d na lista que abriu.");
+      })
+      .catch(() => setErro("Não deu para gerar o PDF da escala. Tente de novo."));
   }
 
   if (carregando) return <div className="emptyClinical">Carregando plantões…</div>;

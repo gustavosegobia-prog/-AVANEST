@@ -734,6 +734,17 @@ export function assinaturaDaFolha(impressoEm: Date): string {
  * abrir navegador, que é o único jeito de garantir que o dia 31 não escorregou
  * para a semana errada.
  */
+/**
+ * A escala do mês em HTML, para a impressão do navegador.
+ *
+ * NÃO É MAIS ELA QUE A TELA USA. Desde que a escala passou a sair em PDF
+ * desenhado — `lib/escala-pdf.ts` —, esta função só é exercitada pelos testes
+ * daqui. Ela fica porque as regras de leitura da folha estão escritas nestes
+ * testes (as três faixas, o corte do plantão de 24 horas, o feriado com nome,
+ * a cor vinda da tela) e porque é o caminho de volta se o PDF precisar ser
+ * revertido. Quem for mexer no que a folha MOSTRA tem de mexer em
+ * `escala-pdf.ts`; mexer só aqui não muda nada no papel.
+ */
 export function corpoDaFolha(opts: {
   doGrupo: boolean;
   mes: string;            // "2026-08"
