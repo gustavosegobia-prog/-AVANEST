@@ -3638,6 +3638,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .plantaoBarra{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding:15px 20px;border-bottom:1px solid var(--cor-borda)}
 .plantaoBarraAcoes{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+/* A dica da orientação. Discreta, e no lugar onde a decisão é tomada — um
+   aviso numa tela de ajuda não é lido por quem já tocou em Imprimir. */
+.plantaoDicaImpressao{flex-basis:100%;margin:8px 0 0;font-size:12px;
+  color:var(--cor-tinta-fraca);line-height:1.45}
+.plantaoDicaImpressao strong{color:var(--cor-tinta)}
 /* Colorida ou preto e branco, colado no botão de imprimir. Os dois segmentos
    dividem a mesma moldura: separados por um espaço eles pareceriam dois botões
    de ação — "faça isso" e "faça aquilo" —, e são um estado só com duas

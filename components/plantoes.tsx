@@ -340,6 +340,12 @@ html,body{margin:0!important;padding:0!important;background:#fff!important;
    e o elemento fixo desenha dentro dela. Cada um faz a metade que sabe fazer.
    Fora do #papel de propósito: um position:fixed dentro de um elemento com
    transform se ancora nele, e não na página. */
+/* A ORIENTAÇÃO É UM PEDIDO, E O SAFARI NÃO ATENDE. O WebKit — que é o motor
+   do Safari no Mac e de TODO navegador no iPhone — não implementa o descritor
+   "size" de @page: ele ignora landscape e imprime em pe. O Chrome e o
+   Firefox obedecem.
+   Não há como forçar por CSS ali; quem escolhe é a pessoa, no campo
+   Orientação da tela de impressão. Por isso a dica ao lado do botão. */
 @page{size:A4 ${orientacao};margin:${MARGEM_MM}mm}
 #folhaCorrida{width:100%;border-collapse:collapse}
 /* As regras de td/tr mais abaixo são das tabelas do DOCUMENTO. A moldura tem de
@@ -2092,6 +2098,17 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                   + Lançar plantão
                 </button>
               </div>
+              {/* A DICA DA ORIENTAÇÃO, e ela existe porque o CSS não resolve.
+                  O WebKit — Safari no Mac, e todo navegador no iPhone — ignora
+                  a orientação que a folha pede, e imprime em pé. Quem escolhe é
+                  a pessoa, no campo Orientação da tela de impressão.
+                  Sem esta linha, a descoberta custa uma folha de papel e a
+                  conclusão errada de que o sistema está quebrado. */}
+              <p className="plantaoDicaImpressao">
+                A escala sai deitada. Se a tela de impressão mostrar
+                {" "}<strong>Vertical</strong>, troque para <strong>Horizontal</strong> —
+                o iPhone e o Safari ignoram a orientação pedida pelo site.
+              </p>
             </div>
             {/* A LEGENDA, e ela só aparece no telefone.
                 No computador o nome está escrito dentro de cada etiqueta e uma
