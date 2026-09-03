@@ -180,6 +180,14 @@
   .avnNav nav{gap:6px}
   .avnNav nav a{padding:0 8px;font-size:13px}
 }
+/* O tamanho da marca no celular NÃO se decide aqui: mais abaixo, o bloco
+   "Barra inicial mais leve" redeclara .avnBrand e .avnMark sem media query
+   nenhuma, e ganha por vir depois. As medidas estreitas ficam lá, junto dele.
+   Aqui sobra só o que ninguém redeclara depois: o respiro dos links. */
+@media(max-width:389px){
+  .avnNav nav{gap:4px}
+  .avnNav nav a{padding:0 6px;font-size:12px}
+}
 
 /* Login fiel ao protótipo clínico do AVANEST */
 .avnLoginPage{min-height:100vh;background:#07131f;display:grid;place-items:center;padding:28px;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
@@ -198,10 +206,13 @@
 /* Serve para <a> e para <button>: o "Sair" precisa encerrar a sessão de
    verdade, e botão cru viria com fundo, borda e fonte do navegador,
    destoando dos dois links vizinhos. */
-.avnLoginCancel{align-self:center;color:var(--cor-tinta-fraca);margin-top:17px;font-size:14px;background:none;border:0;font-family:inherit;cursor:pointer}
+/* Mesma razão do rodapé: era um alvo de 21px de altura, no meio da tela de
+   entrar. O padding cresce a área do toque; a margem menor compensa, para o
+   espaço em volta continuar o mesmo. */
+.avnLoginCancel{align-self:center;color:var(--cor-tinta-fraca);margin-top:6px;font-size:14px;background:none;border:0;font-family:inherit;cursor:pointer;min-height:44px;padding:11px 16px}
 .avnLoginCancel:disabled{opacity:.6;cursor:wait}.avnLoginCancel:hover{color:var(--cor-marca)}
 .avnLoginContent .loginError{border:0;border-radius:8px;background:#fbe9e9;color:#bb3535;margin:2px 0 7px;font-size:13px}
-.avnLoginContent .loginSuccess{border:0;border-radius:8px;background:var(--cor-sucesso-suave);color:var(--cor-sucesso);margin:0 0 8px;padding:11px 13px;font-size:13px}.avnForgotPassword{justify-self:end;color:var(--cor-marca);font-size:13px;font-weight:750;margin:1px 0 7px}.avnForgotPassword:hover{text-decoration:underline}.recoveryConfirmation{background:var(--cor-sucesso-suave);color:var(--cor-sucesso);border:1px solid #adddcc;border-radius:12px;padding:18px}.recoveryConfirmation strong{display:block;font-size:18px}.recoveryConfirmation p{margin:7px 0 0!important;color:#356c5d!important;line-height:1.5}
+.avnLoginContent .loginSuccess{border:0;border-radius:8px;background:var(--cor-sucesso-suave);color:var(--cor-sucesso);margin:0 0 8px;padding:11px 13px;font-size:13px}.avnForgotPassword{justify-self:end;color:var(--cor-marca);font-size:13px;font-weight:750;margin:-9px 0 -3px;display:inline-flex;align-items:center;min-height:44px;padding:10px 0}.avnForgotPassword:hover{text-decoration:underline}.recoveryConfirmation{background:var(--cor-sucesso-suave);color:var(--cor-sucesso);border:1px solid #adddcc;border-radius:12px;padding:18px}.recoveryConfirmation strong{display:block;font-size:18px}.recoveryConfirmation p{margin:7px 0 0!important;color:#356c5d!important;line-height:1.5}
 @media(max-width:760px){.avnLoginPage{padding:16px}.avnLoginCard{grid-template-columns:1fr}.avnLoginIllustration{min-height:260px;padding:28px}.avnLoginMonitor{display:none}.avnLoginIllustration>p{margin-top:45px}.avnLoginContent{padding:34px 25px}}
 
 /* Painel clínico e recepção */
@@ -753,6 +764,37 @@ button:disabled{cursor:not-allowed}
   .avnMark{width:40px;height:40px}
   .avnBrand strong{font-size:18px}
   .avnHero{min-height:calc(100svh - 80px)}
+}
+/* --- A marca no telefone ------------------------------------------------
+   Estas medidas existiam lá em cima, perto do resto da barra, e não valiam
+   nada: o bloco logo acima redeclara .avnBrand e .avnMark fora de qualquer
+   media query, e o que vem depois ganha. O resultado é que o cabeçalho da
+   capa ocupava 381px FIXOS em qualquer largura — cabia em 390px por 9px de
+   sorte e estourava em 375px (iPhone SE, 12 mini, 13 mini) e em 320px. A
+   capa rolava de lado, que é a primeira coisa que o colega vê.
+
+   Medido depois de corrigir: abaixo de 389px a marca e os dois links somam
+   266px, e com os 20px de respiro das bordas o cabeçalho cabe a partir de
+   320px. De 390 a 430px somam 313px. Nenhuma largura rola de lado. */
+@media(max-width:520px){
+  .avnBrand{gap:10px}
+  .avnBrand strong{font-size:19px;letter-spacing:.1em}
+  .avnBrand small{font-size:8px;letter-spacing:.16em;margin-top:3px}
+  .avnMark{width:44px;height:44px}
+}
+@media(max-width:430px){
+  /* `nowrap` na linha de baixo: sem ele ela quebra em "GESTÃO EM /
+     ANESTESIOLOGIA" e o cabeçalho cresce. */
+  .avnBrand strong{font-size:18px}
+  .avnBrand small{font-size:7px;letter-spacing:.08em;white-space:nowrap}
+  .avnMark{width:36px;height:36px;border-radius:12px}
+}
+@media(max-width:389px){
+  .avnBrand{gap:8px}
+  .avnBrand strong{font-size:15px;letter-spacing:.06em}
+  .avnBrand small{font-size:6px;letter-spacing:.04em;margin-top:2px}
+  .avnMark{width:32px;height:32px;border-radius:10px}
+  .avnMark svg{width:18px;height:18px}
 }
 
 .medicationQuestionHint{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:12px 14px;border-radius:10px;background:#edf6fb;color:#46647c;font-size:14px}
@@ -1893,8 +1935,12 @@ button:disabled{cursor:not-allowed}
 .legalCorpo li{margin-bottom:6px}
 .legalCorpo a{color:var(--cor-marca);font-weight:650}
 .legalDestaque{padding:var(--esp-3) var(--esp-4);border-left:3px solid var(--cor-atencao);background:var(--cor-atencao-suave);border-radius:0 var(--raio-1) var(--raio-1) 0}
-.legalOutros{display:flex;gap:var(--esp-5);flex-wrap:wrap;margin-top:var(--esp-8);padding-top:var(--esp-5);border-top:1px solid var(--cor-borda)}
-.legalOutros a{color:var(--cor-marca);font-weight:700;text-decoration:none}
+.legalOutros{display:flex;gap:var(--esp-5);flex-wrap:wrap;margin-top:var(--esp-8);padding-top:calc(var(--esp-5) - 10px);margin-bottom:-10px;border-top:1px solid var(--cor-borda)}
+/* O padding vertical não é decoração: sem ele o link tem 22px de altura e o
+   dedo erra no telefone. Os 10px entram e saem no bloco acima para a folha
+   continuar com o mesmo respiro de antes. */
+.legalOutros a{color:var(--cor-marca);font-weight:700;text-decoration:none;
+  display:inline-flex;align-items:center;min-height:44px;padding:10px 0}
 
 /* O .avnSecondary é branco sobre o azul-marinho do topo. Na seção clara da
    página inicial ele ficava invisível: borda branca em fundo branco. */
@@ -2044,8 +2090,17 @@ button:disabled{cursor:not-allowed}
   .escCorpo{padding-bottom:18px}
 }
 
-.avnFooterLinks{display:flex;gap:var(--esp-5);flex-wrap:wrap}
-.avnFooterLinks a{color:inherit;opacity:.85;text-decoration:none}
+/* ALVO DE TOQUE, e não só texto. Medidos no iPhone, estes links tinham 17px de
+   altura — o dedo tem uns 9mm, e 17px é menos de metade disso. A pessoa erra,
+   acerta o vizinho, e volta.
+
+   O tamanho cresce por PADDING, e não por altura de linha: assim a área que
+   responde ao toque aumenta sem afastar as palavras umas das outras, e o
+   rodapé continua com a mesma aparência. O recuo negativo devolve o espaço
+   que o padding tomaria em volta do bloco. */
+.avnFooterLinks{display:flex;gap:var(--esp-5);flex-wrap:wrap;margin:-10px 0}
+.avnFooterLinks a{color:inherit;opacity:.85;text-decoration:none;
+  display:inline-flex;align-items:center;min-height:44px;padding:10px 0}
 .avnFooterLinks a:hover{opacity:1;text-decoration:underline}
 
 /* Aceite dos documentos: caixa e texto alinhados pelo topo, porque o texto
