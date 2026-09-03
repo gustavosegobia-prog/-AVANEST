@@ -2858,7 +2858,22 @@ function LancarPlantao({
     local_id: localSugerido || locais[0]?.id || "",
     local_texto: "",
     hora_inicio: "07:00", hora_fim: "19:00",
-    valor: "", perfil_id: ehAdmin ? para : perfilId, privado: false,
+    // O PADRÃO DEPENDE DE QUEM ESTÁ LANÇANDO, e essa é uma regra de dinheiro.
+    //
+    // Quem monta a escala começa em "para o grupo": lançar plantão do serviço é
+    // o trabalho dele, e é o caso de quase todo lançamento que ele faz.
+    //
+    // Quem NÃO monta a escala começa em "só meu". Um plantão que a pessoa
+    // lança para si mesma, sem ser quem organiza a escala, é trabalho dela — a
+    // sedação de sábado, o hospital de fora, a cobertura que ela pegou. Com o
+    // padrão anterior isso caía no Financeiro do GRUPO sem ninguém decidir
+    // nada, e virava conta a receber de um serviço que não prestou aquele
+    // atendimento. Aconteceu: um plantão de R$ 900 lançado pela própria pessoa,
+    // num hospital digitado à mão, apareceu nas cobranças em atraso do grupo.
+    //
+    // Ela continua podendo mandar para o grupo — é um toque no outro botão. A
+    // diferença é que agora é uma ESCOLHA, e não o que acontece sozinho.
+    valor: "", perfil_id: ehAdmin ? para : perfilId, privado: !ehAdmin,
   });
   // Privado é sempre para si: um turno que só a outra pessoa enxerga, lançado
   // por você, é agenda dela. Marcar a chave devolve o destino para você.
@@ -2930,11 +2945,19 @@ function LancarPlantao({
             <div className="plantaoFilaCampo span4">
               <span className="plantaoFilaRotulo" id="para-quem-rapido">Para quem</span>
               <div className="plantaoFilaNomes" role="group" aria-labelledby="para-quem-rapido">
+                {/* "Para mim" só faz sentido ao lado dos nomes dos colegas, que
+                    é o que quem monta a escala vê. Para quem não monta, os dois
+                    botões seriam "Para mim" e "Só meu" — indistinguíveis, e
+                    agora que o padrão mudou a diferença entre eles é o que
+                    decide se o plantão entra na conta do grupo. Então ali o
+                    rótulo diz o que o botão faz. */}
                 <button type="button"
                   className={`plantaoNomeChip${!form.privado && form.perfil_id === perfilId ? " escolhido" : ""}`}
                   aria-pressed={!form.privado && form.perfil_id === perfilId}
+                  title={ehAdmin ? undefined
+                    : "Entra na escala do grupo e na conta do serviço. Use quando o plantão é do grupo."}
                   onClick={() => setForm({ ...form, privado: false, perfil_id: perfilId })}>
-                  Para mim
+                  {ehAdmin ? "Para mim" : "Do grupo"}
                 </button>
                 {ehAdmin && colegas.filter((c) => c.id !== perfilId).map((c) => (
                   <button type="button" key={c.id} title={c.nome}
