@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { A4_DEITADA, conteudoDosDias, escalaEmPdf, recuoDoDia, tituloDaFolha } from "./escala-pdf.ts";
+import {
+  A4_DEITADA, conteudoDosDias, escalaEmPdf, larguraDasPastilhas, recuoDoDia, tituloDaFolha,
+} from "./escala-pdf.ts";
 
 const plantao = (data: string, inicio: string, fim: string, quem: string, local = "Santa Casa") => ({
   data, hora_inicio: inicio, hora_fim: fim, horas: 6, valor: 900,
@@ -146,4 +148,75 @@ test("o rótulo do turno não fica embaixo da pastilha", () => {
   // dia começarem todas na mesma coluna.
   assert.equal(recuoDoDia([{ letra: "M", pastilhas: [] }, { letra: "Noturno", pastilhas: [] }], 9),
     recuoDoDia([{ letra: "Noturno", pastilhas: [] }], 9));
+});
+
+/** Os nomes que a folha escreveu, na ordem em que foram desenhados. */
+const nomesEscritos = (pdf: string) =>
+  [...pdf.match(/stream\n([^]*?)\nendstream/)![1]
+    .matchAll(/Td \((.*)\) Tj/g)].map((m) => m[1]);
+
+test("UM TURNO NUNCA OCUPA DUAS LINHAS", () => {
+  // Foi o pedido, e é o que faz a grade valer: as três tarjas do dia ficam na
+  // mesma altura em todos os dias, e "quem faz as noites desta semana" se lê
+  // correndo o olho na horizontal.
+  const faixa = {
+    letra: "M",
+    pastilhas: [{ texto: "Matheus", cor: 1 }, { texto: "Luana", cor: 2 }, { texto: "Gerusa", cor: 3 }],
+  };
+  for (const util of [30, 55, 90, 140, 400]) {
+    const larguras = larguraDasPastilhas(faixa, util, 9);
+    assert.equal(larguras.length, 3, "toda pastilha tem de receber uma largura");
+    const total = larguras.reduce((a, b) => a + b, 0) + 9 * 0.3 * 2;
+    assert.ok(total <= util + 0.01, `estourou a linha em util=${util}: ${total}`);
+    for (const l of larguras) assert.ok(l > 0);
+  }
+});
+
+test("quem é estreito não encolhe junto com quem é largo", () => {
+  // "Ana" ao lado de "Maria Fernanda" não tem por que virar "An…": a repartição
+  // dá a cada um o que precisa e divide só a sobra.
+  const faixa = {
+    letra: "M",
+    pastilhas: [{ texto: "Ana", cor: 1 }, { texto: "Maria Fernanda Albuquerque", cor: 2 }],
+  };
+  const [ana, maria] = larguraDasPastilhas(faixa, 70, 9);
+  assert.equal(ana, larguraDasPastilhas({ letra: "M", pastilhas: [{ texto: "Ana", cor: 1 }] }, 999, 9)[0]);
+  assert.ok(maria > ana, "o nome longo fica com a sobra");
+});
+
+test("o nome que cabe na pastilha não é cortado", () => {
+  // A pastilha é feita sob medida para o nome — "largura do texto MAIS o
+  // recheio" —, e a conta voltava a "menos o recheio" para saber quanto de
+  // texto cabia. Em ponto flutuante essa ida e volta devolve 27.600000000000001
+  // onde entrou 27.6, e "Gerusa" saía "Geru…" com meia célula vazia ao lado.
+  const nomes = ["Gerusa", "Matheus", "Luana", "Thais"];
+  const pdf = escalaEmPdf(folha({
+    plantoes: nomes.map((quem, i) => plantao(`2026-09-${String(i + 1).padStart(2, "0")}`,
+      "07:00", "13:00", quem)),
+    apelidos: new Map(nomes.map((n) => [n, n])),
+    cores: new Map(nomes.map((n, i) => [n, i])),
+  }));
+  const escritos = nomesEscritos(pdf);
+  for (const nome of nomes)
+    assert.ok(escritos.includes(nome), `"${nome}" saiu cortado: ${escritos.join(", ")}`);
+  // O único texto que ainda pode levar reticências é o nome do feriado, que é
+  // longo por natureza e mora numa faixa estreita ao lado do número do dia.
+  const comReticencias = escritos.filter((t) => t.includes("\\205"));
+  assert.deepEqual(comReticencias.filter((t) => nomes.some((n) => t.startsWith(n.slice(0, 3)))), [],
+    `nome de gente cortado: ${comReticencias.join(", ")}`);
+});
+
+test("no preto e branco a pastilha é branca com contorno, e a legenda some", () => {
+  // Pintar as quatorze cores todas do mesmo cinza-escuro deixava Eder, Matheus,
+  // Lucas e Thais com pastilhas idênticas — pior do que não ter cor, porque
+  // parece informação e não é. Sem cor, quem separa é o nome.
+  const semCores = escalaEmPdf(folha({ emCores: false }));
+  const conteudo = semCores.match(/stream\n([^]*?)\nendstream/)![1];
+  for (const [, r, g, b] of conteudo.matchAll(/^([\d.]+) ([\d.]+) ([\d.]+) rg$/gm))
+    assert.ok(r === g && g === b, `sobrou cor no preto e branco: ${r} ${g} ${b}`);
+  // A legenda só liga cor a nome. Sem cor, ela não liga nada — e sai.
+  const escritos = nomesEscritos(semCores);
+  assert.equal(escritos.filter((t) => t === "Thais").length,
+    nomesEscritos(escalaEmPdf(folha({ emCores: true }))).filter((t) => t === "Thais").length - 1,
+    "a folha colorida tem o nome uma vez a mais: na legenda");
 });

@@ -194,14 +194,21 @@ export class Pagina {
     this.partes.push(`${numero(x)} ${numero(this.altura - y - altura)} ${numero(largura)} ${numero(altura)} re f`);
   }
 
-  /** Retângulo de cantos arredondados, cheio — a pastilha de nome. */
-  pastilha(x: number, y: number, largura: number, altura: number, raio: number, cor: Cor) {
+  /**
+   * Retângulo de cantos arredondados — a pastilha de nome e o cartão do dia.
+   *
+   * `borda` desenha o contorno de 1px que a tela usa nos cartões. Sem ele os
+   * dias vizinhos encostam num bloco só de branco e a grade some.
+   */
+  pastilha(x: number, y: number, largura: number, altura: number, raio: number,
+           cor: Cor, borda?: Cor, espessuraDaBorda = 0.7) {
     const r = Math.min(raio, largura / 2, altura / 2);
     const b = this.altura - y - altura, d = x + largura, t = b + altura;
     // O arco de Bézier com 0.5523 do raio é a aproximação padrão de um quarto
     // de círculo; a olho nu, num canto de 2pt, é indistinguível do círculo.
     const k = r * 0.5523;
     this.cor(cor);
+    if (borda) { this.cor(borda, true); this.partes.push(`${numero(espessuraDaBorda)} w`); }
     this.partes.push(
       `${numero(x + r)} ${numero(b)} m`,
       `${numero(d - r)} ${numero(b)} l`,
@@ -212,7 +219,8 @@ export class Pagina {
       `${numero(x + r - k)} ${numero(t)} ${numero(x)} ${numero(t - r + k)} ${numero(x)} ${numero(t - r)} c`,
       `${numero(x)} ${numero(b + r)} l`,
       `${numero(x)} ${numero(b + r - k)} ${numero(x + r - k)} ${numero(b)} ${numero(x + r)} ${numero(b)} c`,
-      "f");
+      // "B" pinta E contorna o mesmo caminho; "f" só pinta.
+      borda ? "B" : "f");
   }
 
   linha(x1: number, y1: number, x2: number, y2: number, cor: Cor, espessura = 0.5) {
