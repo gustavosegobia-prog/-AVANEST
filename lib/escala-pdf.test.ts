@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   A4_DEITADA, conteudoDosDias, escalaEmPdf, larguraDasPastilhas, recuoDoDia, tituloDaFolha,
 } from "./escala-pdf.ts";
+import { PALETA_DA_FOLHA } from "./escala.ts";
 
 const plantao = (data: string, inicio: string, fim: string, quem: string, local = "Santa Casa") => ({
   data, hora_inicio: inicio, hora_fim: fim, horas: 6, valor: 900,
@@ -122,17 +123,24 @@ test("nada é desenhado fora da folha", () => {
   }
 });
 
-test("o preto e branco não usa cor nenhuma nas pastilhas", () => {
+test("a folha colorida usa a paleta, e a de preto e branco não usa nenhuma", () => {
   // A impressora do centro cirúrgico raramente tem cor, e uma pastilha colorida
   // impressa em cinza claro com letra branca por cima não se lê.
+  //
+  // As cores saem de PALETA_DA_FOLHA, e não escritas à mão aqui: escritas à
+  // mão, este teste quebrava toda vez que a paleta mudasse — dizendo "defeito"
+  // onde houve uma decisão de desenho.
   const cores = new Map([["Thais", 1], ["Matheus", 2], ["Ana", 0]]);
   const emCores = escalaEmPdf(folha({ emCores: true, cores }));
   const semCores = escalaEmPdf(folha({ emCores: false, cores }));
-  // O verde e o roxo da paleta aparecem na folha colorida...
-  assert.ok(emCores.includes("0.05 0.48 0.36 rg"), "o verde da paleta tinha de estar aqui");
-  // ...e nenhum tom da paleta sobra na de preto e branco.
-  for (const cor of ["0.05 0.48 0.36", "0.48 0.29 0.74", "0.09 0.41 0.7"])
-    assert.ok(!semCores.includes(`${cor} rg`), `sobrou cor da paleta: ${cor}`);
+  const comoOPdfEscreve = (hex: string) => [1, 3, 5]
+    .map((i) => Math.round((parseInt(hex.slice(i, i + 2), 16) / 255) * 100) / 100)
+    .join(" ") + " rg";
+  for (const i of [0, 1, 2]) {
+    const cor = comoOPdfEscreve(PALETA_DA_FOLHA[i]);
+    assert.ok(emCores.includes(cor), `a folha colorida devia trazer m${i + 1}: ${cor}`);
+    assert.ok(!semCores.includes(cor), `sobrou cor da paleta no preto e branco: ${cor}`);
+  }
 });
 
 test("o rótulo do turno não fica embaixo da pastilha", () => {

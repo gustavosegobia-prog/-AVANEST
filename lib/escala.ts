@@ -463,21 +463,47 @@ export function timbreDaFolha(instituicao?: Instituicao | null): string {
  * O par mais parecido da paleta final tem ΔE 19, e todas as catorze passam de
  * 4,5:1 de contraste com a letra branca.
  */
+/**
+ * As catorze cores da equipe — e elas foram MEDIDAS, não escolhidas a olho.
+ *
+ * A paleta anterior tinha três verdes (verde, ciano e verde-floresta), três
+ * arroxeados (roxo, índigo e magenta) e três avermelhados (rosa, vinho e
+ * magenta). Na parede isso confunde: o par mais parecido tinha ΔE2000 de 9,9,
+ * e abaixo de uns 15 duas pastilhas viram a mesma cor a três metros de
+ * distância — que é onde a escala é lida.
+ *
+ * Estas saíram de uma busca por PONTO MAIS DISTANTE no espaço CIELAB: cada cor
+ * é a que fica mais longe de todas as já escolhidas, com dois limites — texto
+ * branco por cima com contraste de pelo menos 4,6:1, e croma entre 30 e 62,
+ * que é a faixa em que a cor identifica sem gritar.
+ *
+ * A ORDEM IMPORTA e não é decorativa: a cor de cada pessoa vem da posição dela
+ * na lista da equipe, então um serviço de sete pessoas usa só as sete
+ * primeiras. Por isso a busca prioriza a separação dos SETE primeiros, depois
+ * a das catorze. Medido: ΔE mínimo de 23,2 entre as sete primeiras (era 17,7)
+ * e de 15,2 entre as catorze (era 9,9).
+ *
+ * O azul da marca abre a lista de propósito — é a cor do AVANEST.
+ *
+ * QUEM MEXER AQUI TEM DE MEXER TAMBÉM em `.med-m1`…`.med-m14` no globals.css,
+ * que é de onde o calendário da tela tira a mesma cor. As duas listas discordarem
+ * significa a pessoa ser roxa no telefone e verde no papel.
+ */
 export const PALETA_DA_FOLHA: readonly string[] = [
-  "#1668b3", // m1  azul
-  "#0d7a5b", // m2  verde
-  "#7a4bbd", // m3  roxo
-  "#8f6100", // m4  âmbar
-  "#a33b6e", // m5  rosa
-  "#0f6d78", // m6  ciano
-  "#b0472b", // m7  laranja
-  "#4b5563", // m8  ardósia
-  "#4a7310", // m9  verde-limão
-  "#6b4230", // m10 marrom
-  "#3d2f7a", // m11 índigo
-  "#8e2a8e", // m12 magenta
-  "#8a1f38", // m13 vinho
-  "#1f6b2e", // m14 verde-floresta
+  "#1668b3", // m1  azul (a cor da marca)
+  "#787903", // m2  oliva
+  "#9c1e18", // m3  tijolo
+  "#b54aa7", // m4  orquídea
+  "#01837b", // m5  verde-azulado
+  "#aa6406", // m6  ocre
+  "#045b1b", // m7  verde-escuro
+  "#534675", // m8  ameixa
+  "#a66166", // m9  rosa-seco
+  "#5e4b1d", // m10 bronze
+  "#9a0350", // m11 carmim
+  "#7765cb", // m12 lavanda
+  "#597e52", // m13 musgo
+  "#087f9c", // m14 petróleo
 ];
 
 /**

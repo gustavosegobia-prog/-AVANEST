@@ -1,6 +1,6 @@
 import { feriadosDoMes } from "./feriados.ts";
 import {
-  PALETA_DA_FOLHA, TURNOS_DO_DIA, mesEmMaiusculas, nomeCurto,
+  PALETA_DA_FOLHA, SLOGAN, TURNOS_DO_DIA, mesEmMaiusculas, nomeCurto,
   ordemDentroDoDia, partesDoPlantao, turnosCobertos,
   type PlantaoImpresso,
 } from "./escala.ts";
@@ -459,8 +459,12 @@ export function escalaEmPdf(f: FolhaDaEscala): string {
   const azul = tema.emCores ? corDeHex("#0a84c8") : tema.tintaFraca;
   pagina.linha(MARGEM, yAss, MARGEM + 3.4, yAss - 7, azul, 1.3);
   pagina.linha(MARGEM + 3.4, yAss - 7, MARGEM + 6.8, yAss, azul, 1.3);
-  pagina.texto(MARGEM + 10, yAss - 7.5, "AVANEST",
+  // O nome E o slogan. A folha em HTML sempre escreveu os dois; no PDF eu tinha
+  // deixado só o nome, e o papel passou a dizer menos do que dizia antes.
+  pagina.texto(MARGEM + 10, yAss - 9.5, "AVANEST",
     { tamanho: 7.5, negrito: true, cor: tema.tintaFraca });
+  pagina.texto(MARGEM + 10, yAss - 2.5, SLOGAN,
+    { tamanho: 5.6, cor: tema.tintaFraca });
   pagina.texto(A4_DEITADA.largura - MARGEM, yAss - 7.5,
     `Impresso em ${f.impressoEm.toLocaleDateString("pt-BR")} às `
     + `${f.impressoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,

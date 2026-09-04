@@ -10,7 +10,7 @@ import {
   cssDasCores, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, emTurnos, filtroDeHospital, iniciais, montarICS,
-  ordemDentroDoDia,
+  mesEmMaiusculas, ordemDentroDoDia,
   nomeCurto, nomeDoPeriodo,
   turnosEscrito,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
@@ -2201,7 +2201,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
             <div className="plantaoBarra">
               <div className="plantaoMesNav">
                 <button className="outlineClinical" onClick={() => mudarMes(-1)} aria-label="Mês anterior">‹</button>
-                <strong>{MESES[m - 1]} {ano}</strong>
+                <strong>{mesEmMaiusculas(MESES[m - 1])} {ano}</strong>
                 <button className="outlineClinical" onClick={() => mudarMes(1)} aria-label="Próximo mês">›</button>
                 {/* Depois de folhear três meses para trás, voltar é um toque. */}
                 {mes !== mesAtual() && (
@@ -2474,7 +2474,9 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
 
           <section className="clinicalPanel">
             <div className="panelTitle">
-              <strong>{escopo === "grupo" ? `Escala da equipe em ${MESES[m - 1]}` : `Meus plantões em ${MESES[m - 1]}`}</strong>
+              <strong>{escopo === "grupo"
+                ? `Escala da equipe em ${mesEmMaiusculas(MESES[m - 1])}`
+                : `Meus plantões em ${mesEmMaiusculas(MESES[m - 1])}`}</strong>
             </div>
             {/* Os nomes das colunas, uma vez só no alto.
                 Antes cada linha carregava "Valor" e "Situação" em cima do
