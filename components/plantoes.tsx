@@ -1323,23 +1323,10 @@ export function Plantoes({
     void carregar();
   }
 
-  /**
-   * "Recebido": um toque, e a data do pagamento junto.
-   *
-   * A data entra aqui porque é aqui que ela existe — o dia em que se apertou o
-   * botão é o dia em que o dinheiro caiu. O seletor de situação nunca a
-   * gravava, e um plantão "pago" sem `pago_em` é um plantão que o fechamento do
-   * mês não consegue somar no mês certo.
-   *
-   * Volta atrás porque quem marca o mês inteiro de enfiada erra uma linha, e a
-   * correção não pode exigir abrir o seletor para desfazer um toque.
-   */
-  async function marcarRecebido(plantao: Plantao) {
-    const recebido = plantao.situacao === "pago";
-    await atualizar(plantao.id, recebido
-      ? { situacao: "realizado", pago_em: null }
-      : { situacao: "pago", pago_em: hoje() });
-  }
+  /* Aqui vivia `marcarRecebido`. A baixa saiu desta tela: quem responde "o
+     dinheiro entrou?" é o Meu financeiro, em Plantões por local, e lá ela é
+     por hospital e de vários de uma vez — que é como o pagamento chega. A
+     data do depósito é escolhida lá, e não presumida como sendo hoje. */
 
   async function pedirTroca(plantao: Plantao, destinatarioId: string, mensagem: string) {
     setErro(""); setAviso("");
@@ -2559,9 +2546,15 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                             ? p.pago_em ?? hoje()
                             : null,
                         })}>
+                          {/* Sem "Pago": este seletor diz o que aconteceu com o
+                              TURNO, e receber não é uma coisa que acontece com
+                              o turno. A baixa é em Meu financeiro > Plantões
+                              por local. Um plantão já pago continua aparecendo
+                              como tal — a opção fica para ele não sumir do
+                              seletor e virar "Escalado" sem ninguém pedir. */}
                           <option value="escalado">Escalado</option>
                           <option value="realizado">Realizado</option>
-                          <option value="pago">Pago</option>
+                          {p.situacao === "pago" && <option value="pago">Pago</option>}
                           {/* "Cancelado" some da escala igualzinho a apagar, e
                               some sem ninguém saber. Num plantão do grupo é a
                               mesma regra do Remover: sai passando para um
@@ -2611,31 +2604,29 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                             </span>
                           )
                         ) : (
-                          <button
-                            className={`outlineClinical plantaoRecebido${p.situacao === "pago" ? " sim" : ""}`}
-                            aria-pressed={p.situacao === "pago"}
-                            title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}
-                            onClick={() => void marcarRecebido(p)}>
-                            {p.situacao === "pago" ? "Recebido ✓" : "Recebido"}
-                          </button>
+                          /* O DINHEIRO SAIU DAQUI, e de propósito. A escala
+                             responde "isto aconteceu?"; quem responde "isto
+                             entrou?" é o Meu financeiro, que é onde se olha
+                             depósito. Estavam no mesmo lugar, e o resultado era
+                             procurar o pagamento na tela dos turnos.
+                             A baixa agora é em Meu financeiro > Plantões por
+                             local, e lá ela é por hospital e de vários de uma
+                             vez — que é como o dinheiro chega. */
+                          <span className="statusChip ok"
+                            title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}>
+                            CONFIRMADO
+                          </span>
                         )}
                       </span>
                     )}
-                    {/* No lugar onde ficava o Apagar: o que de fato se faz
-                        nesta lista todo mês. O plantão de fora é cobrado por
-                        quem o fez, e o que ele espera é o dinheiro cair —
-                        "recebido" é o único estado que muda depois do turno.
-                        Apagar mudou de lugar: arrasta-se a linha para a
+                    {/* Aqui havia o "Recebido" do plantão de fora. Saiu pelo
+                        mesmo motivo do outro: a baixa é em Meu financeiro. Fica
+                        o selo, que diz o estado sem oferecer a ação no lugar
+                        errado. Apagar continua arrastando a linha para a
                         esquerda. */}
-                    {meu && p.privado && (
+                    {meu && p.privado && p.situacao === "pago" && (
                       <span className="plantaoAcao">
-                        <button
-                          className={`outlineClinical plantaoRecebido${p.situacao === "pago" ? " sim" : ""}`}
-                          aria-pressed={p.situacao === "pago"}
-                          onClick={() => void marcarRecebido(p)}
-                        >
-                          {p.situacao === "pago" ? "Recebido ✓" : "Recebido"}
-                        </button>
+                        <span className="statusChip ok">RECEBIDO</span>
                       </span>
                     )}
                   </span>

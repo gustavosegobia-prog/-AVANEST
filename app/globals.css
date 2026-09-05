@@ -3481,6 +3481,59 @@ button:disabled{cursor:not-allowed}
   border-top:1px solid var(--cor-borda);font-size:12.5px;color:var(--cor-tinta-fraca)}
 .mfLocalRodape em{font-style:normal;font-weight:750;color:var(--cor-tinta);margin-left:5px;
   font-variant-numeric:tabular-nums}
+/* --- Dar baixa ----------------------------------------------------------
+   Marcar que o dinheiro caiu mora aqui, no Financeiro, e não na Escala: a
+   escala responde "isto aconteceu?" e o financeiro responde "isto entrou?".
+   Estavam juntos, e procurar um depósito na tela dos turnos é procurar no
+   lugar errado.
+
+   O botão fica no rodapé do cartão, ao lado do "A receber" — o número e a
+   ação que o zera na mesma linha, para não haver o que caçar. */
+.mfBaixaAbrir{margin-left:auto;border:0;background:none;font:inherit;font-size:12.5px;
+  font-weight:750;color:var(--cor-marca);cursor:pointer;
+  /* Alvo de toque: o texto tem 15px de altura, e o dedo tem uns 9mm. O recuo
+     negativo devolve o espaço que o recheio tomaria no rodapé. */
+  display:inline-flex;align-items:center;min-height:44px;padding:0 4px;margin-top:-14px;
+  margin-bottom:-14px;border-radius:8px}
+.mfBaixaAbrir:hover{background:var(--cor-superficie-suave)}
+.mfBaixaAbrir:focus-visible{outline:0;box-shadow:var(--foco)}
+.mfBaixa{margin-top:12px;padding-top:12px;border-top:1px solid var(--cor-borda)}
+.mfBaixaData{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:750;
+  color:var(--cor-tinta-fraca);margin-bottom:10px}
+.mfBaixaData input{height:40px;border:1px solid var(--cor-borda);border-radius:9px;
+  background:var(--cor-superficie);padding:0 10px;font:inherit;color:inherit}
+.mfBaixaLista{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.mfBaixaLista li{min-width:0}
+.mfBaixaLista label,.mfBaixaLista li>span:first-child{display:flex}
+/* A linha inteira é o alvo, e não só a caixinha: marcar treze plantões
+   acertando treze quadrados de 13px é um exercício de pontaria. */
+.mfBaixaLista label{align-items:center;gap:10px;padding:7px 8px;border-radius:9px;
+  cursor:pointer;min-height:44px}
+.mfBaixaLista label:hover{background:var(--cor-superficie-suave)}
+.mfBaixaLista input[type=checkbox]{flex:none;width:18px;height:18px;accent-color:var(--cor-marca)}
+.mfBaixaLista span{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.mfBaixaLista small{color:var(--cor-tinta-fraca);font-size:12px}
+.mfBaixaLista b{margin-left:auto;font-size:13.5px;font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.mfBaixaAcoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.mfBaixaAcoes button{flex:1 1 auto;min-height:44px}
+.mfBaixaDesfazer{margin-top:12px}
+.mfBaixaDesfazer summary{cursor:pointer;font-size:12.5px;font-weight:750;
+  color:var(--cor-tinta-fraca);min-height:44px;display:flex;align-items:center}
+.mfBaixaDesfazer li{display:flex;align-items:center;gap:10px;padding:7px 8px;
+  font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.mfBaixaVolta{border:0;background:none;font:inherit;font-size:12.5px;font-weight:750;
+  color:var(--cor-marca);cursor:pointer;min-height:44px;padding:0 6px;border-radius:8px}
+.mfBaixaVolta:hover{background:var(--cor-superficie-suave)}
+.mfBaixaVolta:disabled{opacity:.5;cursor:wait}
+@media(max-width:520px){
+  /* No telefone o botão de baixa vai para a linha de baixo inteiro: espremido
+     ao lado de três números ele fica com 60px, e o dedo erra. */
+  .mfBaixaAbrir{margin-left:0;flex-basis:100%;justify-content:center;
+    border:1px solid var(--cor-borda);margin-top:4px;margin-bottom:0}
+  .mfBaixaAcoes button{flex-basis:100%}
+}
+
 /* Dois cartões, e não cinco: são o fecho da conta, não o painel principal. */
 .mfSaldo{grid-template-columns:repeat(2,minmax(0,260px))}
 

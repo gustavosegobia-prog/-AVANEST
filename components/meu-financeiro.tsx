@@ -159,6 +159,62 @@ export function MeuFinanceiro({
     if (r.pronto) setDados(r.pronto);
   }
 
+  /* ── Dar baixa ────────────────────────────────────────────────────────────
+     Marcar que o dinheiro caiu é assunto de FINANCEIRO, e não de escala. A
+     escala responde "isto aconteceu?"; o financeiro responde "isto entrou?".
+     Estavam no mesmo lugar, e o resultado era procurar o pagamento na tela dos
+     turnos — que é onde ninguém vai quando quer conferir um depósito.
+
+     A baixa é POR LOCAL e de vários de uma vez porque é assim que o dinheiro
+     chega: o hospital deposita o mês inteiro numa transferência só, e marcar
+     treze plantões um a um seria treze toques para um evento só. */
+  const [baixaDe, setBaixaDe] = useState<string | null>(null);
+  const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  const [dataDaBaixa, setDataDaBaixa] = useState(() => new Date().toISOString().slice(0, 10));
+  const [salvandoBaixa, setSalvandoBaixa] = useState(false);
+
+  function abrirBaixa(nome: string, pendentes: PlantaoMeu[]) {
+    if (baixaDe === nome) { setBaixaDe(null); return; }
+    setBaixaDe(nome);
+    // Tudo marcado ao abrir: o caso comum é "caiu o mês inteiro deste
+    // hospital". Quem recebeu só uma parte desmarca o que não veio, que é o
+    // caso raro — e é mais rápido tirar duas do que marcar onze.
+    setMarcados(new Set(pendentes.map((p) => p.id)));
+    setDataDaBaixa(new Date().toISOString().slice(0, 10));
+  }
+
+  const alternarMarcado = (id: string) => setMarcados((antes) => {
+    const agora = new Set(antes);
+    if (agora.has(id)) agora.delete(id); else agora.add(id);
+    return agora;
+  });
+
+  /**
+   * Grava a baixa.
+   *
+   * `pago_em` vai junto com a situação, e não depois: um plantão "pago" sem a
+   * data é um plantão que o fechamento do mês não consegue somar no mês certo.
+   * A data é escolhida por quem dá a baixa — o dinheiro cai num dia e a pessoa
+   * marca noutro, e é o dia do depósito que vale.
+   */
+  async function darBaixa(ids: string[], recebido: boolean) {
+    if (!ids.length) return;
+    setSalvandoBaixa(true);
+    setErro("");
+    const { error } = await createClient().from("plantoes")
+      .update(recebido
+        ? { situacao: "pago", pago_em: dataDaBaixa, updated_at: new Date().toISOString() }
+        : { situacao: "realizado", pago_em: null, updated_at: new Date().toISOString() })
+      .in("id", ids);
+    setSalvandoBaixa(false);
+    // A mensagem do banco vem inteira: as recusas daqui são regras de escala, e
+    // traduzi-las para "não foi possível salvar" esconde o que fazer.
+    if (error) { setErro(error.message || "Não foi possível dar baixa."); return; }
+    setBaixaDe(null);
+    setMarcados(new Set());
+    await recarregar();
+  }
+
   const pronto = dados?.ano === ano;
   const plantoes = pronto ? dados.plantoes : [];
   const producao = pronto ? dados.producao : [];
@@ -221,13 +277,18 @@ export function MeuFinanceiro({
   const locais = Object.values(
     plantoesDoMes.reduce<Record<string, {
       nome: string; quantos: number; horas: number; valor: number; recebido: number;
+      // Os plantões inteiros, e não só os totais: é deles que a baixa precisa —
+      // a pessoa escolhe quais entraram, e não só quanto.
+      pendentes: PlantaoMeu[]; pagos: PlantaoMeu[];
     }>>((acc, p) => {
       const nome = ondeFoi(p);
-      const linha = acc[nome] ?? { nome, quantos: 0, horas: 0, valor: 0, recebido: 0 };
+      const linha = acc[nome] ?? { nome, quantos: 0, horas: 0, valor: 0, recebido: 0,
+                                   pendentes: [], pagos: [] };
       linha.quantos += 1;
       linha.horas += Number(p.horas || 0);
       linha.valor += Number(p.valor || 0);
-      if (p.situacao === "pago") linha.recebido += Number(p.valor || 0);
+      if (p.situacao === "pago") { linha.recebido += Number(p.valor || 0); linha.pagos.push(p); }
+      else linha.pendentes.push(p);
       acc[nome] = linha;
       return acc;
     }, {}),
@@ -360,7 +421,81 @@ export function MeuFinanceiro({
                 <span>Recebido <em>{dinheiro(l.recebido)}</em></span>
                 <span>A receber <em>{dinheiro(Math.max(0, l.valor - l.recebido))}</em></span>
                 {l.horas > 0 && <span>{dinheiro(l.valor / l.horas)}/h</span>}
+                {l.pendentes.length > 0 && (
+                  <button type="button" className="mfBaixaAbrir"
+                    aria-expanded={baixaDe === l.nome}
+                    onClick={() => abrirBaixa(l.nome, l.pendentes)}>
+                    {baixaDe === l.nome ? "Fechar" : "Dar baixa"}
+                  </button>
+                )}
               </div>
+
+              {baixaDe === l.nome && (
+                <div className="mfBaixa">
+                  {/* A data primeiro: ela vale para todos os que forem marcados,
+                      e descobrir isso depois de escolher os plantões faria
+                      voltar. O dinheiro cai num dia e a pessoa marca noutro —
+                      é o dia do depósito que o fechamento do mês usa. */}
+                  <label className="mfBaixaData">
+                    <span>Caiu em</span>
+                    <input type="date" value={dataDaBaixa}
+                      onChange={(e) => setDataDaBaixa(e.target.value)} />
+                  </label>
+
+                  <ul className="mfBaixaLista">
+                    {l.pendentes.map((p) => (
+                      <li key={p.id}>
+                        <label>
+                          <input type="checkbox" checked={marcados.has(p.id)}
+                            onChange={() => alternarMarcado(p.id)} />
+                          <span>{dataBR(p.data)}</span>
+                          <small>{horasBR(Number(p.horas || 0))}</small>
+                          <b>{dinheiro(Number(p.valor || 0))}</b>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mfBaixaAcoes">
+                    <button type="button" className="outlineClinical"
+                      onClick={() => setMarcados(marcados.size === l.pendentes.length
+                        ? new Set()
+                        : new Set(l.pendentes.map((p) => p.id)))}>
+                      {marcados.size === l.pendentes.length ? "Desmarcar todos" : "Marcar todos"}
+                    </button>
+                    <button type="button" className="primaryClinical"
+                      disabled={salvandoBaixa || marcados.size === 0}
+                      onClick={() => void darBaixa([...marcados], true)}>
+                      {salvandoBaixa ? "Salvando…" : `Recebi ${dinheiro(
+                        l.pendentes.filter((p) => marcados.has(p.id))
+                          .reduce((s, p) => s + Number(p.valor || 0), 0))}`}
+                    </button>
+                  </div>
+
+                  {/* Desfazer fica ao lado do que foi feito, e não escondido:
+                      quem marca o mês de enfiada erra uma linha, e a correção
+                      não pode exigir procurar onde desmarcar. */}
+                  {l.pagos.length > 0 && (
+                    <details className="mfBaixaDesfazer">
+                      <summary>{l.pagos.length === 1
+                        ? "1 plantão já recebido"
+                        : `${l.pagos.length} plantões já recebidos`}</summary>
+                      <ul className="mfBaixaLista">
+                        {l.pagos.map((p) => (
+                          <li key={p.id}>
+                            <span>{dataBR(p.data)}</span>
+                            <small>{horasBR(Number(p.horas || 0))}</small>
+                            <b>{dinheiro(Number(p.valor || 0))}</b>
+                            <button type="button" className="mfBaixaVolta"
+                              disabled={salvandoBaixa}
+                              onClick={() => void darBaixa([p.id], false)}>Desfazer</button>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </section>
@@ -378,8 +513,8 @@ export function MeuFinanceiro({
       {total.aReceber > 0 && <p className="financeNota aReceber">
         <Icone nome="ampulheta" tamanho={15} />
         <span><strong>{dinheiro(total.aReceber)}</strong> já é seu: o trabalho está
-          feito, o pagamento ainda não entrou. Quando cair, marque como recebido —
-          plantão em <b>Minha escala</b>, anestesia em <b>Produção</b>.</span>
+          feito, o pagamento ainda não entrou. Quando cair, dê baixa aqui mesmo —
+          plantão em <b>Plantões por local</b>, logo acima; anestesia em <b>Produção</b>.</span>
       </p>}
 
       {/* As despesas ficam depois: o plantonista abre esta tela para ver quanto
