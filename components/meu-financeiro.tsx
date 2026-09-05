@@ -424,7 +424,7 @@ export function MeuFinanceiro({
                 ...FAIXAS.map((f) => f.valor(m) > 0
                   ? `${f.rotulo}: ${dinheiro(f.valor(m))}` : "").filter(Boolean),
               ].join(", ")}
-              title={`${MES_LONGO[m.indice]}: ${dinheiro(m.valor + m.previsto)}`}
+
               onClick={() => onEscolherMes(m.competencia)}
             >
               {/* De cima para baixo: o que ainda vai acontecer, o que falta
@@ -441,16 +441,37 @@ export function MeuFinanceiro({
                     O `title` no <i> vence o do <button>: o navegador mostra o
                     do elemento mais interno sob o ponteiro. Fora da faixa, sobra
                     o do mês inteiro, que continua sendo a resposta certa ali. */}
-                {FAIXAS.map((f) => {
-                  const valor = f.valor(m);
-                  return <i key={f.classe} className={f.classe}
-                    style={{ height: `${(valor / teto) * 100}%` }}
-                    title={valor > 0
-                      ? `${f.rotulo} em ${MES_LONGO[m.indice]}: ${dinheiro(valor)}`
-                      : undefined} />;
-                })}
+                {FAIXAS.map((f) => (
+                  <i key={f.classe} className={f.classe}
+                    style={{ height: `${(f.valor(m) / teto) * 100}%` }} />
+                ))}
               </span>
               <span className="mfMes">{MES_CURTO[m.indice]}</span>
+
+              {/* O BALÃO É NOSSO, e não o do navegador.
+                  Com o `title` nativo, cada faixa dizia o próprio valor — e
+                  numa coluna onde o recebido são seis pixels, acertar o mouse
+                  neles é exercício de pontaria. Aqui a coluna INTEIRA é o alvo,
+                  e o balão traz as quatro linhas de uma vez, que também é como
+                  se lê melhor: o mês é a soma das partes, e vê-las juntas
+                  responde "quanto caiu contra quanto empacou" sem passear com
+                  o mouse.
+
+                  `aria-hidden` porque o mesmo conteúdo já está no `aria-label`
+                  do botão. Sem isto, o leitor de tela anunciaria tudo duas
+                  vezes. */}
+              <span className="mfBalao" aria-hidden="true">
+                <b>{MES_LONGO[m.indice]}</b>
+                <strong>{m.valor + m.previsto > 0
+                  ? dinheiro(m.valor + m.previsto) : "sem lançamento"}</strong>
+                {[...FAIXAS].reverse().filter((f) => f.valor(m) > 0).map((f) => (
+                  <span key={f.classe}>
+                    <i className={f.classe} />
+                    {f.rotulo}
+                    <em>{dinheiro(f.valor(m))}</em>
+                  </span>
+                ))}
+              </span>
             </button>
           ))}
         </div>

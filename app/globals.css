@@ -3404,6 +3404,11 @@ button:disabled{cursor:not-allowed}
    primeira coisa a ler quando o botão não fez o que se esperava. */
 .plantaoRecusa{margin:0 0 14px}
 
+/* `overflow` fica no padrão de propósito: o balão do mês sobe para fora da
+   moldura do gráfico, e recortar o cartão o decapitaria. Se algum dia este
+   <section> ganhar a classe `.clinicalPanel`, que traz `overflow:hidden`, o
+   balão sai sem o nome do mês e sem a primeira linha — foi o que aconteceu no
+   harness em que ele foi conferido. */
 .mfResumo{position:relative}
 .mfResumoTopo{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 /* O olho nasceu para o canto de um cartão de métrica, e por isso é absoluto.
@@ -3493,6 +3498,40 @@ button:disabled{cursor:not-allowed}
 /* O mês aberto ganha a marca no rótulo, e não só na barra: com doze colunas
    estreitas, achar a barra destacada leva mais tempo que ler o rótulo. */
 .mfColuna.atual .mfMes{background:var(--cor-marca);color:#fff}
+
+/* --- O balão do mês ------------------------------------------------------
+   Substitui o `title` do navegador. Com o nativo, cada faixa dizia o próprio
+   valor — e numa coluna onde o recebido são seis pixels, acertar o mouse neles
+   é exercício de pontaria. Aqui a COLUNA INTEIRA é o alvo e o balão traz as
+   quatro linhas de uma vez, que também é como se lê melhor: ver as partes
+   juntas responde "quanto caiu contra quanto empacou" sem passear com o mouse.
+
+   SÓ ONDE HÁ PONTEIRO. No telefone não existe passar o mouse, e `:hover` em
+   toque gruda depois do tapa — o balão ficaria aberto por cima do gráfico até
+   a pessoa tocar noutro lugar. Lá o toque troca o mês, que é o que ela quer. */
+@media (hover:hover) {
+  .mfBalao{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+    z-index:5;display:none;width:max-content;max-width:250px;
+    flex-direction:column;gap:3px;padding:10px 12px;text-align:left;
+    border:1px solid var(--cor-borda);border-radius:var(--raio-2);
+    background:var(--cor-superficie);box-shadow:0 10px 30px rgba(4,22,38,.16);
+    font-size:12.5px;color:var(--cor-tinta);pointer-events:none}
+  .mfColuna:hover .mfBalao,.mfColuna:focus-visible .mfBalao{display:flex}
+  /* Nas duas primeiras e nas duas últimas colunas o balão passaria da borda do
+     cartão. Ancorado no canto, cabe — e sem JavaScript para medir. */
+  .mfGrafico .mfColuna:nth-child(-n+2) .mfBalao{left:0;transform:none}
+  .mfGrafico .mfColuna:nth-child(n+11) .mfBalao{left:auto;right:0;transform:none}
+  .mfBalao b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--cor-tinta-fraca)}
+  .mfBalao strong{font-size:15px;font-variant-numeric:tabular-nums;margin-bottom:3px}
+  /* Cada linha é cor, nome e valor — o valor encostado à direita, para os
+     quatro se compararem na vertical sem o olho procurar onde cada um acaba. */
+  .mfBalao>span{display:flex;align-items:center;gap:7px;white-space:nowrap;
+    color:var(--cor-tinta-fraca)}
+  .mfBalao i{flex:none;width:9px;height:9px;border-radius:3px}
+  .mfBalao em{margin-left:auto;font-style:normal;font-weight:750;
+    color:var(--cor-tinta);font-variant-numeric:tabular-nums}
+}
 .mfLegenda{display:flex;gap:16px;margin:12px 0 0;font-size:12.5px;
   color:var(--cor-tinta-fraca)}
 .mfLegenda span{display:inline-flex;align-items:center;gap:6px}

@@ -76,9 +76,19 @@ test("uma lista só desenha as barras, o balão e a legenda", () => {
   for (const classe of classes)
     assert.ok(!new RegExp(`className="${classe}"`).test(foraDaLista),
       `${classe} está escrita à mão fora de FAIXAS e vai divergir`);
-  // E o balão de cada faixa tem de trazer o valor dela.
-  assert.match(financeiro, /title=\{valor > 0[^]*?f\.rotulo[^]*?dinheiro\(valor\)/,
-    "a faixa não diz mais quanto vale ao passar o mouse");
+  // O BALÃO É NOSSO, e não o `title` do navegador. Com o nativo era preciso
+  // acertar o mouse numa faixa que pode ter seis pixels de altura; aqui a
+  // coluna inteira é o alvo e as quatro linhas aparecem juntas.
+  assert.ok(financeiro.includes('className="mfBalao"'), "sumiu o balão do mês");
+  assert.ok(!/title=\{/.test(financeiro),
+    "voltou um `title` nativo — ele abre em cima do balão e diz outra coisa");
+  // O balão repete o que o `aria-label` do botão já anuncia; sem esconder, o
+  // leitor de tela leria tudo duas vezes.
+  assert.match(financeiro, /className="mfBalao" aria-hidden="true"/,
+    "o balão precisa ser invisível para o leitor de tela");
+  // E ele sai da mesma lista, na ordem em que a coluna se lê: de baixo para cima.
+  assert.match(financeiro, /\[\.\.\.FAIXAS\]\.reverse\(\)\.filter\(\(f\) => f\.valor\(m\) > 0\)/,
+    "o balão precisa listar só as faixas que existem no mês");
 });
 
 test("o vermelho é reservado para o que está de fato parado", () => {
