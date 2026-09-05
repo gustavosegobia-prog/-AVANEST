@@ -1567,6 +1567,20 @@ button:disabled{cursor:not-allowed}
 .paymentConfirma>div{display:flex;gap:var(--esp-2);flex:0 0 auto}
 .paymentExcluirConfirma{height:var(--alt-botao-compacto);border:0;border-radius:var(--raio-1);background:var(--cor-perigo);color:#fff;font:inherit;font-weight:700;padding:0 var(--esp-4);cursor:pointer;white-space:nowrap}
 .paymentExcluirConfirma:disabled{opacity:.55;cursor:not-allowed}
+/* UM PAGAMENTO POR LINHA, cada um com o próprio botão. Um lançamento pode ter
+   sido pago em duas parcelas, e um botão só chamado "Estornar" não diria qual
+   das duas ia embora. Valor, forma e data são o que distingue uma da outra. */
+.paymentEstornoLista{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:var(--esp-2);margin-top:var(--esp-1)}
+.paymentEstornoLista>span{display:inline-flex;align-items:center;gap:var(--esp-2);
+  padding:6px 6px 6px var(--esp-3);border:1px solid var(--cor-borda);border-radius:var(--raio-1);
+  background:var(--cor-superficie)}
+.paymentEstornoLista b{font-size:13.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.paymentEstornoLista small{color:var(--cor-tinta-fraca);font-size:12px;white-space:nowrap}
+@media(max-width:640px){
+  /* No telefone cada pagamento ocupa a linha inteira: espremidos lado a lado,
+     o botão de estornar fica com uns 70px e o dedo erra o vizinho. */
+  .paymentEstornoLista>span{flex:1 1 100%;justify-content:space-between}
+}
 
 @media(max-width:1100px){
   .paymentRow,.paymentRow.comExcluir{grid-template-columns:minmax(0,1fr) auto auto;row-gap:var(--esp-2)}

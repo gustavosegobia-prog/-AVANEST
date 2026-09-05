@@ -1524,6 +1524,23 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
    * com paciente, convênio e valor antes de apagar.
    */
   const podeExcluirLancamento=["admin","owner"].includes(perfil.role);
+  /**
+   * Desfaz um pagamento — e existe porque sem ela havia um beco.
+   *
+   * `excluir_lancamento_financeiro` recusa lançamento com pagamento registrado
+   * e manda "estorne o pagamento antes de excluir". Só que o estorno não
+   * existia em lugar nenhum: nem função, nem botão. A pessoa clicava em
+   * Excluir, lia a recusa, e o caminho que ela apontava não tinha porta.
+   */
+  async function estornarPagamento(pagamentoId:string,item:Financeiro) {
+    setBusy(item.id); setMessage("");
+    const {error}=await createClient().rpc("estornar_pagamento_financeiro",{p_pagamento_id:pagamentoId});
+    setBusy("");
+    if(error){setMessage(`Não foi possível estornar: ${error.message}`);return}
+    setMessage("Pagamento estornado. O lançamento voltou ao saldo anterior.");
+    onRefresh();
+  }
+
   async function excluirLancamento(id:string) {
     setBusy(id); setMessage("");
     const {error}=await createClient().rpc("excluir_lancamento_financeiro",{p_atendimento_id:id});
@@ -1671,6 +1688,10 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         })
         .map(item=>{
         const patient=patientMap.get(item.patient_id);
+        // Os pagamentos DESTA linha. É o que decide se o botão é "Excluir" ou
+        // "Estornar": o banco recusa apagar lançamento com dinheiro registrado,
+        // e a tela não pode oferecer o que a regra recusa.
+        const pagamentosDoItem=pagamentos.filter(pg=>pg.atendimento_id===item.id);
         const balance=Math.max(0,Number(item.valor)-Number(item.recebido));
         const quitado=balance<=0;
         const parcial=!quitado&&Number(item.recebido)>0;
@@ -1713,13 +1734,24 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
               e a linha continua ocupando o fechamento do mês sem dizer nada.
               A confirmação abre embaixo, em linha inteira, porque apagar aqui
               não tem volta — e o texto repete o nome e o valor para que não se
-              confirme a linha errada. */}
-          {podeExcluirLancamento&&<button type="button" className="paymentExcluir"
+              confirme a linha errada.
+
+              COM PAGAMENTO REGISTRADO, O BOTÃO NÃO É "EXCLUIR". O banco recusa
+              apagar dinheiro que entrou, e oferecer o botão assim mesmo era
+              prometer o que não se cumpre: a pessoa confirmava, lia a recusa, e
+              tentava de novo achando que tinha errado. Ali o que existe é
+              estornar — e é isso que aparece. */}
+          {podeExcluirLancamento&&pagamentosDoItem.length===0&&<button type="button" className="paymentExcluir"
             disabled={busy===item.id}
             onClick={()=>setLancamentoAExcluir(lancamentoAExcluir===item.id?"":item.id)}
             aria-expanded={lancamentoAExcluir===item.id}
             title="Apaga este lançamento do Financeiro">Excluir</button>}
-          {podeExcluirLancamento&&lancamentoAExcluir===item.id&&<div className="paymentConfirma">
+          {podeExcluirLancamento&&pagamentosDoItem.length>0&&<button type="button" className="paymentExcluir"
+            disabled={busy===item.id}
+            onClick={()=>setLancamentoAExcluir(lancamentoAExcluir===item.id?"":item.id)}
+            aria-expanded={lancamentoAExcluir===item.id}
+            title="Desfaz o pagamento registrado neste lançamento">Estornar</button>}
+          {podeExcluirLancamento&&lancamentoAExcluir===item.id&&pagamentosDoItem.length===0&&<div className="paymentConfirma">
             <p><strong>Excluir o lançamento de {patient?.nome||"paciente"}</strong> — {item.convenio}, {money(item.valor)}. Ele sai do fechamento do mês e não volta.</p>
             <div>
               <button type="button" className="outlineClinical" onClick={()=>setLancamentoAExcluir("")}>Manter</button>
@@ -1727,6 +1759,26 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
                 onClick={()=>void excluirLancamento(item.id)}>
                 {busy===item.id?"Excluindo...":"Excluir de vez"}
               </button>
+            </div>
+          </div>}
+          {/* Um pagamento por linha, com valor, forma e data: quando há mais de
+              um, estornar "o pagamento" não diria qual. E o texto diz o que
+              acontece depois — o lançamento volta a ficar em aberto, e aí sim
+              pode ser apagado se for o caso. */}
+          {podeExcluirLancamento&&lancamentoAExcluir===item.id&&pagamentosDoItem.length>0&&<div className="paymentConfirma">
+            <p><strong>Estornar pagamento de {patient?.nome||"paciente"}</strong> — {item.convenio}. O lançamento volta a ficar em aberto e sai da conta do recebido; depois disso ele pode ser excluído.</p>
+            <div className="paymentEstornoLista">
+              {pagamentosDoItem.map(pg=><span key={pg.id}>
+                <b>{money(pg.valor)}</b>
+                <small>{pg.metodo}{pg.paid_at?` · ${brDate(pg.paid_at.slice(0,10))}`:""}</small>
+                <button type="button" className="paymentExcluirConfirma" disabled={busy===item.id}
+                  onClick={()=>void estornarPagamento(pg.id,item)}>
+                  {busy===item.id?"Estornando...":"Estornar"}
+                </button>
+              </span>)}
+            </div>
+            <div>
+              <button type="button" className="outlineClinical" onClick={()=>setLancamentoAExcluir("")}>Manter</button>
             </div>
           </div>}
         </div>;
