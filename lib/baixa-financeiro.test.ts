@@ -44,14 +44,46 @@ test("a baixa está no Meu financeiro, e grava a data junto", () => {
     "desfazer a baixa tem de limpar pago_em");
 });
 
-test("a tela manda a pessoa para onde a ação de fato está", () => {
-  // O aviso do "a receber" apontava para a Escala. Um aviso que aponta para o
-  // lugar errado é pior do que nenhum: manda procurar e não achar.
+test("o gráfico do ano fala por cor, e não por uma faixa de texto", () => {
+  // Havia um aviso explicando o que era o "a receber" e onde dar baixa. Saiu:
+  // o gráfico diz a mesma coisa em cor, e a ação está a um palmo dali. Faixa de
+  // texto para explicar o que já se lê de relance é ruído entre a pessoa e o
+  // que ela veio fazer.
   const financeiro = ler("components/meu-financeiro.tsx");
-  const aviso = financeiro.match(/já é seu: o trabalho está[^]*?<\/p>}/);
-  assert.ok(aviso, "não achei o aviso do que há a receber");
-  assert.ok(!/Minha escala/.test(aviso![0]),
-    "o aviso ainda manda dar baixa na escala");
-  assert.ok(/Plantões por local/.test(aviso![0]),
-    "o aviso precisa dizer onde a baixa está");
+  assert.ok(!/financeNota aReceber/.test(financeiro),
+    "a faixa de aviso do a-receber voltou");
+  // As quatro faixas do gráfico, e a legenda que as nomeia.
+  for (const faixa of ["mfRecebido", "mfAReceber", "mfAtrasado", "mfPrevisto"])
+    assert.ok(financeiro.includes(faixa), `faltou a faixa ${faixa} no gráfico`);
+});
+
+test("o vermelho é reservado para o que está de fato parado", () => {
+  // Plantão de semana que vem não é problema nenhum. Pintar o futuro de
+  // vermelho faria todo mês adiante parecer atrasado, e um alarme que toca
+  // sempre é um alarme que ninguém olha.
+  const css = ler("app/globals.css");
+  const previsto = css.match(/\.mfPrevisto\{([^}]*)\}/);
+  assert.ok(previsto, "não achei a faixa do previsto");
+  assert.ok(!/perigo|atencao/.test(previsto![1]),
+    `o previsto está pintado de alerta: ${previsto![1]}`);
+  assert.match(css, /\.mfAtrasado\{background:var\(--cor-perigo\)\}/);
+  assert.match(css, /\.mfRecebido\{background:var\(--cor-sucesso\)\}/);
+});
+
+test("no tema escuro os números do resumo continuam coloridos", () => {
+  // ISTO JÁ ESTAVA QUEBRADO, e não dava para ver compilando: lá em cima do
+  // globals.css existe `.clinicalDark b{color:...}`, com DUAS partes de
+  // seletor. Uma classe sozinha como `.mfVerde` tem uma só — e especificidade
+  // maior vence posição no arquivo, então não adiantava a regra da cor vir
+  // depois. No escuro, verde, âmbar, vermelho e cinza saíam todos brancos.
+  const css = ler("app/globals.css");
+  assert.match(css, /\.clinicalDark b\{color:var\(--cor-tinta\)\}|\.clinicalDark b\{/,
+    "sumiu a regra que causa o conflito — reveja este teste");
+  for (const [classe, token] of [
+    ["mfVerde", "--cor-sucesso"], ["mfAmbar", "--cor-atencao"],
+    ["mfVermelho", "--cor-perigo"], ["mfCinza", "--cor-tinta-fraca"],
+  ]) {
+    assert.ok(css.includes(`.clinicalDark .${classe}{color:var(${token})}`),
+      `no escuro, .${classe} volta a perder a cor para .clinicalDark b`);
+  }
 });

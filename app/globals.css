@@ -3418,6 +3418,20 @@ button:disabled{cursor:not-allowed}
 .mfTotal b{font-size:clamp(26px,4vw,34px)}
 .mfVerde{color:var(--cor-sucesso)}
 .mfAmbar{color:var(--cor-atencao)}
+/* NO ESCURO ESTES NÚMEROS PERDIAM A COR e saíam todos brancos, e o motivo é a
+   armadilha de sempre: lá em cima existe `.clinicalDark b{color:...}`, que tem
+   DUAS partes de seletor contra uma destas classes. Especificidade maior vence
+   posição no arquivo, então não adianta estas regras virem depois — elas
+   precisam ter o mesmo peso. Com `.clinicalDark` na frente, têm.
+   Medido: sem isto, verde, âmbar, vermelho e cinza computavam todos
+   rgb(230,240,247), que é a tinta comum do tema. */
+.clinicalDark .mfVerde{color:var(--cor-sucesso)}
+.clinicalDark .mfAmbar{color:var(--cor-atencao)}
+.clinicalDark .mfVermelho{color:var(--cor-perigo)}
+.clinicalDark .mfCinza{color:var(--cor-tinta-fraca)}
+/* No tema escuro o âmbar já vem claro do token; clareá-lo de novo contra o
+   branco o deixaria quase branco em cima de um fundo escuro. */
+.clinicalDark .mfAReceber{background:var(--cor-atencao)}
 .mfHora{margin:9px 0 0;color:var(--cor-tinta-fraca);font-size:13.5px}
 
 /* Doze colunas de altura proporcional. Feito de divs, e não de SVG, pelo mesmo
@@ -3446,14 +3460,20 @@ button:disabled{cursor:not-allowed}
 .mfBarra{flex:1;width:100%;max-width:34px;display:flex;flex-direction:column;
   justify-content:flex-end;border-radius:6px;overflow:hidden;transition:filter .12s}
 .mfBarra i{display:block;width:100%}
-.mfRecebido{background:var(--graf-1)}
-/* O que falta receber vem por cima, na mesma cor esmaecida: é a mesma coisa em
-   outro estado, e não outra categoria — cor nova aqui sugeriria outra origem. */
-.mfAReceber{background:color-mix(in srgb,var(--graf-1) 34%,transparent)}
-/* O que ainda vai acontecer é o mais apagado dos três, e no topo da coluna: é
-   a parte do mês que ainda pode mudar, e o desenho diz isso sem legenda. */
-.mfPrevisto{background:color-mix(in srgb,var(--graf-1) 14%,transparent)}
+/* CORES DE SEMÁFORO, e não tons de azul.
+   O azul esmaecido dizia "isto aqui importa menos", que é o contrário da
+   verdade: o que falta receber é justamente a parte que exige alguma coisa de
+   alguém. Verde caiu, âmbar falta cair, vermelho está parado há tempo demais.
+   As três saem dos tokens do tema, então o modo escuro acompanha sozinho. */
+.mfRecebido{background:var(--cor-sucesso)}
+.mfAReceber{background:color-mix(in srgb,var(--cor-atencao) 72%,#ffffff)}
+.mfAtrasado{background:var(--cor-perigo)}
+/* O que ainda vai acontecer fica SEM cor de alerta, e de propósito: plantão de
+   semana que vem não é problema nenhum, e pintá-lo de vermelho — ou de âmbar —
+   faria todo mês futuro parecer atrasado. Cinza é "ainda não é assunto". */
+.mfPrevisto{background:color-mix(in srgb,var(--cor-tinta-fraca) 26%,transparent)}
 .mfCinza{color:var(--cor-tinta-fraca)}
+.mfVermelho{color:var(--cor-perigo)}
 .mfMes{font-size:11.5px;color:var(--cor-tinta-fraca);font-weight:700;
   width:22px;text-align:center;line-height:1.6;border-radius:6px}
 /* O mês aberto ganha a marca no rótulo, e não só na barra: com doze colunas

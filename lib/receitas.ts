@@ -184,6 +184,53 @@ function acumular(alvo: Soma, receita: Receita) {
 
 export const somar = (receitas: Receita[]) => receitas.reduce(acumular, somaVazia());
 
+/**
+ * Quantos dias faz que esta receita devia ter virado dinheiro.
+ *
+ * Conta do VENCIMENTO quando existe — só a consulta tem nota, e é a data dela
+ * que manda. Plantão e produção não passam por emissão de nota dentro do
+ * sistema: o hospital paga pelo combinado do mês, e aí a idade conta do dia do
+ * trabalho, que é o único marco que existe.
+ */
+export const idadeDaReceita = (receita: Receita, hoje: string): number => {
+  const marco = receita.vencimento || receita.data;
+  const dia = 86_400_000;
+  return Math.floor((Date.parse(`${hoje}T12:00:00Z`) - Date.parse(`${marco.slice(0, 10)}T12:00:00Z`)) / dia);
+};
+
+export type SomaComAtraso = Soma & {
+  /** A receber com o prazo ainda correndo. */
+  noPrazo: number;
+  /** A receber há mais tempo do que devia. */
+  atrasado: number;
+};
+
+/**
+ * A mesma soma, com o "a receber" partido em no prazo e ATRASADO.
+ *
+ * Um valor a receber não diz nada sozinho: o plantão do mês passado que ainda
+ * não caiu é normal, e o de abril que ainda não caiu é um telefonema a dar.
+ * Somados no mesmo número, os dois desaparecem um no outro — e o segundo é
+ * justamente o que precisa aparecer.
+ *
+ * SESSENTA DIAS é o corte, e não é um número novo: é a mesma faixa que o
+ * envelhecimento do Financeiro do grupo já usa (até 30, até 60, até 90, acima
+ * de 90). Duas réguas diferentes para a mesma pergunta fariam a tela pessoal e
+ * a do serviço discordarem sobre o mesmo atraso.
+ */
+export function somarComAtraso(
+  receitas: Receita[], hoje: string, diasDeTolerancia = 60,
+): SomaComAtraso {
+  const base = somar(receitas);
+  let atrasado = 0;
+  for (const receita of receitas) {
+    const saldo = Math.max(0, receita.valor - receita.recebido);
+    if (saldo <= 0) continue;
+    if (idadeDaReceita(receita, hoje) > diasDeTolerancia) atrasado += saldo;
+  }
+  return { ...base, atrasado, noPrazo: Math.max(0, base.aReceber - atrasado) };
+}
+
 export const doMes = (receitas: Receita[], competencia: string) =>
   receitas.filter((r) => r.competencia === competencia);
 

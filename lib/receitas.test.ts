@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  dePlantao, deProducao, deConsulta, doMes, minhaFatia, paraRecebivel,
-  porOrigem, porProfissional, somar, type Receita,
+  dePlantao, deProducao, deConsulta, doMes, idadeDaReceita, minhaFatia, paraRecebivel,
+  porOrigem, porProfissional, somar, somarComAtraso, type Receita,
 } from "./receitas.ts";
 
 const ANA = "11111111-1111-1111-1111-111111111111";
@@ -258,5 +258,62 @@ describe("minha fatia", () => {
 
   it("quem não produziu nada recebe zeros", () => {
     assert.equal(minhaFatia(receitas, "outro").valor, 0);
+  });
+});
+
+describe("o que está a receber há tempo demais", () => {
+  const receita = (id: string, data: string, valor: number, recebido: number,
+                   vencimento: string | null = null): Receita => ({
+    id, origem: "plantao", data, competencia: data.slice(0, 7), donoId: ANA,
+    descricao: "Plantão", pagador: "Hospital", valor, recebido, vencimento,
+  });
+  const HOJE = "2026-09-05";
+
+  it("conta a idade do vencimento quando ele existe", () => {
+    // Só a consulta tem nota. Onde há vencimento é ele que manda; onde não há,
+    // vale o dia do trabalho, que é o único marco que existe.
+    assert.equal(idadeDaReceita(receita("a", "2026-07-01", 100, 0), HOJE), 66);
+    assert.equal(idadeDaReceita(receita("b", "2026-07-01", 100, 0, "2026-08-30"), HOJE), 6);
+  });
+
+  it("separa o que ainda está no prazo do que já passou", () => {
+    // O plantão do mês passado que não caiu é normal; o de abril que não caiu é
+    // um telefonema a dar. Somados no mesmo número, o segundo desaparece.
+    const soma = somarComAtraso([
+      receita("a", "2026-08-20", 1000, 0),   // 16 dias — no prazo
+      receita("b", "2026-04-10", 2000, 0),   // 148 dias — atrasado
+      receita("c", "2026-03-01", 500, 500),  // velho, mas já recebido
+    ], HOJE);
+    assert.equal(soma.aReceber, 3000);
+    assert.equal(soma.noPrazo, 1000);
+    assert.equal(soma.atrasado, 2000);
+    assert.equal(soma.recebido, 500);
+  });
+
+  it("o recebido em parte só atrasa o que sobrou", () => {
+    const soma = somarComAtraso([receita("a", "2026-04-10", 2000, 1500)], HOJE);
+    assert.equal(soma.atrasado, 500);
+    assert.equal(soma.noPrazo, 0);
+  });
+
+  it("no prazo mais atrasado é sempre o total a receber", () => {
+    // A conta não pode perder nem inventar dinheiro no caminho: é a mesma soma
+    // de sempre, só partida em duas.
+    const linhas = [
+      receita("a", "2026-08-20", 1000, 0), receita("b", "2026-04-10", 2000, 300),
+      receita("c", "2026-09-01", 700, 700), receita("d", "2026-06-30", 900, 0),
+    ];
+    const soma = somarComAtraso(linhas, HOJE);
+    assert.equal(soma.noPrazo + soma.atrasado, soma.aReceber);
+    assert.equal(soma.valor, somar(linhas).valor);
+  });
+
+  it("o corte é o mesmo do envelhecimento do grupo: 60 dias", () => {
+    // Duas réguas para a mesma pergunta fariam a tela pessoal e a do serviço
+    // discordarem sobre o mesmo atraso.
+    const naLinha = somarComAtraso([receita("a", "2026-07-07", 100, 0)], HOJE); // 60 dias
+    assert.equal(naLinha.atrasado, 0, "60 dias ainda é no prazo");
+    const umDiaDepois = somarComAtraso([receita("a", "2026-07-06", 100, 0)], HOJE); // 61
+    assert.equal(umDiaDepois.atrasado, 100);
   });
 });

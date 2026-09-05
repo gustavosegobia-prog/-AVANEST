@@ -2,10 +2,9 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { Icone } from "@/components/icone";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
-import { dePlantao, deProducao, doMes, somar, type Receita } from "@/lib/receitas";
+import { dePlantao, deProducao, doMes, somarComAtraso, type Receita } from "@/lib/receitas";
 import {
   CATEGORIAS, NOME_DA_CATEGORIA, porCategoria, recorrentesFaltando,
   resultadoDoMes, somarDespesas, type Despesa,
@@ -231,7 +230,11 @@ export function MeuFinanceiro({
   ].filter((r): r is Receita => r !== null);
 
   const doMesAtual = doMes(receitas, mes);
-  const total = somar(doMesAtual);
+  // A régua do atraso é o dia de hoje, e não o mês aberto: olhar março em
+  // setembro tem de mostrar o que está parado desde março, e não o que estava
+  // no prazo naquela época.
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const total = somarComAtraso(doMesAtual, hojeISO);
 
   /**
    * O que está escalado e ainda não aconteceu.
@@ -253,7 +256,7 @@ export function MeuFinanceiro({
   // gráfico parecer cheio e mentir sobre o ano.
   const porMes = MES_CURTO.map((_, i) => {
     const competencia = `${ano}-${String(i + 1).padStart(2, "0")}`;
-    const feito = somar(doMes(receitas, competencia));
+    const feito = somarComAtraso(doMes(receitas, competencia), hojeISO);
     const aFazer = plantoes
       .filter((p) => p.data.slice(0, 7) === competencia && p.situacao === "escalado")
       .reduce((s, p) => s + Number(p.valor || 0), 0);
@@ -352,7 +355,14 @@ export function MeuFinanceiro({
             <span>Total do mês</span>
           </div>
           <div><b className="mfVerde">{dinheiro(total.recebido)}</b><span>Recebido</span></div>
-          <div><b className={total.aReceber > 0 ? "mfAmbar" : ""}>{dinheiro(total.aReceber)}</b><span>Feito, a receber</span></div>
+          <div><b className={total.noPrazo > 0 ? "mfAmbar" : ""}>{dinheiro(total.noPrazo)}</b><span>Feito, a receber</span></div>
+          {/* O ATRASO SÓ APARECE QUANDO EXISTE. Um "R$ 0,00 atrasado" fixo na
+              tela é um alarme que nunca toca — e alarme que nunca toca é o que
+              se aprende a não olhar. */}
+          {total.atrasado > 0 && <div>
+            <b className="mfVermelho">{dinheiro(total.atrasado)}</b>
+            <span>Parado há mais de 60 dias</span>
+          </div>}
           {previsto > 0 && <div><b className="mfCinza">{dinheiro(previsto)}</b><span>Ainda vai acontecer</span></div>}
         </div>
 
@@ -360,9 +370,17 @@ export function MeuFinanceiro({
           {horasBR(horas)} de plantão · {dinheiro(porHora ?? 0)}/h em média
         </p>}
 
-        {/* Barras empilhadas: o recebido embaixo, em cor cheia, e o que falta
-            receber em cima, apagado. A altura conta o mês e a parte cheia conta
-            quanto dele já virou dinheiro — duas leituras numa figura só.
+        {/* Barras empilhadas, e agora em CORES DE SEMÁFORO em vez de tons de
+            azul. O azul esmaecido dizia "isto é menos importante", que não é o
+            caso: o que falta receber é a parte que exige alguma coisa de
+            alguém. Verde é o que caiu, âmbar é o que falta cair, vermelho é o
+            que está parado há tempo demais, e cinza é o que ainda nem
+            aconteceu — este último de propósito SEM cor de alerta, porque
+            plantão de semana que vem não é problema nenhum, e pintá-lo de
+            vermelho faria todo mês futuro parecer atrasado.
+
+            A altura conta o mês e a parte verde conta quanto dele já virou
+            dinheiro — duas leituras numa figura só.
 
             Cada coluna é um BOTÃO, e não uma div: um gráfico feito de divs é,
             para o leitor de tela, uma pilha de caixas vazias, e aqui elas ainda
@@ -381,12 +399,15 @@ export function MeuFinanceiro({
               title={`${MES_LONGO[m.indice]}: ${dinheiro(m.valor + m.previsto)}`}
               onClick={() => onEscolherMes(m.competencia)}
             >
-              {/* De cima para baixo: o que ainda vai acontecer, o que foi feito
-                  e falta receber, e o que já está na conta. O olho lê a coluna
-                  do chão para o topo como a linha do tempo do mês. */}
+              {/* De cima para baixo: o que ainda vai acontecer, o que falta
+                  receber, o que está parado demais, e o que já está na conta.
+                  O vermelho fica encostado no verde de propósito — é ali que a
+                  comparação "quanto caiu contra quanto empacou" se faz sem o
+                  olho ter de pular por cima de outra faixa. */}
               <span className="mfBarra">
                 <i className="mfPrevisto" style={{ height: `${(m.previsto / teto) * 100}%` }} />
-                <i className="mfAReceber" style={{ height: `${(m.aReceber / teto) * 100}%` }} />
+                <i className="mfAReceber" style={{ height: `${(m.noPrazo / teto) * 100}%` }} />
+                <i className="mfAtrasado" style={{ height: `${(m.atrasado / teto) * 100}%` }} />
                 <i className="mfRecebido" style={{ height: `${(m.recebido / teto) * 100}%` }} />
               </span>
               <span className="mfMes">{MES_CURTO[m.indice]}</span>
@@ -396,6 +417,11 @@ export function MeuFinanceiro({
         <div className="mfLegenda">
           <span><i className="mfRecebido" aria-hidden="true" /> Recebido</span>
           <span><i className="mfAReceber" aria-hidden="true" /> Feito, a receber</span>
+          {/* A faixa vermelha só entra na legenda quando existe no gráfico:
+              explicar uma cor que não está desenhada em lugar nenhum é ensinar
+              a procurar o que não há. */}
+          {porMes.some((m) => m.atrasado > 0) &&
+            <span><i className="mfAtrasado" aria-hidden="true" /> Parado há mais de 60 dias</span>}
           <span><i className="mfPrevisto" aria-hidden="true" /> Ainda vai acontecer</span>
         </div>
       </section>
@@ -501,21 +527,12 @@ export function MeuFinanceiro({
         </section>
       )}
 
-      {/* A frase antiga dizia o que acontece com os rótulos — "plantão vira
-          pago", "anestesia vira recebido" — e não o que a pessoa precisa
-          fazer. Lida em vermelho, parecia denúncia de erro: era só a conta do
-          que já está trabalhado e ainda não caiu.
-          Agora diz de quem é o dinheiro, por que ele ainda não apareceu como
-          recebido, e onde marcar quando cair. */}
-      {/* O texto inteiro num <span>: .financeNota é flex, e cada filho vira um
-          item. Solto, cada <strong> e cada pedaço de frase entre eles viraria
-          uma coluna própria. São dois itens — o ícone e a frase. */}
-      {total.aReceber > 0 && <p className="financeNota aReceber">
-        <Icone nome="ampulheta" tamanho={15} />
-        <span><strong>{dinheiro(total.aReceber)}</strong> já é seu: o trabalho está
-          feito, o pagamento ainda não entrou. Quando cair, dê baixa aqui mesmo —
-          plantão em <b>Plantões por local</b>, logo acima; anestesia em <b>Produção</b>.</span>
-      </p>}
+      {/* AQUI HAVIA UM AVISO explicando o que era o "a receber" e onde dar
+          baixa. Ele saiu: o gráfico agora diz a mesma coisa em cor — verde é o
+          que caiu, âmbar é o que falta cair, vermelho é o que está demorando
+          demais —, e a ação está a um palmo dali, no rodapé de cada hospital.
+          Uma faixa de texto para explicar o que já se lê de relance é ruído
+          entre a pessoa e o que ela veio fazer. */}
 
       {/* As despesas ficam depois: o plantonista abre esta tela para ver quanto
           fez, e é isso que aparece primeiro. O que ele gasta vem em seguida, e
