@@ -765,9 +765,17 @@ const CORES_MEDICO = ["m1", "m2", "m3", "m4", "m5", "m6", "m7",
 // depender de enxergá-la: é o que o leitor de tela anuncia e o que aparece ao
 // parar o cursor em cima. Uma fileira de catorze botões sem rótulo é, para
 // quem usa leitor de tela, uma fileira de catorze botões idênticos.
-const NOMES_DAS_CORES = ["Azul", "Verde", "Roxo", "Âmbar", "Rosa", "Ciano",
-  "Laranja", "Ardósia", "Verde-limão", "Marrom", "Índigo", "Magenta",
-  "Vinho", "Verde-floresta"] as const;
+/**
+ * O nome de cada cor do seletor, na ORDEM de PALETA_DA_FOLHA.
+ *
+ * Estes nomes são o que o leitor de tela lê e o que aparece ao pousar o dedo —
+ * são a única forma de escolher uma cor sem enxergá-la. Trocar a paleta e
+ * esquecer esta lista faz o seletor mentir: o botão azul-petróleo dizendo
+ * "Ciano" é pior do que não dizer nada.
+ */
+const NOMES_DAS_CORES = ["Azul", "Oliva", "Tijolo", "Verde-azulado", "Ocre",
+  "Verde-escuro", "Bronze", "Orquídea", "Ameixa", "Rosa-seco", "Carmim",
+  "Lavanda", "Petróleo", "Musgo"] as const;
 
 /**
  * Colorida ou preto e branco, guardado no navegador.

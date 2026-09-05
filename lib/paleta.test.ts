@@ -88,9 +88,29 @@ test("as cores da equipe estão longe umas das outras", () => {
   // de sete pessoas usa só as sete primeiras. Elas são as que precisam estar
   // mais separadas.
   const sete = menorDistancia(PALETA_DA_FOLHA, 7);
-  assert.ok(sete.menor >= 20, `as 7 primeiras se aproximaram: ΔE ${sete.menor.toFixed(1)} — ${sete.par}`);
+  assert.ok(sete.menor >= 18, `as 7 primeiras se aproximaram: ΔE ${sete.menor.toFixed(1)} — ${sete.par}`);
   const todas = menorDistancia(PALETA_DA_FOLHA, PALETA_DA_FOLHA.length);
   assert.ok(todas.menor >= 14, `a paleta se aproximou: ΔE ${todas.menor.toFixed(1)} — ${todas.par}`);
+});
+
+test("o rosa e o roxo só entram da oitava posição em diante", () => {
+  // Foi pedido. Reservar a faixa é tudo o que dá para fazer daqui: o sistema
+  // não sabe quem é quem, e a cor sai da posição na lista da equipe. Quem
+  // quiser essas cores numa pessoa fixa pelo seletor da equipe, e a cor fixada
+  // vence a da posição.
+  //
+  // A faixa é a do rosa, roxo, magenta e vinho: de 296° a 360° e a ponta até
+  // 25°, medida no ângulo de tom do CIELAB.
+  const tom = (hex: string) => {
+    const [, a, b] = paraLab(hex);
+    return ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+  };
+  const ehRosaOuRoxo = (hex: string) => tom(hex) >= 296 || tom(hex) <= 25;
+  for (let i = 0; i < 7; i++)
+    assert.ok(!ehRosaOuRoxo(PALETA_DA_FOLHA[i]),
+      `m${i + 1} (${PALETA_DA_FOLHA[i]}, tom ${tom(PALETA_DA_FOLHA[i]).toFixed(0)}°) é rosa ou roxo`);
+  // E elas continuam na paleta: reservar não é apagar.
+  assert.ok(PALETA_DA_FOLHA.slice(7).some(ehRosaOuRoxo), "o rosa e o roxo sumiram da paleta");
 });
 
 test("o nome branco se lê em cima de qualquer uma delas", () => {
@@ -130,4 +150,20 @@ test("no tema escuro cada cor clareia, e continuam separadas", () => {
       `m${i + 1} escura (${cor}) tem só ${contraste(cor, "#0b1220").toFixed(2)} contra a tinta`);
   const sete = menorDistancia(escuras, 7);
   assert.ok(sete.menor >= 17, `as 7 escuras se aproximaram: ΔE ${sete.menor.toFixed(1)} — ${sete.par}`);
+});
+
+test("o seletor de cor da equipe chama cada cor pelo nome certo", () => {
+  // Estes nomes são o que o leitor de tela lê e o que aparece ao pousar o dedo:
+  // são a única forma de escolher uma cor sem enxergá-la. Trocar a paleta e
+  // esquecer a lista faz o botão azul-petróleo dizer "Ciano", que é pior do que
+  // não dizer nada.
+  const fonte = fs.readFileSync(new URL("../components/plantoes.tsx", import.meta.url), "utf8");
+  const bloco = fonte.match(/const NOMES_DAS_CORES = \[([^]*?)\] as const;/);
+  assert.ok(bloco, "não achei NOMES_DAS_CORES");
+  const nomes = [...bloco![1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(nomes.length, PALETA_DA_FOLHA.length,
+    `são ${PALETA_DA_FOLHA.length} cores e ${nomes.length} nomes`);
+  // E nenhum nome pode ter sobrado da paleta antiga.
+  for (const antigo of ["Ciano", "Verde-limão", "Índigo", "Magenta", "Ardósia"])
+    assert.ok(!nomes.includes(antigo), `"${antigo}" é nome da paleta antiga`);
 });

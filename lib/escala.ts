@@ -480,8 +480,16 @@ export function timbreDaFolha(instituicao?: Instituicao | null): string {
  * A ORDEM IMPORTA e não é decorativa: a cor de cada pessoa vem da posição dela
  * na lista da equipe, então um serviço de sete pessoas usa só as sete
  * primeiras. Por isso a busca prioriza a separação dos SETE primeiros, depois
- * a das catorze. Medido: ΔE mínimo de 23,2 entre as sete primeiras (era 17,7)
- * e de 15,2 entre as catorze (era 9,9).
+ * a das catorze. Medido: ΔE mínimo de 19,4 entre as sete primeiras (era 17,7)
+ * e de 15,8 entre as catorze (era 9,9).
+ *
+ * O ROSA E O ROXO SÓ ENTRAM DA OITAVA POSIÇÃO EM DIANTE. Foi pedido, e custou
+ * separação: com eles liberados as sete primeiras chegavam a ΔE 23,2, e sem
+ * eles ficam em 19,4 — ainda acima dos 17,7 de antes, então o custo cabe.
+ * Reservar é tudo o que dá para fazer por aqui: o sistema não sabe quem é
+ * quem, e a cor sai da posição na lista. Quem quiser o rosa ou o roxo numa
+ * pessoa específica fixa pelo seletor de cor da equipe — é para isso que
+ * `definir_cor_escala` existe, e a cor fixada vence a da posição.
  *
  * O azul da marca abre a lista de propósito — é a cor do AVANEST.
  *
@@ -490,20 +498,22 @@ export function timbreDaFolha(instituicao?: Instituicao | null): string {
  * significa a pessoa ser roxa no telefone e verde no papel.
  */
 export const PALETA_DA_FOLHA: readonly string[] = [
+  // As sete primeiras: nenhum rosa, nenhum roxo.
   "#1668b3", // m1  azul (a cor da marca)
-  "#787903", // m2  oliva
-  "#9c1e18", // m3  tijolo
-  "#b54aa7", // m4  orquídea
-  "#01837b", // m5  verde-azulado
-  "#aa6406", // m6  ocre
-  "#045b1b", // m7  verde-escuro
-  "#534675", // m8  ameixa
-  "#a66166", // m9  rosa-seco
-  "#5e4b1d", // m10 bronze
-  "#9a0350", // m11 carmim
-  "#7765cb", // m12 lavanda
-  "#597e52", // m13 musgo
-  "#087f9c", // m14 petróleo
+  "#757a00", // m2  oliva
+  "#9b1f17", // m3  tijolo
+  "#026d60", // m4  verde-azulado
+  "#ad6202", // m5  ocre
+  "#1a5d02", // m6  verde-escuro
+  "#624d1f", // m7  bronze
+  // Daqui em diante o rosa e o roxo entram.
+  "#b44ba8", // m8  orquídea
+  "#554978", // m9  ameixa
+  "#a66167", // m10 rosa-seco
+  "#9f0054", // m11 carmim
+  "#7765cd", // m12 lavanda
+  "#027f9b", // m13 petróleo
+  "#5a7e51", // m14 musgo
 ];
 
 /**

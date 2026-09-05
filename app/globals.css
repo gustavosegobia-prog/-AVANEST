@@ -3021,13 +3021,13 @@ button:disabled{cursor:not-allowed}
    pela cor exigiria lembrar qual é a sua — o contorno dispensa a memória. */
 .plantaoQuem em.eu{box-shadow:0 0 0 1.5px var(--cor-tinta)}
 .med-m1{--med-cor:#1668b3}
-.med-m2{--med-cor:#787903}
-.med-m3{--med-cor:#9c1e18}
-.med-m4{--med-cor:#b54aa7}
-.med-m5{--med-cor:#01837b}
-.med-m6{--med-cor:#aa6406}
-.med-m7{--med-cor:#045b1b}
-.med-m8{--med-cor:#534675}
+.med-m2{--med-cor:#757a00}
+.med-m3{--med-cor:#9b1f17}
+.med-m4{--med-cor:#026d60}
+.med-m5{--med-cor:#ad6202}
+.med-m6{--med-cor:#1a5d02}
+.med-m7{--med-cor:#624d1f}
+.med-m8{--med-cor:#b44ba8}
 /* Seis cores a mais, e a razão é aritmética: a equipe tem treze pessoas, e com
    oito duas caíam sempre na mesma — Matheus e Taylor no mesmo azul, Flavio e
    Lucas no mesmo verde. Escolhidas por distância perceptual em CIE Lab, e não
@@ -3036,31 +3036,31 @@ button:disabled{cursor:not-allowed}
    confundem, porque a diferença está no brilho.
    Os mesmos tons, na mesma ordem, de PALETA_DA_FOLHA — o papel e a tela têm de
    dar a mesma cor à mesma pessoa. */
-.med-m9{--med-cor:#a66166}
-.med-m10{--med-cor:#5e4b1d}
-.med-m11{--med-cor:#9a0350}
-.med-m12{--med-cor:#7765cb}
-.med-m13{--med-cor:#597e52}
-.med-m14{--med-cor:#087f9c}
+.med-m9{--med-cor:#554978}
+.med-m10{--med-cor:#a66167}
+.med-m11{--med-cor:#9f0054}
+.med-m12{--med-cor:#7765cd}
+.med-m13{--med-cor:#027f9b}
+.med-m14{--med-cor:#5a7e51}
 /* No escuro a mesma cor escura sumiria no fundo: clareia e o texto vira tinta
    escura. Todas passam de 7:1 contra o fundo do tema. */
 .clinicalDark .plantaoQuem em{--med-tinta:#0b1220}
-.clinicalDark .med-m1{--med-cor:#5aa2ff}
-.clinicalDark .med-m2{--med-cor:#a5a619}
-.clinicalDark .med-m3{--med-cor:#ff7761}
-.clinicalDark .med-m4{--med-cor:#f36ce1}
-.clinicalDark .med-m5{--med-cor:#22b3a8}
-.clinicalDark .med-m6{--med-cor:#e58b1b}
-.clinicalDark .med-m7{--med-cor:#57b45e}
-.clinicalDark .med-m8{--med-cor:#aa96d6}
+.clinicalDark .med-m1{--med-cor:#70a4e2}
+.clinicalDark .med-m2{--med-cor:#bcb11a}
+.clinicalDark .med-m3{--med-cor:#fe7958}
+.clinicalDark .med-m4{--med-cor:#7dc0b3}
+.clinicalDark .med-m5{--med-cor:#febf94}
+.clinicalDark .med-m6{--med-cor:#6fb13e}
+.clinicalDark .med-m7{--med-cor:#af9f7d}
+.clinicalDark .med-m8{--med-cor:#f488fb}
 /* No escuro cada uma clareia até passar de 7:1 contra a tinta #0b1220 — o
    mesmo piso das oito antigas. */
-.clinicalDark .med-m9{--med-cor:#e0888e}
-.clinicalDark .med-m10{--med-cor:#ba9d60}
-.clinicalDark .med-m11{--med-cor:#ff6fa3}
-.clinicalDark .med-m12{--med-cor:#a790ff}
-.clinicalDark .med-m13{--med-cor:#7eac74}
-.clinicalDark .med-m14{--med-cor:#29aed3}
+.clinicalDark .med-m9{--med-cor:#a89abf}
+.clinicalDark .med-m10{--med-cor:#ff7290}
+.clinicalDark .med-m11{--med-cor:#efabc6}
+.clinicalDark .med-m12{--med-cor:#d5d0f6}
+.clinicalDark .med-m13{--med-cor:#54acc3}
+.clinicalDark .med-m14{--med-cor:#91a781}
 
 /* O painel recebe foco por código quando o dia abre, para o próximo Tab cair
    dentro dele. Foco por código não é foco de teclado: o contorno só aparece
