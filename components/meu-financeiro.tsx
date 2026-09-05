@@ -42,6 +42,26 @@ type ProducaoMinha = {
   convenio: string; procedimento: string | null; valor: number; situacao: string;
 };
 
+/**
+ * As quatro faixas da barra, do topo para o chão.
+ *
+ * Uma lista só, e não quatro <i> escritos à mão: o gráfico, o balão que aparece
+ * ao passar o mouse, o texto que o leitor de tela anuncia e a legenda embaixo
+ * têm de dizer a MESMA coisa na MESMA ordem. Escritos separados, um deles fica
+ * para trás no dia em que uma faixa mudar — e um balão que anuncia a cor errada
+ * é pior do que balão nenhum.
+ */
+const FAIXAS = [
+  { classe: "mfPrevisto", rotulo: "Ainda vai acontecer",
+    valor: (m: { previsto: number }) => m.previsto },
+  { classe: "mfAReceber", rotulo: "Feito, a receber",
+    valor: (m: { noPrazo: number }) => m.noPrazo },
+  { classe: "mfAtrasado", rotulo: "Parado há mais de 60 dias",
+    valor: (m: { atrasado: number }) => m.atrasado },
+  { classe: "mfRecebido", rotulo: "Recebido",
+    valor: (m: { recebido: number }) => m.recebido },
+] as const;
+
 const MES_CURTO = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 const MES_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -394,8 +414,16 @@ export function MeuFinanceiro({
               key={m.competencia}
               className={m.competencia === mes ? "mfColuna atual" : "mfColuna"}
               aria-pressed={m.competencia === mes}
-              aria-label={`${MES_LONGO[m.indice]}: ${m.valor + m.previsto > 0
-                ? dinheiro(m.valor + m.previsto) : "sem lançamento"}`}
+              aria-label={[
+                `${MES_LONGO[m.indice]}: ${m.valor + m.previsto > 0
+                  ? dinheiro(m.valor + m.previsto) : "sem lançamento"}`,
+                // O leitor de tela recebe a MESMA divisão que o mouse recebe no
+                // balão. Sem isto, quem navega por teclado ouvia só o total e
+                // as quatro cores não diziam nada — que é justamente a
+                // informação que elas existem para dar.
+                ...FAIXAS.map((f) => f.valor(m) > 0
+                  ? `${f.rotulo}: ${dinheiro(f.valor(m))}` : "").filter(Boolean),
+              ].join(", ")}
               title={`${MES_LONGO[m.indice]}: ${dinheiro(m.valor + m.previsto)}`}
               onClick={() => onEscolherMes(m.competencia)}
             >
@@ -405,24 +433,43 @@ export function MeuFinanceiro({
                   comparação "quanto caiu contra quanto empacou" se faz sem o
                   olho ter de pular por cima de outra faixa. */}
               <span className="mfBarra">
-                <i className="mfPrevisto" style={{ height: `${(m.previsto / teto) * 100}%` }} />
-                <i className="mfAReceber" style={{ height: `${(m.noPrazo / teto) * 100}%` }} />
-                <i className="mfAtrasado" style={{ height: `${(m.atrasado / teto) * 100}%` }} />
-                <i className="mfRecebido" style={{ height: `${(m.recebido / teto) * 100}%` }} />
+                {/* CADA FAIXA DIZ QUANTO ELA VALE ao passar o mouse, e não só a
+                    coluna inteira. A cor sozinha responde "tem algo aqui" e
+                    obriga a ir procurar o número em outro lugar — que é o
+                    contrário do que ela serve.
+
+                    O `title` no <i> vence o do <button>: o navegador mostra o
+                    do elemento mais interno sob o ponteiro. Fora da faixa, sobra
+                    o do mês inteiro, que continua sendo a resposta certa ali. */}
+                {FAIXAS.map((f) => {
+                  const valor = f.valor(m);
+                  return <i key={f.classe} className={f.classe}
+                    style={{ height: `${(valor / teto) * 100}%` }}
+                    title={valor > 0
+                      ? `${f.rotulo} em ${MES_LONGO[m.indice]}: ${dinheiro(valor)}`
+                      : undefined} />;
+                })}
               </span>
               <span className="mfMes">{MES_CURTO[m.indice]}</span>
             </button>
           ))}
         </div>
+        {/* A legenda sai da MESMA lista que desenha as barras, só que de baixo
+            para cima — é a ordem em que a coluna se lê. Escrita à mão, ela
+            ficaria para trás no dia em que uma faixa mudasse de nome ou de cor,
+            e uma legenda que nomeia errado é pior do que legenda nenhuma.
+
+            Cada faixa só entra quando existe no gráfico: explicar uma cor que
+            não está desenhada em lugar nenhum é ensinar a procurar o que não
+            há. */}
         <div className="mfLegenda">
-          <span><i className="mfRecebido" aria-hidden="true" /> Recebido</span>
-          <span><i className="mfAReceber" aria-hidden="true" /> Feito, a receber</span>
-          {/* A faixa vermelha só entra na legenda quando existe no gráfico:
-              explicar uma cor que não está desenhada em lugar nenhum é ensinar
-              a procurar o que não há. */}
-          {porMes.some((m) => m.atrasado > 0) &&
-            <span><i className="mfAtrasado" aria-hidden="true" /> Parado há mais de 60 dias</span>}
-          <span><i className="mfPrevisto" aria-hidden="true" /> Ainda vai acontecer</span>
+          {[...FAIXAS].reverse()
+            .filter((f) => porMes.some((m) => f.valor(m) > 0))
+            .map((f) => (
+              <span key={f.classe}>
+                <i className={f.classe} aria-hidden="true" /> {f.rotulo}
+              </span>
+            ))}
         </div>
       </section>
 

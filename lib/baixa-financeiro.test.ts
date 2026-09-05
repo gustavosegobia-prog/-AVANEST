@@ -57,6 +57,30 @@ test("o gráfico do ano fala por cor, e não por uma faixa de texto", () => {
     assert.ok(financeiro.includes(faixa), `faltou a faixa ${faixa} no gráfico`);
 });
 
+test("uma lista só desenha as barras, o balão e a legenda", () => {
+  // A cor sozinha responde "tem algo aqui" e obriga a ir procurar o número em
+  // outro lugar. Passar o mouse na faixa mostra QUANTO ela vale — e o leitor de
+  // tela ouve a mesma divisão.
+  //
+  // Barras, balão, texto anunciado e legenda saem todos de FAIXAS. Escritos
+  // separados, um deles fica para trás no dia em que uma faixa mudar de nome ou
+  // de cor — e um balão que anuncia a cor errada é pior do que balão nenhum.
+  const financeiro = ler("components/meu-financeiro.tsx");
+  const lista = financeiro.match(/const FAIXAS = \[([^]*?)\] as const;/);
+  assert.ok(lista, "sumiu a lista das faixas");
+  const classes = [...lista![1].matchAll(/classe: "(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(classes, ["mfPrevisto", "mfAReceber", "mfAtrasado", "mfRecebido"],
+    "a ordem das faixas é do topo para o chão da coluna");
+  // Nenhuma delas pode estar escrita à mão fora da lista.
+  const foraDaLista = financeiro.replace(lista![0], "");
+  for (const classe of classes)
+    assert.ok(!new RegExp(`className="${classe}"`).test(foraDaLista),
+      `${classe} está escrita à mão fora de FAIXAS e vai divergir`);
+  // E o balão de cada faixa tem de trazer o valor dela.
+  assert.match(financeiro, /title=\{valor > 0[^]*?f\.rotulo[^]*?dinheiro\(valor\)/,
+    "a faixa não diz mais quanto vale ao passar o mouse");
+});
+
 test("o vermelho é reservado para o que está de fato parado", () => {
   // Plantão de semana que vem não é problema nenhum. Pintar o futuro de
   // vermelho faria todo mês adiante parecer atrasado, e um alarme que toca
