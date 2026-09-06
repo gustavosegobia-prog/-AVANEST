@@ -437,9 +437,13 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
             {erroIdade&&<small className="fieldError">{erroIdade}</small>}
           </label>
           {select("sexo","Sexo",["Feminino","Masculino","Outro"])}
-          <label className="evalField"><span>CPF</span><input value={paciente.cpf??""} readOnly/></label>
+          {/* Duas colunas, como a data de nascimento e pelo mesmo motivo:
+              "000.000.000-00" com a fonte de 16px pede 176px, e a coluna
+              entrega 139px na faixa de 9 colunas. Medido — o campo cortava
+              o "-00" em silêncio. */}
+          <label className="evalField span2"><span>CPF</span><input value={paciente.cpf??""} readOnly/></label>
           {input("peso","Peso (kg)","number")}{input("altura","Altura (cm)","number")}{input("convenio","Convênio")}
-          <label className="evalField"><span>Telefone / WhatsApp</span><input value={paciente.telefone??""} readOnly/></label>
+          <label className="evalField span2"><span>Telefone / WhatsApp</span><input value={paciente.telefone??""} readOnly/></label>
           <label className="evalField span2"><span>E-mail</span><input value={paciente.email??""} readOnly/></label>
           {input("prontuario","Nº do prontuário")}{input("hospital","Hospital / clínica","text","span2")}{input("unidade","Unidade de internação")}{input("responsavel","Responsável (se necessário)","text","span2")}
         </div>
@@ -472,7 +476,7 @@ function Anamnesis({draft,set}:{draft:Draft;set:(name:string,value:string|boolea
     ["respiratoria","Doença respiratória?"],
     ["diabetes","Possui diabetes?"],
     ["neurologica","Doenças neurológicas ou psiquiátricas?"],
-    ["outras_doencas","Outras doenças? (tireoide, renal, hepática, artrites, etc.)"],
+    ["outras_doencas","Outras doenças? (tireoide, rins, fígado, reumatológicas, etc.)"],
     ["doenca_aguda","Doença aguda no momento? (gripe, tosse, febre, ITU, etc.)"],
     ["dentaria","Usa prótese dentária removível ou tem alterações dentárias?"],
     ["alergias","Possui alergias?"],
@@ -490,7 +494,17 @@ const QUESTION_CHIPS:Record<string,string[]>={
   cardiovascular:["Hipertensão","Coronariopatia","Infarto","Insuficiência cardíaca","Arritmia","Valvopatia","Marca-passo/CDI","AVC/AIT","Outra"],
   diabetes:["Tipo 1","Tipo 2","Insulina","Hipoglicemia recente","Complicações"],
   neurologica:["Epilepsia","Parkinson","AVC/AIT","Demência","Depressão","Ansiedade","Transtorno bipolar","Outra"],
-  outras_doencas:["Tireoide","Renal","Hepática","Refluxo","Câncer","Reumatológica","Obesidade","Outra"],
+  /* DIAGNÓSTICO, E NÃO ÓRGÃO. Os botões diziam "Tireoide", "Renal",
+     "Hepática" — nomes de aparelho, não de doença. Anotar "tireoide" na
+     anamnese não informa nada: hipo e hipertireoidismo pedem condutas
+     opostas na sala, e quem lê a ficha depois fica sem saber qual dos dois
+     o paciente tem. O mesmo vale para o rim e o fígado.
+
+     "Em diálise" não é doença, e entra assim mesmo: é o dado que mais muda
+     a anestesia do renal crônico — o dia da última sessão, o potássio, o
+     acesso que não pode ser puncionado. Deixá-lo de fora obrigaria a
+     escrever à mão justamente o que mais se repete. */
+  outras_doencas:["Hipotireoidismo","Hipertireoidismo","Doença renal crônica","Em diálise","Cirrose","Hepatite","Refluxo (DRGE)","Artrite reumatoide","Lúpus","Câncer","Obesidade","Outra"],
   doenca_aguda:["Gripe","Tosse","Febre","ITU","Diarreia/vômitos","Outra"],
   dentaria:["Prótese removível","Prótese fixa","Dente solto","Dente fraturado","Edentado","Aparelho"],
   alergias:["Medicamentos","Látex","Alimentos","Antissépticos","Contraste iodado","Outros"],

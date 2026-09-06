@@ -817,8 +817,12 @@ button:disabled{cursor:not-allowed}
   color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}
 .historyFilters .historyBusca{flex:3 1 260px}
 /* As datas não precisam crescer: `dd/mm/aaaa` tem largura conhecida, e o que
-   sobra é melhor gasto na busca. */
-.historyFilters label:has(input[type=date]){flex:0 1 150px}
+   sobra é melhor gasto na busca. Mas TAMBÉM NÃO PODEM ENCOLHER: com
+   `flex:0 1 150px` a base era respeitada só enquanto sobrava espaço, e a
+   partir de 561px o campo era espremido para 150px quando precisa de 154 —
+   o ícone do calendário sumia. Medido com o campo dentro do pai de verdade:
+   162px deixa 8px de folga. */
+.historyFilters label:has(input[type=date]){flex:0 1 162px;min-width:162px}
 .historyFilters input,.historyFilters select{width:100%;box-sizing:border-box;
   border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);
   border-radius:10px;padding:0 14px;min-height:44px;font:inherit;color:inherit}.historyRow{display:grid;grid-template-columns:52px minmax(260px,1fr) auto auto auto;align-items:center;gap:16px;padding:16px 25px;border-bottom:1px solid var(--cor-borda);color:inherit;text-decoration:none}.historyRow:hover{background:var(--cor-fundo)}.historyRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.historyRow time{color:var(--cor-tinta-fraca);white-space:nowrap}.historyRow>b{color:var(--cor-marca);font-size:13px;white-space:nowrap}.historyLimit{padding:14px 25px;color:var(--cor-tinta-fraca);font-size:13px}
@@ -837,7 +841,11 @@ button:disabled{cursor:not-allowed}
      só aparece olhando. Com 130px de mínimo, as duas datas dividem a linha
      enquanto couberem e quebram sozinhas quando não couberem, sem eu ter de
      adivinhar em que largura de aparelho isso acontece. */
-  .historyFilters label:has(input[type=date]){flex:1 1 calc(50% - 7px);min-width:130px}
+  /* 150px, e não os 130px de antes: aquele número saiu de uma medição
+     errada — o campo era clonado para fora do rótulo, onde perdia o
+     preenchimento e o `display:flex` que ele tem de verdade, e a conta
+     saía 20px menor do que o campo real. */
+  .historyFilters label:has(input[type=date]){flex:1 1 calc(50% - 7px);min-width:150px}
   .historyFilters input[type=date]{padding:0 10px}
   .historyRow{padding:14px}.historyRow time{display:none}
 }
@@ -3706,7 +3714,10 @@ button:disabled{cursor:not-allowed}
 /* A descrição é o único campo que cresce: os outros têm tamanho conhecido, e
    ela é o que varia de "Contador" a "Manutenção do ventilador da sala 3". */
 .despesaForm .despesaDescricao{flex:1 1 240px;min-width:0}
-.despesaForm input[type=date]{width:150px}
+/* 176px: o controle de data precisa de 167px com esta fonte, e o 150 de
+   antes vinha de estimativa, não de medida — cortava o ícone em toda
+   largura de tela. */
+.despesaForm input[type=date]{width:176px}
 .despesaForm .despesaCheck{flex-direction:row;align-items:center;gap:7px;
   height:44px;cursor:pointer}
 .despesaForm .despesaCheck input{height:18px;width:18px;accent-color:var(--cor-marca);
@@ -3805,6 +3816,38 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .evalField input[type="date"],.evalField input[type="datetime-local"],
 .medicationGrid input[type="date"],.medicationGrid input[type="datetime-local"]{
   display:flex;align-items:center;
+}
+
+/* --- O CAMPO DE DATA NÃO CABE NUMA COLUNA DE FORMULÁRIO -------------------
+   "16/08/1954" com o ícone do calendário precisa de 172px com a fonte de
+   16px que estes formulários usam — e 16px é obrigatório, porque abaixo
+   disso o iPhone dá zoom sozinho ao tocar no campo.
+
+   A coluna nunca chegava lá. A grade da avaliação entrega ~139px na faixa
+   de 9 colunas (a partir de 1500px, que é a largura de um MacBook de 14"),
+   ~165px na de 6 colunas entre 1101 e 1224px, e ~121px num telefone de
+   320px. O cadastro do paciente entrega ~146px entre 1051 e 1195px. Em
+   todas essas faixas o navegador cortava o campo EM SILÊNCIO: `scrollWidth`
+   não acusa nada num `input[type=date]`, então o defeito só aparecia
+   olhando — e é o que se via, a data escrita e o ícone comido pela borda.
+
+   A saída não é apertar o preenchimento: tirando padding até o limite do
+   razoável o campo ainda pede 160px, mais do que a coluna tem. Então ele
+   ocupa duas colunas. Toda faixa destas duas grades tem pelo menos duas
+   colunas, e no telefone "duas de duas" é a linha inteira — que é
+   exatamente o que um seletor de data precisa ali.
+
+   `:has()` em vez de uma classe no JSX porque a regra vale para o campo de
+   data, e não para um campo específico: o próximo que alguém acrescentar já
+   nasce certo. Onde `:has()` não existir, a regra é ignorada e fica o
+   comportamento de hoje — nada piora. */
+.evalFormGrid .evalField:has(input[type="date"]),
+.patientFormGrid .clinicalField:has(input[type="date"]){grid-column:span 2}
+@media(max-width:680px){
+  /* Aqui o cadastro do paciente já é de uma coluna só, e `span 2` criaria
+     uma segunda coluna implícita — a linha da data ficaria com metade da
+     largura das outras. `1/-1` é a linha inteira em qualquer contagem. */
+  .patientFormGrid .clinicalField:has(input[type="date"]){grid-column:1/-1}
 }
 
 /* --- Botão de ação não quebra frase no meio ----------------------------
