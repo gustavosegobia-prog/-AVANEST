@@ -3,56 +3,63 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 /**
- * O Financeiro do GRUPO não pode somar plantão privado.
+ * PLANTÃO NÃO É RECEITA DO SERVIÇO — e esta regra chegou aqui em dois passos.
  *
- * A consulta mora num componente de servidor, que não dá para chamar daqui sem
- * um Supabase de verdade. Então o teste lê O ARQUIVO e confere a cláusula.
- * É rústico, e protege duas coisas que valem o incômodo:
+ * PRIMEIRO, o Financeiro do grupo somava até o plantão PRIVADO, aquele que a
+ * escala promete que "entra só na sua escala e no seu mês — ninguém do grupo
+ * enxerga". Ele aparecia lá com hospital e valor. Pior: a política de RLS
+ * mostra a cada um o próprio privado, então dois administradores abriam o mesmo
+ * mês e liam "A receber" diferentes — medido no banco, R$ 61.600 para o dono
+ * dos plantões e R$ 42.900 para o colega, sem nada na tela explicando. A
+ * correção de então foi filtrar `privado = false`.
  *
- *   PRIVACIDADE. O plantão privado é o que a escala promete que "entra só na
- *   sua escala e no seu mês — ninguém do grupo enxerga". Sem o filtro, ele
- *   aparecia no Financeiro do grupo, com hospital e valor.
+ * DEPOIS descobriu-se que o filtro tratava a doença errada. `privado` responde
+ * a "aparece na escala do grupo?", e não a "o dinheiro é do grupo?". Quem
+ * administra a escala lança os próprios plantões já visíveis para a equipe, e
+ * por tabela eles viravam dinheiro do serviço: um Financeiro mostrava
+ * R$ 3.600,00 de "faturado no mês" que eram os seis plantões de UMA pessoa,
+ * enquanto a lista de lançamentos embaixo dizia "nenhum lançamento cadastrado".
+ * O número e a lista discordavam porque mediam coisas diferentes.
  *
- *   UM TOTAL QUE NÃO DEPENDE DE QUEM OLHA. A política de RLS mostra a cada um
- *   o próprio privado, então sem este filtro dois administradores abriam o
- *   mesmo mês e liam "A receber" diferentes. Foi medido no banco: R$ 61.600
- *   para o dono dos plantões, R$ 42.900 para o colega — R$ 18.700 de
- *   diferença, sem nada na tela explicando.
+ * O plantão é pago pelo hospital a quem o fez. Ele saiu do Financeiro do grupo
+ * e continua somando inteiro em Meu financeiro de cada um — que é onde essa
+ * conta é verdadeira. A regra de hoje é mais forte que a de ontem: em vez de
+ * escolher quais plantões entram, nenhum entra.
  */
-const pagina = readFileSync(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8");
+const ler = (caminho: string) =>
+  readFileSync(new URL(`../${caminho}`, import.meta.url), "utf8");
 
-/** O trecho da consulta que alimenta a receita de plantões do grupo. */
-function consultaDaReceita(): string {
-  const marca = 'supabase.from("plantoes")\n          .select("id,perfil_id,data,valor,situacao,local_id,local_texto")';
-  const i = pagina.indexOf(marca);
-  assert.notEqual(i, -1,
-    "a consulta da receita de plantões mudou de forma — o teste está olhando para o lugar errado");
-  return pagina.slice(i, pagina.indexOf("Promise.resolve", i));
-}
-
-test("receita do grupo: a consulta de plantões exclui os privados", () => {
-  assert.match(consultaDaReceita(), /\.eq\("privado", false\)/,
-    "sem isto, o plantão privado volta a ser somado no Financeiro do grupo");
+test("o Financeiro do grupo não soma plantão", () => {
+  const tela = ler("app/dashboard/dashboard-client.tsx");
+  const bloco = tela.match(/const receitas=useMemo\(\(\)=>\{([^]*?)\},\[/);
+  assert.ok(bloco, "não achei a montagem da receita do grupo");
+  assert.ok(!/dePlantao/.test(bloco![1]),
+    "o plantão voltou a entrar na receita do serviço");
+  // As duas que o serviço de fato fatura continuam entrando.
+  assert.match(bloco![1], /deConsulta/, "sumiu a consulta pré-anestésica");
+  assert.match(bloco![1], /deProducao/, "sumiu a produção anestésica");
 });
 
-test("receita do grupo: a consulta NÃO se limita a um perfil", () => {
-  // O contrário do defeito acima, e igualmente importante: esta consulta é a
-  // conta do SERVIÇO. Um `.eq("perfil_id", ...)` aqui faria o Financeiro do
-  // grupo mostrar só os plantões de quem abriu a tela — e ninguém notaria,
-  // porque o número continuaria parecendo um número.
-  assert.doesNotMatch(consultaDaReceita(), /\.eq\("perfil_id"/,
-    "esta é a receita do serviço, não a de uma pessoa");
+test("a página nem busca plantão para o Financeiro", () => {
+  // Não basta parar de somar: buscar doze meses de plantão a cada abertura do
+  // Financeiro é uma consulta cara para um dado que ninguém mais usa ali. E
+  // enquanto o dado chegar à tela, alguém volta a somá-lo sem querer.
+  assert.ok(!/plantoesDaReceita/.test(ler("app/dashboard/page.tsx")),
+    "a consulta de plantões para o Financeiro voltou");
+  assert.ok(!/plantoesDaReceita/.test(ler("app/dashboard/dashboard-client.tsx")),
+    "sobrou encanamento de plantoesDaReceita na tela");
 });
 
-test("meu financeiro: continua trazendo os meus privados", () => {
-  // A outra metade da separação. O plantão privado não some do sistema: ele
-  // sai do Financeiro do grupo e continua em Meu Financeiro, que é filtrado
-  // por perfil e é onde a conta dele deve ser feita.
-  const meu = readFileSync(new URL("../components/meu-financeiro.tsx", import.meta.url), "utf8");
+test("meu financeiro: continua trazendo os meus plantões, privados inclusive", () => {
+  // A outra metade, e a que impede o remédio de virar doença: o plantão não
+  // some do sistema. Se esta consulta cair, ele deixa de ser contado em lugar
+  // NENHUM — o que é bem pior do que contá-lo no lugar errado.
+  const meu = ler("components/meu-financeiro.tsx");
   const i = meu.indexOf('cliente.from("plantoes")');
-  assert.notEqual(i, -1, "a consulta de Meu Financeiro mudou de forma");
+  assert.notEqual(i, -1, "a consulta de Meu financeiro mudou de forma");
   const trecho = meu.slice(i, i + 400);
-  assert.match(trecho, /\.eq\("perfil_id", perfilId\)/, "Meu Financeiro é filtrado por pessoa");
+  assert.match(trecho, /\.eq\("perfil_id", perfilId\)/, "Meu financeiro é filtrado por pessoa");
   assert.doesNotMatch(trecho, /\.eq\("privado"/,
     "o privado é seu e tem de aparecer no seu financeiro");
+  assert.match(meu, /dePlantao/, "o plantão precisa virar receita em Meu financeiro");
 });

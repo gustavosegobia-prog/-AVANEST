@@ -174,7 +174,6 @@ export default async function DashboardPage({
     { data: adiadosDoAviso },
     { data: producaoDoAviso },
     { data: plantoesDoDinheiro },
-    { data: plantoesDaReceita },
     { data: producaoDaReceita },
     { data: despesas },
   ] = await Promise.all([
@@ -273,36 +272,27 @@ export default async function DashboardPage({
     supabase.from("plantoes").select("data,situacao,valor,confirmado_em,created_at,created_by")
       .eq("perfil_id", user.id).gte("data", seisMesesAtras),
 
-    // As outras duas fontes de receita do serviço, para o Financeiro.
+    // A OUTRA fonte de receita do serviço, para o Financeiro. Era duas.
     //
-    // Sem `.eq("perfil_id", user.id)`, ao contrário das duas consultas acima:
-    // aquelas são lembretes da pessoa, esta é a conta do serviço. Quem pode ver
-    // é o RLS que decide — no individual só existe você, no grupo o financeiro
-    // precisa do todo para dividir.
+    // O PLANTÃO SAIU DAQUI. Ele entrava com `privado = false`, e essa bandeira
+    // responde a outra pergunta: "aparece na escala do grupo?". Quem administra
+    // a escala lança os próprios plantões já visíveis para a equipe, e por
+    // tabela eles viravam dinheiro do serviço — o Financeiro de um grupo
+    // mostrava R$ 3.600,00 de "faturado no mês" que eram os seis plantões de
+    // uma pessoa, com a lista de lançamentos embaixo dizendo "nenhum lançamento
+    // cadastrado". O número e a lista discordavam porque mediam coisas
+    // diferentes.
     //
-    // Doze meses para trás. O envelhecimento olha o que está em aberto, e uma
-    // conta de mais de um ano é caso de perda contábil, não de cobrança; puxar
-    // o histórico inteiro seria carregar anos de plantão para somar um mês.
+    // O plantão é pago pelo hospital a quem o fez, e continua somando inteiro
+    // em Meu financeiro de cada um — que é onde essa conta é verdadeira. Tirar
+    // daqui não perde nada; só para de contar como do serviço um dinheiro que
+    // é da pessoa.
     //
-    // `privado = false` NÃO É DETALHE, e a falta dele foi um defeito de
-    // verdade: o plantão privado é o que a escala promete que "entra só na sua
-    // escala e no seu mês — ninguém do grupo enxerga", e ele estava sendo
-    // somado no Financeiro do grupo. Aparecia lá o hospital de fora, com o
-    // valor combinado, na tabela de cobranças em atraso.
+    // Sem `.eq("perfil_id", user.id)` na consulta abaixo, ao contrário das duas
+    // acima: aquelas são lembretes da pessoa, esta é a conta do serviço. Quem
+    // pode ver é o RLS que decide — no individual só existe você, no grupo o
+    // financeiro precisa do todo para dividir.
     //
-    // E o pior não era o vazamento, era o NÚMERO MUDAR DE PESSOA PARA PESSOA.
-    // A política de RLS já esconde o plantão privado dos outros
-    // (`privado = false OR perfil_id = auth.uid()`), então quem via o próprio
-    // privado somava, e o colega ao lado não — dois administradores abriam o
-    // mesmo mês e liam dois "A receber" diferentes, sem nada na tela
-    // explicando a diferença. Um total que depende de quem olha não é um
-    // total. Filtrando aqui, a conta do grupo é a mesma para todo mundo.
-    needsFinanceData
-      ? supabase.from("plantoes")
-          .select("id,perfil_id,data,valor,situacao,local_id,local_texto")
-          .eq("privado", false)
-          .gte("data", dozeMesesAtras).order("data", { ascending: false })
-      : Promise.resolve({ data: [] }),
     // Pela função, e NÃO pela tabela.
     //
     // `producao_do_dia` tem política `perfil_id = auth.uid()` sem exceção para
@@ -407,7 +397,6 @@ export default async function DashboardPage({
       auditoria={auditoria ?? []}
       periodos={periodos ?? []}
       convenioValores={convenioValores ?? []}
-      plantoesDaReceita={plantoesDaReceita ?? []}
       producaoDaReceita={producaoDaReceita ?? []}
       despesas={despesas ?? []}
       initialView={initialView}

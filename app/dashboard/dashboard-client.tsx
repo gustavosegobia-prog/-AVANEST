@@ -64,8 +64,8 @@ import {
   variacao,
 } from "@/lib/financeiro-indicadores";
 import {
-  dePlantao, deProducao, deConsulta, doMes, porOrigem, porProfissional, somar,
-  type PlantaoBruto, type ProducaoBruta, type Receita,
+  deProducao, deConsulta, doMes, porOrigem, porProfissional, somar,
+  type ProducaoBruta, type Receita,
   paraRecebivel,
 } from "@/lib/receitas";
 import {
@@ -262,7 +262,7 @@ export function DashboardClient({
   trocasEsperando = 0,
   avisos = [],
   chavePush = "",
-  plantoesDaReceita = [], producaoDaReceita = [], despesas = [],
+  producaoDaReceita = [], despesas = [],
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
@@ -274,7 +274,7 @@ export function DashboardClient({
    * e para a maioria dos grupos de anestesia essa é a MENOR fatia: o plantão e
    * a produção do dia existiam no sistema e não chegavam a conta nenhuma.
    */
-  plantoesDaReceita?: PlantaoBruto[]; producaoDaReceita?: ProducaoBruta[];
+  producaoDaReceita?: ProducaoBruta[];
   /** O outro lado do caixa. Sem saída não é fluxo de caixa, é faturamento. */
   despesas?: Despesa[];
   /** A chave pública do VAPID. Vazia = push não configurado, e o convite some. */
@@ -1217,7 +1217,7 @@ export function DashboardClient({
             </div>
           </div>
         </div>
-      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} plantoesDaReceita={plantoesDaReceita} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} locais={locais} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()}/>
+      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin}/>}
 
       {contaAberta&&<div className="patientModalBackdrop" role="presentation">
@@ -1317,7 +1317,7 @@ export function DashboardClient({
   );
 }
 
-function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,plantoesDaReceita=[],producaoDaReceita=[],despesas=[],perfis=[],locais=[],ehGrupo=false,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];plantoesDaReceita?:PlantaoBruto[];producaoDaReceita?:ProducaoBruta[];despesas?:Despesa[];perfis?:PerfilGerenciado[];locais?:LocalDisponivel[];ehGrupo?:boolean;onRefresh:()=>void}) {
+function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,producaoDaReceita=[],despesas=[],perfis=[],ehGrupo=false,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];producaoDaReceita?:ProducaoBruta[];despesas?:Despesa[];perfis?:PerfilGerenciado[];ehGrupo?:boolean;onRefresh:()=>void}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const [configOpen,setConfigOpen]=useState(false);
@@ -1369,7 +1369,23 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // de leitura, o plantão vivia só na Escala. Para a maioria dos grupos de
   // anestesia o plantão é a MAIOR fatia, então o painel vinha mostrando a menor
   // e chamando de faturamento.
-  const nomeDoLocalPorId=new Map(locais.map(l=>[l.id,nomeDoLocal(l)]));
+  /* PLANTÃO NÃO É RECEITA DO SERVIÇO, e isto foi um erro que durou.
+     O plantão entrava aqui junto da consulta e da produção, e o resultado
+     apareceu no Financeiro de um grupo: R$ 3.600,00 de "faturado no mês" que
+     eram os seis plantões de UMA pessoa, num hospital, enquanto a lista de
+     lançamentos embaixo dizia "nenhum lançamento cadastrado". O número e a
+     lista discordavam porque mediam coisas diferentes.
+     A causa é que o filtro usado para separar era `privado = false`, e essa
+     bandeira responde a outra pergunta: "aparece na escala do grupo?". Quem
+     administra a escala lança os próprios plantões já visíveis para a equipe —
+     e por tabela eles viravam dinheiro do serviço.
+     O plantão é pago pelo hospital a quem o fez. Ele continua somando, inteiro,
+     em Meu financeiro de cada um, que é onde essa conta é verdadeira. Aqui
+     ficam as duas fontes que o SERVIÇO fatura: a consulta pré-anestésica e a
+     produção anestésica.
+     Se um dia um grupo passar a faturar plantão do hospital e repassar, o
+     caminho é um campo por plantão dizendo isso — e não deduzir de uma bandeira
+     que foi feita para outra coisa. */
   const receitas=useMemo(()=>{
     const lista:Receita[]=[];
     for(const item of financeiro){
@@ -1377,13 +1393,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       if(r) lista.push(r);
     }
     for(const item of producaoDaReceita){ const r=deProducao(item); if(r) lista.push(r); }
-    for(const item of plantoesDaReceita){
-      const r=dePlantao({...item,local_nome:item.local_id?nomeDoLocalPorId.get(item.local_id)??null:null});
-      if(r) lista.push(r);
-    }
     return lista;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[financeiro,producaoDaReceita,plantoesDaReceita,locais,pacientes]);
+  },[financeiro,producaoDaReceita,pacientes]);
 
   const receitasDoMes=doMes(receitas,period);
   const receitaTotal=somar(receitasDoMes);
