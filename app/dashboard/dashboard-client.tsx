@@ -1050,20 +1050,36 @@ export function DashboardClient({
               <Metric value={completedThisMonth.length} label="Concluídas no mês" tone="green" />
               <Metric value={asaHigh} label="Pacientes ASA III+ no total" tone="red" />
             </section>
+            {/* TODOS OS CINCO COM RÓTULO, e não só as datas.
+                Antes, busca, situação e local vinham nus e as duas datas com
+                rótulo em cima: os controles tinham alturas diferentes e a linha
+                saía desalinhada. E como a grade tinha quatro colunas para cinco
+                campos, o "Até" caía sozinho na linha de baixo esticado pela
+                largura da busca. Cinco rótulos resolvem as duas coisas — e as
+                datas paravam de pé sozinhas: dois `dd/mm/aaaa` iguais sem
+                rótulo não dizem qual é o começo e qual é o fim. */}
             <div className="historyFilters">
-              <input ref={buscaHistoricoRef} value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
-              <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)} aria-label="Filtrar por status"><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>
+              <label className="historyBusca">Buscar
+                <input ref={buscaHistoricoRef} value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
+              </label>
+              <label>Situação
+                <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)}><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>
+              </label>
               {/* Só aparece com mais de um local: com um só, o filtro não filtra
-                  nada e vira um controle que ocupa espaço sem responder nada. */}
+                  nada e vira um controle que ocupa espaço sem responder nada.
+                  É também por isso que a linha é flexível e não uma grade de
+                  colunas fixas — o número de campos muda de conta para conta. */}
               {locais.length>1&&(
-                <select value={historyLocal} onChange={(event)=>setHistoryLocal(event.target.value)} aria-label="Filtrar por local de atendimento">
-                  <option value="todos">Todos os locais</option>
-                  {locais.map((item)=><option key={item.id} value={item.id}>{nomeDoLocal(item)}</option>)}
-                  {/* As avaliações feitas antes desta funcionalidade não têm
-                      local. Sem esta opção elas sumiriam do histórico assim que
-                      alguém filtrasse, e pareceriam perdidas. */}
-                  <option value="sem">Sem local registrado</option>
-                </select>
+                <label>Local
+                  <select value={historyLocal} onChange={(event)=>setHistoryLocal(event.target.value)}>
+                    <option value="todos">Todos os locais</option>
+                    {locais.map((item)=><option key={item.id} value={item.id}>{nomeDoLocal(item)}</option>)}
+                    {/* As avaliações feitas antes desta funcionalidade não têm
+                        local. Sem esta opção elas sumiriam do histórico assim que
+                        alguém filtrasse, e pareceriam perdidas. */}
+                    <option value="sem">Sem local registrado</option>
+                  </select>
+                </label>
               )}
               <label>De<input type="date" value={historyFrom} onChange={(event)=>setHistoryFrom(event.target.value)} /></label>
               <label>Até<input type="date" value={historyTo} onChange={(event)=>setHistoryTo(event.target.value)} /></label>

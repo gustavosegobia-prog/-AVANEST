@@ -803,9 +803,44 @@ button:disabled{cursor:not-allowed}
 .medicationQuestionHint{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:12px 14px;border-radius:10px;background:#edf6fb;color:#46647c;font-size:14px}
 @media(max-width:700px){.medicationQuestionHint{align-items:flex-start;flex-direction:column}.medicationQuestionHint .outlineClinical{width:100%}}
 
-.historyFilters{display:grid;grid-template-columns:minmax(240px,1fr) 180px 145px 145px;gap:12px;padding:18px 25px;border-bottom:1px solid var(--cor-borda)}.historyFilters input,.historyFilters select{width:100%;box-sizing:border-box;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:10px;padding:13px 14px;font:inherit;color:inherit}.historyFilters label{display:grid;gap:5px;color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}.historyFilters label input{padding:10px 12px}.historyRow{display:grid;grid-template-columns:52px minmax(260px,1fr) auto auto auto;align-items:center;gap:16px;padding:16px 25px;border-bottom:1px solid var(--cor-borda);color:inherit;text-decoration:none}.historyRow:hover{background:var(--cor-fundo)}.historyRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.historyRow time{color:var(--cor-tinta-fraca);white-space:nowrap}.historyRow>b{color:var(--cor-marca);font-size:13px;white-space:nowrap}.historyLimit{padding:14px 25px;color:var(--cor-tinta-fraca);font-size:13px}
-@media(max-width:900px){.historyFilters{grid-template-columns:1fr 1fr}.historyFilters>input{grid-column:1/-1}.historyRow{grid-template-columns:48px 1fr auto}.historyRow .statusChip,.historyRow>b{display:none}}
-@media(max-width:560px){.historyFilters{grid-template-columns:1fr}.historyFilters>input{grid-column:auto}.historyRow{padding:14px}.historyRow time{display:none}}
+/* FLEX, e não uma grade de colunas fixas.
+   A grade tinha quatro colunas para cinco campos — o "Até" caía sozinho na
+   linha de baixo, esticado pela largura da busca. E o número de campos não é
+   fixo: o filtro de local só existe em quem tem mais de um. Colunas fixas não
+   dão conta de um layout cujo número de itens muda de conta para conta.
+   Aqui a busca cresce três vezes mais que os outros, e todos têm um mínimo
+   abaixo do qual quebram a linha em vez de espremer o texto — era o que cortava
+   "Todos os locais" em "Todos os loca". */
+.historyFilters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 14px;
+  padding:18px 25px;border-bottom:1px solid var(--cor-borda)}
+.historyFilters label{display:grid;gap:5px;flex:1 1 165px;min-width:0;
+  color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}
+.historyFilters .historyBusca{flex:3 1 260px}
+/* As datas não precisam crescer: `dd/mm/aaaa` tem largura conhecida, e o que
+   sobra é melhor gasto na busca. */
+.historyFilters label:has(input[type=date]){flex:0 1 150px}
+.historyFilters input,.historyFilters select{width:100%;box-sizing:border-box;
+  border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);
+  border-radius:10px;padding:0 14px;min-height:44px;font:inherit;color:inherit}.historyRow{display:grid;grid-template-columns:52px minmax(260px,1fr) auto auto auto;align-items:center;gap:16px;padding:16px 25px;border-bottom:1px solid var(--cor-borda);color:inherit;text-decoration:none}.historyRow:hover{background:var(--cor-fundo)}.historyRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.historyRow time{color:var(--cor-tinta-fraca);white-space:nowrap}.historyRow>b{color:var(--cor-marca);font-size:13px;white-space:nowrap}.historyLimit{padding:14px 25px;color:var(--cor-tinta-fraca);font-size:13px}
+@media(max-width:900px){.historyRow{grid-template-columns:48px 1fr auto}.historyRow .statusChip,.historyRow>b{display:none}}
+@media(max-width:560px){
+  /* No telefone cada filtro ocupa a linha inteira: lado a lado eles ficariam
+     com uns 70px, e um seletor de data nesse tamanho não se usa. */
+  .historyFilters{padding:16px}
+  .historyFilters label,.historyFilters .historyBusca{flex:1 1 100%}
+  /* As datas ficam lado a lado, e assim a lista de resultados sobe uma linha —
+     no telefone, cada linha de filtro é uma rolagem a mais antes de ver o que
+     se veio ver. */
+  /* O MÍNIMO NÃO É CHUTE: medido, um `dd/mm/aaaa` com o ícone do calendário
+     precisa de 126px com esta fonte, e abaixo disso o navegador corta o texto
+     em silêncio — `scrollWidth` não acusa nada em campo de data, então o corte
+     só aparece olhando. Com 130px de mínimo, as duas datas dividem a linha
+     enquanto couberem e quebram sozinhas quando não couberem, sem eu ter de
+     adivinhar em que largura de aparelho isso acontece. */
+  .historyFilters label:has(input[type=date]){flex:1 1 calc(50% - 7px);min-width:130px}
+  .historyFilters input[type=date]{padding:0 10px}
+  .historyRow{padding:14px}.historyRow time{display:none}
+}
 
 .billingPlanGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px 25px}.billingPlan{border:1px solid #d9e4ec;border-radius:12px;padding:15px}.billingPlan div:first-child{display:flex;justify-content:space-between;gap:10px}.billingPlan span,.billingPlan small{color:var(--cor-tinta-fraca);font-size:12px}.billingBar{height:9px;border-radius:99px;background:#e6edf3;overflow:hidden;margin:12px 0 8px}.billingBar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cor-marca),#32c6b2)}.noteAlertRow,.convenioRow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:14px;padding:15px 25px;border-bottom:1px solid var(--cor-borda)}.noteAlertRow small,.convenioRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.convenioForm{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr)) auto;gap:12px;padding:18px 25px;border-bottom:1px solid var(--cor-borda)}.convenioForm label{display:grid;gap:6px;color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}.convenioForm input{height:44px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 12px;font:inherit}.convenioForm .primaryClinical{align-self:end;padding:12px 16px;box-shadow:none}
 @media(max-width:900px){.billingPlanGrid{grid-template-columns:1fr 1fr}.convenioForm{grid-template-columns:1fr 1fr}.noteAlertRow,.convenioRow{grid-template-columns:1fr auto}}
