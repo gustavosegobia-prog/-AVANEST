@@ -121,3 +121,20 @@ test("no tema escuro os números do resumo continuam coloridos", () => {
       `no escuro, .${classe} volta a perder a cor para .clinicalDark b`);
   }
 });
+
+test("a faixa cinza não promete futuro em mês que já passou", () => {
+  // Ela é o plantão em situação "escalado" — na escala, ainda não confirmado
+  // como feito. Num mês adiante isso de fato ainda vai acontecer; num mês
+  // passado é um plantão que aconteceu e ninguém confirmou. Um julho aberto em
+  // setembro anunciava um plantão do dia 31/07 como futuro.
+  const financeiro = ler("components/meu-financeiro.tsx");
+  const lista = financeiro.match(/const FAIXAS = \[([^]*?)\] as const;/);
+  assert.ok(lista, "sumiu a lista das faixas");
+  assert.ok(!/rotulo: "Ainda vai acontecer"/.test(lista![1]),
+    "a faixa voltou a prometer futuro em mês que já passou");
+  assert.match(lista![1], /classe: "mfPrevisto", rotulo: "Escalado, a confirmar"/);
+  // E o número lá em cima diz a mesma coisa que a faixa: dois nomes para o
+  // mesmo valor é o começo de duas contas diferentes.
+  const rotulos = [...financeiro.matchAll(/Escalado, a confirmar/g)].length;
+  assert.ok(rotulos >= 2, "o resumo e a faixa têm de usar o mesmo nome");
+});

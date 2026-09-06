@@ -52,7 +52,15 @@ type ProducaoMinha = {
  * é pior do que balão nenhum.
  */
 const FAIXAS = [
-  { classe: "mfPrevisto", rotulo: "Ainda vai acontecer",
+  /* "Ainda vai acontecer" era MENTIRA em mês que já passou.
+     Esta faixa é o plantão em situação "escalado" — na escala, ainda não
+     confirmado como feito. Num mês adiante isso de fato ainda vai acontecer;
+     num mês passado é um plantão que aconteceu e ninguém confirmou, e a tela
+     dizia que estava por vir. Apareceu num julho aberto em setembro: um
+     plantão do dia 31/07 anunciado como futuro.
+     "Escalado, a confirmar" é verdade nos dois casos — e, no mês passado, diz
+     o que falta fazer em vez de esconder. */
+  { classe: "mfPrevisto", rotulo: "Escalado, a confirmar",
     valor: (m: { previsto: number }) => m.previsto },
   { classe: "mfAReceber", rotulo: "Feito, a receber",
     valor: (m: { noPrazo: number }) => m.noPrazo },
@@ -383,7 +391,7 @@ export function MeuFinanceiro({
             <b className="mfVermelho">{dinheiro(total.atrasado)}</b>
             <span>Parado há mais de 60 dias</span>
           </div>}
-          {previsto > 0 && <div><b className="mfCinza">{dinheiro(previsto)}</b><span>Ainda vai acontecer</span></div>}
+          {previsto > 0 && <div><b className="mfCinza">{dinheiro(previsto)}</b><span>Escalado, a confirmar</span></div>}
         </div>
 
         {horas > 0 && <p className="mfHora">
