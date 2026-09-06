@@ -1085,7 +1085,21 @@ export function DashboardClient({
               <label>Até<input type="date" value={historyTo} onChange={(event)=>setHistoryTo(event.target.value)} /></label>
             </div>
             {historicalAssessments.slice(0,50).map((assessment)=>{const patient=patientMap.get(assessment.patient_id);const date=assessment.concluida_at||assessment.updated_at||assessment.created_at;const professional=assessment.created_by?professionalMap.get(assessment.created_by):undefined;const done=assessment.status==="concluida";return <Link className="historyRow" key={assessment.id} href={done?`/avaliacoes/${assessment.id}/documentos`:`/avaliacoes/${assessment.id}`}><span className="avatar">{initials(patient?.nome||"Paciente")}</span><span><strong>{patient?.nome||"Paciente não localizado"}</strong><small>{patient?.cpf||"CPF não informado"} · {patient?.procedimento||"Procedimento não informado"}{professional?` · ${professional}`:""}</small></span><time>{new Date(date).toLocaleDateString("pt-BR")}</time><span className={`statusChip ${done?"present":assessment.status==="cancelada"?"danger":"waiting"}`}>{done?"CONCLUÍDA":assessment.status==="rascunho"?"EM ANDAMENTO":assessment.status.toUpperCase()}</span><b>{done?"Ver documentos":"Continuar"}</b></Link>;})}
-            {historicalAssessments.length===0&&<div className="emptyClinical compactEmpty">Nenhuma avaliação encontrada com estes filtros.</div>}
+            {/* DUAS AUSÊNCIAS DIFERENTES, e a mensagem tem de dizer qual é.
+                "Nenhuma avaliação encontrada com estes filtros" em conta que
+                ainda não tem avaliação NENHUMA manda mexer nos filtros para
+                achar o que não existe — e é exatamente o que acontece: a pessoa
+                troca a situação, troca o local, limpa as datas, e continua
+                vazio. Quando não há nada, a tela diz que não há nada e mostra
+                por onde se começa. */}
+            {historicalAssessments.length===0&&(avaliacoes.length===0
+              ? <div className="emptyClinical compactEmpty">
+                  <strong>Ainda não há avaliação nenhuma.</strong>
+                  A primeira nasce em <b>Nova avaliação pré-anestésica</b>, no alto da tela.
+                </div>
+              : <div className="emptyClinical compactEmpty">
+                  Nenhuma das {avaliacoes.length} avaliações combina com estes filtros.
+                </div>)}
             {historicalAssessments.length>50&&<div className="historyLimit">Mostrando as 50 avaliações mais recentes. Refine os filtros para ver uma lista menor.</div>}
           </section>
             </>}

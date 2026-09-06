@@ -61,3 +61,17 @@ test("o campo de data nunca fica abaixo dos 126px medidos", () => {
       `${minimo[1]}px é menos que os 126px medidos: o texto da data corta`);
   }
 });
+
+test("a tela separa “não existe nada” de “nada combina com o filtro”", () => {
+  // São duas ausências diferentes. Dizer "nenhuma avaliação encontrada com
+  // estes filtros" numa conta que ainda não tem avaliação nenhuma manda mexer
+  // nos filtros para achar o que não existe — trocar a situação, trocar o
+  // local, limpar as datas, e continuar vazio.
+  const tela = ler("app/dashboard/dashboard-client.tsx");
+  const bloco = tela.match(/historicalAssessments\.length===0&&\(avaliacoes\.length===0([^]*?)\)\}/);
+  assert.ok(bloco, "a tela voltou a ter uma mensagem só para as duas ausências");
+  assert.match(bloco![1], /Ainda não há avaliação nenhuma/,
+    "falta a mensagem de quem ainda não tem nada");
+  assert.match(bloco![1], /combina com estes filtros/,
+    "falta a mensagem de quem tem avaliações mas filtrou demais");
+});
