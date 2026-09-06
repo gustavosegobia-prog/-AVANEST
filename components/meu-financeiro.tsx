@@ -64,7 +64,11 @@ const FAIXAS = [
     valor: (m: { previsto: number }) => m.previsto },
   { classe: "mfAReceber", rotulo: "Feito, a receber",
     valor: (m: { noPrazo: number }) => m.noPrazo },
-  { classe: "mfAtrasado", rotulo: "Parado há mais de 60 dias",
+  /* "+ de 60 dias", e não "Parado há mais de 60 dias": o rótulo longo era a
+     linha mais comprida do balão e estourava a caixa pela direita. Curto, ele
+     cabe — e o vermelho ao lado já diz que é problema, sem a palavra "parado"
+     ter de dizer de novo. */
+  { classe: "mfAtrasado", rotulo: "+ de 60 dias",
     valor: (m: { atrasado: number }) => m.atrasado },
   { classe: "mfRecebido", rotulo: "Recebido",
     valor: (m: { recebido: number }) => m.recebido },
@@ -389,7 +393,7 @@ export function MeuFinanceiro({
               se aprende a não olhar. */}
           {total.atrasado > 0 && <div>
             <b className="mfVermelho">{dinheiro(total.atrasado)}</b>
-            <span>Parado há mais de 60 dias</span>
+            <span>+ de 60 dias</span>
           </div>}
           {previsto > 0 && <div><b className="mfCinza">{dinheiro(previsto)}</b><span>Escalado, a confirmar</span></div>}
         </div>

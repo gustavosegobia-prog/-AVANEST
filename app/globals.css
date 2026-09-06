@@ -3546,7 +3546,12 @@ button:disabled{cursor:not-allowed}
    a pessoa tocar noutro lugar. Lá o toque troca o mês, que é o que ela quer. */
 @media (hover:hover) {
   .mfBalao{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
-    z-index:5;display:none;width:max-content;max-width:250px;
+    /* `max-width` com `nowrap` nas linhas é uma armadilha: o texto não quebra,
+       então passar do limite não encolhe a caixa — vaza para fora dela. 300px
+       comporta a linha mais longa deste balão com folga, e o encosto nas
+       colunas das pontas continua garantindo que ele não passe da borda do
+       cartão. */
+    z-index:5;display:none;width:max-content;max-width:300px;
     flex-direction:column;gap:3px;padding:10px 12px;text-align:left;
     border:1px solid var(--cor-borda);border-radius:var(--raio-2);
     background:var(--cor-superficie);box-shadow:0 10px 30px rgba(4,22,38,.16);

@@ -138,3 +138,24 @@ test("a faixa cinza não promete futuro em mês que já passou", () => {
   const rotulos = [...financeiro.matchAll(/Escalado, a confirmar/g)].length;
   assert.ok(rotulos >= 2, "o resumo e a faixa têm de usar o mesmo nome");
 });
+
+test("nenhuma linha do balão é longa demais para a caixa", () => {
+  // As linhas não quebram (`white-space:nowrap`), então rótulo comprido não
+  // encolhe a caixa: vaza para fora dela. Foi o que aconteceu com "Parado há
+  // mais de 60 dias", a linha mais longa do balão.
+  //
+  // Medido no navegador com os quatro rótulos e valores de um mês real: 267px
+  // de conteúdo. O teto de 300px no CSS dá a folga; este teste guarda o outro
+  // lado, que é o rótulo não voltar a crescer.
+  const financeiro = ler("components/meu-financeiro.tsx");
+  const lista = financeiro.match(/const FAIXAS = \[([^]*?)\] as const;/);
+  assert.ok(lista, "sumiu a lista das faixas");
+  const rotulos = [...lista![1].matchAll(/rotulo: "([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(rotulos.length, 4);
+  for (const rotulo of rotulos)
+    assert.ok(rotulo.length <= 22, `"${rotulo}" tem ${rotulo.length} letras e estoura o balão`);
+
+  const teto = ler("app/globals.css").match(/\.mfBalao\{[^}]*max-width:(\d+)px/);
+  assert.ok(teto, "o balão ficou sem teto de largura");
+  assert.ok(Number(teto![1]) >= 280, `${teto![1]}px é pouco para a linha mais longa`);
+});
