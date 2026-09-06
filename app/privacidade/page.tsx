@@ -12,7 +12,11 @@ export const metadata: Metadata = {
   // capa, que é bem pior do que não ter nenhum.
   alternates: { canonical: "/privacidade" },
   title: "Política de Privacidade | AVANEST",
-  description: "Como o AVANEST trata dados pessoais e dados de saúde, conforme a LGPD.",
+  // 157 caracteres, pelo mesmo motivo da página de Termos: com 70 o buscador
+  // ignorava a descrição e escrevia a dele. Quem procura isto quer saber
+  // exatamente estas quatro coisas — quem responde, onde ficam, por quanto
+  // tempo e o que dá para exigir —, então elas vão no resultado da busca.
+  description: "Como o AVANEST trata dados pessoais e dados de saúde sob a LGPD: quem é controlador e quem é operador, onde os dados ficam, por quanto tempo e seus direitos.",
 };
 
 export default function PrivacidadePage() {

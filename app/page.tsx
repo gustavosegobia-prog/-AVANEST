@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
+import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 
 // O que o site é, em linguagem de máquina.
 //
@@ -52,18 +53,12 @@ const DADOS_ESTRUTURADOS = {
     availability: "https://schema.org/InStock",
     url: "https://www.avanest.com.br/planos",
   },
-  provider: {
-    "@type": "Organization",
-    name: "G. Segobia Serviços Médicos Ltda.",
-    alternateName: "AVANEST",
-    url: "https://www.avanest.com.br",
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Campo Mourão",
-      addressRegion: "PR",
-      addressCountry: "BR",
-    },
-  },
+  // SÓ A REFERÊNCIA À EMPRESA, e não uma cópia dela. A organização completa —
+  // nome, logo, CNPJ, contato, Instagram — é declarada uma vez no layout, em
+  // `lib/schema.ts`. Aqui ficava um segundo objeto com parte dos mesmos dados,
+  // e dois objetos homônimos são duas empresas para o buscador: no dia em que
+  // um mudasse, ele ficaria com duas versões da mesma marca e escolheria uma.
+  provider: { "@id": ID_DA_ORGANIZACAO },
 };
 
 export default function HomePage() {

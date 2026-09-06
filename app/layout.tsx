@@ -3,6 +3,7 @@ import {
   TELAS_DE_ABERTURA, arquivoDaAbertura, consultaDaAbertura,
 } from "@/lib/tela-de-abertura";
 import { AberturaAnimada, RoteiroDaAbertura } from "@/components/abertura-animada";
+import { comoJson, organizacao } from "@/lib/schema";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -95,6 +96,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           />
         ))}
         <meta name="theme-color" content="#0879c9" />
+        {/* QUEM OPERA ISTO, para o buscador.
+            Fica no layout porque é verdade em qualquer endereço do site — e
+            porque o Google costuma entrar por uma calculadora de escore, sem
+            nunca passar pela capa. Declarar só na capa deixaria a maior parte
+            das visitas sem a empresa. O conteúdo é montado em lib/schema.ts a
+            partir de constantes deste repositório; não há entrada externa. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: comoJson(organizacao()) }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* A FOLHA DA FONTE NÃO BLOQUEIA MAIS A PRIMEIRA PINTURA.

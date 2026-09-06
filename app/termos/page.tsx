@@ -12,7 +12,11 @@ export const metadata: Metadata = {
   // capa, que é bem pior do que não ter nenhum.
   alternates: { canonical: "/termos" },
   title: "Termos de Uso | AVANEST",
-  description: "Condições de uso do AVANEST, sistema de gestão em anestesiologia.",
+  // 154 caracteres. A anterior tinha 65 e dizia só o nome da página: nesse
+  // tamanho o Google descarta a descrição e monta a dele com um pedaço
+  // qualquer do texto — normalmente o primeiro parágrafo jurídico, que não
+  // convida ninguém a clicar. Esta lista o que a página realmente cobre.
+  description: "Condições de uso do AVANEST, sistema de gestão em anestesiologia: o que o sistema é e o que não é, responsabilidade clínica, planos, cancelamento e dados.",
 };
 
 export default function TermosPage() {

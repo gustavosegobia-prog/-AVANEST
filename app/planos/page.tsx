@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   // escrito à mão sobrevive à mudança da campanha e passa a mentir. O número
   // que vale aparece na página, vindo do banco.
   description:
-    "Escala, avaliação pré-anestésica, produção e fluxo de caixa — do anestesiologista sozinho ao grupo de anestesia inteiro. Oferta de lançamento por tempo limitado.",
+    "Escala, avaliação pré-anestésica, produção e fluxo de caixa — do anestesiologista sozinho ao grupo inteiro. Oferta de lançamento por tempo limitado.",
 };
 
 // A página mostra contagem de vagas: cachear daria número velho.
