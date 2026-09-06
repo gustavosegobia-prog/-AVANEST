@@ -68,3 +68,19 @@ test("CPF e telefone também ocupam duas colunas na identificação", () => {
     assert.match(form, re, `${rotulo} voltou a caber numa coluna só`);
   }
 });
+
+test("a caixa da data tem o tamanho do conteúdo, para o ícone ficar à direita", () => {
+  // Com o campo ocupando duas colunas, a caixa ficava muito mais larga que o
+  // conteúdo e o ícone do calendário boiava no meio dela. Empurrar o ícone com
+  // CSS não funciona: o Chrome posiciona as partes internas do seletor de data
+  // com o layout dele e ignora `margin-inline-start:auto`,
+  // `justify-content:space-between` e `flex-grow` no `::-webkit-datetime-edit`
+  // — todos testados. Só sobra dar à caixa o tamanho certo.
+  const m = css.match(/\.conditionalDetails input\[type="date"\]\{width:(\d+)px;max-width:100%\}/);
+  assert.ok(m, "a regra de largura da caixa sumiu");
+  const largura = Number(m![1]);
+  assert.ok(largura >= PRECISA.formulario,
+    `${largura}px corta o ícone: o controle pede ${PRECISA.formulario}px`);
+  // Sem `max-width:100%` a caixa fixa fura a coluna em vez de encolher.
+  assert.ok(largura <= 200, `${largura}px é largo demais — a caixa volta a sobrar`);
+});

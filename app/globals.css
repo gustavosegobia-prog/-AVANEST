@@ -3850,6 +3850,28 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .patientFormGrid .clinicalField:has(input[type="date"]){grid-column:1/-1}
 }
 
+/* --- O ÍCONE DO CALENDÁRIO FICA NO CANTO DIREITO ------------------------
+   Com o campo ocupando duas colunas ele passou a ser bem mais largo do que
+   o conteúdo, e o ícone ficava boiando no meio da caixa — logo depois da
+   data, com um vazio enorme à direita.
+
+   Empurrá-lo com CSS não funciona, e vale registrar o que foi tentado, para
+   ninguém repetir: `margin-inline-start:auto` (a regra que já existia),
+   `justify-content:space-between` no campo, `flex-grow` no
+   `::-webkit-datetime-edit`. Nenhuma move o ícone — o Chrome posiciona as
+   partes internas do seletor de data com o layout dele, e ignora as
+   propriedades de flex do contêiner. Só margem com valor fixo funciona, e
+   valor fixo depende da largura da caixa.
+
+   Então a caixa passa a ter o tamanho do conteúdo. 176px é a largura
+   medida do controle (172px com a fonte mais larga que testei) mais folga;
+   `max-width:100%` garante que ele encolhe antes de furar a coluna. Com a
+   caixa do tamanho certo, o ícone está no canto direito por construção. */
+.evalField input[type="date"],
+.patientFormGrid .clinicalField input[type="date"],
+.plantaoLancarGrade .clinicalField input[type="date"],
+.conditionalDetails input[type="date"]{width:176px;max-width:100%}
+
 /* --- Botão de ação não quebra frase no meio ----------------------------
    "Voltar e corrigir avaliação" virava "Voltar e corrigir" / "avaliação" em
    duas linhas, e "Excluir avaliação" idem: o botão parecia quebrado, e não
