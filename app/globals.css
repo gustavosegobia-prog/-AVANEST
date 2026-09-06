@@ -3453,7 +3453,12 @@ button:disabled{cursor:not-allowed}
 
 /* ── Meu financeiro: o resumo do plantonista ─────────────────────────────── */
 
-.mfResumo{background:#fff;border:1px solid #d3dee8;border-radius:17px;padding:20px 24px;
+/* Superfície e borda pelos TOKENS, e não pelo valor cru. Escritos à mão, o
+   cartão continuava branco no tema escuro enquanto o texto virava claro —
+   e aí "R$ 16.600,00" saía a 1,2:1 de contraste, que é o mesmo que não
+   estar escrito. Medido: no escuro, todo texto destes cartões estava
+   abaixo de 4,5:1. */
+.mfResumo{background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:17px;padding:20px 24px;
   margin:22px 0}
 /* A recusa fica logo abaixo do cabeçalho do diálogo, antes dos campos: é a
    primeira coisa a ler quando o botão não fez o que se esperava. */
@@ -3516,7 +3521,9 @@ button:disabled{cursor:not-allowed}
 /* Botão, e não div: tocar na coluna troca o mês. Sem aparência de botão, e de
    propósito — o que se vê continua sendo o gráfico. O aviso de que dá para
    tocar vem do cursor, do realce ao passar o mouse e do anel de foco. */
-.mfColuna{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;
+/* `min-width:0` porque o rótulo do mês tem largura própria: sem isso a coluna
+   não encolhia abaixo dele e as doze furavam o cartão num telefone de 320px. */
+.mfColuna{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;
   background:none;border:0;padding:0;cursor:pointer;
   -webkit-tap-highlight-color:transparent}
 .mfColuna:hover .mfBarra{filter:brightness(1.08)}
@@ -3549,10 +3556,12 @@ button:disabled{cursor:not-allowed}
 .mfCinza{color:var(--cor-tinta-fraca)}
 .mfVermelho{color:var(--cor-perigo)}
 .mfMes{font-size:11.5px;color:var(--cor-tinta-fraca);font-weight:700;
-  width:22px;text-align:center;line-height:1.6;border-radius:6px}
+  width:100%;max-width:22px;text-align:center;line-height:1.6;border-radius:6px}
 /* O mês aberto ganha a marca no rótulo, e não só na barra: com doze colunas
    estreitas, achar a barra destacada leva mais tempo que ler o rótulo. */
-.mfColuna.atual .mfMes{background:var(--cor-marca);color:#fff}
+/* `--cor-marca-contraste` existe para isto: no tema escuro a marca clareia,
+   e o branco cravado à mão caía para 2,8:1 em cima dela. */
+.mfColuna.atual .mfMes{background:var(--cor-marca);color:var(--cor-marca-contraste)}
 
 /* --- O balão do mês ------------------------------------------------------
    Substitui o `title` do navegador. Com o nativo, cada faixa dizia o próprio
@@ -3564,6 +3573,15 @@ button:disabled{cursor:not-allowed}
    SÓ ONDE HÁ PONTEIRO. No telefone não existe passar o mouse, e `:hover` em
    toque gruda depois do tapa — o balão ficaria aberto por cima do gráfico até
    a pessoa tocar noutro lugar. Lá o toque troca o mês, que é o que ela quer. */
+/* ESCONDIDO POR PADRÃO, E NÃO SÓ ONDE HÁ PONTEIRO.
+   Esta linha estava dentro do `@media (hover:hover)` abaixo, junto com o resto
+   do balão — e num aparelho de toque a consulta inteira não vale, então o
+   balão não era escondido: virava texto comum dentro de cada coluna. As doze
+   colunas passavam a carregar "julho R$ 17.700,00 Recebido R$ 2.400,00 + de 60
+   dias..." em texto corrido, o cartão inchava, e a página inteira ganhava
+   1.256px de rolagem lateral no iPhone e 890px no iPad — que era o que jogava
+   a barra de cima e as abas para fora da tela. Medido nos dois. */
+.mfBalao{display:none}
 @media (hover:hover) {
   .mfBalao{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
     /* `max-width` com `nowrap` nas linhas é uma armadilha: o texto não quebra,
@@ -3592,14 +3610,16 @@ button:disabled{cursor:not-allowed}
   .mfBalao em{margin-left:auto;font-style:normal;font-weight:750;
     color:var(--cor-tinta);font-variant-numeric:tabular-nums}
 }
-.mfLegenda{display:flex;gap:16px;margin:12px 0 0;font-size:12.5px;
+/* Quebra de linha: as quatro faixas somam mais que a largura de um telefone
+   estreito, e sem `wrap` a última saía pela borda do cartão. */
+.mfLegenda{display:flex;flex-wrap:wrap;gap:8px 16px;margin:12px 0 0;font-size:12.5px;
   color:var(--cor-tinta-fraca)}
 .mfLegenda span{display:inline-flex;align-items:center;gap:6px}
 .mfLegenda i{width:11px;height:11px;border-radius:3px}
 
 .mfLocais{margin:22px 0}
 .mfLocais h3{font-size:16px;margin:0 0 12px;letter-spacing:-.01em}
-.mfLocal{background:#fff;border:1px solid #d3dee8;border-radius:15px;padding:16px 18px;
+.mfLocal{background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:15px;padding:16px 18px;
   margin-bottom:10px}
 .mfLocal header{display:flex;align-items:center;gap:12px}
 .mfLocal header div{flex:1;min-width:0}
@@ -3703,7 +3723,7 @@ button:disabled{cursor:not-allowed}
 .despesaForm label span{font-size:12px;font-weight:750;letter-spacing:.03em;
   color:var(--cor-tinta-fraca)}
 .despesaForm input,.despesaForm select{height:44px;border:1.5px solid var(--cor-borda);
-  border-radius:10px;padding:0 12px;font-size:15px;background:#fff;color:var(--cor-tinta)}
+  border-radius:10px;padding:0 12px;font-size:15px;background:var(--cor-superficie);color:var(--cor-tinta)}
 .despesaForm input:focus,.despesaForm select:focus{outline:0;box-shadow:var(--foco);
   border-color:var(--cor-marca)}
 /* A descrição é o único campo que cresce: os outros têm tamanho conhecido, e
