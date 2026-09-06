@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
+import { autorEmSchema, dataPorExtenso, nomeCompleto, registro } from "@/lib/autoria";
 
 // A moldura das páginas públicas de escore.
 //
@@ -20,13 +21,15 @@ export const ESCORES_DO_MENU = [
 ];
 
 export function PaginaDeEscore({
-  sobretitulo, titulo, resumo, atual, children,
+  sobretitulo, titulo, resumo, atual, revisadoEm, children,
 }: {
   sobretitulo: string;
   titulo: string;
   resumo: string;
   /** O href desta página, para não se auto-listar no rodapé de navegação. */
   atual?: string;
+  /** AAAA-MM-DD da última revisão clínica. A mesma data que vai no schema. */
+  revisadoEm?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -49,6 +52,20 @@ export function PaginaDeEscore({
         <p className="avnEyebrow">{sobretitulo}</p>
         <h1>{titulo}</h1>
         <p className="avnLead">{resumo}</p>
+        {/* A ASSINATURA FICA NA TELA, e não só na marcação invisível.
+            Conteúdo que influencia decisão de saúde é avaliado por quem
+            escreveu, com que credencial e quando foi revisado — e a orientação
+            do Google é explícita em querer isso visível na página, não apenas
+            no JSON-LD. Declarar só na marcação é sinal não corroborado.
+            Fica logo abaixo do resumo, antes da calculadora: é o que responde
+            "posso confiar nisto?" antes de a pessoa usar a conta. */}
+        {revisadoEm && (
+          <p className="escAutoria">
+            <span>Escrito e revisado por <b>{nomeCompleto()}</b></span>
+            <span className="escAutoriaCrm">{registro()}</span>
+            <span>Última revisão em {dataPorExtenso(revisadoEm)}</span>
+          </p>
+        )}
       </section>
 
       {children}
@@ -116,6 +133,16 @@ export function dadosDeEscore(a: {
     url: `https://www.avanest.com.br${a.caminho}`,
     inLanguage: "pt-BR",
     lastReviewed: a.revisadoEm,
+    // AUTOR E REVISOR SÃO A MESMA PESSOA aqui, e os dois campos existem porque
+    // respondem a perguntas diferentes: `author` diz quem escreveu, e
+    // `reviewedBy` diz quem se responsabiliza pelo que está escrito. Num texto
+    // clínico o segundo é o que pesa — é ele que o Google lê como revisão
+    // profissional. Omitir um dos dois deixa metade da pergunta sem resposta.
+    author: autorEmSchema(),
+    reviewedBy: autorEmSchema(),
+    // A data em `reviewedBy` não existe no vocabulário; a de revisão é esta, e
+    // `lastReviewed` acima é a mesma que aparece escrita na página.
+    dateModified: a.revisadoEm,
     audience: { "@type": "MedicalAudience", audienceType: "Anestesiologistas" },
     isPartOf: {
       "@type": "WebSite",

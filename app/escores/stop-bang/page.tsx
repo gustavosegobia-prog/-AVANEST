@@ -36,6 +36,7 @@ export default function StopBangPage() {
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <PaginaDeEscore
+        revisadoEm={REVISADO_EM}
         sobretitulo="ESCORES NA AVALIAÇÃO PRÉ-ANESTÉSICA"
         titulo="STOP-Bang"
         resumo="Rastreio de apneia obstrutiva do sono. Marque os critérios presentes — a conta é feita no seu navegador e nada é enviado nem guardado."

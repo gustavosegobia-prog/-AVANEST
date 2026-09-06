@@ -2010,6 +2010,23 @@ button:disabled{cursor:not-allowed}
 .recHero h1{font-size:clamp(34px,4vw,52px);line-height:1.08;letter-spacing:-.03em;
   margin:16px 0 22px;max-width:900px}
 .recHero .avnLead{color:var(--avn-muted)}
+/* A ASSINATURA CLÍNICA da página.
+   Conteúdo que influencia decisão de saúde é avaliado por quem escreveu, com
+   que credencial e quando foi revisado — e essa resposta tem de estar na tela,
+   não só no JSON-LD. Fica logo abaixo do resumo, antes da calculadora: é o que
+   responde "posso confiar nisto?" antes de a pessoa usar a conta.
+   Discreta de propósito. Ela é credencial, não manchete: em corpo grande
+   competiria com o título do escore, que é o que a pessoa veio ler. */
+.escAutoria{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;
+  margin:20px 0 0;font-size:13.5px;color:var(--avn-muted)}
+.escAutoria b{color:var(--avn-ink);font-weight:700}
+/* O registro numa pastilha: é o dado conferível da linha, e o que distingue
+   uma assinatura de um nome qualquer no fim do texto. */
+.escAutoriaCrm{font-weight:700;color:var(--avn-ink);background:var(--cor-superficie-suave);
+  border-radius:999px;padding:3px 11px;font-variant-numeric:tabular-nums}
+/* No telefone a linha vira três, e o respiro vertical some se ficar o do lado.
+   Sem isto, "CRM 49131-PR" cola no nome de cima. */
+@media(max-width:560px){.escAutoria{gap:7px 12px}}
 
 .recBloco{padding:34px max(28px,calc((100vw - 1180px)/2));background:#fff}
 /* O título da seção fica ancorado numa barra de cor, e não centralizado: são

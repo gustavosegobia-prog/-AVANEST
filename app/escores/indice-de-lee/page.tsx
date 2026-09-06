@@ -36,6 +36,7 @@ export default function IndiceDeLeePage() {
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <PaginaDeEscore
+        revisadoEm={REVISADO_EM}
         sobretitulo="ESCORES NA AVALIAÇÃO PRÉ-ANESTÉSICA"
         titulo="Índice de Lee (RCRI)"
         resumo="Risco de evento cardíaco maior em cirurgia não cardíaca. Marque os critérios presentes — a conta é feita no seu navegador e nada é enviado nem guardado."

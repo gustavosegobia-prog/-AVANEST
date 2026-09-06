@@ -36,6 +36,7 @@ export default function ClassificacaoAsaPage() {
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <PaginaDeEscore
+        revisadoEm={REVISADO_EM}
         sobretitulo="ESCORES NA AVALIAÇÃO PRÉ-ANESTÉSICA"
         titulo="Classificação ASA"
         resumo="O estado físico do paciente em seis classes. Não é escore somado: é um julgamento clínico, e os exemplos servem para que colegas diferentes classifiquem parecido."

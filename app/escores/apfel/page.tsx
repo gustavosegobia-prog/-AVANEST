@@ -36,6 +36,7 @@ export default function ApfelPage() {
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <PaginaDeEscore
+        revisadoEm={REVISADO_EM}
         sobretitulo="ESCORES NA AVALIAÇÃO PRÉ-ANESTÉSICA"
         titulo="Escore de Apfel"
         resumo="Risco de náusea e vômito no pós-operatório. Marque os fatores presentes — a conta é feita no seu navegador e nada é enviado nem guardado."
