@@ -437,13 +437,13 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
             {erroIdade&&<small className="fieldError">{erroIdade}</small>}
           </label>
           {select("sexo","Sexo",["Feminino","Masculino","Outro"])}
-          {/* Duas colunas, como a data de nascimento e pelo mesmo motivo:
-              "000.000.000-00" com a fonte de 16px pede 176px, e a coluna
-              entrega 139px na faixa de 9 colunas. Medido — o campo cortava
-              o "-00" em silêncio. */}
-          <label className="evalField span2"><span>CPF</span><input value={paciente.cpf??""} readOnly/></label>
+          {/* `codigo`: comprimento fixo e conhecido. Não cresce como os
+              outros — não há o que mostrar além do número — mas também não
+              encolhe abaixo do que o número mede, que era o que cortava o
+              "-00" do CPF em silêncio. */}
+          <label className="evalField codigo"><span>CPF</span><input value={paciente.cpf??""} readOnly/></label>
           {input("peso","Peso (kg)","number")}{input("altura","Altura (cm)","number")}{input("convenio","Convênio")}
-          <label className="evalField span2"><span>Telefone / WhatsApp</span><input value={paciente.telefone??""} readOnly/></label>
+          <label className="evalField codigo"><span>Telefone / WhatsApp</span><input value={paciente.telefone??""} readOnly/></label>
           <label className="evalField span2"><span>E-mail</span><input value={paciente.email??""} readOnly/></label>
           {input("prontuario","Nº do prontuário")}{input("hospital","Hospital / clínica","text","span2")}{input("unidade","Unidade de internação")}{input("responsavel","Responsável (se necessário)","text","span2")}
         </div>

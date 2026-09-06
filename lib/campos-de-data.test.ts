@@ -27,16 +27,39 @@ const PRECISA = {
 
 const css = fs.readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-test("o campo de data ocupa duas colunas nas grades de formulário", () => {
+test("o campo de data tem largura própria e não é espremido pela linha", () => {
   // 16px é obrigatório — abaixo disso o iPhone dá zoom sozinho ao tocar no
-  // campo —, e com 16px o controle pede 172px. A coluna entrega 139px na
-  // faixa de 9 colunas e 121px num telefone de 320px. Não existe
-  // preenchimento pequeno o bastante para caber: só sobra ocupar duas.
-  assert.match(css, /\.evalFormGrid \.evalField:has\(input\[type="date"\]\)/);
+  // campo —, e com 16px o controle pede 172px. Na avaliação o campo não
+  // cresce nem encolhe: a caixa tem o tamanho do controle, que é o que
+  // mantém o ícone do calendário no canto direito.
+  const avaliacao = css.match(
+    /\.evalFormGrid>\.evalField:has\(input\[type="date"\]\)\{flex:0 0 (\d+)px;max-width:(\d+)px\}/);
+  assert.ok(avaliacao, "a regra da avaliação sumiu");
+  assert.ok(Number(avaliacao![1]) >= PRECISA.formulario,
+    `${avaliacao![1]}px é menos que os ${PRECISA.formulario}px medidos`);
+  assert.equal(avaliacao![1], avaliacao![2], "a base e o máximo têm de ser o mesmo número");
+  // O cadastro do paciente continua sendo uma grade, e ali a saída é a coluna
+  // dupla: a coluna simples entrega 146px onde o controle pede 172px.
   assert.match(css, /\.patientFormGrid \.clinicalField:has\(input\[type="date"\]\)\{grid-column:span 2\}/);
   // Onde a grade já é de uma coluna só, `span 2` criaria uma coluna
   // implícita e a linha da data ficaria com metade da largura das outras.
   assert.match(css, /\.patientFormGrid \.clinicalField:has\(input\[type="date"\]\)\{grid-column:1\/-1\}/);
+});
+
+test("a identificação é uma linha que fecha, e não colunas iguais", () => {
+  // Colunas iguais num formulário de campos muito diferentes davam os dois
+  // defeitos ao mesmo tempo: o CPF com 350px para catorze caracteres, e a
+  // última linha terminando no meio da tela.
+  assert.match(css, /\.evalFormGrid\{display:flex;flex-wrap:wrap/);
+  assert.doesNotMatch(css, /\.evalFormGrid\{grid-template-columns/,
+    "sobrou uma regra de colunas iguais, que não faz mais nada");
+  // `flex-grow` reparte TODA a sobra: sem um máximo, um campo sozinho na
+  // última linha estica para a largura inteira da seção.
+  const base = css.match(/\.evalFormGrid>\.evalField\{flex:1 1 (\d+)px;min-width:0;max-width:(\d+)px\}/);
+  assert.ok(base, "a regra de base dos campos sumiu");
+  assert.ok(Number(base![1]) >= PRECISA.formulario,
+    "a base tem de caber o campo mais exigente da seção, que é o de data");
+  assert.ok(Number(base![2]) > Number(base![1]), "o máximo tem de ser maior que a base");
 });
 
 test("os filtros do histórico não espremem a data abaixo do que ela precisa", () => {
@@ -58,15 +81,20 @@ test("a data do lançamento de despesa tem a largura medida, e não estimada", (
     `${m![1]}px corta o ícone: o controle pede ${PRECISA.despesa}px`);
 });
 
-test("CPF e telefone também ocupam duas colunas na identificação", () => {
-  // Mesma causa da data: "000.000.000-00" pede 176px com a fonte de 16px, e a
-  // coluna de 9 entrega 139px. Cortavam o "-00" e o fim do número sem avisar.
+test("CPF e telefone são campos de código, e não encolhem", () => {
+  // Comprimento fixo e conhecido: "000.000.000-00" pede 176px com a fonte de
+  // 16px. Metade da linha de um telefone são 155px — cortavam o "-00" e o fim
+  // do número sem avisar. Também não crescem: não há o que mostrar além do
+  // número, e com 350px o campo só ficava desproporcional.
   const form = fs.readFileSync(
     new URL("../app/avaliacoes/[id]/assessment-form.tsx", import.meta.url), "utf8");
   for (const rotulo of ["CPF", "Telefone / WhatsApp"]) {
-    const re = new RegExp(`<label className="evalField span2"><span>${rotulo.replace("/", "\\/")}</span>`);
-    assert.match(form, re, `${rotulo} voltou a caber numa coluna só`);
+    const re = new RegExp(`<label className="evalField codigo"><span>${rotulo.replace("/", "\\/")}</span>`);
+    assert.match(form, re, `${rotulo} deixou de ser campo de código`);
   }
+  const regra = css.match(/\.evalFormGrid>\.evalField\.codigo\{flex:1 1 (\d+)px/);
+  assert.ok(regra, "a regra do campo de código sumiu");
+  assert.ok(Number(regra![1]) >= PRECISA.formulario, `${regra![1]}px espreme o CPF`);
 });
 
 test("a caixa da data tem o tamanho do conteúdo, para o ícone ficar à direita", () => {
