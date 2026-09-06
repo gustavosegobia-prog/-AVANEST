@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { comoJson, migalhas } from "@/lib/schema";
+import { comoJson, migalhas, ofertaDosPlanos } from "@/lib/schema";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
@@ -176,12 +176,30 @@ export default async function PlanosPage() {
   const campanhaVale = Boolean(vagas?.ativa) && Number(vagas?.meses_gratis ?? 0) > 0;
   const planoDaCampanha = vagas?.plano_codigo ?? "";
 
+  // A validade da oferta acompanha o fim da campanha quando há um; sem
+  // campanha, o último dia do ano em curso. O Google recusa oferta com preço e
+  // sem validade, e uma data no passado é pior do que nenhuma — por isso ela é
+  // calculada, e não escrita à mão.
+  const fimDaCampanha = vagas?.termina_em?.slice(0, 10);
+  const fimDoAno = `${new Date().getFullYear()}-12-31`;
+  const oferta = ofertaDosPlanos(planos,
+    fimDaCampanha && fimDaCampanha > fimDoAno ? fimDaCampanha : fimDoAno);
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
+      {/* O preço no resultado da busca. Sai dos planos que esta página já
+          buscou — uma segunda lista aqui viraria um preço no schema e outro na
+          tela no dia da primeira alteração. A validade acompanha a campanha. */}
+      {oferta && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: comoJson(oferta) }}
+        />
+      )}
     <main className="avnLanding planosPage">
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>

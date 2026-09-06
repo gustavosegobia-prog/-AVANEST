@@ -12,11 +12,42 @@ export const metadata: Metadata = {
   // 160 na busca. A versão anterior tinha 168 e terminava em "…faturado e
   // rece…" — a última coisa que a pessoa lia era uma palavra partida.
   description: "Sistema de gestão para serviços de anestesiologia: avaliação pré-anestésica em nove etapas, escala por instituição e controle do que você tem a receber.",
+  /* O QUE APARECE QUANDO ALGUÉM COLA UM LINK.
+     As doze páginas do site estavam sem `og:image`: um link do avanest.com.br
+     no WhatsApp, no Instagram ou no LinkedIn saía como bloco de texto cinza,
+     sem imagem. Em campanha de lançamento é o item que mais custa clique — a
+     mesma mensagem, com e sem imagem, não recebe o mesmo número de toques.
+     Fica no layout, e não página por página: assim as doze herdam de uma vez,
+     e a que quiser imagem própria sobrescreve só o que for diferente.
+     A imagem é gerada por `scripts/gerar-imagem-de-compartilhamento.mjs` e
+     versionada — uma rota que a desenha por chamada gasta computação em toda
+     prévia de link e depende do servidor estar de pé justamente quando o link
+     mais precisa funcionar. */
   openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: "AVANEST",
+    url: "/",
     title: "AVANEST | Gestão em anestesiologia",
     description: "Da avaliação pré-anestésica ao fluxo de caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",
+    images: [{
+      url: "/compartilhar.png",
+      width: 1200,
+      height: 630,
+      // O alt não é enfeite: leitor de tela e cliente de e-mail que não baixa
+      // imagem mostram este texto no lugar dela.
+      alt: "AVANEST — gestão em anestesiologia: avaliação pré-anestésica, escala do serviço e o controle do que você tem a receber.",
+    }],
   },
-  twitter: { card: "summary" },
+  /* `summary_large_image`, e não `summary`: com `summary` o X e o LinkedIn
+     mostram a imagem num quadradinho ao lado do texto, e uma peça 1200×630
+     cortada em quadrado perde o nome e a frase. */
+  twitter: {
+    card: "summary_large_image",
+    title: "AVANEST | Gestão em anestesiologia",
+    description: "Da avaliação pré-anestésica ao fluxo de caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",
+    images: ["/compartilhar.png"],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
