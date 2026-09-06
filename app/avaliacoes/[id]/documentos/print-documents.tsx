@@ -494,7 +494,13 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             // linhas com o Caráter colado ao lado. Ocupando a linha de cima
             // inteira, o Caráter desce para a linha seguinte e os dois se leem
             // de relance.
-            ["Cirurgião",dados.cirurgiao],["Hospital",dados.hospital||paciente.hospital,"wide"],
+            ["Cirurgião",dados.cirurgiao],
+            // O local do atendimento fecha a linha do hospital. O campo
+            // digitado saiu do formulário — o hospital já vem do local
+            // escolhido na sessão, que é o mesmo que assina o cabeçalho.
+            // Os dois primeiros seguem na frente para as avaliações
+            // antigas, que têm o nome digitado à mão.
+            ["Hospital",dados.hospital||paciente.hospital||(local?.nome_fantasia||local?.nome||""),"wide"],
             ["Caráter",dados.carater],["Porte",dados.porte],["Lateralidade",dados.lateralidade],
             ["Regime",dados.regime],["Data",formatDate(text(dados.data_cirurgia))],["Horário",dados.horario_cirurgia],
           ])}/>

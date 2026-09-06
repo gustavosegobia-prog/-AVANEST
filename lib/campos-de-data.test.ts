@@ -112,3 +112,26 @@ test("a caixa da data tem o tamanho do conteúdo, para o ícone ficar à direita
   // Sem `max-width:100%` a caixa fixa fura a coluna em vez de encolher.
   assert.ok(largura <= 200, `${largura}px é largo demais — a caixa volta a sobrar`);
 });
+
+test("a identificação não pede o hospital nem a unidade de internação", () => {
+  // O hospital já está no papel: o cabeçalho de todo documento sai com o nome
+  // e o logo do local do atendimento. Digitá-lo de novo era pedir a mesma
+  // informação duas vezes, e pela via que erra — texto livre não casa com o
+  // cadastro do local na hora de escolher a tabela de valores. A unidade de
+  // internação não era lida em lugar nenhum.
+  const form = fs.readFileSync(
+    new URL("../app/avaliacoes/[id]/assessment-form.tsx", import.meta.url), "utf8");
+  for (const campo of ['input("hospital"', 'input("unidade"']) {
+    assert.ok(!form.includes(campo), `${campo} voltou para o formulário`);
+  }
+});
+
+test("o hospital impresso vem do local quando não foi digitado", () => {
+  // Tirar o campo não pode deixar a linha "Hospital" vazia no papel: quem lê a
+  // ficha depois precisa saber onde o paciente foi atendido. O nome digitado
+  // segue na frente para as avaliações antigas.
+  const doc = fs.readFileSync(
+    new URL("../app/avaliacoes/[id]/documentos/print-documents.tsx", import.meta.url), "utf8");
+  assert.match(doc,
+    /\["Hospital",dados\.hospital\|\|paciente\.hospital\|\|\(local\?\.nome_fantasia\|\|local\?\.nome\|\|""\)/);
+});

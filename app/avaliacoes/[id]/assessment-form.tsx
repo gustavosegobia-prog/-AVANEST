@@ -445,7 +445,19 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
           {input("peso","Peso (kg)","number")}{input("altura","Altura (cm)","number")}{input("convenio","Convênio")}
           <label className="evalField codigo"><span>Telefone / WhatsApp</span><input value={paciente.telefone??""} readOnly/></label>
           <label className="evalField span2"><span>E-mail</span><input value={paciente.email??""} readOnly/></label>
-          {input("prontuario","Nº do prontuário")}{input("hospital","Hospital / clínica","text","span2")}{input("unidade","Unidade de internação")}{input("responsavel","Responsável (se necessário)","text","span2")}
+          {/* SEM "Hospital / clínica" NEM "Unidade de internação".
+              O hospital já está no papel: o cabeçalho de todo documento sai
+              com o nome e o logo do local do atendimento, escolhido na
+              sessão. Digitá-lo de novo aqui era pedir a mesma informação
+              duas vezes — e pela via que erra, porque texto livre não bate
+              com o cadastro do local na hora de casar a tabela de valores.
+              A unidade de internação não era usada em lugar nenhum: nem no
+              documento impresso, nem no faturamento. Conferido no banco
+              antes de tirar: nenhuma avaliação tinha os dois preenchidos.
+
+              O que já foi digitado continua guardado e continua saindo nos
+              documentos — o que sai é o campo, não o dado. */}
+          {input("prontuario","Nº do prontuário")}{input("responsavel","Responsável (se necessário)","text","span2")}
         </div>
         <div className="clinicalCalculations"><div><small>IDADE</small><strong>{age!==null?`${age} anos`:"—"}</strong><span>{paciente.data_nascimento&&age===null?"data de nascimento inválida":"calculada automaticamente"}</span></div><div className="amber"><small>IMC</small><strong>{imc?imc.toFixed(1):"—"}</strong><span>{imc>=30?"Obesidade":imc?"Faixa calculada":"informe peso e altura"}</span></div><div><small>PESO IDEAL / AJUSTADO</small><strong>{height?`${idealWeight.toFixed(0)} kg / ${adjustedWeight.toFixed(0)} kg`:"—"}</strong><span>Devine / peso ajustado — confirmar clinicamente</span></div></div>
       </section>
