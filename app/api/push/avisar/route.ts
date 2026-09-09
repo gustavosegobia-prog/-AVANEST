@@ -118,6 +118,44 @@ export async function POST(request: NextRequest) {
         },
       });
     }
+  } else if (tipo === "chat") {
+    // MENSAGEM DA SALA DA EQUIPE, no instante em que foi escrita.
+    //
+    // Este é o único aviso do sino que não pode esperar o lembrete da noite:
+    // mensagem de equipe que chega doze horas depois não é aviso, é
+    // arqueologia. Quem pergunta "alguém cobre a sala 2 amanhã?" precisa da
+    // resposta hoje.
+    if (!id) return NextResponse.json({ error: "Falta a mensagem." }, { status: 400 });
+    // O TEXTO É LIDO DO BANCO, com a sessão de quem mandou — nunca do corpo do
+    // pedido. É a mesma regra da troca, e aqui ela pesa mais: o conteúdo vai
+    // aparecer na tela bloqueada de toda a equipe, com o nome do AVANEST em
+    // cima. Aceitar texto pronto do navegador seria dar a qualquer sessão
+    // válida um megafone com a marca da casa.
+    const { data: mensagem } = await supabase
+      .from("sala_mensagens").select("id, texto, autor_id, institution_id")
+      .eq("id", id).maybeSingle();
+    if (!mensagem) return NextResponse.json({ error: "Mensagem não encontrada." }, { status: 404 });
+    // Só o autor dispara o aviso da própria mensagem. Sem isto, qualquer pessoa
+    // da sala poderia reenviar a notificação de uma mensagem antiga à vontade.
+    if (mensagem.autor_id !== euPerfil.id) {
+      return NextResponse.json({ error: "Mensagem de outra pessoa." }, { status: 403 });
+    }
+    const texto = String(mensagem.texto ?? "").trim();
+    const notificacao: Notificacao = {
+      titulo: `${nomeCurto(euPerfil.nome ?? "")} na sala da equipe`,
+      // Cortado, porque a tela bloqueada corta de qualquer jeito — e cortar
+      // aqui deixa reticências no lugar de uma frase que termina no nada.
+      corpo: texto.length > 140 ? `${texto.slice(0, 139)}…` : (texto || "Nova mensagem."),
+      url: "/dashboard?chat=equipe",
+      // UMA TAG SÓ PARA A SALA INTEIRA: dez mensagens numa conversa animada
+      // substituem uma à outra e o telefone mostra a última, em vez de dez
+      // linhas iguais que a pessoa apaga sem ler.
+      tag: "chat-equipe",
+    };
+    const { data: equipe } = await supabase
+      .from("perfis").select("id").eq("institution_id", euPerfil.institution_id)
+      .eq("status", "ativo").neq("id", euPerfil.id);
+    for (const p of equipe ?? []) alvos.push({ perfilId: p.id, notificacao });
   } else if (tipo === "escala") {
     if (!/^\d{4}-\d{2}$/.test(mes)) return NextResponse.json({ error: "Mês inválido." }, { status: 400 });
     // Quem tem plantão no mês recebe. Ninguém mais: avisar a equipe inteira de

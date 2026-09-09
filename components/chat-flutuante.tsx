@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
+import { avisarPush } from "@/components/ativar-notificacoes";
 
 /**
  * O balão do canto: a conversa da equipe e o canal de suporte.
@@ -249,15 +250,21 @@ export function ChatFlutuante({ perfil, abrirEm = null }: {
     const texto = campo.value.trim();
     if (!texto || enviando) return;
     setEnviando(true);
-    const { error } = await supabase.from("sala_mensagens").insert({
+    // O `select` existe só para o aviso: o servidor precisa do id para ir ler
+    // o texto no banco e montar a notificação. Ele nunca aceita o texto pronto
+    // do navegador — ver app/api/push/avisar.
+    const { data: gravada, error } = await supabase.from("sala_mensagens").insert({
       institution_id: perfil.institution_id,
       autor_id: perfil.id,
       texto,
-    });
+    }).select("id").single();
     setEnviando(false);
     if (error) { setErro("A mensagem não foi enviada. Tente de novo."); return; }
     campo.value = "";
     setErro("");
+    // Depois de gravada, e sem esperar: a mensagem já está na sala, e uma
+    // falha no push não pode fazer a tela dizer que ela não foi enviada.
+    if (gravada?.id) avisarPush({ tipo: "chat", id: gravada.id });
     await carregarSala();
   }
 

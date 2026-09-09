@@ -344,7 +344,9 @@ export function NotificacoesNoMenu({ chavePublica, aoMudar }: {
  * Nunca lança e nunca bloqueia: a troca já foi gravada quando isto roda, e uma
  * falha de notificação não pode fazer a tela dizer que o pedido não foi feito.
  */
-export function avisarPush(carga: { tipo: "troca" | "troca_resolvida" | "escala"; id?: string; mes?: string }) {
+export function avisarPush(carga: {
+  tipo: "troca" | "troca_resolvida" | "escala" | "chat"; id?: string; mes?: string;
+}) {
   void fetch("/api/push/avisar", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(carga),

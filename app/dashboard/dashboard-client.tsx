@@ -260,6 +260,8 @@ export function DashboardClient({
   perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
+  abaDaEscala,
+  abaDoChat,
   avisos = [],
   chavePush = "",
   producaoDaReceita = [], despesas = [],
@@ -292,6 +294,10 @@ export function DashboardClient({
    * uma consulta a mais em toda abertura do painel.
    */
   trocasEsperando?: number;
+  /** Aba em que a Escala abre quando o endereço pede — ver app/dashboard/page.tsx. */
+  abaDaEscala?: "escala" | "producao" | "trocas";
+  /** Janela de conversa a abrir quando o endereço pede. Mesma razão. */
+  abaDoChat?: "equipe" | "suporte";
   /** O que espera você, já derivado no servidor. Ver lib/avisos.ts. */
   avisos?: Aviso[];
 }) {
@@ -353,13 +359,13 @@ export function DashboardClient({
   // clique: sem ele, clicar duas vezes no mesmo aviso não reabriria a janela.
   const [pedidoDeChat, setPedidoDeChat] = useState<
     { aba: "equipe" | "suporte"; chamado?: string | null; token: number } | null
-  >(null);
+  >(abaDoChat ? { aba: abaDoChat, token: 0 } : null);
   // O mesmo, para a Escala: em que aba ela deve abrir quando o clique veio do
   // sino. Mesma razão para o token — a aba é estado da tela da Escala, e a
   // pessoa pode ter saído dela entre um clique e outro.
   const [aberturaDaEscala, setAberturaDaEscala] = useState<
     { aba: "escala" | "producao" | "trocas"; token: number } | null
-  >(null);
+  >(abaDaEscala ? { aba: abaDaEscala, token: 0 } : null);
   /** Em que seção do Admin abrir, quando o pedido vem de outra área. */
   const [aberturaDoAdmin, setAberturaDoAdmin] = useState<
     { aba: string; token: number } | null

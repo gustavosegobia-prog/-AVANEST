@@ -11,9 +11,12 @@ import { areasLiberadas, modulosDaOrganizacao } from "@/lib/modulos";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ area?: string; novo?: string; iniciar?: string; local?: string }>;
+  searchParams: Promise<{
+    area?: string; aba?: string; chat?: string;
+    novo?: string; iniciar?: string; local?: string;
+  }>;
 }) {
-  const { area, novo, iniciar, local: localDaUrl } = await searchParams;
+  const { area, aba, chat, novo, iniciar, local: localDaUrl } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -130,6 +133,21 @@ export default async function DashboardPage({
   const initialView = requestedView && allowedViews.includes(requestedView)
     ? requestedView
     : allowedViews[0];
+  // A ABA DA ESCALA, quando o pedido veio de fora do sistema.
+  //
+  // O sino escolhe a aba por estado, porque o clique acontece com a tela já
+  // aberta. A notificação do telefone não tem esse luxo: ela abre uma URL do
+  // zero, e sem isto o lembrete "9 plantões de julho sem receber" cairia no
+  // calendário da Escala — obrigando a procurar a aba Produção, que é onde se
+  // marca recebido. Aviso que dá trabalho para ser atendido fica para depois.
+  const abaDaEscala = ["escala", "producao", "trocas"].includes(aba ?? "")
+    ? aba as "escala" | "producao" | "trocas"
+    : undefined;
+  // O mesmo para a janela de conversa: a notificação de mensagem da equipe abre
+  // o sistema com ela já aberta, e não no painel para a pessoa ir procurar.
+  const abaDoChat = ["equipe", "suporte"].includes(chat ?? "")
+    ? chat as "equipe" | "suporte"
+    : undefined;
   const needsClinicalData = initialView === "recepcao" || initialView === "medico";
   const needsFinanceData = initialView === "financeiro" && canFinance;
   const needsAdminData = initialView === "admin" && canManage;
@@ -393,6 +411,8 @@ export default async function DashboardPage({
       pagamentos={pagamentos ?? []}
       perfis={perfis ?? []}
       trocasEsperando={trocasEsperando ?? 0}
+      abaDaEscala={abaDaEscala}
+      abaDoChat={abaDoChat}
       avisos={avisosVisiveis}
       auditoria={auditoria ?? []}
       periodos={periodos ?? []}
