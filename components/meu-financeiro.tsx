@@ -10,6 +10,8 @@ import {
   resultadoDoMes, somarDespesas, type Despesa,
 } from "@/lib/despesas";
 import { mesEmMaiusculas, plantoesEscrito } from "@/lib/escala";
+import { folhaDaNota, nomeDaFolhaDaNota } from "@/lib/nota-do-contador";
+import { baixarXLSX } from "@/lib/xlsx";
 
 // A conta de UMA pessoa, mesmo dentro de um grupo.
 //
@@ -37,6 +39,8 @@ type PlantaoMeu = {
   situacao: string; local_id: string | null; local_texto: string | null;
   /** Dia em que a nota saiu. Nulo enquanto ela não sair. */
   faturado_em: string | null;
+  /** Só para a folha do contador: "07:00 às 19:00" é o que o hospital confere. */
+  hora_inicio: string; hora_fim: string;
 };
 
 type ProducaoMinha = {
@@ -138,7 +142,7 @@ export function MeuFinanceiro({
       { data: desp, error: erroDesp },
     ] = await Promise.all([
       cliente.from("plantoes")
-        .select("id,perfil_id,data,valor,horas,situacao,local_id,local_texto,faturado_em")
+        .select("id,perfil_id,data,valor,horas,situacao,local_id,local_texto,faturado_em,hora_inicio,hora_fim")
         .eq("perfil_id", perfilId).gte("data", de).lte("data", ate).order("data"),
       cliente.from("producao_do_dia")
         .select("id,perfil_id,data,paciente,convenio,procedimento,valor,situacao")
@@ -262,6 +266,66 @@ export function MeuFinanceiro({
     setBaixaDe(null);
     setMarcados(new Set());
     await recarregar();
+  }
+
+  /**
+   * A folha que vai para o contador.
+   *
+   * OS DADOS DE IDENTIFICAÇÃO SÃO BUSCADOS NA HORA, e não carregados com a
+   * tela: CNPJ e CRM não aparecem em lugar nenhum de Meu financeiro, e trazê-los
+   * em toda abertura do painel seria pagar duas consultas por mês inteiro para
+   * servir a um clique que acontece uma vez.
+   *
+   * O ESCOPO É O QUE ESTÁ MARCADO. Sem nada marcado, vale o que já tem nota —
+   * porque é isso que a pessoa acabou de fazer quando chega aqui, e obrigá-la a
+   * remarcar os mesmos seis plantões seria devolver o trabalho que o botão de
+   * cima tirou.
+   */
+  async function folhaParaOContador(local: string, plantoesDoLocal: PlantaoMeu[]) {
+    const escolhidos = plantoesDoLocal.filter((p) => marcados.has(p.id));
+    const daFolha = escolhidos.length
+      ? escolhidos
+      : plantoesDoLocal.filter((p) => p.situacao === "faturado");
+    if (!daFolha.length) {
+      setErro("Marque os plantões que entram na nota, ou marque a nota primeiro.");
+      return;
+    }
+    setErro("");
+
+    const cliente = createClient();
+    // O local vem pelo id de UM dos plantões: eles estão todos no mesmo cartão,
+    // que é agrupado justamente por lugar. Plantão de fora, com o lugar escrito
+    // à mão, não tem cadastro nem CNPJ — e a folha diz isso em vez de inventar.
+    const localId = daFolha.find((p) => p.local_id)?.local_id ?? null;
+    const [{ data: perfil }, { data: instituicao }, { data: cadastroDoLocal }] =
+      await Promise.all([
+        cliente.from("perfis").select("nome, crm").eq("id", perfilId).maybeSingle(),
+        cliente.from("instituicoes").select("nome, cnpj").eq("id", institutionId).maybeSingle(),
+        localId
+          ? cliente.from("locais_atendimento").select("nome, nome_fantasia, cnpj")
+              .eq("id", localId).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+
+    const linhas = folhaDaNota({
+      prestador: { nome: instituicao?.nome ?? "", cnpj: instituicao?.cnpj },
+      profissional: { nome: perfil?.nome ?? "", crm: perfil?.crm },
+      tomador: {
+        // O nome de razão social na frente quando existe: é ele que vai na
+        // nota. "FUNDHOSPAR" é como se fala, e não como se emite.
+        nome: cadastroDoLocal?.nome || cadastroDoLocal?.nome_fantasia || local,
+        cnpj: cadastroDoLocal?.cnpj,
+      },
+      competencia: mes,
+      emitidaEm: daFolha.find((p) => p.faturado_em)?.faturado_em ?? null,
+      plantoes: daFolha.map((p) => ({
+        data: p.data,
+        turno: `${p.hora_inicio.slice(0, 5)} às ${p.hora_fim.slice(0, 5)}`,
+        horas: Number(p.horas || 0),
+        valor: Number(p.valor || 0),
+      })),
+    });
+    baixarXLSX(nomeDaFolhaDaNota(local, mes), linhas, "Nota fiscal");
   }
 
   const pronto = dados?.ano === ano;
@@ -634,6 +698,21 @@ export function MeuFinanceiro({
                       disabled={salvandoBaixa || marcados.size === 0}
                       onClick={() => void marcarPlantoes([...marcados], "faturado")}>
                       {salvandoBaixa ? "Salvando…" : "Emiti a nota"}
+                    </button>
+                    {/* A FOLHA DO CONTADOR fica junto do botão que marca a
+                        nota, e não numa tela de relatórios: é o mesmo gesto,
+                        no mesmo minuto — marcou os plantões, emitiu, manda a
+                        lista. Separar os dois faria a pessoa remarcar tudo
+                        noutro lugar, e é aí que um plantão fica de fora e a
+                        nota sai a menor.
+
+                        Não desabilita sem seleção: sem nada marcado ele leva o
+                        que já tem nota, que é justamente o estado em que a
+                        pessoa está depois de apertar "Emiti a nota". */}
+                    <button type="button" className="outlineClinical"
+                      disabled={salvandoBaixa}
+                      onClick={() => void folhaParaOContador(l.nome, l.pendentes)}>
+                      Folha para o contador
                     </button>
                     <button type="button" className="primaryClinical"
                       disabled={salvandoBaixa || marcados.size === 0}
