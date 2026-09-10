@@ -22,6 +22,7 @@
 // ===========================================================================
 
 import type { LinhaDePlanilha } from "./planilha.ts";
+import { plantoesEscrito } from "./escala.ts";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
                "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -137,10 +138,19 @@ export function folhaDaNota(dados: DadosDaNota): LinhaDePlanilha[] {
 
   const horas = ordenados.reduce((s, p) => s + Number(p.horas || 0), 0);
   const valor = ordenados.reduce((s, p) => s + Number(p.valor || 0), 0);
-  linhas.push([
-    `TOTAL — ${ordenados.length} ${ordenados.length === 1 ? "plantão" : "plantões"}`,
-    "", horas, valor,
-  ]);
+  // A CONTAGEM SAI DAS HORAS, e não do número de linhas.
+  //
+  // Estava errada aqui: seis lançamentos que somam 120 horas são DEZ plantões,
+  // porque é assim que eles são pagos — o de 24 horas conta por dois. A folha
+  // dizia "6 plantões · 120 horas · R$ 10.000,00" e contradizia o cartão logo
+  // acima na tela, que já dizia "10 plantões" pela regra certa. Duas contagens
+  // do mesmo mês no mesmo sistema é o tipo de discordância que o contador
+  // descobre na frente do hospital.
+  //
+  // A tabela continua listando os lançamentos como foram feitos: o plantão de
+  // 24 horas é uma linha só, porque foi um turno corrido de trabalho. O que
+  // muda é o total, que é o número que vai para a nota.
+  linhas.push([`TOTAL — ${plantoesEscrito(horas)}`, "", horas, valor]);
   return linhas;
 }
 

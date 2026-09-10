@@ -58,9 +58,41 @@ test("os plantões saem em ordem de data, e o total fecha", () => {
   assert.deepEqual(datas, ["01/08/2026", "28/08/2026", "30/08/2026"]);
 
   const total = linhas[linhas.length - 1];
-  assert.equal(total[0], "TOTAL — 3 plantões");
+  // TRÊS LINHAS, CINCO PLANTÕES: 60 horas ÷ 12. O de 24 horas conta por dois,
+  // porque é assim que ele é pago. Contar linhas dizia "3 plantões" e
+  // contradizia o cartão da tela, que já usava a régua certa.
+  assert.equal(total[0], "TOTAL — 5 plantões");
   assert.equal(total[2], 60);   // horas
   assert.equal(total[3], 5000); // reais
+});
+
+test("o total conta plantão por HORA, e não por lançamento", () => {
+  // A régua é a mesma do resto do sistema — lib/escala.ts —, e é ela que faz o
+  // número da folha conversar com o do cartão. Duas contagens do mesmo mês é o
+  // tipo de discordância que o contador descobre na frente do hospital.
+  const seisLancamentos = folhaDaNota(base({
+    plantoes: [
+      { data: "2026-08-01", turno: "07:00 às 07:00", horas: 24, valor: 2000 },
+      { data: "2026-08-02", turno: "07:00 às 07:00", horas: 24, valor: 2000 },
+      { data: "2026-08-28", turno: "07:00 às 19:00", horas: 12, valor: 1000 },
+      { data: "2026-08-28", turno: "19:00 às 07:00", horas: 12, valor: 1000 },
+      { data: "2026-08-29", turno: "07:00 às 07:00", horas: 24, valor: 2000 },
+      { data: "2026-08-30", turno: "07:00 às 07:00", horas: 24, valor: 2000 },
+    ],
+  }));
+  const total = seisLancamentos[seisLancamentos.length - 1];
+  assert.equal(total[0], "TOTAL — 10 plantões", "120 horas são dez plantões");
+  assert.equal(total[2], 120);
+  assert.equal(total[3], 10000);
+});
+
+test("meio turno não vira plantão inteiro", () => {
+  // Seis horas são meio plantão, e a folha diz isso. Arredondar para cima daria
+  // à nota um plantão que não houve.
+  const meio = folhaDaNota(base({
+    plantoes: [{ data: "2026-08-01", turno: "07:00 às 13:00", horas: 6, valor: 500 }],
+  }));
+  assert.equal(meio[meio.length - 1][0], "TOTAL — 0,5 plantões");
 });
 
 test("os números são NÚMERO, e não texto formatado", () => {
@@ -111,7 +143,7 @@ test("a folha é gerada do mesmo painel em que a nota é marcada", () => {
   // que um plantão fica de fora e a nota sai a menor.
   const tela = fs.readFileSync(
     new URL("../components/meu-financeiro.tsx", import.meta.url), "utf8");
-  assert.match(tela, /Folha para o contador/);
+  assert.match(tela, /Relatório de plantões/);
   assert.match(tela, /folhaParaOContador\(l\.nome, l\.pendentes\)/);
   // Sem seleção ela leva o que já tem nota — que é o estado em que a pessoa
   // fica logo depois de apertar "Emiti a nota".

@@ -712,7 +712,7 @@ export function MeuFinanceiro({
                     <button type="button" className="outlineClinical"
                       disabled={salvandoBaixa}
                       onClick={() => void folhaParaOContador(l.nome, l.pendentes)}>
-                      Folha para o contador
+                      Relatório de plantões
                     </button>
                     <button type="button" className="primaryClinical"
                       disabled={salvandoBaixa || marcados.size === 0}
