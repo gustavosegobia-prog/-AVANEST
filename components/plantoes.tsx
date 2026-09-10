@@ -2554,6 +2554,12 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                               seletor e virar "Escalado" sem ninguém pedir. */}
                           <option value="escalado">Escalado</option>
                           <option value="realizado">Realizado</option>
+                          {/* "Nota emitida" e "Pago" existem aqui só para não
+                              sumirem do seletor: sem a opção, um plantão nesse
+                              estado mostraria o seletor em branco e o primeiro
+                              toque o rebaixaria a "Escalado" sem ninguém pedir.
+                              Marcar a nota e dar baixa é em Meu financeiro. */}
+                          {p.situacao === "faturado" && <option value="faturado">Nota emitida</option>}
                           {p.situacao === "pago" && <option value="pago">Pago</option>}
                           {/* "Cancelado" some da escala igualzinho a apagar, e
                               some sem ninguém saber. Num plantão do grupo é a

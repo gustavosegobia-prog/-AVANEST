@@ -24,7 +24,8 @@
 
 export type TipoDeAviso =
   | "troca_pedida" | "troca_resolvida" | "chat" | "suporte"
-  | "a_faturar" | "a_receber" | "plantao_a_receber" | "a_confirmar"
+  | "a_faturar" | "a_receber"
+  | "plantao_a_faturar" | "plantao_a_receber" | "a_confirmar"
   | "escala_publicada";
 
 export type Aviso = {
@@ -265,16 +266,40 @@ export function lembretesDoDinheiro(entrada: {
     });
   }
 
-  // 3. Plantão trabalhado e não pago. Cancelado não conta — não houve trabalho.
+  // 3. e 4. Plantão trabalhado e não pago, EM DOIS LEMBRETES — e a divisão é a
+  //    única coisa que muda o que fazer a seguir: de quem é a demora.
+  //
+  //    Sem nota emitida, quem deve uma ação é você: o hospital não tem o que
+  //    pagar enquanto o documento não sai. Com a nota emitida, quem deve é o
+  //    hospital, e o que resta é cobrar. Somados num "sem receber" só, os dois
+  //    desapareciam um no outro — e o segundo é justamente o que precisa de
+  //    lembrete, porque ninguém do outro lado vai lembrar de mandar sozinho.
+  //
+  //    Cancelado não conta em nenhum dos dois: não houve trabalho.
   for (const [mes, { quantos, valor }] of porMes(
-    entrada.plantoes, (s) => s !== "pago" && s !== "cancelado",
+    entrada.plantoes, (s) => s !== "pago" && s !== "cancelado" && s !== "faturado",
   )) {
     if (valor <= 0) continue; // Plantão sem valor combinado não é conta a receber.
     avisos.push({
-      id: `plantao-${mes}`, tipo: "plantao_a_receber", area: "plantoes", acao: true,
+      id: `plantao-${mes}`, tipo: "plantao_a_faturar", area: "plantoes", acao: true,
+      quando: `${mes}-25T12:00:00Z`,
+      titulo: `${contar(quantos, "plantão", "plantões")} de ${nomeDoMes(mes)} sem nota`,
+      detalhe: `${dinheiro(valor)} a emitir`,
+    });
+  }
+
+  // 4. Nota emitida e dinheiro sem cair. O valor vem na frente do título aqui,
+  //    e o número de plantões atrás: com a nota já emitida, o que decide se vale
+  //    o telefonema é quanto, e não quantos.
+  for (const [mes, { quantos, valor }] of porMes(
+    entrada.plantoes, (s) => s === "faturado",
+  )) {
+    if (valor <= 0) continue;
+    avisos.push({
+      id: `plantao-nota-${mes}`, tipo: "plantao_a_receber", area: "plantoes", acao: true,
       quando: `${mes}-26T12:00:00Z`,
-      titulo: `${contar(quantos, "plantão", "plantões")} de ${nomeDoMes(mes)} sem receber`,
-      detalhe: `${dinheiro(valor)} combinados`,
+      titulo: `${dinheiro(valor)} de ${nomeDoMes(mes)} com nota e sem receber`,
+      detalhe: `${contar(quantos, "plantão", "plantões")} aguardando pagamento`,
     });
   }
 
@@ -457,7 +482,7 @@ export const DIAS_ADIADO = 7;
  * porque não se resolvem num clique.
  */
 const ADIAVEIS = new Set<TipoDeAviso>([
-  "a_faturar", "a_receber", "plantao_a_receber", "a_confirmar",
+  "a_faturar", "a_receber", "plantao_a_faturar", "plantao_a_receber", "a_confirmar",
 ]);
 
 export const podeAdiar = (aviso: Aviso) => ADIAVEIS.has(aviso.tipo);

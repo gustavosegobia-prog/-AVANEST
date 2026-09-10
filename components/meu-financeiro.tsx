@@ -35,6 +35,8 @@ import { mesEmMaiusculas, plantoesEscrito } from "@/lib/escala";
 type PlantaoMeu = {
   id: string; perfil_id: string; data: string; valor: number; horas: number;
   situacao: string; local_id: string | null; local_texto: string | null;
+  /** Dia em que a nota saiu. Nulo enquanto ela não sair. */
+  faturado_em: string | null;
 };
 
 type ProducaoMinha = {
@@ -136,7 +138,7 @@ export function MeuFinanceiro({
       { data: desp, error: erroDesp },
     ] = await Promise.all([
       cliente.from("plantoes")
-        .select("id,perfil_id,data,valor,horas,situacao,local_id,local_texto")
+        .select("id,perfil_id,data,valor,horas,situacao,local_id,local_texto,faturado_em")
         .eq("perfil_id", perfilId).gte("data", de).lte("data", ate).order("data"),
       cliente.from("producao_do_dia")
         .select("id,perfil_id,data,paciente,convenio,procedimento,valor,situacao")
@@ -221,26 +223,42 @@ export function MeuFinanceiro({
   });
 
   /**
-   * Grava a baixa.
+   * Move os plantões marcados para o passo seguinte.
    *
-   * `pago_em` vai junto com a situação, e não depois: um plantão "pago" sem a
-   * data é um plantão que o fechamento do mês não consegue somar no mês certo.
-   * A data é escolhida por quem dá a baixa — o dinheiro cai num dia e a pessoa
-   * marca noutro, e é o dia do depósito que vale.
+   * TRÊS PASSOS, e não dois. O plantão pulava de "realizado" direto para
+   * "pago", e com isso o sistema não sabia dizer a única coisa que muda o que
+   * fazer a seguir: DE QUEM é a demora. Sem nota emitida, quem deve uma ação é
+   * você — o hospital não tem o que pagar enquanto o documento não sai. Com a
+   * nota emitida, quem deve é o hospital, e o que resta é cobrar.
+   *
+   * A DATA VAI JUNTO COM A SITUAÇÃO, e não depois: um plantão "pago" sem
+   * `pago_em` é um plantão que o fechamento do mês não consegue somar no mês
+   * certo, e uma nota sem `faturado_em` é uma bandeira sem idade — não dá para
+   * saber se ela saiu ontem, e aí esperar é normal, ou em julho, e aí o
+   * telefonema está atrasado. Quem escolhe a data é quem marca: o dinheiro cai
+   * num dia e a pessoa marca noutro.
    */
-  async function darBaixa(ids: string[], recebido: boolean) {
+  async function marcarPlantoes(ids: string[], passo: "faturado" | "pago" | "realizado") {
     if (!ids.length) return;
     setSalvandoBaixa(true);
     setErro("");
+    const agora = new Date().toISOString();
+    const campos = passo === "pago"
+      ? { situacao: "pago", pago_em: dataDaBaixa, updated_at: agora }
+      : passo === "faturado"
+        // `pago_em` continua nulo: emitir a nota não é receber.
+        ? { situacao: "faturado", faturado_em: dataDaBaixa, pago_em: null, updated_at: agora }
+        // Desfazer volta ao começo da fila, e limpa as duas datas: um plantão
+        // "realizado" que guardasse a data da nota antiga voltaria a parecer
+        // faturado no primeiro relatório que olhasse só a coluna.
+        : { situacao: "realizado", pago_em: null, faturado_em: null, updated_at: agora };
     const { error } = await createClient().from("plantoes")
-      .update(recebido
-        ? { situacao: "pago", pago_em: dataDaBaixa, updated_at: new Date().toISOString() }
-        : { situacao: "realizado", pago_em: null, updated_at: new Date().toISOString() })
+      .update(campos)
       .in("id", ids);
     setSalvandoBaixa(false);
     // A mensagem do banco vem inteira: as recusas daqui são regras de escala, e
     // traduzi-las para "não foi possível salvar" esconde o que fazer.
-    if (error) { setErro(error.message || "Não foi possível dar baixa."); return; }
+    if (error) { setErro(error.message || "Não foi possível salvar."); return; }
     setBaixaDe(null);
     setMarcados(new Set());
     await recarregar();
@@ -312,18 +330,23 @@ export function MeuFinanceiro({
   const locais = Object.values(
     plantoesDoMes.reduce<Record<string, {
       nome: string; quantos: number; horas: number; valor: number; recebido: number;
+      /** Já tem nota emitida e ainda não caiu. É o número que vira telefonema. */
+      comNota: number;
       // Os plantões inteiros, e não só os totais: é deles que a baixa precisa —
       // a pessoa escolhe quais entraram, e não só quanto.
       pendentes: PlantaoMeu[]; pagos: PlantaoMeu[];
     }>>((acc, p) => {
       const nome = ondeFoi(p);
       const linha = acc[nome] ?? { nome, quantos: 0, horas: 0, valor: 0, recebido: 0,
-                                   pendentes: [], pagos: [] };
+                                   comNota: 0, pendentes: [], pagos: [] };
       linha.quantos += 1;
       linha.horas += Number(p.horas || 0);
       linha.valor += Number(p.valor || 0);
       if (p.situacao === "pago") { linha.recebido += Number(p.valor || 0); linha.pagos.push(p); }
-      else linha.pendentes.push(p);
+      else {
+        linha.pendentes.push(p);
+        if (p.situacao === "faturado") linha.comNota += Number(p.valor || 0);
+      }
       acc[nome] = linha;
       return acc;
     }, {}),
@@ -526,6 +549,12 @@ export function MeuFinanceiro({
               <div className="mfLocalRodape">
                 <span>Recebido <em>{dinheiro(l.recebido)}</em></span>
                 <span>A receber <em>{dinheiro(Math.max(0, l.valor - l.recebido))}</em></span>
+                {/* SÓ QUANDO EXISTE. Um "Com nota R$ 0,00" fixo é um número que
+                    nunca muda, e número que nunca muda a pessoa aprende a não
+                    ler — inclusive no mês em que ele importar. */}
+                {l.comNota > 0 && (
+                  <span>Com nota <em className="mfComNota">{dinheiro(l.comNota)}</em></span>
+                )}
                 {l.horas > 0 && <span>{dinheiro(l.valor / l.horas)}/h</span>}
                 {l.pendentes.length > 0 && (
                   <button type="button" className="mfBaixaAbrir"
@@ -540,12 +569,17 @@ export function MeuFinanceiro({
                 <div className="mfBaixa">
                   {/* A data primeiro: ela vale para todos os que forem marcados,
                       e descobrir isso depois de escolher os plantões faria
-                      voltar. O dinheiro cai num dia e a pessoa marca noutro —
-                      é o dia do depósito que o fechamento do mês usa. */}
+                      voltar.
+
+                      O rótulo é neutro porque ela agora serve aos dois botões
+                      — o dia em que a nota saiu, ou o dia em que o dinheiro
+                      caiu. Deixá-lo como "Caiu em" faria quem vem emitir nota
+                      preencher a data errada sem perceber. */}
                   <label className="mfBaixaData">
-                    <span>Caiu em</span>
+                    <span>Data</span>
                     <input type="date" value={dataDaBaixa}
                       onChange={(e) => setDataDaBaixa(e.target.value)} />
+                    <small>o dia da nota, ou o dia em que o dinheiro caiu</small>
                   </label>
 
                   <ul className="mfBaixaLista">
@@ -556,6 +590,15 @@ export function MeuFinanceiro({
                             onChange={() => alternarMarcado(p.id)} />
                           <span>{dataBR(p.data)}</span>
                           <small>{horasBR(Number(p.horas || 0))}</small>
+                          {/* O que já tem nota diz desde quando. Sem a data, a
+                              marca só responde "já emiti"; com ela responde
+                              "emiti e faz dois meses", que é a pergunta cuja
+                              resposta gera o telefonema. */}
+                          {p.situacao === "faturado" && (
+                            <i className="mfNota">
+                              nota {p.faturado_em ? `de ${dataBR(p.faturado_em)}` : "emitida"}
+                            </i>
+                          )}
                           <b>{dinheiro(Number(p.valor || 0))}</b>
                         </label>
                       </li>
@@ -569,9 +612,18 @@ export function MeuFinanceiro({
                         : new Set(l.pendentes.map((p) => p.id)))}>
                       {marcados.size === l.pendentes.length ? "Desmarcar todos" : "Marcar todos"}
                     </button>
+                    {/* DOIS BOTÕES, e a ordem é a da vida: primeiro sai a
+                        nota, depois cai o dinheiro. "Emiti a nota" fica em
+                        segundo plano de propósito — é o passo do meio, e o
+                        botão cheio pertence ao que fecha a conta. */}
+                    <button type="button" className="outlineClinical"
+                      disabled={salvandoBaixa || marcados.size === 0}
+                      onClick={() => void marcarPlantoes([...marcados], "faturado")}>
+                      {salvandoBaixa ? "Salvando…" : "Emiti a nota"}
+                    </button>
                     <button type="button" className="primaryClinical"
                       disabled={salvandoBaixa || marcados.size === 0}
-                      onClick={() => void darBaixa([...marcados], true)}>
+                      onClick={() => void marcarPlantoes([...marcados], "pago")}>
                       {salvandoBaixa ? "Salvando…" : `Recebi ${dinheiro(
                         l.pendentes.filter((p) => marcados.has(p.id))
                           .reduce((s, p) => s + Number(p.valor || 0), 0))}`}
@@ -594,7 +646,7 @@ export function MeuFinanceiro({
                             <b>{dinheiro(Number(p.valor || 0))}</b>
                             <button type="button" className="mfBaixaVolta"
                               disabled={salvandoBaixa}
-                              onClick={() => void darBaixa([p.id], false)}>Desfazer</button>
+                              onClick={() => void marcarPlantoes([p.id], "realizado")}>Desfazer</button>
                           </li>
                         ))}
                       </ul>

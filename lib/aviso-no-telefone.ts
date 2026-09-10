@@ -37,7 +37,8 @@ import type { Notificacao } from "./push.ts";
  * junto com a mensagem.
  */
 export const NOTIFICAVEIS: ReadonlySet<TipoDeAviso> = new Set<TipoDeAviso>([
-  "a_confirmar", "plantao_a_receber", "a_receber", "a_faturar", "suporte",
+  "a_confirmar", "plantao_a_faturar", "plantao_a_receber",
+  "a_receber", "a_faturar", "suporte",
 ]);
 
 /**

@@ -218,7 +218,9 @@ test("plantão trabalhado e não pago aparece; cancelado não", () => {
     dinheiro("2026-07-07", "cancelado", 1100),
     dinheiro("2026-07-08", "pago", 1100),
   ]});
-  assert.equal(a.titulo, "2 plantões de julho de 2026 sem receber");
+  // "sem nota", e não "sem receber": nenhum destes quatro tem nota emitida, e o
+  // que falta neles é o documento — não o telefonema.
+  assert.equal(a.titulo, "2 plantões de julho de 2026 sem nota");
   assert.match(a.detalhe, /2\.200,00/);
 });
 
@@ -243,7 +245,7 @@ test("um mês só, com as três coisas, dá três lembretes distintos", () => {
     plantoes: [dinheiro("2026-07-03", "realizado", 1100)],
   });
   assert.deepEqual(avisos.map((a) => a.tipo).sort(),
-    ["a_faturar", "a_receber", "plantao_a_receber"]);
+    ["a_faturar", "a_receber", "plantao_a_faturar"]);
   // Todos pedem ação: são três coisas para fazer, não três notícias.
   assert.equal(quantosPedemResposta(avisos), 3);
 });
@@ -427,7 +429,8 @@ test("resposta do suporte também não se adia", () => {
 
 test("os lembretes que se repetem podem ser adiados", () => {
   // São os que incomodam: aparecem todo dia e não se resolvem num clique.
-  for (const tipo of ["a_faturar", "a_receber", "plantao_a_receber", "a_confirmar"] as const) {
+  for (const tipo of ["a_faturar", "a_receber", "plantao_a_faturar",
+                      "plantao_a_receber", "a_confirmar"] as const) {
     const a: Aviso = { id: "x", tipo, area: "producao", acao: true,
       quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
     assert.equal(podeAdiar(a), true, tipo);
@@ -468,4 +471,55 @@ test("sem nenhum adiamento, a lista passa inteira", () => {
   const a: Aviso = { id: "1", tipo: "a_receber", area: "producao", acao: true,
     quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
   assert.equal(semOsAdiados([a], new Map(), "2026-09-01").length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// A nota do plantão
+// ---------------------------------------------------------------------------
+
+test("plantão sem nota e plantão com nota são lembretes diferentes", () => {
+  // É a única divisão que muda o que fazer a seguir: DE QUEM é a demora. Sem
+  // nota emitida quem deve uma ação é você — o hospital não tem o que pagar
+  // enquanto o documento não sai. Com a nota, quem deve é o hospital.
+  const avisos = so({
+    plantoes: [
+      dinheiro("2026-07-03", "realizado", 1100),
+      dinheiro("2026-07-04", "faturado", 900),
+    ],
+  });
+  const porTipo = new Map(avisos.map((a) => [a.tipo, a]));
+  assert.equal(porTipo.get("plantao_a_faturar")!.titulo,
+    "1 plantão de julho de 2026 sem nota");
+  assert.match(porTipo.get("plantao_a_faturar")!.detalhe, /^R\$.1\.100,00 a emitir$/);
+  assert.match(porTipo.get("plantao_a_receber")!.titulo,
+    /^R\$.900,00 de julho de 2026 com nota e sem receber$/);
+  assert.equal(porTipo.get("plantao_a_receber")!.detalhe, "1 plantão aguardando pagamento");
+});
+
+test("emitir a nota tira o plantão do lembrete de emitir", () => {
+  // O caso que motivou tudo: marcar a nota tem de calar o lembrete anterior, e
+  // não somar mais um. Dois lembretes sobre o mesmo dinheiro ensinam a ignorar
+  // os dois.
+  const semNota = so({ plantoes: [dinheiro("2026-07-03", "realizado", 1100)] });
+  assert.deepEqual(semNota.map((a) => a.tipo), ["plantao_a_faturar"]);
+
+  const comNota = so({ plantoes: [dinheiro("2026-07-03", "faturado", 1100)] });
+  assert.deepEqual(comNota.map((a) => a.tipo), ["plantao_a_receber"]);
+});
+
+test("plantão pago não gera nenhum dos dois", () => {
+  assert.deepEqual(so({ plantoes: [dinheiro("2026-07-03", "pago", 1100)] }), []);
+});
+
+test("os dois lembretes de plantão têm chaves distintas", () => {
+  // Eles falam do mesmo mês e do mesmo lugar. Se dividissem a chave, adiar um
+  // calaria o outro — e marcar a nota apagaria o lembrete de cobrar junto.
+  const avisos = so({
+    plantoes: [
+      dinheiro("2026-07-03", "realizado", 1100),
+      dinheiro("2026-07-04", "faturado", 900),
+    ],
+  });
+  const chaves = new Set(avisos.map(chaveDoAviso));
+  assert.equal(chaves.size, avisos.length);
 });

@@ -31,7 +31,7 @@ test("a escala não marca mais pagamento", () => {
 
 test("a baixa está no Meu financeiro, e grava a data junto", () => {
   const financeiro = ler("components/meu-financeiro.tsx");
-  assert.ok(/async function darBaixa/.test(financeiro), "sumiu a função de dar baixa");
+  assert.ok(/async function marcarPlantoes/.test(financeiro), "sumiu a função da baixa");
   // A DATA VAI JUNTO COM A SITUAÇÃO, e é isto que o teste guarda. Um plantão
   // "pago" sem `pago_em` é um plantão que o fechamento do mês não consegue
   // somar no mês certo — e o defeito só apareceria no fechamento, meses depois.
@@ -42,6 +42,29 @@ test("a baixa está no Meu financeiro, e grava a data junto", () => {
   // E desfazer limpa a data, senão sobra um pagamento sem pagamento.
   assert.ok(/situacao:\s*"realizado",\s*pago_em:\s*null/.test(financeiro),
     "desfazer a baixa tem de limpar pago_em");
+});
+
+test("emitir a nota é um passo próprio, com data própria", () => {
+  // O plantão pulava de "realizado" direto para "pago", e o sistema não sabia
+  // dizer de quem era a demora: sem nota, quem deve uma ação é o médico; com a
+  // nota, quem deve é o hospital. Só o segundo vira telefonema.
+  const financeiro = ler("components/meu-financeiro.tsx");
+  const gravacao = financeiro.match(/situacao:\s*"faturado"[^}]*}/);
+  assert.ok(gravacao, "sumiu a gravação da nota emitida");
+  // A DATA VAI JUNTO, pelo mesmo motivo do pagamento: sem ela "com nota" é uma
+  // bandeira sem idade, e não dá para saber se a nota saiu ontem — e aí esperar
+  // é o normal — ou em julho, e aí o telefonema está atrasado há dois meses.
+  assert.ok(/faturado_em:\s*dataDaBaixa/.test(gravacao![0]),
+    `a data da nota não vai junto: ${gravacao![0]}`);
+  // Emitir nota não é receber: `pago_em` continua nulo.
+  assert.ok(/pago_em:\s*null/.test(gravacao![0]),
+    "emitir a nota não pode carimbar o pagamento");
+  // E desfazer limpa as duas datas — um plantão "realizado" que guardasse a
+  // data da nota antiga voltaria a parecer faturado no primeiro relatório.
+  assert.ok(/situacao:\s*"realizado",\s*pago_em:\s*null,\s*faturado_em:\s*null/.test(financeiro),
+    "desfazer tem de limpar faturado_em também");
+  // O botão existe na tela, e não só a função.
+  assert.ok(/Emiti a nota/.test(financeiro), "sumiu o botão de emitir a nota");
 });
 
 test("o gráfico do ano fala por cor, e não por uma faixa de texto", () => {

@@ -28,7 +28,11 @@ import { Icone } from "@/components/icone";
 const ICONE = {
   troca_pedida: "troca", troca_resolvida: "confirmado", chat: "conversa",
   suporte: "boia", a_faturar: "nota", a_receber: "ampulheta",
-  plantao_a_receber: "dinheiro", a_confirmar: "confirmado",
+  // Nota para o que falta emitir, dinheiro para o que falta cair: o ícone
+  // separa de relance os dois lembretes de plantão, que na lista ficam um
+  // debaixo do outro e falam do mesmo mês.
+  plantao_a_faturar: "nota", plantao_a_receber: "dinheiro",
+  a_confirmar: "confirmado",
   escala_publicada: "calendario",
 } as const;
 
@@ -43,7 +47,9 @@ const ICONE = {
 /** O quanto o dedo precisa andar para o adiar valer. */
 const LIMITE_ARRASTO = 90;
 
-const SEM_RELOGIO = new Set(["a_faturar", "a_receber", "plantao_a_receber", "a_confirmar"]);
+const SEM_RELOGIO = new Set([
+  "a_faturar", "a_receber", "plantao_a_faturar", "plantao_a_receber", "a_confirmar",
+]);
 
 function quandoFoi(iso: string, agora = Date.now()): string {
   const t = Date.parse(iso);
