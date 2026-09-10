@@ -560,13 +560,27 @@ export function MeuFinanceiro({
                   <button type="button" className="mfBaixaAbrir"
                     aria-expanded={baixaDe === l.nome}
                     onClick={() => abrirBaixa(l.nome, l.pendentes)}>
-                    {baixaDe === l.nome ? "Fechar" : "Dar baixa"}
+                    {/* "Nota e baixa", e não só "Dar baixa".
+                        O painel passou a fazer duas coisas — marcar a nota
+                        emitida e marcar o recebimento —, mas a porta continuou
+                        com o nome de uma só. Quem chega querendo marcar nota
+                        não abre um botão escrito "Dar baixa", e conclui que o
+                        sistema não tem onde fazer isso. Tinha; estava atrás de
+                        uma placa errada. */}
+                    {baixaDe === l.nome ? "Fechar" : "Nota e baixa"}
                   </button>
                 )}
               </div>
 
               {baixaDe === l.nome && (
                 <div className="mfBaixa">
+                  {/* DUAS FRASES, e a primeira é o modo de usar. O painel abre
+                      numa data e numa lista de caixinhas, e nada ali diz que
+                      existem dois destinos possíveis para o que se marca. */}
+                  <p className="mfBaixaComo">
+                    Marque os plantões e diga o que aconteceu com eles:
+                    <b> a nota saiu</b>, ou <b>o dinheiro caiu</b>.
+                  </p>
                   {/* A data primeiro: ela vale para todos os que forem marcados,
                       e descobrir isso depois de escolher os plantões faria
                       voltar.

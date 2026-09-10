@@ -67,6 +67,20 @@ test("emitir a nota é um passo próprio, com data própria", () => {
   assert.ok(/Emiti a nota/.test(financeiro), "sumiu o botão de emitir a nota");
 });
 
+test("a porta do painel diz as duas coisas que há atrás dela", () => {
+  // O painel passou a fazer duas coisas e a porta continuou com o nome de uma
+  // só. Quem chega querendo marcar nota não abre um botão escrito "Dar baixa",
+  // e conclui que o sistema não tem onde fazer isso — que foi exatamente o que
+  // aconteceu. Tinha; estava atrás de uma placa errada.
+  const financeiro = ler("components/meu-financeiro.tsx");
+  const porta = financeiro.match(/baixaDe === l\.nome \? "Fechar" : "([^"]+)"/);
+  assert.ok(porta, "sumiu o botão que abre o painel");
+  assert.match(porta![1], /[Nn]ota/,
+    `"${porta![1]}" não menciona a nota: quem vem marcar nota não vai clicar aqui`);
+  // E, aberto, o painel explica os dois destinos antes da lista de caixinhas.
+  assert.ok(/mfBaixaComo/.test(financeiro), "sumiu o modo de usar do painel");
+});
+
 test("o gráfico do ano fala por cor, e não por uma faixa de texto", () => {
   // Havia um aviso explicando o que era o "a receber" e onde dar baixa. Saiu:
   // o gráfico diz a mesma coisa em cor, e a ação está a um palmo dali. Faixa de
