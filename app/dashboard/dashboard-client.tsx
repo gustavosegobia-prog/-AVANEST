@@ -45,6 +45,8 @@ const GraficosFinanceiro = dynamic(
   { ssr: false, loading: carregando("os gráficos") });
 const LocaisAdmin = dynamic(() => import("@/components/locais-admin").then((m) => m.LocaisAdmin),
   { ssr: false, loading: carregando("os locais") });
+const TermoAdmin = dynamic(() => import("@/components/termo-admin").then((m) => m.TermoAdmin),
+  { ssr: false, loading: carregando("o termo") });
 const ProducaoRecebida = dynamic(
   () => import("@/components/producao-do-dia").then((m) => m.ProducaoRecebida),
   { ssr: false, loading: carregando("a produção") });
@@ -2692,6 +2694,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
           ["grupo","Organização"],
           ["dados","Dados da organização"],
           ["locais","Locais de atendimento"],
+          ["termo","Termo de consentimento"],
           ["assinatura","Assinatura"],
           ["grupo","Registro"],
           ["auditoria","Auditoria"],
@@ -2876,6 +2879,17 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
             />
           </div>
         </section>
+      </>}
+      {aba==="termo"&&<>
+        <TermoAdmin
+          institutionId={perfil.institution_id}
+          perfilId={perfil.id}
+          /* Pelo `role`, e não pelas permissões extras: é exatamente a regra
+             que a política do banco aplica. Uma tela mais generosa que o banco
+             entrega um botão que só sabe devolver erro de permissão. */
+          podeEditar={["owner","admin"].includes(perfil.role)}
+          nomesDosPerfis={actorNames}
+        />
       </>}
       {aba==="assinatura"&&<>
     <PainelAssinatura onRefresh={onRefresh}/>

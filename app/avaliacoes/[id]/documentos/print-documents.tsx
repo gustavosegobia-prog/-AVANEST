@@ -7,6 +7,7 @@ import {ehAntitrombotico,exigeOrientacao} from "@/lib/medication-guide";
 import {suspensionSummary} from "@/lib/medication-summary";
 import {frasePreditores,preditoresMarcados,resumoViaAerea,riscoNoMasculino} from "@/lib/via-aerea";
 import {BrandMark} from "@/components/brand-mark";
+import {aplicarDados,termoVigenteEm,type VersaoDoTermo} from "@/lib/termo-consentimento";
 
 type Data=Record<string,string|boolean>;
 /**
@@ -26,6 +27,14 @@ type Props={
   paciente:{id:string;nome:string;cpf:string|null;data_nascimento:string|null;idade_anos?:number|null;sexo:string|null;telefone:string|null;email:string|null;hospital:string|null;cirurgia:string|null;procedimento:string|null;convenio:string|null};
   perfil:{id:string;nome:string;crm:string|null;rqe:string|null;role:string;permissoes?:string[]|null};
   organizacao:{nome:string;tipo:string|null;telefone:string|null}|null;
+  /**
+   * As versões do termo desta organização, da mais nova para a mais velha.
+   *
+   * Lista vazia — organização que nunca editou, ou avaliação anterior a esta
+   * funcionalidade — quer dizer "usa o texto de fábrica", e é o caso da
+   * maioria.
+   */
+  versoesDoTermo?:VersaoDoTermo[];
 };
 const normalizar=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim().toLowerCase();
 
@@ -163,43 +172,15 @@ function PaperInlineBlock({title,linhas,extras=[],classe}:{title?:string;linhas:
   </>;
 }
 
-// O texto do termo.
+// O TEXTO DO TERMO MUDOU DE LUGAR: está em lib/termo-consentimento.ts.
 //
-// A numeração impressa sai de como o bloco é montado lá embaixo: os dois
-// primeiros itens viram 2 e 3, os riscos viram o item 4, e o resto segue de 5
-// em diante. Mexer na ordem daqui muda os números no papel.
+// Não é arrumação. Ele saiu daqui porque deixou de ser um só: cada organização
+// pode reescrevê-lo em Admin → Termo de consentimento, e o que sai impresso é
+// a versão que estava valendo QUANDO ESTA AVALIAÇÃO FOI CONCLUÍDA — nunca a de
+// hoje. É o texto que o paciente assinou; reimprimir não pode trazer outro.
 //
-// Nada aqui cita clínica nem hospital pelo nome: quem assina o termo é a
-// organização que está usando o sistema, e o nome dela entra pelo cadastro.
-// Um nome fixo no texto já foi motivo de retrabalho uma vez.
-//
-// Isto é documento jurídico. Foi escrito para ser claro para quem vai assinar
-// — frases curtas, sem juridiquês desnecessário — mas continua sendo texto que
-// o advogado da organização deve ler antes de virar rotina.
-const CONSENT_ITEMS=[
-  "Foi claramente exposto a mim que os cuidados propostos seguirão os princípios éticos da medicina: respeito à pessoa, busca do maior benefício possível e redução dos danos e riscos previsíveis.",
-  "Minha decisão é voluntária e foi tomada depois de receber informações sobre a natureza, as consequências e os riscos dos procedimentos, e de poder discuti-las. Entendo que qualquer procedimento anestésico pode exigir procedimentos complementares, mesmo com todo o cuidado e a perícia da equipe, e que não existe anestesia sem risco: todas, ainda que em graus diferentes, envolvem risco de vida.",
-  "Aceito o fato de que o tabagismo e o uso de álcool ou de outras drogas, embora não impeçam a realização da anestesia, aumentam a chance das complicações descritas acima.",
-  "Reconheço que, durante o ato anestésico, podem surgir situações que não era possível prever antes. Por isso autorizo o médico anestesiologista e a equipe que o auxilia a realizar as técnicas e os tratamentos necessários à condução segura da anestesia — inclusive mudar a técnica combinada, se for preciso —, além de procedimentos de urgência e a transferência para terapia intensiva, na própria instituição ou em outra.",
-  "Entendo que o médico anestesiologista e sua equipe se comprometem a empregar todos os meios ao seu alcance para alcançar o melhor resultado, mas não podem garantir o resultado em si. A medicina não é uma ciência exata, e não é possível prever com certeza o desfecho de nenhum procedimento anestésico.",
-  "Compreendo que, no dia da cirurgia, a anestesia pode ser aplicada por um anestesiologista diferente do que me avaliou, por escala ou plantão. Nesse caso, estou ciente de que ele lerá esta avaliação e seguirá os mesmos cuidados de segurança.",
-  "Se minha cirurgia for realizada em hospital de ensino, aceito que médicos residentes participem do meu atendimento, sempre sob supervisão do médico anestesiologista responsável.",
-  "Concordo em seguir as orientações que me forem dadas, por escrito ou verbalmente, até minha recuperação — em especial o tempo de jejum e a orientação sobre quais dos meus medicamentos manter e quais suspender. Estou ciente de que não seguir essas orientações pode levar ao adiamento da cirurgia e aumentar o risco do procedimento.",
-  "Autorizo o registro dos dados necessários à minha avaliação e à realização da anestesia, em prontuário em papel ou eletrônico. Estou ciente de que esses dados são protegidos por sigilo profissional e pela Lei Geral de Proteção de Dados, e de que só serão compartilhados com quem participa do meu cuidado ou com quem tenha direito legal de acesso.",
-  "Tive a oportunidade de fazer perguntas e todas foram respondidas em linguagem que compreendi. Estou ciente de que posso recusar o procedimento ou retirar este consentimento a qualquer momento antes do início da anestesia, sem que isso prejudique o meu atendimento.",
-];
-// A repetição do "Poderá ocorrer" é de propósito. Sem ela a lista vira um
-// rol de coisas que vão acontecer, e não de coisas que podem acontecer —
-// e é exatamente essa a diferença que o paciente precisa entender.
-const CONSENT_RISKS=[
-  "Poderá ocorrer dor de garganta, rouquidão, lesão ou perda de dentes, pequeno sangramento pelo nariz ou pela boca e dormência em partes da língua, relacionados à colocação do tubo respiratório.",
-  "Poderá ocorrer dor de cabeça, dor lombar, dores musculares, tontura, vertigem, dificuldade para respirar e desmaio durante a recuperação da anestesia e nos dias seguintes.",
-  "Poderá ocorrer sede e fome, pelo tempo de jejum e pelos medicamentos usados.",
-  "Poderá ocorrer dor no local das punções de veia ou artéria, além de inflamação da veia (flebite), pelos materiais e medicamentos utilizados.",
-  "Poderá ocorrer ardência nos olhos, lesão da córnea, deslocamento de lentes de contato e queda de pelos.",
-  "Poderá ocorrer frio, tremores e áreas com falta de sensibilidade, por posicionamento durante a cirurgia ou após bloqueios. Em geral são passageiras, podem durar um tempo indeterminado e, muito raramente, ser permanentes.",
-  "Poderá ocorrer alteração do humor e da memória, mais comumente na forma de ansiedade e confusão passageira, e, embora raros, quadros psicológicos mais complexos.",
-];
+// Quem nunca editou nada imprime o padrão de fábrica, que é palavra por palavra
+// o que sempre esteve escrito aqui.
 
 /**
  * O cabeçalho institucional dos documentos.
@@ -251,7 +232,7 @@ function CabecalhoInstitucional({
   );
 }
 
-export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
+export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoTermo}:Props){
   const dados=avaliacao.snapshot_conclusao||avaliacao.dados||{};
   // O papel que chega na mão do paciente leva o nome de quem atende, não o da
   // plataforma. Para o anestesiologista sozinho, o nome da organização é
@@ -272,6 +253,25 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
   // como sempre foi.
   const local=avaliacao.local_snapshot??null;
   const logo=String(local?.logo_url||"").trim();
+
+  // O termo que vale para ESTA avaliação.
+  //
+  // Escolhido pela data de conclusão, e não pela versão mais recente: o papel
+  // que o paciente assinou em março tem de sair igual em setembro. Rascunho
+  // ainda não tem conclusão, e aí vale o texto de agora — que é o que vai ser
+  // impresso e assinado daqui a pouco.
+  const termo=useMemo(
+    ()=>termoVigenteEm(versoesDoTermo??[],avaliacao.concluida_at),
+    [versoesDoTermo,avaliacao.concluida_at]);
+  // O que o cadastro já sabe, para as {{marcações}} que o texto editado possa
+  // citar. Sai do MESMO lugar que o cabeçalho — o local congelado —, e não do
+  // local ativo hoje: um termo reimpresso não pode trocar de hospital.
+  const dadosDoTermo=useMemo(()=>({
+    clinica,
+    cidade:[local?.cidade,local?.estado].filter(Boolean).join("/"),
+    paciente:paciente.nome,
+  }),[clinica,local?.cidade,local?.estado,paciente.nome]);
+  const noTermo=(texto:string)=>aplicarDados(texto,dadosDoTermo);
   const assignedPermissions=Array.isArray(perfil.permissoes)?perfil.permissoes:[];
   const hasLegacyFullAccess=["admin","owner"].includes(perfil.role)||assignedPermissions.includes("todos");
   const canManage=hasLegacyFullAccess||perfil.role==="admin"||assignedPermissions.includes("admin");
@@ -610,9 +610,18 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
             if(daAvaliacao) return null;
             return hasText(doCadastro)?<>, a ser realizada em <b>{doCadastro}</b></>:null;
           })()}.</p>
-          <ol start={2}>{CONSENT_ITEMS.slice(0,2).map(item=><li key={item}>{item}</li>)}</ol>
-          <p><b>4. Os seguintes pontos me foram esclarecidos:</b></p><ul>{CONSENT_RISKS.map(item=><li key={item}>{item}</li>)}</ul>
-          <ol start={5}>{CONSENT_ITEMS.slice(2).map(item=><li key={item}>{item}</li>)}</ol>
+          {/* A chave é a posição, e não o texto. Com o termo editável dois itens
+              podem ficar momentaneamente iguais — enquanto alguém digita, ou
+              porque a organização repetiu uma frase de propósito —, e chave
+              repetida faz o React descartar um dos dois: um item sumiria do
+              documento sem aviso nenhum. */}
+          {/* A numeração é CALCULADA, e não escrita. O bloco dos riscos vem
+              depois dos dois primeiros itens, e o "4." era constante aqui: uma
+              organização que apagasse um item passaria a imprimir 2, depois 4,
+              e a lista pularia um número no meio de um documento assinado. */}
+          <ol start={2}>{termo.itens.slice(0,2).map((item,i)=><li key={i}>{noTermo(item)}</li>)}</ol>
+          <p><b>{Math.min(termo.itens.length,2)+2}. Os seguintes pontos me foram esclarecidos:</b></p><ul>{termo.riscos.map((item,i)=><li key={i}>{noTermo(item)}</li>)}</ul>
+          <ol start={Math.min(termo.itens.length,2)+3}>{termo.itens.slice(2).map((item,i)=><li key={i}>{noTermo(item)}</li>)}</ol>
           {/* O fecho do termo é um bloco só, e isso não é organização: é o que
               impede a assinatura de sair sozinha numa folha. Antes o parágrafo
               da autorização terminava no pé de uma página e as linhas de
@@ -621,7 +630,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao}:Props){
               como consentimento assinado. Envolvidos num mesmo elemento com
               break-inside:avoid, ou os dois cabem, ou os dois viram juntos. */}
           <div className="consentClosing">
-            <h4>AUTORIZAÇÃO</h4><p>Entendo que os meios utilizados para assegurar a compreensão adequada das informações foram observados e, embora saiba que os procedimentos aos quais me submeterei, além de serem de risco, poderão ocasionar as alterações descritas acima e limitação das minhas atividades cotidianas por período indeterminado, aceito e autorizo que os profissionais acima designados realizem os procedimentos constantes neste termo de autorização.</p>
+            <h4>AUTORIZAÇÃO</h4><p>{noTermo(termo.autorizacao)}</p>
             <div className="consentSignatures"><span>PACIENTE: ___________________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span><span>TESTEMUNHA: _______________________________________<br/><small>Assinar escrevendo o nome por extenso</small><br/>Data: ____/____/________</span></div>
           </div>
         </article>

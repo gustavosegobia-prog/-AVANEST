@@ -38,5 +38,24 @@ export default async function DocumentsPage({params}:{params:Promise<{id:string}
   // Ler o erro em vez de descartá-lo: foi descartá-lo que escondeu o problema
   // acima por meses.
   if(erroOrganizacao)console.error("[documentos] organização",erroOrganizacao);
-  return <PrintDocuments avaliacao={{...avaliacao,local_snapshot:comLocal?.local_snapshot??null}} paciente={paciente} perfil={perfil} organizacao={organizacao??null}/>;
+
+  // As versões do termo de consentimento desta organização.
+  //
+  // Consulta à parte pela mesma razão de `local_snapshot` aqui em cima: a
+  // tabela nasce numa migration, e enquanto ela não tiver rodado o PostgREST
+  // recusa a consulta inteira em vez de devolver vazio. Junto das outras, a
+  // página de documentos sumiria com 404; separada, o pior caso é o termo sair
+  // com o texto padrão, que é o que ele sempre foi.
+  //
+  // Vêm TODAS as versões, e não só a mais recente: qual delas vale depende da
+  // data em que ESTA avaliação foi concluída, e quem decide isso é
+  // `termoVigenteEm`. Reimprimir uma avaliação de março tem de trazer o termo
+  // de março, não o de hoje.
+  const {data:versoesDoTermo,error:erroDoTermo}=await supabase.from("termos_consentimento")
+    .select("itens,riscos,autorizacao,criado_em")
+    .eq("institution_id",avaliacao.institution_id)
+    .order("criado_em",{ascending:false});
+  if(erroDoTermo)console.error("[documentos] termo",erroDoTermo);
+
+  return <PrintDocuments avaliacao={{...avaliacao,local_snapshot:comLocal?.local_snapshot??null}} paciente={paciente} perfil={perfil} organizacao={organizacao??null} versoesDoTermo={versoesDoTermo??[]}/>;
 }

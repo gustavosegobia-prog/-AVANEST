@@ -4501,3 +4501,54 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .planosTeste{margin:6px 0 0;font-size:15.5px;color:#c5d4df}
 .planosTeste b{color:#fff;font-weight:750}
 .planosTeste span{display:block;margin-top:3px;font-size:14px;color:#9dbdd6}
+
+/* ── Edição do termo de consentimento (Admin) ───────────────────────────────
+   Tudo em tokens, e não em cor fixa: o painel é uma parede de texto longo, e
+   um #fff cravado aqui daria fundo branco com tinta clara no tema escuro —
+   o mesmo defeito que já custou o Meu financeiro. */
+.termoAdmin{padding:var(--esp-5)}
+.termoAviso{border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);
+  border-radius:10px;padding:var(--esp-3) var(--esp-4);margin:0 0 var(--esp-3);font-size:13.5px;
+  color:var(--cor-tinta)}
+.termoAviso p{margin:0}
+.termoAviso.cuidado{border-color:var(--cor-atencao);background:var(--cor-atencao-suave);
+  color:var(--cor-tinta-forte)}
+.termoMarcacoes{margin:var(--esp-2) 0 0;padding-left:var(--esp-5);display:grid;gap:3px}
+.termoMarcacoes code{background:var(--cor-superficie);border:1px solid var(--cor-borda);
+  border-radius:5px;padding:1px 5px;font-size:12.5px}
+.termoSecao{margin:var(--esp-6) 0 var(--esp-1);font-size:13px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--cor-tinta-fraca)}
+.termoAjuda{margin:0 0 var(--esp-3);font-size:13px;color:var(--cor-tinta-fraca)}
+.termoLista{list-style:none;margin:0 0 var(--esp-3);padding:0;display:grid;gap:var(--esp-2)}
+/* Número, texto e botões. O texto leva minmax(0,1fr) e não 1fr: sem o mínimo
+   zero, uma linha longa sem espaço empurra a coluna e os botões saem do painel. */
+.termoLista li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--esp-2);
+  align-items:start}
+.termoNumero{padding-top:10px;font-weight:750;color:var(--cor-tinta-fraca);
+  font-variant-numeric:tabular-nums;text-align:right}
+.termoLista textarea,.termoAutorizacao{width:100%;border:1px solid var(--cor-borda);
+  background:var(--cor-superficie-suave);color:var(--cor-tinta);border-radius:9px;
+  padding:9px 11px;font:inherit;font-size:14px;line-height:1.45;resize:vertical;min-width:0}
+.termoLista textarea:disabled,.termoAutorizacao:disabled{opacity:.75}
+.termoAutorizacao{margin-bottom:var(--esp-3)}
+.termoBotoes{display:flex;flex-direction:column;gap:3px}
+.termoBotoes button{width:30px;height:26px;border:1px solid var(--cor-borda);
+  background:var(--cor-superficie);color:var(--cor-tinta);border-radius:7px;cursor:pointer;
+  font-size:13px;line-height:1}
+.termoBotoes button:disabled{opacity:.35;cursor:default}
+.termoBotoes .termoRemover{color:var(--cor-perigo);border-color:var(--cor-perigo-suave)}
+.termoAcoes{display:flex;flex-wrap:wrap;gap:var(--esp-2);justify-content:space-between;
+  align-items:center;margin-top:var(--esp-5)}
+.termoAcoes>div{display:flex;flex-wrap:wrap;gap:var(--esp-2)}
+.termoHistorico{margin-top:var(--esp-6);border-top:1px solid var(--cor-borda)}
+.termoHistorico .auditRow{padding-left:0;padding-right:0}
+/* No telefone os botões de ordem vão para baixo do campo: em coluna, ao lado
+   de um textarea de três linhas, eles espremiam o texto a menos de metade da
+   largura da tela. */
+@media(max-width:700px){
+  .termoLista li{grid-template-columns:28px minmax(0,1fr)}
+  .termoBotoes{grid-column:2;flex-direction:row}
+  .termoBotoes button{width:38px;height:32px}
+  .termoAcoes,.termoAcoes>div{width:100%}
+  .termoAcoes button{flex:1 1 auto}
+}
