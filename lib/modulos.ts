@@ -76,6 +76,37 @@ export function areasLiberadas<T extends string>(
 }
 
 /**
+ * O que o teste grátis de dois meses abre.
+ *
+ * "Use por 2 meses grátis" não é "use o sistema inteiro por dois meses": o
+ * teste mostra o TRABALHO CLÍNICO — a ficha anestésica e a escala —, e a
+ * gestão do negócio fica para quem assinar. Recepção e Financeiro são as duas
+ * áreas que só fazem sentido quando o serviço já decidiu adotar o sistema:
+ * uma pressupõe alguém atendendo o balcão, a outra pressupõe o mês inteiro
+ * lançado.
+ *
+ * "admin" ATRAVESSA, pelo mesmo motivo que ele atravessa o filtro de módulos
+ * logo acima, e aqui o motivo pesa mais: é por ele que se cadastra o local de
+ * atendimento, se convida a equipe e SE ASSINA. Um teste que trancasse a
+ * administração seria um teste sem porta de saída — a pessoa não conseguiria
+ * nem preparar o sistema para usar, nem pagar quando decidisse ficar.
+ *
+ * É o terceiro filtro em série, e a ordem continua importando:
+ *   1. o que a organização contratou
+ *   2. o que o papel da pessoa alcança
+ *   3. o que o teste libera        (esta função)
+ */
+export const AREAS_DO_TESTE = ["medico", "plantoes", "admin"] as const;
+
+export function areasNoTeste<T extends string>(areas: readonly T[]): T[] {
+  return areas.filter((area) => (AREAS_DO_TESTE as readonly string[]).includes(area));
+}
+
+/** As que o teste NÃO abre — para a tela poder dizer o que se ganha assinando. */
+export const AREAS_QUE_A_ASSINATURA_ABRE: Modulo[] = MODULOS
+  .filter((m) => !(AREAS_DO_TESTE as readonly string[]).includes(m));
+
+/**
  * Os papéis que se pode convidar numa organização.
  *
  * Fecha o buraco na origem. Sem isto, o administrador do hospital podia

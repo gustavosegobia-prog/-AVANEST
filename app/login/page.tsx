@@ -32,7 +32,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     // de assinatura; cortesia e plano pago seguem para o painel.
     const { data } = await supabase.rpc("minha_assinatura");
     const assinatura = Array.isArray(data) ? data[0] : data;
-    const precisaContratar = ["trial", "cancelado"].includes(String(assinatura?.plano ?? ""));
+    const precisaContratar = assinatura ? assinatura.liberada === false : false;
     // Mesmo destino do formulário: a escolha do local vem antes do painel,
     // menos para a recepção, que atende sempre no mesmo lugar.
     const { data: quem } = await supabase.from("perfis").select("role").eq("id", user.id).maybeSingle();

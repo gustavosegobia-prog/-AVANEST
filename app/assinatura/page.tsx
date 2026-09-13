@@ -8,8 +8,12 @@ import { SairButton } from "./sair-button";
 
 const WHATSAPP = "https://wa.me/5541997870810";
 
+// A PRIMEIRA FRASE QUE A PESSOA LÊ ao ser trazida para cá. É o fim de um
+// caminho: ela criou a conta, usou dois meses, e o sistema a trouxe. Dizer
+// "período de teste" seria falar do sistema; dizer "2 meses" é falar do que
+// foi combinado com ela na capa.
 const MOTIVOS: Record<string, string> = {
-  trial: "Seu período de teste terminou.",
+  trial: "Seus 2 meses de teste terminaram.",
   ativo: "Sua assinatura venceu.",
   suspenso: "Sua assinatura está suspensa.",
   cancelado: "Sua assinatura foi cancelada.",

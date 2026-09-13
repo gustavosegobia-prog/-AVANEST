@@ -6,7 +6,7 @@ import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/
 import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, semOsAdiados } from "@/lib/avisos";
 import { nomeCurto } from "@/lib/escala";
 import { hoje as hojeNoBrasil, mesAtual, somarMeses } from "@/lib/data-local";
-import { areasLiberadas, modulosDaOrganizacao } from "@/lib/modulos";
+import { areasLiberadas, areasNoTeste, modulosDaOrganizacao } from "@/lib/modulos";
 
 export default async function DashboardPage({
   searchParams,
@@ -90,6 +90,15 @@ export default async function DashboardPage({
 
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   if (assinatura && assinatura.liberada === false) redirect("/assinatura");
+  // A FAIXA DO TESTE só existe para quem está testando. Cortesia e plano pago
+  // não levam contagem nenhuma no topo da tela: contar dias para quem já pagou
+  // é lembrar de um prazo que não é problema dele.
+  const testeAte = assinatura?.plano === "trial" && assinatura.assinatura_ate
+    ? String(assinatura.assinatura_ate)
+    : null;
+  // Cortesia e plano pago NÃO são teste: quem recebeu cortesia recebeu o
+  // sistema, e quem paga paga por ele inteiro.
+  const emTeste = assinatura?.plano === "trial";
 
   // Médico primeiro: é a área de trabalho do anestesiologista, e a ordem daqui
   // decide tanto os botões da barra quanto em qual área o sistema abre. Quem
@@ -121,7 +130,18 @@ export default async function DashboardPage({
   // Um hospital que comprou ficha e escala não mostra Financeiro nem para o
   // próprio administrador — não é permissão de pessoa, é o contrato da casa.
   const modulos = modulosDaOrganizacao(instituicao?.modulos);
-  const allowedViews = areasLiberadas(doPapel, modulos);
+  // O TERCEIRO FILTRO: o teste grátis abre só a ficha anestésica e a escala.
+  //
+  // Vem DEPOIS do filtro de módulos, e não no lugar dele: uma organização que
+  // não contratou Escala não passa a ter Escala por estar em teste. Os filtros
+  // se somam, e a pessoa vê a interseção dos três.
+  //
+  // A conta é feita aqui em cima, e não dentro de cada aba, porque `initialView`
+  // logo abaixo escolhe a primeira área liberada — se o filtro viesse depois,
+  // quem está em teste abriria o painel direto no Financeiro trancado.
+  const allowedViews = emTeste
+    ? areasNoTeste(areasLiberadas(doPapel, modulos))
+    : areasLiberadas(doPapel, modulos);
   const canManage = allowedViews.includes("admin");
   const canFinance = allowedViews.includes("financeiro");
   const requestedView = ["recepcao", "medico", "plantoes", "financeiro", "admin"].includes(area ?? "")
@@ -411,6 +431,7 @@ export default async function DashboardPage({
       pagamentos={pagamentos ?? []}
       perfis={perfis ?? []}
       trocasEsperando={trocasEsperando ?? 0}
+      testeAte={testeAte}
       abaDaEscala={abaDaEscala}
       abaDoChat={abaDoChat}
       avisos={avisosVisiveis}

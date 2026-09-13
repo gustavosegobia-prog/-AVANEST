@@ -56,14 +56,21 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
       router.replace(`/comecar?plano=${encodeURIComponent(plano)}`);
       return;
     }
-    // Quem ainda não contratou entra pela tela de assinatura, não pelo painel:
-    // é ali que está o pagamento, e o "Voltar ao sistema" continua disponível
-    // para quem só quer usar o trial. Cortesia e plano pago vão direto ao
-    // painel. Se a consulta falhar, o painel é o destino seguro — ele já
-    // barra sozinho quem está vencido.
+    // QUEM ESTÁ NO TESTE ENTRA NO SISTEMA. Antes esta linha era
+    // `["trial","cancelado"].includes(plano)`, e com isso todo mundo em teste
+    // caía na tela de pagamento — o "teste grátis" era uma porta fechada, e
+    // cada conta precisava ser aberta na mão como cortesia.
+    //
+    // Agora quem decide é `liberada`, que o banco calcula: plano não cancelado
+    // nem suspenso, e dentro da data. Trial com prazo correndo entra; trial
+    // vencido vai para a assinatura, como cancelado. Uma regra só, no banco,
+    // em vez de uma lista de nomes de plano repetida em três telas.
+    //
+    // Se a consulta falhar, o painel é o destino seguro — ele já barra sozinho
+    // quem está vencido.
     const { data } = await supabase.rpc("minha_assinatura");
     const assinatura = Array.isArray(data) ? data[0] : data;
-    const precisaContratar = ["trial", "cancelado"].includes(String(assinatura?.plano ?? ""));
+    const precisaContratar = assinatura ? assinatura.liberada === false : false;
     // Depois de entrar, a pergunta é "onde você vai atender hoje?". Quem
     // trabalha em três hospitais começa cada manhã numa instituição
     // diferente, e o local ativo decide o cabeçalho de todo documento

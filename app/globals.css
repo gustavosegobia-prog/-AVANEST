@@ -4455,3 +4455,49 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* A frase que explica a consequência antes do clique. */
 .adminEscalaAviso{grid-column:1/-1;margin:0;font-size:12.5px;line-height:1.5;
   color:var(--cor-tinta-fraca)}
+
+/* ===========================================================================
+   A faixa do teste grátis
+   ===========================================================================
+   Primeiro texto da tela, abaixo da barra do topo. Muda de cor com o prazo, e
+   a cor é reforço e não a informação — a frase diz a data e os dias que faltam,
+   e quem não distingue as cores lê a mesma coisa.
+
+   Azul enquanto sobra tempo: é aviso, não problema. Âmbar nos últimos quinze
+   dias. Vermelho não entra em nenhum dos dois: teste acabando não é erro nem
+   perigo, e pintar de vermelho quem está avaliando o produto é começar a
+   relação cobrando. */
+.testeFaixa{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;
+  padding:11px clamp(14px,3vw,40px);font-size:13.5px;line-height:1.5;
+  background:var(--cor-marca-suave);color:var(--cor-marca-forte);
+  border-bottom:1px solid var(--cor-borda)}
+.testeFaixa.acabando{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.testeFaixa.acabou{background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca)}
+.testeFaixa span{flex:1 1 260px;font-weight:650}
+/* O que abre ao assinar vem em peso normal: é informação de apoio, e em
+   negrito competiria com a contagem de dias, que é o que a faixa existe
+   para dizer. */
+.testeFaixa i{font-style:normal;font-weight:500;opacity:.85}
+/* Alvo de 44px como todo o resto do sistema: a faixa é fina, mas o botão
+   dentro dela não pode ser. */
+.testeFaixaBotao{display:inline-flex;align-items:center;min-height:38px;
+  padding:0 16px;border-radius:999px;font-weight:750;text-decoration:none;
+  background:var(--cor-marca);color:var(--cor-marca-contraste);white-space:nowrap}
+.testeFaixaBotao:hover{background:var(--cor-marca-forte)}
+
+/* A promessa da campanha, na capa e na página de planos. Discreta de
+   propósito: ela responde a uma objeção ("vou ter de pôr o cartão agora?"),
+   e objeção se responde em voz baixa. Em caixa alta e amarelo ela viraria
+   anúncio, e anúncio o olho pula. */
+.avnTeste{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;
+  margin:18px 0 0;font-size:15px;color:#cfe3f4}
+.avnTeste b{color:#fff;font-weight:750}
+.avnTeste span{font-size:13.5px;color:#9dbdd6}
+/* A vitrine é escura e NÃO usa os tokens do painel: `--cor-tinta-fraca` é um
+   cinza pensado para fundo branco, e `--cor-marca-forte` é o azul escuro da
+   marca. Os dois sobre o navy da página de planos ficam ilegíveis — conferido
+   na tela, o "Use por 2 meses grátis" sumia dentro do fundo. As cores aqui são
+   as mesmas que a frase de apoio ao lado já usa. */
+.planosTeste{margin:6px 0 0;font-size:15.5px;color:#c5d4df}
+.planosTeste b{color:#fff;font-weight:750}
+.planosTeste span{display:block;margin-top:3px;font-size:14px;color:#9dbdd6}

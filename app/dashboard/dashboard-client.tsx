@@ -8,6 +8,8 @@ import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { useCaptcha } from "@/components/turnstile";
 import { Icone } from "@/components/icone";
+import { estadoDoTeste, fraseDoTeste } from "@/lib/teste-gratis";
+import { AREAS_QUE_A_ASSINATURA_ABRE, NOME_DO_MODULO } from "@/lib/modulos";
 import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
 
 /**
@@ -260,6 +262,7 @@ export function DashboardClient({
   perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
+  testeAte,
   abaDaEscala,
   abaDoChat,
   avisos = [],
@@ -294,6 +297,8 @@ export function DashboardClient({
    * uma consulta a mais em toda abertura do painel.
    */
   trocasEsperando?: number;
+  /** ISO do fim do teste grátis. Nulo para quem já assinou ou tem cortesia. */
+  testeAte?: string | null;
   /** Aba em que a Escala abre quando o endereço pede — ver app/dashboard/page.tsx. */
   abaDaEscala?: "escala" | "producao" | "trocas";
   /** Janela de conversa a abrir quando o endereço pede. Mesma razão. */
@@ -697,6 +702,22 @@ export function DashboardClient({
     startAreaTransition(()=>router.push(`/dashboard?area=${nextView}`,{scroll:false}));
   };
 
+  // A FAIXA DO TESTE.
+  //
+  // Fica ABAIXO da barra do topo e acima de tudo o mais: é o primeiro texto da
+  // tela, e some sozinha quando a pessoa assina. Enquanto sobra tempo ela
+  // informa; a quinze dias do fim ela chama para a ação. Em nenhum momento
+  // implora — quem está testando não deve nada a ninguém, e um aviso com cara
+  // de cobrança faz fechar a aba antes de conhecer o produto.
+  // A fase "acabou" quase nunca chega a desenhar: quando o prazo vence, o
+  // servidor manda a pessoa para /assinatura antes de o painel abrir. Ela
+  // existe para a janela em que os dois relógios discordam — o do banco, que
+  // decide o redirecionamento, e o do navegador, que conta os dias aqui. Sem
+  // ela, quem estivesse com o relógio adiantado veria "Faltam 0 dias".
+  const teste = testeAte
+    ? estadoDoTeste(new Date(testeAte), new Date())
+    : null;
+
   return (
     <main className={`clinicalShell ${dark?"clinicalDark":""}`}>
       <header className="clinicalTopbar">
@@ -909,6 +930,30 @@ export function DashboardClient({
         </div>
         </div>
       </header>
+
+      {teste && (
+        <div className={`testeFaixa ${teste.fase}`} role="status">
+          <span>
+            {fraseDoTeste(teste, new Date(testeAte!))}
+            {/* O QUE FALTA, dito por extenso e sem rodeio. Sem esta linha a
+                pessoa procura o Financeiro, não acha, e conclui que o sistema
+                está quebrado — em vez de entender que ele abre ao assinar.
+                A lista sai de lib/modulos.ts: escrita à mão aqui, ela mentiria
+                no dia em que uma área mudasse de lado. */}
+            {" "}
+            <i>
+              {AREAS_QUE_A_ASSINATURA_ABRE.map((m) => NOME_DO_MODULO[m]).join(" e ")}
+              {" "}abrem quando você assinar.
+            </i>
+          </span>
+          {/* O botão só aparece quando o prazo aperta. Antes disso ele seria
+              um convite a interromper o que a pessoa veio fazer — e o preço
+              continua a um clique, no menu da conta. */}
+          {teste.fase !== "correndo" && (
+            <Link className="testeFaixaBotao" href="/assinatura">Ver planos</Link>
+          )}
+        </div>
+      )}
 
       {/* O convite para ligar as notificações. Some sozinho quando já estão
           ligadas, quando o navegador não tem push, e quando o VAPID não foi

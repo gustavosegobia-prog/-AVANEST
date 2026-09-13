@@ -224,6 +224,20 @@ export default async function PlanosPage() {
           </p>
         )}
         <h1>Um preço para cada tamanho de equipe.</h1>
+        {/* A promessa REPETIDA aqui, e não só na capa: esta é a página em que
+            a pessoa está olhando número, e é aqui que ela decide se fecha a
+            aba. Quem chega direto no /planos por um link nunca viu a capa. */}
+        <p className="planosTeste">
+          <b>Use por 2 meses grátis</b> e, se gostar, assine. Sem cartão para começar.
+          {/* O ESCOPO DO TESTE dito aqui, e não só descoberto lá dentro.
+              Vender "dois meses grátis" e entregar metade do sistema sem avisar
+              é a forma mais rápida de transformar um teste em reclamação. Fica
+              nesta página e não na capa: aqui a pessoa está comparando o que
+              recebe por cada preço, que é exatamente a pergunta que esta frase
+              responde. */}
+          <span> No teste você usa a ficha anestésica e a escala; Recepção
+          e Financeiro abrem ao assinar.</span>
+        </p>
         <p className="planosLead">
           Do anestesiologista que trabalha sozinho ao grupo de anestesia com recepção,
           financeiro e administração. Sem taxa de instalação, sem fidelidade, cancele

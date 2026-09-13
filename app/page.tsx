@@ -118,6 +118,17 @@ export default function HomePage() {
             </a>
             <a className="avnSecondary" href="/planos">Ver planos e preços</a>
           </div>
+          {/* A CAMPANHA, embaixo dos botões e não acima do título.
+              Acima, ela roubaria a primeira linha de quem ainda não sabe o que
+              o sistema faz — e "grátis" antes de "para quê" atrai o curioso e
+              não o anestesiologista. Aqui ela responde à objeção que nasce
+              justamente ao olhar o botão: "vou ter de pôr o cartão agora?".
+              Não vai. É isso que a frase diz, e é por isso que ela cita o
+              cartão em vez de só repetir "grátis". */}
+          <p className="avnTeste">
+            <b>Use por 2 meses grátis</b> e, se gostar, assine.
+            <span>Sem cartão para começar.</span>
+          </p>
         </div>
       </section>
 
