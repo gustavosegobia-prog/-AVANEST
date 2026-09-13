@@ -25,6 +25,12 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   { caminho: "/escores/apfel", prioridade: 0.8, frequencia: "monthly" },
   { caminho: "/escores/indice-de-lee", prioridade: 0.8, frequencia: "monthly" },
   { caminho: "/escores/classificacao-asa", prioridade: 0.8, frequencia: "monthly" },
+  // A porta da campanha dos dois meses. Diferente do /comecar logo abaixo, ela
+  // é pública de verdade: o redirecionamento dela só acontece para quem já tem
+  // sessão, e o buscador chega anônimo. Entra também porque "2 meses grátis" é
+  // uma busca que vale a pena responder com a página que cadastra, e não com a
+  // de preços.
+  { caminho: "/2meses", prioridade: 0.7, frequencia: "monthly" },
   // `/comecar` NÃO entra, e é a regra escrita no topo deste arquivo sendo
   // cumprida: a página exige sessão e redireciona para /login quando não há.
   // O buscador chega anônimo, leva o redirecionamento, e o Search Console

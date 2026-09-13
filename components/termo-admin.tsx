@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
 import {
@@ -29,6 +29,31 @@ import {
 // supabase/migrations/202609140001_termo_editavel.sql.
 
 type Registro = VersaoDoTermo & { criado_por: string | null };
+
+/**
+ * Campo de texto que cresce com o conteúdo.
+ *
+ * Um `rows={3}` fixo cortava o parágrafo no meio — e não um parágrafo
+ * qualquer: são as frases jurídicas mais longas do sistema, de trinta a
+ * cinquenta palavras. Revisar um termo espiando três linhas por vez, com
+ * barra de rolagem dentro de cada caixa, é o tipo de tela que faz a pessoa
+ * desistir de conferir — que é justamente o que ela veio fazer aqui.
+ *
+ * Feito na mão e não com `field-sizing:content`, que resolveria em uma linha
+ * de CSS mas ainda não existe no Safari — e metade dos anestesiologistas
+ * abre isto no iPad.
+ */
+function CampoQueCresce(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const ajustar = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    // O "auto" antes é obrigatório: sem ele a caixa só sabe crescer, e apagar
+    // texto deixaria o espaço vazio de antes.
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  return <textarea {...props} ref={ajustar}
+    onInput={(e) => ajustar(e.currentTarget)}/>;
+}
 
 /** Rótulo do número que este item vai receber no papel impresso. */
 const numeroDoItem = (indice: number, total: number) =>
@@ -146,7 +171,7 @@ export function TermoAdmin({
     <ol className="termoLista">
       {rascunho.itens.map((texto, i) => <li key={i}>
         <span className="termoNumero">{numeroDoItem(i, rascunho.itens.length)}</span>
-        <textarea value={texto} disabled={desativado} rows={3}
+        <CampoQueCresce value={texto} disabled={desativado} rows={2}
           onChange={(e) => mexerNaLista("itens", (l) => { l[i] = e.target.value; return l; })}/>
         <span className="termoBotoes">
           <button type="button" disabled={desativado || i === 0} title="Subir"
@@ -166,7 +191,7 @@ export function TermoAdmin({
     <ol className="termoLista">
       {rascunho.riscos.map((texto, i) => <li key={i}>
         <span className="termoNumero">•</span>
-        <textarea value={texto} disabled={desativado} rows={3}
+        <CampoQueCresce value={texto} disabled={desativado} rows={2}
           onChange={(e) => mexerNaLista("riscos", (l) => { l[i] = e.target.value; return l; })}/>
         <span className="termoBotoes">
           <button type="button" disabled={desativado || i === 0} title="Subir"
@@ -183,7 +208,7 @@ export function TermoAdmin({
 
     <h4 className="termoSecao">Autorização</h4>
     <p className="termoAjuda">O parágrafo final, logo acima das linhas de assinatura.</p>
-    <textarea className="termoAutorizacao" rows={6} value={rascunho.autorizacao} disabled={desativado}
+    <CampoQueCresce className="termoAutorizacao" rows={3} value={rascunho.autorizacao} disabled={desativado}
       onChange={(e) => { setRascunho((r) => ({ ...r, autorizacao: e.target.value })); setMensagem(""); }}/>
 
     {problemas.length > 0 && <div className="pendingNotice">{problemas.join(" ")}</div>}

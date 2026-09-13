@@ -4552,3 +4552,48 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .termoAcoes,.termoAcoes>div{width:100%}
   .termoAcoes button{flex:1 1 auto}
 }
+
+/* ── /2meses — a porta da campanha ─────────────────────────────────────────
+   Cores fixas, e de propósito: este cartão é o mesmo do login, que é sempre
+   branco mesmo no tema escuro (ver o comentário em sign-up-form.tsx). Tokens
+   aqui dariam tinta clara sobre o branco cravado em .avnLoginContent. */
+.avnCampanhaCard{max-width:1000px}
+/* O conteúdo é mais alto que o do login: rola em vez de centralizar, senão no
+   telefone o topo sai da tela e a pessoa começa a ler pelo meio. */
+.avnCampanha{justify-content:flex-start;padding:40px 42px;gap:0}
+.avnCampanha>p{margin:0 0 14px}
+.avnCampanhaSelo{align-self:flex-start;font-size:11.5px;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:#0d7a5b;background:var(--cor-sucesso-suave);
+  border-radius:999px;padding:6px 13px;margin:0 0 14px!important}
+.avnCampanha h1{font-size:28px;line-height:1.2;margin:0 0 12px}
+.avnCampanhaLead{font-size:15.5px;line-height:1.6;color:#3c5468!important}
+.avnCampanhaLead b{color:var(--cor-tinta-forte)}
+.avnCampanhaLista{list-style:none;margin:6px 0 16px;padding:0;display:grid;gap:12px}
+/* O ✓ é desenhado, e não um caractere na marcação: como texto ele entra na
+   seleção e na cópia, e quem colasse a lista num WhatsApp levaria os símbolos
+   junto. */
+.avnCampanhaLista li{position:relative;padding-left:28px;font-size:14.5px;line-height:1.5}
+.avnCampanhaLista li:before{content:"";position:absolute;left:0;top:3px;width:18px;height:18px;
+  border-radius:50%;background:var(--cor-sucesso-suave);
+  box-shadow:inset 0 0 0 1.5px rgba(13,122,91,.35)}
+.avnCampanhaLista li:after{content:"";position:absolute;left:6px;top:8px;width:6px;height:3px;
+  border-left:2px solid #0d7a5b;border-bottom:2px solid #0d7a5b;transform:rotate(-45deg)}
+.avnCampanhaLista b{display:block;color:var(--cor-tinta-forte)}
+.avnCampanhaLista span{display:block;margin-top:3px;font-size:13.5px;color:#5a7086}
+.avnCampanhaEscopo{font-size:13px;color:#5a7086!important;border-left:3px solid var(--cor-borda);
+  padding-left:11px;margin:0 0 18px!important}
+/* Link com cara de botão: precisa do alinhamento que o <button> traz de graça. */
+.avnCampanhaBotao{display:block;text-align:center;text-decoration:none}
+.avnCampanhaBotao:hover{filter:brightness(1.06)}
+.avnCampanhaRodape{font-size:13px;line-height:1.55;color:#5a7086!important;margin:14px 0 0!important;
+  text-align:center}
+.avnCampanhaRodape b{color:var(--cor-sucesso)}
+@media(max-width:760px){
+  .avnCampanha{padding:30px 24px}
+  .avnCampanha h1{font-size:24px}
+  /* No telefone a coluna escura fica só com a marca: ela ocupava 260px de
+     altura antes da oferta, e num link de direct a oferta tem de estar visível
+     sem rolar. */
+  .avnCampanhaCard .avnLoginIllustration{min-height:0;padding:22px 24px}
+  .avnCampanhaCard .avnLoginIllustration>p{display:none}
+}

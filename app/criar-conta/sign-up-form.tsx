@@ -6,10 +6,12 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { useCaptcha } from "@/components/turnstile";
 
-// Dois modos. Com token, o e-mail vem do convite e não pode ser trocado — a
+// Três modos. Com token, o e-mail vem do convite e não pode ser trocado — a
 // conta precisa nascer no endereço convidado. Com plano, o visitante digita o
-// próprio e-mail e segue para escolher individual ou grupo antes de pagar.
-export function SignUpForm({ token, email, plano = "" }: { token: string; email: string; plano?: string }) {
+// próprio e-mail e segue para escolher individual ou grupo antes de pagar. Com
+// origem, veio da campanha dos dois meses: cria a conta e entra, sem plano e
+// sem cartão — o preço só aparece quando o teste acabar.
+export function SignUpForm({ token, email, plano = "", origem = "" }: { token: string; email: string; plano?: string; origem?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [erro, setErro] = useState("");
@@ -43,6 +45,14 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
       options: {
         emailRedirectTo: `${window.location.origin}${destino}`,
         ...(marca ? { captchaToken: marca } : {}),
+        // De onde a pessoa veio, gravado NA CONTA e não num cookie.
+        //
+        // É a única forma de a resposta sobreviver ao caminho real: a conta é
+        // criada aqui, o e-mail de confirmação é aberto depois — muitas vezes
+        // noutro aparelho —, e só então a organização nasce. Um cookie, um
+        // parâmetro na URL ou um estado de tela não atravessam isso; o
+        // metadado do usuário atravessa, porque anda junto da conta.
+        ...(origem ? { data: { origem } } : {}),
       },
     });
     if (error) {
@@ -79,8 +89,13 @@ export function SignUpForm({ token, email, plano = "" }: { token: string; email:
     return (
       <div className="loginForm">
         <p className="loginSuccess" role="status">
+          {/* Quem veio da campanha não tem assinatura nenhuma a concluir, e
+              esta era a última tela antes de a pessoa sair da aba: prometer
+              pagamento aqui é desmentir o "sem cartão" que a trouxe. */}
           Conta criada. Enviamos um e-mail de confirmação. Abra a mensagem e clique no link para
-          {porConvite ? " concluir e aceitar o convite." : " continuar e concluir a assinatura."}
+          {porConvite ? " concluir e aceitar o convite."
+            : origem ? " começar seus 2 meses grátis."
+            : " continuar e concluir a assinatura."}
         </p>
         <Link className="avnLoginCancel" href="/login">Voltar para o login</Link>
       </div>

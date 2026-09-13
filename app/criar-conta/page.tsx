@@ -13,6 +13,8 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 import { SignUpForm } from "./sign-up-form";
+import { MESES_DE_TESTE, dataPorExtenso, fimDoTeste } from "@/lib/teste-gratis";
+import { origemDoLink } from "@/lib/link-da-campanha";
 
 const PAPEIS: Record<string, string> = {
   admin: "Administrador", medico: "Anestesiologista",
@@ -22,9 +24,13 @@ const PAPEIS: Record<string, string> = {
 export default async function CriarContaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ convite?: string; plano?: string }>;
+  searchParams: Promise<{ convite?: string; plano?: string; origem?: string }>;
 }) {
-  const { convite: token, plano } = await searchParams;
+  const { convite: token, plano, origem: origemBruta } = await searchParams;
+  // A campanha dos dois meses. Sem plano e sem convite, era aqui que a pessoa
+  // batia na parede do "cadastro por convite" — a promessa da capa não tinha
+  // porta. Ver lib/link-da-campanha.ts.
+  const origem = origemBruta ? origemDoLink(origemBruta) : "";
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
@@ -70,6 +76,32 @@ export default async function CriarContaPage({
               <p>Crie sua conta para escolher o plano e concluir a assinatura.</p>
             )}
             <SignUpForm token="" email="" plano={plano} />
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // A CAMPANHA DOS DOIS MESES. Sem plano nenhum e sem cartão: a pessoa cria a
+  // conta, usa, e decide no fim. Este ramo é a porta que faltava — sem ele o
+  // caminho terminava no muro do "cadastro por convite" logo abaixo, e a
+  // promessa da capa não levava a lugar nenhum.
+  if (!token && origem) {
+    const ate = dataPorExtenso(fimDoTeste(new Date()));
+    return (
+      <main className="avnLoginPage">
+        <section className="avnLoginCard avnOnboardingCard">
+          <div className="avnLoginIllustration">
+            <AppLogo />
+            <p>Sua organização nasce com seus próprios pacientes e documentos, sem acesso aos dados de ninguém.</p>
+          </div>
+          <div className="avnLoginContent">
+            <h1>Criar sua conta grátis</h1>
+            <p>
+              <b>{MESES_DE_TESTE} meses grátis</b>, até <b>{ate}</b>. Sem cartão de crédito e sem
+              cobrança automática — no fim do período você decide se assina.
+            </p>
+            <SignUpForm token="" email="" origem={origem} />
           </div>
         </section>
       </main>
