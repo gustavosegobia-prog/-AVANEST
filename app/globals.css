@@ -4637,3 +4637,24 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .prefPermissao button{grid-column:2;justify-self:start}
   .prefAcoes button{flex:1 1 auto}
 }
+
+/* ── Repetir o valor no mesmo hospital (Escala) ─────────────────────────────
+   Aparece logo abaixo dos avisos da escala, depois de digitar um valor. */
+.repetirValor{display:flex;flex-wrap:wrap;gap:var(--esp-3);justify-content:space-between;
+  align-items:center;border:1px solid var(--cor-marca);background:var(--cor-marca-suave);
+  border-radius:11px;padding:var(--esp-3) var(--esp-4);margin:0 0 var(--esp-3)}
+.repetirValor strong{display:block;font-size:14px;color:var(--cor-tinta-forte)}
+.repetirValor small{display:block;margin-top:2px;font-size:12.5px;color:var(--cor-tinta-fraca)}
+.repetirValor>span{min-width:0}
+.repetirValor>div{display:flex;flex-wrap:wrap;gap:var(--esp-2);min-width:0}
+/* O botão carrega o valor, a quantidade e o nome do hospital, então é uma
+   FRASE e não um rótulo: quebrar em duas linhas é melhor que cortar o número.
+   Precisa de `button.compact` porque `.primaryClinical.compact` crava
+   white-space:nowrap com a mesma especificidade de duas classes — com um
+   seletor mais fraco a frase saía numa linha só de 650px e empurrava o painel
+   inteiro para fora da tela do telefone. */
+.repetirValor button.compact{white-space:normal;text-align:left;min-width:0}
+@media(max-width:700px){
+  .repetirValor,.repetirValor>div{width:100%}
+  .repetirValor button.compact{flex:1 1 100%;text-align:center}
+}

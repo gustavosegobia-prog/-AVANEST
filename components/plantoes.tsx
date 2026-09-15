@@ -24,6 +24,9 @@ import { baixarXLSX } from "@/lib/xlsx";
 import { MeuFinanceiro } from "@/components/meu-financeiro";
 import { feriadosDoMes } from "@/lib/feriados";
 import { avisarPush } from "@/components/ativar-notificacoes";
+import {
+  botaoDeRepetir, perguntaDeRepetir, ultimoValorNoLocal, zeradosNoMesmoLocal,
+} from "@/lib/valor-do-hospital";
 import { hoje, dataLocal, mesAtual, somarMeses, ultimoDiaDoMes } from "@/lib/data-local";
 
 // Plantões: a escala, o valor e a troca.
@@ -998,6 +1001,19 @@ export function Plantoes({
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
+  /**
+   * A oferta de repetir o valor recém-digitado nos outros plantões do mesmo
+   * hospital que ainda estão zerados.
+   *
+   * Nasce de um gesto (digitar um valor) e morre no gesto seguinte. NÃO é
+   * automática: aplicar sozinho mexeria em dinheiro de várias linhas por causa
+   * de uma tecla, e desfazer isso no fim do mês é trabalho de reconferir a
+   * escala inteira.
+   */
+  const [ofertaDeValor, setOfertaDeValor] = useState<
+    { origemId: string; valor: number; ids: string[]; local: string } | null
+  >(null);
+  const [aplicandoValor, setAplicandoValor] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
   const [trocas, setTrocas] = useState<Troca[]>([]);
   /**
@@ -1230,6 +1246,40 @@ export function Plantoes({
    * do lançamento manual — o RLS recusaria de qualquer forma, e conferir aqui
    * evita a tentativa virar um erro seco na tela.
    */
+  /**
+   * Quanto ESTA PESSOA costuma receber NESTE hospital.
+   *
+   * Quem faz seis plantões em Cianorte recebe o mesmo por todos, e digitava o
+   * número seis vezes. Pior no lançamento para colega: o sistema grava zero de
+   * propósito — quanto ele recebe é combinado dele com quem paga — e o colega
+   * abre a escala com seis linhas zeradas.
+   *
+   * O valor DIGITADO manda sempre: esta função só entra quando ele é zero, que
+   * é o jeito de o sistema dizer "não sei". E o histórico é o da pessoa que vai
+   * receber, não o de quem está lançando — o administrador que escala o colega
+   * não empresta o próprio valor a ele.
+   *
+   * Falhando a consulta, devolve zero: é exatamente o que o sistema fazia antes
+   * desta funcionalidade, e um lançamento não pode quebrar por causa de uma
+   * sugestão de preenchimento.
+   */
+  async function valorDoHospital(
+    dono: string, alvo: { local_id: string | null; local_texto: string | null },
+    digitado: number,
+  ): Promise<number> {
+    if (Number(digitado) > 0) return Number(digitado);
+    if (!alvo.local_id && !String(alvo.local_texto ?? "").trim()) return 0;
+    const { data, error } = await createClient()
+      .from("plantoes").select("id,data,valor,local_id,local_texto,situacao")
+      .eq("perfil_id", dono).gt("valor", 0).neq("situacao", "cancelado")
+      // Os mais recentes bastam: a função quer o ÚLTIMO valor, e trazer três
+      // anos de escala para achar uma linha seria carregar o mês inteiro de
+      // todo mundo a cada lançamento.
+      .order("data", { ascending: false }).limit(60);
+    if (error || !data) return 0;
+    return ultimoValorNoLocal(data, { id: "novo", data: "", valor: 0, ...alvo });
+  }
+
   async function lancar(dia: string, modelo: Modelo, para?: string) {
     setErro(""); setAviso("");
     const dono = ehAdmin && para ? para : perfilId;
@@ -1241,7 +1291,15 @@ export function Plantoes({
       // Mesma regra do lançamento manual: quanto o colega recebe é combinado
       // dele com quem paga, e ele ajusta na própria lista. O valor do modelo é
       // o seu, não o dele.
-      valor: dono === perfilId ? modelo.valor : 0, created_by: perfilId,
+      // O valor do MODELO vale para quem o criou. Para o colega — e para o
+      // próprio dono, quando o modelo não tem valor —, vale o que aquele
+      // hospital já pagou a ele.
+      valor: await valorDoHospital(
+        dono,
+        { local_id: modelo.local_id ?? null, local_texto: null },
+        dono === perfilId ? Number(modelo.valor) : 0,
+      ),
+      created_by: perfilId,
     }).select("id").single();
     if (error) {
       setErro(error.code === "23505"
@@ -1302,7 +1360,16 @@ export function Plantoes({
       hora_inicio: dados.hora_inicio, hora_fim: dados.hora_fim,
       // O valor de um plantão que você escala para outra pessoa é combinado
       // entre ela e quem paga: entra zero, e ela ajusta na própria lista.
-      valor: dono === perfilId ? dados.valor : 0, created_by: perfilId,
+      valor: await valorDoHospital(
+        dono,
+        {
+          local_id: dados.privado ? null : (dados.local_id || null),
+          local_texto: dados.privado || !dados.local_id
+            ? (dados.local_texto.trim() || null) : null,
+        },
+        dono === perfilId ? Number(dados.valor) : 0,
+      ),
+      created_by: perfilId,
     }).select("id").single();
     if (error) {
       // A recusa VOLTA para quem chamou, em vez de virar só um aviso no topo da
@@ -1356,6 +1423,31 @@ export function Plantoes({
     // "este plantão é do grupo, passe para um colega" —, e traduzir isso para
     // "não foi possível salvar" esconde justamente a parte que diz o que fazer.
     if (error) { setErro(error.message || "Não foi possível salvar a alteração."); return; }
+    void carregar();
+  }
+
+  /**
+   * Repete o valor nos plantões zerados do mesmo hospital.
+   *
+   * SÓ OS ZERADOS — `zeradosNoMesmoLocal` já os separou, e a condição vai junto
+   * no update: entre montar a lista e apertar o botão a pessoa pode ter
+   * digitado um valor noutra linha, e ele não pode ser atropelado. Um valor já
+   * digitado é decisão de alguém (feriado que valeu mais, diária negociada), e
+   * dinheiro sobrescrito em silêncio só aparece no fechamento do mês.
+   */
+  async function aplicarValorNoLocal() {
+    if (!ofertaDeValor) return;
+    setAplicandoValor(true); setErro("");
+    const { data, error } = await createClient().from("plantoes")
+      .update({ valor: ofertaDeValor.valor, updated_at: new Date().toISOString() })
+      .in("id", ofertaDeValor.ids).eq("valor", 0).select("id");
+    setAplicandoValor(false);
+    if (error) { setErro(error.message || "Não foi possível repetir o valor."); return; }
+    const quantos = data?.length ?? 0;
+    setOfertaDeValor(null);
+    setAviso(quantos === 1
+      ? "Valor repetido em 1 plantão."
+      : `Valor repetido em ${quantos} plantões.`);
     void carregar();
   }
 
@@ -2133,6 +2225,31 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
 
       {erro && <p className="clinicalError">{erro}</p>}
       {aviso && <p className="financeSuccess" role="status">{aviso}</p>}
+
+      {/* REPETIR O VALOR NO MESMO HOSPITAL.
+          Aparece depois de digitar um valor, e só quando há outros plantões do
+          mesmo hospital ainda zerados. Some sozinha ao trocar de mês, porque a
+          condição confere se o plantão de origem ainda está na lista — sem
+          isso, os ids guardados apontariam para um mês que não está mais na
+          tela, e o botão mexeria em plantões invisíveis. */}
+      {ofertaDeValor && meus.some((p) => p.id === ofertaDeValor.origemId) && (
+        <div className="repetirValor" role="status">
+          <span>
+            <strong>{perguntaDeRepetir(ofertaDeValor.ids.length, ofertaDeValor.local)}</strong>
+            <small>Os que já têm valor digitado não são alterados.</small>
+          </span>
+          <div>
+            <button type="button" className="primaryClinical compact"
+              disabled={aplicandoValor} onClick={() => void aplicarValorNoLocal()}>
+              {aplicandoValor ? "Repetindo..." : botaoDeRepetir(ofertaDeValor.valor)}
+            </button>
+            <button type="button" className="outlineClinical compact"
+              disabled={aplicandoValor} onClick={() => setOfertaDeValor(null)}>
+              Agora não
+            </button>
+          </div>
+        </div>
+      )}
       {recado && <p className="plantaoRecado" role="status">{recado}</p>}
 
       {/* O olho esconde TUDO, e não só o dinheiro: quantos plantões alguém faz
@@ -2616,7 +2733,21 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                           defaultValue={Number(p.valor) || ""} placeholder="R$ 0,00" inputMode="decimal"
                           onBlur={(e) => {
                             const v = Number(e.target.value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
-                            if (Number.isFinite(v) && v !== Number(p.valor)) void atualizar(p.id, { valor: v });
+                            if (!Number.isFinite(v) || v === Number(p.valor)) return;
+                            void atualizar(p.id, { valor: v });
+                            // E, se houver outros do mesmo hospital zerados,
+                            // oferece repetir. A oferta só aparece com valor
+                            // positivo: repetir zero não preenche nada.
+                            const outros = v > 0
+                              ? zeradosNoMesmoLocal(meus, { ...p, valor: v })
+                              : [];
+                            setOfertaDeValor(outros.length
+                              ? {
+                                  origemId: p.id, valor: v,
+                                  ids: outros.map((o) => o.id),
+                                  local: ondeFica(p, localPorId, ""),
+                                }
+                              : null);
                           }}
                         />
                     ) : <span className="plantaoDeColega">de colega</span>}
