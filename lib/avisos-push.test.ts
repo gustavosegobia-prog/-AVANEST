@@ -19,7 +19,14 @@ const rota = readFileSync("app/api/push/avisar/route.ts", "utf8");
 const rotaSemComentarios = rota
   .split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*"))
   .join("\n");
-const tela = readFileSync("components/plantoes.tsx", "utf8");
+// A TELA TAMBÉM VAI SEM COMENTÁRIOS, pela mesma razão da rota logo acima — e
+// não por simetria: um comentário na tela que cita `"sem-alvo"` para explicar
+// quando a rota o devolve aparecia ANTES da tabela de frases, e o recorte
+// abaixo (de `"sem-chave"` até `"sem-alvo"`) saía vazio. O teste reprovava a
+// documentação, de novo.
+const tela = readFileSync("components/plantoes.tsx", "utf8")
+  .split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*"))
+  .join("\n");
 
 /**
  * Os motivos que a rota é capaz de devolver, lidos do próprio código.

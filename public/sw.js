@@ -119,6 +119,20 @@ self.addEventListener("push", (evento) => {
     // Escala e troca de plantão são assunto de trabalho, não urgência médica:
     // seguem o modo silencioso do telefone como qualquer outro aviso.
     requireInteraction: false,
+    // SOM E VIBRAÇÃO VÊM DE DENTRO DA MENSAGEM, e não de algo guardado no
+    // aparelho. Aqui não há acesso ao que a página salvou: este código roda com
+    // o aplicativo fechado. E a preferência é da CONTA — quem desligou o som no
+    // celular desligou no tablet também —, então ela viaja junto do conteúdo.
+    //
+    // `silent` só existe quando é `true`: passar `silent: false` explicitamente
+    // faz alguns Android recusarem a notificação inteira quando o canal já está
+    // em silêncio, e o aviso não chega de jeito nenhum.
+    ...(dados.silencioso === true ? { silent: true } : {}),
+    // O padrão de vibração é curto de propósito: dois toques bastam para
+    // chamar atenção no bolso. Vibração longa num plantão é o aparelho pedindo
+    // para ser desligado. `vibrate: []` é o jeito de dizer "não vibre" sem
+    // desligar o resto; o iPhone ignora os dois casos.
+    vibrate: dados.vibrar === false ? [] : [120, 60, 120],
   };
   evento.waitUntil(self.registration.showNotification(titulo, opcoes));
 });

@@ -13,17 +13,17 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{
     area?: string; aba?: string; chat?: string;
-    novo?: string; iniciar?: string; local?: string;
+    novo?: string; iniciar?: string; local?: string; plantao?: string;
   }>;
 }) {
-  const { area, aba, chat, novo, iniciar, local: localDaUrl } = await searchParams;
+  const { area, aba, chat, novo, iniciar, local: localDaUrl, plantao: plantaoDaUrl } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const { data: perfil } = await supabase
     .from("perfis")
-    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin, escalista")
+    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin, escalista, preferencias_aviso")
     .eq("id", user.id)
     .maybeSingle();
   // Conta criada mas ainda sem organização: conclui o cadastro antes de entrar.
@@ -162,6 +162,16 @@ export default async function DashboardPage({
   // marca recebido. Aviso que dá trabalho para ser atendido fica para depois.
   const abaDaEscala = ["escala", "producao", "trocas"].includes(aba ?? "")
     ? aba as "escala" | "producao" | "trocas"
+    : undefined;
+  // O PLANTÃO QUE A NOTIFICAÇÃO PEDIU PARA ABRIR.
+  //
+  // "Ao tocar numa notificação de plantão, abrir diretamente o plantão
+  // correspondente": o lembrete das 7h e os avisos de alteração trazem o id
+  // aqui. Conferido contra o formato de UUID antes de seguir — é texto vindo da
+  // barra de endereços, e um valor torto viraria uma consulta recusada pelo
+  // Postgres no meio do carregamento da tela.
+  const plantaoEmFoco = /^[0-9a-f-]{36}$/i.test(plantaoDaUrl ?? "")
+    ? plantaoDaUrl as string
     : undefined;
   // O mesmo para a janela de conversa: a notificação de mensagem da equipe abre
   // o sistema com ela já aberta, e não no painel para a pessoa ir procurar.
@@ -433,6 +443,7 @@ export default async function DashboardPage({
       trocasEsperando={trocasEsperando ?? 0}
       testeAte={testeAte}
       abaDaEscala={abaDaEscala}
+      plantaoEmFoco={plantaoEmFoco}
       abaDoChat={abaDoChat}
       avisos={avisosVisiveis}
       auditoria={auditoria ?? []}

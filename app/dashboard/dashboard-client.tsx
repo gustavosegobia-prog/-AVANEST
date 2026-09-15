@@ -84,6 +84,9 @@ import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/m
 import { lerDinheiro } from "@/lib/dinheiro";
 import { explicarEscala, podeEscolherEscalista, podeMontarEscala } from "@/lib/escalista";
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
+const PreferenciasDeAvisoPainel = dynamic(
+  () => import("@/components/preferencias-de-aviso").then((m) => m.PreferenciasDeAvisoPainel),
+  { ssr: false, loading: carregando("as preferências") });
 
 export const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário", admin: "Administrador", medico: "Anestesiologista",
@@ -155,6 +158,8 @@ const ehEscalavel = (p: { status: string; role: string; crm: string | null; na_e
   && Boolean((p.crm ?? "").trim()) && (p.na_escala ?? true);
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean;
+  /** O que esta pessoa escolheu receber no telefone. Nulo = tudo; ver lib/preferencias-de-aviso. */
+  preferencias_aviso?: unknown;
   /** Monta a escala do grupo sem ser administrador — ver lib/escalista. */
   escalista?: boolean };
 type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null;
@@ -266,6 +271,7 @@ export function DashboardClient({
   trocasEsperando = 0,
   testeAte,
   abaDaEscala,
+  plantaoEmFoco,
   abaDoChat,
   avisos = [],
   chavePush = "",
@@ -303,6 +309,8 @@ export function DashboardClient({
   testeAte?: string | null;
   /** Aba em que a Escala abre quando o endereço pede — ver app/dashboard/page.tsx. */
   abaDaEscala?: "escala" | "producao" | "trocas";
+  /** O plantão que a notificação tocada pediu para abrir. */
+  plantaoEmFoco?: string;
   /** Janela de conversa a abrir quando o endereço pede. Mesma razão. */
   abaDoChat?: "equipe" | "suporte";
   /** O que espera você, já derivado no servidor. Ver lib/avisos.ts. */
@@ -1186,6 +1194,7 @@ export function DashboardClient({
           // respondeu isso ao entrar, e perguntar de novo é perguntar duas vezes.
           localAtivoId={localAtivo?.id ?? null}
           abrirEm={aberturaDaEscala}
+          plantaoEmFoco={plantaoEmFoco}
           // "+ Nova escala", no fim da lista de hospitais da Escala. Quem
           // descobre que falta um hospital descobre olhando aquela lista; o
           // cadastro fica no Admin, e este atalho leva até ele em vez de
@@ -1287,6 +1296,19 @@ export function DashboardClient({
           <p className="contaNota">
             Nome e perfil são alterados pelo administrador da organização, em Admin → Usuários e permissões.
           </p>
+
+          {/* As preferências vêm ANTES da troca de senha. Trocar senha é uma
+              coisa que se faz uma vez por ano; escolher o que toca no telefone
+              é o que a pessoa vem procurar aqui depois de receber um aviso que
+              não queria — e ela vem logo depois de recebê-lo, irritada. */}
+          {/* Sem condição: mesmo com o push não configurado no servidor, as
+              escolhas são da CONTA e continuam valendo nos outros aparelhos. O
+              painel diz sozinho quando não há como entregar aqui. */}
+          <PreferenciasDeAvisoPainel
+            chavePublica={chavePush}
+            guardado={perfil.preferencias_aviso??null}
+          />
+
           <form className="contaSenha" onSubmit={async event=>{
             event.preventDefault();
             setSenhaMsg("");

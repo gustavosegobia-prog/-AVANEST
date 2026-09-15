@@ -167,25 +167,24 @@ export async function estaLigado() {
   return Boolean(await registro?.pushManager.getSubscription().catch(() => null));
 }
 
-export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
+/**
+ * O estado da permissão de push NESTE aparelho.
+ *
+ * Extraído para um hook porque DOIS lugares precisam da mesma resposta: o
+ * cartão de convite do topo e a linha "Permitir notificações" das preferências.
+ * O tratamento do iPhone — Safari só entrega push com o site na tela de início,
+ * e ali `PushManager` nem existe — é sutil demais para viver em duas cópias:
+ * a segunda envelhece, e o sintoma é o anestesista achando que o AVANEST não
+ * tem notificação.
+ */
+export function useEstadoDoPush(chavePublica: string) {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
-  // Começa dispensado quando o convite já foi feito neste aparelho. Guardar o
-  // "não quero" deixou de esconder o recurso no dia em que o menu do perfil
-  // ganhou o interruptor: agora existe onde religar, e o cartão pode calar.
-  //
-  // `useState` com função porque o localStorage não existe no servidor — lê-lo
-  // durante o render do Next quebraria a página inteira.
-  const [dispensado, setDispensado] = useState(false);
 
   useEffect(() => {
     let vivo = true;
     void (async () => {
-      // A leitura da memória mora DENTRO do efeito assíncrono, junto do resto.
-      // Num inicializador de useState ela quebraria a hidratação — o servidor
-      // não tem localStorage e renderizaria o cartão que o navegador esconde.
-      if (jaConvidado() && vivo) setDispensado(true);
       if (!chavePublica) { if (vivo) setEstado("indisponivel"); return; }
       const temPush = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
       if (!temPush) {
@@ -238,6 +237,27 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
     }
   }, [chavePublica]);
 
+  const desligar = useCallback(async () => {
+    setOcupado(true); setErro("");
+    try { await desligarPush(); setEstado("desligado"); }
+    finally { setOcupado(false); }
+  }, []);
+
+  return { estado, ocupado, erro, ligar, desligar };
+}
+
+export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
+  const { estado, ocupado, erro, ligar } = useEstadoDoPush(chavePublica);
+  // Começa dispensado quando o convite já foi feito neste aparelho. Guardar o
+  // "não quero" deixou de esconder o recurso no dia em que o menu do perfil
+  // ganhou o interruptor: agora existe onde religar, e o cartão pode calar.
+  const [dispensado, setDispensado] = useState(false);
+
+  // A leitura da memória mora DENTRO de um efeito, e não num inicializador de
+  // useState: o servidor não tem localStorage e renderizaria o cartão que o
+  // navegador esconde — quebrando a hidratação.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- ver acima
+  useEffect(() => { if (jaConvidado()) setDispensado(true); }, []);
 
   // LIGADO NÃO MOSTRA NADA. Uma faixa permanente dizendo "está ligado" ocupa a
   // primeira linha do painel para sempre, todo dia, para informar algo que já
@@ -345,7 +365,9 @@ export function NotificacoesNoMenu({ chavePublica, aoMudar }: {
  * falha de notificação não pode fazer a tela dizer que o pedido não foi feito.
  */
 export function avisarPush(carga: {
-  tipo: "troca" | "troca_resolvida" | "escala" | "chat"; id?: string; mes?: string;
+  tipo: "troca" | "troca_resolvida" | "escala" | "chat"
+      | "plantao_novo" | "plantao_alterado" | "plantao_cancelado";
+  id?: string; mes?: string;
 }) {
   void fetch("/api/push/avisar", {
     method: "POST", headers: { "Content-Type": "application/json" },

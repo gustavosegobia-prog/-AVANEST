@@ -203,6 +203,17 @@ export type Notificacao = {
    * plantão. Com a mesma `tag`, a segunda substitui a primeira.
    */
   tag?: string;
+  /**
+   * Chega sem barulho — a preferência "Som" desligada da pessoa.
+   *
+   * Viaja DENTRO da notificação, e não guardado no aparelho, porque quem monta
+   * a notificação é o service worker: ele roda com o aplicativo fechado, sem
+   * acesso a nada que a página tenha salvo. E porque a preferência é da conta,
+   * não do aparelho — quem silenciou no celular silenciou no tablet também.
+   */
+  silencioso?: boolean;
+  /** Vibra, onde o aparelho souber. O iPhone ignora e segue o modo do sistema. */
+  vibrar?: boolean;
 };
 
 export type Resultado =

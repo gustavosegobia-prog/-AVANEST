@@ -6,6 +6,8 @@ import { chavesDoAmbiente, enviar, type Inscricao, type Notificacao } from "@/li
 import { nomeCurto } from "@/lib/escala";
 import { ultimoDiaDoMes } from "@/lib/data-local";
 import { ondeEQuando, quantosPlantoes } from "@/lib/aviso-plantao";
+import { destinoDoLembrete } from "@/lib/lembrete-de-plantao";
+import { aceita, comPadrao, comoTocar } from "@/lib/preferencias-de-aviso";
 
 // Toca o telefone de quem precisa saber.
 //
@@ -204,6 +206,66 @@ export async function POST(request: NextRequest) {
         },
       });
     }
+  } else if (tipo === "plantao_novo" || tipo === "plantao_alterado" || tipo === "plantao_cancelado") {
+    // O QUE ACONTECEU COM UM PLANTÃO SEU, sem você ter feito nada.
+    //
+    // Escala publicada avisa uma vez, no dia em que sai. Depois dela a escala
+    // continua se mexendo — alguém escala você para cobrir a quarta, alguém
+    // cancela o seu sábado — e nada disso chegava ao telefone: a pessoa
+    // descobria abrindo o sistema, se abrisse.
+    if (!id) return NextResponse.json({ error: "Falta o plantão." }, { status: 400 });
+    // Lido do banco, com a sessão de quem pediu — nunca do corpo do pedido. É a
+    // mesma regra da troca e do chat: conteúdo pronto vindo do navegador é um
+    // megafone com a marca da casa entregue a qualquer sessão válida.
+    const { data: plantao } = await supabase
+      .from("plantoes")
+      .select("id, perfil_id, data, hora_inicio, hora_fim, local_texto, local_id, situacao")
+      .eq("id", id).maybeSingle();
+    // Nulo é o RLS dizendo que esta pessoa não vê este plantão. A resposta é a
+    // mesma de "não existe", para não confirmar a existência de um plantão de
+    // outra organização.
+    if (!plantao) return NextResponse.json({ error: "Plantão não encontrado." }, { status: 404 });
+
+    // QUEM RECEBE É O DONO DO PLANTÃO, e ninguém mais. É a regra do pedido —
+    // "cada profissional recebe somente notificações dos próprios plantões" —
+    // e a razão de o alvo sair do banco e não do navegador.
+    //
+    // E não se avisa quem mexeu: quem acabou de cancelar o próprio sábado não
+    // precisa de um telefone tocando para contar o que ele mesmo fez.
+    if (!plantao.perfil_id || plantao.perfil_id === euPerfil.id) {
+      return NextResponse.json({ ok: true, enviadas: 0, motivo: "sem-alvo" });
+    }
+
+    let ondeFica = plantao.local_texto ?? "";
+    if (!ondeFica && plantao.local_id) {
+      const { data: local } = await supabase
+        .from("locais_atendimento").select("nome_fantasia, nome")
+        .eq("id", plantao.local_id).maybeSingle();
+      ondeFica = local?.nome_fantasia || local?.nome || "";
+    }
+    const comOLocal = (frente: string) =>
+      [frente, String(ondeFica).trim()].filter(Boolean).join(" — ");
+
+    const titulo = tipo === "plantao_cancelado" ? comOLocal("❌ Plantão cancelado")
+      : tipo === "plantao_novo" ? comOLocal("🗓️ Plantão na sua escala")
+      : comOLocal("🔄 Alteração de plantão");
+
+    alvos.push({
+      perfilId: plantao.perfil_id,
+      notificacao: {
+        titulo,
+        // "Quinta, 17/09 · 19:00–07:00" — a mesma linha da troca, e com a
+        // mesma razão: a decisão de quem lê depende de saber que dia da semana
+        // é e a que horas termina.
+        corpo: `${ondeEQuando(plantao, "")} · por ${nomeCurto(euPerfil.nome ?? "")}.`.trim(),
+        // Abre o plantão, e não o mês: quem recebe "seu plantão foi cancelado"
+        // quer ver aquele turno, não procurar num calendário.
+        url: destinoDoLembrete({ id: String(plantao.id), data: String(plantao.data) }),
+        // Uma tag por plantão E POR TIPO: um cancelamento não pode apagar da
+        // tela o aviso da alteração de meia hora antes — são dois fatos.
+        tag: `${tipo}-${plantao.id}`,
+      },
+    });
   } else {
     return NextResponse.json({ error: "Tipo desconhecido." }, { status: 400 });
   }
@@ -222,13 +284,24 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
     auth: { persistSession: false },
   });
-  const { data: inscricoes } = await admin
-    .from("push_inscricoes")
-    .select("id, perfil_id, endpoint, p256dh, auth")
-    .in("perfil_id", [...new Set(alvos.map((a) => a.perfilId))])
-    // Nunca fora da organização de quem pediu, mesmo com a chave de serviço na
-    // mão: o RLS não protege aqui, então a condição é escrita à mão.
-    .eq("institution_id", euPerfil.institution_id);
+  const idsDosAlvos = [...new Set(alvos.map((a) => a.perfilId))];
+  const [{ data: inscricoes }, { data: perfisDosAlvos }] = await Promise.all([
+    admin.from("push_inscricoes")
+      .select("id, perfil_id, endpoint, p256dh, auth")
+      .in("perfil_id", idsDosAlvos)
+      // Nunca fora da organização de quem pediu, mesmo com a chave de serviço na
+      // mão: o RLS não protege aqui, então a condição é escrita à mão.
+      .eq("institution_id", euPerfil.institution_id),
+    // O QUE CADA DESTINATÁRIO ESCOLHEU RECEBER. Sem isto, o interruptor da tela
+    // de preferências só valeria para o lembrete diário — e quem desligasse
+    // "plantão trocado" continuaria recebendo troca, que é a metade das
+    // notificações do sistema.
+    admin.from("perfis").select("id, preferencias_aviso")
+      .in("id", idsDosAlvos).eq("institution_id", euPerfil.institution_id),
+  ]);
+  const preferenciaDe = new Map((perfisDosAlvos ?? []).map(
+    (p) => [String(p.id), comPadrao(p.preferencias_aviso)],
+  ));
 
   const porPerfil = new Map<string, Notificacao>();
   for (const alvo of alvos) porPerfil.set(alvo.perfilId, alvo.notificacao);
@@ -236,12 +309,19 @@ export async function POST(request: NextRequest) {
   const mortas: string[] = [];
   const entregues: string[] = [];
   let enviadas = 0;
+  let recusadas = 0;
   // Em paralelo: dez aparelhos em série somariam dez idas ao serviço de push
   // dentro do clique de quem ofereceu o plantão.
   await Promise.all((inscricoes ?? []).map(async (linha) => {
     const notificacao = porPerfil.get(linha.perfil_id);
     if (!notificacao) return;
-    const resultado = await enviar(chaves, linha as unknown as Inscricao, notificacao);
+    // A PREFERÊNCIA DE QUEM RECEBE, e não a de quem manda. Perfil que não veio
+    // na consulta cai no padrão — tudo ligado —, que é como o sistema
+    // funcionava antes de a tela de preferências existir.
+    const preferencia = preferenciaDe.get(linha.perfil_id) ?? comPadrao(null);
+    if (!aceita(preferencia, tipo)) { recusadas++; return; }
+    const resultado = await enviar(chaves, linha as unknown as Inscricao,
+      { ...notificacao, ...comoTocar(preferencia) });
     if (resultado.ok) { enviadas++; entregues.push(linha.id); return; }
     // 404 e 410 = navegador desinstalado ou dados limpos. A inscrição morreu e
     // insistir nela é gastar uma requisição por aviso, para sempre.
@@ -265,9 +345,15 @@ export async function POST(request: NextRequest) {
     ok: true,
     enviadas,
     removidas: mortas.length,
+    recusadas,
     // Alvos existiam e nenhum tinha aparelho: ESTE é o caso em que a mensagem
     // sobre a equipe não ter ligado as notificações é verdadeira.
-    motivo: enviadas === 0 ? "sem-aparelho" : undefined,
+    //
+    // "Desligaram este aviso" é OUTRA coisa, e precisa de outro nome: dizer a
+    // quem publicou a escala que a equipe não ligou as notificações, quando na
+    // verdade ela ligou e escolheu não receber este aviso, faz a pessoa cobrar
+    // os colegas por uma decisão que eles tomaram de propósito.
+    motivo: enviadas > 0 ? undefined : recusadas > 0 ? "desligado" : "sem-aparelho",
     alvos: alvos.length,
   });
 }

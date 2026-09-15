@@ -4597,3 +4597,43 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .avnCampanhaCard .avnLoginIllustration{min-height:0;padding:22px 24px}
   .avnCampanhaCard .avnLoginIllustration>p{display:none}
 }
+
+/* ── Minha conta → Preferências de notificações ─────────────────────────────
+   Tudo em tokens: o modal da conta segue o tema do sistema, ao contrário do
+   cartão de login. Um #fff cravado aqui daria fundo branco com tinta clara no
+   tema escuro — o mesmo defeito que já custou o Meu financeiro. */
+.prefAvisos{margin:var(--esp-5) 0 0;border-top:1px solid var(--cor-borda);padding-top:var(--esp-5)}
+.prefCabeca{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--esp-2);margin-bottom:var(--esp-3)}
+.prefCabeca strong{font-size:15px;color:var(--cor-tinta-forte)}
+.prefCabeca span{font-size:12.5px;color:var(--cor-tinta-fraca)}
+/* A permissão do aparelho é outra coisa que os interruptores, e a caixa
+   própria existe para dizer isso sem precisar de um parágrafo. */
+.prefPermissao{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--esp-3);
+  align-items:center;border:1px solid var(--cor-borda);border-radius:11px;
+  padding:var(--esp-3) var(--esp-4);background:var(--cor-superficie-suave);margin-bottom:var(--esp-4)}
+.prefPermissao.ok{border-color:var(--cor-sucesso);background:var(--cor-sucesso-suave)}
+.prefPermissao.pendente{border-color:var(--cor-atencao);background:var(--cor-atencao-suave)}
+.prefPermissaoSino{display:flex;color:var(--cor-tinta-forte)}
+.prefPermissao strong{display:block;font-size:13.5px;color:var(--cor-tinta-forte)}
+.prefPermissao p{margin:3px 0 0;font-size:12.5px;line-height:1.45;color:var(--cor-tinta)}
+.prefErro{color:var(--cor-perigo)!important}
+.prefGrupo{margin-bottom:var(--esp-4)}
+.prefGrupo h4{margin:0 0 var(--esp-2);font-size:12px;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--cor-tinta-fraca)}
+/* A caixa de marcar fica à DIREITA e o texto à esquerda: a lista é lida de
+   cima a baixo procurando um nome, e o estado se confere depois. */
+.prefLinha{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--esp-3);
+  align-items:center;padding:var(--esp-2) 0;border-bottom:1px solid var(--cor-borda);cursor:pointer}
+.prefGrupo .prefLinha:last-child{border-bottom:0}
+.prefLinha strong{display:block;font-size:13.5px;font-weight:650;color:var(--cor-tinta-forte)}
+.prefLinha small{display:block;margin-top:2px;font-size:12px;line-height:1.4;color:var(--cor-tinta-fraca)}
+/* 22px é o alvo de toque mínimo confortável no telefone; o padrão do navegador
+   tem 13px e erra o dedo em cima de uma linha de duas alturas. */
+.prefLinha input[type="checkbox"]{width:22px;height:22px;accent-color:var(--cor-marca);cursor:pointer}
+.prefNota{margin:0 0 var(--esp-3);font-size:12px;line-height:1.5;color:var(--cor-tinta-fraca)}
+.prefAcoes{display:flex;flex-wrap:wrap;gap:var(--esp-2);justify-content:flex-end}
+@media(max-width:700px){
+  .prefPermissao{grid-template-columns:auto minmax(0,1fr)}
+  .prefPermissao button{grid-column:2;justify-self:start}
+  .prefAcoes button{flex:1 1 auto}
+}

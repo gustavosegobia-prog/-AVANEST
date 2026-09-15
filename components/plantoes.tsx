@@ -906,7 +906,8 @@ function LinhaComGaveta({
 
 export function Plantoes({
   perfilId, institutionId, locais, ehAdmin, colegas, escalaveis, semCRM = [],
-  localAtivoId = null, abrirEm = null, onAvisosMudaram, onEquipeMudou, onNovoLocal,
+  localAtivoId = null, abrirEm = null, plantaoEmFoco = null,
+  onAvisosMudaram, onEquipeMudou, onNovoLocal,
   equipe = [],
 }: {
   perfilId: string;
@@ -947,6 +948,13 @@ export function Plantoes({
    * quebrado. Com ele, cada clique é um pedido novo.
    */
   abrirEm?: { aba: "escala" | "producao" | "trocas"; token: number } | null;
+  /**
+   * O plantão que a notificação tocada pediu para abrir.
+   *
+   * Vem da URL — `?plantao=<id>` —, e não de um clique com a tela já aberta: a
+   * notificação do telefone abre o sistema do zero. Ver o efeito lá embaixo.
+   */
+  plantaoEmFoco?: string | null;
   /**
    * Avisa o painel de que o sino ficou desatualizado.
    *
@@ -1226,7 +1234,7 @@ export function Plantoes({
     setErro(""); setAviso("");
     const dono = ehAdmin && para ? para : perfilId;
     const supabase = createClient();
-    const { error } = await supabase.from("plantoes").insert({
+    const { data: criado, error } = await supabase.from("plantoes").insert({
       institution_id: institutionId, perfil_id: dono,
       local_id: modelo.local_id, modelo_id: modelo.id,
       data: dia, hora_inicio: modelo.hora_inicio, hora_fim: modelo.hora_fim,
@@ -1234,7 +1242,7 @@ export function Plantoes({
       // dele com quem paga, e ele ajusta na própria lista. O valor do modelo é
       // o seu, não o dele.
       valor: dono === perfilId ? modelo.valor : 0, created_by: perfilId,
-    });
+    }).select("id").single();
     if (error) {
       setErro(error.code === "23505"
         ? dono === perfilId
@@ -1242,6 +1250,15 @@ export function Plantoes({
           : `${nomePorId.get(dono) ?? "Esse profissional"} já tem um plantão nesse dia e horário.`
         : "Não foi possível lançar o plantão.");
       return;
+    }
+    // DEPOIS DE GRAVADO, e só quando o plantão é de outra pessoa.
+    //
+    // Escalar um colega é mexer na agenda dele. Até aqui ele só descobria
+    // abrindo o sistema — ou não descobria: a escala do mês já tinha sido
+    // publicada, e o aviso de publicação não volta a tocar por uma linha nova.
+    // Quem escala a si mesmo não precisa de aviso do que acabou de fazer.
+    if (criado?.id && dono !== perfilId) {
+      avisarPush({ tipo: "plantao_novo", id: criado.id });
     }
     // O painel do dia fica ABERTO quando se escala outra pessoa: montar a
     // escala é escalar seis nomes seguidos no mesmo dia, e fechar a cada
@@ -1266,7 +1283,7 @@ export function Plantoes({
     // que só a outra pessoa enxerga, lançado por você, é agenda dela — e o
     // banco recusa.
     const dono = ehAdmin && dados.perfil_id && !dados.privado ? dados.perfil_id : perfilId;
-    const { error } = await createClient().from("plantoes").insert({
+    const { data: criado, error } = await createClient().from("plantoes").insert({
       institution_id: institutionId, perfil_id: dono,
       // Um ou outro, nunca os dois: é o que a constraint do banco exige, e o
       // que impede a mesma linha de ter dois lugares diferentes.
@@ -1286,7 +1303,7 @@ export function Plantoes({
       // O valor de um plantão que você escala para outra pessoa é combinado
       // entre ela e quem paga: entra zero, e ela ajusta na própria lista.
       valor: dono === perfilId ? dados.valor : 0, created_by: perfilId,
-    });
+    }).select("id").single();
     if (error) {
       // A recusa VOLTA para quem chamou, em vez de virar só um aviso no topo da
       // página. Com o diálogo aberto por cima, aquele aviso ficava atrás dele:
@@ -1306,6 +1323,9 @@ export function Plantoes({
       setAviso("Plantão lançado só na sua escala. Ninguém do grupo enxerga este turno.");
     } else if (dono !== perfilId) {
       setAviso(`Plantão lançado para ${nomePorId.get(dono) ?? "o profissional"}. Ele aparece na escala dele, que pode ajustar o valor e pedir troca.`);
+      // Escalar um colega é mexer na agenda dele, e até aqui ele só descobria
+      // abrindo o sistema. Ver o mesmo trecho em `lancar`.
+      if (criado?.id) avisarPush({ tipo: "plantao_novo", id: criado.id });
     }
     void carregar();
     return null;
@@ -1316,6 +1336,22 @@ export function Plantoes({
     const supabase = createClient();
     const { error } = await supabase.from("plantoes")
       .update({ ...campos, updated_at: new Date().toISOString() }).eq("id", id);
+    // O DONO PRECISA SABER quando o turno dele muda ou cai — e só ele, e só
+    // quando não foi ele quem mexeu. Quem decide as duas coisas é o servidor,
+    // lendo o plantão: aqui não se manda nem alvo nem texto.
+    //
+    // Hoje a tela só deixa mexer no PRÓPRIO plantão, então na prática este
+    // aviso quase nunca sai — a rota devolve "sem-alvo" e nada acontece. Fica
+    // ligado assim mesmo porque o dia em que a escala ganhar edição de data,
+    // horário ou hospital de um colega, o aviso já existe: uma notificação que
+    // só é ligada depois é uma notificação que se esquece de ligar.
+    if (!error) {
+      if (campos.situacao === "cancelado") avisarPush({ tipo: "plantao_cancelado", id });
+      else if ("data" in campos || "hora_inicio" in campos
+               || "hora_fim" in campos || "local_id" in campos || "local_texto" in campos) {
+        avisarPush({ tipo: "plantao_alterado", id });
+      }
+    }
     // A mensagem do banco vem inteira. As recusas daqui são regras de escala —
     // "este plantão é do grupo, passe para um colega" —, e traduzir isso para
     // "não foi possível salvar" esconde justamente a parte que diz o que fazer.
@@ -1393,6 +1429,16 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       + "e só quem liga recebe — isso ninguém pode fazer por elas. "
       + "Peça que abram o AVANEST e toquem em Ativar notificações; o passo a passo está no tutorial, "
       + "no menu do perfil. A escala já está publicada de qualquer forma.",
+  },
+  desligado: {
+    alarme: false,
+    // NÃO É "a equipe não ligou as notificações". Ela ligou, e escolheu não
+    // receber ESTE aviso, em Minha conta → Preferências de notificações.
+    // Confundir as duas coisas faz quem publicou a escala cobrar os colegas
+    // por uma decisão que eles tomaram de propósito.
+    texto: (alvos) => `${alvos === 1 ? "A pessoa que tem" : `As ${alvos} pessoas que têm`} `
+      + "plantão neste mês desligaram o aviso de escala publicada nas preferências "
+      + "de notificação. A escala está publicada e aparece normalmente para elas ao abrir o AVANEST.",
   },
   "falha-consulta": {
     alarme: true,
@@ -1597,6 +1643,47 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     // pegou.
     void carregar();
   }, [abrirEm, carregar]);
+
+  /**
+   * A notificação tocada abre O PLANTÃO, e não o calendário do mês.
+   *
+   * "Você tem plantão hoje às 19h" que abre a escala inteira devolve à pessoa
+   * o trabalho de procurar o próprio turno — e ela tocou na notificação
+   * justamente para não ter de procurar.
+   *
+   * DOIS PASSOS, porque o mês é carregado no navegador e o plantão pode não
+   * estar no mês aberto: quem toca no aviso da véspera no dia 30 vai para um
+   * plantão do dia 1º. Na primeira passada, o plantão não está na lista e o id
+   * é consultado só para descobrir a data; trocado o mês, `carregar` traz o
+   * novo e a segunda passada abre o dia.
+   */
+  const [focoAtendido, setFocoAtendido] = useState("");
+  // O pedido vem de FORA do React — a URL que a notificação abriu —, e não de
+  // uma renderização. `focoAtendido` é a trava que o faz rodar uma vez só.
+  /* eslint-disable react-hooks/set-state-in-effect -- ver acima */
+  useEffect(() => {
+    if (!plantaoEmFoco || focoAtendido === plantaoEmFoco) return;
+    const naMao = plantoes.find((p) => p.id === plantaoEmFoco);
+    if (naMao) {
+      setAba("escala");
+      setEscopo("minha");
+      setDiaAberto(naMao.data.slice(0, 10));
+      setFocoAtendido(plantaoEmFoco);
+      return;
+    }
+    let vivo = true;
+    void (async () => {
+      const { data } = await createClient()
+        .from("plantoes").select("data").eq("id", plantaoEmFoco).maybeSingle();
+      // Sem data não há o que abrir: o plantão foi apagado, ou é de outra
+      // organização e o RLS o escondeu. A tela fica na escala do mês, que é
+      // exatamente onde a pessoa teria caído antes desta funcionalidade.
+      if (!vivo || !data?.data) { setFocoAtendido(plantaoEmFoco); return; }
+      setMes(String(data.data).slice(0, 7));
+    })();
+    return () => { vivo = false; };
+  }, [plantaoEmFoco, focoAtendido, plantoes]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const secaoAtiva = aba === "escala"
     ? (escopo === "minha" ? "minha" : `grupo:${hospitalAtivo}`)

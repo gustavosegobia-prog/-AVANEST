@@ -145,20 +145,38 @@ test("o adiar do sino vale para o telefone", () => {
 test("o recibo só é gravado quando algum aparelho aceitou", () => {
   // Carimbar um envio que falhou calaria o aviso por sete dias sem ele nunca
   // ter tocado — e o defeito seria invisível, porque a tabela diria entregue.
-  assert.match(rota, /if \(idas\.some\(Boolean\)\) \{/);
+  //
+  // O envio virou `mandar`, que devolve se ALGUM aparelho aceitou, e o recibo
+  // virou `anotar`, chamado só quando ela devolve verdadeiro. A regra é a
+  // mesma; o que mudou é que agora dois avisos diferentes — o lembrete de
+  // plantão e a pendência — passam pelo mesmo par de funções.
+  assert.match(rota, /return idas\.some\(Boolean\);/);
+  assert.match(rota, /if \(await mandar\(\{ titulo, corpo, url: destinoDoLembrete\(plantao\), tag: chave \}\)\) \{\s*\n\s*anotar\(chave\);/);
+  assert.match(rota, /if \(await mandar\(notificacaoDoAviso\(aviso\)\)\) anotar\(chaveDoAviso\(aviso\)\);/);
 });
 
-test("o agendador aponta para a rota que existe", () => {
+test("o agendador roda de hora em hora, e quem sabe as horas é a rota", () => {
+  // ANTES ERA UMA VEZ POR DIA, às 22h UTC — 19h em São Paulo, escolhido a dedo
+  // para cair dentro da janela das pendências. Não serve mais: o lembrete de
+  // plantão sai às 7h e às 19h de Brasília, e o agendador da Vercel só fala
+  // UTC. Uma hora cravada acerta hoje e erra no ano em que o horário de verão
+  // voltar — calada, num aviso que ninguém percebe faltar.
+  //
+  // De hora em hora, quem decide que horas são é lib/data-local, pelo fuso de
+  // verdade, dentro da rota. Rodar mais vezes não manda mais notificação:
+  // cada aviso tem recibo, e a execução sem nada a dizer sai numa consulta.
   const vercel = JSON.parse(
     fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"),
   ) as { crons: { path: string; schedule: string }[] };
   const cron = vercel.crons.find((c) => c.path === "/api/push/lembretes");
   assert.ok(cron, "o cron do lembrete sumiu do vercel.json");
-  // A hora do agendador é UTC. 22:00 UTC são 19:00 em São Paulo — dentro da
-  // janela que a própria rota confere, e no fim do dia de trabalho, quando
-  // "confirme o plantão de hoje" ainda dá tempo de ser atendido.
   const [minuto, hora] = cron!.schedule.split(" ");
-  const emSaoPaulo = horaEmSaoPaulo(new Date(`2026-09-09T${hora.padStart(2, "0")}:${minuto.padStart(2, "0")}:00Z`));
-  assert.ok(emSaoPaulo >= 8 && emSaoPaulo < 21,
-    `o cron dispara às ${emSaoPaulo}h em São Paulo, fora da janela da rota`);
+  assert.equal(hora, "*", "de hora em hora: uma hora fixa em UTC erra o fuso metade do ano");
+  assert.equal(minuto, "0");
+  // E a rota tem de conferir o horário por conta dela, já que o agendador
+  // deixou de garantir qualquer coisa sobre isso.
+  assert.match(rota, /janelaDasPendencias/);
+  // A janela NÃO pode voltar a barrar a rota inteira: era isso que matava o
+  // aviso das 7h, que é o mais importante dos dois.
+  assert.doesNotMatch(rota, /if \(!forcado && !dentroDoHorario\(agora\)\) \{/);
 });
