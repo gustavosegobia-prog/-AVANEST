@@ -24,8 +24,20 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Dias sem entrar antes de a conta da campanha ser pausada. */
-const DIAS_PARA_PAUSAR = 3;
+/**
+ * Dias sem entrar antes de a conta da campanha ser pausada.
+ *
+ * Começou em 3 e virou 14. Três dias é o intervalo NORMAL de quem faz plantão:
+ * a ficha sai em dia de ambulatório, a escala na virada do mês, o financeiro no
+ * fechamento — e a regra de três dias, rodada contra a base real, pegava 14 dos
+ * 19 usuários ativos no primeiro dia. Catorze dias é um prazo que o próprio
+ * anestesiologista reconhece como abandono, e não como uma semana cheia.
+ *
+ * O relatório continua listando quem parou a partir de 3 dias: ver
+ * DIAS_PARA_APARECER_PARADO. Aparecer na lista é aviso; ser pausado é ação, e
+ * as duas coisas não precisam do mesmo prazo.
+ */
+const DIAS_PARA_PAUSAR = 14;
 
 export async function GET(request: NextRequest) {
   const segredo = process.env.CRON_SECRET;

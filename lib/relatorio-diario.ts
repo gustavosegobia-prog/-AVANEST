@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 // A PAUSA POR INATIVIDADE VALE SÓ PARA AS CONTAS DA CAMPANHA
 //
-// O pedido original era pausar a conta de quem passasse três dias sem entrar —
+// O pedido original era pausar a conta de quem passasse TRÊS dias sem entrar —
 // de todo mundo. Rodada contra a base real, a regra pegaria 14 dos 19 usuários
 // ativos no primeiro dia, inclusive dois da equipe da casa que estavam naquela
 // manhã com o aparelho ligado recebendo notificação.
@@ -17,7 +17,8 @@
 // dia de ambulatório, a escala na virada do mês, o financeiro no fechamento.
 // Três dias parado é o comportamento normal da profissão.
 //
-// Mostrado o número, o escopo foi estreitado para QUEM CHEGOU POR UMA CAMPANHA
+// Mostrado o número, o prazo virou CATORZE dias e o escopo foi estreitado para
+// QUEM CHEGOU POR UMA CAMPANHA
 // — `origem` preenchida, plano em teste, dono da própria organização. Aí a
 // regra faz sentido: é gente que o dono do produto não conhece, que entrou por
 // um link, e a pausa é o gancho para a conversa que ele quer ter. Equipe
@@ -129,8 +130,18 @@ export type Relatorio = {
   pausados: Array<{ nome: string; email: string; dias: number }>;
 };
 
-/** A partir de quantos dias sem entrar alguém aparece na lista de parados. */
+/**
+ * A partir de quantos dias sem entrar alguém aparece na lista de parados.
+ *
+ * TRÊS, e não catorze: aparecer na lista é AVISO, ser pausado é AÇÃO, e as duas
+ * coisas não precisam do mesmo prazo. Se a lista só mostrasse quem já passou de
+ * catorze dias, o dono do produto veria o nome da pessoa no mesmo e-mail em que
+ * a conta dela foi desligada — tarde demais para uma mensagem que evitaria isso.
+ */
 export const DIAS_PARA_APARECER_PARADO = 3;
+
+/** Dias sem entrar até a conta de campanha ser pausada. Ver a rota do relatório. */
+export const DIAS_PARA_PAUSAR = 14;
 
 /**
  * O relatório do dia.
@@ -218,7 +229,9 @@ export function textoDoRelatorio(r: Relatorio): string {
     bloco("EM TESTE GRÁTIS", r.emTeste.map((u) =>
       `${u.nome} — ${u.faltam} dia(s) restante(s)`)),
     bloco(`PARADOS HÁ ${DIAS_PARA_APARECER_PARADO}+ DIAS`, r.parados.map((u) =>
-      `${u.nome} — ${u.dias} dias sem entrar (${u.plano})`)),
+      `${u.nome} — ${u.dias} dias sem entrar (${u.plano})`
+      + `${u.dias < DIAS_PARA_PAUSAR
+          ? ` · pausa em ${DIAS_PARA_PAUSAR - u.dias} dia(s)` : " · será pausada"}`)),
     // O bloco dos sinais vem por último e com o aviso junto: sem ele, uma lista
     // de nomes sob um título vago vira suspeita onde não há nada.
     r.comSinais.length
@@ -250,7 +263,9 @@ export function htmlDoRelatorio(r: Relatorio): string {
     + bloco("Usaram nas últimas 24h", r.ativos.map(linhaDoUsuario))
     + bloco("Em teste grátis", r.emTeste.map((u) => `${u.nome} — ${u.faltam} dia(s) restante(s)`))
     + bloco(`Parados há ${DIAS_PARA_APARECER_PARADO}+ dias`, r.parados.map((u) =>
-        `${u.nome} — ${u.dias} dias sem entrar (${u.plano})`))
+        `${u.nome} — ${u.dias} dias sem entrar (${u.plano})`
+        + `${u.dias < DIAS_PARA_PAUSAR
+            ? ` · pausa em ${DIAS_PARA_PAUSAR - u.dias} dia(s)` : " · será pausada"}`))
     + (r.comSinais.length
         ? bloco("Merecem um olhar", r.comSinais.map((x) =>
             `${x.usuario.nome} (${x.usuario.email}): ${x.sinais.join("; ")}`))

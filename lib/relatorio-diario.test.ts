@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
-  DIAS_PARA_APARECER_PARADO, assuntoDoRelatorio, diasParado, dominioDoEmail,
+  DIAS_PARA_APARECER_PARADO, DIAS_PARA_PAUSAR, assuntoDoRelatorio, diasParado, dominioDoEmail,
   montarRelatorio, sinaisDeAtencao, textoDoRelatorio, type UsuarioDoUso,
 } from "./relatorio-diario.ts";
 
@@ -140,6 +140,30 @@ test("o agendador chama o relatório uma vez por dia", () => {
   assert.equal(cron!.schedule, "0 11 * * *");
 });
 
-test("o corte de parado é o mesmo do texto e do código", () => {
+test("avisar e pausar têm prazos DIFERENTES, e isso é de propósito", () => {
+  // Aparecer na lista é AVISO; ser pausado é AÇÃO. Se a lista só mostrasse quem
+  // já passou de catorze dias, o dono veria o nome da pessoa no mesmo e-mail em
+  // que a conta dela foi desligada — tarde demais para a mensagem que evitaria
+  // isso.
   assert.equal(DIAS_PARA_APARECER_PARADO, 3);
+  assert.equal(DIAS_PARA_PAUSAR, 14);
+  assert.ok(DIAS_PARA_APARECER_PARADO < DIAS_PARA_PAUSAR);
+  // E é o prazo da ROTA que governa: o default do banco existe só para a função
+  // nunca rodar sem prazo nenhum.
+  assert.match(ler("app/api/admin/relatorio-diario/route.ts"),
+    /const DIAS_PARA_PAUSAR = 14;/);
+  assert.match(ler("supabase/migrations/202609160002_pausa_por_inatividade.sql"),
+    /p_dias int default 14/);
+});
+
+test("a lista de parados diz quanto falta para a pausa", () => {
+  // Sem isso a lista é só um número: "5 dias sem entrar" não diz se é hora de
+  // mandar mensagem ou se ainda sobra semana.
+  const r = montarRelatorio([
+    u({ nome: "Quase la", ultimo_acesso: "2026-09-04T12:00:00Z" }),
+    u({ nome: "Passou", ultimo_acesso: "2026-08-20T12:00:00Z" }),
+  ], AGORA);
+  const texto = textoDoRelatorio(r);
+  assert.match(texto, /Quase la — 12 dias sem entrar \(trial\) · pausa em 2 dia\(s\)/);
+  assert.match(texto, /Passou — 27 dias sem entrar \(trial\) · será pausada/);
 });

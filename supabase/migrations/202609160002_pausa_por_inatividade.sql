@@ -8,7 +8,7 @@
 -- ----------------------------------------------------------------------------
 -- POR QUE A PAUSA SÓ ALCANÇA QUEM VEIO DE CAMPANHA
 --
--- O pedido original era pausar a conta de quem passasse três dias sem entrar —
+-- O pedido original era pausar a conta de quem passasse TRÊS dias sem entrar —
 -- de todo mundo. Rodada contra a base real, a regra pegaria 14 dos 19 usuários
 -- ativos no primeiro dia, inclusive dois da equipe da casa que naquela manhã
 -- estavam com o aparelho ligado recebendo notificação.
@@ -17,9 +17,14 @@
 -- ambulatório, a escala na virada do mês, o financeiro no fechamento. Três dias
 -- parado é o comportamento normal da profissão.
 --
--- Mostrado o número, o escopo foi estreitado para quem chegou por um link de
--- campanha. Aí a regra faz sentido: é gente que o dono do produto não conhece,
--- e a pausa é o gancho para a conversa que ele quer ter.
+-- Mostrado o número, o prazo virou CATORZE dias e o escopo foi estreitado para
+-- quem chegou por um link de campanha. Aí a regra faz sentido: catorze dias é
+-- um prazo que o próprio anestesiologista reconhece como abandono, e é gente
+-- que o dono do produto não conhece — a pausa é o gancho para a conversa que
+-- ele quer ter.
+--
+-- O PRAZO É PARÂMETRO, e quem manda é a rota que chama (`DIAS_PARA_PAUSAR`).
+-- O default daqui existe só para a função nunca rodar sem prazo nenhum.
 --
 -- AS QUATRO TRAVAS ESTÃO AQUI, e não na rota que chama. Escritas só no
 -- TypeScript, bastaria um parâmetro errado — ou uma chamada nova, meses adiante
@@ -93,7 +98,7 @@ grant execute on function public.relatorio_de_uso() to service_role;
 -- ---------------------------------------------------------------------------
 -- A pausa
 -- ---------------------------------------------------------------------------
-create or replace function public.pausar_inativos_da_campanha(p_dias int default 3)
+create or replace function public.pausar_inativos_da_campanha(p_dias int default 14)
 returns table (perfil_id uuid, nome text, email text, dias int)
 language plpgsql
 security definer
