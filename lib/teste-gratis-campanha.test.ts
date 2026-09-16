@@ -134,3 +134,48 @@ test("a tela de assinatura recebe quem veio do fim do teste", () => {
   // E a promessa que sustenta a campanha: nada é apagado.
   assert.match(tela, /Nada é apagado enquanto a assinatura estiver parada/);
 });
+
+test("o gatilho de segurança não pode ter um prazo próprio", () => {
+  // ESTE FOI O DEFEITO QUE ESCAPOU, e ele custou três cadastros reais.
+  //
+  // `protege_assinatura` roda BEFORE INSERT em `instituicoes` para impedir que
+  // alguém se dê uma assinatura grátis escrevendo direto na tabela. Regra certa.
+  // Só que ela forçava `now() + interval '14 days'` — o prazo do teste antigo —
+  // e, rodando DEPOIS de `criar_organizacao`, apagava os dois meses e punha
+  // duas semanas de volta. O site prometia 2 meses e entregava 14 dias.
+  //
+  // A verificação de então olhou as PEÇAS e não o RESULTADO: conferiu que a
+  // função calculava a data certa e que criar_organizacao a chamava, e nunca
+  // olhou a linha que sobrava no banco. É o tipo de erro que só um teste de
+  // ponta a ponta pega — ou este, que proíbe um SEGUNDO lugar onde o prazo do
+  // teste é decidido.
+  const migracao = ler("supabase/migrations/202609160001_o_teste_e_de_dois_meses.sql");
+  const corpo = semComentarios("supabase/migrations/202609160001_o_teste_e_de_dois_meses.sql");
+  assert.match(corpo, /new\.assinatura_ate := public\.fim_do_teste_gratis\(\)/);
+  // Nenhum prazo escrito à mão no corpo da função.
+  assert.doesNotMatch(corpo, /assinatura_ate := now\(\) \+ interval/);
+  // E o resto da trava continua de pé: o gatilho existe para proteger cobrança,
+  // e consertar a data não pode ter aberto a porta que ele fecha.
+  for (const coluna of ["plano", "valor_por_profissional", "pagamento_assinatura_id"]) {
+    assert.match(corpo, new RegExp(`new\\.${coluna} := old\\.${coluna}`),
+      `o gatilho parou de congelar ${coluna} no UPDATE`);
+  }
+  assert.match(migracao, /quem já entrou pela campanha recebe o que foi prometido/i);
+});
+
+test("só existe UM lugar que decide quanto dura o teste", () => {
+  // O defeito acima nasceu de haver dois. Agora são três arquivos que falam do
+  // prazo, e os três apontam para a mesma função do banco ou para a mesma
+  // constante do TypeScript — nenhum escreve um número próprio.
+  const doBanco = [
+    "supabase/migrations/202609130001_dois_meses_de_teste.sql",
+    "supabase/migrations/202609160001_o_teste_e_de_dois_meses.sql",
+  ];
+  for (const arquivo of doBanco) {
+    assert.match(semComentarios(arquivo), /fim_do_teste_gratis/,
+      `${arquivo} precisa usar a função, não um prazo próprio`);
+  }
+  // E a conta da função continua sendo a de lib/teste-gratis.ts.
+  assert.match(ler("supabase/migrations/202609130001_dois_meses_de_teste.sql"),
+    /interval '3 months' - interval '1 microsecond'/);
+});
