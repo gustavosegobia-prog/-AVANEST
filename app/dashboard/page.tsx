@@ -23,12 +23,18 @@ export default async function DashboardPage({
 
   const { data: perfil } = await supabase
     .from("perfis")
-    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin, escalista, preferencias_aviso")
+    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin, escalista, preferencias_aviso, pausada_motivo")
     .eq("id", user.id)
     .maybeSingle();
   // Conta criada mas ainda sem organização: conclui o cadastro antes de entrar.
   if (!perfil) redirect("/comecar");
-  if (perfil.status !== "ativo") redirect("/login");
+  // Conta inativa volta para o login — mas COM O MOTIVO, quando há um. Sem
+  // isso, quem foi pausado por inatividade entra, é devolvido ao login e tenta
+  // de novo, em círculo, sem nada na tela explicando por quê. Uma porta que
+  // fecha em silêncio vira chamado de suporte com raiva.
+  if (perfil.status !== "ativo") {
+    redirect(perfil.pausada_motivo === "inatividade" ? "/login?conta=pausada" : "/login");
+  }
 
   // AS TRÊS JUNTAS, e não uma depois da outra.
   //

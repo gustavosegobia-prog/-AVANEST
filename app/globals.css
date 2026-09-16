@@ -4658,3 +4658,12 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .repetirValor,.repetirValor>div{width:100%}
   .repetirValor button.compact{flex:1 1 100%;text-align:center}
 }
+
+/* ── Conta pausada, na tela de login ────────────────────────────────────────
+   O cartão de login é sempre claro, mesmo no tema escuro (ver sign-up-form),
+   então aqui as cores são fixas de propósito. */
+.contaPausada{border:1px solid #e0aa4a;background:#fff8e8;border-radius:11px;
+  padding:14px 16px;margin:0 0 18px}
+.contaPausada strong{display:block;font-size:15px;color:#0f2438;margin-bottom:5px}
+.contaPausada p{margin:0 0 12px;font-size:13.5px;line-height:1.5;color:#3c5468}
+.contaPausada a{display:inline-block;text-decoration:none}

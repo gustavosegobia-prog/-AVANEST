@@ -19,7 +19,7 @@ import { LoginForm } from "./login-form";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ senha?: string; convite?: string; plano?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ senha?: string; convite?: string; plano?: string; conta?: string }> }) {
   const query = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -59,6 +59,24 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="avnLoginContent">
           <h1>Entrar no AVANEST</h1>
           <p>Acesso individual, definido pela sua conta.</p>
+          {/* A CONTA PAUSADA EXPLICA-SE, e oferece o caminho de volta na mesma
+              tela. A pessoa chegou aqui tentando entrar; mandá-la "procurar o
+              suporte" sem dizer onde é pedir que ela desista. E o texto diz que
+              nada foi apagado — é a primeira coisa que passa pela cabeça de
+              quem tem trabalho guardado lá dentro. */}
+          {query.conta === "pausada" && (
+            <div className="contaPausada" role="status">
+              <strong>Sua conta está pausada</strong>
+              <p>
+                Ela ficou alguns dias sem uso durante o período de teste. <b>Nada foi apagado</b> —
+                seus pacientes, avaliações e plantões continuam guardados e voltam assim que a
+                conta for reativada.
+              </p>
+              <a className="primaryClinical compact"
+                 href="https://wa.me/5541997870810?text=Ol%C3%A1%2C%20minha%20conta%20do%20AVANEST%20est%C3%A1%20pausada%20e%20eu%20gostaria%20de%20reativar."
+                 target="_blank" rel="noreferrer">Falar com o suporte no WhatsApp</a>
+            </div>
+          )}
           <LoginForm passwordChanged={query.senha === "alterada"} convite={query.convite ?? ""} plano={query.plano ?? ""} />
           {/* Sem esta saída, quem chega no login sem conta fica preso: a tela
               não oferecia nenhum caminho para criar uma. */}
