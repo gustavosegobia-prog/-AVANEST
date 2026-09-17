@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { temCodigoNaUrl } from "@/lib/troca-do-codigo";
 
 const LINK_INVALIDO = "Este link expirou ou já foi utilizado. Solicite um novo link de recuperação.";
 
@@ -33,6 +34,14 @@ export function UpdatePasswordForm() {
       if (sessao) liberar();
     });
 
+    // Quando o servidor não conseguiu trocar o código, ele o repassa para cá
+    // (ver lib/troca-do-codigo.ts) e quem termina é o cliente do Supabase desta
+    // página, sozinho, ao carregar. Isso é uma IDA À REDE, e no 4G do plantão
+    // ela não cabe em um segundo e meio: com a espera curta a tela acusava
+    // "link inválido" enquanto a troca ainda estava no ar — e o link estava bom.
+    const comCodigo = temCodigoNaUrl(window.location.search);
+    const prazo = comCodigo ? 15000 : 1500;
+
     supabase.auth.getSession().then(({ data }) => {
       if (!ativo) return;
       if (data.session) return liberar();
@@ -44,7 +53,7 @@ export function UpdatePasswordForm() {
         setChecking(false);
         setLinkInvalido(true);
         setError(LINK_INVALIDO);
-      }, 1500);
+      }, prazo);
     });
 
     return () => {
