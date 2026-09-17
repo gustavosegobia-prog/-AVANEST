@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { temCodigoNaUrl } from "@/lib/troca-do-codigo";
 
-const LINK_INVALIDO = "Este link expirou ou já foi utilizado. Solicite um novo link de recuperação.";
+// A mensagem antiga era "Este link expirou ou já foi utilizado", e ela MENTIA
+// no caso mais comum: quem pede vários e-mails fica com vários pedidos abertos
+// disputando o mesmo comprovante no navegador, e só o do último e-mail casa.
+// O link dos anteriores está íntegro — ele só não é o que o navegador sabe
+// abrir. Mandar essa pessoa "solicitar um novo link" era mandá-la repetir
+// exatamente o que a travou.
+const LINK_INVALIDO =
+  "Não conseguimos validar este link. Se você pediu mais de um e-mail, abra o link do ÚLTIMO que chegou — só o mais recente funciona.";
 
 export function UpdatePasswordForm() {
   const router = useRouter();

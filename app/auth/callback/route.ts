@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { destinoInterno } from "@/lib/destino-seguro";
 import { destinoComOCodigo, fluxoDoLink, PARAM_FLUXO } from "@/lib/troca-do-codigo";
@@ -17,6 +18,32 @@ export async function GET(request: NextRequest) {
 
   // O Supabase avisa por aqui quando o próprio link venceu ou já foi usado.
   if (erro) return NextResponse.redirect(new URL("/recuperar-senha?erro=link-invalido", request.url));
+
+  // ---------------------------------------------------------------------
+  // O CAMINHO SEM COMPROVANTE, que é o único que não tem como se envenenar
+  // ---------------------------------------------------------------------
+  // Com `token_hash` não existe comprovante guardado no navegador: o link já é
+  // a prova, e o servidor o valida direto. É imune ao problema que derrubou a
+  // recuperação de senha aqui — vários pedidos abertos ao mesmo tempo
+  // disputando um único cookie, em que o código de um e-mail acabava sendo
+  // trocado com o comprovante de outro e o Supabase respondia "invalid flow
+  // state". Pedir três e-mails é o reflexo de quem está travado, e o sistema
+  // não pode punir exatamente esse reflexo.
+  //
+  // Este trecho só entra em ação quando o modelo de e-mail do Supabase passar
+  // a mandar `{{ .TokenHash }}`. Enquanto não passar, ele fica inerte e o
+  // caminho do `code` abaixo continua valendo — por isso subir isto agora não
+  // muda nada para quem já está no meio de uma recuperação.
+  const tokenHash = request.nextUrl.searchParams.get("token_hash");
+  const tipo = request.nextUrl.searchParams.get("type");
+  if (tokenHash && tipo) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash, type: tipo as EmailOtpType,
+    });
+    if (!error) return NextResponse.redirect(new URL(next, request.url));
+    return NextResponse.redirect(new URL("/recuperar-senha?erro=link-invalido", request.url));
+  }
 
   if (code) {
     const supabase = await createClient();
