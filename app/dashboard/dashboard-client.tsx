@@ -84,6 +84,7 @@ import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/m
 import { lerDinheiro } from "@/lib/dinheiro";
 import { explicarEscala, podeEscolherEscalista, podeMontarEscala } from "@/lib/escalista";
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
+import { InstalarNaTela } from "@/components/instalar-na-tela";
 const PreferenciasDeAvisoPainel = dynamic(
   () => import("@/components/preferencias-de-aviso").then((m) => m.PreferenciasDeAvisoPainel),
   { ssr: false, loading: carregando("as preferências") });
@@ -964,6 +965,14 @@ export function DashboardClient({
           )}
         </div>
       )}
+
+      {/* Instalar vem ANTES de ligar o aviso, porque no iPhone é pré-requisito:
+          sem o AVANEST na tela de início, o Safari não entrega notificação
+          nenhuma, e o convite de push nem chega a aparecer. Fora do iPhone esta
+          faixa não existe. Não depende de `chavePush`: a instalação vale a pena
+          mesmo com o VAPID por configurar — ela é o que tira a barra do
+          navegador e põe o ícone na tela. */}
+      <InstalarNaTela/>
 
       {/* O convite para ligar as notificações. Some sozinho quando já estão
           ligadas, quando o navegador não tem push, e quando o VAPID não foi

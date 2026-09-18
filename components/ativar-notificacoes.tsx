@@ -264,24 +264,26 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
   // se sabe — e a única coisa útil nela, o desligar, é usada uma vez na vida.
   // Ela foi para o menu do perfil, junto do tema e da senha, que é onde se
   // procura uma preferência.
+  // "instalar-ios" saiu daqui: quem trata o iPhone fora da tela de início é a
+  // <InstalarNaTela/>, que desenha os três toques em vez de descrevê-los num
+  // parágrafo. As duas faixas juntas diriam a mesma coisa duas vezes, uma
+  // embaixo da outra, e a mais fraca é esta. O estado continua existindo no
+  // hook porque a linha "Permitir notificações" das preferências ainda o usa.
   if (estado === "carregando" || estado === "indisponivel"
-      || estado === "ligado" || dispensado) return null;
+      || estado === "instalar-ios" || estado === "ligado" || dispensado) return null;
 
   return (
     <div className="pushConvite" role="region" aria-label="Notificações">
       <span className="pushSino" aria-hidden="true"><Icone nome="sino" tamanho={20} /></span>
       <div className="pushTexto">
         <strong>
-          {estado === "instalar-ios" ? "Para receber avisos no iPhone"
-            : estado === "bloqueado" ? "As notificações estão bloqueadas"
-              : "Ative os avisos de escala e troca"}
+          {estado === "bloqueado" ? "As notificações estão bloqueadas"
+            : "Ative os avisos de escala e troca"}
         </strong>
         <p>
-          {estado === "instalar-ios"
-            ? "O Safari só entrega avisos com o AVANEST na tela de início. Toque em Compartilhar e depois em “Adicionar à Tela de Início” — depois disso o botão aparece aqui."
-            : estado === "bloqueado"
-              ? "Você recusou antes, e o navegador não pergunta de novo. Para religar, abra as configurações do site no navegador e permita notificações."
-              : "Receba aviso quando a escala for publicada e quando alguém oferecer, aceitar ou recusar um plantão — mesmo com o aplicativo fechado."}
+          {estado === "bloqueado"
+            ? "Você recusou antes, e o navegador não pergunta de novo. Para religar, abra as configurações do site no navegador e permita notificações."
+            : "Receba aviso quando a escala for publicada e quando alguém oferecer, aceitar ou recusar um plantão — mesmo com o aplicativo fechado."}
         </p>
         {erro && <p className="pushErro">{erro}</p>}
       </div>

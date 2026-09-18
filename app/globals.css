@@ -4667,3 +4667,54 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .contaPausada strong{display:block;font-size:15px;color:#0f2438;margin-bottom:5px}
 .contaPausada p{margin:0 0 12px;font-size:13.5px;line-height:1.5;color:#3c5468}
 .contaPausada a{display:inline-block;text-decoration:none}
+
+/* ---------------------------------------------------------------------------
+   A faixa que ensina a instalar na tela de início do iPhone
+
+   Mora ao lado do convite de push e reaproveita o `.pushDepois`: são o mesmo
+   tipo de conversa com a pessoa, e duas aparências diferentes para o mesmo
+   pedido leem como dois sistemas.
+
+   Os ícones são SVG desenhado com `currentColor`, então acompanham o tema
+   escuro sem uma segunda cópia — que é metade do motivo de não serem captura
+   de tela. A outra metade é que captura de tela do iOS envelhece a cada versão.
+--------------------------------------------------------------------------- */
+.instalarFaixa{display:flex;gap:14px;align-items:flex-start;
+  margin:14px 20px 0;padding:14px 16px;border:1px solid var(--cor-borda);
+  border-radius:var(--raio-1);background:var(--cor-superficie);box-shadow:var(--sombra-1)}
+.instalarSelo{flex:0 0 auto;display:grid;place-items:center;width:38px;height:38px;
+  border-radius:50%;background:color-mix(in srgb,var(--cor-marca) 12%,transparent);
+  color:var(--cor-marca)}
+.instalarSelo svg{width:20px;height:20px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.instalarTexto{flex:1 1 auto;min-width:0}
+.instalarTexto strong{display:block;font-size:.95rem;margin-bottom:2px}
+.instalarTexto p{margin:0;font-size:.85rem;line-height:1.45;color:var(--cor-tinta-fraca)}
+
+.instalarPassos{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.instalarPassos li{display:flex;gap:8px;align-items:flex-start;
+  font-size:.85rem;line-height:1.45}
+.instalarNumero{flex:0 0 auto;display:grid;place-items:center;
+  width:20px;height:20px;margin-top:1px;border-radius:50%;
+  background:var(--cor-marca);color:#fff;font-size:.72rem;font-weight:700}
+/* O glifo é o SEGUNDO item da linha, entre o número e o texto — nunca dentro
+   do texto. Dentro, ele caía sozinho numa segunda linha toda vez que a frase
+   enchia a largura do telefone, e glifo órfão embaixo da frase não ilustra
+   nada: parece defeito. A largura fixa vale também para o terceiro passo, que
+   não tem ícone, para os três textos começarem na mesma coluna. */
+.instalarPasso{flex:1 1 auto;min-width:0}
+.instalarGlifo{flex:0 0 auto;display:grid;place-items:center;
+  width:18px;height:18px;margin-top:1px;color:var(--cor-marca)}
+.instalarGlifo svg{width:18px;height:18px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* Sem negrito: a recompensa é a última linha de uma faixa que já tem título
+   em negrito, e dois pesos fortes na mesma caixa brigam entre si — a pessoa
+   não sabe por onde começar a ler. */
+.instalarPremio{margin-top:10px!important}
+
+.instalarBotoes{flex:0 0 auto;display:flex;gap:8px;align-items:center}
+
+@media(max-width:640px){
+  .instalarFaixa{flex-wrap:wrap;margin:12px 12px 0}
+  .instalarBotoes{width:100%;justify-content:flex-end}
+}
