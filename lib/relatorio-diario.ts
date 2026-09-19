@@ -49,6 +49,13 @@ export type UsuarioDoUso = {
   origem: string;
   conta_criada: string;
   ultimo_acesso: string | null;
+  /**
+   * A última vez que a pessoa FEZ alguma coisa: entrou, ou mexeu em plantão,
+   * ficha ou paciente dela. Calculada no banco por `ultima_atividade`, que é a
+   * mesma função que a pausa consulta — uma definição só, para o e-mail e o
+   * sistema nunca contarem histórias diferentes.
+   */
+  ultima_atividade: string | null;
   teste_ate: string | null;
   pacientes: number;
   avaliacoes: number;
@@ -60,9 +67,24 @@ export type UsuarioDoUso = {
 
 const DIA = 86_400_000;
 
-/** Quantos dias inteiros sem entrar. Nunca acessou devolve a idade da conta. */
+/**
+ * Quantos dias inteiros sem FAZER nada. Nunca fez nada devolve a idade da conta.
+ *
+ * ERA PELO ÚLTIMO LOGIN, e o último login mente. Esse campo só muda quando
+ * alguém digita e-mail e senha outra vez — quem fica logado no celular usa o
+ * sistema por semanas sem nunca gerar um login novo, que é justamente o
+ * comportamento de quem instalou e está usando. Medido contra a base real, o
+ * campo errava em quase metade dos casos: 45 dias pelo login contra 6 de
+ * verdade, 34 contra 3, 22 contra 2.
+ *
+ * O `??` em cadeia é a ordem de confiança, e não uma preferência de estilo:
+ * `ultima_atividade` já inclui o login e a criação da conta, então os outros
+ * dois só entram se o banco não tiver devolvido a coluna — uma rota antiga, um
+ * teste com fixture reduzida. Sem eles, um nulo viraria "parado há zero dias" e
+ * esconderia do relatório justamente quem sumiu.
+ */
 export function diasParado(u: UsuarioDoUso, agora: Date): number {
-  const marco = u.ultimo_acesso ?? u.conta_criada;
+  const marco = u.ultima_atividade ?? u.ultimo_acesso ?? u.conta_criada;
   const quando = new Date(marco).getTime();
   if (Number.isNaN(quando)) return 0;
   return Math.max(0, Math.floor((agora.getTime() - quando) / DIA));
