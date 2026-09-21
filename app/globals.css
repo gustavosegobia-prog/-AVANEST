@@ -304,6 +304,12 @@
 /* Fechado, a linha de baixo não separa nada — só deixaria um risco solto. */
 .painelRecolhivel:not([open])>summary{border-bottom:0}
 .painelRecolhivel>summary>.painelExtra{margin-left:auto;display:flex;align-items:center;gap:var(--esp-2)}
+/* A contagem que a barra mostra mesmo fechada — "17 plantões". Fechado, o
+   painel some por inteiro, e sem um número aqui a pessoa teria de abrir só
+   para saber se há algo lá dentro. Tom fraco de propósito: é informação de
+   apoio, e não pode competir com o título do painel. */
+.painelContagem{font-size:.8rem;font-weight:650;color:var(--cor-tinta-fraca);
+  white-space:nowrap}
 .painelSeta{flex:none;color:var(--cor-tinta-fraca);transition:transform .18s ease}
 .painelRecolhivel[open]>summary .painelSeta{transform:rotate(180deg)}
 @media(prefers-reduced-motion:reduce){.painelSeta{transition:none}}

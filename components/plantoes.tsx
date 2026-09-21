@@ -22,6 +22,7 @@ import {
 import { escalaEmPdf, tituloDaFolha } from "@/lib/escala-pdf";
 import { baixarXLSX } from "@/lib/xlsx";
 import { MeuFinanceiro } from "@/components/meu-financeiro";
+import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { feriadosDoMes } from "@/lib/feriados";
 import { avisarPush } from "@/components/ativar-notificacoes";
 import {
@@ -2671,12 +2672,28 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
             />
           )}
 
-          <section className="clinicalPanel">
-            <div className="panelTitle">
-              <strong>{escopo === "grupo"
-                ? `Escala da equipe em ${mesEmMaiusculas(MESES[m - 1])}`
-                : `Meus plantões em ${mesEmMaiusculas(MESES[m - 1])}`}</strong>
-            </div>
+          {/* A LISTA RECOLHE, e lembra a escolha deste aparelho.
+              Quem já sabe a própria escala de cor não quer rolar um mês inteiro
+              de plantões toda vez que entra para ver o calendário — e no mês
+              cheio isso é bastante rolagem.
+
+              A chave leva o escopo: "Meus plantões" e "Escala da equipe" moram
+              no mesmo lugar da tela, mas são duas perguntas diferentes. Fechar
+              a da equipe não pode esconder a minha.
+
+              O número de plantões vai no cabeçalho para a barra fechada ainda
+              informar. O VALOR NÃO VAI, e é de propósito: existe o olho que
+              esconde valores nesta tela, e um total no cabeçalho passaria por
+              cima dele justamente quando alguém está olhando por cima do ombro. */}
+          <PainelRecolhivel
+            chave={`escala-lista-${escopo}`}
+            titulo={escopo === "grupo"
+              ? `Escala da equipe em ${mesEmMaiusculas(MESES[m - 1])}`
+              : `Meus plantões em ${mesEmMaiusculas(MESES[m - 1])}`}
+            extra={daEscala.length > 0
+              ? <span className="painelContagem">{daEscala.length} plantão{daEscala.length > 1 ? "es" : ""}</span>
+              : undefined}
+          >
             {/* Os nomes das colunas, uma vez só no alto.
                 Antes cada linha carregava "Valor" e "Situação" em cima do
                 próprio campo: quinze plantões viravam quinze repetições do
@@ -2858,7 +2875,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 </LinhaComGaveta>
                 );
               })}
-          </section>
+          </PainelRecolhivel>
         </>
       )}
 
