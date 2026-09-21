@@ -76,7 +76,10 @@ export default function HomePage() {
         // externa para escapar.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(DADOS_ESTRUTURADOS) }}
       />
-      <header className="avnNav">
+      {/* `avnNavCapa`: no computador esta barra acompanha a moldura do hero,
+          que é mais larga que a caixa central das outras páginas. Sem a classe,
+          o logo nasce à direita do começo do título. */}
+      <header className="avnNav avnNavCapa">
         <AppLogo />
         <nav>
           {/* Dois rótulos para o mesmo link, e o CSS escolhe. No celular, "O que

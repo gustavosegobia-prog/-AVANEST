@@ -730,11 +730,23 @@ button:disabled{cursor:not-allowed}
 
 /* Ajustes de enquadramento no computador; tablet e celular mantêm o fluxo responsivo */
 @media(min-width:1101px){
+  /* A MOLDURA DA CAPA, num número só.
+     O hero foi trazido para perto da borda aqui, e a barra do topo ficou para
+     trás: ela usa `max(28px, (100vw - 1180px)/2)`, que no monitor comum dá uns
+     90px de margem. O resultado era o logo nascendo bem à direita do começo do
+     título, e os botões parando bem antes da borda direita — quem olha não vê
+     "duas larguras diferentes", vê uma página torta.
+     Agora as duas leem a mesma variável, e não há como uma andar sem a outra. */
+  .avnLanding{--avn-moldura:24px}
   .avnHeroContent{
-    width:calc(100% - 48px);
-    margin-left:24px;
-    margin-right:24px;
+    width:calc(100% - (var(--avn-moldura) * 2));
+    margin-left:var(--avn-moldura);
+    margin-right:var(--avn-moldura);
   }
+  /* SÓ a barra da capa. Em /recursos, /planos e /escores o conteúdo continua
+     na caixa central de 1180px — alargar a barra lá criaria exatamente este
+     mesmo desalinhamento, espelhado. */
+  .avnNavCapa{padding:0 var(--avn-moldura)}
   .avnHero h1{
     width:min(900px,calc(100vw - 300px));
     font-size:clamp(50px,4.7vw,66px);
