@@ -862,8 +862,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
   </section>
   {!showMedicationForm&&medicationAnswer&&<section className="emptyClinical">Resposta registrada: <b>{medicationAnswer}</b>.</section>}
   {showMedicationForm&&(medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=>{const currentSuggested=calculateLastDoseDate(String(draft.data_cirurgia||""),findMedicationGuideEntry(item.nome)?.suspendDays);const aberto=abertos.has(item.id);return <section className={`medicationCard${aberto?" aberto":""}`} key={item.id}>
-    <div className="medicationTitle"><button type="button" className="medicationToggle" aria-expanded={aberto} onClick={()=>alternar(item.id)}><svg className="medicationSeta" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg><span><strong>{item.nome}</strong><small>{item.principioAtivo||"Medicamento não localizado na base — preencher manualmente"}</small></span></button><select value={item.conduta} onChange={e=>update(item.id,"conduta",e.target.value)}><option>Avaliar</option><option>Individualizar</option><option>Manter</option><option>Suspender</option></select>{/* Decidir a conduta e assinar que conferiu são o mesmo gesto, e por isso ficam a um dedo de distância. O visto morava no fim do card, depois de seis blocos de orientação: com cinco medicamentos a pessoa rolava a tela dez vezes para fazer duas coisas que pensa juntas — e o que fica longe do gesto é o que deixa de ser feito. */}<label className={`medicationConfirm${item.confirmada===true?" feito":""}`}><input type="checkbox" checked={item.confirmada===true} onChange={e=>update(item.id,"confirmada",e.target.checked)}/><span>Revisado</span></label><button className="removeMedication" onClick={()=>save(medications.filter(m=>m.id!==item.id))}>×</button></div>
-    {aberto&&<>
+    <div className="medicationTitle"><div><strong>{item.nome}</strong><small>{item.principioAtivo||"Medicamento não localizado na base — preencher manualmente"}</small></div><select value={item.conduta} onChange={e=>update(item.id,"conduta",e.target.value)}><option>Avaliar</option><option>Individualizar</option><option>Manter</option><option>Suspender</option></select>{/* Decidir a conduta e assinar que conferiu são o mesmo gesto, e por isso ficam a um dedo de distância. O visto morava no fim do card, depois de seis blocos de orientação: com cinco medicamentos a pessoa rolava a tela dez vezes para fazer duas coisas que pensa juntas — e o que fica longe do gesto é o que deixa de ser feito. */}<label className={`medicationConfirm${item.confirmada===true?" feito":""}`}><input type="checkbox" checked={item.confirmada===true} onChange={e=>update(item.id,"confirmada",e.target.checked)}/><span>Revisado</span></label><button className="removeMedication" onClick={()=>save(medications.filter(m=>m.id!==item.id))}>×</button></div>
     <div className="medicationGrid">
       <label><span>Dose</span><input value={item.dose} onChange={e=>update(item.id,"dose",e.target.value)} placeholder="Ex.: 50 mg"/></label>
       <label><span>Frequência</span><input value={item.frequencia} onChange={e=>update(item.id,"frequencia",e.target.value)} placeholder="Ex.: 1x/dia"/></label>
@@ -871,7 +870,13 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
       <label><span>Indicação</span><input value={item.indicacao} onChange={e=>update(item.id,"indicacao",e.target.value)} placeholder="Ex.: FA, TEV, stent"/></label>
       <label className="wide"><span>Orientação médica confirmada</span><input value={item.orientacao} onChange={e=>update(item.id,"orientacao",e.target.value)} placeholder="Registrar somente após avaliação individual"/></label>
     </div>
-    {(item.classe||item.prazo||item.reinicio)&&<div className="medicationGuidance">
+    {(item.classe||item.prazo||item.reinicio)&&<>
+    <button type="button" className="medicationGuiaBarra" aria-expanded={aberto} onClick={()=>alternar(item.id)}>
+      <svg className="medicationSeta" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg>
+      <span>Orientação do guia</span>
+      <small>{aberto?"ocultar":"classe, quando suspender, quando reiniciar"}</small>
+    </button>
+    {aberto&&<div className="medicationGuidance">
       <div><b>Classe / princípio ativo</b><span>{item.classe||"—"} · {item.principioAtivo||"—"}</span></div>
       <div><b>Quando suspender ou ajustar</b><span>{item.prazo||"Avaliar individualmente."}</span></div>
       <div><b>Última dose sugerida pela data da cirurgia</b><span>{currentSuggested?new Date(`${currentSuggested}T12:00:00`).toLocaleDateString("pt-BR"):"Não calculável — confirmar risco, função renal e técnica anestésica."}</span></div>

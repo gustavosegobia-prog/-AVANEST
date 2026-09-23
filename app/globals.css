@@ -367,24 +367,30 @@
 
 /* Etapas estruturadas da avaliação */
 .medicationAdd{display:grid;grid-template-columns:1fr auto;gap:12px;margin-top:18px}.medicationAdd input{min-height:58px;border:1px solid var(--cor-borda);border-radius:10px;background:var(--cor-superficie-suave);padding:14px;font:inherit;font-size:17px}.medicationAdd button{min-width:136px;border:0;border-radius:12px;background:var(--cor-marca);color:#fff;font-weight:800;font-size:16px}.quickMedication{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;color:var(--cor-tinta-fraca)}.quickMedication button,.examChipGroup button{border:1px solid #d5e0ea;background:var(--cor-fundo);color:var(--cor-tinta-fraca);border-radius:999px;padding:9px 16px}.medicationCard{margin:18px 0;border:1px solid #d8b35e;border-radius:18px;background:#fffdf7;overflow:hidden}.medicationTitle{display:grid;grid-template-columns:1fr 200px auto 42px;gap:12px;align-items:center;padding:20px 22px;border-bottom:1px solid #ead5a3}
-/* Fechado, a linha do título NÃO tem risco embaixo: não separa nada, e um
-   traço solto entre dois cartões fechados faz a lista parecer uma tabela
-   quebrada. */
-.medicationCard:not(.aberto) .medicationTitle{border-bottom:0}
-/* O NOME DO MEDICAMENTO É O BOTÃO. Um ícone pequeno de abrir, ao lado de um
-   nome que parece clicável e não é, é o tipo de alvo que se erra no celular e
-   que ninguém encontra no computador. Aqui a área toda do nome abre o cartão,
-   e o botão continua sendo <button>: teclado, Enter e Espaço vêm de graça, e o
-   `aria-expanded` conta o estado a quem usa leitor de tela. */
-.medicationToggle{display:flex;align-items:center;gap:10px;min-width:0;
-  padding:0;border:0;background:none;font:inherit;color:inherit;
-  text-align:left;cursor:pointer;border-radius:var(--raio-1)}
-.medicationToggle:hover strong{text-decoration:underline}
-.medicationToggle:focus-visible{outline:2px solid var(--cor-marca);outline-offset:3px}
-.medicationToggle>span{min-width:0}
+/* A BARRA DA ORIENTAÇÃO DO GUIA.
+   Ela separa o que se PREENCHE do que se CONSULTA: dose, frequência e
+   orientação confirmada ficam sempre à vista, porque é onde o anestesiologista
+   escreve; o bloco do guia — classe, quando suspender, quando reiniciar — é
+   material de referência, lido uma vez por medicamento, e com oito remédios
+   virava oito paredes de texto entre a pessoa e o próximo campo.
+   É <button>: teclado, Enter e Espaço vêm de graça, e o `aria-expanded` conta
+   o estado para leitor de tela. */
+.medicationGuiaBarra{display:flex;align-items:center;gap:10px;width:100%;
+  padding:12px 18px;border:0;border-top:1px solid #dec98e;background:#fffaf0;
+  font:inherit;color:#7a5f18;text-align:left;cursor:pointer}
+.medicationGuiaBarra:hover{background:#fdf3de}
+.medicationGuiaBarra:focus-visible{outline:2px solid var(--cor-marca);outline-offset:-2px}
+.medicationGuiaBarra>span{font-weight:750;font-size:13px}
+/* A legenda diz o que há lá dentro, para a barra fechada não ser um mistério —
+   e some no celular, onde não cabe ao lado do rótulo. */
+.medicationGuiaBarra>small{color:#a08341;font-size:12px;margin-left:auto}
+@media(max-width:640px){.medicationGuiaBarra>small{display:none}}
+/* Aberta, a barra encosta no bloco: o risco de cima do bloco seria um segundo
+   traço colado no primeiro. */
+.medicationCard.aberto .medicationGuidance{border-top:0}
 .medicationSeta{flex:none;width:18px;height:18px;fill:none;stroke:currentColor;
   stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
-  color:#8a6d1f;transition:transform .18s ease}
+  transition:transform .18s ease}
 .medicationCard.aberto .medicationSeta{transform:rotate(180deg)}
 @media(prefers-reduced-motion:reduce){.medicationSeta{transition:none}}.medicationTitle strong{display:block;font-size:19px}.medicationTitle small{display:block;color:var(--cor-tinta-fraca);margin-top:3px}.medicationTitle select{min-height:44px;border:1px solid #cf9a29;border-radius:10px;padding:0 12px;background:#fff;color:#8d5d00;font-weight:800}.removeMedication{border:0;background:transparent;font-size:26px;color:var(--cor-tinta-fraca)}.medicationGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:20px 22px}.medicationGrid label{display:grid;gap:7px}.medicationGrid span{font-size:12px;font-weight:800;color:#586b82;text-transform:uppercase}.medicationGrid input{min-height:48px;border:1px solid var(--cor-borda);border-radius:9px;padding:12px;font:inherit}.medicationGrid .wide{grid-column:1/-1}.medicationSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.medicationSummary>div{min-height:124px;padding:18px;border:1px solid #d7e1ea;border-radius:13px;background:#f5f9fc;display:flex;flex-direction:column;gap:9px}.medicationSummary>div:nth-child(2){background:#fff5f5}.medicationSummary>div:nth-child(3){background:#fffaf0}.medicationSummary strong{text-transform:uppercase;color:var(--cor-marca)}.medicationSummary>div:nth-child(2) strong{color:#c63434}.medicationSummary>div:nth-child(3) strong{color:#a56a00}
 .physicalGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}.physicalGrid .wide3{grid-column:span 3}.physicalGrid .wide5{grid-column:span 5}.examChipGroup{margin-top:22px}.examChipGroup>strong{display:block;margin-bottom:9px;color:#536a83;font-size:13px}.examChipGroup>div{display:flex;gap:8px;flex-wrap:wrap}.examChipGroup button.selected{border-color:var(--cor-marca);background:#e7f2fc;color:#0861ad;font-weight:800}.examOptionalNote{margin-top:12px}.airwayGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.airwayRisk{display:flex;gap:18px;align-items:center;margin-top:24px;padding:18px 22px;border-radius:12px;background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}.airwayRisk.moderada{background:#fff3d7;color:#9a6500}.airwayRisk.alta{background:var(--cor-perigo-suave);color:#b92e2e}.airwayRisk span{color:var(--cor-tinta-fraca)}.examResultsGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin:20px 0}
