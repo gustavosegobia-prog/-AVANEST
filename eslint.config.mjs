@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Gerados pelo `ruflo init`: não são código do site.
+    ".claude/**",
+    ".agents/**",
+    ".claude-flow/**",
   ]),
 ]);
 

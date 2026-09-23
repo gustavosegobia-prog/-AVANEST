@@ -1,0 +1,165 @@
+{
+  "timestamp": "2026-09-23T04:06:14.621Z",
+  "target": ".",
+  "depth": "deep",
+  "type": "all",
+  "summary": {
+    "critical": 1,
+    "high": 3,
+    "medium": 21,
+    "low": 0,
+    "total": 25
+  },
+  "findings": [
+    {
+      "severity": "CRITICAL",
+      "type": "Dependency CVE",
+      "location": "package.json:next",
+      "description": "Next.js: Middleware / Proxy bypass "
+    },
+    {
+      "severity": "HIGH",
+      "type": "Dependency CVE",
+      "location": "package.json:postcss",
+      "description": "PostCSS has XSS via Unescaped </sty"
+    },
+    {
+      "severity": "HIGH",
+      "type": "Dependency CVE",
+      "location": "package.json:sharp",
+      "description": "sharp inherited vulnerabilities in "
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/apfel/page.tsx:27",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/apfel/page.tsx:36",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/classificacao-asa/page.tsx:27",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/classificacao-asa/page.tsx:36",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/indice-de-lee/page.tsx:27",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/indice-de-lee/page.tsx:36",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/page.tsx:83",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/page.tsx:87",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/stop-bang/page.tsx:27",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/escores/stop-bang/page.tsx:36",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/layout.tsx:107",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/layout.tsx:141",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/layout.tsx:182",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/page.tsx:77",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/planos/page.tsx:192",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/planos/page.tsx:200",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "app/recursos/page.tsx:201",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "components/abertura-animada.tsx:138",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "components/abertura-animada.tsx:139",
+      "description": "React XSS risk"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "innerHTML",
+      "location": "components/plantoes.tsx:520",
+      "description": "XSS risk with innerHTML"
+    },
+    {
+      "severity": "HIGH",
+      "type": "SQL Injection",
+      "location": "lib/preferencias-de-aviso.test.ts:121",
+      "description": "Possible SQL injection"
+    },
+    {
+      "severity": "MEDIUM",
+      "type": "React XSS",
+      "location": "lib/schema.ts:188",
+      "description": "React XSS risk"
+    }
+  ]
+}

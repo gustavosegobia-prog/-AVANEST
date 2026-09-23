@@ -24,3 +24,15 @@ package-lock.json
 /A-*.pdf
 /B-*.pdf
 /modal*.png
+
+# Ruflo local secrets and runtime data
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.claude-flow/metrics/
+.claude-flow/security/
+.claude-flow/policy/
+/.swarm/
+/ruvector.db
