@@ -694,6 +694,18 @@ function comValorAtual(opcoes: string[], atual: string) {
 
 function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const [name,setName]=useState("");
+  // QUAIS CARTÕES ESTÃO ABERTOS. Fechado é o padrão: uma avaliação com oito
+  // medicamentos virava oito cartões de tela inteira, e achar o quinto custava
+  // rolagem que não devolve nada — a orientação do guia é material de CONSULTA,
+  // lida uma vez por medicamento, não a cada vez que a lista aparece.
+  // Guardado por id e não por índice: remover um da lista renumera os outros, e
+  // por índice o cartão aberto pularia para o vizinho.
+  const [abertos,setAbertos]=useState<Set<string>>(new Set());
+  const alternar=(id:string)=>setAbertos(atuais=>{
+    const proximo=new Set(atuais);
+    if(proximo.has(id))proximo.delete(id); else proximo.add(id);
+    return proximo;
+  });
   const medications=readMedications(draft.medicamentos_json);
   const medicationAnswer=String(draft.medicacao_continua??"");
   // Anticoagulante conta como "Sim" aqui, e isso conserta um beco sem saída.
@@ -773,9 +785,15 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     const escrito=lerUmMedicamento(suggestion??name);
     if(!escrito)return;
     if(medications.some(item=>mesmoMedicamento(item.nome,escrito.nome))){setName("");return;}
-    save([...medications,medicationFromName(
+    const novo=medicationFromName(
       escrito.nome,String(draft.data_cirurgia||""),escrito.dose,escrito.frequencia,
-    )]); setName("");
+    );
+    save([...medications,novo]);
+    // Nasce ABERTO: quem acabou de adicionar quer preencher a dose agora. Só o
+    // que entra pela importação da anamnese fica fechado — ali chegam vários de
+    // uma vez, e abrir todos devolveria a parede de texto que isto resolve.
+    setAbertos(atuais=>new Set(atuais).add(novo.id));
+    setName("");
   };
   const update=<K extends keyof Medication>(id:string,key:K,value:Medication[K])=>save(medications.map(item=>{
     if(item.id!==id)return item;
@@ -843,8 +861,9 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","Enalapril","Anlodipino","Hidroclorotiazida","Metoprolol","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Eliquis","Varfarina","Dabigatrana","Enoxaparina","Metformina","Ozempic","Dapagliflozina","Insulina NPH","Levotiroxina","Sinvastatina","Omeprazol","Sertralina"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div></>}
   </section>
   {!showMedicationForm&&medicationAnswer&&<section className="emptyClinical">Resposta registrada: <b>{medicationAnswer}</b>.</section>}
-  {showMedicationForm&&(medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=>{const currentSuggested=calculateLastDoseDate(String(draft.data_cirurgia||""),findMedicationGuideEntry(item.nome)?.suspendDays);return <section className="medicationCard" key={item.id}>
-    <div className="medicationTitle"><div><strong>{item.nome}</strong><small>{item.principioAtivo||"Medicamento não localizado na base — preencher manualmente"}</small></div><select value={item.conduta} onChange={e=>update(item.id,"conduta",e.target.value)}><option>Avaliar</option><option>Individualizar</option><option>Manter</option><option>Suspender</option></select>{/* Decidir a conduta e assinar que conferiu são o mesmo gesto, e por isso ficam a um dedo de distância. O visto morava no fim do card, depois de seis blocos de orientação: com cinco medicamentos a pessoa rolava a tela dez vezes para fazer duas coisas que pensa juntas — e o que fica longe do gesto é o que deixa de ser feito. */}<label className={`medicationConfirm${item.confirmada===true?" feito":""}`}><input type="checkbox" checked={item.confirmada===true} onChange={e=>update(item.id,"confirmada",e.target.checked)}/><span>Revisado</span></label><button className="removeMedication" onClick={()=>save(medications.filter(m=>m.id!==item.id))}>×</button></div>
+  {showMedicationForm&&(medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=>{const currentSuggested=calculateLastDoseDate(String(draft.data_cirurgia||""),findMedicationGuideEntry(item.nome)?.suspendDays);const aberto=abertos.has(item.id);return <section className={`medicationCard${aberto?" aberto":""}`} key={item.id}>
+    <div className="medicationTitle"><button type="button" className="medicationToggle" aria-expanded={aberto} onClick={()=>alternar(item.id)}><svg className="medicationSeta" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg><span><strong>{item.nome}</strong><small>{item.principioAtivo||"Medicamento não localizado na base — preencher manualmente"}</small></span></button><select value={item.conduta} onChange={e=>update(item.id,"conduta",e.target.value)}><option>Avaliar</option><option>Individualizar</option><option>Manter</option><option>Suspender</option></select>{/* Decidir a conduta e assinar que conferiu são o mesmo gesto, e por isso ficam a um dedo de distância. O visto morava no fim do card, depois de seis blocos de orientação: com cinco medicamentos a pessoa rolava a tela dez vezes para fazer duas coisas que pensa juntas — e o que fica longe do gesto é o que deixa de ser feito. */}<label className={`medicationConfirm${item.confirmada===true?" feito":""}`}><input type="checkbox" checked={item.confirmada===true} onChange={e=>update(item.id,"confirmada",e.target.checked)}/><span>Revisado</span></label><button className="removeMedication" onClick={()=>save(medications.filter(m=>m.id!==item.id))}>×</button></div>
+    {aberto&&<>
     <div className="medicationGrid">
       <label><span>Dose</span><input value={item.dose} onChange={e=>update(item.id,"dose",e.target.value)} placeholder="Ex.: 50 mg"/></label>
       <label><span>Frequência</span><input value={item.frequencia} onChange={e=>update(item.id,"frequencia",e.target.value)} placeholder="Ex.: 1x/dia"/></label>
@@ -860,6 +879,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
       <div className="wide"><b>Ajustes, exceções e cautelas</b><span>{item.excecoes||"Sem regra automática cadastrada."}</span></div>
       <div className="wide medicationSource"><b>Fonte e versão</b><span>{item.fonte||"Não cadastrado no guia 07/2026."}</span></div>
     </div>}
+    </>}
   </section>}))}
   {showMedicationForm&&<section className="evalSection"><h2>Resumo dos medicamentos</h2><div className="medicationSummary">{groups.map(([label,items])=><div key={label}><strong>{label}</strong>{items.length?items.map(m=><span key={m.id}>• {m.nome}{m.dose?` ${m.dose}`:""}</span>):<span>— nenhum —</span>}</div>)}</div></section>}</>;
 }
