@@ -8,6 +8,8 @@ import { calculateLastDoseDate, ehAntitrombotico, ehGlp1, exigeOrientacao, findM
 import { orientacaoSugerida } from "@/lib/medication-summary";
 import { diaParaMomento, lerMedicamentosEscritos, lerUmMedicamento, mesmoMedicamento } from "@/lib/medicamentos-escritos";
 import { idadeDoPaciente, idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
+import { apenasOsVazios, AVISO_LEITURA_DE_EXAMES, lerDataDaColeta, lerExames } from "@/lib/exames-leitura";
+import { textoDoArquivo } from "@/lib/texto-do-laudo";
 import { PREDITORES_VIA_AEREA, frasePreditoresMarcados, resumoViaAerea } from "@/lib/via-aerea";
 import {
   APFEL_CRITERIOS, ASA_CLASSES, RCRI_CRITERIOS, STOP_BANG_CRITERIOS,
@@ -1024,6 +1026,51 @@ function Airway({draft,set,rascunho}:{draft:Draft;set:(name:string,value:string|
 function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,value:string|boolean)=>void;avaliacao:Assessment}) {
   const [uploading,setUploading]=useState(false);
   const [uploadError,setUploadError]=useState("");
+  const [lendo,setLendo]=useState(false);
+  const [avisoLeitura,setAvisoLeitura]=useState("");
+  const [erroLeitura,setErroLeitura]=useState("");
+
+  /**
+   * Lê os valores da foto do laudo e preenche o que está em branco.
+   *
+   * A IMAGEM É LIDA NO PRÓPRIO APARELHO e descartada ao fim — nada de exame de
+   * paciente sai daqui para servidor nenhum, e é o mesmo caminho que a
+   * calculadora de gasometria já usa. O motor entra por import dinâmico: se ele
+   * não carregar, a tela continua servindo para digitar em vez de quebrar.
+   *
+   * SÓ PREENCHE CAMPO VAZIO. Quem digitou a creatinina digitou por algum
+   * motivo, e uma foto anexada depois não desfaz isso pelas costas.
+   */
+  async function lerDoAnexo(arquivo?:File) {
+    if(!arquivo)return;
+    setLendo(true); setErroLeitura(""); setAvisoLeitura("");
+    try{
+      const texto=await textoDoArquivo(arquivo);
+      const {valores,descartados}=lerExames(texto);
+      // A data da COLETA entra junto, e pelo mesmo caminho: só se o campo
+      // estiver vazio. É ela que diz se o exame ainda vale na véspera.
+      const coleta=lerDataDaColeta(texto);
+      const comData={...valores,...(coleta?{data_exames:coleta}:{})};
+      const aPreencher=apenasOsVazios(comData,draft as Partial<Record<string,unknown>>);
+      const quantos=Object.keys(aPreencher).length;
+      if(!quantos&&!descartados.length){
+        setErroLeitura("Não reconheci nenhum exame nesta imagem. Tente uma foto mais próxima, sem reflexo e com o laudo reto — ou digite os valores.");
+        return;
+      }
+      for(const [campo,valor] of Object.entries(aPreencher))set(campo,valor);
+      const jaTinha=Object.keys(valores).length-quantos;
+      setAvisoLeitura([
+        `${quantos} campo(s) preenchido(s).`,
+        jaTinha?`${jaTinha} já estava(m) preenchido(s) e não foram alterados.`:"",
+        descartados.length?`Não usei o que li em: ${descartados.join(", ")} — valor fora do plausível.`:"",
+        AVISO_LEITURA_DE_EXAMES,
+      ].filter(Boolean).join(" "));
+    }catch{
+      setErroLeitura("Não consegui ler este arquivo. Tente uma foto do laudo, ou digite os valores.");
+    }finally{
+      setLendo(false);
+    }
+  }
   const attachments=useMemo(()=>{try{const data=JSON.parse(String(draft.exames_anexos||"[]"));return Array.isArray(data)?data:[]}catch{return []}},[draft.exames_anexos]);
   const field=(name:string,label:string,type="text")=><label className="evalField"><span>{label}</span><input type={type} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>;
   async function upload(file?:File) {
@@ -1038,6 +1085,13 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
     <div className="examResultsGrid">{field("hemoglobina","Hemoglobina (g/dL)")}{field("hematocrito","Hematócrito (%)")}{field("plaquetas","Plaquetas")}{field("tap","TAP (s)")}{field("inr","INR")}{field("ttpa","TTPa (s)")}{field("creatinina","Creatinina (mg/dL)")}{field("ureia","Ureia (mg/dL)")}{field("sodio","Sódio (mEq/L)")}{field("potassio","Potássio (mEq/L)")}{field("glicemia","Glicemia (mg/dL)")}{field("hba1c","HbA1c (%)")}{field("data_exames","Data dos exames","date")}</div>
     <div className="examDetailGrid">{field("ecg","Eletrocardiograma")}{field("eco","Ecocardiograma")}{field("rx_torax","Radiografia de tórax")}{field("espirometria","Espirometria")}<label className="evalField span2"><span>Outros exames (imagem, gasometria...)</span><input value={String(draft.exames_obs??"")} onChange={e=>set("exames_obs",e.target.value)}/></label></div>
     <div className="attachmentRow"><label className="attachmentButton">📎 {uploading?"Enviando...":"Anexar arquivo (PDF / imagem / câmera)"}<input type="file" accept=".pdf,image/jpeg,image/png" capture="environment" disabled={uploading} onChange={e=>upload(e.target.files?.[0])}/></label><span>Formatos aceitos: PDF, JPG e PNG.</span></div>
+    {/* A LEITURA É UM PEDIDO, e não um efeito de anexar. Anexar é guardar o
+        documento na ficha; ler é escrever valor em campo clínico. Disparar a
+        segunda coisa dentro da primeira preencheria a ficha sem ninguém ter
+        pedido — e num campo que decide conduta isso não pode ser surpresa. */}
+    <div className="attachmentRow"><label className="attachmentButton leitorDeExame">🔎 {lendo?"Lendo o laudo...":"Ler valores do laudo (PDF ou foto)"}<input type="file" accept=".pdf,image/jpeg,image/png" disabled={lendo} onChange={e=>{void lerDoAnexo(e.target.files?.[0]);e.target.value=""}}/></label><span>PDF ou foto. Preenche só os campos em branco, e o arquivo é lido neste aparelho — não é enviado a lugar nenhum.</span></div>
+    {avisoLeitura&&<p className="examLeituraAviso" role="status">{avisoLeitura}</p>}
+    {erroLeitura&&<p className="clinicalError">{erroLeitura}</p>}
     {uploadError&&<p className="clinicalError">Não foi possível anexar: {uploadError}</p>}
     {attachments.length>0&&<div className="attachmentList">{attachments.map((item:{name:string;path:string})=><span key={item.path}>✓ {item.name}</span>)}</div>}
     <label className="medicationConfirm"><input type="checkbox" checked={draft.exames_revisados===true} onChange={e=>set("exames_revisados",e.target.checked)}/><span>Exames e anexos revisados, quando aplicável.</span></label>
