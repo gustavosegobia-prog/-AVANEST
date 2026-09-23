@@ -2337,7 +2337,6 @@ button:disabled{cursor:not-allowed}
    probabilidade sugerida, e não dentro dela, porque uma é conta e a outra é
    decisão. */
 .airwayVerdict{margin-top:12px}
-.airwayVerdict small{display:block;margin-top:8px;color:var(--cor-tinta-fraca);font-size:13px}
 
 /* Áreas extras do usuário: caixas de seleção logo abaixo dos campos, num
    bloco próprio para não parecerem mais um campo de texto. */

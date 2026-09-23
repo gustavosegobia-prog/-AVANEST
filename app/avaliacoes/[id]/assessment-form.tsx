@@ -1005,13 +1005,18 @@ function Airway({draft,set,rascunho}:{draft:Draft;set:(name:string,value:string|
   {/* A conta acima é sugestão; esta linha é a decisão. São coisas diferentes e
       por isso ficam em campos diferentes: contar preditor não substitui o
       julgamento de quem vai intubar, e quem lê a ficha depois precisa saber
-      qual das duas está vendo. */}
+      qual das duas está vendo.
+
+      A RESSALVA SAIU DAQUI, e não do produto: a faixa verde logo acima já diz
+      "sugestão de apoio, deve ser confirmada pelo anestesiologista", na linha
+      imediatamente anterior. Dizer a mesma coisa duas vezes coladas não protege
+      mais ninguém — só ensina a pular o texto, e aí a primeira vez também
+      deixa de ser lida. */}
   <div className="questionCard airwayVerdict">
     <div className="questionHead">
       <strong>Via aérea difícil?</strong>
       <div className="answerButtons">{["Sim","Não"].map(answer=><button type="button" className={String(draft.via_aerea_dificil??"")===answer?"active":""} onClick={()=>set("via_aerea_dificil",answer)} key={answer}>{answer}</button>)}</div>
     </div>
-    <small>Conclusão do anestesiologista. A probabilidade acima é apoio, não resposta.</small>
   </div>
   </section>;
 }
