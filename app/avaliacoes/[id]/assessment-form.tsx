@@ -1221,7 +1221,6 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
       <div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div>
       <div className={`scoreResult ${rcriScore>=2?"warning":""}`}>
         Lee {rcriScore} ponto(s) · Classe {lee.classe} · evento cardíaco maior ≈ {lee.risco}
-        <small>Lee et al., 1999. Apoio à estratificação; confirmar clinicamente.</small>
       </div>
       {/* O parecer do cardiologista entra como registro ao lado do índice, e
           não como pontos. O RCRI é um escore fechado de seis critérios — somar
@@ -1248,7 +1247,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
       </div>
     </section>
     <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
-    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk} <small>referência de apoio; confirmar conduta</small></div></section>
+    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk}</div></section>
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div></section></>;
 }
 
