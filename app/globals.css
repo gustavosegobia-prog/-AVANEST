@@ -675,16 +675,23 @@
      escrita por extenso não cabe ao lado do botão. */
 }
 
-/* Mantém o retorno do salvamento visível mesmo em formulários longos. */
+/* Mantém o retorno do salvamento visível mesmo em formulários longos.
+
+   ESTA REGRA NÃO POSICIONA MAIS NADA, e é de propósito. Ela nasceu quando
+   `.patientModal` tinha `padding:28px`: o rodapé sangrava para fora desse
+   respiro com `margin:24px -28px -28px` e compensava com `bottom:-28px`. Um
+   refatoramento depois deixou o modal com `padding:0` — e as compensações
+   ficaram. Como `.patientModal .modalActions` vence `.modalActions` por
+   especificidade, era ESTA que mandava: o rodapé grudava 28px ABAIXO da borda
+   visível, saía da caixa arredondada do modal e, em tela de notebook, era
+   cortado pelo fim da janela. O "Salvar paciente" só aparecia inteiro rolando
+   tudo — quando aparecia.
+
+   Agora o posicionamento fica só na regra genérica `.modalActions` logo
+   adiante (sticky, bottom:0, respiro e cantos), e aqui sobra o que é próprio
+   deste modal: alinhar o aviso de erro com os botões. */
 .patientModal .modalActions{
-  position:sticky;
-  bottom:-28px;
-  z-index:2;
   align-items:center;
-  margin:24px -28px -28px;
-  padding:16px 28px;
-  border-top:1px solid var(--cor-borda);
-  background:#fff;
 }
 .patientModal .saveStatus{
   margin-right:auto;
@@ -1343,8 +1350,17 @@ button:disabled{cursor:not-allowed}
 /* Mensagens */
 .clinicalError{border-radius:var(--raio-1);border:1px solid var(--cor-perigo);background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);padding:var(--esp-3) var(--esp-4)}
 
-/* Modal: cabecalho e rodape fixos, corpo rolando entre eles. */
-.patientModal{border-radius:var(--raio-3);box-shadow:var(--sombra-3);padding:0;display:flex;flex-direction:column}
+/* Modal: cabecalho e rodape fixos, corpo rolando entre eles.
+
+   `max-height:100%` é o teto, e não os 94vh da regra base: 94vh MAIS os 20px
+   de respiro do fundo passam da altura da janela, então a caixa transbordava
+   para baixo e a parte de fora ficava inalcançável — o fundo é `position:fixed`
+   e não rola. `100%` é a área que o fundo de fato reserva, respiro já
+   descontado.
+
+   `overflow:hidden` porque quem rola é o corpo, e não o modal. Com os dois
+   rolando, o rodapé grudado acompanhava a rolagem errada. */
+.patientModal{border-radius:var(--raio-3);box-shadow:var(--sombra-3);padding:0;display:flex;flex-direction:column;max-height:100%;overflow:hidden}
 .patientModalHead{position:sticky;top:0;z-index:2;background:var(--cor-superficie);padding:var(--esp-6) var(--esp-6) var(--esp-4);border-bottom:1px solid var(--cor-borda);border-radius:var(--raio-3) var(--raio-3) 0 0}
 .patientModal>form,.patientModal>div:not(.patientModalHead):not(.modalActions){padding:0 var(--esp-6)}
 .modalActions{position:sticky;bottom:0;z-index:2;background:var(--cor-superficie);padding:var(--esp-4) var(--esp-6);border-top:1px solid var(--cor-borda);margin-top:var(--esp-5);border-radius:0 0 var(--raio-3) var(--raio-3)}
@@ -1524,7 +1540,10 @@ button:disabled{cursor:not-allowed}
    listava todos os convenios como texto corrido. A faixa saiu: o seletor de
    convenio ja diz quais existem.
    ========================================================================== */
-.patientModalCorpo{overflow:auto;padding:var(--esp-2) var(--esp-6) 0;display:flex;flex-direction:column;gap:var(--esp-4)}
+/* `min-height:0` não é enfeite: item de flex não encolhe abaixo do próprio
+   conteúdo sem ele, então o corpo com dezoito campos empurrava o rodapé para
+   fora da caixa em vez de ganhar barra de rolagem. */
+.patientModalCorpo{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--esp-2) var(--esp-6) 0;display:flex;flex-direction:column;gap:var(--esp-4)}
 .patientModalHead h2{margin:0;font-size:19px}
 .patientModalHead p{margin:var(--esp-1) 0 0;font-size:13px;color:var(--cor-tinta-fraca)}
 .patientModalHead>button{width:34px;height:34px;flex:none;border-radius:var(--raio-1);border:1px solid var(--cor-borda);background:var(--cor-superficie);font-size:20px;line-height:1;color:var(--cor-tinta-fraca);cursor:pointer}
