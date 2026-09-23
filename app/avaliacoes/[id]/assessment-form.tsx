@@ -475,7 +475,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       <div id="etapa-4"><Medications draft={draft} set={set}/></div>
       <div id="etapa-5"><PhysicalExam draft={draft} set={set}/></div>
       <div id="etapa-6"><Airway draft={draft} set={set} rascunho={avaliacao.status!=="concluida"}/></div>
-      <div id="etapa-7"><ComplementaryExams draft={draft} set={set} avaliacao={avaliacao}/></div>
+      <div id="etapa-7"><ComplementaryExams draft={draft} set={set}/></div>
       <div id="etapa-8"><Scores draft={draft} set={set} age={age} sex={paciente.sexo} imc={imc}/></div>
       <div id="etapa-9"><Conclusion draft={draft} set={set} paciente={paciente} age={age} idadeMeses={idade.meses} conclude={conclude} retrySave={()=>void save()} saveState={saveState} saveError={saveError}/></div>
     </div>
@@ -1023,9 +1023,7 @@ function Airway({draft,set,rascunho}:{draft:Draft;set:(name:string,value:string|
   </section>;
 }
 
-function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,value:string|boolean)=>void;avaliacao:Assessment}) {
-  const [uploading,setUploading]=useState(false);
-  const [uploadError,setUploadError]=useState("");
+function ComplementaryExams({draft,set}:{draft:Draft;set:(name:string,value:string|boolean)=>void}) {
   const [lendo,setLendo]=useState(false);
   const [avisoLeitura,setAvisoLeitura]=useState("");
   const [erroLeitura,setErroLeitura]=useState("");
@@ -1041,7 +1039,24 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
    * SÓ PREENCHE CAMPO VAZIO. Quem digitou a creatinina digitou por algum
    * motivo, e uma foto anexada depois não desfaz isso pelas costas.
    */
-  async function lerDoAnexo(arquivo?:File) {
+  /**
+   * Lê o laudo e preenche os campos. O ARQUIVO NÃO FICA.
+   *
+   * Eram duas ações — uma guardava o documento na ficha, a outra lia os
+   * valores — e viraram uma, porque na tela eram duas caixas tracejadas
+   * idênticas, uma embaixo da outra, aceitando os mesmos formatos. Quem olha
+   * não vê "guardar" e "ler": vê dois anexares.
+   *
+   * Do que sobrou, ficou a LEITURA. O laudo é meio, e não fim: o que precisa
+   * estar na ficha é o valor do exame, que é o que se lê, o que se imprime e o
+   * que sustenta a conduta. Guardar uma cópia do arquivo era peso de
+   * armazenamento e mais um lugar com dado de paciente dentro, para devolver
+   * algo que o número já devolve.
+   *
+   * O arquivo é lido no próprio aparelho e descartado ao fim — nada de exame
+   * sai daqui para servidor nenhum.
+   */
+  async function lerLaudo(arquivo?:File) {
     if(!arquivo)return;
     setLendo(true); setErroLeitura(""); setAvisoLeitura("");
     try{
@@ -1058,10 +1073,13 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
         return;
       }
       for(const [campo,valor] of Object.entries(aPreencher))set(campo,valor);
-      const jaTinha=Object.keys(valores).length-quantos;
+      // Contra `comData`, e não contra `valores`: a data da coleta entra no
+      // primeiro e não existe no segundo, então a subtração dava NEGATIVO — a
+      // tela chegou a dizer "-1 já estava(m) preenchido(s)".
+      const jaTinha=Object.keys(comData).length-quantos;
       setAvisoLeitura([
         `${quantos} campo(s) preenchido(s).`,
-        jaTinha?`${jaTinha} já estava(m) preenchido(s) e não foram alterados.`:"",
+        jaTinha>0?`${jaTinha} já estava(m) preenchido(s) e não foram alterados.`:"",
         descartados.length?`Não usei o que li em: ${descartados.join(", ")} — valor fora do plausível.`:"",
         AVISO_LEITURA_DE_EXAMES,
       ].filter(Boolean).join(" "));
@@ -1071,30 +1089,19 @@ function ComplementaryExams({draft,set,avaliacao}:{draft:Draft;set:(name:string,
       setLendo(false);
     }
   }
-  const attachments=useMemo(()=>{try{const data=JSON.parse(String(draft.exames_anexos||"[]"));return Array.isArray(data)?data:[]}catch{return []}},[draft.exames_anexos]);
   const field=(name:string,label:string,type="text")=><label className="evalField"><span>{label}</span><input type={type} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>;
-  async function upload(file?:File) {
-    if(!file)return; setUploading(true); setUploadError("");
-    const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
-    const path=`${avaliacao.institution_id}/${avaliacao.id}/${crypto.randomUUID()}-${safe}`;
-    const client=createClient(); const {error}=await client.storage.from("anexos").upload(path,file,{contentType:file.type,upsert:false});
-    if(error){setUploadError(error.message)}else{set("exames_anexos",JSON.stringify([...attachments,{name:file.name,path,type:file.type,size:file.size,createdAt:new Date().toISOString()}]))}
-    setUploading(false);
-  }
   return <section className="evalSection"><h1>7 · Exames complementares <small className="optionalField">Opcional</small></h1><p className="evalHint">Preencha somente os exames indicados para este paciente. A ausência de exames — por exemplo, ecocardiograma sem indicação clínica — não impede a conclusão da avaliação.</p>
     <div className="examResultsGrid">{field("hemoglobina","Hemoglobina (g/dL)")}{field("hematocrito","Hematócrito (%)")}{field("plaquetas","Plaquetas")}{field("tap","TAP (s)")}{field("inr","INR")}{field("ttpa","TTPa (s)")}{field("creatinina","Creatinina (mg/dL)")}{field("ureia","Ureia (mg/dL)")}{field("sodio","Sódio (mEq/L)")}{field("potassio","Potássio (mEq/L)")}{field("glicemia","Glicemia (mg/dL)")}{field("hba1c","HbA1c (%)")}{field("data_exames","Data dos exames","date")}</div>
     <div className="examDetailGrid">{field("ecg","Eletrocardiograma")}{field("eco","Ecocardiograma")}{field("rx_torax","Radiografia de tórax")}{field("espirometria","Espirometria")}<label className="evalField span2"><span>Outros exames (imagem, gasometria...)</span><input value={String(draft.exames_obs??"")} onChange={e=>set("exames_obs",e.target.value)}/></label></div>
-    <div className="attachmentRow"><label className="attachmentButton">📎 {uploading?"Enviando...":"Anexar arquivo (PDF / imagem / câmera)"}<input type="file" accept=".pdf,image/jpeg,image/png" capture="environment" disabled={uploading} onChange={e=>upload(e.target.files?.[0])}/></label><span>Formatos aceitos: PDF, JPG e PNG.</span></div>
-    {/* A LEITURA É UM PEDIDO, e não um efeito de anexar. Anexar é guardar o
-        documento na ficha; ler é escrever valor em campo clínico. Disparar a
-        segunda coisa dentro da primeira preencheria a ficha sem ninguém ter
-        pedido — e num campo que decide conduta isso não pode ser surpresa. */}
-    <div className="attachmentRow"><label className="attachmentButton leitorDeExame">🔎 {lendo?"Lendo o laudo...":"Ler valores do laudo (PDF ou foto)"}<input type="file" accept=".pdf,image/jpeg,image/png" disabled={lendo} onChange={e=>{void lerDoAnexo(e.target.files?.[0]);e.target.value=""}}/></label><span>PDF ou foto. Preenche só os campos em branco, e o arquivo é lido neste aparelho — não é enviado a lugar nenhum.</span></div>
+
+    {/* `capture` saiu: no Android ele abre a câmera direto, e daria para
+        fotografar o laudo mas não para escolher o PDF que o paciente recebeu —
+        que é a fonte mais exata. O seletor do sistema continua oferecendo a
+        câmera para quem tem o papel na mão. */}
+    <div className="attachmentRow"><label className="attachmentButton leitorDeExame">🔎 {lendo?"Lendo o laudo...":"Preencher a partir do laudo (PDF ou foto)"}<input type="file" accept=".pdf,image/jpeg,image/png" disabled={lendo} onChange={e=>{void lerLaudo(e.target.files?.[0]);e.target.value=""}}/></label><span>PDF ou foto. O arquivo é lido <b>neste aparelho</b>, preenche só o que estiver em branco, e não fica guardado.</span></div>
     {avisoLeitura&&<p className="examLeituraAviso" role="status">{avisoLeitura}</p>}
     {erroLeitura&&<p className="clinicalError">{erroLeitura}</p>}
-    {uploadError&&<p className="clinicalError">Não foi possível anexar: {uploadError}</p>}
-    {attachments.length>0&&<div className="attachmentList">{attachments.map((item:{name:string;path:string})=><span key={item.path}>✓ {item.name}</span>)}</div>}
-    <label className="medicationConfirm"><input type="checkbox" checked={draft.exames_revisados===true} onChange={e=>set("exames_revisados",e.target.checked)}/><span>Exames e anexos revisados, quando aplicável.</span></label>
+    <label className="medicationConfirm"><input type="checkbox" checked={draft.exames_revisados===true} onChange={e=>set("exames_revisados",e.target.checked)}/><span>Exames revisados, quando aplicável.</span></label>
   </section>;
 }
 
