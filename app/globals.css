@@ -4790,3 +4790,39 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    de que aquilo ali precisa de conferência. */
 .examLeituraAviso{margin-top:10px;background:var(--cor-atencao-suave);
   color:#8a5a00;border-radius:10px;padding:12px 16px;font-size:14px;line-height:1.5}
+
+/* ---------------------------------------------------------------------------
+   A gaveta de excluir organização, no painel do super-admin
+
+   Mesmo gesto da escala — puxar a linha para a esquerda — para quem já apagou
+   um plantão arrastando não precisar aprender nada novo.
+
+   E TAMBÉM NO MOUSE. No computador não existe arrastar com o dedo, e é pelo
+   monitor que o dono do produto administra: se a gaveta fosse só de toque, a
+   função não existiria justamente para quem a pediu. Passar o mouse na linha
+   revela o botão.
+--------------------------------------------------------------------------- */
+.orgArrasta{position:relative;overflow:hidden}
+.orgArrastaCorpo{position:relative;z-index:1;background:var(--cor-superficie);
+  transition:transform .18s ease}
+.orgGaveta{position:absolute;top:0;right:0;bottom:0;width:132px;border:0;
+  background:var(--cor-perigo);color:#fff;font:inherit;font-weight:800;
+  cursor:pointer;letter-spacing:.02em}
+.orgGaveta:hover{filter:brightness(1.08)}
+/* No mouse a linha desliza sozinha ao passar por cima. No toque isso nunca
+   dispara — `hover` não existe lá —, então os dois gestos não brigam. */
+@media(hover:hover){
+  .orgArrasta:hover .orgArrastaCorpo,
+  .orgArrasta:focus-within .orgArrastaCorpo{transform:translateX(-132px)}
+}
+.orgGaveta:focus-visible{outline:2px solid var(--cor-tinta);outline-offset:-3px}
+/* Linha protegida não ganha gaveta, e o `title` conta o motivo ao parar em
+   cima: botão que existe para recusar ensina a tentar. */
+.orgSemGaveta{position:relative}
+
+.orgExcluirModal{width:min(520px,100%)}
+.orgExcluirNome{margin:0 0 var(--esp-4);padding:12px 16px;border-radius:var(--raio-1);
+  background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);font-weight:800}
+/* O botão que não tem volta não usa a cor de "seguir em frente". */
+.primaryClinical.perigo{background:var(--cor-perigo);border-color:var(--cor-perigo)}
+.primaryClinical.perigo:disabled{opacity:.5}

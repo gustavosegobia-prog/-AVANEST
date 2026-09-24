@@ -8,12 +8,18 @@ export default async function OrganizacoesPage() {
   if (!user) redirect("/login");
 
   const { data: perfil } = await supabase
-    .from("perfis").select("id, nome, super_admin, status").eq("id", user.id).maybeSingle();
+    .from("perfis").select("id, nome, super_admin, status, institution_id").eq("id", user.id).maybeSingle();
   // A função no banco também recusa quem não é super-admin; aqui é só para não
   // mostrar uma tela vazia a quem não deveria vê-la.
   if (!perfil || perfil.status !== "ativo" || perfil.super_admin !== true) redirect("/dashboard");
 
   const { data: organizacoes } = await supabase.rpc("listar_organizacoes");
 
-  return <OrganizacoesClient nome={perfil.nome} organizacoes={organizacoes ?? []} />;
+  // A própria organização vai junto para a tela não oferecer a gaveta nela: o
+  // banco também recusa, mas botão que existe só para dizer não ensina a tentar.
+  return <OrganizacoesClient
+    nome={perfil.nome}
+    organizacoes={organizacoes ?? []}
+    minhaOrganizacao={perfil.institution_id ?? null}
+  />;
 }
