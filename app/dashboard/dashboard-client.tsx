@@ -154,9 +154,23 @@ const EQUIPE_DE_APOIO = ["recepcao", "financeiro"];
 // residente em rodízio ou um colega que só faz avaliação passava por todas e
 // aparecia na fila de qualquer jeito. `?? true` mantém quem já estava lá
 // enquanto a coluna não existir no banco.
+/**
+ * Quem pode entrar na escala.
+ *
+ * O CRM SAIU DA EXIGÊNCIA, e a decisão é do dono do produto. A regra era
+ * "sem registro não escala", e a razão é boa: quem anestesia responde pelo ato
+ * com o registro dele, e a escala é o documento de quem responde.
+ *
+ * Só que ela travava o caso real de montar a escala do mês com a equipe que se
+ * conhece pelo nome e cujo número ninguém tem à mão naquela tarde. O efeito
+ * não era uma escala mais correta: era escala nenhuma no sistema, feita no
+ * papel ao lado.
+ *
+ * O CRM continua sendo cobrado — mas como PENDÊNCIA VISÍVEL, em cada tela onde
+ * a pessoa aparece, e não como porta fechada. Ver `semCRM` logo abaixo.
+ */
 const ehEscalavel = (p: { status: string; role: string; crm: string | null; na_escala?: boolean }) =>
-  p.status === "ativo" && !EQUIPE_DE_APOIO.includes(p.role)
-  && Boolean((p.crm ?? "").trim()) && (p.na_escala ?? true);
+  p.status === "ativo" && !EQUIPE_DE_APOIO.includes(p.role) && (p.na_escala ?? true);
 
 type Perfil = { id: string; institution_id: string; nome: string; role: string; permissoes?: string[] | null; status?: string; must_reset: boolean; super_admin?: boolean;
   /** O que esta pessoa escolheu receber no telefone. Nulo = tudo; ver lib/preferencias-de-aviso. */
@@ -2410,7 +2424,6 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
       const nome=String(form.get("nome")??"").trim();
       const crm=String(form.get("crm")??"").trim();
       if(!nome){setAviso("Informe o nome do profissional.");setBusy("");return}
-      if(!crm){setAviso("Informe o CRM — sem ele o profissional não entra na escala.");setBusy("");return}
       const resposta=await fetch("/api/admin/users",{
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({nome,role:"medico",sem_acesso:true,crm,
@@ -2420,7 +2433,9 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
       setBusy("");
       if(!resposta.ok){setAviso(resultado.error??"Não foi possível cadastrar.");return}
       formulario.reset();
-      setAviso(`${nome} cadastrado. Já pode ser escalado — e não recebe acesso ao sistema.`);
+      setAviso(crm
+        ? `${nome} cadastrado. Já pode ser escalado — e não recebe acesso ao sistema.`
+        : `${nome} cadastrado e já pode ser escalado. Falta o CRM: preencha quando tiver, no cadastro dele.`);
       onRefresh();
       return;
     }
@@ -2581,8 +2596,8 @@ function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:O
           campo que o sistema aceita e depois joga fora. */}
       {(meio==="sem-acesso"||(meio==="email"&&(papel==="medico"||papel==="admin")))&&<>
         <label className="clinicalField">
-          <span>CRM {meio==="sem-acesso"?"*":"(opcional)"}</span>
-          <input name="crm" required={meio==="sem-acesso"} autoComplete="off"
+          <span>CRM (opcional)</span>
+          <input name="crm" autoComplete="off"
             placeholder="Ex.: 60593/PR"/></label>
         <label className="clinicalField"><span>RQE (opcional)</span>
           <input name="rqe" autoComplete="off" placeholder="Registro da especialidade"/></label>
@@ -2813,6 +2828,11 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
                     "nunca fez login" e tenta reenviar convite para um e-mail
                     que não existe. */}
                 {source.sem_acesso&&<span className="statusChip paused" title="Entra na escala e no faturamento. Não tem login: não há e-mail, senha nem convite.">Sem acesso</span>}
+                {/* A pendência aparece onde a pessoa aparece. Sem isto, o CRM
+                    que deixou de ser obrigatório viraria CRM que nunca é
+                    preenchido — e a escala é documento de quem responde. */}
+                {!(source.crm??"").trim()&&!EQUIPE_DE_APOIO.includes(source.role)&&source.status==="ativo"&&
+                  <span className="statusChip atencao" title="Entra na escala normalmente. O registro é de quem responde pelo ato — preencha quando tiver.">CRM pendente</span>}
               </span>
               <span className={`statusChip ${source.status==="ativo"?"present":"waiting"}`}>{source.status==="ativo"?"Ativo":"Inativo"}</span>
               <button

@@ -2365,8 +2365,10 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
               monta a escala: é ele quem tem onde consertar. */}
           {ehAdmin && escopo === "grupo" && semCRM.length > 0 && (
             <p className="plantaoNota">
-              {plural(semCRM.length, "profissional está", "profissionais estão")} fora
-              da escala por falta de CRM: <strong>{semCRM.join(", ")}</strong>.
+              {plural(semCRM.length, "profissional está", "profissionais estão")} na
+              escala <strong>sem CRM registrado</strong>: <strong>{semCRM.join(", ")}</strong>.
+              A escala funciona assim, mas o registro é de quem responde pelo ato —
+              preencha em Admin → Equipe quando tiver.
               Preencha em <strong>Admin → Equipe</strong>.
             </p>
           )}
@@ -3952,12 +3954,16 @@ function QuemEntraNaEscala({
               const semCRM = !temCRM(p);
               const marcado = Boolean(estado[p.id]);
               return (
-                <li key={p.id} className={`${semCRM ? "semCRM" : ""}${marcado && !semCRM ? " dentro" : ""}`}>
+                <li key={p.id} className={`${semCRM ? "semCRM" : ""}${marcado ? " dentro" : ""}`}>
                   <label>
                     <input
                       type="checkbox"
                       checked={marcado}
-                      disabled={semCRM || salvando === p.id}
+                      // Sem CRM já NÃO trava: a pessoa entra na escala e o
+                      // registro vira pendência visível, na linha dela e no
+                      // aviso do topo. Travar aqui era o que empurrava a
+                      // escala do mês de volta para o papel.
+                      disabled={salvando === p.id}
                       onChange={(e) => void alternar(p.id, e.target.checked)}
                     />
                     {/* As iniciais dão à linha um ponto de apoio à esquerda.
@@ -3968,7 +3974,7 @@ function QuemEntraNaEscala({
                       <strong>{p.nome}</strong>
                       <small>
                         {semCRM
-                          ? "sem CRM no cadastro — preencha em Admin → Equipe"
+                          ? "CRM pendente — preencha em Admin → Equipe"
                           : `CRM ${p.crm}`}
                       </small>
                     </span>
@@ -3978,8 +3984,8 @@ function QuemEntraNaEscala({
                         virava caça ao detalhe. A palavra responde de longe. */}
                     <span className="escalaEstado">
                       {salvando === p.id ? "Salvando…"
-                        : semCRM ? "Falta CRM"
-                          : marcado ? "Na escala" : "Fora"}
+                        : marcado ? (semCRM ? "Na escala · falta CRM" : "Na escala")
+                          : "Fora"}
                     </span>
                   </label>
 

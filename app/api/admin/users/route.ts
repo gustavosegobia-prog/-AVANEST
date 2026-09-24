@@ -127,11 +127,6 @@ export async function POST(request: NextRequest) {
         error: "Cadastro sem acesso é para anestesiologista. Recepção e financeiro precisam entrar no sistema para trabalhar.",
       }, { status: 400 });
     }
-    if (!crm) {
-      return NextResponse.json({
-        error: "Informe o CRM. Sem ele o profissional não entra na escala, e é para isso que este cadastro existe.",
-      }, { status: 400 });
-    }
   } else if (!email.includes("@")) {
     return NextResponse.json({ error: "Confira o e-mail." }, { status: 400 });
   }

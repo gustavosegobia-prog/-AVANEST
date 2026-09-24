@@ -4828,3 +4828,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* O botão que não tem volta não usa a cor de "seguir em frente". */
 .primaryClinical.perigo{background:var(--cor-perigo);border-color:var(--cor-perigo)}
 .primaryClinical.perigo:disabled{opacity:.5}
+
+/* "CRM pendente" na lista de equipe. É PENDÊNCIA, e não erro: a pessoa está na
+   escala e tudo funciona — falta só o registro. Tom de atenção, nunca de
+   perigo, senão a lista inteira parece quebrada enquanto o número não chega. */
+.statusChip.atencao{background:var(--cor-atencao-suave);color:#8a5a00}
