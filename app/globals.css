@@ -4809,12 +4809,14 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   background:var(--cor-perigo);color:#fff;font:inherit;font-weight:800;
   cursor:pointer;letter-spacing:.02em}
 .orgGaveta:hover{filter:brightness(1.08)}
-/* No mouse a linha desliza sozinha ao passar por cima. No toque isso nunca
-   dispara — `hover` não existe lá —, então os dois gestos não brigam. */
-@media(hover:hover){
-  .orgArrasta:hover .orgArrastaCorpo,
-  .orgArrasta:focus-within .orgArrastaCorpo{transform:translateX(-132px)}
-}
+/* NÃO EXISTE DESLIZAR NO MOUSE, e a primeira versão tinha. Passar o mouse
+   empurrava a linha 132px para a esquerda, e o `overflow:hidden` comia o
+   começo do nome — "AMPEX ANESTESIA" virava "STESIA", justamente o que se
+   precisa ler antes de apagar. Fora que a lista inteira pulava conforme o
+   mouse atravessava as linhas que podem ser excluídas.
+   No computador a ação mora no seletor da própria linha, junto de Ativar,
+   Suspender e Cancelar. A gaveta continua para o toque, onde o gesto de
+   arrastar é natural e o dedo controla o quanto a linha anda. */
 .orgGaveta:focus-visible{outline:2px solid var(--cor-tinta);outline-offset:-3px}
 /* Linha protegida não ganha gaveta, e o `title` conta o motivo ao parar em
    cima: botão que existe para recusar ensina a tentar. */

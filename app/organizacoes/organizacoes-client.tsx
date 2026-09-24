@@ -146,9 +146,11 @@ export function OrganizacoesClient({ nome, organizacoes, minhaOrganizacao }: {
                 value=""
                 disabled={busy === org.id}
                 onChange={(event) => {
-                  const [plano, meses] = event.target.value.split(":");
-                  if (plano) void alterar(org, plano, meses === "null" ? null : Number(meses));
+                  const escolha = event.target.value;
                   event.target.value = "";
+                  if (escolha === "excluir") { setExcluindo(org); setDigitado(""); setAviso(""); return; }
+                  const [plano, meses] = escolha.split(":");
+                  if (plano) void alterar(org, plano, meses === "null" ? null : Number(meses));
                 }}
               >
                 <option value="">{busy === org.id ? "Salvando..." : "Alterar..."}</option>
@@ -159,6 +161,14 @@ export function OrganizacoesClient({ nome, organizacoes, minhaOrganizacao }: {
                 <option value="cortesia:null">Cortesia sem prazo</option>
                 <option value="suspenso:null">Suspender</option>
                 <option value="cancelado:null">Cancelar</option>
+                {/* Só aparece onde a exclusão é possível. A gaveta de arrastar
+                    resolve o toque; no computador não existe arrastar com o
+                    dedo, e o lugar honesto da ação é aqui, junto das outras
+                    desta linha. */}
+                {!bloqueioParaExcluir({
+                  nome: org.nome, pacientes: org.pacientes, avaliacoes: org.avaliacoes,
+                  usuarios: org.usuarios, minha: org.id === minhaOrganizacao,
+                }) && <option value="excluir">Excluir definitivamente…</option>}
               </select>
             </div>
             </OrgComGaveta>
@@ -231,7 +241,11 @@ function OrgComGaveta({ bloqueio, nome, onPedirExclusao, children }: {
     <div className="orgArrasta">
       <div
         className="orgArrastaCorpo"
-        style={{ transform: `translateX(${dx}px)`, transition: arrastando ? "none" : undefined }}
+        // O ESTILO SÓ EXISTE ENQUANTO A LINHA ESTÁ DESLOCADA, e isso não é
+        // economia: estilo embutido vence folha de estilo, então um
+        // `translateX(0px)` fixo aqui anulava a regra de `:hover` que revela a
+        // gaveta no computador — o botão existia, e não aparecia nunca.
+        style={dx ? { transform: `translateX(${dx}px)`, transition: arrastando ? "none" : undefined } : undefined}
         onTouchStart={(e) => {
           const t = e.touches[0];
           inicio.current = { x: t.clientX, y: t.clientY };
