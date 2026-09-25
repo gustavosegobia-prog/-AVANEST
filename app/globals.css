@@ -3411,10 +3411,21 @@ button:disabled{cursor:not-allowed}
    é a da sua opção mais longa: sem isso, "FUNDAÇÃO HOSPITALAR DE SAÚDE DO
    PARANÁ" estoura a grade e devolve o valor para baixo. */
 .producaoNotaLinha{display:grid;align-items:center;gap:10px;
-  grid-template-columns:52px minmax(130px,1.3fr) minmax(0,1fr) minmax(0,.75fr) 116px 100px;
+  grid-template-columns:92px minmax(130px,1.3fr) minmax(0,1fr) minmax(0,.75fr) 116px 100px;
   padding:11px 25px;border-bottom:1px solid var(--cor-borda)}
 .producaoNotaLinha:last-child{border-bottom:0}
-.producaoNotaDia{color:var(--cor-tinta-fraca);font-size:13px;font-weight:700}
+/* A linha marcada se destaca INTEIRA, e não só pela caixinha: o que entra na
+   nota tem de ser conferível de relance, e um tique de 16px no canto esquerdo
+   de uma lista de quarenta linhas não é. */
+.producaoNotaLinha.marcada{background:var(--cor-marca-suave,#eef4ff)}
+/* Dia e caixinha no mesmo rótulo: clicar no "24/09" marca o paciente. */
+.producaoNotaDia{color:var(--cor-tinta-fraca);font-size:13px;font-weight:700;
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;cursor:pointer}
+.producaoNotaDia input{width:17px;height:17px;flex:none;accent-color:var(--cor-marca);cursor:pointer}
+/* A idade da nota, embaixo do dia. Em itálico e fraca porque é uma nota de
+   rodapé da linha — o que se lê primeiro continua sendo o paciente. */
+.producaoNotaDe{flex:1 0 100%;font-size:11px;font-style:normal;white-space:nowrap;
+  color:var(--cor-marca);font-weight:600}
 .producaoNotaQuem strong{display:block}
 .producaoNotaQuem small{display:block;color:var(--cor-tinta-fraca);margin-top:3px;font-size:12.5px}
 .producaoNotaLinha>b{text-align:right}
@@ -3438,7 +3449,14 @@ button:disabled{cursor:not-allowed}
   .producaoNotaLinha select:nth-of-type(1){grid-column:1/-1}
   .producaoNotaExplica{padding-inline:16px}
   .producaoPendencia{margin-inline:16px}
+  .producaoBaixa{margin-inline:16px}
 }
+
+/* O painel da nota da produção, com a mesma cara do da escala (.mfBaixa): é a
+   mesma tarefa — marcar o que entra, dizer a data, carimbar —, e duas caras
+   diferentes para a mesma tarefa fazem a pessoa reaprender a segunda. */
+.producaoBaixa{margin:0 25px 4px;padding:13px 15px;border-radius:12px;
+  background:var(--cor-superficie-suave);border:1px solid var(--cor-borda)}
 
 /* --- Escopo da escala e troca dirigida ---------------------------------
    As pílulas de escopo viraram itens da coluna à esquerda. O que sobrou é a

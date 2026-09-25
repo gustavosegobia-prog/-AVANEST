@@ -7,6 +7,7 @@ import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-internacao";
 import { hoje as hojeLocal, ultimoDiaDoMes } from "@/lib/data-local";
 import { lerDinheiro } from "@/lib/dinheiro";
+import { camposDaBaixa, type SituacaoDaProducao } from "@/lib/baixa-da-producao";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -31,6 +32,8 @@ export type Producao = {
   pagador?: string | null;
   /** O dia em que o dinheiro caiu. Nulo enquanto não foi recebido. */
   recebido_em?: string | null;
+  /** O dia em que a nota saiu. Nulo enquanto a nota não foi emitida. */
+  faturado_em?: string | null;
 };
 
 const SITUACOES: Array<[string, string]> = [
@@ -609,6 +612,19 @@ export function ProducaoDoMes({
   const [recado, setRecado] = useState("");
   const [recarregar, setRecarregar] = useState(0);
   const { oculto, alternar, mascara } = useValoresOcultos();
+  /**
+   * Quais atos entram na nota deste momento.
+   *
+   * A escala já tinha isto: marca-se o que entra, diz-se a data, e sai um
+   * carimbo só para todos. A produção só tinha o seletor de cada linha, e
+   * emitir a nota de doze pacientes do mesmo hospital era doze aberturas de
+   * um seletor — trabalho suficiente para a pessoa simplesmente não marcar, e
+   * aí a coluna "faturado" nunca dizia a verdade.
+   */
+  const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  /** O dia do carimbo. Vale para todos os marcados — por isso fica acima deles. */
+  const [dataDaBaixa, setDataDaBaixa] = useState(hojeLocal());
+  const [salvandoBaixa, setSalvandoBaixa] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -719,7 +735,57 @@ export function ProducaoDoMes({
     if (error) { setErro(erroDeColuna(error)); setRecarregar((x) => x + 1); }
   }
 
+  const alternarMarcado = (id: string) => setMarcados((antes) => {
+    const agora = new Set(antes);
+    if (agora.has(id)) agora.delete(id); else agora.add(id);
+    return agora;
+  });
+
+  // A MARCAÇÃO É FILTRADA PELA LISTA, e não limpa ao trocar de mês. Trocar de
+  // mês troca a lista inteira, e um id marcado que não está mais na tela não
+  // pode contar para nada — nem para o total, nem para a nota, nem para o
+  // "Marcar todos". Filtrar resolve os três de uma vez, e sem o efeito que
+  // apagava a marcação a cada render do mês.
+  const selecionados = itens.filter((i) => marcados.has(i.id));
+  const quantosMarcados = selecionados.length;
+  const valorMarcado = selecionados.reduce((s, i) => s + Number(i.valor), 0);
+
+  /**
+   * Carimbar de uma vez o que está marcado.
+   *
+   * SÓ MEXE NO QUE AINDA NÃO ESTÁ NESSE PASSO. Marcar doze pacientes e apertar
+   * "Emiti a nota" quando cinco já tinham nota de julho não pode redatar os
+   * cinco: a data da nota é o que diz se a cobrança está atrasada, e reescrevê-la
+   * rejuvenesce uma dívida velha justamente na tela que existe para mostrá-la.
+   *
+   * A lista muda na tela antes do banco responder, como no resto deste painel.
+   * Se o banco recusar, o mês é recarregado: esta tela não pode ficar mostrando
+   * uma nota que não foi gravada, porque é dela que sai a cobrança.
+   */
+  async function marcarEmLote(passo: SituacaoDaProducao) {
+    const alvos = selecionados.filter((i) => i.situacao !== passo);
+    if (!alvos.length) return;
+    setSalvandoBaixa(true); setErro("");
+    const cliente = createClient();
+    const falhas = await Promise.all(alvos.map(async (i) => {
+      const campos = camposDaBaixa(passo, i, dataDaBaixa);
+      const { error } = await cliente.from("producao_do_dia").update(campos).eq("id", i.id);
+      return error;
+    }));
+    setSalvandoBaixa(false);
+    const ruim = falhas.find(Boolean);
+    if (ruim) { setErro(erroDeColuna(ruim)); setRecarregar((x) => x + 1); return; }
+    const ids = new Set(alvos.map((i) => i.id));
+    setItens((antes) => antes.map((i) =>
+      ids.has(i.id) ? { ...i, ...camposDaBaixa(passo, i, dataDaBaixa) } : i));
+    setMarcados(new Set());
+  }
+
   const total = itens.reduce((s, i) => s + Number(i.valor), 0);
+  // O escopo da nota: o que está marcado, ou o mês inteiro quando não há
+  // marcação. Mesma regra da folha do contador na escala — sem nada marcado o
+  // botão não pode virar um clique sem efeito.
+  const paraNota = selecionados.length ? selecionados : itens;
   const recebido = itens.filter((i) => i.situacao === "recebido")
     .reduce((s, i) => s + Number(i.valor), 0);
 
@@ -850,15 +916,24 @@ export function ProducaoDoMes({
           <button className="outlineClinical" onClick={onImprimirPlantoes}>Imprimir</button>
         </div>
 
+        {/* A ÚNICA FOLHA QUE OBEDECE À MARCAÇÃO, e é de propósito: ela é a
+            nota. Quando há pacientes marcados lá embaixo, é deles que a nota
+            sai — emitir contra um hospital não é emitir o mês inteiro. As
+            outras duas folhas são conferência do mês e continuam trazendo
+            tudo. */}
         <div className="producaoFolha">
           <span>
             <strong>Nota de faturamento</strong>
-            <small>Por hospital e por quem paga</small>
+            <small>
+              {quantosMarcados > 0
+                ? `Só ${plural(quantosMarcados, "o marcado", "os marcados")} abaixo · ${money(valorMarcado)}`
+                : "Por hospital e por quem paga"}
+            </small>
           </span>
-          <button className="outlineClinical" disabled={itens.length === 0}
-            onClick={() => onPlanilhaFaturamento(itens)}>Planilha</button>
+          <button className="outlineClinical" disabled={paraNota.length === 0}
+            onClick={() => onPlanilhaFaturamento(paraNota)}>Planilha</button>
           <button className="outlineClinical"
-            disabled={itens.length === 0} onClick={() => onImprimirFaturamento(itens)}>
+            disabled={paraNota.length === 0} onClick={() => onImprimirFaturamento(paraNota)}>
             Imprimir
           </button>
         </div>
@@ -914,7 +989,61 @@ export function ProducaoDoMes({
                 que trazem escrito, e a frase repetia em palavras o que a
                 própria tabela mostra logo abaixo. */}
             <strong>Produção do mês</strong>
+            <div className="producaoAcoesMes">
+              <button type="button" className="outlineClinical compact"
+                onClick={() => setMarcados(quantosMarcados === itens.length
+                  ? new Set()
+                  : new Set(itens.map((i) => i.id)))}>
+                {quantosMarcados === itens.length ? "Desmarcar todos" : "Marcar todos"}
+              </button>
+            </div>
           </div>
+
+          {/* O PAINEL DA NOTA, igual ao da escala.
+              Aparece ao marcar o primeiro paciente: uma barra de data e dois
+              botões fixos no alto de uma lista em que ninguém marcou nada é
+              um controle pedindo para ser preenchido sem ter o que fazer. */}
+          {quantosMarcados > 0 && (
+            <div className="producaoBaixa">
+              <p className="mfBaixaComo">
+                <b>{plural(quantosMarcados, "paciente marcado", "pacientes marcados")}</b>
+                {" · "}{money(valorMarcado)} — diga o que aconteceu com
+                {quantosMarcados === 1 ? " ele" : " eles"}:
+                <b> a nota saiu</b>, ou <b>o dinheiro caiu</b>.
+              </p>
+              {/* A data primeiro: ela vale para todos os marcados, e descobrir
+                  isso depois de escolher os pacientes faria voltar. O rótulo é
+                  neutro porque serve aos dois botões. */}
+              <label className="mfBaixaData">
+                <span>Data</span>
+                <input type="date" value={dataDaBaixa}
+                  onChange={(e) => setDataDaBaixa(e.target.value)} />
+                <small>o dia da nota, ou o dia em que o dinheiro caiu</small>
+              </label>
+              <div className="mfBaixaAcoes">
+                {/* A ordem é a da vida: primeiro sai a nota, depois cai o
+                    dinheiro. "Emiti a nota" fica em segundo plano porque é o
+                    passo do meio — o botão cheio pertence ao que fecha a
+                    conta. */}
+                <button type="button" className="outlineClinical"
+                  disabled={salvandoBaixa}
+                  onClick={() => void marcarEmLote("faturado")}>
+                  {salvandoBaixa ? "Salvando…" : "Emiti a nota"}
+                </button>
+                {/* A folha da nota fica junto do botão que marca a nota, e não
+                    só lá em cima: é o mesmo gesto, no mesmo minuto — marcou,
+                    emitiu, imprime. */}
+                <button type="button" className="outlineClinical" disabled={salvandoBaixa}
+                  onClick={() => onImprimirFaturamento(selecionados)}>
+                  Imprimir nota
+                </button>
+                <button type="button" className="primaryClinical" disabled={salvandoBaixa}
+                  onClick={() => void marcarEmLote("recebido")}>
+                  {salvandoBaixa ? "Salvando…" : `Recebi ${money(valorMarcado)}`}
+                </button>
+              </div>
+            </div>
+          )}
           {itens.map((i) => {
             // O lugar que o plantão já sabe, para quem veio de plantão de
             // fora. Ele preenche a opção vazia em vez de "Sem hospital": o
@@ -922,10 +1051,25 @@ export function ProducaoDoMes({
             // dele só não é hospital cadastrado, e vai para a folha assim.
             const doPlantao = i.local_id ? "" : lugarPeloPlantao(i.plantao_id);
             return (
-            <div className="producaoNotaLinha" key={i.id}>
-              <span className="producaoNotaDia">
-                {Number(i.data.slice(8, 10))}/{i.data.slice(5, 7)}
-              </span>
+            <div className={`producaoNotaLinha${marcados.has(i.id) ? " marcada" : ""}`} key={i.id}>
+              {/* A CAIXINHA MORA NO DIA, e não numa coluna só dela. A linha já
+                  tem seis colunas e no celular vira três faixas; uma sétima
+                  espremeria o nome do paciente. E o dia é o rótulo natural da
+                  marcação — é por ele que se procura o paciente na lista. */}
+              <label className="producaoNotaDia">
+                <input type="checkbox" checked={marcados.has(i.id)}
+                  aria-label={`Marcar ${i.paciente}`}
+                  onChange={() => alternarMarcado(i.id)} />
+                <span>{Number(i.data.slice(8, 10))}/{i.data.slice(5, 7)}</span>
+                {/* Desde quando a nota está de pé. Sem a data, "faturado" só
+                    responde "já emiti"; com ela responde "emiti e faz dois
+                    meses", que é a pergunta cuja resposta gera o telefonema. */}
+                {i.faturado_em && i.situacao === "faturado" && (
+                  <i className="producaoNotaDe">
+                    nota de {i.faturado_em.slice(8, 10)}/{i.faturado_em.slice(5, 7)}
+                  </i>
+                )}
+              </label>
               <span className="producaoNotaQuem">
                 <strong>{i.paciente}</strong>
                 <small>
@@ -954,15 +1098,14 @@ export function ProducaoDoMes({
                   olhando quando confere o extrato contra a lista. */}
               <select value={i.situacao} aria-label={`Situação de ${i.paciente}`}
                 className={`producaoSituacao s-${i.situacao}`}
-                onChange={(e) => void definir(i.id, {
-                  situacao: e.target.value,
-                  // A data do recebimento entra AQUI, que é onde ela existe: o
-                  // dia em que se apertou o botão é o dia em que o dinheiro
-                  // caiu. Sem ela o fechamento não sabe em que mês somar — o
-                  // mesmo defeito que a Escala já teve com o `pago_em`.
-                  recebido_em: e.target.value === "recebido"
-                    ? (i.recebido_em ?? hojeLocal()) : null,
-                })}>
+                // As datas entram AQUI, que é onde elas existem: o dia em que
+                // se apertou o botão é o dia em que a nota saiu, ou em que o
+                // dinheiro caiu. Sem elas o fechamento não sabe em que mês
+                // somar — o mesmo defeito que a Escala já teve com o `pago_em`.
+                // A regra é a mesma do botão que marca vários, e mora fora
+                // desta tela para que os dois caminhos não divirjam.
+                onChange={(e) => void definir(i.id,
+                  camposDaBaixa(e.target.value as SituacaoDaProducao, i, hojeLocal()))}>
                 {SITUACOES.map(([id, rotulo]) => (
                   <option key={id} value={id}>{rotulo}</option>
                 ))}
