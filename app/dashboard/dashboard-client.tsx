@@ -396,10 +396,14 @@ export function DashboardClient({
   const [aberturaDaEscala, setAberturaDaEscala] = useState<
     { aba: "escala" | "producao" | "trocas"; token: number } | null
   >(abaDaEscala ? { aba: abaDaEscala, token: 0 } : null);
+  // Estável de propósito: ela entra nas dependências do efeito lá na Escala,
+  // e uma função recriada a cada render faria o efeito rodar sem parar.
+  const esquecerAberturaDaEscala = useCallback(() => setAberturaDaEscala(null), []);
   /** Em que seção do Admin abrir, quando o pedido vem de outra área. */
   const [aberturaDoAdmin, setAberturaDoAdmin] = useState<
     { aba: string; token: number } | null
   >(null);
+  const esquecerAberturaDoAdmin = useCallback(() => setAberturaDoAdmin(null), []);
   const [contaAberta, setContaAberta] = useState(false);
   const [senha, setSenha] = useState({atual:"",nova:"",confirma:""});
   const [senhaMsg, setSenhaMsg] = useState("");
@@ -1217,6 +1221,12 @@ export function DashboardClient({
           // respondeu isso ao entrar, e perguntar de novo é perguntar duas vezes.
           localAtivoId={localAtivo?.id ?? null}
           abrirEm={aberturaDaEscala}
+          // O PEDIDO SE GASTA. Sem isto ele fica colado na tela: quem uma vez
+          // clicou no aviso "9 plantões sem receber" passava a cair em
+          // Produção toda vez que abrisse a Escala, para sempre — bastava
+          // sair para o Médico e voltar, porque a tela remonta e o efeito
+          // roda de novo com o pedido de semanas atrás.
+          onAberturaAtendida={esquecerAberturaDaEscala}
           plantaoEmFoco={plantaoEmFoco}
           // "+ Nova escala", no fim da lista de hospitais da Escala. Quem
           // descobre que falta um hospital descobre olhando aquela lista; o
@@ -1303,7 +1313,7 @@ export function DashboardClient({
           </div>
         </div>
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()}/>
-      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin}/>}
+      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin}/>}
 
       {contaAberta&&<div className="patientModalBackdrop" role="presentation">
         <section className="contaModal" role="dialog" aria-modal="true" aria-labelledby="conta-titulo">
@@ -2647,7 +2657,7 @@ const ACAO_LABELS:Record<string,string>={
   presenca_confirmada:"Presença confirmada",
 };
 
-function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void;
+function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm,onAberturaAtendida}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void;
   /**
    * Em que seção abrir, quando quem manda abrir é de fora — hoje, o
    * "+ Nova escala" da coluna da Escala.
@@ -2656,14 +2666,20 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm}:{perf
    * tela e a pessoa pode sair dela. Sem o token, um segundo clique no mesmo
    * atalho não mudaria a propriedade e o botão pareceria quebrado.
    */
-  abrirEm?:{aba:string;token:number}|null}) {
+  abrirEm?:{aba:string;token:number}|null;
+  /** "Já abri onde você pediu" — o mesmo gasto do pedido que a Escala faz. */
+  onAberturaAtendida?:()=>void}) {
   const [message,setMessage]=useState("");
   // Qual seção da Administração está aberta, igual ao Financeiro.
   const [aba,setAba]=useState("usuarios");
   useEffect(()=>{
+    if(!abrirEm) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- pedido vindo de outra área
-    if(abrirEm) setAba(abrirEm.aba);
-  },[abrirEm]);
+    setAba(abrirEm.aba);
+    // E o pedido se gasta: quem uma vez clicou em "+ Nova escala" não pode
+    // passar a abrir o Admin em Locais pelo resto da sessão.
+    onAberturaAtendida?.();
+  },[abrirEm,onAberturaAtendida]);
   const [busy,setBusy]=useState("");
   const [org,setOrg]=useState({nome:organizacao?.nome??"",telefone:organizacao?.telefone??"",email:organizacao?.email??""});
   const orgAlterada=org.nome!==(organizacao?.nome??"")||org.telefone!==(organizacao?.telefone??"")||org.email!==(organizacao?.email??"");

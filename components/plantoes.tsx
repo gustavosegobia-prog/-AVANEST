@@ -911,7 +911,7 @@ function LinhaComGaveta({
 export function Plantoes({
   perfilId, institutionId, locais, ehAdmin, colegas, escalaveis, semCRM = [],
   localAtivoId = null, abrirEm = null, plantaoEmFoco = null,
-  onAvisosMudaram, onEquipeMudou, onNovoLocal,
+  onAvisosMudaram, onEquipeMudou, onNovoLocal, onAberturaAtendida,
   equipe = [],
 }: {
   perfilId: string;
@@ -952,6 +952,20 @@ export function Plantoes({
    * quebrado. Com ele, cada clique é um pedido novo.
    */
   abrirEm?: { aba: "escala" | "producao" | "trocas"; token: number } | null;
+  /**
+   * "Já abri onde você pediu — pode esquecer o pedido."
+   *
+   * SEM ISTO, O PEDIDO FICA COLADO NA TELA. Ele é uma propriedade, e
+   * propriedade não se gasta: quem uma vez clicou no aviso "9 plantões sem
+   * receber" passava a cair em Produção TODA vez que abrisse a Escala, para
+   * sempre. Bastava sair para o Médico e voltar — a tela remonta, o efeito
+   * roda de novo com o mesmo pedido de semanas atrás, e o calendário some.
+   *
+   * O token não resolve isso: ele distingue um clique do seguinte, e numa
+   * remontagem não há clique nenhum para distinguir. Quem tem de apagar o
+   * pedido é quem o guardou.
+   */
+  onAberturaAtendida?: () => void;
   /**
    * O plantão que a notificação tocada pediu para abrir.
    *
@@ -1735,7 +1749,11 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     // o calendário continuar mostrando o nome do colega, e conclui que não
     // pegou.
     void carregar();
-  }, [abrirEm, carregar]);
+    // O PEDIDO SE GASTA AO SER ATENDIDO. Ver `onAberturaAtendida` lá em cima:
+    // sem esta linha, a Escala abria para sempre na aba do último aviso que
+    // alguém clicou.
+    onAberturaAtendida?.();
+  }, [abrirEm, carregar, onAberturaAtendida]);
 
   /**
    * A notificação tocada abre O PLANTÃO, e não o calendário do mês.
