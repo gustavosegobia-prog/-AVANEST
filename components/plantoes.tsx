@@ -1585,33 +1585,15 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
    * resultado correto é vermelho que se aprende a ignorar.
    */
   const [recado, setRecado] = useState("");
-  /**
-   * `true` no ensaio: a mesma mensagem, só para quem apertou.
-   *
-   * Avisar a equipe manda e-mail de verdade para dez colegas, na hora, e não
-   * tem como desfazer. Quem nunca viu a mensagem hesita antes de apertar — e
-   * hesitar aqui significa a escala sair sem ninguém ficar sabendo, que é o
-   * problema que o botão existe para resolver.
-   */
-  async function avisarEquipe(soParaMim = false) {
+  async function avisarEquipe() {
     setErro(""); setAviso(""); setRecado(""); setAvisando(true);
     try {
       const resposta = await fetch("/api/push/avisar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: "escala", mes, soParaMim }),
+        body: JSON.stringify({ tipo: "escala", mes }),
       });
       const dados = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) {
-        // A dica vem junto do motivo: um diz o que houve, o outro o que fazer.
-        setErro([dados.error, dados.dica].filter(Boolean).join(" ")
-          || "Não foi possível avisar agora.");
-        return;
-      }
-      if (dados.ensaio) {
-        setAviso(`Ensaio enviado para ${dados.para}. É exatamente a mensagem que a equipe `
-          + "recebe. Se não chegar em alguns minutos, veja também o spam.");
-        return;
-      }
+      if (!resposta.ok) { setErro(dados.error ?? "Não foi possível avisar agora."); return; }
       // DOIS CANAIS, DOIS NÚMEROS. O push toca o telefone de quem instalou o
       // AVANEST; o e-mail chega a todo mundo que tem endereço. Somar os dois
       // num número só esconderia justamente o que quem publicou a escala
@@ -2475,23 +2457,10 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     vezes, e a equipe desligaria a notificação na mesma tarde.
                     Quem monta decide quando a escala está pronta. */}
                 {ehAdmin && escopo !== "minha" && (
-                  <>
-                    {/* O ENSAIO VEM ANTES, e é de propósito: lê-se da esquerda
-                        para a direita, e quem chega aqui pela primeira vez
-                        encontra primeiro o botão que não tem consequência.
-                        Depois de ver a mensagem uma vez, ninguém mais precisa
-                        dele — e aí o olho já vai direto ao de baixo. */}
-                    <button className="outlineClinical" disabled={avisando}
-                      onClick={() => void avisarEquipe(true)}
-                      title="Manda a mesma mensagem só para o seu e-mail, para você conferir antes">
-                      {avisando ? "Enviando..." : "Mandar só para mim"}
-                    </button>
-                    <button className="outlineClinical" disabled={avisando}
-                      onClick={() => void avisarEquipe()}
-                      title="Manda e-mail e toca o telefone de quem tem plantão neste mês">
-                      {avisando ? "Avisando..." : "Avisar a equipe"}
-                    </button>
-                  </>
+                  <button className="outlineClinical" disabled={avisando} onClick={() => void avisarEquipe()}
+                    title="Manda e-mail e toca o telefone de quem tem plantão neste mês">
+                    {avisando ? "Avisando..." : "Avisar a equipe"}
+                  </button>
                 )}
                 <button className="outlineClinical" onClick={exportarAgenda}
                   title="Baixa um arquivo .ics: o iPhone abre no Calendário e o Google Agenda importa">
