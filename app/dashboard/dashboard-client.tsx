@@ -1441,7 +1441,11 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const [period,setPeriod]=useState(currentMonth);
   // Qual tarefa está aberta na coluna da esquerda. Uma de cada vez: a tela
   // antiga empilhava tudo e obrigava a rolar para achar o que fazer.
-  const [tarefa,setTarefa]=useState("lancamentos");
+  // "visao-geral" é a porta de entrada, e não "lancamentos" como era. Quem
+  // abre o Financeiro pela primeira vez — ou reabre depois de um mês — quer
+  // saber "o que precisa da minha atenção", não cair direto numa lista de
+  // atendimentos que pode nem ter nada. Ver o painel "visao-geral" abaixo.
+  const [tarefa,setTarefa]=useState("visao-geral");
   const patientMap=new Map(pacientes.map(p=>[p.id,p]));
   const evaluationMap=new Map<string,Avaliacao>();
   for(const item of avaliacoes)if(!evaluationMap.has(item.patient_id)||item.status==="concluida")evaluationMap.set(item.patient_id,item);
@@ -1544,6 +1548,11 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     return {convenio,consultas:items.length,unit:Number(defaultRule?.valor||0),valor:billed,recebido:paid,pendente:Math.max(0,billed-paid)};
   }).sort((a,b)=>b.valor-a.valor);
   const knownConvenios=listarConvenios(convenioValores,pacientes);
+  // Contado aqui, e não só dentro de ConvenioValoresPanel, porque agora duas
+  // telas precisam da mesma resposta: o painel de valores (que já a usava) e
+  // a fila de "Atenção hoje" da Visão geral. Uma cópia da conta em cada lugar
+  // é como as duas comeriam divergir — a mesma lição de `glosasDe`.
+  const convenioPendentes=convenioValores.filter(item=>item.ativo&&Number(item.valor)===0).length;
   const todayIso=hoje();
   const noteAlerts=financeiro.filter(item=>{
     if(!item.nota_fiscal||Number(item.recebido)>=Number(item.valor)||item.status==="cancelado") return false;
@@ -1789,26 +1798,44 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       {/* Coluna de tarefas. Os contadores são só do que pede ação — número em
           tarefa parada vira ruído e a pessoa para de olhar para todos. */}
       <nav className="financeTarefas" aria-label="Seções do Financeiro">
+        {/* SETE GRUPOS, e não três. A reorganização segue a pergunta que cada um
+            responde, e não a ordem em que as telas foram construídas:
+              Visão geral        — o que precisa de mim agora
+              Produção e faturamento — do atendimento até a nota sair
+              Contas a receber   — o dinheiro que ainda não caiu
+              Contas a pagar     — o que o serviço deve
+              Repasses           — o que é de cada anestesiologista
+              Relatórios e fechamento — o mês olhado de longe, e fechado
+              Configurações      — o que raramente muda
+            OS IDS NÃO MUDARAM. Só o agrupamento e os rótulos — o resto do
+            arquivo continua navegando por `setTarefa("recebimentos")` etc., e
+            trocar o id quebraria esses saltos (o botão "Dar baixa" de Notas
+            fiscais, por exemplo) sem nenhum aviso do TypeScript. */}
         {([
-          ["grupo","Operação"],
+          ["grupo","Visão geral"],
+          ["visao-geral","Resumo"],
+          ["grupo","Produção e faturamento"],
           ["lancamentos","Lançamentos",pendingPatients.length],
-          ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
-          ["notas","Notas fiscais",noteAlerts.length],
-          ["despesas","Despesas",faltamRecorrentes.length],
-          ["lotes","Lotes de cobrança"],
           ["producao","Produção da equipe"],
-          ["repasses","Repasses"],
-          ["grupo","Análise"],
-          ["resultado","Resultado do mês"],
-          ["origem","Origem da receita"],
+          ["notas","Notas fiscais",noteAlerts.length],
+          ["lotes","Lotes de cobrança"],
+          ["faturamento","Faturado por convênio"],
+          ["grupo","Contas a receber"],
+          ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
           // O contador é o que está vencido, e não o total a receber: a coluna
           // conta o que pede ação hoje.
           ["idade","Cobranças em atraso",linhasIdade.filter(l=>l.faixas.acima90>0).length],
-          ["graficos","Gráficos"],
-          ["faturamento","Faturado por convênio"],
-          ["fechamento","Fechamento do mês"],
           ["extrato","Extrato de pagamentos"],
-          ["grupo","Configuração"],
+          ["grupo","Contas a pagar"],
+          ["despesas","Despesas",faltamRecorrentes.length],
+          ["grupo","Repasses"],
+          ["repasses","Repasses"],
+          ["grupo","Relatórios e fechamento"],
+          ["resultado","Resultado do mês"],
+          ["origem","Origem da receita"],
+          ["graficos","Gráficos"],
+          ["fechamento","Fechamento do mês"],
+          ["grupo","Configurações"],
           ["valores","Valores por convênio"],
         ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
           id==="grupo"
@@ -1825,6 +1852,22 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       </nav>
 
       <div className="financeConteudo">
+      {tarefa==="visao-geral"&&<VisaoGeral
+        temAlgumaConfiguracao={convenioValores.length>0}
+        temAlgumMovimento={financeiro.length>0||despesas.length>0||(producaoDaReceita?.length??0)>0}
+        pendingPatients={pendingPatients.length}
+        convenioPendentes={convenioPendentes}
+        noteAlerts={noteAlerts.length}
+        cobrancasAtrasadas={linhasIdade.filter(l=>l.faixas.acima90>0).length}
+        valorAtrasado={totaisIdade.faixas.acima90}
+        faltamRecorrentes={faltamRecorrentes.length}
+        repassesPendentes={financeiro.filter(i=>Number(i.repasse_valor)>0&&i.repasse_status!=="pago").length}
+        fechamentoPendente={Boolean(receitaTotal.valor>0&&periodState?.status!=="conferido")}
+        onIr={setTarefa}
+        onConfigurarValores={openPriceConfig}
+        mascara={mascara}
+        money={money}
+      />}
       {tarefa==="lancamentos"&&<>
     {pendingPatients.length>0&&<PainelRecolhivel chave="fin-aguardando" titulo="Atendimentos aguardando lançamento" legenda="vindos automaticamente da recepção e agenda">{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</PainelRecolhivel>}
     {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><PainelRecolhivel className="financeGroup" key={convenio} chave={`fin-grupo-${convenio}`} classeCabecalho="financeGroupHead" titulo={convenio} legenda={`${items.length} atendimento(s)`} extra={<b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b>}>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
@@ -2207,7 +2250,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     </PainelRecolhivel>
       </>}
       {tarefa==="valores"&&<>
-    <ConvenioValoresPanel perfil={perfil} convenioValores={convenioValores} onRefresh={onRefresh}/>
+    <ConvenioValoresPanel perfil={perfil} convenioValores={convenioValores} pendentes={convenioPendentes} onRefresh={onRefresh}/>
       </>}
       </div>
     </div>
@@ -3028,11 +3071,10 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm,onAber
 // lançamento, então mora na tela do Financeiro. Quem grava continua sendo
 // admin ou proprietário — é o que a policy do banco permite; o financeiro
 // enxerga a referência, mas não a altera.
-function ConvenioValoresPanel({perfil,convenioValores,onRefresh}:{perfil:Perfil;convenioValores:ConvenioValor[];onRefresh:()=>void}) {
+function ConvenioValoresPanel({perfil,convenioValores,pendentes,onRefresh}:{perfil:Perfil;convenioValores:ConvenioValor[];pendentes:number;onRefresh:()=>void}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const podeEditar=["admin","owner"].includes(perfil.role);
-  const pendentes=convenioValores.filter(item=>item.ativo&&Number(item.valor)===0).length;
   async function saveConvenio(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setBusy("convenio");setMessage("");
     const form=new FormData(event.currentTarget);
@@ -3175,6 +3217,120 @@ function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
  * diferentes para "está escondido" fariam a pessoa achar que um cartão
  * quebrou enquanto o outro só está oculto.
  */
+
+/**
+ * A porta de entrada do Financeiro.
+ *
+ * ANTES, "Lançamentos" era a primeira tela — sempre, para todo mundo, tenha
+ * ou não o que fazer ali. Quem abria o Financeiro pela primeira vez, com
+ * nenhum convênio precificado e nenhum atendimento lançado, caía numa lista
+ * vazia dizendo "Nenhum lançamento financeiro cadastrado" e um menu com
+ * quatorze outras opções — sem nada dizendo por onde começar.
+ *
+ * ESTA TELA RESPONDE UMA PERGUNTA SÓ: "o que precisa de mim agora?". Ela não
+ * duplica nenhum número que já existe — cada item é um LINK para a aba que já
+ * calcula aquele dado, com a MESMA fonte que a aba usa (os contadores vêm dos
+ * mesmos valores que já alimentam os contadores dos botões do menu, ver
+ * FinanceView). Duplicar a conta aqui seria abrir espaço para a mesma
+ * divergência que aconteceu entre Resultado e Fechamento.
+ *
+ * DOIS ESTADOS DISTINTOS, e a diferença importa:
+ *
+ * PRIMEIRA VEZ (`!temAlgumaConfiguracao && !temAlgumMovimento`) — nada foi
+ * configurado e nada foi lançado ainda. Aqui não existe "atenção hoje": não
+ * há nada errado, só nada começado. Uma fila de pendências vazia diria "tudo
+ * em dia", que é mentira — é "nada existe ainda", uma frase completamente
+ * diferente e que pede uma ação diferente (configurar, não revisar).
+ *
+ * EM USO — a fila de atenção aparece, e só com itens que têm evidência: cada
+ * linha é uma contagem real, computada em FinanceView a partir de dados que
+ * já foram buscados do banco. Nenhuma linha aqui é inventada ou estimada.
+ */
+function VisaoGeral({
+  temAlgumaConfiguracao, temAlgumMovimento,
+  pendingPatients, convenioPendentes, noteAlerts, cobrancasAtrasadas, valorAtrasado,
+  faltamRecorrentes, repassesPendentes, fechamentoPendente,
+  onIr, onConfigurarValores, mascara, money,
+}:{
+  temAlgumaConfiguracao:boolean; temAlgumMovimento:boolean;
+  pendingPatients:number; convenioPendentes:number; noteAlerts:number;
+  cobrancasAtrasadas:number; valorAtrasado:number; faltamRecorrentes:number;
+  repassesPendentes:number; fechamentoPendente:boolean;
+  onIr:(tarefa:string)=>void; onConfigurarValores:()=>void;
+  mascara:(t:string)=>string; money:(v:number)=>string;
+}) {
+  if(!temAlgumaConfiguracao&&!temAlgumMovimento){
+    // PRIMEIRA VEZ. Uma ação só, a que de fato destrava o resto: sem preço
+    // por convênio configurado, todo atendimento lançado nasceria em
+    // R$ 0,00 — é o defeito que o selo "Preço pendente" existe para avisar,
+    // e o ideal é nunca chegar a acontecer.
+    return <section className="clinicalPanel">
+      <div className="emptyClinical financePrimeiraVez">
+        <strong>Comece configurando os valores por convênio</strong>
+        <p>
+          O Financeiro sugere o preço de cada atendimento a partir do convênio do paciente.
+          Sem essa tabela preenchida, todo lançamento nasce em R$ 0,00 — configure antes de
+          começar a lançar.
+        </p>
+        <button className="primaryClinical" onClick={onConfigurarValores}>Configurar valores das consultas</button>
+      </div>
+    </section>;
+  }
+  const fila:{chave:string;titulo:string;detalhe:string;tarefa:string}[]=[];
+  if(pendingPatients>0) fila.push({
+    chave:"lancamentos",
+    titulo:`${plural(pendingPatients,"atendimento aguardando","atendimentos aguardando")} lançamento`,
+    detalhe:"vindos da recepção e da agenda, prontos para virar cobrança",
+    tarefa:"lancamentos",
+  });
+  if(convenioPendentes>0) fila.push({
+    chave:"convenio",
+    titulo:`${plural(convenioPendentes,"convênio ativo sem","convênios ativos sem")} preço configurado`,
+    detalhe:"lançamentos criados agora nascem em R$ 0,00 até você preencher o valor",
+    tarefa:"valores",
+  });
+  if(noteAlerts>0) fila.push({
+    chave:"notas",
+    titulo:`${plural(noteAlerts,"nota fiscal","notas fiscais")} para acompanhar`,
+    detalhe:"mais de 15 dias desde a emissão, sem baixa registrada",
+    tarefa:"notas",
+  });
+  if(cobrancasAtrasadas>0) fila.push({
+    chave:"idade",
+    titulo:`${plural(cobrancasAtrasadas,"convênio","convênios")} devendo há mais de 90 dias`,
+    detalhe:`${mascara(money(valorAtrasado))} é o que costuma virar perda se ninguém cobrar`,
+    tarefa:"idade",
+  });
+  if(faltamRecorrentes>0) fila.push({
+    chave:"despesas",
+    titulo:`${plural(faltamRecorrentes,"despesa recorrente","despesas recorrentes")} ainda não lançada${faltamRecorrentes===1?"":"s"} este mês`,
+    detalhe:"o sistema lembra; quem lança é você",
+    tarefa:"despesas",
+  });
+  if(repassesPendentes>0) fila.push({
+    chave:"repasses",
+    titulo:`${plural(repassesPendentes,"repasse","repasses")} ainda não marcado${repassesPendentes===1?"":"s"} como pago`,
+    detalhe:"conferir e liberar aos anestesiologistas",
+    tarefa:"repasses",
+  });
+  if(fechamentoPendente) fila.push({
+    chave:"fechamento",
+    titulo:"O mês ainda não foi fechado",
+    detalhe:"revise notas, glosas e pagamentos pendentes antes de confirmar a conferência",
+    tarefa:"fechamento",
+  });
+  return <section className="clinicalPanel">
+    <div className="panelTitle"><strong>Atenção hoje</strong>
+      <span>{fila.length?`${plural(fila.length,"pendência","pendências")} com ação disponível`:"nada pedindo ação agora"}</span>
+    </div>
+    {fila.length===0
+      ? <div className="emptyClinical compactEmpty">Tudo em dia. Nenhuma pendência nas contas, notas ou fechamento deste mês.</div>
+      : fila.map(item=><div className="financeSetupRow" key={item.chave}>
+          <span><strong>{item.titulo}</strong><small>{item.detalhe}</small></span>
+          <button className="outlineClinical" onClick={()=>onIr(item.tarefa)}>Ver</button>
+        </div>)}
+  </section>;
+}
 function MoneySmall({value,label,tone="",oculto=false}:{value:number;label:string;tone?:string;oculto?:boolean}){return <div><strong className={tone}>{oculto?"•••":value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
 /**
  * A seta de comparação com o mês anterior.
