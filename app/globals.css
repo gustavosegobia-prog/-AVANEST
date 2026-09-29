@@ -4884,6 +4884,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   font-size:13.5px;line-height:1.65;color:var(--avn-muted)}
 .appNota b{color:var(--avn-ink)}
 .appAcoes{margin-top:24px}
+/* A ressalva que não pertence a nenhum cartão — vale para a seção inteira. */
+.appNotaSolta{margin-top:18px;border-top:0;padding-top:0;max-width:660px}
 
 /* --- /app: a sequência ilustrada do iPhone ---------------------------------
    UM CARTÃO POR PASSO, texto de um lado e a tela do outro. No telefone o texto

@@ -87,12 +87,42 @@ const PASSOS_DO_IPHONE = [
   },
 ] as const;
 
-// Os três passos do Chrome, no mesmo formato — com o glifo do menu de três
-// pontos, que é o botão que ninguém sabe nomear no Android.
-const PASSOS_ANDROID = [
-  { texto: "Abra o AVANEST no Chrome", icone: null },
-  { texto: "Toque nos três pontinhos, no canto superior direito", icone: "mais" },
-  { texto: "Toque em “Instalar aplicativo” ou “Adicionar à tela inicial”", icone: "adicionar" },
+/**
+ * O Android, em dois toques — e a escolha que decide se virou aplicativo.
+ *
+ * O CHROME OFERECE DUAS COISAS PARECIDAS, e só uma serve: "Instalar" põe o
+ * AVANEST como aplicativo, em tela cheia; "Criar atalho" cria um ícone que
+ * abre DENTRO do Chrome, com a barra do navegador por cima. As duas linhas
+ * ficam uma embaixo da outra, com o mesmo ícone do AVANEST ao lado, e nada na
+ * tela diz qual é qual. Quem escolher a de baixo vai achar que instalou.
+ *
+ * A captura é de quem abriu o link DE DENTRO de outro aplicativo — do e-mail,
+ * do WhatsApp —, que é por onde a maioria vai chegar: o botão do e-mail da
+ * escala leva exatamente a esta página. No Chrome aberto direto o menu é
+ * parecido e o item pode ter outro nome, e a ressalva diz isso em vez de
+ * fingir que só existe um caminho.
+ */
+const PASSOS_DO_ANDROID = [
+  {
+    titulo: "Toque nos três pontinhos",
+    subtitulo: "No canto superior direito, e depois em “Instalar e criar atalho”",
+    nota: "Este é o menu de quem abriu o AVANEST pelo link do e-mail ou do WhatsApp. "
+      + "Abrindo pelo Chrome direto o menu é parecido, e o item pode se chamar apenas "
+      + "“Instalar aplicativo”.",
+    glifo: "mais",
+    imagem: "/instalar/5-android-menu.webp",
+    alt: "O menu do Chrome no Android aberto, com o item “Instalar e criar atalho”.",
+  },
+  {
+    titulo: "Escolha “Instalar”",
+    subtitulo: "E não “Criar atalho”",
+    nota: "As duas opções aparecem juntas, com o mesmo ícone do AVANEST ao lado. "
+      + "“Instalar” põe o AVANEST como aplicativo, em tela cheia; “Criar atalho” só cria "
+      + "um ícone que abre dentro do Chrome, com a barra do navegador por cima.",
+    glifo: "adicionar",
+    imagem: "/instalar/6-android-instalar.webp",
+    alt: "A janela “Instalar e criar atalho” do Chrome, com as opções Instalar e Criar atalho.",
+  },
 ] as const;
 
 const O_QUE_MUDA: [string, string][] = [
@@ -108,6 +138,60 @@ const O_QUE_MUDA: [string, string][] = [
   ["Troca de plantão pelo celular",
     "Pedir, oferecer e responder — sem depender de alguém ver a mensagem no grupo."],
 ];
+
+/**
+ * Um passo: o texto de um lado, a tela do outro.
+ *
+ * UM COMPONENTE SÓ para o iPhone e o Android. Os dois ensinam caminhos
+ * diferentes, mas a peça é a mesma — e duas cópias dela divergiriam no
+ * primeiro ajuste de espaçamento, deixando a metade de baixo da página com
+ * cara de outro site.
+ */
+function Passo({ passo, numero, primeiro }: {
+  passo: {
+    titulo: string; subtitulo: string; nota: string;
+    glifo: string | null; imagem: string; alt: string;
+  };
+  numero: number;
+  /** A primeira imagem da página carrega na frente; as outras, sob demanda. */
+  primeiro: boolean;
+}) {
+  return (
+    <article className="appCartao">
+      <div className="appCartaoTexto">
+        <span className="appEtiqueta">PASSO {numero}</span>
+        <h3>{passo.titulo}</h3>
+        <p className="appSub">{passo.subtitulo}</p>
+        {passo.nota && (
+          <p className="appBalao">
+            <span className="appBalaoGlifo" aria-hidden="true">
+              <GlifoDoPasso nome={passo.glifo} />
+            </span>
+            <span>{passo.nota}</span>
+          </p>
+        )}
+      </div>
+      {/* A MOLDURA DO TELEFONE É CSS, e a imagem é só a tela. Print com a
+          moldura junto sai de um aparelho só — e as capturas do iPhone e as do
+          Android são de dois aparelhos diferentes, com molduras diferentes.
+          Desenhada, a moldura é a mesma para as seis.
+
+          `next/image` e não `<img>`: são seis capturas de telefone numa página
+          que abre no 4G do hospital, e ele entrega AVIF para quem aceita e o
+          tamanho certo para cada tela. `priority` só na primeira de todas — as
+          outras estão fora da tela quando a página abre, e carregá-las na
+          frente atrasaria justamente a que a pessoa está olhando.
+
+          `sizes` é o que o navegador usa para escolher a versão ANTES de o CSS
+          existir: 262px é o teto da moldura. Sem ele o Next assume a largura
+          da janela inteira e baixa a maior. */}
+      <div className="appTelefone">
+        <Image src={passo.imagem} alt={passo.alt} width={720} height={1234}
+          sizes="262px" priority={primeiro} />
+      </div>
+    </article>
+  );
+}
 
 export default function InstalarNoCelular() {
   return (
@@ -138,65 +222,25 @@ export default function InstalarNoCelular() {
         </p>
         <div className="appSequencia">
           {PASSOS_DO_IPHONE.map((passo, i) => (
-            <article className="appCartao" key={passo.titulo}>
-              <div className="appCartaoTexto">
-                <span className="appEtiqueta">PASSO {i + 1}</span>
-                <h3>{passo.titulo}</h3>
-                <p className="appSub">{passo.subtitulo}</p>
-                {passo.nota && (
-                  <p className="appBalao">
-                    <span className="appBalaoGlifo" aria-hidden="true">
-                      <GlifoDoPasso nome={passo.glifo} />
-                    </span>
-                    <span>{passo.nota}</span>
-                  </p>
-                )}
-              </div>
-              {/* A MOLDURA DO TELEFONE É CSS, e a imagem é só a tela. Print com
-                  a moldura junto sai de um aparelho só — e no dia em que a
-                  captura for de outro modelo, as quatro deixam de combinar.
-                  Desenhada, a moldura é a mesma para todas.
-
-                  `next/image` e não `<img>`: são quatro capturas de telefone
-                  numa página que abre no 4G do hospital, e ele entrega AVIF
-                  para quem aceita e o tamanho certo para cada tela. `priority`
-                  só na primeira — as outras três estão fora da tela quando a
-                  página abre, e carregá-las na frente atrasaria justamente a
-                  que a pessoa está olhando.
-
-                  `sizes` é o que o navegador usa para escolher a versão ANTES
-                  de o CSS existir: 280px é o teto da moldura. Sem ele o Next
-                  assume a largura da janela inteira e baixa a maior. */}
-              <div className="appTelefone">
-                <Image src={passo.imagem} alt={passo.alt} width={720} height={1234}
-                  sizes="262px" priority={i === 0} />
-              </div>
-            </article>
+            <Passo key={passo.titulo} passo={passo} numero={i + 1} primeiro={i === 0} />
           ))}
         </div>
       </section>
 
       <section className="recBloco">
-        <h2>No Android</h2>
-        <div className="appPassos">
-          <article>
-            <h3>Pelo Chrome</h3>
-            <ol>
-              {PASSOS_ANDROID.map((passo) => (
-                <li key={passo.texto}>
-                  <span className="appGlifo" aria-hidden="true">
-                    <GlifoDoPasso nome={passo.icone} />
-                  </span>
-                  <span>{passo.texto}</span>
-                </li>
-              ))}
-            </ol>
-            <p className="appNota">
-              Em alguns aparelhos o Chrome mostra sozinho um aviso de “Instalar” assim que
-              você abre o AVANEST. Aceitar aquele aviso faz a mesma coisa.
-            </p>
-          </article>
+        <h2>No Android, em dois toques</h2>
+        <p className="appIntro">
+          Abra <b>avanest.com.br</b> no Chrome e siga as duas telas abaixo.
+        </p>
+        <div className="appSequencia">
+          {PASSOS_DO_ANDROID.map((passo, i) => (
+            <Passo key={passo.titulo} passo={passo} numero={i + 1} primeiro={false} />
+          ))}
         </div>
+        <p className="appNota appNotaSolta">
+          Em alguns aparelhos o Chrome mostra sozinho um aviso de “Instalar” assim que
+          você abre o AVANEST. Aceitar aquele aviso faz a mesma coisa.
+        </p>
         <div className="avnActions appAcoes">
           <a className="avnPrimary" href="/login">Abrir o AVANEST agora</a>
         </div>
