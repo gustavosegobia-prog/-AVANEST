@@ -1527,6 +1527,15 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     texto: () => "Ninguém a avisar neste mês: o aviso vai só para quem tem plantão lançado, "
       + "e você não é avisado dos seus próprios. Lance a escala antes de avisar.",
   },
+  // O ÚNICO CASO EM QUE O ZERO É CULPA DO SERVIDOR E NÃO DA EQUIPE: nem push
+  // nem e-mail configurados. Antes caía em "sem-aparelho" e mandava cobrar a
+  // equipe por uma variável de ambiente que falta na Vercel.
+  "sem-aparelho-nem-email": {
+    alarme: true,
+    texto: () => "O aviso não saiu: ninguém tem o app instalado e o serviço de e-mail "
+      + "não está configurado no servidor. Isso é configuração do sistema, não da equipe. "
+      + "A escala já está publicada de qualquer forma.",
+  },
   "sem-aparelho": {
     alarme: false,
     // O número importa: "onze pessoas" mede o tamanho do problema, e sem ele a
@@ -1534,6 +1543,8 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     texto: (alvos) => `${alvos === 1 ? "A pessoa que tem" : `As ${alvos} pessoas que têm`} `
       + `plantão neste mês ainda não ${alvos === 1 ? "ligou" : "ligaram"} o aviso no próprio aparelho, `
       + "e só quem liga recebe — isso ninguém pode fazer por elas. "
+      + "O e-mail também não chegou a ninguém: ou os endereços são de membros sem acesso, "
+      + "ou desligaram este aviso. "
       + "Peça que abram o AVANEST e toquem em Ativar notificações; o passo a passo está no tutorial, "
       + "no menu do perfil. A escala já está publicada de qualquer forma.",
   },
@@ -1583,8 +1594,19 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       });
       const dados = await resposta.json().catch(() => ({}));
       if (!resposta.ok) { setErro(dados.error ?? "Não foi possível avisar agora."); return; }
-      if (dados.enviadas) {
-        setAviso(`Aviso enviado para ${dados.enviadas} aparelho${dados.enviadas > 1 ? "s" : ""} da equipe.`);
+      // DOIS CANAIS, DOIS NÚMEROS. O push toca o telefone de quem instalou o
+      // AVANEST; o e-mail chega a todo mundo que tem endereço. Somar os dois
+      // num número só esconderia justamente o que quem publicou a escala
+      // precisa saber: se a equipe está recebendo pelo aparelho ou se o
+      // sistema ainda depende do e-mail para ser lido.
+      const aparelhos = Number(dados.enviadas ?? 0);
+      const caixas = Number(dados.emails ?? 0);
+      if (aparelhos || caixas) {
+        const partes = [
+          aparelhos ? `${aparelhos} aparelho${aparelhos > 1 ? "s" : ""}` : "",
+          caixas ? `${caixas} e-mail${caixas > 1 ? "s" : ""}` : "",
+        ].filter(Boolean);
+        setAviso(`Aviso enviado: ${partes.join(" e ")}.`);
         return;
       }
       // Zero enviados tem causas diferentes, e nem todas são defeito. As que
@@ -2436,7 +2458,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     Quem monta decide quando a escala está pronta. */}
                 {ehAdmin && escopo !== "minha" && (
                   <button className="outlineClinical" disabled={avisando} onClick={() => void avisarEquipe()}
-                    title="Toca o telefone de quem tem plantão neste mês">
+                    title="Manda e-mail e toca o telefone de quem tem plantão neste mês">
                     {avisando ? "Avisando..." : "Avisar a equipe"}
                   </button>
                 )}

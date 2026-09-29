@@ -8,6 +8,8 @@ import { ultimoDiaDoMes } from "@/lib/data-local";
 import { ondeEQuando, quantosPlantoes } from "@/lib/aviso-plantao";
 import { destinoDoLembrete } from "@/lib/lembrete-de-plantao";
 import { aceita, comPadrao, comoTocar } from "@/lib/preferencias-de-aviso";
+import { enviarEmail, emailConfigurado, enderecoValido } from "@/lib/email";
+import { escalaPublicadaEmail, type PlantaoDoEmail } from "@/lib/email-escala";
 
 // Toca o telefone de quem precisa saber.
 //
@@ -55,6 +57,9 @@ export async function POST(request: NextRequest) {
   if (!euPerfil) return NextResponse.json({ error: "Perfil não encontrado." }, { status: 403 });
 
   const alvos: Alvo[] = [];
+  // A ESCALA DE CADA UM, só preenchida no aviso de escala publicada. É o que o
+  // e-mail leva dentro; os outros avisos não têm lista para mandar.
+  const escalaDoMes = new Map<string, PlantaoDoEmail[]>();
 
   if (tipo === "troca" || tipo === "troca_resolvida") {
     if (!id) return NextResponse.json({ error: "Falta a troca." }, { status: 400 });
@@ -170,9 +175,13 @@ export async function POST(request: NextRequest) {
     // há ninguém a avisar. Quebrava em abril, junho, setembro, novembro e
     // fevereiro — cinco meses dos doze —, sempre em silêncio e sempre culpando
     // a equipe pela ausência de avisos.
+    // O PLANTÃO INTEIRO, e não só de quem ele é. O push cabe num número — "8
+    // plantões seus" —, mas o e-mail leva a escala dentro, e para isso precisa
+    // do dia, do horário e do lugar de cada um. Ver lib/email-escala.ts.
     const { data: plantoes, error: erroPlantoes } = await supabase
-      .from("plantoes").select("perfil_id")
-      .gte("data", `${mes}-01`).lte("data", ultimoDiaDoMes(mes)).neq("situacao", "cancelado");
+      .from("plantoes").select("perfil_id, data, hora_inicio, hora_fim, local_id, local_texto")
+      .gte("data", `${mes}-01`).lte("data", ultimoDiaDoMes(mes)).neq("situacao", "cancelado")
+      .order("data").order("hora_inicio");
     // Erro de consulta não é "ninguém para avisar". Confundir os dois foi
     // exatamente o que escondeu o defeito acima por semanas.
     if (erroPlantoes) {
@@ -191,6 +200,24 @@ export async function POST(request: NextRequest) {
     const quantos = new Map<string, number>();
     for (const linha of plantoes ?? []) {
       if (linha.perfil_id) quantos.set(linha.perfil_id, (quantos.get(linha.perfil_id) ?? 0) + 1);
+    }
+    // A MESMA LISTA, guardada para o e-mail. O nome do hospital é resolvido
+    // uma vez para a organização toda: resolver por plantão seria uma consulta
+    // por linha num mês de trinta.
+    const { data: locaisDoMes } = await supabase
+      .from("locais_atendimento").select("id, nome_fantasia, nome")
+      .eq("institution_id", euPerfil.institution_id);
+    const nomeDoLocal = new Map((locaisDoMes ?? []).map(
+      (l) => [String(l.id), String(l.nome_fantasia || l.nome || "")],
+    ));
+    for (const linha of plantoes ?? []) {
+      if (!linha.perfil_id) continue;
+      const lista = escalaDoMes.get(linha.perfil_id) ?? [];
+      lista.push({
+        data: linha.data, hora_inicio: linha.hora_inicio, hora_fim: linha.hora_fim,
+        local: linha.local_texto || nomeDoLocal.get(String(linha.local_id ?? "")) || "",
+      });
+      escalaDoMes.set(linha.perfil_id, lista);
     }
     for (const [perfilId, total] of quantos) {
       if (perfilId === euPerfil.id) continue;
@@ -341,9 +368,66 @@ export async function POST(request: NextRequest) {
       .in("id", entregues);
   }
 
+  // ── O MESMO AVISO, POR E-MAIL ──────────────────────────────────────────
+  //
+  // O push só chega a quem instalou o AVANEST na tela de início e autorizou a
+  // notificação — no iPhone, o Safari comum não recebe nada. Numa equipe
+  // recém-cadastrada isso é NINGUÉM, e o botão fazia o trabalho certo para uma
+  // plateia vazia. O e-mail é o único canal que já existe no dia em que a
+  // pessoa entra: ela deu o endereço para ser convidada.
+  //
+  // VAI PARA TODOS, inclusive para quem recebeu o push. São coisas diferentes:
+  // o push some da tela em segundos e serve para avisar AGORA; o e-mail fica na
+  // caixa e é onde se volta a conferir o sábado daqui a três semanas.
+  //
+  // SÓ NO AVISO DE ESCALA PUBLICADA. Troca e alteração de plantão são assunto
+  // de minutos, e um e-mail que chega depois da decisão é ruído.
+  const mandarOsEmails = async (): Promise<number> => {
+    if (!emailConfigurado()) return 0;
+    const { data: destinatarios } = await admin
+      .from("perfis").select("id, nome, email")
+      .in("id", idsDosAlvos).eq("institution_id", euPerfil.institution_id);
+    const { data: organizacao } = await admin
+      .from("instituicoes").select("nome").eq("id", euPerfil.institution_id).maybeSingle();
+
+    const saiu = await Promise.all((destinatarios ?? []).map(async (pessoa) => {
+      const endereco = String(pessoa.email ?? "").trim();
+      // O MEMBRO SÓ-NOME NÃO TEM PARA ONDE RECEBER. Quem entra na escala sem
+      // acesso ganha um endereço interno (`…@avanest.invalid`), que existe para
+      // o banco ter uma chave — não para receber mensagem. Mandar para lá
+      // devolveria uma devolução por pessoa, e devolução em excesso é o que
+      // derruba a reputação do domínio inteiro.
+      if (!enderecoValido(endereco) || /\.invalid$/i.test(endereco)) return false;
+      // A PREFERÊNCIA DE QUEM RECEBE vale aqui também. Quem desligou "nova
+      // escala publicada" desligou o aviso, e não o meio: trocar o telefone
+      // pelo e-mail para entregar a mesma coisa é desrespeitar a escolha por
+      // via oblíqua.
+      const preferencia = preferenciaDe.get(String(pessoa.id)) ?? comPadrao(null);
+      if (!aceita(preferencia, "escala")) return false;
+      const meus = escalaDoMes.get(String(pessoa.id)) ?? [];
+      if (!meus.length) return false;
+      const mensagem = escalaPublicadaEmail({
+        nome: pessoa.nome, organizacao: organizacao?.nome ?? "grupo", mes,
+        plantoes: meus, autor: euPerfil.nome,
+      });
+      const resultado = await enviarEmail({ para: endereco, ...mensagem });
+      // Falha de e-mail não derruba o aviso: o push já saiu, e a escala está
+      // publicada de qualquer forma. Mas fica no log — um domínio não
+      // verificado recusa TODOS, e sem rastro isso vira "o sistema não avisa".
+      if (!resultado.ok) console.error("[api/push/avisar] e-mail", resultado.erro);
+      return resultado.ok;
+    }));
+    return saiu.filter(Boolean).length;
+  };
+  const emails = tipo === "escala" ? await mandarOsEmails() : 0;
+  // Nem aparelho nem e-mail: o único zero que é configuração do servidor e não
+  // escolha da equipe.
+  const semCanalNenhum = tipo === "escala" && !emailConfigurado();
+
   return NextResponse.json({
     ok: true,
     enviadas,
+    emails,
     removidas: mortas.length,
     recusadas,
     // Alvos existiam e nenhum tinha aparelho: ESTE é o caso em que a mensagem
@@ -353,7 +437,17 @@ export async function POST(request: NextRequest) {
     // quem publicou a escala que a equipe não ligou as notificações, quando na
     // verdade ela ligou e escolheu não receber este aviso, faz a pessoa cobrar
     // os colegas por uma decisão que eles tomaram de propósito.
-    motivo: enviadas > 0 ? undefined : recusadas > 0 ? "desligado" : "sem-aparelho",
+    // O MOTIVO SÓ EXISTE QUANDO NADA SAIU POR CANAL NENHUM. Dizer "a equipe
+    // não ligou o aviso no aparelho" depois de mandar onze e-mails é contar
+    // um fracasso onde houve entrega — e faria quem publicou a escala cobrar
+    // os colegas por um aviso que eles receberam.
+    //
+    // NUMA LINHA SÓ, de propósito: lib/avisos-push.test.ts lê os motivos que
+    // esta rota é capaz de devolver procurando as linhas que falam de motivo,
+    // e é esse teste que garante que cada um tem frase na tela. Quebrado em
+    // quatro linhas, o último sumia da leitura e a tela podia ficar sem a
+    // frase — exatamente o defeito que o teste existe para pegar.
+    motivo: enviadas > 0 || emails > 0 ? undefined : recusadas > 0 ? "desligado" : semCanalNenhum ? "sem-aparelho-nem-email" : "sem-aparelho",
     alvos: alvos.length,
   });
 }
