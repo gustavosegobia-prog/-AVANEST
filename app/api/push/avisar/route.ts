@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
-import { validateMutationRequest } from "@/lib/request-security";
+import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 import { chavesDoAmbiente, enviar, type Inscricao, type Notificacao } from "@/lib/push";
 import { nomeCurto } from "@/lib/escala";
 import { ultimoDiaDoMes } from "@/lib/data-local";
@@ -55,6 +55,42 @@ export async function POST(request: NextRequest) {
   const { data: euPerfil } = await supabase
     .from("perfis").select("id, nome, institution_id").eq("id", user.id).maybeSingle();
   if (!euPerfil) return NextResponse.json({ error: "Perfil não encontrado." }, { status: 403 });
+
+  // ── QUEM PODE DISPARAR, E QUANTAS VEZES ────────────────────────────────
+  //
+  // O BOTÃO ESTAVA ESCONDIDO NA TELA, E SÓ. "Avisar a equipe" só aparece para
+  // quem administra, mas tela não é fronteira de segurança: bastava um POST
+  // com `{tipo:"escala"}` para qualquer pessoa da organização tocar o telefone
+  // e mandar e-mail para todos os colegas escalados no mês — com o remetente
+  // avanest.com.br e o nosso DKIM em cima.
+  //
+  // A regra é a MESMA que decide quem monta a escala, e vem do banco: avisar
+  // que a escala saiu é parte de publicá-la, e duas regras diferentes para o
+  // mesmo ato divergem na primeira mudança.
+  if (tipo === "escala") {
+    const { data: podePublicar } = await supabase.rpc("pode_montar_escala");
+    if (podePublicar !== true) {
+      return NextResponse.json(
+        { error: "Só quem monta a escala pode avisar a equipe." },
+        { status: 403 },
+      );
+    }
+  }
+
+  // DOIS LIMITES, porque são dois usos com ritmos opostos.
+  //
+  // O aviso de escala publicada é um disparo em massa: dez e-mails e dez
+  // telefones de uma vez. Cinco por hora é folgado para quem publica de
+  // verdade — e fecha a porta de quem descobrisse que pode usar o botão para
+  // incomodar a equipe, ou para queimar a reputação do domínio.
+  //
+  // Os outros avisos acompanham o uso normal: montar a escala do mês são
+  // trinta lançamentos, e cada um manda o seu. Um teto apertado aqui
+  // silenciaria a metade de baixo do mês.
+  const excedeu = tipo === "escala"
+    ? enforceRateLimit(`avisar-escala:${user.id}`, { limit: 5, windowMs: 3_600_000 })
+    : enforceRateLimit(`avisar:${user.id}`, { limit: 150, windowMs: 3_600_000 });
+  if (excedeu) return excedeu;
 
   const alvos: Alvo[] = [];
   // A ESCALA DE CADA UM, só preenchida no aviso de escala publicada. É o que o

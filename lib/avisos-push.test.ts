@@ -92,3 +92,35 @@ describe("o fim do mês na busca de quem avisar", () => {
     assert.ok(rota.includes("falha-consulta"), "e ter motivo próprio");
   });
 });
+
+describe("quem pode disparar o aviso da escala", () => {
+  it("a rota confere no BANCO, e não confia na tela", () => {
+    // O botão "Avisar a equipe" só aparece para quem administra — mas tela não
+    // é fronteira de segurança. Bastava um POST com `{tipo:"escala"}` para
+    // qualquer pessoa da organização tocar o telefone e mandar e-mail para
+    // todos os colegas escalados no mês, com o remetente avanest.com.br e o
+    // nosso DKIM em cima.
+    assert.ok(/rpc\("pode_montar_escala"\)/.test(rota),
+      "a rota voltou a aceitar o disparo da escala sem conferir quem pediu");
+    // A MESMA regra que decide quem monta a escala: avisar que ela saiu é
+    // parte de publicá-la, e duas regras para o mesmo ato divergem na
+    // primeira mudança.
+    const ondeConfere = rota.indexOf('rpc("pode_montar_escala")');
+    const ondeDispara = rota.indexOf("alvos.push(");
+    assert.ok(ondeConfere > 0 && ondeConfere < ondeDispara,
+      "a checagem de permissão ficou depois de a rota montar os alvos");
+  });
+
+  it("há teto por hora, e o do disparo em massa é mais apertado", () => {
+    // O aviso de escala publicada manda dez e-mails e toca dez telefones de
+    // uma vez; os outros avisos acompanham o uso normal — montar a escala do
+    // mês são trinta lançamentos, cada um com o seu aviso. Um teto só, para os
+    // dois, ou solta o disparo em massa ou silencia a metade do mês.
+    assert.ok(/avisar-escala:\$\{user\.id\}/.test(rota), "sumiu o teto do disparo em massa");
+    assert.ok(/enforceRateLimit\(`avisar:\$\{user\.id\}`/.test(rota), "sumiu o teto dos outros avisos");
+    const massa = rota.match(/avisar-escala:[^}]*\}`, \{ limit: (\d+)/)?.[1];
+    const normal = rota.match(/`avisar:[^}]*\}`, \{ limit: (\d+)/)?.[1];
+    assert.ok(massa && normal && Number(massa) < Number(normal),
+      `o disparo em massa deixou de ser o mais apertado (massa ${massa}, normal ${normal})`);
+  });
+});

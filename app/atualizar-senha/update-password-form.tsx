@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { temCodigoNaUrl } from "@/lib/troca-do-codigo";
+import { sessaoVeioDeRecuperacao } from "@/lib/sessao-de-recuperacao";
 
 // A mensagem antiga era "Este link expirou ou já foi utilizado", e ela MENTIA
 // no caso mais comum: quem pede vários e-mails fica com vários pedidos abertos
@@ -13,6 +14,22 @@ import { temCodigoNaUrl } from "@/lib/troca-do-codigo";
 // exatamente o que a travou.
 const LINK_INVALIDO =
   "Não conseguimos validar este link. Se você pediu mais de um e-mail, abra o link do ÚLTIMO que chegou — só o mais recente funciona.";
+
+/**
+ * ESTA TELA É SÓ PARA QUEM CHEGOU PELO E-MAIL.
+ *
+ * Ela pedia apenas que HOUVESSE uma sessão, e trocava a senha. Num computador
+ * compartilhado — o normal no hospital — quem encontrasse o navegador aberto
+ * podia abrir este endereço e ficar com a conta do médico para sempre.
+ *
+ * Quem está logado e quer trocar a senha tem outro caminho, e ele PEDE a senha
+ * atual. Por isso a frase manda para lá em vez de mandar pedir outro link:
+ * pedir link a quem já está dentro é empurrar para o caminho errado.
+ */
+const SEM_RECUPERACAO =
+  "Esta tela é só para quem chegou pelo link do e-mail de recuperação. "
+  + "Para trocar a senha com a conta já aberta, use Minha conta → Alterar senha — "
+  + "lá a senha atual é pedida.";
 
 export function UpdatePasswordForm() {
   const router = useRouter();
@@ -37,8 +54,11 @@ export function UpdatePasswordForm() {
     // Quando a sessão vem no fragmento da URL, o cliente do Supabase precisa de
     // um instante para lê-la. Perguntar na hora acusaria "link expirado" antes
     // de o navegador terminar de entrar, que era o defeito antigo.
+    // O QUE MUDOU: não basta HAVER sessão — ela precisa ter nascido de um link
+    // de recuperação. O Supabase registra isso no próprio token (`amr`), e é
+    // um sinal assinado por ele: ver lib/sessao-de-recuperacao.ts.
     const { data: assinatura } = supabase.auth.onAuthStateChange((_evento, sessao) => {
-      if (sessao) liberar();
+      if (sessaoVeioDeRecuperacao(sessao?.access_token)) liberar();
     });
 
     // Quando o servidor não conseguiu trocar o código, ele o repassa para cá
@@ -51,15 +71,19 @@ export function UpdatePasswordForm() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!ativo) return;
-      if (data.session) return liberar();
+      if (sessaoVeioDeRecuperacao(data.session?.access_token)) return liberar();
       espera = setTimeout(async () => {
         if (!ativo) return;
         const { data: segundaTentativa } = await supabase.auth.getSession();
         if (!ativo) return;
-        if (segundaTentativa.session) return liberar();
+        if (sessaoVeioDeRecuperacao(segundaTentativa.session?.access_token)) return liberar();
         setChecking(false);
         setLinkInvalido(true);
-        setError(LINK_INVALIDO);
+        // DUAS RECUSAS DIFERENTES, e confundi-las manda a pessoa para o lugar
+        // errado. Sem sessão nenhuma é link que não abriu — peça outro. COM
+        // sessão que não veio de recuperação é alguém já logado nesta tela: o
+        // caminho dele é Minha conta, que pede a senha atual.
+        setError(segundaTentativa.session ? SEM_RECUPERACAO : LINK_INVALIDO);
       }, prazo);
     });
 
