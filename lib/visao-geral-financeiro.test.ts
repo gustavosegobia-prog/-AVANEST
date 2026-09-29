@@ -102,3 +102,24 @@ test("o contador de convênio sem preço é UMA conta só, não duas", () => {
   assert.match(tela, /pendentes:number/,
     "ConvenioValoresPanel deixou de receber a contagem por prop");
 });
+
+test("Recebimentos nunca fica em branco — todo filtro sem resultado explica por quê", () => {
+  // A lista era `financeiro.filter(...).sort(...).map(...)` direto na JSX, sem
+  // checar o tamanho antes: escolher "Em aberto" com tudo quitado, ou
+  // "Quitados" antes do primeiro recebimento, deixava a tela em branco sob os
+  // chips de filtro — nem mensagem, nem ação. Exatamente o "muito espaço
+  // vazio, nenhuma ação clara" da observação original.
+  const tela = ler("app/dashboard/dashboard-client.tsx");
+  const i = tela.indexOf('chave="fin-recebimentos"');
+  assert.notEqual(i, -1, "não achei o painel de Recebimentos");
+  const painel = tela.slice(i, i + 2400);
+  assert.match(painel, /if\(listaFiltrada\.length===0\) return/,
+    "Recebimentos voltou a não checar se a lista filtrada está vazia");
+  // DUAS mensagens diferentes, e a diferença é a mesma de sempre: nunca
+  // existiu nada (primeiro uso) contra este filtro específico não tem nada
+  // agora (período/recorte sem movimento).
+  assert.match(painel, /financeiro\.length===0/,
+    "sumiu a distinção entre nunca ter lançamento e só não ter neste filtro");
+  assert.match(painel, /Nada em aberto agora/, "sumiu a mensagem do filtro \"Em aberto\" vazio");
+  assert.match(painel, /Nada quitado ainda/, "sumiu a mensagem do filtro \"Quitados\" vazio");
+});

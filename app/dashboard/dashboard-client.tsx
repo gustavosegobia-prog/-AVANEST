@@ -1880,7 +1880,14 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         {([["todos","Todos"],["aberto","Em aberto"],["quitado","Quitados"]] as const).map(([valor,rotulo])=>
           <button type="button" key={valor} className={filtroReceb===valor?"active":""} onClick={()=>setFiltroReceb(valor)}>{rotulo}</button>)}
       </div>
-      {financeiro
+      {/* A LISTA FICAVA SEM MENSAGEM NENHUMA quando o filtro escolhido não
+          tinha resultado — "Em aberto" com tudo quitado, ou "Quitados" antes
+          do primeiro recebimento. O espaço sob os chips ficava só em branco,
+          exatamente o "muito espaço vazio, nenhuma ação clara" que esta
+          rodada existe para corrigir. Calculado numa variável, e não mais
+          dentro do próprio `.map()`, para poder perguntar o tamanho ANTES de
+          decidir o que desenhar. */}
+      {(() => { const listaFiltrada=financeiro
         .filter(item=>{
           const saldo=Math.max(0,Number(item.valor)-Number(item.recebido));
           return filtroReceb==="todos"||(filtroReceb==="aberto"?saldo>0:saldo<=0);
@@ -1890,8 +1897,18 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           const sa=Math.max(0,Number(a.valor)-Number(a.recebido))>0?0:1;
           const sb=Math.max(0,Number(b.valor)-Number(b.recebido))>0?0:1;
           return sa-sb||b.created_at.localeCompare(a.created_at);
-        })
-        .map(item=>{
+        });
+      if(listaFiltrada.length===0) return <div className="emptyClinical compactEmpty">
+        {financeiro.length===0
+          // NENHUM lançamento existe ainda, em nenhum filtro — primeiro uso.
+          ? "Nenhum lançamento cadastrado ainda. Eles aparecem aqui depois de faturados, em Lançamentos."
+          // HÁ lançamentos, só não NESTE filtro — período sem movimento
+          // daquele tipo, e não ausência de uso.
+          : filtroReceb==="aberto" ? "Nada em aberto agora. Tudo o que foi lançado já está quitado."
+          : filtroReceb==="quitado" ? "Nada quitado ainda. Os pagamentos registrados aparecem aqui."
+          : "Nenhum lançamento encontrado."}
+      </div>;
+      return listaFiltrada.map(item=>{
         const patient=patientMap.get(item.patient_id);
         // Os pagamentos DESTA linha. É o que decide se o botão é "Excluir" ou
         // "Estornar": o banco recusa apagar lançamento com dinheiro registrado,
@@ -1987,11 +2004,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
             </div>
           </div>}
         </div>;
-      })}
-      {financeiro.length===0&&<div className="emptyClinical">
-        <strong>Nenhum lançamento neste período.</strong>
-        Os lançamentos nascem das avaliações concluídas e faturadas. Fature um atendimento para que ele apareça aqui.
-      </div>}
+      }); })()}
     </PainelRecolhivel>
       </>}
       {tarefa==="notas"&&<>
