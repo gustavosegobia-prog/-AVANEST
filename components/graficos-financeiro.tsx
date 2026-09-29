@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { doMes as doMesDeReceita, glosasDe, type Receita } from "@/lib/receitas";
 
 // Gráficos do Financeiro.
 //
@@ -27,14 +28,6 @@ const money = (v: number) =>
 
 const MES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-type Lancamento = {
-  convenio: string;
-  valor: number;
-  recebido: number;
-  glosa_valor?: number;
-  periodo?: string | null;
-  created_at: string;
-};
 type Pagamento = { metodo: string; valor: number; paid_at: string };
 
 function Vazio({ children }: { children: React.ReactNode }) {
@@ -221,27 +214,39 @@ function FaixaSituacao({ quitado, parcial, aberto }: { quitado: number; parcial:
 }
 
 export function GraficosFinanceiro({
-  financeiro,
+  receitas,
   pagamentos,
   periodo,
 }: {
-  financeiro: Lancamento[];
+  /**
+   * TODAS as receitas do serviço — consulta e produção juntas —, de todos os
+   * meses que existirem, e não só o período selecionado.
+   *
+   * Era `financeiro: Lancamento[]`, e só trazia a consulta. Os gráficos
+   * mostravam "faturado" e "recebido" menores do que o Resultado do mês logo
+   * acima na mesma tela, porque mediam populações diferentes com o mesmo
+   * nome — a produção enviada ficava de fora. `Receita` já é a fonte única
+   * que o resto do Financeiro usa (lib/receitas.ts); os gráficos passam a ler
+   * dela também, para as duas telas pararem de discordar sobre o mesmo mês.
+   *
+   * TODOS os meses, e não só o filtrado, porque "Últimos 6 meses" olha para
+   * trás do período selecionado — filtrar aqui já dentro cortaria a história.
+   */
+  receitas: Receita[];
   pagamentos: Pagamento[];
   periodo: string;
 }) {
   const dados = useMemo(() => {
-    const doMes = financeiro.filter(
-      (i) => (i.periodo || i.created_at.slice(0, 7)) === periodo,
-    );
+    const doMes = doMesDeReceita(receitas, periodo);
 
-    // Por convênio, só os que têm valor — convênio zerado ocupa linha e não
-    // informa nada.
+    // Por pagador (convênio, hospital ou paciente), só os que têm valor —
+    // linha zerada ocupa espaço e não informa nada.
     const porConvenio = Object.values(
-      doMes.reduce<Record<string, { rotulo: string; faturado: number; recebido: number }>>((acc, i) => {
-        const nome = i.convenio || "Particular";
+      doMes.reduce<Record<string, { rotulo: string; faturado: number; recebido: number }>>((acc, r) => {
+        const nome = r.pagador || "Particular";
         acc[nome] ??= { rotulo: nome, faturado: 0, recebido: 0 };
-        acc[nome].faturado += Number(i.valor) || 0;
-        acc[nome].recebido += Number(i.recebido) || 0;
+        acc[nome].faturado += r.valor;
+        acc[nome].recebido += r.recebido;
         return acc;
       }, {}),
     )
@@ -258,13 +263,18 @@ export function GraficosFinanceiro({
       meses.push({ chave, rotulo: MES_CURTO[d.getUTCMonth()], faturado: 0, recebido: 0 });
     }
     const indice = new Map(meses.map((m) => [m.chave, m]));
-    for (const i of financeiro) {
-      const alvo = indice.get(i.periodo || i.created_at.slice(0, 7));
+    for (const r of receitas) {
+      const alvo = indice.get(r.competencia);
       if (!alvo) continue;
-      alvo.faturado += Number(i.valor) || 0;
-      alvo.recebido += Number(i.recebido) || 0;
+      alvo.faturado += r.valor;
+      alvo.recebido += r.recebido;
     }
 
+    // Forma de recebimento fica CONSULTA-ONLY, e é de propósito: só o
+    // pagamento de consulta passa por este registro (PIX/dinheiro/cartão). A
+    // produção é marcada recebida por data, sem método — ver
+    // lib/receitas.ts:deProducao. Inventar um método para ela seria mostrar um
+    // dado que não existe.
     const porMetodo = Object.values(
       pagamentos
         .filter((p) => p.paid_at.slice(0, 7) === periodo)
@@ -277,19 +287,19 @@ export function GraficosFinanceiro({
     ).sort((a, b) => b.valor - a.valor);
 
     let quitado = 0, parcial = 0, aberto = 0;
-    for (const i of doMes) {
-      const saldo = Number(i.valor) - Number(i.recebido);
+    for (const r of doMes) {
+      const saldo = r.valor - r.recebido;
       if (saldo <= 0) quitado++;
-      else if (Number(i.recebido) > 0) parcial++;
+      else if (r.recebido > 0) parcial++;
       else aberto++;
     }
 
-    const glosas = doMes.reduce((s, i) => s + (Number(i.glosa_valor) || 0), 0);
-    const faturado = doMes.reduce((s, i) => s + (Number(i.valor) || 0), 0);
-    const recebido = doMes.reduce((s, i) => s + (Number(i.recebido) || 0), 0);
+    const glosas = glosasDe(doMes);
+    const faturado = doMes.reduce((s, r) => s + r.valor, 0);
+    const recebido = doMes.reduce((s, r) => s + r.recebido, 0);
 
     return { porConvenio, meses, porMetodo, quitado, parcial, aberto, glosas, faturado, recebido };
-  }, [financeiro, pagamentos, periodo]);
+  }, [receitas, pagamentos, periodo]);
 
   // A taxa de recebimento é a pergunta que o gráfico de convênio responde de
   // relance, então ela vem escrita antes dele em vez de precisar ser calculada

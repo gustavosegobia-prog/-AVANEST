@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  dePlantao, deProducao, deConsulta, doMes, idadeDaReceita, minhaFatia, paraRecebivel,
+  dePlantao, deProducao, deConsulta, doMes, glosasDe, idadeDaReceita, minhaFatia, paraRecebivel,
   porOrigem, porProfissional, somar, somarComAtraso, type Receita,
 } from "./receitas.ts";
 
@@ -315,5 +315,48 @@ describe("o que está a receber há tempo demais", () => {
     assert.equal(naLinha.atrasado, 0, "60 dias ainda é no prazo");
     const umDiaDepois = somarComAtraso([receita("a", "2026-07-06", 100, 0)], HOJE); // 61
     assert.equal(umDiaDepois.atrasado, 100);
+  });
+});
+
+describe("glosasDe soma só o que sabe responder quanto foi glosado", () => {
+  const consultaBase = {
+    id: "c1", convenio: "Unimed", valor: 300, recebido: 0,
+    status: "glosa", medico_id: ANA, created_at: "2026-08-14T10:00:00Z",
+  };
+  const producaoBase = {
+    id: "p1", perfil_id: ANA, data: "2026-08-14", paciente: "Cassilda",
+    convenio: "Unimed", valor: 500, situacao: "glosado",
+  };
+
+  it("soma o glosa_valor da consulta", () => {
+    const r = deConsulta({ ...consultaBase, glosa_valor: 120 })!;
+    assert.equal(r.glosaValor, 120);
+    assert.equal(glosasDe([r]), 120);
+  });
+
+  it("zero glosado é uma resposta, e conta como zero — não como ausência", () => {
+    const r = deConsulta({ ...consultaBase, glosa_valor: 0 })!;
+    assert.equal(r.glosaValor, 0);
+    assert.equal(glosasDe([r]), 0);
+  });
+
+  it("sem o campo (nunca perguntado), a consulta não entra na soma como zero", () => {
+    // Ausência de dado não pode virar "zero glosado": esta consulta pode ter
+    // sido glosada em R$ 300 sem que ninguém tenha digitado o valor ainda.
+    const r = deConsulta(consultaBase)!;
+    assert.equal(r.glosaValor, undefined);
+  });
+
+  it("a produção NÃO tem glosaValor hoje — situacao='glosado' não guarda o quanto", () => {
+    // `producao_do_dia` não tem uma coluna equivalente a `glosa_valor`. Fingir
+    // um zero aqui esconderia uma glosa real atrás de um "nada foi glosado".
+    const r = deProducao(producaoBase)!;
+    assert.equal(r.glosaValor, undefined);
+  });
+
+  it("uma lista mista soma só as linhas que responderam", () => {
+    const consulta = deConsulta({ ...consultaBase, glosa_valor: 80 })!;
+    const producao = deProducao(producaoBase)!;
+    assert.equal(glosasDe([consulta, producao]), 80);
   });
 });

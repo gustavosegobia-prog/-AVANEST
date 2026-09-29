@@ -3530,6 +3530,10 @@ button:disabled{cursor:not-allowed}
   border-radius:12px;padding:12px 14px;font-weight:600}
 .financeNota.aReceber svg{color:var(--cor-atencao);flex:none;margin-top:3px}
 .financeNota.aReceber strong{color:var(--cor-atencao);font-weight:850}
+/* O aviso de convênio sem preço configurado. Mesmo desenho do "A receber":
+   é uma pendência que pede uma ação, não um rodapé explicativo. */
+.convenioAvisoPendente{color:var(--cor-tinta);background:var(--cor-atencao-suave);
+  border-radius:12px;padding:12px 14px;font-weight:600;margin:0 0 14px}
 
 /* ── Meu financeiro: o resumo do plantonista ─────────────────────────────── */
 

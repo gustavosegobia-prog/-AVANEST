@@ -57,7 +57,7 @@ const ChatFlutuante = dynamic(() => import("@/components/chat-flutuante").then((
 
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
 import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
-import { iniciais } from "@/lib/escala";
+import { iniciais, plural } from "@/lib/escala";
 import { DIAS_ADIADO, chaveDoAviso, type Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
@@ -68,7 +68,7 @@ import {
   variacao,
 } from "@/lib/financeiro-indicadores";
 import {
-  deProducao, deConsulta, doMes, porOrigem, porProfissional, somar,
+  deProducao, deConsulta, doMes, glosasDe, porOrigem, porProfissional, somar,
   type ProducaoBruta, type Receita,
   paraRecebivel,
 } from "@/lib/receitas";
@@ -1459,7 +1459,6 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const total=periodItems.reduce((sum,item)=>sum+Number(item.valor),0);
   const received=periodItems.reduce((sum,item)=>sum+Number(item.recebido),0);
   const pending=Math.max(0,total-received);
-  const glosas=periodItems.filter(item=>item.status==="glosa");
 
   // Os indicadores que decidem o mês. Quase todos olham o HISTÓRICO INTEIRO, e
   // não a competência: em faturamento por convênio o dinheiro do mês passado
@@ -1591,12 +1590,25 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     setBusy(patient.id); setMessage("");
     const evaluation=evaluationMap.get(patient.id);
     const price=convenioValores.find(rule=>rule.ativo&&rule.convenio=== (patient.convenio||"Particular") && (!rule.procedimento||rule.procedimento===patient.procedimento||rule.procedimento===patient.cirurgia) && (!rule.hospital||rule.hospital===patient.hospital));
+    // SEM PREÇO NÃO BLOQUEIA — mas também não fica em silêncio. Um atendimento
+    // real às vezes precisa entrar no financeiro antes de o preço estar
+    // configurado (convênio novo, tabela ainda não fechada com o hospital), e
+    // travar o lançamento empurraria o problema para fora do sistema — a
+    // pessoa anotaria num papel e lançaria depois, que é exatamente o hábito
+    // que este sistema existe para substituir. O que muda é o aviso: antes o
+    // lançamento nascia em R$ 0,00 sem ninguém saber que faltou preço.
+    const semPreco=!price||Number(price.valor)===0;
     const {error}=await createClient().from("financeiro_atendimentos").insert({
       institution_id:perfil.institution_id,patient_id:patient.id,avaliacao_id:evaluation?.id??null,
       convenio:patient.convenio||"Particular",hospital:patient.hospital||null,valor:Number(price?.valor||0),repasse_valor:price?.repasse_percentual?Number(price.valor)*Number(price.repasse_percentual)/100:0,status:"aguardando",
       periodo:patient.data_consulta?.slice(0,7)||currentMonth,
     });
-    setBusy(""); if(error)setMessage(`Não foi possível criar o lançamento: ${error.message}`);else{setMessage("Lançamento criado. Informe o valor e os dados de cobrança.");onRefresh()}
+    setBusy("");
+    if(error){setMessage(`Não foi possível criar o lançamento: ${error.message}`);return}
+    setMessage(semPreco
+      ? `Lançamento criado sem preço para ${patient.convenio||"Particular"} — ficou em R$ 0,00. Configure o valor em Valores por convênio, ou digite o valor direto na linha, antes de fechar o período.`
+      : "Lançamento criado. Informe o valor e os dados de cobrança.");
+    onRefresh();
   }
   function openPriceConfig(){
     const initial:Record<string,string>={};
@@ -1994,18 +2006,25 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         caixa" é outra pergunta, e quem responde é Cobranças em atraso — um
         serviço pode ter um mês excelente e o caixa apertado, e é isso que as
         duas telas juntas mostram. */}
+    {/* A LEGENDA DIZIA "o que entrou menos o que saiu" — linguagem de CAIXA —
+        sobre um número calculado em FATURADO — competência. As duas contas são
+        legítimas e as duas valem a pena mostrar (ver o comentário de
+        `resultadoDoMes` em lib/despesas.ts), mas precisam de nomes que não se
+        contradigam: quem lia a legenda e via "Receita faturada" embaixo
+        achava os números discordantes entre si, quando o discordante era só o
+        texto. */}
     <PainelRecolhivel chave="fin-resultado" titulo="Resultado do mês"
-      legenda="o que entrou menos o que saiu" abrePadrao
+      legenda="o que foi faturado menos as despesas do mês — não é o saldo em caixa" abrePadrao
       extra={<b className={resultado.resultado<0?"resultadoNegativo":undefined}>{mascara(money(resultado.resultado))}</b>}>
       <div className="closingMetrics">
-        <MoneySmall value={resultado.receita} label="Receita faturada" tone="blue"/>
-        <MoneySmall value={resultado.despesa} label="Despesas" tone="red"/>
-        <MoneySmall value={resultado.resultado} label="Resultado" tone={resultado.resultado<0?"red":"green"}/>
+        <MoneySmall value={resultado.receita} label="Receita faturada" tone="blue" oculto={oculto}/>
+        <MoneySmall value={resultado.despesa} label="Despesas" tone="red" oculto={oculto}/>
+        <MoneySmall value={resultado.resultado} label="Resultado" tone={resultado.resultado<0?"red":"green"} oculto={oculto}/>
         <div><strong className={resultado.margem!==null&&resultado.margem<0?"red":"green"}>
           {resultado.margem===null?"—":`${resultado.margem.toFixed(1).replace(".",",")}%`}
         </strong><span>Margem</span></div>
       </div>
-      <p className="financeNota">A margem diz quanto de cada real faturado sobrou depois das despesas. Ela só aparece quando houve faturamento no mês.</p>
+      <p className="financeNota">A margem diz quanto de cada real faturado sobrou depois das despesas. Ela só aparece quando houve faturamento no mês. Este resultado é por COMPETÊNCIA — o que foi trabalhado no mês, faturado ou não recebido ainda; para o que de fato entrou e saiu do caixa, veja Cobranças em atraso e Recebimentos.</p>
     </PainelRecolhivel>
 
     <PainelRecolhivel chave="fin-categorias" titulo="Para onde foi o dinheiro"
@@ -2143,12 +2162,28 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       <p className="financeNota">A média é ponderada pelo valor: um pagamento grande e demorado pesa mais que vários pequenos e rápidos, porque é onde o seu dinheiro está.</p>
     </PainelRecolhivel>
       </>}
-      {tarefa==="graficos"&&<GraficosFinanceiro financeiro={financeiro} pagamentos={pagamentos} periodo={period}/>}
+      {tarefa==="graficos"&&<GraficosFinanceiro receitas={receitas} pagamentos={pagamentos} periodo={period}/>}
       {tarefa==="faturamento"&&<>
     <PainelRecolhivel chave="fin-faturamento" className="billingDashboard" titulo="Faturamento por convênio" legenda="Valores faturados e recebidos na competência selecionada."><div className="billingPlanTable"><table><thead><tr><th>Convênio</th><th>Consultas</th><th>Valor unitário</th><th>Faturado</th><th>Recebido</th><th>Pendente</th></tr></thead><tbody>{byPlan.map(item=><tr key={item.convenio}><td><strong>{item.convenio}</strong></td><td>{item.consultas}</td><td>{money(item.unit)}</td><td>{money(item.valor)}</td><td>{money(item.recebido)}</td><td>{money(item.pendente)}</td></tr>)}</tbody></table>{!byPlan.length&&<div className="emptyClinical compactEmpty">Os valores por convênio aparecerão após os lançamentos.</div>}</div></PainelRecolhivel>
       </>}
       {tarefa==="fechamento"&&<>
-    <PainelRecolhivel className="closingPanel" chave="fin-fechamento" titulo={<><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</>} extra={<span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span>}><div className="closingMetrics"><MoneySmall value={total} label="Total cobrado"/><MoneySmall value={received} label="Recebido" tone="green"/><MoneySmall value={pending} label="Pendente" tone="amber"/><MoneySmall value={glosas.reduce((s,i)=>s+Number(i.glosa_valor||0),0)} label="Glosas" tone="red"/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados" tone="blue"/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio"/></div><div className="closingFooter"><span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></PainelRecolhivel>
+    {/* TOTAL COBRADO, RECEBIDO E PENDENTE PASSAM A LER `receitaTotal` — a
+        MESMA soma unificada (consulta + produção) que "Resultado do mês" e
+        "Origem da receita" já usam. Antes liam só `total`/`received`/`pending`,
+        somados de `periodItems` (só consulta): um serviço que fatura pela
+        Produção do dia via essas linhas fechava o mês aqui em R$ 0,00 enquanto
+        o painel acima da mesma tela mostrava receita real — o mesmo mês, dois
+        números. GLOSAS troca para `glosasDe`, pelo mesmo motivo: hoje ela só
+        soma consulta de qualquer jeito (é a única fonte que guarda o valor
+        glosado — ver o comentário em lib/receitas.ts), mas com a função
+        compartilhada o dia em que a produção passar a registrar isso a conta
+        já fica certa sozinha, sem precisar lembrar de arrumar aqui.
+        REPASSES REALIZADOS e TICKET MÉDIO continuam em `periodItems`/`total`
+        DE PROPÓSITO — são conceitos que hoje só existem na consulta (repasse
+        e nota fiscal não têm equivalente na produção ainda), e estender os
+        dois para a produção sem esses campos existirem lá seria inventar dado
+        que não há. */}
+    <PainelRecolhivel className="closingPanel" chave="fin-fechamento" titulo={<><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</>} extra={<span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span>}><div className="closingMetrics"><MoneySmall value={receitaTotal.valor} label="Total cobrado" oculto={oculto}/><MoneySmall value={receitaTotal.recebido} label="Recebido" tone="green" oculto={oculto}/><MoneySmall value={receitaTotal.aReceber} label="Pendente" tone="amber" oculto={oculto}/><MoneySmall value={glosasDe(receitasDoMes)} label="Glosas" tone="red" oculto={oculto}/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados (consultas)" tone="blue" oculto={oculto}/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio (consultas)" oculto={oculto}/></div><p className="financeNota">Total, recebido e pendente somam consultas e produção. Repasses e ticket médio são só de consultas — o repasse e a nota fiscal ainda não existem para produção neste sistema.</p><div className="closingFooter"><span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></PainelRecolhivel>
       </>}
       {tarefa==="extrato"&&<>
     {/* O extrato responde "quando e como entrou cada real" — antes isso era
@@ -2997,6 +3032,7 @@ function ConvenioValoresPanel({perfil,convenioValores,onRefresh}:{perfil:Perfil;
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const podeEditar=["admin","owner"].includes(perfil.role);
+  const pendentes=convenioValores.filter(item=>item.ativo&&Number(item.valor)===0).length;
   async function saveConvenio(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setBusy("convenio");setMessage("");
     const form=new FormData(event.currentTarget);
@@ -3020,8 +3056,28 @@ function ConvenioValoresPanel({perfil,convenioValores,onRefresh}:{perfil:Perfil;
       titulo="Valores por convênio"
       legenda={`${convenioValores.length} referência(s) cadastrada(s) · o Financeiro sugere o valor ao criar o lançamento`}
     >
+      {pendentes>0&&<p className="financeNota convenioAvisoPendente">
+        {plural(pendentes,"convênio ativo está","convênios ativos estão")} sem valor configurado — R$ 0,00 aqui não
+        quer dizer atendimento gratuito, quer dizer que ninguém preencheu o preço ainda. Lançamentos criados
+        enquanto isso ficam com o mesmo R$ 0,00, e é isso que o selo &quot;Preço pendente&quot; abaixo está avisando.
+      </p>}
       {podeEditar&&<form className="convenioForm" onSubmit={saveConvenio}><label><span>Convênio *</span><input name="convenio" required placeholder="Ex.: Unimed"/></label><label><span>Procedimento</span><input name="procedimento" placeholder="Opcional"/></label><label><span>Hospital</span><input name="hospital" placeholder="Opcional"/></label><label><span>Valor R$ *</span><input name="valor" inputMode="decimal" required placeholder="0,00"/></label><label><span>Repasse %</span><input name="repasse" inputMode="decimal" placeholder="Opcional"/></label><button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando...":"Salvar referência"}</button></form>}
-      {convenioValores.length?convenioValores.map(item=><div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${item.ativo?"present":"paused"}`}>{item.ativo?"ATIVO":"INATIVO"}</span>{podeEditar?<button className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>toggleConvenio(item)}>{item.ativo?"Desativar":"Ativar"}</button>:<span/>}</div>):<div className="emptyClinical compactEmpty">Nenhuma referência de valor cadastrada ainda.</div>}
+      {/* TRÊS ESTADOS, NÃO DOIS. Antes era só "ATIVO" (verde) ou "INATIVO"
+          (cinza) — e um convênio nunca precificado usava o mesmo verde de
+          confiança de um que cobra R$ 380,00 de verdade. "Preço pendente"
+          (âmbar) é o terceiro: ativo, mas com R$ 0,00 que ninguém confirmou.
+          NÃO EXISTE UM QUARTO ESTADO "gratuidade" ainda — marcar um convênio
+          como deliberadamente gratuito (SUS/cortesia) pede um campo novo no
+          banco, e decidir isso sozinho numa tabela de dinheiro sem confirmar
+          com quem usa o sistema é o tipo de silêncio que este trabalho
+          existe para evitar. Até lá, R$ 0,00 ativo é sempre tratado como
+          pendente — a leitura mais segura, porque supor "de propósito" e
+          estar errado é o que gera atendimento cobrado a menos sem ninguém
+          perceber. */}
+      {convenioValores.length?convenioValores.map(item=>{
+        const semPreco=item.ativo&&Number(item.valor)===0;
+        return <div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${!item.ativo?"paused":semPreco?"atencao":"present"}`}>{!item.ativo?"INATIVO":semPreco?"PREÇO PENDENTE":"ATIVO"}</span>{podeEditar?<button className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>toggleConvenio(item)}>{item.ativo?"Desativar":"Ativar"}</button>:<span/>}</div>;
+      }):<div className="emptyClinical compactEmpty">Nenhuma referência de valor cadastrada ainda.</div>}
     </PainelRecolhivel>
   </>;
 }
@@ -3104,7 +3160,22 @@ function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
   </PainelRecolhivel>;
 }
 
-function MoneySmall({value,label,tone=""}:{value:number;label:string;tone?:string}){return <div><strong className={tone}>{value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
+/**
+ * O cartão pequeno de dinheiro, dentro dos painéis do Financeiro.
+ *
+ * `oculto` É OPCIONAL DE PROPÓSITO, e não porque algum uso não precise dele —
+ * os nove usos dentro do Financeiro precisam, todos. É para o dia em que
+ * outra tela quiser este componente sem ligar o olho de esconder, o
+ * TypeScript não obrigar a passar `oculto={false}` em todo lugar que não é
+ * dinheiro sensível. Omitido, o padrão é "mostra" — o comportamento de
+ * sempre, e o mesmo que o resto do sistema usa quando não há preferência
+ * salva ainda.
+ *
+ * O SENTINELA É O MESMO "•••" de `useValoresOcultos().mascara`. Dois textos
+ * diferentes para "está escondido" fariam a pessoa achar que um cartão
+ * quebrou enquanto o outro só está oculto.
+ */
+function MoneySmall({value,label,tone="",oculto=false}:{value:number;label:string;tone?:string;oculto?:boolean}){return <div><strong className={tone}>{oculto?"•••":value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
 /**
  * A seta de comparação com o mês anterior.
  *

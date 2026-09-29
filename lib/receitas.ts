@@ -54,6 +54,16 @@ export type Receita = {
    */
   emissao?: string | null;
   vencimento?: string | null;
+  /**
+   * O quanto o convênio recusou pagar, quando essa informação existe.
+   *
+   * SÓ A CONSULTA TRAZ ISTO HOJE. A produção anestésica também tem um estado
+   * "glosado" (`producao_do_dia.situacao`), mas não guarda QUANTO foi
+   * glosado — só que foi. Por isso este campo fica ausente nela, em vez de
+   * forçado a zero: zero diria "nada foi glosado", e a verdade é "não sabemos
+   * quanto". `glosasDe()` abaixo soma só o que está presente.
+   */
+  glosaValor?: number;
 };
 
 const numero = (v: unknown) => {
@@ -70,6 +80,7 @@ export type ConsultaBruta = {
   valor: number; recebido: number; status: string;
   medico_id?: string | null; periodo?: string | null; created_at: string;
   nota_emitida_at?: string | null; nota_vencimento_at?: string | null;
+  glosa_valor?: number | string | null;
 };
 
 /**
@@ -94,6 +105,10 @@ export function deConsulta(item: ConsultaBruta, nomeDoPaciente?: string): Receit
     recebido: numero(item.recebido),
     emissao: item.nota_emitida_at ?? null,
     vencimento: item.nota_vencimento_at ?? null,
+    // Presente mesmo quando zero — "zero glosado" é uma resposta, e omitir o
+    // campo por causa de um `0` faria `glosasDe` tratar esta linha como as da
+    // produção, que não têm a pergunta respondida.
+    glosaValor: item.glosa_valor != null ? numero(item.glosa_valor) : undefined,
   };
 }
 
@@ -183,6 +198,17 @@ function acumular(alvo: Soma, receita: Receita) {
 }
 
 export const somar = (receitas: Receita[]) => receitas.reduce(acumular, somaVazia());
+
+/**
+ * Quanto foi glosado, somando só as linhas que sabem responder isso.
+ *
+ * Hoje é sempre a consulta — ver o comentário de `glosaValor` no tipo
+ * `Receita`. A função soma o que existe em vez de presumir zero no resto, para
+ * que o dia em que a produção também passar a registrar o valor da glosa esta
+ * conta já fique certa sozinha, sem precisar ser lembrada.
+ */
+export const glosasDe = (receitas: Receita[]) =>
+  receitas.reduce((soma, r) => soma + (r.glosaValor ?? 0), 0);
 
 /**
  * Quantos dias faz que esta receita devia ter virado dinheiro.
