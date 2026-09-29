@@ -108,7 +108,17 @@ test("o HTML sobrevive ao Outlook", () => {
   // layout quebrado.
   const m = escalaPublicadaEmail({ organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES });
   assert.ok(!/display:\s*flex|display:\s*grid/.test(m.html), "entrou flex ou grid no e-mail");
-  assert.ok(!/<style/.test(m.html), "o Gmail descarta <style> — o estilo tem de ir na linha");
+  // O <style> existe, e tem UM trabalho só: desligar os atalhos que o iOS
+  // injeta na data e na hora. Isso não tem equivalente inline — os atalhos são
+  // criados no cliente, depois, e só se alcançam por seletor. Nenhuma regra de
+  // LAYOUT pode morar lá: o Gmail descarta a folha e desmontaria a mensagem.
+  const folha = m.html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
+  assert.ok(folha.includes("x-apple-data-detectors"),
+    "sumiu a regra que impede o iPhone de virar a escala em links");
+  for (const layout of ["padding", "width", "border-radius", "background"]) {
+    assert.ok(!folha.includes(layout),
+      `regra de layout (${layout}) foi parar no <style>, que o Gmail descarta`);
+  }
   assert.ok(!/@media/.test(m.html), "a responsividade aqui é por max-width, não por media query");
   // Largura máxima com corpo fluido: é o que faz caber no telefone sem media
   // query nenhuma.
@@ -122,6 +132,34 @@ test("o valor do plantão NUNCA entra no e-mail", () => {
   const fonte = fs.readFileSync(new URL("./email-escala.ts", import.meta.url), "utf8");
   assert.ok(!/\bvalor\b/.test(fonte.replace(/\/\/.*$/gm, "")),
     "alguém começou a mandar o valor do plantão por e-mail");
+});
+
+test("o iPhone não transforma a escala em links", () => {
+  // O Mail do iOS reconhece data e hora no texto e as converte em atalhos
+  // tocáveis. "Quinta, 01/10" e "19:00–07:00" viravam azul sublinhado, um em
+  // cada linha — a lista parecia cheia de links quebrados, e um toque
+  // acidental abria o Calendário em vez de deixar ler o plantão.
+  const m = escalaPublicadaEmail({ organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES });
+  assert.match(m.html, /format-detection[^>]*date=no/,
+    "voltou a deixar o iOS converter as datas da escala");
+  // E o modo escuro do Mail invertia a faixa da marca — o azul-escuro virava
+  // claro e o logo branco escurecia. Declarar o esquema é o que faz ele parar.
+  assert.match(m.html, /name="color-scheme" content="light"/,
+    "sem declarar o esquema, o Mail escuro inverte a faixa da marca por conta própria");
+});
+
+test("a faixa traz o logo, e diz a marca mesmo com imagem bloqueada", () => {
+  // Metade dos clientes bloqueia imagem até a pessoa mandar carregar, e uma
+  // faixa vazia no alto faz a mensagem parecer de origem duvidosa — o
+  // contrário do que ela precisa parecer.
+  const m = escalaPublicadaEmail({ organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES });
+  assert.match(m.html, /<img src="https:\/\/www\.avanest\.com\.br\/avanest-email\.png"[^>]*alt="AVANEST"/,
+    "o logo da faixa sumiu, ou ficou sem o alt que o substitui");
+  // O fundo da faixa é o fundo do próprio arquivo do logo. A arte veio sem
+  // transparência: em faixa de outra cor, o retângulo dela aparece recortado
+  // em volta do logo.
+  assert.ok(m.html.includes('bgcolor="#071c30"'),
+    "a faixa deixou de usar o fundo da própria arte, e o logo vai aparecer recortado");
 });
 
 test("texto de banco não vira HTML", () => {

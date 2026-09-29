@@ -116,6 +116,16 @@ const O_QUE_DA_PARA_FAZER = [
 
 const MARCA = "#1668b3";
 const MARCA_FORTE = "#0d5493";
+/**
+ * O fundo da FAIXA é o fundo do próprio arquivo do logo.
+ *
+ * A arte veio em JPEG, sem transparência: ela carrega o próprio retângulo
+ * azul-escuro. Numa faixa de outra cor, esse retângulo aparece recortado em
+ * volta do logo, e o e-mail abre com um defeito de montagem no lugar mais
+ * visível da mensagem. Amostrado do canto do arquivo, e não escolhido a olho.
+ */
+const FAIXA = "#071c30";
+export const URL_LOGO = "https://www.avanest.com.br/avanest-email.png";
 const MARCA_SUAVE = "#eaf2fb";
 const TINTA = "#0f2438";
 const TINTA_FRACA = "#5a7086";
@@ -203,7 +213,30 @@ export function escalaPublicadaEmail(dados: EscalaPublicadaEmail) {
 
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">`
     + `<meta name="viewport" content="width=device-width,initial-scale=1">`
-    + `<title>${seguro(titulo)}</title></head>`
+    // O IPHONE TRANSFORMAVA A ESCALA EM LINKS. O Mail do iOS reconhece data e
+    // hora no texto e as converte em atalhos tocáveis — e "Quinta, 01/10" e
+    // "19:00–07:00" viravam azul sublinhado, um em cada linha da escala. O
+    // resultado é uma lista que parece cheia de links quebrados, e um toque
+    // acidental abre o Calendário em vez de ler o plantão.
+    + `<meta name="format-detection" content="telephone=no,date=no,address=no,email=no">`
+    // E o Mail em modo escuro INVERTIA a faixa da marca: o azul-escuro virava
+    // azul-claro e o logo branco escurecia. Declarar o esquema é o que faz
+    // ele parar de inverter por conta própria e respeitar o que foi escrito.
+    + `<meta name="color-scheme" content="light">`
+    + `<meta name="supported-color-schemes" content="light">`
+    + `<title>${seguro(titulo)}</title>`
+    // ESTE <style> É A ÚNICA EXCEÇÃO à regra de estilo na linha, e existe
+    // porque o que ele desliga NÃO TEM equivalente inline: os atalhos que o
+    // iOS injeta são criados depois, no cliente, e só se alcançam por seletor.
+    // O Gmail descarta esta folha, e tudo bem — ele não faz essa conversão.
+    // Nenhuma regra de layout mora aqui: layout continua na linha, senão o
+    // Gmail desmonta a mensagem.
+    + `<style>`
+    + `a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important;`
+    + `font-size:inherit!important;font-family:inherit!important;font-weight:inherit!important;`
+    + `line-height:inherit!important}`
+    + `:root{color-scheme:light;supported-color-schemes:light}`
+    + `</style></head>`
     + `<body style="margin:0;padding:0;background:${FUNDO};-webkit-text-size-adjust:100%">`
     // O resumo da caixa de entrada. Escondido na mensagem, ele é o que o Gmail
     // mostra ao lado do assunto — sem ele, aparece o começo do HTML.
@@ -217,11 +250,16 @@ export function escalaPublicadaEmail(dados: EscalaPublicadaEmail) {
     + `border:1px solid ${BORDA}">`
 
     // ── Faixa da marca ──────────────────────────────────────────────────────
-    + `<tr><td bgcolor="${MARCA_FORTE}" style="padding:20px 28px">`
-    + `<span style="font-family:${FONTE};font-size:19px;font-weight:800;color:#ffffff;`
-    + `letter-spacing:.14em">AVANEST</span>`
-    + `<span style="font-family:${FONTE};font-size:12.5px;color:#bcd8f2;display:block;`
-    + `margin-top:3px">Gestão em anestesiologia</span>`
+    //
+    // O LOGO É IMAGEM, E O ALT É A MARCA ESCRITA. Metade dos clientes de
+    // e-mail bloqueia imagem até a pessoa mandar carregar — e uma faixa vazia
+    // no alto faz a mensagem parecer de origem duvidosa, que é o contrário do
+    // que ela precisa parecer. Com o alt, quem tem imagem desligada lê
+    // "AVANEST" no mesmo lugar.
+    + `<tr><td bgcolor="${FAIXA}" style="padding:18px 24px;background:${FAIXA}">`
+    + `<img src="${URL_LOGO}" width="220" height="53" alt="AVANEST" `
+    + `style="display:block;border:0;outline:none;text-decoration:none;`
+    + `width:220px;height:auto;max-width:100%">`
     + `</td></tr>`
 
     // ── Cumprimento e título ────────────────────────────────────────────────
