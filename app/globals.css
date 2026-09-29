@@ -4865,8 +4865,15 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   background:var(--cor-superficie-suave)}
 .appPassos h3{font-size:17px;margin:0 0 14px;letter-spacing:-.01em}
 .appPassos ol{margin:0;padding:0;list-style:none;counter-reset:passo}
-.appPassos li{counter-increment:passo;display:flex;gap:12px;align-items:flex-start;
+.appPassos li{counter-increment:passo;display:flex;gap:10px;align-items:flex-start;
   margin:0 0 12px;line-height:1.55;font-size:15px}
+/* A CASA DO GLIFO existe mesmo vazia, no passo que não tem ícone, para os
+   três textos começarem na mesma coluna. Sem ela a lista fica com o segundo
+   item recuado em relação aos outros, e o olho lê isso como desalinhamento. */
+.appGlifo{flex:0 0 auto;display:grid;place-items:center;width:22px;height:22px;
+  margin-top:1px;color:var(--cor-marca)}
+.appGlifo svg{width:21px;height:21px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .appPassos li::before{content:counter(passo);flex:none;width:26px;height:26px;border-radius:50%;
   background:var(--cor-marca);color:#fff;font-weight:800;font-size:13.5px;
   display:grid;place-items:center;margin-top:1px}

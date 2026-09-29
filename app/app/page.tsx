@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { PASSOS_DO_SAFARI } from "@/lib/instalacao";
+import { GlifoDoPasso } from "@/components/icones-de-instalacao";
 
 // Onde o botão "Baixar o app AVANEST" chega.
 //
@@ -31,10 +32,12 @@ export const metadata: Metadata = {
     + "e receber os avisos de plantão no aparelho.",
 };
 
+// Os mesmos três passos do Chrome, no formato dos do Safari — com o glifo do
+// menu de três pontos, que é o botão que ninguém sabe nomear no Android.
 const PASSOS_ANDROID = [
-  "Abra o AVANEST no Chrome",
-  "Toque nos três pontinhos, no canto superior direito",
-  "Toque em “Instalar aplicativo” ou “Adicionar à tela inicial”",
+  { texto: "Abra o AVANEST no Chrome", icone: null },
+  { texto: "Toque nos três pontinhos, no canto superior direito", icone: "mais" },
+  { texto: "Toque em “Instalar aplicativo” ou “Adicionar à tela inicial”", icone: "adicionar" },
 ] as const;
 
 const O_QUE_MUDA: [string, string][] = [
@@ -81,8 +84,21 @@ export default function InstalarNoCelular() {
                 mesmo lugar de propósito: duas listas escritas à mão divergem na
                 primeira mudança do iOS, e aí uma das duas ensina o caminho
                 errado. */}
+            {/* O GLIFO FICA ENTRE O NÚMERO E O TEXTO, nunca dentro da frase.
+                Dentro, ele caía sozinho numa segunda linha toda vez que o
+                texto enchia a largura do telefone — e glifo órfão embaixo da
+                frase não ilustra nada, parece defeito. A casa existe mesmo
+                vazia, no passo que não tem ícone, para os três textos
+                começarem na mesma coluna. */}
             <ol>
-              {PASSOS_DO_SAFARI.map((passo) => <li key={passo.texto}>{passo.texto}</li>)}
+              {PASSOS_DO_SAFARI.map((passo) => (
+                <li key={passo.texto}>
+                  <span className="appGlifo" aria-hidden="true">
+                    <GlifoDoPasso nome={passo.icone} />
+                  </span>
+                  <span>{passo.texto}</span>
+                </li>
+              ))}
             </ol>
             <p className="appNota">
               Precisa ser o <b>Safari</b>. Se você abriu este link pelo Instagram ou pelo
@@ -94,7 +110,14 @@ export default function InstalarNoCelular() {
           <article>
             <h3>Android</h3>
             <ol>
-              {PASSOS_ANDROID.map((passo) => <li key={passo}>{passo}</li>)}
+              {PASSOS_ANDROID.map((passo) => (
+                <li key={passo.texto}>
+                  <span className="appGlifo" aria-hidden="true">
+                    <GlifoDoPasso nome={passo.icone} />
+                  </span>
+                  <span>{passo.texto}</span>
+                </li>
+              ))}
             </ol>
             <p className="appNota">
               Em alguns aparelhos o Chrome mostra sozinho um aviso de “Instalar” assim que

@@ -5,6 +5,9 @@ import {
   conviteDeInstalacao, explicacaoDoConvite, PASSOS_DO_SAFARI, tituloDoConvite,
   type CasoDaInstalacao,
 } from "@/lib/instalacao";
+// Os glifos moram em components/icones-de-instalacao.tsx: a página /app ensina
+// o mesmo caminho, e dois desenhos do mesmo ícone divergem na primeira correção.
+import { IconeAdicionar, IconeCompartilhar, IconeMais } from "@/components/icones-de-instalacao";
 
 // A faixa que ensina a pôr o AVANEST na tela de início do iPhone.
 //
@@ -19,37 +22,6 @@ import {
 // justamente numa faixa que aparece antes de a pessoa estar logada no celular
 // dela, no 4G do hospital. Desenhado em SVG, o ícone acompanha o tema, não
 // borra em tela retina e não custa uma requisição.
-
-/** O quadrado com a seta para cima, da barra de baixo do Safari. */
-function IconeCompartilhar() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M12 3v11M12 3l-3.2 3.2M12 3l3.2 3.2" />
-      <path d="M7 10H5.5A1.5 1.5 0 0 0 4 11.5v7A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 18.5 10H17" />
-    </svg>
-  );
-}
-
-/** O quadrado com o "+", do item "Adicionar à Tela de Início". */
-function IconeAdicionar() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <rect x="4" y="4" width="16" height="16" rx="4" />
-      <path d="M12 8.5v7M8.5 12h7" />
-    </svg>
-  );
-}
-
-/** Os três pontos do menu dos navegadores embutidos. */
-function IconeMais() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="5.5" cy="12" r="1.4" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
-      <circle cx="18.5" cy="12" r="1.4" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
 
 /**
  * O convite já foi dispensado neste aparelho, e até quando fica calado?
