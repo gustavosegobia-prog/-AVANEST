@@ -4884,3 +4884,42 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   font-size:13.5px;line-height:1.65;color:var(--avn-muted)}
 .appNota b{color:var(--avn-ink)}
 .appAcoes{margin-top:24px}
+
+/* --- /app: a sequência ilustrada do iPhone ---------------------------------
+   UM CARTÃO POR PASSO, texto de um lado e a tela do outro. No telefone o texto
+   fica EM CIMA da imagem, e não ao lado: a tela do iPhone é alta e estreita, e
+   posta ao lado num aparelho de 390px ela espremeria o texto a uma coluna de
+   dez caracteres. */
+.appIntro{margin:0 0 20px;max-width:660px;line-height:1.7;color:var(--avn-muted);font-size:15px}
+.appSequencia{display:grid;gap:18px}
+.appCartao{display:grid;grid-template-columns:1fr;gap:20px;align-items:center;
+  padding:24px;border:1px solid var(--avn-line);border-radius:18px;
+  background:var(--cor-superficie-suave)}
+.appCartaoTexto h3{font-size:21px;line-height:1.25;letter-spacing:-.015em;margin:10px 0 6px}
+.appSub{margin:0;color:var(--avn-muted);font-size:14.5px;line-height:1.55}
+/* A etiqueta do passo: o mesmo azul da marca, para o olho encontrar a ordem
+   antes de ler qualquer palavra. */
+.appEtiqueta{display:inline-block;background:var(--cor-marca);color:#fff;
+  border-radius:8px;padding:5px 12px;font-size:12px;font-weight:800;letter-spacing:.12em}
+/* O balão da ressalva. É o que salva o caso de quem tem outro modelo de
+   iPhone, ou abriu o link dentro do Instagram — quem cai nessas situações não
+   acha o botão e conclui que o sistema é confuso. */
+.appBalao{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;padding:13px 15px;
+  background:#fff;border:1px solid var(--avn-line);border-radius:12px;
+  font-size:13.5px;line-height:1.6;color:var(--avn-ink)}
+.appBalaoGlifo{flex:0 0 auto;display:grid;place-items:center;width:24px;height:24px;
+  margin-top:0;color:var(--cor-marca)}
+.appBalaoGlifo svg{width:22px;height:22px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* A MOLDURA DO TELEFONE, desenhada. A captura é só a tela: print com moldura
+   junto sai de um aparelho só, e no dia em que uma das quatro for de outro
+   modelo elas deixam de combinar. */
+.appTelefone{justify-self:center;width:min(262px,100%);padding:9px;border-radius:34px;
+  background:#101a24;box-shadow:0 10px 30px #0b223914;border:1px solid #223648}
+.appTelefone img{display:block;width:100%;height:auto;border-radius:26px}
+/* A partir de 860px cabe lado a lado, e aí a leitura melhora: o texto do passo
+   fica na altura da parte da tela de que ele fala. */
+@media(min-width:860px){
+  .appCartao{grid-template-columns:1fr minmax(0,280px);gap:34px;padding:30px 34px}
+  .appCartaoTexto{align-self:center}
+}

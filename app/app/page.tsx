@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { AppLogo } from "@/components/app-logo";
-import { PASSOS_DO_SAFARI } from "@/lib/instalacao";
 import { GlifoDoPasso } from "@/components/icones-de-instalacao";
 
 // Onde o botão "Baixar o app AVANEST" chega.
@@ -32,8 +32,63 @@ export const metadata: Metadata = {
     + "e receber os avisos de plantão no aparelho.",
 };
 
-// Os mesmos três passos do Chrome, no formato dos do Safari — com o glifo do
-// menu de três pontos, que é o botão que ninguém sabe nomear no Android.
+/**
+ * Os quatro toques do iPhone, cada um com a tela que a pessoa vai ver.
+ *
+ * AS CAPTURAS SÃO DO AVANEST, num iPhone de verdade, e não montagens. Quem
+ * está com o telefone na mão compara o que está na tela dele com o que está na
+ * página — e uma tela parecida, mas não igual, é pior que nenhuma: ela faz a
+ * pessoa achar que errou algum passo.
+ *
+ * O CAMINHO MUDOU no Safari recente, e é por isso que o passo 2 existe. Na
+ * barra de baixo não há mais o ícone de compartilhar: há o `≡` ao lado do
+ * endereço, e "Compartilhar" está DENTRO dele. O passo a passo antigo mandava
+ * procurar na barra de baixo um botão que naquele iPhone não está lá — e quem
+ * não acha o botão do primeiro passo não faz os outros três.
+ */
+const PASSOS_DO_IPHONE = [
+  {
+    titulo: "Abra o AVANEST no Safari",
+    subtitulo: "avanest.com.br",
+    nota: "Precisa ser o Safari. Se você abriu este link pelo Instagram ou pelo WhatsApp, "
+      + "toque nos três pontinhos e escolha “Abrir no Safari” antes de começar.",
+    glifo: "mais",
+    imagem: "/instalar/1-abrir-no-safari.webp",
+    alt: "A página do AVANEST aberta no Safari do iPhone, com a barra de endereço embaixo.",
+  },
+  {
+    titulo: "Toque no ≡ e depois em Compartilhar",
+    subtitulo: "O ≡ fica ao lado do endereço, na barra de baixo",
+    nota: "É este botão que inicia a instalação. Em iPhones mais antigos o ícone de "
+      + "compartilhar aparece direto na barra de baixo — nesse caso, toque nele e pule "
+      + "para o passo 3.",
+    glifo: "compartilhar",
+    imagem: "/instalar/2-menu-compartilhar.webp",
+    alt: "O menu do Safari aberto, com a opção Compartilhar em destaque.",
+  },
+  {
+    titulo: "Escolha “Adicionar à Tela de Início”",
+    subtitulo: "Role a lista até achar",
+    nota: "A lista é longa e a opção fica bem abaixo, depois de “Buscar na Página”. "
+      + "É aqui que a maioria desiste — role até o fim.",
+    glifo: "adicionar",
+    imagem: "/instalar/3-adicionar-a-tela-de-inicio.webp",
+    alt: "A folha de compartilhamento do iPhone, com o item Adicionar à Tela de Início.",
+  },
+  {
+    titulo: "Confirme em “Adicionar”",
+    subtitulo: "No canto superior direito",
+    nota: "Deixe “Abrir como app web” ligado — é esse interruptor que faz o AVANEST abrir "
+      + "em tela cheia e receber os avisos de plantão. Ele já vem ligado.",
+    glifo: null,
+    imagem: "/instalar/4-confirmar-adicionar.webp",
+    alt: "A tela de confirmação com o nome AVANEST, o interruptor “Abrir como app web” "
+      + "ligado e o botão Adicionar.",
+  },
+] as const;
+
+// Os três passos do Chrome, no mesmo formato — com o glifo do menu de três
+// pontos, que é o botão que ninguém sabe nomear no Android.
 const PASSOS_ANDROID = [
   { texto: "Abra o AVANEST no Chrome", icone: null },
   { texto: "Toque nos três pontinhos, no canto superior direito", icone: "mais" },
@@ -76,39 +131,56 @@ export default function InstalarNoCelular() {
       </section>
 
       <section className="recBloco">
-        <h2>Como instalar</h2>
+        <h2>No iPhone, em quatro toques</h2>
+        <p className="appIntro">
+          As telas abaixo são do AVANEST mesmo, num iPhone. Siga na ordem — leva
+          menos de um minuto.
+        </p>
+        <div className="appSequencia">
+          {PASSOS_DO_IPHONE.map((passo, i) => (
+            <article className="appCartao" key={passo.titulo}>
+              <div className="appCartaoTexto">
+                <span className="appEtiqueta">PASSO {i + 1}</span>
+                <h3>{passo.titulo}</h3>
+                <p className="appSub">{passo.subtitulo}</p>
+                {passo.nota && (
+                  <p className="appBalao">
+                    <span className="appBalaoGlifo" aria-hidden="true">
+                      <GlifoDoPasso nome={passo.glifo} />
+                    </span>
+                    <span>{passo.nota}</span>
+                  </p>
+                )}
+              </div>
+              {/* A MOLDURA DO TELEFONE É CSS, e a imagem é só a tela. Print com
+                  a moldura junto sai de um aparelho só — e no dia em que a
+                  captura for de outro modelo, as quatro deixam de combinar.
+                  Desenhada, a moldura é a mesma para todas.
+
+                  `next/image` e não `<img>`: são quatro capturas de telefone
+                  numa página que abre no 4G do hospital, e ele entrega AVIF
+                  para quem aceita e o tamanho certo para cada tela. `priority`
+                  só na primeira — as outras três estão fora da tela quando a
+                  página abre, e carregá-las na frente atrasaria justamente a
+                  que a pessoa está olhando.
+
+                  `sizes` é o que o navegador usa para escolher a versão ANTES
+                  de o CSS existir: 280px é o teto da moldura. Sem ele o Next
+                  assume a largura da janela inteira e baixa a maior. */}
+              <div className="appTelefone">
+                <Image src={passo.imagem} alt={passo.alt} width={720} height={1234}
+                  sizes="262px" priority={i === 0} />
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="recBloco">
+        <h2>No Android</h2>
         <div className="appPassos">
           <article>
-            <h3>iPhone e iPad</h3>
-            {/* Os mesmos passos que a faixa dentro do sistema mostra. Vêm do
-                mesmo lugar de propósito: duas listas escritas à mão divergem na
-                primeira mudança do iOS, e aí uma das duas ensina o caminho
-                errado. */}
-            {/* O GLIFO FICA ENTRE O NÚMERO E O TEXTO, nunca dentro da frase.
-                Dentro, ele caía sozinho numa segunda linha toda vez que o
-                texto enchia a largura do telefone — e glifo órfão embaixo da
-                frase não ilustra nada, parece defeito. A casa existe mesmo
-                vazia, no passo que não tem ícone, para os três textos
-                começarem na mesma coluna. */}
-            <ol>
-              {PASSOS_DO_SAFARI.map((passo) => (
-                <li key={passo.texto}>
-                  <span className="appGlifo" aria-hidden="true">
-                    <GlifoDoPasso nome={passo.icone} />
-                  </span>
-                  <span>{passo.texto}</span>
-                </li>
-              ))}
-            </ol>
-            <p className="appNota">
-              Precisa ser o <b>Safari</b>. Se você abriu este link pelo Instagram ou pelo
-              WhatsApp, toque nos três pontinhos e escolha “Abrir no Safari” antes de
-              começar — no navegador de dentro de outro aplicativo, o item “Adicionar à
-              Tela de Início” não existe.
-            </p>
-          </article>
-          <article>
-            <h3>Android</h3>
+            <h3>Pelo Chrome</h3>
             <ol>
               {PASSOS_ANDROID.map((passo) => (
                 <li key={passo.texto}>

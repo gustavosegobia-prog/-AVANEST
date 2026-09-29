@@ -120,3 +120,22 @@ test("nenhum texto promete o que o iPhone não faz", () => {
     assert.ok(!/clique em instalar|botão instalar/i.test(t), t);
   }
 });
+
+test("o passo a passo não manda procurar o botão no lugar errado", () => {
+  // O QUE ESTE TESTE GUARDA veio de uma captura de tela do iPhone do próprio
+  // dono do produto. O texto dizia "Toque em Compartilhar, na barra de baixo",
+  // e no Safari recente a barra de baixo NÃO tem mais o ícone de compartilhar:
+  // tem o `≡` ao lado do endereço, com "Compartilhar" dentro dele.
+  //
+  // Quem não acha o botão do primeiro passo não faz os outros dois — e desiste
+  // achando que errou. No iPhone, desistir aqui custa o produto inteiro: sem o
+  // AVANEST na tela de início o Safari não entrega notificação nenhuma.
+  //
+  // A instrução precisa citar o MENU, porque é ele que está na barra hoje.
+  assert.ok(PASSOS_DO_SAFARI[0].texto.includes("≡"),
+    "o primeiro passo voltou a mandar procurar Compartilhar direto na barra de baixo");
+  // E continua citando Compartilhar, que é o item DENTRO do menu — e o botão
+  // que os iPhones mais antigos ainda mostram direto.
+  assert.ok(PASSOS_DO_SAFARI[0].texto.includes("Compartilhar"),
+    "sumiu o nome do item que de fato inicia a instalação");
+});

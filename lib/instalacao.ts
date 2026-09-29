@@ -128,7 +128,17 @@ export function explicacaoDoConvite(caso: CasoDaInstalacao, app: string | null):
  * de ler o que fazer com ele.
  */
 export const PASSOS_DO_SAFARI = [
-  { texto: "Toque em Compartilhar, na barra de baixo", icone: "compartilhar" },
+  // O CAMINHO MUDOU, e a versão anterior desta linha mandava procurar um botão
+  // que no iPhone atual não está lá. Dizia "Toque em Compartilhar, na barra de
+  // baixo" — e no Safari recente a barra de baixo não tem mais o ícone de
+  // compartilhar: tem o `≡` ao lado do endereço, com "Compartilhar" dentro
+  // dele. Quem não acha o botão do primeiro passo não faz os outros dois, e
+  // desiste achando que errou.
+  //
+  // A frase cobre os dois desenhos de barra porque os dois existem ao mesmo
+  // tempo: iPhone antigo e quem escolheu a barra no topo continuam vendo o
+  // ícone direto.
+  { texto: "Na barra de baixo, toque em ≡ e depois em Compartilhar", icone: "compartilhar" },
   { texto: "Role e toque em “Adicionar à Tela de Início”", icone: "adicionar" },
   { texto: "Toque em “Adicionar”, no canto superior direito", icone: null },
 ] as const;
