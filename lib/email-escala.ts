@@ -11,12 +11,31 @@
 // outubro está publicada, entre para conferir" devolve à pessoa exatamente o
 // trabalho que ela faria sem e-mail nenhum. Com os plantões escritos, quem
 // tem um sábado no mês resolve isso na tela bloqueada do telefone, e quem tem
-// doze sabe que precisa abrir e conferir. Os dois são atendidos pela mesma
-// mensagem, e nenhum dos dois precisa abrir para descobrir qual é o seu caso.
+// doze sabe que precisa abrir e conferir.
+//
+// E ELA TAMBÉM VENDE O SISTEMA, de propósito. Este é o único e-mail que um
+// anestesiologista do grupo recebe com certeza — ele chega antes de a pessoa
+// ter qualquer motivo para abrir o AVANEST sozinha. Se a mensagem só entregar
+// a lista, ela terá ensinado que o AVANEST é um lugar de onde chega escala por
+// e-mail, e a pessoa nunca vai descobrir que pode pedir troca, oferecer um
+// plantão ou receber lembrete. Por isso os dois botões, e por isso o de
+// instalar vem antes: sem o aplicativo na tela de início, o iPhone não entrega
+// notificação nenhuma, e metade do produto fica invisível.
 //
 // O QUE NÃO ENTRA, pela mesma razão do push: o VALOR do plantão. E-mail é
 // encaminhado, impresso e lido por cima do ombro — quanto um anestesista
 // recebe por plantão não é assunto de quem estiver por perto.
+//
+// ── SOBRE O HTML ────────────────────────────────────────────────────────────
+//
+// TABELAS, e não `div` com flex. Não é gosto antiquado: o Outlook do Windows
+// renderiza e-mail com o motor do Word, que ignora `flex`, `grid` e metade do
+// CSS moderno. Um layout que fica bonito no Gmail e desmonta no Outlook do
+// administrador do hospital é um layout quebrado.
+//
+// ESTILO NA LINHA, e não em `<style>`: o Gmail descarta folhas de estilo.
+// Sem `@media` também, pelo mesmo motivo — a responsividade aqui vem de
+// `max-width` com largura percentual, que funciona sem media query nenhuma.
 
 import { quandoPlantao } from "./aviso-plantao.ts";
 
@@ -39,14 +58,19 @@ export type EscalaPublicadaEmail = {
   plantoes: PlantaoDoEmail[];
   /** Quem montou. Vazio quando foram várias mãos — ver o comentário abaixo. */
   autor?: string | null;
+  /** Onde a escala se abre. */
   url?: string;
+  /** Onde se aprende a pôr o AVANEST na tela de início. */
+  urlApp?: string;
 };
+
+export const URL_ESCALA = "https://www.avanest.com.br/dashboard?area=plantoes";
+export const URL_APP = "https://www.avanest.com.br/app";
 
 /** "2026-10" -> "outubro de 2026". Com o ano: e-mail se lê meses depois. */
 export function mesPorExtenso(mes: string): string {
-  const nome = new Date(`${mes}-02T12:00:00Z`)
+  return new Date(`${mes}-02T12:00:00Z`)
     .toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
-  return nome;
 }
 
 /** "Dr. GUSTAVO SEGOBIA DA SILVA" -> "Dr. Gustavo". Cumprimento, não cadastro. */
@@ -69,15 +93,81 @@ const seguro = (texto: string) => String(texto ?? "")
  * "Quarta, 02/09 · 07:00–19:00 · Santa Casa" — a mesma linha do push.
  *
  * De propósito a mesma: quem recebe os dois lê a mesma frase nos dois lugares,
- * e não precisa conferir se são o mesmo plantão.
+ * e não precisa conferir se são o mesmo plantão. No HTML ela é quebrada em
+ * três pedaços, mas o texto puro continua sendo esta.
  */
 export const linhaDoPlantao = (p: PlantaoDoEmail) =>
   [quandoPlantao(p), String(p.local ?? "").trim()].filter(Boolean).join(" · ");
 
+/**
+ * O que se pode fazer no AVANEST além de olhar a escala.
+ *
+ * Escrito como GANHO de quem lê, e não como lista de funcionalidades: "peça
+ * troca de plantão sem depender do grupo do WhatsApp" diz por que vale a pena;
+ * "módulo de trocas" não diz nada a quem nunca usou.
+ */
+const O_QUE_DA_PARA_FAZER = [
+  "Pedir troca de plantão e responder aos pedidos dos colegas, direto pela plataforma",
+  "Oferecer um plantão para outro profissional assumir",
+  "Acompanhar escalas, alterações e plantões num lugar só",
+  "Receber lembretes dos próximos plantões",
+  "Consultar sua escala pelo celular, a qualquer hora",
+] as const;
+
+const MARCA = "#1668b3";
+const MARCA_FORTE = "#0d5493";
+const MARCA_SUAVE = "#eaf2fb";
+const TINTA = "#0f2438";
+const TINTA_FRACA = "#5a7086";
+const BORDA = "#dbe4ed";
+const FUNDO = "#f2f5f9";
+
+const FONTE = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+/** Um botão que o Outlook também desenha: tabela de uma célula, não `<button>`. */
+function botao(texto: string, url: string, cheio: boolean) {
+  const fundo = cheio ? MARCA : "#ffffff";
+  const cor = cheio ? "#ffffff" : MARCA_FORTE;
+  const borda = cheio ? MARCA : BORDA;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"`
+    + ` style="margin:0 0 10px">`
+    + `<tr><td align="center" bgcolor="${fundo}"`
+    + ` style="border-radius:10px;border:1px solid ${borda}">`
+    + `<a href="${seguro(url)}" style="display:block;padding:15px 20px;font-family:${FONTE};`
+    + `font-size:16px;font-weight:700;color:${cor};text-decoration:none;letter-spacing:.01em">`
+    + `${seguro(texto)}</a></td></tr></table>`;
+}
+
+/** Uma linha da escala: dia à esquerda, horário à direita, hospital embaixo. */
+function linhaHtml(p: PlantaoDoEmail, ultima: boolean) {
+  const iso = String(p.data ?? "").slice(0, 10);
+  const inteira = quandoPlantao(p);
+  // "Sábado, 03/10 · 07:00–19:00" -> os dois lados da linha. O separador é o
+  // mesmo que `quandoPlantao` já usa, e partir aqui evita uma segunda regra de
+  // formatação de data vivendo neste arquivo.
+  const [quando, horario] = inteira.split(" · ");
+  const local = String(p.local ?? "").trim();
+  const borda = ultima ? "" : `border-bottom:1px solid ${BORDA};`;
+  return `<tr><td style="${borda}padding:13px 16px">`
+    + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>`
+    + `<td style="font-family:${FONTE};font-size:15px;font-weight:700;color:${TINTA};`
+    + `line-height:1.4">${seguro(quando ?? iso)}</td>`
+    + `<td align="right" style="font-family:${FONTE};font-size:15px;font-weight:700;`
+    + `color:${MARCA_FORTE};line-height:1.4;white-space:nowrap;padding-left:10px">`
+    + `${seguro(horario ?? "")}</td>`
+    + `</tr>`
+    + (local
+      ? `<tr><td colspan="2" style="font-family:${FONTE};font-size:13.5px;color:${TINTA_FRACA};`
+        + `padding-top:3px">${seguro(local)}</td></tr>`
+      : "")
+    + `</table></td></tr>`;
+}
+
 export function escalaPublicadaEmail(dados: EscalaPublicadaEmail) {
-  const url = dados.url || "https://www.avanest.com.br/dashboard?area=plantoes";
+  const url = dados.url || URL_ESCALA;
+  const urlApp = dados.urlApp || URL_APP;
   const quem = tratamento(dados.nome);
-  const ola = quem ? `Olá, ${quem}.` : "Olá.";
+  const ola = quem ? `Olá, ${quem}!` : "Olá!";
   const mes = mesPorExtenso(dados.mes);
   const quantos = dados.plantoes.length;
   // DUAS FORMAS DA MESMA CONTAGEM. No assunto não há sujeito, e o "seus" é o
@@ -85,49 +175,126 @@ export function escalaPublicadaEmail(dados: EscalaPublicadaEmail) {
   // abertura já existe o "Você tem", e repetir dá "Você tem 3 plantões seus".
   const plantoes = quantos === 1 ? "1 plantão seu" : `${quantos} plantões seus`;
   const contagem = quantos === 1 ? "1 plantão" : `${quantos} plantões`;
+  const titulo = `Sua escala de ${mes} foi publicada`;
+  const abertura = `A escala do ${dados.organizacao} já está disponível na AVANEST. `
+    + `Você tem ${contagem} neste mês:`;
 
-  // O nome de quem montou, quando há um só. Ele responde para quem reclamar de
-  // um plantão trocado, e isso vale mais que a formalidade de dizer "a
-  // coordenação": no grupo pequeno, reclama-se com uma pessoa.
+  // O nome de quem montou fecha a mensagem, e não abre: ele é a resposta à
+  // última frase — "fale com o responsável" sem dizer quem é o responsável
+  // manda a pessoa perguntar no grupo quem montou a escala.
   const porQuem = String(dados.autor ?? "").trim();
-  const abertura = `A escala de ${mes} do ${dados.organizacao} está publicada`
-    + (porQuem ? `, montada por ${porQuem}` : "")
-    + `. Você tem ${contagem}:`;
+  const errado = "Caso identifique alguma informação incorreta na escala, entre em contato "
+    + `com o responsável pela elaboração da escala${porQuem ? ` (${porQuem})` : ""}.`;
+  const convite = "Tenha sua escala sempre à mão. Instale o AVANEST no seu celular.";
 
-  const linhas = dados.plantoes.map(linhaDoPlantao).filter(Boolean);
+  const texto = [
+    ola,
+    titulo.toUpperCase(),
+    abertura,
+    dados.plantoes.map((p) => `• ${linhaDoPlantao(p)}`).join("\n"),
+    "GERENCIE SEUS PLANTÕES PELA AVANEST",
+    O_QUE_DA_PARA_FAZER.map((l) => `• ${l}`).join("\n"),
+    `📱 ${convite}`,
+    `Instalar o AVANEST: ${urlApp}`,
+    `Acessar minha escala: ${url}`,
+    errado,
+    "AVANEST\nSua escala. Seus plantões. Tudo em um só lugar.",
+  ].join("\n\n");
+
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">`
+    + `<meta name="viewport" content="width=device-width,initial-scale=1">`
+    + `<title>${seguro(titulo)}</title></head>`
+    + `<body style="margin:0;padding:0;background:${FUNDO};-webkit-text-size-adjust:100%">`
+    // O resumo da caixa de entrada. Escondido na mensagem, ele é o que o Gmail
+    // mostra ao lado do assunto — sem ele, aparece o começo do HTML.
+    + `<div style="display:none;max-height:0;overflow:hidden;opacity:0">`
+    + `${seguro(`${contagem} em ${mes}. Confira e gerencie pela AVANEST.`)}</div>`
+    + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"`
+    + ` style="background:${FUNDO};padding:24px 12px">`
+    + `<tr><td align="center">`
+    + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"`
+    + ` style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;`
+    + `border:1px solid ${BORDA}">`
+
+    // ── Faixa da marca ──────────────────────────────────────────────────────
+    + `<tr><td bgcolor="${MARCA_FORTE}" style="padding:20px 28px">`
+    + `<span style="font-family:${FONTE};font-size:19px;font-weight:800;color:#ffffff;`
+    + `letter-spacing:.14em">AVANEST</span>`
+    + `<span style="font-family:${FONTE};font-size:12.5px;color:#bcd8f2;display:block;`
+    + `margin-top:3px">Gestão em anestesiologia</span>`
+    + `</td></tr>`
+
+    // ── Cumprimento e título ────────────────────────────────────────────────
+    + `<tr><td style="padding:28px 28px 0">`
+    + `<p style="margin:0 0 6px;font-family:${FONTE};font-size:15px;color:${TINTA}">`
+    + `${seguro(ola)}</p>`
+    + `<h1 style="margin:0 0 12px;font-family:${FONTE};font-size:23px;line-height:1.3;`
+    + `color:${TINTA};font-weight:800">${seguro(titulo)}</h1>`
+    + `<p style="margin:0 0 18px;font-family:${FONTE};font-size:15px;line-height:1.6;`
+    + `color:${TINTA}">${seguro(abertura)}</p>`
+    + `</td></tr>`
+
+    // ── A escala ────────────────────────────────────────────────────────────
+    //
+    // O CORPO DA MENSAGEM. É a este bloco que a pessoa volta daqui a três
+    // semanas para conferir o sábado, e por isso ele é o único com moldura.
+    + `<tr><td style="padding:0 28px">`
+    + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"`
+    + ` style="background:${MARCA_SUAVE};border-radius:12px;border:1px solid ${BORDA}">`
+    + dados.plantoes.map((p, i) => linhaHtml(p, i === dados.plantoes.length - 1)).join("")
+    + `</table></td></tr>`
+
+    // ── O que mais dá para fazer ────────────────────────────────────────────
+    + `<tr><td style="padding:26px 28px 0">`
+    + `<h2 style="margin:0 0 10px;font-family:${FONTE};font-size:17px;line-height:1.35;`
+    + `color:${TINTA};font-weight:800">Gerencie seus plantões pela AVANEST</h2>`
+    + `<p style="margin:0 0 12px;font-family:${FONTE};font-size:14.5px;line-height:1.6;`
+    + `color:${TINTA_FRACA}">A escala é só o começo. Pela plataforma você também pode:</p>`
+    + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">`
+    + O_QUE_DA_PARA_FAZER.map((linha) =>
+      `<tr>`
+      + `<td valign="top" style="width:22px;font-family:${FONTE};font-size:15px;`
+      + `line-height:1.55;color:${MARCA};font-weight:800;padding:0 0 8px">&#10003;</td>`
+      + `<td style="font-family:${FONTE};font-size:14.5px;line-height:1.55;color:${TINTA};`
+      + `padding:0 0 8px">${seguro(linha)}</td>`
+      + `</tr>`).join("")
+    + `</table></td></tr>`
+
+    // ── Os dois botões ──────────────────────────────────────────────────────
+    //
+    // INSTALAR VEM PRIMEIRO, e é o botão cheio. Sem o AVANEST na tela de
+    // início o iPhone não entrega notificação nenhuma — o lembrete de plantão,
+    // o aviso de troca e a própria escala publicada ficam invisíveis. Quem já
+    // instalou perde dois segundos lendo; quem não instalou ganha o produto
+    // inteiro.
+    + `<tr><td style="padding:22px 28px 0">`
+    + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"`
+    + ` style="background:${MARCA_SUAVE};border-radius:12px"><tr><td style="padding:18px 18px 8px">`
+    + `<p style="margin:0 0 14px;font-family:${FONTE};font-size:15px;line-height:1.55;`
+    + `color:${TINTA};font-weight:650">&#128241; ${seguro(convite)}</p>`
+    + botao("Baixar o app AVANEST", urlApp, true)
+    + botao("Acessar minha escala", url, false)
+    + `</td></tr></table></td></tr>`
+
+    // ── Rodapé ──────────────────────────────────────────────────────────────
+    + `<tr><td style="padding:22px 28px 26px">`
+    + `<p style="margin:0 0 16px;font-family:${FONTE};font-size:13px;line-height:1.6;`
+    + `color:${TINTA_FRACA}">${seguro(errado)}</p>`
+    + `<div style="border-top:1px solid ${BORDA};padding-top:16px">`
+    + `<p style="margin:0;font-family:${FONTE};font-size:14px;font-weight:800;color:${MARCA_FORTE};`
+    + `letter-spacing:.1em">AVANEST</p>`
+    + `<p style="margin:3px 0 0;font-family:${FONTE};font-size:13px;color:${TINTA_FRACA}">`
+    + `Sua escala. Seus plantões. Tudo em um só lugar.</p>`
+    + `</div></td></tr>`
+
+    + `</table></td></tr></table></body></html>`;
 
   return {
     // O NÚMERO NO ASSUNTO. É o que a pessoa quer saber, e metade das caixas de
     // entrada do celular mostram só o assunto: "Escala de outubro publicada"
     // obriga a abrir para descobrir se são dois ou catorze plantões.
     assunto: `Escala de ${mes} — ${plantoes}`,
-    texto: [
-      ola,
-      abertura,
-      linhas.map((l) => `• ${l}`).join("\n"),
-      `Confira em ${url}`,
-      "Se algum plantão estiver errado, fale com quem monta a escala — este "
-        + "e-mail é automático.",
-    ].join("\n\n"),
-    html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;`
-      + `max-width:520px;margin:0 auto;padding:28px 24px;color:#0b2239;line-height:1.6">`
-      + `<p style="font-size:15px;margin:0 0 18px">${seguro(ola)}</p>`
-      + `<h1 style="font-size:20px;margin:0 0 14px;line-height:1.3">`
-      + `Escala de ${seguro(mes)} publicada</h1>`
-      + `<p style="margin:0 0 18px;font-size:15px">${seguro(abertura)}</p>`
-      // A LISTA É O CORPO DA MENSAGEM, e por isso é o bloco destacado — é ela
-      // que a pessoa volta a abrir daqui a três semanas para conferir o
-      // sábado.
-      + `<ul style="margin:0 0 22px;padding:14px 16px 14px 34px;background:#f1f6fb;`
-      + `border-radius:10px;font-size:15px">`
-      + linhas.map((l) => `<li style="margin:0 0 6px">${seguro(l)}</li>`).join("")
-      + `</ul>`
-      + `<p style="margin:0 0 22px"><a href="${seguro(url)}" style="display:inline-block;`
-      + `background:#0f5fa8;color:#fff;text-decoration:none;padding:12px 22px;`
-      + `border-radius:9px;font-weight:700;font-size:15px">Ver minha escala</a></p>`
-      + `<p style="margin:0;font-size:13.5px;color:#4a6180">`
-      + `Se algum plantão estiver errado, fale com quem monta a escala — `
-      + `este e-mail é automático.</p>`
-      + `</div>`,
+    texto,
+    html,
   };
 }

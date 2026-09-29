@@ -4851,3 +4851,29 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    escala e tudo funciona — falta só o registro. Tom de atenção, nunca de
    perigo, senão a lista inteira parece quebrada enquanto o número não chega. */
 .statusChip.atencao{background:var(--cor-atencao-suave);color:#8a5a00}
+
+/* --- /app: o passo a passo de instalar no celular -------------------------
+   Dois cartões lado a lado no computador e empilhados no telefone — que é onde
+   esta página é lida de verdade: ela é o destino de um link dentro de um
+   e-mail, aberto no aparelho em que a instalação vai acontecer.
+   Os números da lista são grandes e redondos de propósito. O passo em que a
+   pessoa desiste é o segundo ("role e toque em Adicionar à Tela de Início"), e
+   ela desiste porque perde o lugar na lista enquanto procura o item no menu do
+   iPhone. Um marcador que se acha de relance devolve o lugar. */
+.appPassos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px}
+.appPassos article{padding:24px 26px;border:1px solid var(--avn-line);border-radius:16px;
+  background:var(--cor-superficie-suave)}
+.appPassos h3{font-size:17px;margin:0 0 14px;letter-spacing:-.01em}
+.appPassos ol{margin:0;padding:0;list-style:none;counter-reset:passo}
+.appPassos li{counter-increment:passo;display:flex;gap:12px;align-items:flex-start;
+  margin:0 0 12px;line-height:1.55;font-size:15px}
+.appPassos li::before{content:counter(passo);flex:none;width:26px;height:26px;border-radius:50%;
+  background:var(--cor-marca);color:#fff;font-weight:800;font-size:13.5px;
+  display:grid;place-items:center;margin-top:1px}
+.appPassos li:last-child{margin-bottom:0}
+/* A ressalva que salva o caso do navegador embutido. Fraca, porque não é o
+   caminho — é a saída para quem caiu no caminho errado. */
+.appNota{margin:16px 0 0;padding-top:14px;border-top:1px solid var(--avn-line);
+  font-size:13.5px;line-height:1.65;color:var(--avn-muted)}
+.appNota b{color:var(--avn-ink)}
+.appAcoes{margin-top:24px}

@@ -37,6 +37,10 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   // registra "Página com redirecionamento" — um endereço que nunca vai ser
   // indexado ocupando espaço num arquivo que existe para dizer o que vale a
   // pena ler. Estava na lista contradizendo o comentário logo acima dela.
+  // A página de instalar no celular. Pública e sem login de propósito — é o
+  // destino de um link dentro do e-mail da escala, aberto no aparelho por quem
+  // às vezes ainda não entrou no sistema uma vez sequer.
+  { caminho: "/app", prioridade: 0.6, frequencia: "monthly" },
   { caminho: "/criar-conta", prioridade: 0.5, frequencia: "monthly" },
   { caminho: "/login", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/termos", prioridade: 0.3, frequencia: "yearly" },

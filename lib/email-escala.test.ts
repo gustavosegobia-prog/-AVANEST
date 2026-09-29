@@ -33,20 +33,86 @@ test("a escala vai DENTRO da mensagem, e não um convite para ir ver", () => {
     mes: "2026-10", plantoes: PLANTOES, autor: "João Paulo",
   });
   assert.match(m.texto, /Sábado, 03\/10 · 07:00–19:00 · FUNDHOSPAR/);
-  assert.match(m.html, /Sábado, 03\/10 · 07:00–19:00 · FUNDHOSPAR/);
+  // No HTML a linha é quebrada em três pedaços — dia, horário e hospital —,
+  // mas os três precisam estar lá.
+  for (const pedaco of ["Sábado, 03/10", "07:00–19:00", "FUNDHOSPAR"]) {
+    assert.ok(m.html.includes(pedaco), `sumiu "${pedaco}" da escala no HTML`);
+  }
   // Plantão sem lugar cadastrado não vira " · " solto no fim da linha.
   assert.equal(linhaDoPlantao(PLANTOES[1]), "Sábado, 17/10 · 19:00–07:00");
   // O cumprimento é tratamento, não cadastro.
-  assert.match(m.texto, /^Olá, Dra\. Marcelli\./);
-  // Quem montou responde por um plantão trocado — no grupo pequeno, reclama-se
-  // com uma pessoa.
-  assert.match(m.texto, /montada por João Paulo/);
+  assert.match(m.texto, /^Olá, Dra\. Marcelli!/);
+  // O título pedido, palavra por palavra.
+  assert.match(m.html, /Sua escala de outubro de 2026 foi publicada/);
+  assert.match(m.texto, /A escala do FUNDHOSPAR já está disponível na AVANEST/);
+});
+
+test("quem montou a escala é nomeado onde a pessoa vai precisar dele", () => {
+  // "Fale com o responsável" sem dizer quem é o responsável manda perguntar no
+  // grupo quem montou a escala — que é o trabalho que este sistema tira.
+  const m = escalaPublicadaEmail({
+    organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES, autor: "João Paulo",
+  });
+  assert.match(m.texto,
+    /Caso identifique alguma informação incorreta na escala, entre em contato com o responsável pela elaboração da escala \(João Paulo\)\./);
+  // Sem autor único, a frase fica exatamente como foi pedida — sem parêntese
+  // vazio. Com dois autores, citar um deles seria dar crédito errado.
+  const semAutor = escalaPublicadaEmail({
+    organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES,
+  });
+  assert.match(semAutor.texto,
+    /entre em contato com o responsável pela elaboração da escala\./);
+  assert.ok(!/\(\)/.test(semAutor.texto), "sobrou um parêntese vazio");
+});
+
+test("os dois botões existem, e o de instalar vem primeiro", () => {
+  // Sem o AVANEST na tela de início o iPhone não entrega notificação nenhuma:
+  // lembrete de plantão, aviso de troca e escala publicada ficam invisíveis. É
+  // por isso que instalar é o botão cheio, e não o secundário.
+  const m = escalaPublicadaEmail({ organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES });
+  const app = m.html.indexOf("Baixar o app AVANEST");
+  const escala = m.html.indexOf("Acessar minha escala");
+  assert.ok(app > 0 && escala > 0, "sumiu um dos dois botões");
+  assert.ok(app < escala, "o botão de instalar deixou de vir primeiro");
+  // E cada um aponta para o seu lugar.
+  assert.match(m.html, /href="https:\/\/www\.avanest\.com\.br\/app"/);
+  assert.match(m.html, /href="https:\/\/www\.avanest\.com\.br\/dashboard\?area=plantoes"/);
+  // O texto puro também leva os dois endereços: quem lê num cliente sem HTML
+  // não pode ficar sem o caminho.
+  assert.match(m.texto, /Instalar o AVANEST: https/);
+  assert.match(m.texto, /Acessar minha escala: https/);
+});
+
+test("a seção que apresenta o resto do sistema", () => {
+  // Este é o único e-mail que um anestesiologista do grupo recebe com certeza.
+  // Se ele só entregar a lista, a pessoa nunca descobre que pode pedir troca
+  // ou oferecer um plantão.
+  const m = escalaPublicadaEmail({ organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES });
+  assert.match(m.html, /Gerencie seus plantões pela AVANEST/);
+  for (const tema of [/troca de plantão/i, /Oferecer um plantão/, /lembretes/i, /celular/]) {
+    assert.match(m.html, tema);
+  }
+  assert.match(m.html, /Sua escala\. Seus plantões\. Tudo em um só lugar\./);
 });
 
 test("sem nome, o cumprimento não fica pela metade", () => {
   const m = escalaPublicadaEmail({ organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES });
-  assert.match(m.texto, /^Olá\.\n/);
-  assert.ok(!/Olá, \./.test(m.texto), "sobrou um cumprimento vazio");
+  assert.match(m.texto, /^Olá!\n/);
+  assert.ok(!/Olá, !/.test(m.texto), "sobrou um cumprimento vazio");
+});
+
+test("o HTML sobrevive ao Outlook", () => {
+  // O Outlook do Windows renderiza e-mail com o motor do Word: `flex`, `grid`
+  // e folha de estilo em <style> não existem para ele. Um layout que fica
+  // bonito no Gmail e desmonta no Outlook do administrador do hospital é um
+  // layout quebrado.
+  const m = escalaPublicadaEmail({ organizacao: "FUNDHOSPAR", mes: "2026-10", plantoes: PLANTOES });
+  assert.ok(!/display:\s*flex|display:\s*grid/.test(m.html), "entrou flex ou grid no e-mail");
+  assert.ok(!/<style/.test(m.html), "o Gmail descarta <style> — o estilo tem de ir na linha");
+  assert.ok(!/@media/.test(m.html), "a responsividade aqui é por max-width, não por media query");
+  // Largura máxima com corpo fluido: é o que faz caber no telefone sem media
+  // query nenhuma.
+  assert.match(m.html, /max-width:600px/);
 });
 
 test("o valor do plantão NUNCA entra no e-mail", () => {
