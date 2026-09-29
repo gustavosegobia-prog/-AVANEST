@@ -47,10 +47,23 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Sua sessão expirou." }, { status: 401 });
 
   const corpo = await request.json().catch(() => null) as
-    { tipo?: unknown; id?: unknown; mes?: unknown } | null;
+    { tipo?: unknown; id?: unknown; mes?: unknown; soParaMim?: unknown } | null;
   const tipo = typeof corpo?.tipo === "string" ? corpo.tipo : "";
   const id = typeof corpo?.id === "string" ? corpo.id : "";
   const mes = typeof corpo?.mes === "string" ? corpo.mes : "";
+  /**
+   * O ensaio: a mesma mensagem, só para quem apertou.
+   *
+   * "Avisar a equipe" manda e-mail de verdade para dez colegas, na hora, e não
+   * tem como desfazer. Quem nunca viu a mensagem hesita antes de apertar — e
+   * hesitar aqui significa a escala sair sem ninguém ficar sabendo, que é o
+   * problema que o botão existe para resolver.
+   *
+   * O ensaio não é uma mensagem diferente: é A MENSAGEM, montada com os
+   * plantões de quem pediu, entregue num endereço só. Uma versão "de exemplo"
+   * provaria que o exemplo funciona, e não que o e-mail funciona.
+   */
+  const soParaMim = corpo?.soParaMim === true;
 
   const { data: euPerfil } = await supabase
     .from("perfis").select("id, nome, institution_id").eq("id", user.id).maybeSingle();
@@ -219,6 +232,58 @@ export async function POST(request: NextRequest) {
       });
       escalaDoMes.set(linha.perfil_id, lista);
     }
+    // ── O ENSAIO ────────────────────────────────────────────────────────
+    //
+    // O DESTINO NUNCA VEM DO NAVEGADOR: é sempre o endereço da própria sessão.
+    // É a mesma regra que segura o /api/admin/email-teste, e pelo mesmo
+    // motivo — aceitar um destinatário de fora transformaria isto num
+    // disparador de mensagens assinadas com o DKIM do avanest.com.br.
+    if (soParaMim) {
+      const meus = escalaDoMes.get(euPerfil.id) ?? [];
+      // Sem plantão seu no mês não há ensaio possível: a lista É o corpo da
+      // mensagem, e mandar uma vazia mostraria uma peça que a equipe nunca vai
+      // receber. Inventar uma lista de exemplo provaria que o exemplo
+      // funciona, não que o e-mail funciona.
+      if (!meus.length) {
+        return NextResponse.json({
+          error: `Você não tem plantão em ${nomeDoMes}.`,
+          dica: "O ensaio monta a mensagem com os SEUS plantões, para você ver exatamente o "
+            + "que a equipe vai receber. Escolha um mês em que você esteja escalado.",
+        }, { status: 400 });
+      }
+      if (!emailConfigurado()) {
+        return NextResponse.json({
+          error: "O serviço de e-mail não está configurado no servidor.",
+          dica: "Isso é configuração do sistema, não da equipe.",
+        }, { status: 503 });
+      }
+      const endereco = String(user.email ?? "").trim();
+      if (!enderecoValido(endereco)) {
+        return NextResponse.json({ error: "A sua conta não tem e-mail válido." }, { status: 400 });
+      }
+      const { data: organizacao } = await supabase
+        .from("instituicoes").select("nome").eq("id", euPerfil.institution_id).maybeSingle();
+      const resultado = await enviarEmail({
+        para: endereco,
+        ...escalaPublicadaEmail({
+          nome: euPerfil.nome, organizacao: organizacao?.nome ?? "grupo", mes,
+          plantoes: meus, autor: euPerfil.nome,
+        }),
+      });
+      // AQUI A FALHA É DITA EM VOZ ALTA. No envio para a equipe o erro de
+      // e-mail é engolido, porque não pode derrubar o aviso; este existe SÓ
+      // para encontrar o erro, e um "não deu certo" genérico não serviria —
+      // o valor está em dizer se foi a chave, o domínio ou o remetente.
+      if (!resultado.ok) {
+        return NextResponse.json({
+          error: `O e-mail não saiu: ${resultado.erro}`,
+          dica: "Se falar em domínio, é o avanest.com.br que ainda não foi verificado no "
+            + "provedor de e-mail.",
+        }, { status: 502 });
+      }
+      return NextResponse.json({ ok: true, ensaio: true, para: endereco, enviadas: 0, emails: 1 });
+    }
+
     for (const [perfilId, total] of quantos) {
       if (perfilId === euPerfil.id) continue;
       alvos.push({
