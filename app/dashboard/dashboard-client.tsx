@@ -208,7 +208,9 @@ type Financeiro = { id:string; institution_id:string; patient_id:string; avaliac
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
 type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; cor_escala?:number|null; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
-type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null; observacoes:string|null };
+type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null; observacoes:string|null;
+  /** Retrato da produção enviada no fechamento (202609300005). Nulo com o mês aberto. */
+  producao_no_fechamento?:{anotacoes:number;valor:number}|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string;
   /** Preço zero por DECISÃO (SUS/cortesia) — e não por ninguém ter preenchido. Só importa quando `valor` é 0. */
   gratuito:boolean };
@@ -1568,6 +1570,22 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // precisa saber: reabrir, conferir e fechar de novo.
   const mesesFechados=new Set(periodos.filter(p=>p.status==="fechado").map(p=>p.periodo));
   const depoisDoFechamento=financeiro.filter(i=>i.periodo&&mesesFechados.has(i.periodo)&&!i.fechado_at&&i.status!=="cancelado");
+  // A PRODUÇÃO não trava no fechamento (é o caderninho do médico), mas entra
+  // no total do mês. O fechamento guarda o retrato dela; aqui ele é comparado
+  // com a produção de agora. Só anotações e valor: baixa de pagamento não
+  // muda o faturado e não deve acender aviso. Meses fora da janela carregada
+  // (producao_do_periodo traz doze meses) ficam de fora — sem a produção de
+  // agora, a comparação diria "mudou" para tudo.
+  const inicioDaJanela=Array.from({length:11}).reduce<string>(m=>mesAnterior(m),mesAtual());
+  const producaoMudou=periodos
+    .filter(p=>p.status==="fechado"&&p.producao_no_fechamento&&p.periodo>=inicioDaJanela)
+    .map(p=>{
+      const doMes=(producaoDaReceita??[]).filter(i=>i.situacao!=="cancelado"&&i.data.startsWith(p.periodo));
+      const agora={anotacoes:doMes.length,valor:doMes.reduce((s,i)=>s+Number(i.valor),0)};
+      const antes={anotacoes:Number(p.producao_no_fechamento!.anotacoes),valor:Number(p.producao_no_fechamento!.valor)};
+      return {mes:p.periodo,antes,agora};
+    })
+    .filter(x=>x.antes.anotacoes!==x.agora.anotacoes||Math.abs(x.antes.valor-x.agora.valor)>=0.005);
   const byPlan=groups.map(([convenio,items])=>{
     const billed=items.reduce((sum,item)=>sum+Number(item.valor),0);
     const paid=items.reduce((sum,item)=>sum+Number(item.recebido),0);
@@ -1969,6 +1987,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         // grava direto "fechado", e comparar com o estado antigo deixava o
         // aviso "o mês ainda não foi fechado" aceso para sempre.
         fechamentoPendente={Boolean(receitaTotal.valor>0&&periodState?.status!=="fechado")}
+        producaoMudou={producaoMudou}
         depoisDoFechamento={Object.entries(depoisDoFechamento.reduce<Record<string,number>>((acc,i)=>{acc[i.periodo!]=(acc[i.periodo!]??0)+1;return acc},{})).sort(([a],[b])=>a.localeCompare(b))}
         onIr={(tarefa,mes)=>{if(mes)setPeriod(mes);setTarefa(tarefa)}}
         onConfigurarValores={openPriceConfig}
@@ -2473,7 +2492,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           desfazer uma revisão já assinada, e a régua sobe. */}
       {periodState?.status==="fechado" ? <>
         {(()=>{const tardios=depoisDoFechamento.filter(i=>i.periodo===period);
-          return tardios.length>0&&<p className="financeNota alerta"><Icone nome="alerta" tamanho={15}/> {plural(tardios.length,"lançamento entrou","lançamentos entraram")} neste mês depois do fechamento ({mascara(money(tardios.reduce((s,i)=>s+Number(i.valor),0)))}) e {tardios.length===1?"não está travado":"não estão travados"}. Os totais acima já {tardios.length===1?"o incluem":"os incluem"} — reabra com o motivo, confira e feche de novo para a conferência valer para eles também.</p>})()}
+          const producao=producaoMudou.find(x=>x.mes===period);
+          return <>{producao&&<p className="financeNota alerta"><Icone nome="alerta" tamanho={15}/> A produção enviada deste mês mudou depois do fechamento: era {mascara(money(producao.antes.valor))} em {plural(producao.antes.anotacoes,"anotação","anotações")}, agora é {mascara(money(producao.agora.valor))} em {plural(producao.agora.anotacoes,"anotação","anotações")}. Os totais acima já mostram o valor de agora — reabra com o motivo, confira e feche de novo.</p>}
+          {tardios.length>0&&<p className="financeNota alerta"><Icone nome="alerta" tamanho={15}/> {plural(tardios.length,"lançamento entrou","lançamentos entraram")} neste mês depois do fechamento ({mascara(money(tardios.reduce((s,i)=>s+Number(i.valor),0)))}) e {tardios.length===1?"não está travado":"não estão travados"}. Os totais acima já {tardios.length===1?"o incluem":"os incluem"} — reabra com o motivo, confira e feche de novo para a conferência valer para eles também.</p>}</>})()}
         <div className="closingFooter closingFechado">
           <span><Icone nome="cadeado" tamanho={15}/> Este período está fechado. Registrar pagamento, estornar ou excluir um lançamento daqui não é mais permitido.</span>
           {podeExcluirLancamento&&!reabrindo&&
@@ -3560,7 +3581,7 @@ function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
 function VisaoGeral({
   temAlgumaConfiguracao, temAlgumMovimento,
   pendingPatients, convenioPendentes, noteAlerts, cobrancasAtrasadas, valorAtrasado,
-  faltamRecorrentes, repassesPendentes, fechamentoPendente, depoisDoFechamento,
+  faltamRecorrentes, repassesPendentes, fechamentoPendente, depoisDoFechamento, producaoMudou,
   onIr, onConfigurarValores, mascara, money,
 }:{
   temAlgumaConfiguracao:boolean; temAlgumMovimento:boolean;
@@ -3569,6 +3590,8 @@ function VisaoGeral({
   repassesPendentes:number; fechamentoPendente:boolean;
   /** Lançamentos que entraram num mês já fechado, por mês ("2026-09" → 2). */
   depoisDoFechamento:[string,number][];
+  /** Meses fechados cuja produção enviada não bate mais com o retrato do fechamento. */
+  producaoMudou:{mes:string;antes:{anotacoes:number;valor:number};agora:{anotacoes:number;valor:number}}[];
   onIr:(tarefa:string,periodo?:string)=>void; onConfigurarValores:()=>void;
   mascara:(t:string)=>string; money:(v:number)=>string;
 }) {
@@ -3638,6 +3661,13 @@ function VisaoGeral({
     chave:`depois-${mes}`,
     titulo:`${plural(quantos,"lançamento entrou","lançamentos entraram")} em ${mes.split("-").reverse().join("/")} depois do fechamento`,
     detalhe:"o mês fechado mudou depois da conferência — reabra com o motivo, revise e feche de novo",
+    tarefa:"fechamento",
+    periodo:mes,
+  });
+  for(const {mes,antes,agora} of producaoMudou) fila.push({
+    chave:`producao-${mes}`,
+    titulo:`A produção de ${mes.split("-").reverse().join("/")} mudou depois do fechamento`,
+    detalhe:`era ${mascara(money(antes.valor))} em ${plural(antes.anotacoes,"anotação","anotações")}; agora ${mascara(money(agora.valor))} em ${plural(agora.anotacoes,"anotação","anotações")}`,
     tarefa:"fechamento",
     periodo:mes,
   });
