@@ -63,12 +63,12 @@ test("as duas funções ficam fora do alcance de anon", () => {
 test("a tela mostra FECHADO, não CONFERIDO, e o botão muda de nome com o estado", () => {
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const i = tela.indexOf('chave="fin-fechamento"');
-  const painel = tela.slice(i, i + 3500);
+  const painel = tela.slice(i, i + 4300);
   assert.match(painel, /status==="fechado"\?"present":"waiting"/,
     "o selo do painel deixou de reconhecer o estado 'fechado'");
   assert.match(painel, /"FECHADO":"EM PREPARAÇÃO"/,
     "sumiu o texto FECHADO / EM PREPARAÇÃO do selo");
-  assert.match(painel, /"Reabrir período"/, "sumiu o botão de reabrir no painel");
+  assert.match(painel, /Reabrir período/, "sumiu o botão de reabrir no painel");
 });
 
 test("o formulário de reabertura trava o botão até o motivo ter pelo menos 5 caracteres", () => {

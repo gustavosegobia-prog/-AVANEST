@@ -64,8 +64,8 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
   FAIXAS_DE_IDADE, envelhecimento, glosa, mesAnterior,
-  prazoMedioPorConvenio, saldoAReceber, saldoVencido, totaisDoEnvelhecimento,
-  variacao,
+  prazoMedioPorConvenio, projecaoPorPrazoHistorico, saldoAReceber, saldoVencido,
+  totaisDoEnvelhecimento, variacao,
 } from "@/lib/financeiro-indicadores";
 import {
   deProducao, deConsulta, doMes, glosasDe, porOrigem, porProfissional, somar,
@@ -202,7 +202,9 @@ type Paciente = {
 };
 type Avaliacao = { id: string; patient_id: string; created_by?: string | null; status: string; versao?: number; updated_at: string; created_at: string; concluida_at?: string | null; dados?: Record<string, unknown> | null; local_atendimento_id?: string | null };
 type Agendamento = { id:string; patient_id:string; avaliacao_id:string|null; data:string; horario:string|null; status:string; hospital:string|null; procedimento:string|null; convenio:string|null; observacoes:string|null; created_at:string; updated_at:string };
-type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number; periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
+type Financeiro = { id:string; institution_id:string; patient_id:string; avaliacao_id:string|null; medico_id:string|null; convenio:string; hospital:string|null; valor:number; recebido:number; status:string; nota_fiscal:string|null; nota_emitida_at?:string|null; nota_vencimento_at?:string|null; nota_reprogramada_at?:string|null; lote:string|null; data_recebimento:string|null; repasse_valor:number; repasse_status:string; glosa_valor?:number;
+  glosa_recurso_status?:string; glosa_recurso_prazo?:string|null; glosa_recurso_motivo?:string|null;
+  periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
 type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; cor_escala?:number|null; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
@@ -1460,6 +1462,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // atendimentos que pode nem ter nada. Ver o painel "visao-geral" abaixo.
   const [tarefa,setTarefa]=useState("visao-geral");
   const patientMap=new Map(pacientes.map(p=>[p.id,p]));
+  const perfilMap=new Map(perfis.map(p=>[p.id,p]));
   const evaluationMap=new Map<string,Avaliacao>();
   for(const item of avaliacoes)if(!evaluationMap.has(item.patient_id)||item.status==="concluida")evaluationMap.set(item.patient_id,item);
   const billedPatients=new Set(financeiro.map(item=>item.patient_id));
@@ -1544,6 +1547,10 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // o pagamento, e plantão e produção não passam por emissão dentro do sistema.
   // Misturá-los devolveria "0 dias" para o hospital que paga em sessenta.
   const prazos=prazoMedioPorConvenio(financeiro,pagamentos);
+  // Compara o saldo em aberto de cada convênio (recebiveis, a mesma base do
+  // envelhecimento acima) contra o prazo médio DELE — não um gatilho fixo de
+  // dias. Ver o comentário de `projecaoPorPrazoHistorico`.
+  const projecao=projecaoPorPrazoHistorico(recebiveis,prazos,hojeIso);
 
   // O outro lado do caixa.
   const despesasMes=despesasDoMes(despesas,period);
@@ -1572,6 +1579,14 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     const due=item.nota_vencimento_at || (item.nota_emitida_at ? somarDias(item.nota_emitida_at,15) : null);
     return Boolean(due&&due<=todayIso);
   });
+  // GLOSA COM RECURSO. glosa_recurso_status nasce 'sem_recurso' em toda
+  // linha marcada como glosa — "aceito"/"negado" são os dois desfechos que
+  // fecham o caso; até lá, ela pede acompanhamento.
+  const glosasParaRecurso=financeiro.filter(item=>
+    item.status==="glosa"&&!["aceito","negado"].includes(item.glosa_recurso_status||"sem_recurso"));
+  const prazoRecursoLimite=somarDias(todayIso,7);
+  const glosasPrazoVencendo=glosasParaRecurso.filter(item=>
+    item.glosa_recurso_prazo&&item.glosa_recurso_prazo<=prazoRecursoLimite);
 
   /**
    * Lança uma despesa.
@@ -1813,6 +1828,33 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     const a=document.createElement("a");a.href=url;a.download=`avanest-financeiro-${period}.csv`;a.click();
     URL.revokeObjectURL(url);
   }
+  // O RELATÓRIO DE FECHAMENTO, e não a lista de lançamentos: exportCsv já
+  // existe para linha a linha — o que faltava era o resumo pronto para levar
+  // à conferência com o contador, sempre com o número de verdade, mesmo com
+  // "ocultar valores" ligado na tela.
+  function exportarFechamento(){
+    const num=(v:number)=>String(Number(v||0).toFixed(2)).replace(".",",");
+    const repassesPendentes=financeiro
+      .filter(i=>Number(i.repasse_valor)>0&&i.repasse_status!=="pago")
+      .reduce((s,i)=>s+Number(i.repasse_valor),0);
+    const linhas:string[][]=[
+      ["Relatório de fechamento",period],
+      ["Total faturado (consultas e produção)",num(receitaTotal.valor)],
+      ["Recebido",num(receitaTotal.recebido)],
+      ["Pendente de recebimento",num(receitaTotal.aReceber)],
+      ["Glosas",num(glosasDe(receitasDoMes))],
+      ["Despesas do mês",num(despesaTotal)],
+      ["Resultado do mês",num(resultado.resultado)],
+      ["Margem",resultado.margem===null?"—":`${resultado.margem.toFixed(1).replace(".",",")}%`],
+      ["Repasses realizados (consultas)",num(periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0))],
+      ["Repasses pendentes",num(repassesPendentes)],
+      ["Status do período",periodState?.status==="fechado"?"Fechado":"Em preparação"],
+    ];
+    const csv="﻿"+linhas.map(l=>l.map(c=>`"${String(c).replaceAll('"','""')}"`).join(";")).join("\r\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");a.href=url;a.download=`avanest-fechamento-${period}.csv`;a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return <div className="clinicalMain financeMain">
     <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label><button className="outlineClinical" disabled={!periodItems.length} title={periodItems.length?undefined:"Sem lançamentos na competência selecionada"} onClick={exportCsv}><Icone nome="imprimir" tamanho={15}/> Exportar CSV</button>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}</div></section>
@@ -1871,6 +1913,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ["faturamento","Faturado por convênio"],
           ["grupo","Contas a receber"],
           ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
+          ["glosas","Glosas",glosasParaRecurso.length],
           // O contador é o que está vencido, e não o total a receber: a coluna
           // conta o que pede ação hoje.
           ["idade","Cobranças em atraso",linhasIdade.filter(l=>l.faixas.acima90>0).length],
@@ -1882,7 +1925,6 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ["grupo","Relatórios e fechamento"],
           ["resultado","Resultado do mês"],
           ["origem","Origem da receita"],
-          ["graficos","Gráficos"],
           ["fechamento","Fechamento do mês"],
           ["grupo","Configurações"],
           ["valores","Valores por convênio"],
@@ -1918,14 +1960,17 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         mascara={mascara}
         money={money}
       />
-      {/* OS GRÁFICOS FICAVAM ATRÁS DE TRÊS CLIQUES: Visão geral não é o
-          tarefa "graficos" — era preciso abrir "Relatórios e fechamento" e
-          escolher "Gráficos" para ver qualquer coisa visual. Quem abria o
-          Financeiro só via texto. A mesma condição de VisaoGeral (primeira
-          vez vs. já tem algo) decide se os cartões aparecem aqui: sem
-          nenhum convênio configurado e nenhum movimento, cinco cartões
-          "sem dados nesta competência" empilhados abaixo do convite de
-          configuração seriam ruído, não gráfico. */}
+      {/* OS GRÁFICOS FICAVAM ATRÁS DE TRÊS CLIQUES: era preciso abrir
+          "Relatórios e fechamento" e escolher "Gráficos", uma aba à parte,
+          para ver qualquer coisa visual — quem abria o Financeiro só via
+          texto. Aqui é o único lugar onde GraficosFinanceiro renderiza: a
+          aba "Gráficos" separada existiu por uma rodada e foi removida por
+          duplicar exatamente este bloco, sem nenhuma diferença de conteúdo
+          entre as duas. A mesma condição de VisaoGeral (primeira vez vs. já
+          tem algo) decide se os cartões aparecem aqui: sem nenhum convênio
+          configurado e nenhum movimento, cinco cartões "sem dados nesta
+          competência" empilhados abaixo do convite de configuração seriam
+          ruído, não gráfico. */}
       {(convenioValores.length>0||financeiro.length>0||despesas.length>0||(producaoDaReceita?.length??0)>0)&&
         <GraficosFinanceiro receitas={receitas} pagamentos={pagamentos} periodo={period}/>}
       </>}
@@ -2068,6 +2113,58 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       }); })()}
     </PainelRecolhivel>
       </>}
+      {tarefa==="glosas"&&<>
+    {/* GLOSA ATÉ AQUI ERA SÓ STATUS E VALOR — nada sobre o que acontece
+        depois. Um recurso tem prazo (perde o direito depois de um certo
+        número de dias), motivo (o que se está alegando) e desfecho: aceito,
+        negado, ou ainda em análise. Os "sem_recurso"/"em_recurso" aparecem
+        primeiro — são os que ainda pedem alguma ação; aceito/negado ficam
+        depois, como histórico do que já foi decidido. */}
+    <PainelRecolhivel chave="fin-glosas" titulo="Glosas em recurso" legenda="acompanhamento de prazo, motivo e desfecho de cada recurso" abrePadrao>
+      {glosasPrazoVencendo.length>0&&
+        <p className="financeNota alerta"><Icone nome="alerta" tamanho={15}/> {plural(glosasPrazoVencendo.length,"recurso com prazo vencido ou vencendo","recursos com prazo vencido ou vencendo")} nos próximos 7 dias.</p>}
+      {(() => {
+        const todasGlosas=financeiro.filter(i=>i.status==="glosa").sort((a,b)=>{
+          const resolvidoA=["aceito","negado"].includes(a.glosa_recurso_status||"sem_recurso")?1:0;
+          const resolvidoB=["aceito","negado"].includes(b.glosa_recurso_status||"sem_recurso")?1:0;
+          return resolvidoA-resolvidoB||Number(b.glosa_valor||0)-Number(a.glosa_valor||0);
+        });
+        if(todasGlosas.length===0) return <div className="emptyClinical compactEmpty">Nenhuma glosa registrada. Elas aparecem aqui quando um lançamento é marcado como &quot;Glosa&quot; em Lançamentos.</div>;
+        return todasGlosas.map(item=>{
+          const patient=patientMap.get(item.patient_id);
+          const valorGlosado=Number(item.glosa_valor)||Math.max(0,Number(item.valor)-Number(item.recebido));
+          const prazoVencido=Boolean(item.glosa_recurso_prazo&&item.glosa_recurso_prazo<=prazoRecursoLimite
+            &&!["aceito","negado"].includes(item.glosa_recurso_status||"sem_recurso"));
+          return <div className="financeItemRow" key={item.id}>
+            <div>
+              <strong>{patient?.nome||"Paciente"}</strong>
+              <small>{item.convenio}{item.hospital?` · ${item.hospital}`:""} · Glosado: {mascara(money(valorGlosado))}</small>
+            </div>
+            <div className="glosaRecursoFields">
+              <label className="inlineMoney"><span>Recurso</span>
+                <select value={item.glosa_recurso_status||"sem_recurso"} onChange={e=>updateItem(item.id,{glosa_recurso_status:e.target.value})}>
+                  <option value="sem_recurso">Sem recurso ainda</option>
+                  <option value="em_recurso">Em recurso</option>
+                  <option value="aceito">Aceito pelo convênio</option>
+                  <option value="negado">Negado</option>
+                </select>
+              </label>
+              <label className="inlineMoney"><span>Prazo do recurso</span>
+                <input type="date" className={prazoVencido?"financeSmallInput alerta":"financeSmallInput"}
+                  defaultValue={item.glosa_recurso_prazo||""}
+                  onBlur={e=>updateItem(item.id,{glosa_recurso_prazo:e.target.value||null})}/>
+              </label>
+              <label className="inlineMoney"><span>Motivo do recurso</span>
+                <input className="financeSmallInput" defaultValue={item.glosa_recurso_motivo||""}
+                  placeholder="O que está sendo alegado"
+                  onBlur={e=>updateItem(item.id,{glosa_recurso_motivo:e.target.value||null})}/>
+              </label>
+            </div>
+          </div>;
+        });
+      })()}
+    </PainelRecolhivel>
+      </>}
       {tarefa==="notas"&&<>
     <PainelRecolhivel chave="fin-notas" className="noteAlerts" titulo="Notas fiscais para acompanhamento" legenda="Alerta após 15 dias da emissão, até receber baixa financeira." abrePadrao={noteAlerts.length>0}>{noteAlerts.length?noteAlerts.map(item=>{const patient=patientMap.get(item.patient_id);const due=item.nota_vencimento_at||somarDias(item.nota_emitida_at,15);return <div className="noteAlertRow" key={item.id}><span><strong>NF {item.nota_fiscal}</strong><small>{item.convenio} · {patient?.nome||"Paciente"} · verificar pagamento desde {brDate(due)}</small></span><button className="paymentButton" disabled={busy===item.id} onClick={()=>{setTarefa("recebimentos");setMessage("Informe o valor recebido abaixo para confirmar a baixa da nota.");/* o alvo da rolagem vive na seção de Recebimentos: sem trocar de seção antes, getElementById não acha nada e o botão não faz coisa alguma */ requestAnimationFrame(()=>document.getElementById(`recebimento-${item.id}`)?.scrollIntoView({behavior:"smooth",block:"center"}))}}>Dar baixa</button><button className="outlineClinical" disabled={busy===item.id} onClick={()=>reprogramNote(item)}>+15 dias</button></div>}):<div className="emptyClinical compactEmpty">Nenhuma nota vencida para acompanhamento.</div>}</PainelRecolhivel>
       </>}
@@ -2077,7 +2174,14 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     <PainelRecolhivel chave="fin-lotes" titulo="📦 Lotes de cobrança" legenda="agrupamento por convênio/hospital, sem dados clínicos" abrePadrao={false}>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</PainelRecolhivel>
       </>}
       {tarefa==="repasses"&&<>
-    <PainelRecolhivel chave="fin-repasses" titulo="🩺 Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao={false}>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=><div className="repasseRow" key={item.id}><span><strong>Profissional vinculado ao atendimento</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>)}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</PainelRecolhivel>
+    <PainelRecolhivel chave="fin-repasses" titulo="Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao={false}>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=>{
+      // O NOME NUNCA SAÍA DAQUI. A linha mostrava o texto fixo "Profissional
+      // vinculado ao atendimento" para todo mundo — medico_id já vem do
+      // banco desde a criação da tabela, e perfis (com .nome) já chegava
+      // como prop do FinanceView; ninguém tinha ligado os dois.
+      const profissional=item.medico_id?perfilMap.get(item.medico_id)?.nome:null;
+      return <div className="repasseRow" key={item.id}><span><strong>{profissional||"Profissional não identificado"}</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>;
+    })}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</PainelRecolhivel>
       </>}
       {tarefa==="despesas"&&<>
     {faltamRecorrentes.length>0&&
@@ -2278,8 +2382,37 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           </div>}
       <p className="financeNota">A média é ponderada pelo valor: um pagamento grande e demorado pesa mais que vários pequenos e rápidos, porque é onde o seu dinheiro está.</p>
     </PainelRecolhivel>
+
+    {/* NÃO é uma previsão de data — é a comparação entre dois fatos: há
+        quantos dias esta nota espera, e quantos dias ESTE convênio levou nos
+        pagamentos que já fez. "Mais de 90 dias" acima é o alerta genérico;
+        aqui um convênio que sempre paga em 15 dias soa o alarme aos 20, e um
+        que sempre paga em 70 só preocupa bem depois disso. */}
+    <PainelRecolhivel chave="fin-projecao" titulo="Fora do padrão de cada convênio"
+      legenda="saldo em aberto comparado ao prazo que cada convênio já mostrou levar para pagar">
+      {projecao.length===0
+        ? <div className="emptyClinical compactEmpty">Nada a receber. Tudo quitado.</div>
+        : <div className="financeTabelaRolavel">
+            <table className="financeTabela">
+              <thead><tr>
+                <th>Convênio</th>
+                <th className="num">Prazo médio</th>
+                <th className="num">Além do prazo dele</th>
+                <th className="num">Dentro do prazo dele</th>
+                <th className="num">Sem histórico</th>
+              </tr></thead>
+              <tbody>{projecao.map(l=><tr key={l.convenio}>
+                <td>{l.convenio}</td>
+                <td className="num">{l.prazoMedio===null?"—":`${l.prazoMedio} dias`}</td>
+                <td className={l.alemDoPrazo>0?"num alerta":"num"}>{l.alemDoPrazo>0?mascara(money(l.alemDoPrazo)):"—"}</td>
+                <td className="num">{l.dentroDoPrazo>0?mascara(money(l.dentroDoPrazo)):"—"}</td>
+                <td className="num">{(l.saldo-l.alemDoPrazo-l.dentroDoPrazo)>0?mascara(money(l.saldo-l.alemDoPrazo-l.dentroDoPrazo)):"—"}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
+      <p className="financeNota">&quot;Sem histórico&quot; é saldo de convênio que ainda não pagou nada — sem nenhum pagamento visto, não há prazo dele para comparar.</p>
+    </PainelRecolhivel>
       </>}
-      {tarefa==="graficos"&&<GraficosFinanceiro receitas={receitas} pagamentos={pagamentos} periodo={period}/>}
       {tarefa==="faturamento"&&<>
     <PainelRecolhivel chave="fin-faturamento" className="billingDashboard" titulo="Faturamento por convênio" legenda="Valores faturados e recebidos na competência selecionada."><div className="billingPlanTable"><table><thead><tr><th>Convênio</th><th>Consultas</th><th>Valor unitário</th><th>Faturado</th><th>Recebido</th><th>Pendente</th></tr></thead><tbody>{byPlan.map(item=><tr key={item.convenio}><td><strong>{item.convenio}</strong></td><td>{item.consultas}</td><td>{money(item.unit)}</td><td>{money(item.valor)}</td><td>{money(item.recebido)}</td><td>{money(item.pendente)}</td></tr>)}</tbody></table>{!byPlan.length&&<div className="emptyClinical compactEmpty">Os valores por convênio aparecerão após os lançamentos.</div>}</div></PainelRecolhivel>
       </>}
@@ -2305,7 +2438,18 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         em 202609300002_fechamento_de_verdade.sql). "Conferido" sozinho não
         protegia nenhum lançamento; "fechado" protege, de verdade, a partir
         de agora. */}
-    <PainelRecolhivel className="closingPanel" chave="fin-fechamento" titulo={<><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</>} extra={<span className={`statusChip ${periodState?.status==="fechado"?"present":"waiting"}`}>{periodState?.status==="fechado"?"FECHADO":"EM PREPARAÇÃO"}</span>}><div className="closingMetrics"><MoneySmall value={receitaTotal.valor} label="Total cobrado" oculto={oculto}/><MoneySmall value={receitaTotal.recebido} label="Recebido" tone="green" oculto={oculto}/><MoneySmall value={receitaTotal.aReceber} label="Pendente" tone="amber" oculto={oculto}/><MoneySmall value={glosasDe(receitasDoMes)} label="Glosas" tone="red" oculto={oculto}/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados (consultas)" tone="blue" oculto={oculto}/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio (consultas)" oculto={oculto}/></div><p className="financeNota">Total, recebido e pendente somam consultas e produção. Repasses e ticket médio são só de consultas — o repasse e a nota fiscal ainda não existem para produção neste sistema.</p>
+    <PainelRecolhivel className="closingPanel" chave="fin-fechamento" titulo={<><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</>} extra={<span className={`statusChip ${periodState?.status==="fechado"?"present":"waiting"}`}>{periodState?.status==="fechado"?"FECHADO":"EM PREPARAÇÃO"}</span>}><div className="closingMetrics"><MoneySmall value={receitaTotal.valor} label="Total cobrado" oculto={oculto}/><MoneySmall value={receitaTotal.recebido} label="Recebido" tone="green" oculto={oculto}/><MoneySmall value={receitaTotal.aReceber} label="Pendente" tone="amber" oculto={oculto}/><MoneySmall value={glosasDe(receitasDoMes)} label="Glosas" tone="red" oculto={oculto}/>
+      {/* DESPESAS E RESULTADO vêm de resultadoDoMes, a MESMA conta que
+          "Resultado do mês" usa — não uma soma paralela. Quem fecha o
+          período vê o P&L inteiro aqui, sem precisar abrir outra aba para
+          saber se o mês deu lucro antes de confirmar o fechamento. */}
+      <MoneySmall value={despesaTotal} label="Despesas do mês" tone="red" oculto={oculto}/>
+      <MoneySmall value={resultado.resultado} label="Resultado do mês" tone={resultado.resultado<0?"red":"green"} oculto={oculto}/>
+      <MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados (consultas)" tone="blue" oculto={oculto}/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio (consultas)" oculto={oculto}/></div><p className="financeNota">Total, recebido e pendente somam consultas e produção. Despesas e resultado são do serviço inteiro. Repasses e ticket médio são só de consultas — o repasse e a nota fiscal ainda não existem para produção neste sistema.</p>
+      <div className="closingFooter closingExportar">
+        <span><Icone nome="imprimir" tamanho={15}/> Leve este resumo para a conferência com o contador.</span>
+        <button className="outlineClinical compact" onClick={exportarFechamento}>Baixar relatório do fechamento</button>
+      </div>
       {/* QUEM VÊ O QUE FICOU FECHADO, e o que passa a ser possível fazer.
           Fechado: o rodapé de sempre some, e no lugar entra o aviso do que a
           trava significa — período fechado recusa registrar, estornar e

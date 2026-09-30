@@ -280,3 +280,59 @@ export function ticketMedio(itens: ItemFinanceiro[]) {
   if (!itens.length) return 0;
   return itens.reduce((soma, item) => soma + numero(item.valor), 0) / itens.length;
 }
+
+// ── Projeção de recebimento ─────────────────────────────────────────────────
+
+export type LinhaDeProjecao = {
+  convenio: string;
+  saldo: number;
+  prazoMedio: number | null;
+  alemDoPrazo: number;
+  dentroDoPrazo: number;
+};
+
+/**
+ * Quanto do saldo em aberto de cada convênio já passou do prazo que ELE
+ * MESMO costuma levar para pagar — não do gatilho genérico de 90 dias que
+ * "Cobranças em atraso" já mostra.
+ *
+ * Um convênio que historicamente paga em 20 dias e está com uma nota há 35
+ * dias em aberto está fora do padrão dele, mesmo sem chegar perto dos 90
+ * dias do alerta geral. Outro que sempre paga em 70 não é motivo de
+ * preocupação até passar bem mais que isso — 75 dias nele é normal, e seria
+ * "além do prazo" pelo critério fixo dos outros convênios.
+ *
+ * NÃO é uma previsão de data. Não inventa quando o dinheiro vai cair: só
+ * compara o que já é fato (há quantos dias esta nota espera) contra outro
+ * fato (quantos dias esse convênio levou nos pagamentos que já fez).
+ * Convênio sem nenhum pagamento no histórico entra com `prazoMedio: null` e
+ * o saldo dele não conta nem como dentro nem como além do prazo — sem nunca
+ * ter visto esse convênio pagar, não há prazo dele para comparar.
+ */
+export function projecaoPorPrazoHistorico(
+  itens: Array<ItemFinanceiro & { id: string }>,
+  prazos: PrazoDeConvenio[],
+  hoje: string,
+): LinhaDeProjecao[] {
+  const prazoPorConvenio = new Map(prazos.map((p) => [p.convenio, p.dias]));
+  const porConvenio = new Map<string, LinhaDeProjecao>();
+
+  for (const item of itens) {
+    if (!emAberto(item)) continue;
+    const convenio = item.convenio || "Particular";
+    const prazoMedio = prazoPorConvenio.get(convenio) ?? null;
+    const linha = porConvenio.get(convenio) ?? {
+      convenio, saldo: 0, prazoMedio, alemDoPrazo: 0, dentroDoPrazo: 0,
+    };
+    const saldo = saldoDoItem(item);
+    linha.saldo += saldo;
+    if (prazoMedio !== null) {
+      if (idadeDoItem(item, hoje) > prazoMedio) linha.alemDoPrazo += saldo;
+      else linha.dentroDoPrazo += saldo;
+    }
+    porConvenio.set(convenio, linha);
+  }
+
+  // Mais fora do padrão primeiro: é o que quebra a expectativa de caixa.
+  return [...porConvenio.values()].sort((a, b) => b.alemDoPrazo - a.alemDoPrazo);
+}

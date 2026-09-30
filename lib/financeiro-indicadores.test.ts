@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   competenciaDoItem, diasEntre, emAberto, envelhecimento, glosa, idadeDoItem,
-  mesAnterior, prazoMedioPorConvenio, referenciaDeIdade, saldoAReceber,
-  saldoDoItem, saldoVencido, ticketMedio, totaisDoEnvelhecimento, variacao,
-  type ItemFinanceiro,
+  mesAnterior, prazoMedioPorConvenio, projecaoPorPrazoHistorico, referenciaDeIdade,
+  saldoAReceber, saldoDoItem, saldoVencido, ticketMedio, totaisDoEnvelhecimento,
+  variacao, type ItemFinanceiro,
 } from "./financeiro-indicadores.ts";
 
 const HOJE = "2026-08-27";
@@ -283,5 +283,70 @@ describe("ticket médio", () => {
 
   it("lista vazia devolve zero, não NaN", () => {
     assert.equal(ticketMedio([]), 0);
+  });
+});
+
+describe("projeção de recebimento por prazo histórico", () => {
+  // idade em HOJE (2026-08-27) de um item criado em 2026-08-01: 26 dias.
+  it("saldo além do prazo quando a espera atual já passou do prazo médio do convênio", () => {
+    const [linha] = projecaoPorPrazoHistorico(
+      [item({ id: "a", convenio: "Unimed", valor: 1000, recebido: 0 })],
+      [{ convenio: "Unimed", dias: 10, pagamentos: 3, valor: 5000 }],
+      HOJE,
+    );
+    assert.equal(linha.prazoMedio, 10);
+    assert.equal(linha.alemDoPrazo, 1000);
+    assert.equal(linha.dentroDoPrazo, 0);
+  });
+
+  it("saldo dentro do prazo quando a espera atual ainda não chegou no prazo médio do convênio", () => {
+    const [linha] = projecaoPorPrazoHistorico(
+      [item({ id: "a", convenio: "Bradesco", valor: 1000, recebido: 0 })],
+      [{ convenio: "Bradesco", dias: 90, pagamentos: 3, valor: 5000 }],
+      HOJE,
+    );
+    assert.equal(linha.alemDoPrazo, 0);
+    assert.equal(linha.dentroDoPrazo, 1000);
+  });
+
+  it("convênio nunca visto pagar entra com prazoMedio nulo e fora das duas colunas", () => {
+    // Sem nenhum pagamento no histórico não há prazo desse convênio para
+    // comparar — o saldo aparece, mas não como "dentro" nem como "além".
+    const [linha] = projecaoPorPrazoHistorico(
+      [item({ id: "a", convenio: "Amil", valor: 1000, recebido: 0 })],
+      [],
+      HOJE,
+    );
+    assert.equal(linha.prazoMedio, null);
+    assert.equal(linha.saldo, 1000);
+    assert.equal(linha.alemDoPrazo, 0);
+    assert.equal(linha.dentroDoPrazo, 0);
+  });
+
+  it("cancelado e quitado saem da conta, como em qualquer outro indicador de saldo", () => {
+    const linhas = projecaoPorPrazoHistorico(
+      [
+        item({ id: "a", convenio: "Unimed", status: "cancelado" }),
+        item({ id: "b", convenio: "Unimed", valor: 1000, recebido: 1000 }),
+      ],
+      [{ convenio: "Unimed", dias: 10, pagamentos: 1, valor: 1000 }],
+      HOJE,
+    );
+    assert.deepEqual(linhas, []);
+  });
+
+  it("ordena o convênio mais fora do padrão primeiro", () => {
+    const linhas = projecaoPorPrazoHistorico(
+      [
+        item({ id: "a", convenio: "Unimed", valor: 500 }),
+        item({ id: "b", convenio: "Bradesco", valor: 5000 }),
+      ],
+      [
+        { convenio: "Unimed", dias: 10, pagamentos: 1, valor: 500 },
+        { convenio: "Bradesco", dias: 5, pagamentos: 1, valor: 5000 },
+      ],
+      HOJE,
+    );
+    assert.deepEqual(linhas.map((l) => l.convenio), ["Bradesco", "Unimed"]);
   });
 });

@@ -94,13 +94,14 @@ test("os gráficos leem a mesma receita unificada, não uma cópia à parte", ()
 });
 
 test("todo MoneySmall do Financeiro respeita o olho de esconder valores", () => {
-  // Nove cartões (3 em Resultado, 6 em Fechamento) chamavam
-  // `value.toLocaleString(...)` direto, ignorando o interruptor de esconder
-  // valores — os cartões de cima ficavam com "•••" e estes continuavam
-  // mostrando o número, na mesma tela, ao mesmo tempo.
+  // Onze cartões (3 em Resultado, 8 em Fechamento — os 6 de sempre mais
+  // Despesas do mês e Resultado do mês, que passaram a aparecer também no
+  // fechamento) chamavam `value.toLocaleString(...)` direto, ignorando o
+  // interruptor de esconder valores — os cartões de cima ficavam com "•••"
+  // e estes continuavam mostrando o número, na mesma tela, ao mesmo tempo.
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const chamadas = [...tela.matchAll(/<MoneySmall value=\{[^}]*\}[^/]*\/>/g)];
-  assert.equal(chamadas.length, 9, "o número de cartões MoneySmall no Financeiro mudou");
+  assert.equal(chamadas.length, 11, "o número de cartões MoneySmall no Financeiro mudou");
   const semOculto = chamadas.filter((m) => !m[0].includes("oculto={oculto}"));
   assert.deepEqual(semOculto.map((m) => m[0]), [],
     "algum cartão de dinheiro do Financeiro não respeita mais o olho de esconder");

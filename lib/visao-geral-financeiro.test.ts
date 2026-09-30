@@ -24,7 +24,7 @@ const ler = (caminho: string) =>
 
 const IDS_DE_SEMPRE = [
   "lancamentos", "recebimentos", "notas", "despesas", "lotes", "producao",
-  "repasses", "resultado", "origem", "idade", "graficos", "faturamento",
+  "repasses", "resultado", "origem", "idade", "faturamento",
   "fechamento", "extrato", "valores",
 ];
 
