@@ -38,6 +38,46 @@ const numero = (v: unknown) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+// ── Quem paga ───────────────────────────────────────────────────────────────
+
+/**
+ * A chave de agrupamento de um pagador.
+ *
+ * A Produção do dia aceita o convênio digitado à mão, e o banco já tem
+ * "Particular" e "PARTICULAR", "Unimed" e "UNIMED" — o mesmo pagador escrito
+ * de dois jeitos. Agrupado pelo texto cru, ele virava duas linhas no gráfico e
+ * duas no envelhecimento, cada uma com metade do dinheiro. A chave ignora
+ * caixa, acento e espaço sobrando; o que o dado armazena não muda.
+ */
+export const chaveDoPagador = (nome: string | null | undefined) =>
+  (nome || "Particular").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
+
+const temMinuscula = (s: string) => s !== s.toLocaleUpperCase("pt-BR");
+
+/**
+ * Qual grafia mostrar para cada chave: a mais usada. No empate, a que tem
+ * minúsculas ("Particular" e não "PARTICULAR") — caixa-alta inteira lê como
+ * grito numa tabela onde o resto está em caixa normal.
+ */
+export function rotulosDePagador(nomes: Array<string | null | undefined>): Map<string, string> {
+  const porChave = new Map<string, Map<string, number>>();
+  for (const bruto of nomes) {
+    const grafia = (bruto || "Particular").trim().replace(/\s+/g, " ");
+    const chave = chaveDoPagador(grafia);
+    const grafias = porChave.get(chave) ?? new Map<string, number>();
+    grafias.set(grafia, (grafias.get(grafia) ?? 0) + 1);
+    porChave.set(chave, grafias);
+  }
+  const rotulos = new Map<string, string>();
+  for (const [chave, grafias] of porChave) {
+    const [melhor] = [...grafias.entries()].sort((a, b) =>
+      b[1] - a[1] || Number(temMinuscula(b[0])) - Number(temMinuscula(a[0])) || a[0].localeCompare(b[0]));
+    rotulos.set(chave, melhor[0]);
+  }
+  return rotulos;
+}
+
 /**
  * Quanto falta receber de um atendimento.
  *
@@ -131,12 +171,13 @@ export type LinhaDeEnvelhecimento = {
  */
 export function envelhecimento(itens: ItemFinanceiro[], hoje: string): LinhaDeEnvelhecimento[] {
   const porConvenio = new Map<string, LinhaDeEnvelhecimento>();
+  const rotulos = rotulosDePagador(itens.map((item) => item.convenio));
 
   for (const item of itens) {
     if (!emAberto(item)) continue;
-    const convenio = item.convenio || "Particular";
-    const linha = porConvenio.get(convenio) ?? {
-      convenio,
+    const chave = chaveDoPagador(item.convenio);
+    const linha = porConvenio.get(chave) ?? {
+      convenio: rotulos.get(chave) ?? chave,
       faixas: { ate30: 0, ate60: 0, ate90: 0, acima90: 0 },
       total: 0,
     };
@@ -145,7 +186,7 @@ export function envelhecimento(itens: ItemFinanceiro[], hoje: string): LinhaDeEn
     const saldo = saldoDoItem(item);
     linha.faixas[faixa.id] += saldo;
     linha.total += saldo;
-    porConvenio.set(convenio, linha);
+    porConvenio.set(chave, linha);
   }
 
   // Maior saldo primeiro: é por onde se começa a cobrar.
@@ -244,6 +285,7 @@ export function prazoMedioPorConvenio(
   pagamentos: PagamentoRecebido[],
 ): PrazoDeConvenio[] {
   const porId = new Map(itens.map((item) => [item.id, item]));
+  const rotulos = rotulosDePagador(itens.map((item) => item.convenio));
   const acumulado = new Map<string, { peso: number; valor: number; pagamentos: number }>();
 
   for (const pagamento of pagamentos) {
@@ -256,17 +298,17 @@ export function prazoMedioPorConvenio(
     const validos = Math.max(0, dias);
     const valor = numero(pagamento.valor);
     if (valor <= 0) continue;
-    const convenio = item.convenio || "Particular";
-    const atual = acumulado.get(convenio) ?? { peso: 0, valor: 0, pagamentos: 0 };
+    const chave = chaveDoPagador(item.convenio);
+    const atual = acumulado.get(chave) ?? { peso: 0, valor: 0, pagamentos: 0 };
     atual.peso += validos * valor;
     atual.valor += valor;
     atual.pagamentos += 1;
-    acumulado.set(convenio, atual);
+    acumulado.set(chave, atual);
   }
 
   return [...acumulado.entries()]
-    .map(([convenio, a]) => ({
-      convenio,
+    .map(([chave, a]) => ({
+      convenio: rotulos.get(chave) ?? chave,
       dias: a.valor > 0 ? Math.round(a.peso / a.valor) : 0,
       pagamentos: a.pagamentos,
       valor: a.valor,
@@ -314,15 +356,19 @@ export function projecaoPorPrazoHistorico(
   prazos: PrazoDeConvenio[],
   hoje: string,
 ): LinhaDeProjecao[] {
-  const prazoPorConvenio = new Map(prazos.map((p) => [p.convenio, p.dias]));
+  // Chave normalizada dos dois lados: o prazo vem das consultas e o saldo das
+  // três fontes, e "Unimed" num lado com "UNIMED" no outro não pode deixar o
+  // convênio sem prazo só por causa da caixa.
+  const prazoPorConvenio = new Map(prazos.map((p) => [chaveDoPagador(p.convenio), p.dias]));
+  const rotulos = rotulosDePagador(itens.map((item) => item.convenio));
   const porConvenio = new Map<string, LinhaDeProjecao>();
 
   for (const item of itens) {
     if (!emAberto(item)) continue;
-    const convenio = item.convenio || "Particular";
-    const prazoMedio = prazoPorConvenio.get(convenio) ?? null;
-    const linha = porConvenio.get(convenio) ?? {
-      convenio, saldo: 0, prazoMedio, alemDoPrazo: 0, dentroDoPrazo: 0,
+    const chave = chaveDoPagador(item.convenio);
+    const prazoMedio = prazoPorConvenio.get(chave) ?? null;
+    const linha = porConvenio.get(chave) ?? {
+      convenio: rotulos.get(chave) ?? chave, saldo: 0, prazoMedio, alemDoPrazo: 0, dentroDoPrazo: 0,
     };
     const saldo = saldoDoItem(item);
     linha.saldo += saldo;
@@ -330,7 +376,7 @@ export function projecaoPorPrazoHistorico(
       if (idadeDoItem(item, hoje) > prazoMedio) linha.alemDoPrazo += saldo;
       else linha.dentroDoPrazo += saldo;
     }
-    porConvenio.set(convenio, linha);
+    porConvenio.set(chave, linha);
   }
 
   // Mais fora do padrão primeiro: é o que quebra a expectativa de caixa.

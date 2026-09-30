@@ -2589,14 +2589,20 @@ button:disabled{cursor:not-allowed}
 .clinicalDark{--graf-1:#3d8fd4;--graf-2:#1a9c74;--graf-3:#9a72d8;--graf-4:#b8811f}
 
 .financeLayout{display:grid;grid-template-columns:246px minmax(0,1fr);gap:22px;align-items:start;margin-top:22px}
-.financeTarefas{position:sticky;top:18px;display:flex;flex-direction:column;gap:2px;
-  background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:17px;padding:12px}
-.financeTarefaGrupo{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
-  color:var(--cor-tinta-fraca);padding:14px 12px 6px}
-.financeTarefaGrupo:first-child{padding-top:6px}
+/* Dezoito itens e sete títulos: com 11px de respiro por item a coluna ficava
+   mais alta que a tela, e como ela é fixa (sticky), "Configurações" só
+   aparecia rolando a página inteira até o fim. Itens mais baixos, e a coluna
+   rola por dentro quando mesmo assim não couber. */
+.financeTarefas{position:sticky;top:18px;display:flex;flex-direction:column;gap:1px;
+  max-height:calc(100vh - 36px);overflow-y:auto;overscroll-behavior:contain;
+  background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:var(--raio-3);
+  box-shadow:var(--sombra-1);padding:10px}
+.financeTarefaGrupo{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--cor-tinta-fraca);padding:12px 12px 4px}
+.financeTarefaGrupo:first-child{padding-top:4px}
 .financeTarefas button{display:flex;align-items:center;justify-content:space-between;gap:10px;
-  width:100%;text-align:left;border:0;background:none;font:inherit;font-weight:650;color:var(--cor-tinta);
-  padding:11px 12px;border-radius:10px;cursor:pointer;transition:background var(--transicao)}
+  width:100%;text-align:left;border:0;background:none;font:inherit;font-size:14.5px;font-weight:650;color:var(--cor-tinta);
+  padding:8px 12px;border-radius:9px;cursor:pointer;transition:background var(--transicao)}
 .financeTarefas button:hover{background:var(--cor-superficie-suave)}
 .financeTarefas button.active{background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-weight:800}
 .financeTarefas button:focus-visible{outline:0;box-shadow:var(--foco)}
@@ -2637,9 +2643,20 @@ button:disabled{cursor:not-allowed}
   background:linear-gradient(160deg,var(--cor-superficie) 0%,var(--cor-superficie-suave) 130%)}
 .grafDestaque::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;
   background:linear-gradient(90deg,var(--graf-1),var(--graf-2))}
-.grafNumeroHeroi strong{display:block;font-size:clamp(32px,5vw,46px);line-height:1;font-weight:850;
-  color:var(--cor-marca);letter-spacing:-.02em}
-.grafNumeroHeroi span{display:block;margin-top:var(--esp-2);color:var(--cor-tinta-fraca);font-size:13.5px}
+/* O número em tinta de texto, não na cor de uma série: azul aqui é a cor de
+   "Faturado" nos outros cartões, e o número é recebido/faturado. Quem carrega
+   a cor é o medidor ao lado. */
+.grafNumeroHeroi{display:flex;flex-wrap:wrap;align-items:center;gap:var(--esp-3) var(--esp-7)}
+.grafNumeroHeroi strong{display:block;font-size:clamp(40px,5vw,52px);line-height:1;font-weight:850;
+  color:var(--cor-tinta);letter-spacing:-.02em}
+.grafMedidor{flex:1 1 280px;min-width:0;display:grid;gap:6px}
+.grafMedidor span{color:var(--cor-tinta-fraca);font-size:13.5px}
+.grafMedidor span:first-of-type{color:var(--cor-tinta);font-weight:650}
+/* Trilho e preenchimento do mesmo tom — a trilha é um degrau claro do verde
+   de "Recebido", e não um cinza solto: lê como "parte de um todo". */
+.grafMedidorTrilha{height:12px;border-radius:4px;overflow:hidden;
+  background:color-mix(in srgb,var(--graf-2) 16%,var(--cor-superficie))}
+.grafMedidorCheio{height:100%;border-radius:4px;background:var(--graf-2);transition:width var(--transicao)}
 
 /* Legenda em pílula, não mais ponto + texto soltos: cada série ganha um
    contorno próprio, mais fácil de separar de relance de um cartão para o
@@ -2656,19 +2673,20 @@ button:disabled{cursor:not-allowed}
 .grafTrilhas{display:flex;flex-direction:column;gap:2px;min-width:0}
 .grafTrilha{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:9px;min-width:0}
 .grafPista{min-width:0}
-/* A barra encosta na linha de base e arredonda só a ponta que cresce: ponta
-   arredondada dos dois lados faz uma barra curta parecer maior do que é. O
-   realce interno (inset, branco bem fraco) dá um relevo sutil sem mexer na
-   cor de base — a mesma que passou pela checagem de daltonismo. */
-.grafBarra{height:14px;border-radius:0 7px 7px 0;flex:none;min-width:3px;transition:width var(--transicao);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+/* A barra encosta na linha de base e arredonda só a ponta que cresce, 4px:
+   ponta arredondada dos dois lados faz uma barra curta parecer maior do que
+   é. Sem realce nem sombra — tinta que não é dado só compete com o dado. */
+.grafBarra{height:14px;border-radius:0 4px 4px 0;flex:none;min-width:3px;transition:width var(--transicao)}
 .grafTrilha b{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--cor-tinta-fraca);white-space:nowrap}
 
-.grafColunas{display:flex;align-items:flex-end;gap:10px;height:190px}
+/* A linha de base corre contínua sob os seis meses (por isso o espaço entre
+   meses é padding, não gap): sem ela, mês zerado era só um buraco em branco
+   — agora é uma base sem coluna, que é o que "zero" parece. */
+.grafColunas{display:flex;align-items:flex-end;height:190px}
 .grafMes{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;min-width:0}
-.grafPar{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%;min-height:0}
-.grafColuna{width:46%;max-width:28px;border-radius:6px 6px 0 0;transition:height var(--transicao);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+.grafPar{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%;min-height:0;
+  padding:0 5px;border-bottom:1px solid var(--cor-borda)}
+.grafColuna{width:46%;max-width:24px;border-radius:4px 4px 0 0;transition:height var(--transicao)}
 .grafMes>span{font-size:12px;color:var(--cor-tinta-fraca);font-weight:700}
 
 .grafPilha{display:flex;gap:2px;height:16px;margin-bottom:14px}

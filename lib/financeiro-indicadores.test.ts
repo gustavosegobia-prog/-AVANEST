@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  chaveDoPagador, rotulosDePagador,
   competenciaDoItem, diasEntre, emAberto, envelhecimento, glosa, idadeDoItem,
   mesAnterior, prazoMedioPorConvenio, projecaoPorPrazoHistorico, referenciaDeIdade,
   saldoAReceber, saldoDoItem, saldoVencido, ticketMedio, totaisDoEnvelhecimento,
@@ -283,6 +284,45 @@ describe("ticket médio", () => {
 
   it("lista vazia devolve zero, não NaN", () => {
     assert.equal(ticketMedio([]), 0);
+  });
+});
+
+describe("o mesmo pagador escrito de dois jeitos", () => {
+  // A Produção do dia aceita o convênio digitado à mão. O banco tem
+  // "Particular" e "PARTICULAR", "Unimed" e "UNIMED" — de verdade.
+  it("a chave ignora caixa, acento e espaço sobrando", () => {
+    assert.equal(chaveDoPagador("Particular"), chaveDoPagador("PARTICULAR"));
+    assert.equal(chaveDoPagador("  Bradesco   Saúde "), chaveDoPagador("BRADESCO SAUDE"));
+    assert.equal(chaveDoPagador(null), chaveDoPagador("particular"));
+  });
+
+  it("não junta convênios que são diferentes de verdade", () => {
+    assert.notEqual(chaveDoPagador("UNIMED LOCAL"), chaveDoPagador("UNIMED"));
+  });
+
+  it("mostra a grafia mais usada; no empate, a que não é toda em caixa-alta", () => {
+    const rotulos = rotulosDePagador(["UNIMED", "UNIMED", "Unimed", "PARTICULAR", "Particular"]);
+    assert.equal(rotulos.get(chaveDoPagador("unimed")), "UNIMED");
+    assert.equal(rotulos.get(chaveDoPagador("particular")), "Particular");
+  });
+
+  it("o envelhecimento soma as duas grafias numa linha só", () => {
+    const linhas = envelhecimento([
+      item({ convenio: "Particular", valor: 150 }),
+      item({ convenio: "PARTICULAR", valor: 2700 }),
+    ], HOJE);
+    assert.equal(linhas.length, 1);
+    assert.equal(linhas[0].total, 2850);
+  });
+
+  it("a projeção acha o prazo do convênio mesmo com caixa diferente dos dois lados", () => {
+    const [linha] = projecaoPorPrazoHistorico(
+      [item({ id: "a", convenio: "UNIMED", valor: 1000 })],
+      [{ convenio: "Unimed", dias: 10, pagamentos: 1, valor: 1000 }],
+      HOJE,
+    );
+    assert.equal(linha.prazoMedio, 10);
+    assert.equal(linha.alemDoPrazo, 1000);
   });
 });
 

@@ -1954,7 +1954,10 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         valorAtrasado={totaisIdade.faixas.acima90}
         faltamRecorrentes={faltamRecorrentes.length}
         repassesPendentes={financeiro.filter(i=>Number(i.repasse_valor)>0&&i.repasse_status!=="pago").length}
-        fechamentoPendente={Boolean(receitaTotal.valor>0&&periodState?.status!=="conferido")}
+        // "fechado", e não mais "conferido": desde 202609300002 a conferência
+        // grava direto "fechado", e comparar com o estado antigo deixava o
+        // aviso "o mês ainda não foi fechado" aceso para sempre.
+        fechamentoPendente={Boolean(receitaTotal.valor>0&&periodState?.status!=="fechado")}
         onIr={setTarefa}
         onConfigurarValores={openPriceConfig}
         mascara={mascara}
@@ -2982,6 +2985,8 @@ const ACAO_LABELS:Record<string,string>={
   usuario_excluido:"Acesso excluído",
   pagamento_registrado:"Pagamento registrado",
   periodo_conferido:"Período conferido",
+  periodo_fechado:"Período fechado",
+  periodo_reaberto:"Período reaberto",
   convite_criado:"Convite enviado",
   convite_aceito:"Convite aceito",
   avaliacao_concluida:"Avaliação concluída",
@@ -3303,11 +3308,16 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm,onAber
       legenda={`${auditoria.length} evento(s) · conclusões, pagamentos, presenças e mudanças de acesso`}
     >
       {auditoria.length?auditoria.slice(0,50).map(item=>{
-        const detalhes=item.detalhes as {paciente?:string;excluida_por?:string;nome?:string}|null;
+        const detalhes=item.detalhes as {paciente?:string;excluida_por?:string;nome?:string;periodo?:string;motivo?:string}|null;
         // O nome escrito no evento vale mais que o mapa de perfis: quem
         // excluiu (ou foi excluído) pode não existir mais como perfil.
         const quem=detalhes?.excluida_por||(item.actor_id?actorNames.get(item.actor_id):null)||"Sistema";
-        const sobre=detalhes?.paciente?`paciente ${detalhes.paciente}`:detalhes?.nome||item.entidade;
+        // Fechar e reabrir período: a competência, e o MOTIVO da reabertura —
+        // é o motivo que faz a reabertura ser auditada, e sem ele aqui a
+        // linha dizia só "financeiro_periodo".
+        const sobre=detalhes?.paciente?`paciente ${detalhes.paciente}`
+          :detalhes?.periodo?`competência ${detalhes.periodo.split("-").reverse().join("/")}${detalhes.motivo?` — motivo: ${detalhes.motivo}`:""}`
+          :detalhes?.nome||item.entidade;
         return <div className="auditRow" key={item.id}><time>{new Date(item.created_at).toLocaleString("pt-BR")}</time><span><strong>{ACAO_LABELS[item.acao]??item.acao.replaceAll("_"," ")}</strong><small>{sobre} · por {quem}</small></span></div>;
       }):<div className="emptyClinical compactEmpty">Nenhum evento de auditoria registrado ainda.</div>}
     </PainelRecolhivel>

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { doMes as doMesDeReceita, glosasDe, type Receita } from "@/lib/receitas";
+import { chaveDoPagador, rotulosDePagador } from "@/lib/financeiro-indicadores";
 
 // Gráficos do Financeiro.
 //
@@ -240,13 +241,16 @@ export function GraficosFinanceiro({
     const doMes = doMesDeReceita(receitas, periodo);
 
     // Por pagador (convênio, hospital ou paciente), só os que têm valor —
-    // linha zerada ocupa espaço e não informa nada.
+    // linha zerada ocupa espaço e não informa nada. Agrupa pela CHAVE, e não
+    // pelo texto cru: "Particular" e "PARTICULAR" viravam duas barras, cada
+    // uma com uma parte do mesmo dinheiro.
+    const rotulos = rotulosDePagador(doMes.map((r) => r.pagador));
     const porConvenio = Object.values(
       doMes.reduce<Record<string, { rotulo: string; faturado: number; recebido: number }>>((acc, r) => {
-        const nome = r.pagador || "Particular";
-        acc[nome] ??= { rotulo: nome, faturado: 0, recebido: 0 };
-        acc[nome].faturado += r.valor;
-        acc[nome].recebido += r.recebido;
+        const chave = chaveDoPagador(r.pagador);
+        acc[chave] ??= { rotulo: rotulos.get(chave) ?? chave, faturado: 0, recebido: 0 };
+        acc[chave].faturado += r.valor;
+        acc[chave].recebido += r.recebido;
         return acc;
       }, {}),
     )
@@ -318,10 +322,25 @@ export function GraficosFinanceiro({
         ) : (
           <div className="grafNumeroHeroi">
             <strong>{taxa}%</strong>
-            <span>
-              {money(dados.recebido)} recebidos de {money(dados.faturado)} faturados
-              {dados.glosas > 0 ? ` · ${money(dados.glosas)} em glosa` : ""}
-            </span>
+            {/* O NÚMERO SOZINHO deixava o resto do cartão vazio. O medidor mostra
+                a mesma fração como comprimento, e a linha de baixo diz o que
+                falta — que é a pergunta seguinte de quem lê "78%". A largura usa
+                a fração exata, não o percentual arredondado: 99,6% não pode
+                desenhar a barra cheia. */}
+            <div className="grafMedidor">
+              <div className="grafMedidorTrilha" role="img"
+                aria-label={`${taxa}% do faturado já recebido`}>
+                <div className="grafMedidorCheio"
+                  style={{ width: `${Math.min(100, (dados.recebido / dados.faturado) * 100)}%` }} />
+              </div>
+              <span>{money(dados.recebido)} recebidos de {money(dados.faturado)} faturados</span>
+              <span>
+                {dados.faturado - dados.recebido > 0
+                  ? `${money(dados.faturado - dados.recebido)} ainda a receber`
+                  : "Nada a receber nesta competência"}
+                {dados.glosas > 0 ? ` · ${money(dados.glosas)} em glosa` : ""}
+              </span>
+            </div>
           </div>
         )}
       </section>
