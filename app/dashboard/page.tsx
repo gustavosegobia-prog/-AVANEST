@@ -230,6 +230,7 @@ export default async function DashboardPage({
     { data: plantoesDoDinheiro },
     { data: producaoDaReceita },
     { data: despesas },
+    { data: conveniosDaOrganizacao },
   ] = await Promise.all([
     needsFinanceData && perfil.role === "financeiro"
       ? supabase.rpc("financeiro_listar_pacientes")
@@ -368,6 +369,14 @@ export default async function DashboardPage({
           .select("id,perfil_id,data,descricao,categoria,valor,recorrente,local_id,observacoes")
           .gte("data", dozeMesesAtras).order("data", { ascending: false })
       : Promise.resolve({ data: [] }),
+
+    // Os convênios da organização para o cadastro de paciente. A tabela de
+    // preços acima só é legível para quem tem Financeiro; a recepção recebia
+    // vazia e ficava com a lista fixa de convênios comuns. A função devolve
+    // só o nome e se está ativo (202609300007).
+    needsClinicalData
+      ? supabase.rpc("convenios_da_organizacao")
+      : Promise.resolve({ data: [] }),
   ]);
 
   // As mensagens da sala depois do seu último olhar. Vem em consulta separada
@@ -455,6 +464,7 @@ export default async function DashboardPage({
       auditoria={auditoria ?? []}
       periodos={periodos ?? []}
       convenioValores={convenioValores ?? []}
+      conveniosDaOrganizacao={conveniosDaOrganizacao ?? []}
       producaoDaReceita={producaoDaReceita ?? []}
       despesas={despesas ?? []}
       initialView={initialView}

@@ -1102,10 +1102,13 @@ export function Plantoes({
   useEffect(() => {
     let vivo = true;
     void (async () => {
-      const { data } = await createClient()
-        .from("convenio_valores").select("convenio").eq("ativo", true);
+      // Pela função, e não pela tabela: a tabela de preços só é legível para
+      // quem tem Financeiro, e o médico que anota a produção recebia a lista
+      // vazia (202609300007). A função devolve só nome e se está ativo.
+      const { data } = await createClient().rpc("convenios_da_organizacao");
       if (!vivo) return;
-      const nomes = [...new Set((data ?? []).map((r) => String(r.convenio).trim()).filter(Boolean))];
+      const nomes = [...new Set(((data ?? []) as { convenio: string; ativo: boolean }[])
+        .filter((r) => r.ativo).map((r) => String(r.convenio).trim()).filter(Boolean))];
       setConvenios(["Particular", ...nomes.filter((n) => n.toLowerCase() !== "particular")].sort());
     })();
     return () => { vivo = false; };

@@ -223,10 +223,14 @@ export type DashboardView = "medico" | "plantoes" | "recepcao" | "financeiro" | 
 // de uma constante do código e não há como apagá-los por organização. E um
 // convênio que algum paciente usa nunca some da lista — sumir deixaria o
 // cadastro dele apontando para uma opção inexistente.
-function listarConvenios(regras:ConvenioValor[],pacientes:{convenio?:string|null}[]){
+function listarConvenios(regras:Pick<ConvenioValor,"convenio"|"ativo"|"procedimento"|"hospital">[],pacientes:{convenio?:string|null}[]){
   const emUso=new Set(pacientes.map(p=>p.convenio).filter((v):v is string=>Boolean(v)));
   const base=regras.filter(r=>!r.procedimento&&!r.hospital);
-  const ocultos=new Set(base.filter(r=>!r.ativo).map(r=>r.convenio));
+  // Oculto é quem não tem NENHUMA linha ativa. O banco tem convênio com uma
+  // linha desativada e outra ativa (CASSI), e "tem alguma desativada" sumia
+  // com um convênio em uso da lista do cadastro.
+  const ativos=new Set(base.filter(r=>r.ativo).map(r=>r.convenio));
+  const ocultos=new Set(base.filter(r=>!r.ativo&&!ativos.has(r.convenio)).map(r=>r.convenio));
   const todos=new Set<string>([...CONVENIOS,...emUso,...base.filter(r=>r.ativo).map(r=>r.convenio)]);
   return Array.from(todos)
     .filter(c=>emUso.has(c)||!ocultos.has(c))
@@ -287,7 +291,7 @@ const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamen
 };
 
 export function DashboardClient({
-  perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, initialView,
+  perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, conveniosDaOrganizacao = [], initialView,
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
   testeAte,
@@ -301,6 +305,8 @@ export function DashboardClient({
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
+  /** Nome e situação de cada convênio, sem preço — o que a recepção e o médico podem ler (202609300007). */
+  conveniosDaOrganizacao?:{convenio:string;ativo:boolean}[];
   /**
    * As duas outras fontes de receita do serviço, para o Financeiro.
    *
@@ -1410,7 +1416,10 @@ export function DashboardClient({
         </section>
       </div>}
 
-      {open && <PatientModal busy={busy} error={error} convenios={listarConvenios(convenioValores,pacientes)} onClose={() => {
+      {/* A lista sem preço junta com a de preços: quem tem Financeiro recebe as
+          duas, a recepção recebe só a primeira — e as duas dizem o mesmo sobre
+          quais convênios existem e quais estão desativados. */}
+      {open && <PatientModal busy={busy} error={error} convenios={listarConvenios([...convenioValores,...conveniosDaOrganizacao.map(c=>({...c,procedimento:null,hospital:null}))],pacientes)} onClose={() => {
         setOpen(false);
         if(initialNewPatient) router.replace(`/dashboard?area=${view}`);
       }} onSubmit={createPatient} />}
@@ -1990,7 +1999,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         producaoMudou={producaoMudou}
         depoisDoFechamento={Object.entries(depoisDoFechamento.reduce<Record<string,number>>((acc,i)=>{acc[i.periodo!]=(acc[i.periodo!]??0)+1;return acc},{})).sort(([a],[b])=>a.localeCompare(b))}
         onIr={(tarefa,mes)=>{if(mes)setPeriod(mes);setTarefa(tarefa)}}
-        onConfigurarValores={openPriceConfig}
+        // Só quem pode salvar preço recebe o botão: a tabela de preços é de
+        // administrador, e o botão para os outros abria um formulário que não salvava.
+        onConfigurarValores={["admin","owner"].includes(perfil.role)?openPriceConfig:undefined}
         mascara={mascara}
         money={money}
       />
@@ -3592,7 +3603,7 @@ function VisaoGeral({
   depoisDoFechamento:[string,number][];
   /** Meses fechados cuja produção enviada não bate mais com o retrato do fechamento. */
   producaoMudou:{mes:string;antes:{anotacoes:number;valor:number};agora:{anotacoes:number;valor:number}}[];
-  onIr:(tarefa:string,periodo?:string)=>void; onConfigurarValores:()=>void;
+  onIr:(tarefa:string,periodo?:string)=>void; onConfigurarValores?:()=>void;
   mascara:(t:string)=>string; money:(v:number)=>string;
 }) {
   if(!temAlgumaConfiguracao&&!temAlgumMovimento){
@@ -3608,7 +3619,9 @@ function VisaoGeral({
           Sem essa tabela preenchida, todo lançamento nasce em R$ 0,00 — configure antes de
           começar a lançar.
         </p>
-        <button className="primaryClinical" onClick={onConfigurarValores}>Configurar valores das consultas</button>
+        {onConfigurarValores
+          ? <button className="primaryClinical" onClick={onConfigurarValores}>Configurar valores das consultas</button>
+          : <p><strong>Quem configura é o administrador ou o proprietário da organização.</strong></p>}
       </div>
     </section>;
   }
