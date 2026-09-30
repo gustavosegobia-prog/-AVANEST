@@ -100,6 +100,8 @@ import { lerDinheiro } from "@/lib/dinheiro";
 import { explicarEscala, podeEscolherEscalista, podeMontarEscala } from "@/lib/escalista";
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
 import { InstalarNaTela } from "@/components/instalar-na-tela";
+import { RecepcaoView } from "@/components/recepcao";
+import { Janela, useTravaDeRolagem } from "@/components/janela";
 const PreferenciasDeAvisoPainel = dynamic(
   () => import("@/components/preferencias-de-aviso").then((m) => m.PreferenciasDeAvisoPainel),
   { ssr: false, loading: carregando("as preferências") });
@@ -446,17 +448,13 @@ export function DashboardClient({
   // também precisa do CAPTCHA quando ele estiver ligado no Supabase.
   const captchaSenha = useCaptcha();
   const [busy, setBusy] = useState(false);
-  const [attendanceBusy, setAttendanceBusy] = useState("");
-  const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string,string>>({});
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   // O "Pesquisar paciente" da área Médico focava o campo da Recepção, que não
   // está montado aqui — o botão simplesmente não fazia nada. Passa a focar a
   // busca do histórico, que é o campo de busca que existe nesta tela.
   const buscaHistoricoRef = useRef<HTMLInputElement>(null);
-  const [secaoRecepcao,setSecaoRecepcao]=useState<"hoje"|"buscar">("hoje");
   const [secaoMedico,setSecaoMedico]=useState("agenda");
-  const filtered = useMemo(() => pacientes.filter((p) => `${p.nome} ${p.cpf ?? ""} ${p.telefone ?? ""} ${p.cirurgia ?? ""} ${p.procedimento ?? ""}`.toLowerCase().includes(search.toLowerCase())), [pacientes, search]);
   const currentByPatient = useMemo(() => {
     const result = new Map<string,Avaliacao>();
     for (const item of avaliacoes) if (!result.has(item.patient_id)) result.set(item.patient_id, item);
@@ -632,7 +630,7 @@ export function DashboardClient({
     const appointmentPayload = {
       data: appointmentDate, horario: automaticTime, hospital: text("hospital"),
       procedimento: text("cirurgia"), convenio: convenio ?? PRIVATE_PAY_CONVENIO,
-      observacoes: text("observacoes"), created_by: perfil.id,
+      observacoes: text("observacoes"), created_by: perfil.id, medico_id: text("medico_id"),
     };
     const atomic = await supabase.rpc("criar_paciente_e_agendamento", {
       p_paciente: patientPayload, p_agendamento: appointmentPayload,
@@ -714,43 +712,6 @@ export function DashboardClient({
       if(linkError) setError("A avaliação foi criada, mas não ficou ligada ao agendamento da recepção. Avise quem administra.");
     }
     router.push(`/avaliacoes/${data.id}`);
-  }
-
-  /**
-   * Muda a situação de um agendamento.
-   *
-   * "cancelado" e "agendado" entraram aqui e não são presença: são desmarcar e
-   * reativar. O banco e a `registrar_presenca` já aceitavam os dois, e a
-   * Agenda já desenhava a linha cancelada em cinza — só não existia botão
-   * nenhum capaz de chegar nesse estado. A tela mostrava um caminho que não
-   * tinha porta.
-   */
-  async function updateAttendance(appointmentId:string, agendaStatus:"presente"|"faltou"|"cancelado"|"agendado") {
-    const previous=agendamentos.find(item=>item.id===appointmentId)?.status;
-    setAttendanceBusy(appointmentId); setError("");
-    setAttendanceOverrides(current=>({...current,[appointmentId]:agendaStatus}));
-    const supabase=createClient();
-    // Esta função também registra a ação na auditoria. A atualização direta
-    // abaixo é mantida somente como compatibilidade com bases ainda sem a migração.
-    let result=await supabase.rpc("registrar_presenca",{
-      p_agendamento_id:appointmentId,
-      p_status:agendaStatus,
-    });
-    if(result.error){
-      const now=new Date().toISOString();
-      result=await supabase
-        .from("agendamentos")
-        .update({ status:agendaStatus, status_by:perfil.id, status_at:now, updated_at:now })
-        .eq("id",appointmentId)
-        .select("id,status")
-        .single();
-    }
-    setAttendanceBusy("");
-    if(result.error){
-      setAttendanceOverrides(current=>({...current,[appointmentId]:previous??"agendado"}));
-      setError(`Não foi possível atualizar a presença: ${result.error.message}`);
-    }
-    else router.refresh();
   }
 
   async function logout() {
@@ -1103,7 +1064,7 @@ export function DashboardClient({
             {filteredAgenda.slice(0,20).map((appointment, index) => {
               const p=patientMap.get(appointment.patient_id); if(!p)return null;
               const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined;
-              const attendance=attendanceOverrides[appointment.id]??appointment.status;
+              const attendance=appointment.status;
               const desmarcado=["cancelado","reagendado"].includes(attendance);
               const statusLabel=a?.status==="concluida"?"CONCLUÍDA":a?.status==="rascunho"?"AVALIAÇÃO PAUSADA":attendance==="presente"?"PACIENTE PRESENTE":attendance==="faltou"?"FALTOU":desmarcado?attendance.toUpperCase():"AGUARDANDO";
               const statusTone=a?.status==="concluida"||attendance==="presente"?"present":attendance==="faltou"?"danger":a?.status==="rascunho"?"paused":"waiting";
@@ -1281,87 +1242,25 @@ export function DashboardClient({
           onAvisosMudaram={()=>router.refresh()}
         />
       ) : view === "recepcao" ? (
-        <div className="clinicalMain receptionMain">
-          <section className="clinicalWelcome">
-            <div>
-              <h1>Recepção</h1>
-              <p>Cadastro de pacientes e agenda — sem acesso a dados clínicos ou financeiros.</p>
-            </div>
-            <button className="primaryClinical compact" data-acao="novo-paciente" onClick={()=>setOpen(true)}>+ Novo paciente</button>
-          </section>
-          {error&&<p className="clinicalError">{error}</p>}
-          {/* Os cinco cartões falam do MÊS CORRENTE, e viram no dia 1º.
-    "Consultas agendadas" não virava: ele somava tudo o que estava marcado
-    daqui para a frente, sem limite de mês, ao lado de dois cartões que dizem
-    "no mês" — no dia 30 o painel misturava o que ainda vai acontecer em
-    novembro com o que aconteceu em outubro, e nenhum número fechava com o
-    outro. Agora ele conta o que falta ATÉ O FIM DESTE MÊS.
-    "Hoje" e "a confirmar hoje" são de hoje por definição, e hoje está sempre
-    dentro do mês: viram todo dia, e junto com os outros no dia 1º.
-    Os rótulos dizem o período de cada um. Cinco números lado a lado sem
-    dizer de quando são obrigam a decorar qual é qual. */}
-<section className="metricGrid receptionMetrics"><Metric value={scheduledToday.length} label="Consultas hoje" tone="blue"/><Metric value={agendamentos.filter(a=>a.data>=today&&a.data.slice(0,7)===today.slice(0,7)&&!["cancelado","reagendado"].includes(a.status)).length} label="Ainda marcadas no mês" tone="blue"/><Metric value={completedThisMonth.length} label="Concluídas no mês" tone="green"/><Metric value={scheduledToday.filter(a=>a.status==="agendado").length} label="A confirmar hoje" tone="amber"/><Metric value={agendamentos.filter(a=>a.data.slice(0,7)===today.slice(0,7)&&["faltou","cancelado"].includes(a.status)).length} label="Faltas/canceladas no mês" tone="red"/></section>
-          {/* Coluna de tarefas, como no Médico, no Financeiro e no Admin. A
-              Recepção era a única área sem ela: abria com três botões soltos
-              acima dos números e empilhava tudo o que existe numa página só. */}
-          <div className="financeLayout">
-            <nav className="financeTarefas" aria-label="Seções da Recepção">
-              {([
-                ["grupo","Atendimento"],
-                ["hoje","Consultas de hoje",queue.length],
-                ["grupo","Cadastro"],
-                ["buscar","Pesquisar paciente"],
-              ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
-                id==="grupo"
-                  ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
-                  : <button
-                      type="button" key={id} data-secao={id}
-                      className={secaoRecepcao===id?"active":""}
-                      aria-current={secaoRecepcao===id?"true":undefined}
-                      onClick={()=>{
-                        setSecaoRecepcao(id as "hoje"|"buscar");
-                        if(id==="buscar") requestAnimationFrame(()=>searchRef.current?.focus());
-                      }}
-                    >
-                      <span>{rotulo}</span>
-                      {contador?<b className="financeTarefaContador">{contador}</b>:null}
-                    </button>,
-              )}
-            </nav>
-
-            <div className="financeConteudo">
-          {secaoRecepcao==="buscar"&&<>
-          <section className="clinicalPanel searchPanel"><strong>Pesquisar paciente</strong><input ref={searchRef} value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Nome, parte do nome, CPF ou telefone..." /><span>O CPF também é verificado ao salvar para evitar duplicidade.</span></section>
-          {search&&<section className="clinicalPanel patientSearchResults">{filtered.slice(0,10).map(p=><div className="financeSetupRow" key={p.id}><span><strong>{p.nome}</strong><small>{p.cpf||"CPF não informado"} · {p.telefone||"telefone não informado"}</small></span></div>)}</section>}
-          {!search&&<div className="emptyClinical">Digite acima para encontrar um paciente pelo nome, CPF ou telefone.</div>}
-          </>}
-          {secaoRecepcao==="hoje"&&
-          <section className="clinicalPanel"><div className="panelTitle"><strong>Consultas de hoje</strong></div>{queue.map((appointment,index)=>{const p=patientMap.get(appointment.patient_id);if(!p)return null;const agendaStatus=attendanceOverrides[appointment.id]??appointment.status;const updating=attendanceBusy===appointment.id;const foraDaFila=["cancelado","reagendado"].includes(agendaStatus);return <div className={foraDaFila?"queueRow desmarcado":"queueRow"} key={appointment.id}><time>{appointment.horario?.slice(0,5)||`${8+index}:00`.padStart(5,"0")}</time><div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.hospital||p.hospital||"Hospital não informado"} · {appointment.convenio||p.convenio||"Particular"}</small></div>{/* O desmarcado tinha de cair no "AVALIAÇÃO AGENDADA" do fim da
-    escada: a recepção desmarcava e a linha continuava dizendo que a
-    consulta estava de pé. É o estado que mais precisa aparecer, porque
-    é o único em que não há nada a fazer com aquele paciente hoje. */}
-<span className={`statusChip ${agendaStatus==="presente"?"present":agendaStatus==="faltou"?"danger":foraDaFila?"paused":"waiting"}`}>{updating?"SALVANDO...":agendaStatus==="presente"?"PACIENTE PRESENTE":agendaStatus==="faltou"?"FALTOU":foraDaFila?agendaStatus.toUpperCase():agendaStatus==="confirmado"?"CONFIRMADO":"AVALIAÇÃO AGENDADA"}</span><div className="queueAcoes"><button aria-busy={updating} disabled={updating||foraDaFila||agendaStatus==="presente"} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,"presente")}>✓ Presente</button><button aria-busy={updating} disabled={updating||foraDaFila||agendaStatus==="faltou"} className="outlineClinical red" onClick={()=>updateAttendance(appointment.id,"faltou")}>Faltou</button>{/* A recepção é quem atende o telefone do paciente que desmarca, então é
-    aqui que desmarcar precisa existir antes de qualquer lugar. */}
-<button aria-busy={updating} disabled={updating} className="outlineClinical" onClick={()=>updateAttendance(appointment.id,foraDaFila?"agendado":"cancelado")} title={foraDaFila?"Volta a consulta para a agenda":"O paciente desmarcou: a linha fica em cinza, sai dos contadores e o lançamento vazio some do Financeiro"}>{foraDaFila?"Reativar":"Desmarcar"}</button></div></div>})}{queue.length===0&&<div className="emptyClinical compactEmpty">Nenhuma consulta agendada para hoje.</div>}</section>}
-            </div>
-          </div>
-        </div>
+        /* A Recepção mora em components/recepcao.tsx: agenda do dia, busca,
+           etapas do atendimento e as ações de balcão. O cadastro completo do
+           paciente continua sendo o PatientModal daqui, o mesmo do Médico. */
+        <RecepcaoView perfilId={perfil.id} institutionId={perfil.institution_id}
+          pacientes={pacientes} agendamentos={agendamentos}
+          onNovoPaciente={()=>setOpen(true)} onAtualizar={()=>router.refresh()} />
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()} nomeDaOrganizacao={organizacao?.nome??null} carregadoEm={carregadoEm}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} localAtivo={localAtivo} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin}/>}
 
-      {contaAberta&&<div className="patientModalBackdrop" role="presentation">
-        <section className="contaModal" role="dialog" aria-modal="true" aria-labelledby="conta-titulo">
-          <div className="patientModalHead">
-            <div><strong id="conta-titulo">Minha conta</strong><span>Seus dados de acesso ao AVANEST.</span></div>
-            <button type="button" onClick={()=>setContaAberta(false)} aria-label="Fechar">×</button>
-          </div>
+      {/* A janela compartilhada (components/janela.tsx): contorno por fora,
+          rolagem por dentro, cabeçalho sempre à vista e a página travada. */}
+      {contaAberta&&<Janela titulo="Minha conta" subtitulo="Seus dados de acesso ao AVANEST." onFechar={()=>setContaAberta(false)}>
           <dl className="contaDados">
             <div><dt>Nome</dt><dd>{perfil.nome}</dd></div>
             <div><dt>E-mail de acesso</dt><dd>{email||"—"}</dd></div>
             <div><dt>Perfil</dt><dd>{ROLE_LABELS[perfil.role]??perfil.role}</dd></div>
           </dl>
           <p className="contaNota">
-            Nome e perfil são alterados pelo administrador da organização, em Admin → Usuários e permissões.
+            Nome e perfil são alterados pelo administrador da organização, em Administração → Equipe e acessos.
           </p>
 
           {/* As preferências vêm ANTES da troca de senha. Trocar senha é uma
@@ -1435,8 +1334,7 @@ export function DashboardClient({
               <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
             </div>
           </form>
-        </section>
-      </div>}
+      </Janela>}
 
       {/* A lista sem preço junta com a de preços: quem tem Financeiro recebe as
           duas, a recepção recebe só a primeira — e as duas dizem o mesmo sobre
@@ -3424,6 +3322,16 @@ function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:bool
   // PIX primeiro porque é o que mais se usa no balcão hoje.
   const [metodoParticular,setMetodoParticular]=useState("PIX");
   const isPrivatePay=convenio===PRIVATE_PAY_CONVENIO;
+  useTravaDeRolagem(true);
+  const [medicos,setMedicos]=useState<{id:string;nome:string}[]>([]);
+  useEffect(()=>{
+    let vivo=true;
+    void (async()=>{
+      const {data}=await createClient().rpc("medicos_da_organizacao");
+      if(vivo) setMedicos((data??[]) as {id:string;nome:string}[]);
+    })();
+    return ()=>{vivo=false};
+  },[]);
   // O formulário deixa de ser um bloco único de dezoito campos e passa a ter
   // grupos com título: o preenchimento segue a ordem natural da conversa com
   // o paciente, e o que falta fica visível sem rolar tudo.
@@ -3507,6 +3415,13 @@ function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:bool
           <div className="patientFormGrid">
             <Field name="data_consulta" label="Data da consulta" type="date" required defaultValue={localDateKey()} span2/>
             <Field name="horario" label="Horário da consulta" type="time" span2/>
+            {/* Opcional: sem ele, a agenda mostra "Médico não definido" até
+                alguém iniciar a avaliação. */}
+            <label className="clinicalField span2"><span>Médico</span>
+              <select name="medico_id" defaultValue="">
+                <option value="">Não definido</option>
+                {medicos.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+              </select></label>
             <p className="modalGrupoAjuda span2">Deixe o horário em branco para o sistema usar o próximo livre da agenda.</p>
           </div>
         </fieldset>

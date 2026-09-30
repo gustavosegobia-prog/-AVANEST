@@ -53,6 +53,10 @@
 
   /* controles */
   --alt-campo:44px; --alt-botao:42px; --alt-botao-compacto:36px;
+
+  /* janelas modais: um contorno só para todas */
+  --raio-modal:16px; --borda-modal:1px solid var(--cor-borda); --sombra-modal:var(--sombra-3);
+  --recuo-modal:24px;
   --foco:0 0 0 3px rgba(22,104,179,.35);
   --transicao:140ms ease;
 }
@@ -2064,13 +2068,12 @@ button:disabled{cursor:not-allowed}
 
 /* Minha conta. Estreito de propósito: são três leituras e três campos, e
    um modal largo faria o formulário de senha parecer maior do que é. */
-.contaModal{width:min(520px,calc(100vw - 32px));max-height:90vh;overflow:auto;background:var(--cor-superficie);border-radius:var(--raio-3);padding-bottom:var(--esp-6)}
-.contaDados{margin:var(--esp-5) var(--esp-6) 0;display:grid;gap:var(--esp-3)}
+.contaDados{margin:0;display:grid;gap:var(--esp-3)}
 .contaDados>div{display:flex;justify-content:space-between;gap:var(--esp-4);padding-bottom:var(--esp-3);border-bottom:1px solid var(--cor-borda)}
 .contaDados dt{color:var(--cor-tinta-fraca);font-size:13px}
 .contaDados dd{margin:0;font-weight:700;text-align:right;word-break:break-word}
-.contaNota{margin:var(--esp-3) var(--esp-6) 0;font-size:12.5px;color:var(--cor-tinta-fraca)}
-.contaSenha{margin:var(--esp-5) var(--esp-6) 0;display:grid;gap:var(--esp-4)}
+.contaNota{margin:var(--esp-3) 0 0;font-size:12.5px;color:var(--cor-tinta-fraca)}
+.contaSenha{margin:var(--esp-5) 0 0;border-top:1px solid var(--cor-borda);padding-top:var(--esp-5);display:grid;gap:var(--esp-4)}
 .contaSenha h3{margin:0;font-size:15px}
 .contaSenha .patientModalActions{margin-top:var(--esp-2);padding:0}
 
@@ -5425,10 +5428,13 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
   border-top:1px solid var(--cor-borda);background:var(--cor-superficie)}
 .admRodapeEstado{margin-right:auto;font-size:12.5px;color:var(--cor-tinta-fraca)}
 .admDialogoFundo{position:fixed;inset:0;z-index:1200;background:rgba(8,25,42,.45);display:grid;place-items:center;padding:var(--esp-4)}
-.admDialogo{width:min(520px,100%);max-height:calc(100vh - 32px);overflow-y:auto;background:var(--cor-superficie);border-radius:var(--raio-3);
-  box-shadow:var(--sombra-3);padding:var(--esp-5) var(--esp-6);display:grid;gap:var(--esp-3)}
+.admDialogo{width:min(520px,100%);max-height:calc(100dvh - 32px);overflow:hidden;background:var(--cor-superficie);
+  border:var(--borda-modal);border-radius:var(--raio-modal);box-shadow:var(--sombra-modal);display:flex;flex-direction:column}
+.admDialogoRolagem{min-height:0;overflow-y:auto;overscroll-behavior:contain;display:grid;gap:var(--esp-3);
+  padding:var(--esp-5) var(--recuo-modal) var(--esp-3)}
+.admDialogo>.admDialogoAcoes{flex:none;padding:var(--esp-3) var(--recuo-modal) var(--esp-5)}
 .admDialogo h2{margin:0;font-size:18px}
-.admDialogoTexto{font-size:14px;line-height:1.55}
+.admDialogoTexto{font-size:14px;line-height:1.55;display:grid;gap:var(--esp-2)}
 .admDialogoTexto p{margin:0}
 .admDialogoAcoes{display:flex;justify-content:flex-end;gap:var(--esp-2);flex-wrap:wrap}
 .primaryClinical.admPerigo{background:var(--cor-perigo)}
@@ -5679,3 +5685,156 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
   .plantaoMain .financeLayout{grid-template-columns:minmax(0,1fr)}
 }
 .escalaImpressao+.plantaoDicaImpressao{margin-top:12px}
+
+/* --- Recepção: agenda do dia, busca e etapas -----------------------------
+   Agendar consulta é a ação principal do topo; Novo paciente fica ao lado,
+   como complemento. A busca vem logo abaixo, e a agenda do dia depois dos
+   números do dia. Cada estado tem texto e ícone além da cor. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.recTopo{align-items:center}
+.recTopoAcoes{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.recAgendar{display:inline-flex;align-items:center;gap:8px;font-size:15.5px;padding:0 20px;min-height:46px}
+.recBusca{display:grid;gap:6px;padding:14px 18px;margin-top:var(--esp-3)}
+.recBuscaCampo{display:flex;align-items:center;gap:10px;border:1px solid var(--cor-borda-forte);border-radius:var(--raio-2);
+  padding:0 12px;background:var(--cor-superficie);color:var(--cor-tinta-fraca)}
+.recBuscaCampo:focus-within{border-color:var(--cor-marca);box-shadow:var(--foco)}
+.recBuscaCampo input{border:0;outline:0;flex:1;min-width:0;height:44px;font-size:15px;background:transparent;color:var(--cor-tinta)}
+.recLimpar{border:0;background:none;cursor:pointer;color:var(--cor-tinta-fraca);padding:6px;border-radius:6px}
+.recLimpar:focus-visible{box-shadow:var(--foco);outline:0}
+.recBusca>small{font-size:12px;color:var(--cor-tinta-fraca)}
+.recResultados ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:6px}
+.recResultado{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:10px 12px;border:1px solid var(--cor-borda);border-radius:var(--raio-2)}
+.recResultado>span:first-child{display:grid;gap:2px;min-width:0}
+.recResultado small{font-size:12.5px;color:var(--cor-tinta-fraca)}
+.recResultadoAcoes{display:flex;gap:8px;flex-wrap:wrap}
+.recSemResultado{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px;color:var(--cor-tinta-fraca);margin:6px 0 0}
+.recIndicadores{grid-template-columns:repeat(5,minmax(0,1fr));margin:var(--esp-3) 0}
+.recIndicadores .metricCard{padding:12px 14px}
+.recIndicadores .metricCard strong{font-size:22px}
+.recIndicadores .metricCard span{display:flex;align-items:center;gap:5px;font-size:12.5px}
+.recAgenda{padding:0}
+.recBarra{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:14px 18px;
+  border-bottom:1px solid var(--cor-borda)}
+.recNavDia{gap:8px}
+.recData input{height:38px;border-radius:8px;font-size:14px;padding:0 10px}
+.recFiltro{display:grid;gap:3px;min-width:200px}
+.recFiltro>span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.recFiltro select{height:38px;border-radius:8px}
+.recDiaTitulo{font-size:17px;margin:14px 18px 8px}
+.recDiaTitulo em{font-style:normal;color:var(--cor-marca)}
+.recEtapas{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 12px;border-bottom:1px solid var(--cor-borda)}
+.recEtapas button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--cor-borda);background:var(--cor-superficie);
+  color:var(--cor-tinta);border-radius:var(--raio-cheio);padding:6px 12px;font-size:13px;cursor:pointer;min-height:34px}
+.recEtapas button b{font-weight:800}
+.recEtapas button[aria-pressed="true"]{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.recEtapas button:focus-visible{outline:0;box-shadow:var(--foco)}
+.recAgendaLista{list-style:none;margin:0;padding:0}
+.recLinha{display:grid;grid-template-columns:78px minmax(0,1.4fr) minmax(0,1fr) auto;gap:14px;align-items:center;
+  padding:12px 18px;border-bottom:1px solid var(--cor-borda);border-left:4px solid transparent}
+.recLinha.etapa-aguardando{border-left-color:var(--cor-atencao)}
+.recLinha.etapa-em_atendimento{border-left-color:var(--cor-marca)}
+.recLinha.etapa-concluido{border-left-color:var(--cor-sucesso)}
+.recLinha.etapa-cancelado,.recLinha.etapa-reagendado,.recLinha.etapa-faltou{opacity:.72}
+.recLinha time{font-size:17px;font-weight:800;color:var(--cor-tinta)}
+.recLinha time.semHora{font-size:12.5px;font-weight:700;color:var(--cor-tinta-fraca)}
+.recQuem{display:grid;gap:2px;min-width:0}
+.recQuem strong{font-size:15px}
+.recQuem small{font-size:12.5px;color:var(--cor-tinta-fraca);overflow-wrap:anywhere}
+.recQuem .recSemMedico{font-style:italic}
+.recSituacao{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+.recEtapa,.recConfirmacao{display:inline-flex;align-items:center;gap:5px;border-radius:var(--raio-cheio);padding:3px 10px;
+  font-size:12px;font-weight:700;background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+.recEtapa.etapa-aguardando{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.recEtapa.etapa-em_atendimento{background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.recEtapa.etapa-concluido{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.recEtapa.etapa-faltou,.recEtapa.etapa-cancelado{background:var(--cor-perigo-suave);color:var(--cor-perigo)}
+.recConfirmacao.confirmada{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.recConfirmacao.pendente{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.recCarimbo{flex-basis:100%;font-size:12px;color:var(--cor-tinta-fraca)}
+.recAcoes{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.recAcoes>button{white-space:nowrap}
+.recVazio{display:grid;gap:12px;justify-items:center;padding:28px 18px}
+.recVazio p{margin:0}
+.recVazio>div{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.recTotais{grid-template-columns:repeat(5,minmax(0,1fr));margin:0;padding:14px 18px}
+.recCampos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.recCampos .wide{grid-column:1/-1}
+.recCampos textarea{width:100%;border-radius:8px}
+.recEscolher{display:grid;gap:10px}
+.recEscolhaLista{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.recEscolhaLista button{width:100%;display:grid;gap:2px;text-align:left;border:1px solid var(--cor-borda);background:var(--cor-superficie);
+  border-radius:var(--raio-2);padding:10px 12px;cursor:pointer;color:var(--cor-tinta)}
+.recEscolhaLista button:hover,.recEscolhaLista button:focus-visible{border-color:var(--cor-marca);outline:0;box-shadow:var(--foco)}
+.recEscolhaLista small{color:var(--cor-tinta-fraca);font-size:12.5px}
+.recPacienteEscolhido{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 12px;
+  padding:10px 12px;border-radius:var(--raio-2);background:var(--cor-superficie-suave)}
+.recPacienteEscolhido>span{display:grid;gap:2px}
+.recPacienteEscolhido small{color:var(--cor-tinta-fraca)}
+.recHistorico{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.recHistorico li{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--cor-borda)}
+.recHistorico time{font-size:13px;color:var(--cor-tinta-fraca)}
+.recHistorico span{display:grid;gap:2px}
+.recHistorico small{color:var(--cor-tinta-fraca)}
+@media(max-width:1000px){
+  .recIndicadores{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .recLinha{grid-template-columns:64px minmax(0,1fr);gap:8px 12px}
+  .recSituacao,.recAcoes{grid-column:2/-1}
+  .recAcoes{justify-content:flex-start;flex-wrap:wrap}
+}
+@media(max-width:560px){
+  .recTopoAcoes{width:100%;display:grid;grid-template-columns:1fr}
+  .recTopoAcoes .recAgendar{order:-1;justify-content:center}
+  .recIndicadores,.recTotais{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .recBarra,.recEtapas{padding-left:16px;padding-right:16px}
+  .recFiltro{min-width:0;width:100%}
+  .recLinha{padding:12px 16px;grid-template-columns:56px minmax(0,1fr)}
+  .recCampos{grid-template-columns:1fr}
+  .recHistorico li{grid-template-columns:1fr;gap:2px}
+}
+
+/* --- Janela modal compartilhada (components/janela.tsx) --------------------
+   Contorno na caixa de fora, que não rola; rolagem na de dentro. Assim a barra
+   de rolagem não come os cantos da direita, o cabeçalho e o fechar ficam
+   sempre à vista, e o recuo é um só para todo o conteúdo. */
+html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
+.janelaFundo{position:fixed;inset:0;z-index:80;background:rgba(5,19,32,.6);display:grid;place-items:center;padding:var(--esp-4)}
+.janela{width:min(560px,100%);max-height:min(90vh,calc(100dvh - 32px));display:flex;flex-direction:column;overflow:hidden;
+  background:var(--cor-superficie);color:var(--cor-tinta);border:var(--borda-modal);border-radius:var(--raio-modal);box-shadow:var(--sombra-modal)}
+.janela.estreita{width:min(440px,100%)}
+.janela.larga{width:min(880px,100%)}
+.janelaTopo{flex:none;display:flex;justify-content:space-between;align-items:flex-start;gap:var(--esp-3);
+  padding:var(--recuo-modal) var(--recuo-modal) var(--esp-4);border-bottom:1px solid var(--cor-borda)}
+.janelaTopo h2{margin:0;font-size:19px;color:var(--cor-tinta-forte)}
+.janelaTopo p{margin:var(--esp-1) 0 0;font-size:13px;color:var(--cor-tinta-fraca)}
+.janelaFechar{flex:none;width:var(--alt-botao-compacto);height:var(--alt-botao-compacto);display:grid;place-items:center;
+  border:1px solid var(--cor-borda);border-radius:var(--raio-1);background:var(--cor-superficie);color:var(--cor-tinta-fraca);cursor:pointer}
+.janelaFechar:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+.janelaFechar:focus-visible{outline:0;box-shadow:var(--foco)}
+.janelaCorpo{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:var(--esp-5) var(--recuo-modal) var(--recuo-modal);scrollbar-width:thin;scrollbar-color:var(--cor-tinta-fraca) transparent}
+.janelaCorpo::-webkit-scrollbar{width:10px}
+.janelaCorpo::-webkit-scrollbar-track{background:transparent}
+.janelaCorpo::-webkit-scrollbar-thumb{background:var(--cor-tinta-fraca);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+.janelaRodape{flex:none;display:flex;justify-content:flex-end;gap:var(--esp-2);flex-wrap:wrap;
+  padding:var(--esp-3) var(--recuo-modal);border-top:1px solid var(--cor-borda)}
+/* Campos e botões por categoria, com os tokens de altura, borda e raio. */
+.janela .clinicalField input,.janela .clinicalField select{height:var(--alt-campo);border-radius:var(--raio-1)}
+.janela .primaryClinical,.janela .outlineClinical{min-height:var(--alt-botao-compacto);border-radius:var(--raio-1)}
+.janela .patientModalActions{display:flex;justify-content:flex-end;gap:var(--esp-2);flex-wrap:wrap;margin:var(--esp-2) 0 0;padding:0}
+.janela .prefAvisos{margin-top:var(--esp-5)}
+/* As outras janelas do sistema com o mesmo contorno. */
+.patientModal,.localModal,.financeConfigModal,.escalaMembros{border:var(--borda-modal);border-radius:var(--raio-modal);box-shadow:var(--sombra-modal)}
+.localModal>.patientModalHead,.patientModalHead{border-radius:var(--raio-modal) var(--raio-modal) 0 0}
+@media(max-width:560px){
+  :root{--recuo-modal:16px}
+  .janelaFundo,.admDialogoFundo{padding:var(--esp-3)}
+  .janela{max-height:calc(100dvh - 24px)}
+  .janela .patientModalActions>*{flex:1 1 auto}
+}
+/* O cadastro do paciente continua ocupando a tela toda no celular — é um
+   formulário longo, e ali não há contorno para arredondar. */
+@media(max-width:680px){
+  .patientModal{border:0;border-radius:0;box-shadow:none}
+  .patientModalHead{border-radius:0}
+}

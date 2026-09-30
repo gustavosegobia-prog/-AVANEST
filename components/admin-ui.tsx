@@ -10,7 +10,7 @@ import { Icone } from "@/components/icone";
 
 const FOCAVEIS = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
-function useFocoPreso(aberto: boolean, caixa: React.RefObject<HTMLElement | null>, onEsc: () => void) {
+export function useFocoPreso(aberto: boolean, caixa: React.RefObject<HTMLElement | null>, onEsc: () => void) {
   const onEscRef = useRef(onEsc);
   useEffect(() => { onEscRef.current = onEsc; }, [onEsc]);
   useEffect(() => {
@@ -35,6 +35,22 @@ function useFocoPreso(aberto: boolean, caixa: React.RefObject<HTMLElement | null
   }, [aberto, caixa]);
 }
 
+let travas = 0;
+
+/**
+ * Trava a rolagem da página enquanto houver janela aberta. Conta as janelas:
+ * um diálogo aberto sobre outra janela não destrava a página ao fechar.
+ */
+export function useTravaDeRolagem(ativo = true) {
+  useEffect(() => {
+    if (!ativo) return;
+    if (travas++ === 0) document.documentElement.classList.add("rolagemTravada");
+    return () => {
+      if (--travas === 0) document.documentElement.classList.remove("rolagemTravada");
+    };
+  }, [ativo]);
+}
+
 /**
  * Painel lateral no computador; tela inteira no celular (CSS).
  * `onPedirFechar` é chamado por Esc, pelo X e pelo fundo — quem usa decide
@@ -53,6 +69,7 @@ export function Gaveta({
   const caixa = useRef<HTMLElement>(null);
   const id = useId();
   useFocoPreso(true, caixa, onPedirFechar);
+  useTravaDeRolagem(true);
   return (
     <div className="admGavetaFundo" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onPedirFechar(); }}>
       <aside ref={caixa} className={`admGaveta ${largura}`} role="dialog" aria-modal="true" aria-labelledby={`${id}-t`}>
@@ -89,13 +106,17 @@ export function Dialogo({
   const caixa = useRef<HTMLElement>(null);
   const id = useId();
   useFocoPreso(true, caixa, () => { if (!ocupado) onCancelar(); });
+  useTravaDeRolagem(true);
   return (
     <div className="admDialogoFundo" role="presentation">
+      {/* Contorno por fora, rolagem por dentro — ver components/janela.tsx. */}
       <section ref={caixa} className="admDialogo" role="alertdialog" aria-modal="true"
         aria-labelledby={`${id}-t`} aria-describedby={`${id}-d`}>
-        <h2 id={`${id}-t`}>{titulo}</h2>
-        <div id={`${id}-d`} className="admDialogoTexto">{children}</div>
-        {erro && <p className="clinicalError" role="alert">{erro}</p>}
+        <div className="admDialogoRolagem">
+          <h2 id={`${id}-t`}>{titulo}</h2>
+          <div id={`${id}-d`} className="admDialogoTexto">{children}</div>
+          {erro && <p className="clinicalError" role="alert">{erro}</p>}
+        </div>
         <div className="admDialogoAcoes">
           <button type="button" className="outlineClinical" onClick={onCancelar} disabled={ocupado} data-foco-inicial>{cancelar}</button>
           <button type="button" className={perigo ? "primaryClinical compact admPerigo" : "primaryClinical compact"}

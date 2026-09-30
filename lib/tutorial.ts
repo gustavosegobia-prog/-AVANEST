@@ -91,7 +91,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "recepcao",
       alvo: '[data-area="recepcao"]',
       titulo: "Recepção: por onde o paciente entra",
-      texto: "É a primeira porta. Na coluna da esquerda: Agenda com as consultas do dia, Consultas de hoje para marcar quem chegou, e Pesquisar paciente para achar quem já é cadastrado.",
+      texto: "É a primeira porta. No alto, Agendar consulta e a busca por nome, CPF ou telefone. Embaixo, a agenda do dia, com as etapas do atendimento: agendado, aguardando, em atendimento e concluído.",
     });
     etapas.push({
       area: "recepcao",
@@ -108,7 +108,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "recepcao",
       alvo: '[data-secao="hoje"]',
       titulo: "Data, horário e a fila",
-      texto: "Deixe o horário em branco e o sistema usa o próximo livre da agenda. Depois, quando a pessoa chegar, marque Presente em Consultas de hoje — é isso que a põe na fila do anestesiologista.",
+      texto: "Deixe o horário em branco e o sistema usa o próximo livre da agenda. Quando a pessoa chegar, toque em Registrar chegada na agenda — é isso que a põe na fila do anestesiologista. Em Mais ficam confirmar, reagendar, falta, cancelar e o histórico.",
     });
   }
 
