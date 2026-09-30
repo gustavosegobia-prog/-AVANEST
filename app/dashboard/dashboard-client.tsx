@@ -1711,7 +1711,11 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   }
   async function updateItem(id:string,changes:Record<string,string|number|null>) {
     const item=financeiro.find(entry=>entry.id===id);
-    if(item?.fechado_at){setMessage("Este período está fechado e não pode mais ser alterado.");return}
+    // O acompanhamento do recurso de glosa passa com o mês fechado — a
+    // resposta do convênio chega meses depois, e não muda número nenhum. É a
+    // mesma lista que o gatilho trava_financeiro_atendimentos deixa passar.
+    const soRecurso=Object.keys(changes).every(k=>k.startsWith("glosa_recurso_"));
+    if(item?.fechado_at&&!soRecurso){setMessage("Este período está fechado e não pode mais ser alterado.");return}
     setBusy(id); setMessage(""); const {error}=await createClient().from("financeiro_atendimentos").update({...changes,updated_at:new Date().toISOString()}).eq("id",id);
     setBusy(""); if(error)setMessage(`Não foi possível atualizar: ${error.message}`);else onRefresh();
   }
