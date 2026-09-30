@@ -198,13 +198,13 @@ export function RecepcaoView({
           <h1>Recepção</h1>
           <p>Agenda, chegada e cadastro — sem acesso a dados clínicos ou financeiros.</p>
         </div>
+        {/* UMA AÇÃO SÓ NO TOPO. Todo paciente que passa pela recepção sai com
+            consulta, e o cadastro já marca a primeira. Para quem já é
+            cadastrado (outra cirurgia), "Agendar consulta" fica no resultado
+            da busca, ao lado do nome. */}
         <div className="recTopoAcoes">
-          <button type="button" className="outlineClinical" data-acao="novo-paciente" onClick={onNovoPaciente}>
+          <button type="button" className="primaryClinical recAgendar" data-acao="novo-paciente" onClick={onNovoPaciente}>
             + Novo paciente
-          </button>
-          <button type="button" className="primaryClinical recAgendar" data-acao="agendar-consulta"
-            onClick={() => setAgendando({ paciente: null })}>
-            <Icone nome="calendario" tamanho={18} /> Agendar consulta
           </button>
         </div>
       </section>
@@ -335,7 +335,6 @@ export function RecepcaoView({
               {doDia.length > 0 && (
                 <button type="button" className="outlineClinical" onClick={() => { setEtapaFiltro("todas"); setMedicoFiltro("todos"); }}>Limpar filtros</button>
               )}
-              <button type="button" className="primaryClinical compact" onClick={() => setAgendando({ paciente: null })}>Agendar consulta</button>
               {proxima && (
                 <button type="button" className="outlineClinical" onClick={() => irPara(proxima)}>
                   Ver próxima data com consultas ({dataCurtaBr(proxima)})

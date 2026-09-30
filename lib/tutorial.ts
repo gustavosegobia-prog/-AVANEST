@@ -91,7 +91,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "recepcao",
       alvo: '[data-area="recepcao"]',
       titulo: "Recepção: por onde o paciente entra",
-      texto: "É a primeira porta. No alto, Agendar consulta e a busca por nome, CPF ou telefone. Embaixo, a agenda do dia, com as etapas do atendimento: agendado, aguardando, em atendimento e concluído.",
+      texto: "É a primeira porta. No alto, + Novo paciente e a busca por nome, CPF ou telefone — paciente já cadastrado é agendado pelo resultado da busca. Embaixo, a agenda do dia, com as etapas do atendimento: agendado, aguardando, em atendimento e concluído.",
     });
     etapas.push({
       area: "recepcao",

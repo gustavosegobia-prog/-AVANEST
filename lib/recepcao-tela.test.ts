@@ -8,9 +8,11 @@ const tela = ler("components/recepcao.tsx");
 const painel = ler("app/dashboard/dashboard-client.tsx");
 const sql = ler("supabase/migrations/202609300016_agenda_da_recepcao.sql");
 
-test("Agendar consulta em destaque; Novo paciente como complemento", () => {
-  assert.match(tela, /className="primaryClinical recAgendar" data-acao="agendar-consulta"/);
-  assert.match(tela, /className="outlineClinical" data-acao="novo-paciente"/);
+test("uma ação só no topo: Novo paciente; agendar paciente já cadastrado sai da busca", () => {
+  assert.match(tela, /className="primaryClinical recAgendar" data-acao="novo-paciente"/);
+  assert.doesNotMatch(tela, /data-acao="agendar-consulta"/, "voltou o Agendar consulta repetido no topo");
+  assert.doesNotMatch(tela, /setAgendando\(\{ paciente: null \}\)/, "voltou um Agendar consulta sem paciente");
+  assert.match(tela, /onClick=\{\(\) => setAgendando\(\{ paciente: p \}\)\}>Agendar consulta<\/button>/);
   assert.match(painel, /<RecepcaoView perfilId=\{perfil\.id\}/);
 });
 
@@ -40,7 +42,7 @@ test("reagendar preserva a marcação antiga e usa a mesma limpeza do desmarcar"
   assert.match(tela, /rpc\("reagendar_consulta"/);
 });
 
-test("estado vazio com ações úteis", () => {
+test("estado vazio com ações úteis, sem repetir o topo", () => {
   assert.match(tela, /Ver próxima data com consultas \(\{dataCurtaBr\(proxima\)\}\)/);
   assert.match(tela, /Cadastrar novo paciente/);
 });
