@@ -1279,11 +1279,11 @@ export function Plantoes({
   const meus = plantoes.filter((p) => p.perfil_id === perfilId && p.situacao !== "cancelado");
   /*
    * O cartão "Plantões no mês" dizia 18 e a lista embaixo dizia 14 — sobre o
-   * MESMO mês. O cartão contava turnos de 12 horas (o de 24h vale dois, que é a
-   * unidade do fechamento) e a lista contava lançamentos. Os dois estavam
-   * certos; o defeito era dar o mesmo nome a coisas diferentes. Agora o resumo
-   * sai de `contagem`, com plantões, turnos e horas cada um com o seu nome, e
-   * do MESMO conjunto que a lista mostra (período e filtros) — ver `visiveis`.
+   * MESMO mês. O cartão estava certo: plantão é 12 horas, e o de 24h conta
+   * dois (a regra do fechamento). A lista é que contava LINHAS e as chamava de
+   * plantões. Agora os dois saem de `contagem`, sobre o mesmo conjunto
+   * (período e filtros, ver `visiveis`), e o número de lançamentos aparece com
+   * esse nome quando é diferente.
    */
 
   function mudarMes(passo: number) {
@@ -2431,16 +2431,18 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
           novo só para lembrar o que era. */}
       {mostraMetricas && (() => {
         // Os cartões viram lista para o olho poder morar no ÚLTIMO deles.
-        // Plantões, turnos e horas lado a lado e com o nome de cada um: o de
-        // 24h é UM plantão e DOIS turnos de 12h, e as duas contas são
-        // verdadeiras. Tudo do mesmo conjunto que a lista abaixo mostra.
+        // Plantão é 12 horas: o lançamento de 24h conta dois. Quando o número
+        // de lançamentos é outro, ele aparece embaixo, com esse nome — é o que
+        // a lista mostra linha a linha. Tudo do mesmo conjunto que a lista.
         const cartoes = [
-          { chave: "plantoes", valor: contagemVisivel.plantoes.toLocaleString("pt-BR"), rotulo: contagemVisivel.plantoes === 1 ? "Plantão" : "Plantões", cor: "" },
-          { chave: "turnos", valor: contagemVisivel.turnos.toLocaleString("pt-BR", { maximumFractionDigits: 1 }), rotulo: "Turnos de 12h", cor: "" },
-          { chave: "horas", valor: `${contagemVisivel.horas.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} h`, rotulo: "Horas", cor: "" },
-          { chave: "total", valor: money(dinheiroVisivel.total), rotulo: "Total", cor: "blue" },
-          { chave: "pago", valor: money(dinheiroVisivel.pago), rotulo: "Recebido", cor: "green" },
-          { chave: "aberto", valor: money(dinheiroVisivel.aberto), rotulo: "A receber", cor: "amber" },
+          { chave: "plantoes", valor: contagemVisivel.plantoes.toLocaleString("pt-BR", { maximumFractionDigits: 1 }),
+            rotulo: contagemVisivel.plantoes === 1 ? "Plantão de 12h" : "Plantões de 12h", cor: "",
+            nota: contagemVisivel.lancamentos !== contagemVisivel.plantoes
+              ? `${contagemVisivel.lancamentos} ${contagemVisivel.lancamentos === 1 ? "lançamento" : "lançamentos"}` : "" },
+          { chave: "horas", valor: `${contagemVisivel.horas.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} h`, rotulo: "Horas", cor: "", nota: "" },
+          { chave: "total", valor: money(dinheiroVisivel.total), rotulo: "Total", cor: "blue", nota: "" },
+          { chave: "pago", valor: money(dinheiroVisivel.pago), rotulo: "Recebido", cor: "green", nota: "" },
+          { chave: "aberto", valor: money(dinheiroVisivel.aberto), rotulo: "A receber", cor: "amber", nota: "" },
         ];
         return (
         <section className="escalaResumo" aria-label="Resumo do período">
@@ -2459,6 +2461,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     só para lembrar o que era. */}
                 <strong className={c.cor}>{mascara(c.valor)}</strong>
                 <span>{c.rotulo}</span>
+                {c.nota && <small className="escalaNotaCartao">{mascara(c.nota)}</small>}
                 {i === cartoes.length - 1 && (
                   <OlhoValores oculto={valorOculto} onAlternar={esconderValores} />
                 )}
@@ -2767,7 +2770,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                       // Para quem usa leitor de tela, a pastilha azul do número
                       // não existe: `aria-current="date"` é o que anuncia "hoje".
                       aria-current={dia === hojeISO ? "date" : undefined}
-                      aria-label={`${i + 1}${dia === hojeISO ? " — hoje" : ""}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? plural(doDia.length, "plantão", "plantões") : "sem plantão"}`}
+                      aria-label={`${i + 1}${dia === hojeISO ? " — hoje" : ""}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? contagemEscrita(contagem(doDia)) : "sem plantão"}`}
                     >
                       <b>{i + 1}</b>
                       {/* O nome do feriado, e não só uma cor. Cor sozinha diz
@@ -2907,7 +2910,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     <li key={dia} className={`escalaSemanaDia${dia === hojeISO ? " hoje" : ""}${diaAberto === dia ? " aberto" : ""}`}>
                       <button type="button" className="escalaSemanaData" onClick={() => setDiaAberto(diaAberto === dia ? null : dia)}
                         aria-current={dia === hojeISO ? "date" : undefined}
-                        aria-label={`${diaDaSemanaCurto(dia)}, ${dataCurta(dia)}${dia === hojeISO ? " — hoje" : ""}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? plural(doDia.length, "plantão", "plantões") : "sem plantão"}. Abrir o dia.`}>
+                        aria-label={`${diaDaSemanaCurto(dia)}, ${dataCurta(dia)}${dia === hojeISO ? " — hoje" : ""}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? contagemEscrita(contagem(doDia)) : "sem plantão"}. Abrir o dia.`}>
                         <b>{diaDaSemanaCurto(dia)}</b>
                         <span>{dataCurta(dia)}</span>
                         {dia === hojeISO && <em>hoje</em>}
@@ -2977,7 +2980,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
             extra={visiveis.length > 0
               ? <span className="painelContagem">
                   {contagemEscrita(contagemVisivel)}
-                  {filtrando && ` · ${visiveis.length} de ${plural(doPeriodo.length, "plantão", "plantões")}`}
+                  {filtrando && ` · filtro: ${visiveis.length} de ${doPeriodo.length} ${doPeriodo.length === 1 ? "lançamento" : "lançamentos"}`}
                 </span>
               : undefined}
           >
@@ -3392,7 +3395,7 @@ function DiaDetalhe({
     <section className="clinicalPanel plantaoDetalhe" ref={painel} tabIndex={-1}>
       <div className="panelTitle">
         <strong>{d}/{mm}/{aa}</strong>
-        <span>{plantoes.length ? `${plural(plantoes.length, "plantão", "plantões")} na escala` : "nenhum plantão neste dia"}</span>
+        <span>{plantoes.length ? `${contagemEscrita(contagem(plantoes))} na escala` : "nenhum plantão neste dia"}</span>
         <button className="outlineClinical" onClick={onFechar} style={{ marginLeft: "auto" }}>Fechar</button>
       </div>
 

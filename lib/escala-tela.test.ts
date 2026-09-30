@@ -17,8 +17,8 @@ const css = ler("app/globals.css");
 test("resumo e lista saem do MESMO conjunto filtrado", () => {
   assert.match(tela, /const visiveis = filtrarEscala\(doPeriodo, filtrosEfetivos, agora, perfilId\);/);
   assert.match(tela, /const contagemVisivel = contagem\(visiveis\);/);
-  assert.match(tela, /rotulo: "Turnos de 12h"/);
-  assert.doesNotMatch(tela, /rotulo: "Plantões no mês"/, "voltou o cartão que chamava turnos de plantões");
+  assert.match(tela, /rotulo: contagemVisivel\.plantoes === 1 \? "Plantão de 12h" : "Plantões de 12h"/);
+  assert.doesNotMatch(tela, /"Turnos de 12h"/, "plantão é 12h: não existe outra unidade chamada turno no resumo");
   assert.match(tela, /\{contagemEscrita\(contagemVisivel\)\}/);
   assert.doesNotMatch(tela, /plantão\{[^}]*"es"/, "voltou o plural que escrevia \"plantãoes\"");
 });

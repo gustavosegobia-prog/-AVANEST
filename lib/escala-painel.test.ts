@@ -14,27 +14,38 @@ const p = (x: Partial<PlantaoDoPainel>): PlantaoDoPainel => ({
   horas: 12, valor: 900, valor_informado: true, situacao: "escalado", pago_em: null, privado: false, confirmado_em: null, ...x,
 });
 
-describe("contagem: plantões, turnos e horas não se confundem", () => {
-  it("o caso real: 14 lançamentos, quatro de 24h → 14 plantões, 18 turnos, 216 h", () => {
+describe("contagem: plantão é 12 horas, e sai das horas", () => {
+  it("o caso real: 14 lançamentos, quatro de 24h → 18 plantões, 216 h", () => {
     const mes = [
       ...Array.from({ length: 10 }, (_, i) => p({ data: `2026-09-${String(i + 1).padStart(2, "0")}`, hora_inicio: "19:00:00", hora_fim: "07:00:00", horas: 12 })),
       ...Array.from({ length: 4 }, (_, i) => p({ data: `2026-09-${String(i + 20)}`, hora_inicio: "07:00:00", hora_fim: "07:00:00", horas: 24 })),
     ];
     const c = contagem(mes);
-    assert.deepEqual(c, { plantoes: 14, turnos: 18, horas: 216 });
-    assert.equal(contagemEscrita(c), "14 plantões · 18 turnos de 12h · 216 h");
+    assert.deepEqual(c, { plantoes: 18, horas: 216, lancamentos: 14 });
+    assert.equal(contagemEscrita(c), "18 plantões · 216 h · 14 lançamentos");
   });
 
-  it("cancelado não conta em nenhum dos três, e singular sai no singular", () => {
+  it("cancelado não conta; só de 12h, os lançamentos não se repetem", () => {
     const c = contagem([p({}), p({ situacao: "cancelado" })]);
-    assert.equal(contagemEscrita(c), "1 plantão · 1 turno de 12h · 12 h");
+    assert.equal(contagemEscrita(c), "1 plantão · 12 h");
+    assert.equal(contagemEscrita(contagem([p({}), p({})])), "2 plantões · 24 h");
+  });
+  it("o print de agosto: 8 lançamentos, seis de 24h → 14 plantões, 168 h", () => {
+    const ago = [
+      ...Array.from({ length: 6 }, () => p({ hora_inicio: "07:00:00", hora_fim: "07:00:00", horas: 24 })),
+      p({}), p({}),
+    ];
+    assert.equal(contagemEscrita(contagem(ago)), "14 plantões · 168 h · 8 lançamentos");
+  });
+  it("dois de 6h são um plantão", () => {
+    assert.equal(contagemEscrita(contagem([p({ horas: 6 }), p({ horas: 6 })])), "1 plantão · 12 h · 2 lançamentos");
   });
 
   it("resumo e lista usam o mesmo filtro: mesmo conjunto, mesmos números", () => {
     const mes = [p({ local_id: "h1" }), p({ local_id: "h2", horas: 24, hora_fim: "07:00:00" })];
     const filtrado = filtrarEscala(mes, { ...FILTROS_DA_ESCALA, local: "h2" }, new Date(2026, 8, 30));
     assert.equal(filtrado.length, 1);
-    assert.deepEqual(contagem(filtrado), { plantoes: 1, turnos: 2, horas: 24 });
+    assert.deepEqual(contagem(filtrado), { plantoes: 2, horas: 24, lancamentos: 1 });
   });
 });
 

@@ -1,15 +1,14 @@
 // O que a Escala afirma sobre um mês — contagens, horários e situações —
 // num lugar só, testável sem a tela.
 //
-// A divergência que motivou este arquivo: o cartão "Plantões no mês" dizia
-// 18 e a lista embaixo dizia 14, sobre o MESMO conjunto de plantões. Não era
-// erro de soma: o cartão contava TURNOS DE 12 HORAS (horas ÷ 12, a unidade
-// em que o fechamento paga) e a lista contava LANÇAMENTOS. Quatro plantões de
-// 24h viravam oito turnos. Medido nos dados: 14 lançamentos, 216 horas,
-// 18 turnos. Os três números são verdadeiros — o defeito era chamar dois
-// deles de "plantões". Aqui cada um tem o seu nome.
+// PLANTÃO É 12 HORAS. A contagem sai das horas, e não das linhas: o lançamento
+// de 24h são dois plantões, e dois de 6h são um. É a regra do fechamento e das
+// folhas de nota (plantoesEscrito, em escala.ts). A divergência "18 × 14" que
+// motivou este arquivo era a lista contando LINHAS ao lado do resumo contando
+// plantões; agora os dois contam plantões, sobre o mesmo conjunto, e o número
+// de lançamentos só aparece — com esse nome — quando é diferente.
 
-import { emTurnos, podeConfirmar, turnosCobertos, type TurnoDoDia } from "./escala.ts";
+import { emTurnos, plantoesEscrito, podeConfirmar, turnosCobertos, type TurnoDoDia } from "./escala.ts";
 
 export type PlantaoDoPainel = {
   id: string;
@@ -30,25 +29,29 @@ export type PlantaoDoPainel = {
 
 // ── Contagem ──────────────────────────────────────────────────────────────
 
-export type Contagem = { plantoes: number; turnos: number; horas: number };
+export type Contagem = { plantoes: number; horas: number; lancamentos: number };
 
 /**
- * Plantões (lançamentos), turnos de 12h e horas do MESMO conjunto — quem
- * chama passa a lista já filtrada, e a tela usa o mesmo resultado no resumo e
- * na lista. Cancelado não conta.
+ * Plantões (de 12h, tirados das horas), horas e lançamentos do MESMO conjunto
+ * — quem chama passa a lista já filtrada, e a tela usa o mesmo resultado no
+ * resumo e na lista. Cancelado não conta.
  */
 export function contagem(plantoes: PlantaoDoPainel[]): Contagem {
   const validos = plantoes.filter((p) => p.situacao !== "cancelado");
   const horas = validos.reduce((s, p) => s + Number(p.horas || 0), 0);
-  return { plantoes: validos.length, turnos: emTurnos(horas), horas };
+  return { plantoes: emTurnos(horas), horas, lancamentos: validos.length };
 }
 
 const numeroBr = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
-const pl = (n: number, um: string, varios: string) => `${numeroBr(n)} ${n === 1 ? um : varios}`;
 
-/** "14 plantões · 18 turnos de 12h · 216 h" — os três, cada um com o nome certo. */
+/**
+ * "14 plantões · 168 h · 8 lançamentos" — o número de lançamentos só entra
+ * quando difere do de plantões (há plantão de 24h ou de 6h no conjunto).
+ */
 export function contagemEscrita(c: Contagem): string {
-  return `${pl(c.plantoes, "plantão", "plantões")} · ${pl(c.turnos, "turno de 12h", "turnos de 12h")} · ${numeroBr(c.horas)} h`;
+  const base = `${plantoesEscrito(c.horas)} · ${numeroBr(c.horas)} h`;
+  return c.lancamentos === c.plantoes ? base
+    : `${base} · ${c.lancamentos} ${c.lancamentos === 1 ? "lançamento" : "lançamentos"}`;
 }
 
 // ── Horário ───────────────────────────────────────────────────────────────
