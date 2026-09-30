@@ -1561,6 +1561,13 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const groups=Object.entries(periodItems.reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.convenio||"Particular"]??=[]).push(item);return acc},{}));
   const lots=Object.entries(periodItems.filter(item=>item.lote).reduce<Record<string,Financeiro[]>>((acc,item)=>{(acc[item.lote as string]??=[]).push(item);return acc},{}));
   const periodState=periodos.find(item=>item.periodo===period);
+  // ENTROU DEPOIS DO FECHAMENTO. Fechar trava todo lançamento do mês; então
+  // lançamento de mês fechado SEM trava chegou depois — pela conclusão de uma
+  // avaliação antiga ou pelo recebimento no balcão, que não são barrados para
+  // não travar o médico nem a recepção. O número assinado mudou, e alguém
+  // precisa saber: reabrir, conferir e fechar de novo.
+  const mesesFechados=new Set(periodos.filter(p=>p.status==="fechado").map(p=>p.periodo));
+  const depoisDoFechamento=financeiro.filter(i=>i.periodo&&mesesFechados.has(i.periodo)&&!i.fechado_at&&i.status!=="cancelado");
   const byPlan=groups.map(([convenio,items])=>{
     const billed=items.reduce((sum,item)=>sum+Number(item.valor),0);
     const paid=items.reduce((sum,item)=>sum+Number(item.recebido),0);
@@ -1962,7 +1969,8 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         // grava direto "fechado", e comparar com o estado antigo deixava o
         // aviso "o mês ainda não foi fechado" aceso para sempre.
         fechamentoPendente={Boolean(receitaTotal.valor>0&&periodState?.status!=="fechado")}
-        onIr={setTarefa}
+        depoisDoFechamento={Object.entries(depoisDoFechamento.reduce<Record<string,number>>((acc,i)=>{acc[i.periodo!]=(acc[i.periodo!]??0)+1;return acc},{})).sort(([a],[b])=>a.localeCompare(b))}
+        onIr={(tarefa,mes)=>{if(mes)setPeriod(mes);setTarefa(tarefa)}}
         onConfigurarValores={openPriceConfig}
         mascara={mascara}
         money={money}
@@ -2464,6 +2472,8 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           admin/owner tem o botão de reabrir: fechar é revisão, reabrir é
           desfazer uma revisão já assinada, e a régua sobe. */}
       {periodState?.status==="fechado" ? <>
+        {(()=>{const tardios=depoisDoFechamento.filter(i=>i.periodo===period);
+          return tardios.length>0&&<p className="financeNota alerta"><Icone nome="alerta" tamanho={15}/> {plural(tardios.length,"lançamento entrou","lançamentos entraram")} neste mês depois do fechamento ({mascara(money(tardios.reduce((s,i)=>s+Number(i.valor),0)))}) e {tardios.length===1?"não está travado":"não estão travados"}. Os totais acima já {tardios.length===1?"o incluem":"os incluem"} — reabra com o motivo, confira e feche de novo para a conferência valer para eles também.</p>})()}
         <div className="closingFooter closingFechado">
           <span><Icone nome="cadeado" tamanho={15}/> Este período está fechado. Registrar pagamento, estornar ou excluir um lançamento daqui não é mais permitido.</span>
           {podeExcluirLancamento&&!reabrindo&&
@@ -3550,14 +3560,16 @@ function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
 function VisaoGeral({
   temAlgumaConfiguracao, temAlgumMovimento,
   pendingPatients, convenioPendentes, noteAlerts, cobrancasAtrasadas, valorAtrasado,
-  faltamRecorrentes, repassesPendentes, fechamentoPendente,
+  faltamRecorrentes, repassesPendentes, fechamentoPendente, depoisDoFechamento,
   onIr, onConfigurarValores, mascara, money,
 }:{
   temAlgumaConfiguracao:boolean; temAlgumMovimento:boolean;
   pendingPatients:number; convenioPendentes:number; noteAlerts:number;
   cobrancasAtrasadas:number; valorAtrasado:number; faltamRecorrentes:number;
   repassesPendentes:number; fechamentoPendente:boolean;
-  onIr:(tarefa:string)=>void; onConfigurarValores:()=>void;
+  /** Lançamentos que entraram num mês já fechado, por mês ("2026-09" → 2). */
+  depoisDoFechamento:[string,number][];
+  onIr:(tarefa:string,periodo?:string)=>void; onConfigurarValores:()=>void;
   mascara:(t:string)=>string; money:(v:number)=>string;
 }) {
   if(!temAlgumaConfiguracao&&!temAlgumMovimento){
@@ -3577,7 +3589,7 @@ function VisaoGeral({
       </div>
     </section>;
   }
-  const fila:{chave:string;titulo:string;detalhe:string;tarefa:string}[]=[];
+  const fila:{chave:string;titulo:string;detalhe:string;tarefa:string;periodo?:string}[]=[];
   if(pendingPatients>0) fila.push({
     chave:"lancamentos",
     titulo:`${plural(pendingPatients,"atendimento aguardando","atendimentos aguardando")} lançamento`,
@@ -3620,6 +3632,15 @@ function VisaoGeral({
     detalhe:"revise notas, glosas e pagamentos pendentes antes de confirmar a conferência",
     tarefa:"fechamento",
   });
+  // Um item por mês: cada um leva ao fechamento DAQUELE mês, que pode não
+  // ser o selecionado na tela.
+  for(const [mes,quantos] of depoisDoFechamento) fila.push({
+    chave:`depois-${mes}`,
+    titulo:`${plural(quantos,"lançamento entrou","lançamentos entraram")} em ${mes.split("-").reverse().join("/")} depois do fechamento`,
+    detalhe:"o mês fechado mudou depois da conferência — reabra com o motivo, revise e feche de novo",
+    tarefa:"fechamento",
+    periodo:mes,
+  });
   return <section className="clinicalPanel">
     <div className="panelTitle"><strong>Atenção hoje</strong>
       <span>{fila.length?`${plural(fila.length,"pendência","pendências")} com ação disponível`:"nada pedindo ação agora"}</span>
@@ -3628,7 +3649,7 @@ function VisaoGeral({
       ? <div className="emptyClinical compactEmpty">Tudo em dia. Nenhuma pendência nas contas, notas ou fechamento deste mês.</div>
       : fila.map(item=><div className="financeSetupRow" key={item.chave}>
           <span><strong>{item.titulo}</strong><small>{item.detalhe}</small></span>
-          <button className="outlineClinical" onClick={()=>onIr(item.tarefa)}>Ver</button>
+          <button className="outlineClinical" onClick={()=>onIr(item.tarefa,item.periodo)}>Ver</button>
         </div>)}
   </section>;
 }
