@@ -52,3 +52,19 @@ test("falha de carregamento vira aviso, e não lista vazia", () => {
   assert.match(ler("app/dashboard/page.tsx"), /falhasDeCarga=\{\[erroAvaliacoes \? "as avaliações" : null, erroAgendamentos \? "a agenda" : null\]/);
   assert.match(tela, /Não foi possível carregar \{falhasDeCarga\.join\(" e "\)\} agora/);
 });
+
+test("agenda vazia não repete Nova avaliação nem Retomar — já estão na tela", () => {
+  assert.doesNotMatch(tela, />Iniciar nova avaliação</);
+  assert.doesNotMatch(tela, /Retomar avaliação \(\{retomar\.length\}\)/);
+  assert.match(tela, /Ver próximos agendamentos/);
+});
+
+test("avaliação no celular: Voltar ao painel e o estado do salvamento não somem", () => {
+  const css = ler("app/globals.css");
+  assert.match(css, /@media\(max-width:1100px\)\{\.evalRoleNav button\.evalVoltar\{display:inline-flex\}\}/,
+    "o Voltar volta a perder para `.evalRoleNav button:not(.active)` e some abaixo de 1100px");
+  const fim = css.slice(css.indexOf("Avaliação: o estado do salvamento também no celular"));
+  assert.match(fim, /\.evalSave\{display:flex;/, "o estado do salvamento voltou a ser escondido no celular");
+  assert.match(form, /setSaveError\(\(atual\) => atual \|\| motivoDaFalha\(error\?\.message\)\)/,
+    "o motivo legível voltou a ser trocado pela mensagem técnica");
+});

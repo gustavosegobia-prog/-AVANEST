@@ -2063,7 +2063,11 @@ button:disabled{cursor:not-allowed}
 .evalRoleNav .evalVoltar:disabled{opacity:.6;cursor:progress}
 /* Em tela estreita o rótulo "Médico" some (regra de 1100px), mas o voltar
    precisa continuar: é a única saída visível ali. */
-@media(max-width:1100px){.evalRoleNav .evalVoltar{display:inline-flex}}
+/* "button." no seletor não é enfeite: a regra que esconde os botões da barra
+   abaixo de 1100px é `.evalRoleNav button:not(.active)`, mais específica que
+   `.evalRoleNav .evalVoltar` — e o Voltar sumia no celular e no tablet, sem
+   caminho de volta no topo da avaliação. */
+@media(max-width:1100px){.evalRoleNav button.evalVoltar{display:inline-flex}}
 @media(max-width:700px){.evalRoleNav .evalVoltar{padding:10px 12px}}
 
 /* Minha conta. Estreito de propósito: são três leituras e três campos, e
@@ -5924,3 +5928,22 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .medAcaoCaixa{display:grid;gap:2px;justify-items:end}.medAcaoCaixa small{font-size:11.5px;color:var(--cor-tinta-fraca)}
 @media(max-width:620px){.medAcaoCaixa{justify-items:start}}
 @media(max-width:620px){.medConsulta>.medAcaoCaixa{grid-column:2}}
+
+/* --- Avaliação: o estado do salvamento também no celular -----------------
+   Três regras antigas escondiam .evalSave abaixo de 700px e de 560px: no
+   telefone a avaliação era preenchida sem nenhum retorno — nem "Salvando…",
+   nem "Salvo às…", nem a falha. O estado volta, compacto, e a marca do topo
+   fica só com o símbolo para abrir espaço ao lado do "Voltar ao painel". */
+@media(max-width:700px){
+  .evalTopbar{flex-wrap:wrap;height:auto;min-height:56px;padding:8px 12px;row-gap:6px}
+  .evalTopbar .clinicalBrand span{display:none}
+  /* O rótulo "Médico" não leva a lugar nenhum aqui; o lugar é do Voltar. */
+  .evalRoleNav{margin-left:auto}
+  .evalRoleNav button.active{display:none}
+  /* O estado ganha a linha de baixo inteira: cabe o motivo e o "Tentar de novo". */
+  .evalSave{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;order:3;flex-basis:100%;margin-left:0;font-size:12.5px;white-space:normal}
+}
+/* No computador a falha também quebra linha: o motivo é uma frase inteira, e
+   numa linha só ele empurrava a página para o lado. */
+.evalSave.error{white-space:normal;flex-wrap:wrap;max-width:min(560px,48vw)}
+@media(max-width:700px){.evalSave.error{max-width:none}}

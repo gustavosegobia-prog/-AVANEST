@@ -155,7 +155,9 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
           // Não sobrescreve um rascunho que foi alterado em outra aba/dispositivo.
           // A pessoa pode tentar novamente; se houver conflito real, a tela informa.
           setSaveState("error");
-          if (!saveError) setSaveError(error?.message || "Não foi possível sincronizar o rascunho.");
+          // O motivo que o salvamento direto já deu (conflito de versão,
+          // sessão, rede) fica; só se não houver nenhum entra o da função.
+          setSaveError((atual) => atual || motivoDaFalha(error?.message));
         }
         return savedDirectly;
       }

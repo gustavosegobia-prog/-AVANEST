@@ -307,8 +307,8 @@ export function AreaMedica({
                           Ver próximos agendamentos ({proximaData.slice(8, 10)}/{proximaData.slice(5, 7)})
                         </button>
                       )}
-                      {retomar.length > 0 && <button type="button" className="outlineClinical" onClick={irParaRetomar}>Retomar avaliação ({retomar.length})</button>}
-                      <button type="button" className="primaryClinical compact" onClick={onNovaAvaliacao}>Iniciar nova avaliação</button>
+                      {/* Retomar e Nova avaliação não se repetem aqui: a lista para
+                          retomar fica logo acima, e Nova avaliação no topo. */}
                     </div>
                   </div>
                 ) : (
