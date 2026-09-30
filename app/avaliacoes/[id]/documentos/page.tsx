@@ -2,8 +2,10 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { PrintDocuments } from "./print-documents";
 
-export default async function DocumentsPage({params}:{params:Promise<{id:string}>}) {
+export default async function DocumentsPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{doc?:string}>}) {
   const {id}=await params;
+  const {doc}=await searchParams;
+  const docInicial=doc==="assessment"||doc==="consent"||doc==="guidance"?doc:null;
   const supabase=await createClient();
   const {data:{user}}=await supabase.auth.getUser();
   if(!user)redirect("/login");
@@ -57,5 +59,5 @@ export default async function DocumentsPage({params}:{params:Promise<{id:string}
     .order("criado_em",{ascending:false});
   if(erroDoTermo)console.error("[documentos] termo",erroDoTermo);
 
-  return <PrintDocuments avaliacao={{...avaliacao,local_snapshot:comLocal?.local_snapshot??null}} paciente={paciente} perfil={perfil} organizacao={organizacao??null} versoesDoTermo={versoesDoTermo??[]}/>;
+  return <PrintDocuments avaliacao={{...avaliacao,local_snapshot:comLocal?.local_snapshot??null}} paciente={paciente} perfil={perfil} organizacao={organizacao??null} versoesDoTermo={versoesDoTermo??[]} docInicial={docInicial}/>;
 }

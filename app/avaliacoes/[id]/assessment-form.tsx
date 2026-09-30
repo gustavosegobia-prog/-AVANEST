@@ -118,13 +118,28 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       .select("updated_at,lock_version")
       .maybeSingle();
     if(error||!data){
-      setSaveError(error?.message || "O rascunho foi alterado em outra tela. Recarregue a página antes de continuar.");
+      // Sem erro e sem linha = a versão mudou: alguém salvou em outra tela.
+      // Com erro, o motivo é outro (sessão, conexão) e é dito como tal.
+      setSaveError(error ? motivoDaFalha(error.message) : "O rascunho foi alterado em outra tela. Recarregue a página antes de continuar.");
       return false;
     }
     lockVersionRef.current=Number(data.lock_version);
     setSavedAt(new Date(data.updated_at));
     setSaveState("saved");
     return true;
+  }
+
+  /**
+   * Sessão vencida e conexão caída pedem ações diferentes de "tente de novo":
+   * uma pede entrar de novo, a outra pede esperar a rede. Nos dois casos o
+   * texto digitado continua na tela — nada é descartado.
+   */
+  function motivoDaFalha(mensagem?: string) {
+    if (typeof navigator !== "undefined" && !navigator.onLine)
+      return "Sem conexão com a internet. O que foi digitado continua nesta tela e será salvo quando a conexão voltar.";
+    if (mensagem && /jwt|token|expired|expirad|not authenticated|401/i.test(mensagem))
+      return "Sua sessão expirou. Entre de novo em outra aba e volte aqui para salvar — o que foi digitado continua nesta tela.";
+    return mensagem || "Não foi possível sincronizar o rascunho.";
   }
 
   async function save(next = draftRef.current) {
@@ -175,6 +190,20 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     timer.current = setTimeout(() => save(next), 900);
   }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  // Fechar a aba com alteração não confirmada pelo servidor pergunta antes.
+  // E, quando a rede volta, o que falhou por falta de conexão é salvo de novo
+  // sozinho — sem sobrescrever nada: o salvamento continua conferindo a versão.
+  const estadoRef = useRef(saveState);
+  useEffect(() => { estadoRef.current = saveState; }, [saveState]);
+  useEffect(() => {
+    const aoSair = (e: BeforeUnloadEvent) => { if (estadoRef.current !== "saved") { e.preventDefault(); e.returnValue = ""; } };
+    const aoVoltarARede = () => { if (estadoRef.current === "error" || estadoRef.current === "pending") void save(); };
+    window.addEventListener("beforeunload", aoSair);
+    window.addEventListener("online", aoVoltarARede);
+    return () => { window.removeEventListener("beforeunload", aoSair); window.removeEventListener("online", aoVoltarARede); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `save` lê refs; registrar uma vez basta
+  }, []);
 
   // Marca no stepper a etapa que está sob os olhos. Sem isso o profissional
   // rola a página e perde a referência de onde está.

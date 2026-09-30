@@ -5842,3 +5842,85 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .patientModal{border:0;border-radius:0;box-shadow:none}
   .patientModalHead{border-radius:0}
 }
+
+/* --- Área médica: Meu dia, Avaliações, Pendências e Documentos ------------
+   Uma ação principal por bloco (Iniciar/Continuar), o resto em contorno. Cor
+   de alerta só onde há algo a fazer; o que está em dia fica neutro. */
+.medTopo{align-items:center}
+.medOnde{display:flex;flex-wrap:wrap;gap:6px 16px;margin:4px 0 0;font-size:14px;color:var(--cor-tinta-fraca)}
+.medOnde span{display:inline-flex;align-items:center;gap:6px}
+.medEscopo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:var(--esp-3) 0 0}
+.medEscopo p{flex-basis:100%;margin:0;font-size:12.5px;color:var(--cor-tinta-fraca)}
+.medProximo{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:6px 16px;
+  padding:16px 20px;margin-top:0;border-left:4px solid var(--cor-marca)}
+.medProximoRotulo{grid-column:1/-1;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cor-marca-forte)}
+.medProximo time{font-size:24px;font-weight:800;color:var(--cor-tinta-forte)}
+.medProximoQuem{display:grid;gap:2px;min-width:0}
+.medProximoQuem strong{font-size:16px}
+.medProximoQuem small{color:var(--cor-tinta-fraca);font-size:13px}
+.medResumo{grid-template-columns:repeat(4,minmax(0,1fr));margin:var(--esp-3) 0 6px}
+.medCartao{text-align:left;cursor:pointer;font:inherit;color:inherit;padding:12px 14px}
+.medCartao:disabled{cursor:default;opacity:.75}
+.medCartao:not(:disabled):hover{border-color:var(--cor-marca)}
+.medCartao:focus-visible{outline:0;box-shadow:var(--foco)}
+.medCartao strong{font-size:22px}
+.medCartao span{display:flex;align-items:center;gap:5px;font-size:12.5px}
+.medLegenda{margin:0 0 var(--esp-3);font-size:12px;color:var(--cor-tinta-fraca)}
+.medLista{list-style:none;margin:0;padding:0}
+.medLinha{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px 14px;align-items:center;
+  padding:12px 20px;border-bottom:1px solid var(--cor-borda)}
+.medLinha:last-child{border-bottom:0}
+.medQuem{display:grid;gap:2px;min-width:0}
+.medQuem strong{font-size:15px}
+.medQuem small{font-size:12.5px;color:var(--cor-tinta-fraca);overflow-wrap:anywhere}
+.medLocal{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;border-radius:var(--raio-cheio);
+  padding:3px 10px;background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+.medLocal.outro{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.medConsulta{grid-template-columns:70px minmax(0,1fr) auto auto}
+.medConsulta time{display:grid;font-size:17px;font-weight:800;color:var(--cor-tinta)}
+.medConsulta time small{font-size:11px;font-weight:700;color:var(--cor-tinta-fraca)}
+.medConsulta time em{font-style:normal;font-size:12px;font-weight:700;color:var(--cor-tinta-fraca)}
+.medConsulta.fora{opacity:.7}
+.medAcao{white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.medSemAcao{font-size:12.5px;color:var(--cor-tinta-fraca)}
+.medAgenda{padding:0}
+.medAgendaBarra{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;padding:14px 20px;border-bottom:1px solid var(--cor-borda)}
+.medCampo{display:grid;gap:3px}
+.medCampo>span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.medCampo input{height:38px;border:1px solid var(--cor-borda);border-radius:var(--raio-1);padding:0 10px;font:inherit;font-size:14px;
+  background:var(--cor-superficie);color:var(--cor-tinta)}
+.medCampo input[type=date]{min-width:140px}
+.medBusca{flex:1 1 220px}
+.medBusca input{width:100%}
+.medPeriodo{margin:0;padding:10px 20px;font-size:13px;color:var(--cor-tinta-fraca);border-bottom:1px solid var(--cor-borda)}
+.medPeriodo b{color:var(--cor-tinta)}
+.linkLimpo{border:0;background:none;padding:0;color:var(--cor-marca);font:inherit;font-weight:700;cursor:pointer;text-decoration:underline}
+.linkLimpo:focus-visible{outline:0;box-shadow:var(--foco);border-radius:4px}
+.medVazio{display:grid;gap:12px;justify-items:center;padding:28px 20px}
+.medVazio p{margin:0;text-align:center}
+.medVazio>div{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.medAvisoPendencias{display:flex;align-items:center;gap:6px;margin:var(--esp-3) 0 0;font-size:13.5px;color:var(--cor-atencao)}
+.medTranquilo{display:flex;align-items:center;gap:8px;margin:0;padding:18px 20px;color:var(--cor-sucesso);font-weight:700}
+.medLembretes ul{list-style:none;margin:0;padding:6px 20px;display:grid;gap:10px}
+.medLembretes li{display:grid;gap:2px}
+.medLembretes li span{font-size:13.5px;color:var(--cor-tinta-fraca)}
+.medLembretes .campoDica{padding:0 20px 16px;margin:0}
+.medRecorte{margin:0;padding:10px 20px;font-size:13px;color:var(--cor-tinta-fraca)}
+.medRecorte b{color:var(--cor-tinta)}
+.medHistorico{padding-left:25px;padding-right:25px}
+@media(max-width:900px){.medResumo{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){
+  .medProximo{grid-template-columns:auto minmax(0,1fr)}
+  .medProximo .medAcao{grid-column:1/-1}
+  .medLinha,.medConsulta{grid-template-columns:minmax(0,1fr);padding:12px 16px}
+  .medConsulta{grid-template-columns:56px minmax(0,1fr)}
+  .medConsulta>.recEtapa,.medConsulta>.medAcao,.medConsulta>.medSemAcao{grid-column:2}
+  .medLinha .medAcao{justify-self:start}
+  .medAgendaBarra,.medPeriodo,.medRecorte{padding-left:16px;padding-right:16px}
+  .medEscopo .escalaVisoes{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .medCampo{flex:1 1 140px}
+  .medCampo input[type=date]{width:100%;min-width:130px}
+}
+.medAcaoCaixa{display:grid;gap:2px;justify-items:end}.medAcaoCaixa small{font-size:11.5px;color:var(--cor-tinta-fraca)}
+@media(max-width:620px){.medAcaoCaixa{justify-items:start}}
+@media(max-width:620px){.medConsulta>.medAcaoCaixa{grid-column:2}}

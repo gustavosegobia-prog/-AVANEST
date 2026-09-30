@@ -21,7 +21,7 @@ test("todos os cinco filtros têm rótulo", () => {
   // Antes, busca, situação e local vinham nus e as duas datas com rótulo em
   // cima: alturas diferentes, linha desalinhada. E dois `dd/mm/aaaa` iguais sem
   // rótulo não dizem qual é o começo e qual é o fim.
-  const tela = ler("app/dashboard/dashboard-client.tsx");
+  const tela = ler("components/area-medica.tsx");
   const bloco = tela.match(/<div className="historyFilters">([^]*?)<\/div>/);
   assert.ok(bloco, "não achei o bloco de filtros");
   const rotulos = [...bloco![1].matchAll(/<label[^>]*>([A-ZÀ-Ú][^<{]*)/g)].map((m) => m[1].trim());
@@ -67,8 +67,8 @@ test("a tela separa “não existe nada” de “nada combina com o filtro”", 
   // estes filtros" numa conta que ainda não tem avaliação nenhuma manda mexer
   // nos filtros para achar o que não existe — trocar a situação, trocar o
   // local, limpar as datas, e continuar vazio.
-  const tela = ler("app/dashboard/dashboard-client.tsx");
-  const bloco = tela.match(/historicalAssessments\.length===0&&\(avaliacoes\.length===0([^]*?)\)\}/);
+  const tela = ler("components/area-medica.tsx");
+  const bloco = tela.match(/lista\.length === 0 && \(total === 0([^]*?)\)\}/);
   assert.ok(bloco, "a tela voltou a ter uma mensagem só para as duas ausências");
   assert.match(bloco![1], /Ainda não há avaliação nenhuma/,
     "falta a mensagem de quem ainda não tem nada");

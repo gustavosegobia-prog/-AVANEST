@@ -210,8 +210,8 @@ export default async function DashboardPage({
 
   const [
     { data: pacientes },
-    { data: avaliacoes },
-    { data: agendamentos },
+    { data: avaliacoes, error: erroAvaliacoes },
+    { data: agendamentos, error: erroAgendamentos },
     { data: financeiro },
     { data: pagamentos },
     { data: perfis },
@@ -239,10 +239,10 @@ export default async function DashboardPage({
         : Promise.resolve({ data: [] }),
     needsClinicalData || needsFinanceData
       ? supabase.from("avaliacoes").select("id,patient_id,created_by,status,versao,updated_at,created_at,concluida_at,dados,local_atendimento_id").order("updated_at", { ascending: false })
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
     needsClinicalData
       ? supabase.from("agendamentos").select("*").order("data", { ascending: true }).order("horario", { ascending: true })
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
     needsFinanceData ? supabase.from("financeiro_atendimentos").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     needsFinanceData ? supabase.from("financeiro_pagamentos").select("*").order("paid_at", { ascending: false }) : Promise.resolve({ data: [] }),
     needsProfiles ? supabase.from("perfis").select("id,institution_id,nome,email,role,status,crm,rqe,permissoes,sem_acesso,na_escala,escalista,cor_escala,created_at,updated_at,atuacao_medica,pausada_motivo").order("nome") : Promise.resolve({ data: [] }),
@@ -470,6 +470,9 @@ export default async function DashboardPage({
       // O "atualizado em" do Financeiro: o momento em que ESTA leitura do
       // banco aconteceu. Um router.refresh() refaz a leitura e o carimbo.
       carregadoEm={new Date().toISOString()}
+      // Falha de leitura não pode virar lista vazia em silêncio: "nenhuma
+      // avaliação" e "não consegui ler as avaliações" pedem ações diferentes.
+      falhasDeCarga={[erroAvaliacoes ? "as avaliações" : null, erroAgendamentos ? "a agenda" : null].filter((x): x is string => Boolean(x))}
       initialView={initialView}
       // A chave PÚBLICA do VAPID. Vem do servidor em vez de NEXT_PUBLIC_ para
       // manter uma variável de ambiente só, e porque ela muda de valor no dia

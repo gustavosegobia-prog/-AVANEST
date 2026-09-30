@@ -54,7 +54,7 @@ test("ensina o que mais gerou dúvida: baixa, planilha e troca", () => {
   assert.match(textos, /Planilha|Excel/, "a planilha para o contador");
   assert.match(textos, /Trocar|troca/i, "passar plantão a um colega");
   assert.match(textos, /Tela de Início/, "o iPhone precisa do app instalado");
-  assert.match(textos, /Central Operacional/, "o que ficou para trás");
+  assert.match(textos, /Pendências mostra só o que os registros comprovam/, "o que ficou para trás");
   assert.match(textos, /sem passar pela Recepção/, "o paciente do hospital");
 });
 

@@ -35,6 +35,8 @@ type Props={
    * maioria.
    */
   versoesDoTermo?:VersaoDoTermo[];
+  /** Documento pré-selecionado (?doc=assessment|consent|guidance). */
+  docInicial?:"assessment"|"consent"|"guidance"|null;
 };
 const normalizar=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim().toLowerCase();
 
@@ -232,7 +234,7 @@ function CabecalhoInstitucional({
   );
 }
 
-export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoTermo}:Props){
+export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoTermo,docInicial=null}:Props){
   const dados=avaliacao.snapshot_conclusao||avaliacao.dados||{};
   // O papel que chega na mão do paciente leva o nome de quem atende, não o da
   // plataforma. Para o anestesiologista sozinho, o nome da organização é
@@ -278,7 +280,11 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
   const canFinance=hasLegacyFullAccess||perfil.role==="financeiro"||assignedPermissions.includes("financeiro");
   const canReception=hasLegacyFullAccess||perfil.role==="recepcao"||assignedPermissions.includes("recepcao");
   const canMedical=hasLegacyFullAccess||perfil.role==="medico"||assignedPermissions.includes("medico");
-  const [selected,setSelected]=useState({assessment:true,consent:true,guidance:false});
+  // Vindo da lista de Documentos com um tipo escolhido, abre com só ele
+  // marcado; sem escolha, a seleção de sempre.
+  const [selected,setSelected]=useState(docInicial
+    ?{assessment:docInicial==="assessment",consent:docInicial==="consent",guidance:docInicial==="guidance"}
+    :{assessment:true,consent:true,guidance:false});
   const [notice,setNotice]=useState("");
   const [hasPrinted,setHasPrinted]=useState(false);
   const [confirmDelete,setConfirmDelete]=useState(false);

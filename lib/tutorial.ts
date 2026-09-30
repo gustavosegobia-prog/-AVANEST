@@ -117,8 +117,8 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     etapas.push({
       area: "medico",
       alvo: '[data-secao="agenda"]',
-      titulo: "Médico: a sua fila",
-      texto: "Aqui estão os pacientes que a recepção marcou como presentes. Em cada um: Seguir consulta, se a avaliação já foi começada, ou Nova avaliação.",
+      titulo: "Área médica: o seu dia",
+      texto: "Meu dia abre com o próximo atendimento, quem está aguardando, as avaliações para retomar e a agenda. Em cada consulta: Iniciar avaliação ou Continuar avaliação. Pendências e Documentos ficam na coluna ao lado.",
     });
     etapas.push({
       area: "medico",
@@ -126,7 +126,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       titulo: "Paciente que não passou pela recepção",
       // O caso do hospital, que não tem balcão. Sem esta etapa a pessoa
       // conclui que precisa de uma recepcionista para avaliar alguém.
-      texto: "Dentro do hospital não há balcão. Use + Novo paciente aqui mesmo: você cadastra e já entra na avaliação, sem passar pela Recepção.",
+      texto: "Dentro do hospital não há balcão. Use + Nova avaliação aqui mesmo: você cadastra o paciente e já entra na avaliação, sem passar pela Recepção.",
     });
     etapas.push({
       area: "medico",
@@ -140,9 +140,9 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     });
     etapas.push({
       area: "medico",
-      alvo: '[data-secao="central"]',
-      titulo: "Central Operacional e histórico",
-      texto: "Na coluna da esquerda: Central Operacional reúne o que ficou para trás — avaliação começada e não concluída, exame pendente, alerta de alergia. E Histórico de avaliações guarda tudo o que já foi feito, com busca.",
+      alvo: '[data-secao="pendencias"]',
+      titulo: "Pendências, avaliações e documentos",
+      texto: "Na coluna ao lado: Pendências mostra só o que os registros comprovam — avaliação começada e não concluída, paciente que chegou sem avaliação —, separado dos lembretes gerais. Avaliações guarda tudo o que já foi feito, com busca, e Documentos reúne o que as avaliações concluídas geraram.",
     });
     etapas.push({
       area: "medico",

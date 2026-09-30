@@ -101,6 +101,7 @@ import { explicarEscala, podeEscolherEscalista, podeMontarEscala } from "@/lib/e
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
 import { InstalarNaTela } from "@/components/instalar-na-tela";
 import { RecepcaoView } from "@/components/recepcao";
+import { AreaMedica } from "@/components/area-medica";
 import { Janela, useTravaDeRolagem } from "@/components/janela";
 const PreferenciasDeAvisoPainel = dynamic(
   () => import("@/components/preferencias-de-aviso").then((m) => m.PreferenciasDeAvisoPainel),
@@ -323,7 +324,10 @@ export function DashboardClient({
   chavePush = "",
   producaoDaReceita = [], despesas = [],
   carregadoEm = null,
+  falhasDeCarga = [],
 }: {
+  /** O que o servidor não conseguiu ler ("as avaliações", "a agenda") — a tela avisa em vez de mostrar vazio. */
+  falhasDeCarga?: string[];
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
   /** Quando o servidor leu os dados desta página (ISO). */
   carregadoEm?: string | null;
@@ -408,17 +412,6 @@ export function DashboardClient({
   const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
   const [isAreaPending, startAreaTransition] = useTransition();
   const [open, setOpen] = useState(initialNewPatient);
-  const [search, setSearch] = useState("");
-  const [agendaRange, setAgendaRange] = useState<"hoje"|"amanha"|"semana">("hoje");
-  const [historyQuery, setHistoryQuery] = useState("");
-  const [historyStatus, setHistoryStatus] = useState("todas");
-  // Começa em "todos", e não no local ativo — o pedido diz "mostrar primeiro",
-  // que é ordenar, não esconder. Filtrar por padrão abriria o histórico vazio
-  // para quem acabou de adotar os locais: nenhuma avaliação anterior tem um, e
-  // a tela pareceria ter perdido o trabalho de meses.
-  const [historyLocal, setHistoryLocal] = useState("todos");
-  const [historyFrom, setHistoryFrom] = useState("");
-  const [historyTo, setHistoryTo] = useState("");
   const [dark, setDark] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   // O pedido de abrir o chat, vindo da caixa de avisos. O token cresce a cada
@@ -449,64 +442,12 @@ export function DashboardClient({
   const captchaSenha = useCaptcha();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const searchRef = useRef<HTMLInputElement>(null);
-  // O "Pesquisar paciente" da área Médico focava o campo da Recepção, que não
-  // está montado aqui — o botão simplesmente não fazia nada. Passa a focar a
-  // busca do histórico, que é o campo de busca que existe nesta tela.
-  const buscaHistoricoRef = useRef<HTMLInputElement>(null);
-  const [secaoMedico,setSecaoMedico]=useState("agenda");
   const currentByPatient = useMemo(() => {
     const result = new Map<string,Avaliacao>();
     for (const item of avaliacoes) if (!result.has(item.patient_id)) result.set(item.patient_id, item);
     return result;
   }, [avaliacoes]);
   const evaluationById = useMemo(() => new Map(avaliacoes.map((a)=>[a.id,a])), [avaliacoes]);
-  const drafts = avaliacoes.filter((a) => a.status === "rascunho");
-  const completed = avaliacoes.filter((a) => a.status === "concluida");
-  const orientacoesPendentes = completed.filter((a) => a.dados?.orientacoes_enviadas !== true);
-  // O que a Central mostra em número quando está recolhida. Só entra aqui o
-  // que tem contagem real: os outros dois alertas são lembretes fixos da
-  // rotina, e somá-los inflaria o aviso com trabalho que talvez não exista.
-  const pendenciasCentral = drafts.length + orientacoesPendentes.length;
-  const today = localDateKey();
-  const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate()+1);
-  const tomorrow = localDateKey(tomorrowDate);
-  const weekLimit = new Date(); weekLimit.setDate(weekLimit.getDate()+7);
-  const week = localDateKey(weekLimit);
-  const patientMap = useMemo(() => new Map(pacientes.map((p)=>[p.id,p])), [pacientes]);
-  const professionalMap = useMemo(() => new Map(perfis.map((item)=>[item.id,item.nome])), [perfis]);
-  const historicalAssessments = useMemo(() => avaliacoes.filter((assessment) => {
-    const patient = patientMap.get(assessment.patient_id);
-    const professional = assessment.created_by ? professionalMap.get(assessment.created_by) ?? "" : "";
-    const searchable = `${patient?.nome ?? ""} ${patient?.cpf ?? ""} ${patient?.cirurgia ?? ""} ${patient?.procedimento ?? ""} ${patient?.hospital ?? ""} ${professional}`.toLowerCase();
-    const referenceDate = (assessment.concluida_at || assessment.updated_at || assessment.created_at).slice(0, 10);
-    return (historyStatus === "todas" || assessment.status === historyStatus)
-      && (historyLocal === "todos"
-          || (historyLocal === "sem" ? !assessment.local_atendimento_id
-              : assessment.local_atendimento_id === historyLocal))
-      && (!historyQuery || searchable.includes(historyQuery.toLowerCase()))
-      && (!historyFrom || referenceDate >= historyFrom)
-      && (!historyTo || referenceDate <= historyTo);
-  }).sort((a,b) => {
-    // Sem filtro escolhido, o que foi feito no local de hoje sobe. É o
-    // "mostrar primeiro" do pedido: nada some, só muda de ordem. Com um
-    // filtro ativo a comparação empata em todos, e vale a data.
-    const doLocal = (x:Avaliacao) => localAtivo && x.local_atendimento_id === localAtivo.id ? 0 : 1;
-    return doLocal(a) - doLocal(b)
-      || (b.concluida_at || b.updated_at || b.created_at).localeCompare(a.concluida_at || a.updated_at || a.created_at);
-  }), [avaliacoes, patientMap, professionalMap, historyQuery, historyStatus, historyFrom, historyTo, historyLocal, localAtivo]);
-  const scheduledToday = agendamentos.filter((a) => a.data === today && !["cancelado","reagendado"].includes(a.status));
-  const queue = scheduledToday;
-  const filteredAgenda = agendamentos.filter((item) => {
-    if (agendaRange === "hoje") return item.data === today;
-    if (agendaRange === "amanha") return item.data === tomorrow;
-    return item.data >= today && item.data <= week;
-  }).filter((item) => {
-    const p=patientMap.get(item.patient_id);
-    return `${p?.nome??""} ${p?.cpf??""} ${p?.cirurgia??""} ${p?.procedimento??""} ${item.procedimento??""}`.toLowerCase().includes(search.toLowerCase());
-  });
-  const completedThisMonth = completed.filter((a)=>a.updated_at.slice(0,7)===today.slice(0,7));
-  const asaHigh = completed.filter((a)=>["ASA III","ASA IV","ASA V","ASA VI"].includes(String(a.dados?.asa??""))).length;
 
   async function createPatient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -684,10 +625,23 @@ export function DashboardClient({
     }
   }
 
+  // Dois cliques rápidos em "Iniciar avaliação" criavam duas avaliações: o
+  // `busy` só desabilita o botão depois da próxima pintura. A trava em ref vale
+  // no mesmo instante.
+  const abrindoRef = useRef(false);
   async function openAssessment(patientId: string, appointmentId?:string, assessmentId?:string|null) {
+    if (abrindoRef.current) return;
+    abrindoRef.current = true;
+    try { await abrirOuCriarAvaliacao(patientId, appointmentId, assessmentId); }
+    finally { abrindoRef.current = false; }
+  }
+  async function abrirOuCriarAvaliacao(patientId: string, appointmentId?:string, assessmentId?:string|null) {
     const existing = assessmentId ? evaluationById.get(assessmentId) : currentByPatient.get(patientId);
     if (existing && existing.status === "rascunho") { router.push(`/avaliacoes/${existing.id}`); return; }
-    if (existing && existing.status === "concluida") { router.push(`/avaliacoes/${existing.id}/documentos`); return; }
+    // Concluída e SEM agendamento novo: é pedido para ver os documentos. Com um
+    // agendamento que ainda não tem avaliação, é consulta nova — nasce a
+    // próxima versão, em vez de reabrir o papel da consulta anterior.
+    if (existing && existing.status === "concluida" && !(appointmentId && !assessmentId)) { router.push(`/avaliacoes/${existing.id}/documentos`); return; }
     setBusy(true); setError("");
     const supabase = createClient();
     const previous=currentByPatient.get(patientId);
@@ -719,8 +673,6 @@ export function DashboardClient({
     router.replace("/login");
   }
 
-  const firstDraft=drafts[0];
-  const goToFirstDraft=()=>firstDraft&&router.push(`/avaliacoes/${firstDraft.id}`);
   const changeView=(nextView:DashboardView)=>{
     if(nextView===view)return;
     startAreaTransition(()=>router.push(`/dashboard?area=${nextView}`,{scroll:false}));
@@ -1005,190 +957,16 @@ export function DashboardClient({
           </div>
         </div>
       ) : view === "medico" ? (
-        <div className="clinicalMain">
-          <section className="clinicalWelcome">
-            <div><h1>Consultas pré-anestésicas agendadas</h1><p>Olá, {perfil.nome}. Acompanhe a fila e continue suas avaliações.</p></div>
-            <button className="primaryClinical" onClick={() => setOpen(true)}>+ Nova avaliação pré-anestésica</button>
-          </section>
-          {error && <p className="clinicalError">{error}</p>}
-          {/* A barra de cinco cartões saiu daqui.
-              Três deles — consultas de hoje, pendências e orientações — já
-              apareciam mais duas vezes cada: no contador ao lado do item do
-              menu e escritos por extenso dentro da própria seção. Três cópias
-              do mesmo número não informam três vezes mais; informam a mesma
-              coisa e ocupam a primeira tela do dia.
-              Os outros dois — concluídas no mês e ASA III+ — não pedem ação
-              nenhuma: são retrato do passado. Foram para o topo do Histórico,
-              que é justamente a tela que eles descrevem. */}
-
-          <div className="financeLayout">
-            <nav className="financeTarefas" aria-label="Seções da área Médico">
-              {([
-                ["grupo","Atendimento"],
-                // Uma entrada só. "Consultas de hoje" e "Agenda" mostravam os
-                // mesmos agendamentos — no código eram a mesma variável —, com
-                // desenhos diferentes e uma discordância silenciosa: a Agenda
-                // contava cancelados e a fila não, então as duas telas diziam
-                // números diferentes para o mesmo dia.
-                ["agenda","Agenda",queue.length],
-                ["grupo","Acompanhamento"],
-                ["central","Central Operacional",pendenciasCentral],
-                ["historico","Histórico de avaliações"],
-              ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
-                id==="grupo"
-                  ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
-                  : <button
-                      type="button" key={id} data-secao={id}
-                      className={secaoMedico===id?"active":""}
-                      aria-current={secaoMedico===id?"true":undefined}
-                      onClick={()=>setSecaoMedico(id)}
-                    >
-                      <span>{rotulo}</span>
-                      {contador?<b className="financeTarefaContador">{contador}</b>:null}
-                    </button>)}
-              <span className="financeTarefaGrupo">Atalhos</span>
-              <button type="button" className="financeTarefaAtalho" onClick={goToFirstDraft}>
-                <span>Continuar avaliação pendente</span>
-              </button>
-              <button type="button" className="financeTarefaAtalho"
-                disabled={!completed[0]}
-                onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)}>
-                <span>Documentos mais recentes</span>
-              </button>
-            </nav>
-
-            <div className="financeConteudo">
-            {secaoMedico==="agenda"&&<>
-          <section className="clinicalPanel agendaPanel">
-            <div className="agendaHead"><strong>Agenda</strong><button className={agendaRange==="hoje"?"active":""} onClick={()=>setAgendaRange("hoje")}>Hoje</button><button className={agendaRange==="amanha"?"active":""} onClick={()=>setAgendaRange("amanha")}>Amanhã</button><button className={agendaRange==="semana"?"active":""} onClick={()=>setAgendaRange("semana")}>Semana</button><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por paciente, CPF, procedimento..." /></div>
-            {filteredAgenda.slice(0,20).map((appointment, index) => {
-              const p=patientMap.get(appointment.patient_id); if(!p)return null;
-              const a=appointment.avaliacao_id?evaluationById.get(appointment.avaliacao_id):undefined;
-              const attendance=appointment.status;
-              const desmarcado=["cancelado","reagendado"].includes(attendance);
-              const statusLabel=a?.status==="concluida"?"CONCLUÍDA":a?.status==="rascunho"?"AVALIAÇÃO PAUSADA":attendance==="presente"?"PACIENTE PRESENTE":attendance==="faltou"?"FALTOU":desmarcado?attendance.toUpperCase():"AGUARDANDO";
-              const statusTone=a?.status==="concluida"||attendance==="presente"?"present":attendance==="faltou"?"danger":a?.status==="rascunho"?"paused":"waiting";
-              // A data só aparece quando o período mostra mais de um dia. Em
-              // "Hoje" ela seria a mesma em todas as linhas, e o que interessa
-              // ali é a HORA — que é como a fila se lê de cima para baixo.
-              const soHoje=agendaRange==="hoje";
-              const hora=appointment.horario?.slice(0,5) || `${8 + index}:00`.padStart(5,"0");
-              return <div className={desmarcado?"queueRow desmarcado":"queueRow"} key={appointment.id}>
-                {/* Data e hora em duas linhas curtas, e não "27/08 · 08:30"
-                    numa só: abaixo de 1050px a coluna da hora encolhe para
-                    65px, e a frase inteira não cabe. */}
-                <time>{soHoje ? hora : <><span>{brDate(appointment.data)}</span><small>{hora}</small></>}</time>
-                <div className="queueInfo"><strong>{p.nome}</strong><small>{appointment.procedimento || p.procedimento || p.cirurgia || "Procedimento não informado"} · {appointment.hospital || p.hospital || "Hospital não informado"}</small></div>
-                <span className={`statusChip ${statusTone}`}>{statusLabel}</span>
-                {/* A caixa fica mesmo com um botão só dentro.
-                    A grade da fila tem quatro colunas para quatro filhos, e a
-                    caixa é o quarto — trocá-la pelo botão solto aqui e mantê-la
-                    na recepção faria as duas telas discordarem sobre onde a
-                    coluna começa, e elas usam a mesma linha.
-
-                    Desmarcar NÃO fica aqui: é trabalho de quem atende o
-                    telefone do paciente que desmarcou. Quem administra alcança
-                    pela visão Recepção, que admin e proprietário já
-                    enxergam. */}
-                <div className="queueAcoes">
-                  {/* O botão de ação era exclusivo da fila de hoje. Trazê-lo
-                      para cá é o ganho da fusão: dá para adiantar na véspera a
-                      avaliação de um paciente de amanhã, coisa que antes não
-                      tinha por onde. Desmarcado não abre — não há o que
-                      atender. */}
-                  <button className="primaryClinical compact" disabled={busy||attendance==="faltou"||desmarcado} onClick={() => openAssessment(p.id,appointment.id,appointment.avaliacao_id)}>{a?.status==="concluida"?"Ver documentos":a?.status==="rascunho"?"Continuar avaliação":"Iniciar avaliação"}</button>
-                </div>
-              </div>;
-            })}
-            {filteredAgenda.length===0&&<div className="emptyClinical">{agendaRange==="hoje"?"Nenhuma consulta agendada para hoje.":"Nenhum agendamento neste período."}</div>}
-          </section>
-            </>}
-            {secaoMedico==="central"&&<>
-          <PainelRecolhivel
-            className="alertsPanel"
-            chave="central-operacional"
-            titulo="Central Operacional"
-            legenda="alertas da rotina baseados nas avaliações em andamento"
-            extra={pendenciasCentral > 0 ? (
-              <em className="centralResumo">{pendenciasCentral} pendência{pendenciasCentral > 1 ? "s" : ""}</em>
-            ) : undefined}
-          >
-            <div className="alertGrid">
-              <Alert icone="alerta" title="Avaliações incompletas" text={`${drafts.length} avaliação(ões) aguardando conclusão`} action="REVISAR" danger onClick={goToFirstDraft} />
-              <Alert icone="alerta" title="Medicamentos" text="Revisar anticoagulantes e GLP-1 durante a anamnese" action="AVALIAR" onClick={goToFirstDraft} />
-              <Alert icone="fechar" title="Exames pendentes" text="Confira exames e pareceres antes da conclusão" action="PENDÊNCIA" onClick={goToFirstDraft} />
-              <Alert icone="envelope" title="Orientações não enviadas" text={`${orientacoesPendentes.length} documento(s) aguardando envio`} action="ENVIAR" onClick={()=>completed[0]&&router.push(`/avaliacoes/${completed[0].id}/documentos`)} />
-            </div>
-          </PainelRecolhivel>
-            </>}
-            {secaoMedico==="historico"&&<>
-          <section className="clinicalPanel historyPanel">
-            <div className="panelTitle"><strong>Histórico de avaliações</strong></div>
-            {/* Os dois números que ficavam na barra do topo. Ali eles eram a
-                primeira coisa do dia e não pediam ação nenhuma; aqui são o
-                resumo da lista que vem logo abaixo, que é o que eles medem.
-                O ASA III+ conta todas as avaliações concluídas, não as de
-                hoje — por isso o rótulo diz "no total". */}
-            <section className="metricGrid historyResumo">
-              <Metric value={completedThisMonth.length} label="Concluídas no mês" tone="green" />
-              <Metric value={asaHigh} label="Pacientes ASA III+ no total" tone="red" />
-            </section>
-            {/* TODOS OS CINCO COM RÓTULO, e não só as datas.
-                Antes, busca, situação e local vinham nus e as duas datas com
-                rótulo em cima: os controles tinham alturas diferentes e a linha
-                saía desalinhada. E como a grade tinha quatro colunas para cinco
-                campos, o "Até" caía sozinho na linha de baixo esticado pela
-                largura da busca. Cinco rótulos resolvem as duas coisas — e as
-                datas paravam de pé sozinhas: dois `dd/mm/aaaa` iguais sem
-                rótulo não dizem qual é o começo e qual é o fim. */}
-            <div className="historyFilters">
-              <label className="historyBusca">Buscar
-                <input ref={buscaHistoricoRef} value={historyQuery} onChange={(event)=>setHistoryQuery(event.target.value)} placeholder="Nome, CPF, procedimento, hospital ou profissional..." />
-              </label>
-              <label>Situação
-                <select value={historyStatus} onChange={(event)=>setHistoryStatus(event.target.value)}><option value="todas">Todos os status</option><option value="rascunho">Em andamento</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select>
-              </label>
-              {/* Só aparece com mais de um local: com um só, o filtro não filtra
-                  nada e vira um controle que ocupa espaço sem responder nada.
-                  É também por isso que a linha é flexível e não uma grade de
-                  colunas fixas — o número de campos muda de conta para conta. */}
-              {locais.length>1&&(
-                <label>Local
-                  <select value={historyLocal} onChange={(event)=>setHistoryLocal(event.target.value)}>
-                    <option value="todos">Todos os locais</option>
-                    {locais.map((item)=><option key={item.id} value={item.id}>{nomeDoLocal(item)}</option>)}
-                    {/* As avaliações feitas antes desta funcionalidade não têm
-                        local. Sem esta opção elas sumiriam do histórico assim que
-                        alguém filtrasse, e pareceriam perdidas. */}
-                    <option value="sem">Sem local registrado</option>
-                  </select>
-                </label>
-              )}
-              <label>De<input type="date" value={historyFrom} onChange={(event)=>setHistoryFrom(event.target.value)} /></label>
-              <label>Até<input type="date" value={historyTo} onChange={(event)=>setHistoryTo(event.target.value)} /></label>
-            </div>
-            {historicalAssessments.slice(0,50).map((assessment)=>{const patient=patientMap.get(assessment.patient_id);const date=assessment.concluida_at||assessment.updated_at||assessment.created_at;const professional=assessment.created_by?professionalMap.get(assessment.created_by):undefined;const done=assessment.status==="concluida";return <Link className="historyRow" key={assessment.id} href={done?`/avaliacoes/${assessment.id}/documentos`:`/avaliacoes/${assessment.id}`}><span className="avatar">{initials(patient?.nome||"Paciente")}</span><span><strong>{patient?.nome||"Paciente não localizado"}</strong><small>{patient?.cpf||"CPF não informado"} · {patient?.procedimento||"Procedimento não informado"}{professional?` · ${professional}`:""}</small></span><time>{new Date(date).toLocaleDateString("pt-BR")}</time><span className={`statusChip ${done?"present":assessment.status==="cancelada"?"danger":"waiting"}`}>{done?"CONCLUÍDA":assessment.status==="rascunho"?"EM ANDAMENTO":assessment.status.toUpperCase()}</span><b>{done?"Ver documentos":"Continuar"}</b></Link>;})}
-            {/* DUAS AUSÊNCIAS DIFERENTES, e a mensagem tem de dizer qual é.
-                "Nenhuma avaliação encontrada com estes filtros" em conta que
-                ainda não tem avaliação NENHUMA manda mexer nos filtros para
-                achar o que não existe — e é exatamente o que acontece: a pessoa
-                troca a situação, troca o local, limpa as datas, e continua
-                vazio. Quando não há nada, a tela diz que não há nada e mostra
-                por onde se começa. */}
-            {historicalAssessments.length===0&&(avaliacoes.length===0
-              ? <div className="emptyClinical compactEmpty">
-                  <strong>Ainda não há avaliação nenhuma.</strong>
-                  A primeira nasce em <b>Nova avaliação pré-anestésica</b>, no alto da tela.
-                </div>
-              : <div className="emptyClinical compactEmpty">
-                  Nenhuma das {avaliacoes.length} avaliações combina com estes filtros.
-                </div>)}
-            {historicalAssessments.length>50&&<div className="historyLimit">Mostrando as 50 avaliações mais recentes. Refine os filtros para ver uma lista menor.</div>}
-          </section>
-            </>}
-            </div>
-          </div>
-        </div>
+        /* A área médica mora em components/area-medica.tsx: Meu dia,
+           Avaliações, Pendências e Documentos. Abrir e iniciar avaliação
+           continuam sendo `openAssessment`, e o cadastro, o PatientModal. */
+        <AreaMedica perfilId={perfil.id} perfilEhMedico={perfil.role==="medico"}
+          pacientes={pacientes} avaliacoes={avaliacoes.map(a=>({...a,created_by:a.created_by??null,concluida_at:a.concluida_at??null,local_atendimento_id:a.local_atendimento_id??null}))}
+          agendamentos={agendamentos} locais={locais} localAtivo={localAtivo}
+          ocupado={busy} erro={error} falhasDeCarga={falhasDeCarga}
+          onNovaAvaliacao={()=>setOpen(true)}
+          onAbrirAvaliacao={(pac,ag,av)=>void openAssessment(pac,ag,av)}
+          onRecarregar={()=>router.refresh()} />
       ) : view === "plantoes" ? (
         <Plantoes
           perfilId={perfil.id} institutionId={perfil.institution_id}
@@ -3135,23 +2913,6 @@ function ConvenioValoresPanel({perfil,convenioValores,pendentes,onRefresh}:{perf
 
 // `mascara` e `extra` existem para o olho que esconde os números: a função de
 // mascarar vem de fora, e o botão entra no último cartão da fileira.
-function Metric({ value, label, tone, mascara, extra }: { value: number; label: string; tone: string; mascara?: (t:string)=>string; extra?: React.ReactNode }) {
-  const tomReal = value === 0 && ["red", "amber"].includes(tone) ? "" : tone;
-  const texto = value.toLocaleString("pt-BR");
-  return <div className="metricCard"><strong className={tomReal}>{mascara?mascara(texto):texto}</strong><span>{label}</span>{extra}</div>;
-}
-/**
- * Lançar uma despesa.
- *
- * Cinco campos e nada mais. Um formulário de despesa que pede centro de custo,
- * forma de pagamento e número do documento é o formulário que ninguém preenche
- * — e despesa não lançada some do resultado do mês sem deixar rastro, que é o
- * pior desfecho possível para esta tela.
- *
- * A data vem preenchida com o dia 5 da competência aberta, e não com hoje: quem
- * entra aqui está lançando as contas do mês que está olhando, e em setembro
- * conferindo agosto o "hoje" jogaria a despesa para o mês errado — calado.
- */
 function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
   ehGrupo:boolean; periodo:string; ocupado:boolean;
   onSalvar:(d:{data:string;descricao:string;categoria:string;valor:number;recorrente:boolean;minha:boolean})=>Promise<boolean>;
@@ -3309,14 +3070,6 @@ function Variacao({atual,anterior,oculto}:{atual:number;anterior:number;oculto:b
     {subiu?"▲":"▼"} {Math.abs(pct).toFixed(0)}% vs. mês anterior
   </em>;
 }
-function Alert({ icone, title, text, action, danger=false, onClick }: { icone:Parameters<typeof Icone>[0]["nome"]; title:string; text:string; action:string; danger?:boolean; onClick?:()=>void }) {
-  return <button type="button" className="alertItem" onClick={onClick} disabled={!onClick}>
-    <i className={danger?"danger":""}><Icone nome={icone} tamanho={15}/></i>
-    <span><strong>{title}</strong> — {text}</span>
-    <b className={danger?"dangerText":""}>{action}</b>
-  </button>;
-}
-
 function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:boolean; error:string; convenios:string[]; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
   const [convenio,setConvenio]=useState<string>(PRIVATE_PAY_CONVENIO);
   // PIX primeiro porque é o que mais se usa no balcão hoje.
