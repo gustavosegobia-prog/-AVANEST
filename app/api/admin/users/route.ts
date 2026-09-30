@@ -114,6 +114,12 @@ export async function POST(request: NextRequest) {
   const semAcesso = body?.sem_acesso === true;
   const crm = String(body?.crm ?? "").trim();
   const rqe = String(body?.rqe ?? "").trim();
+  // Profissão, separada da função: um administrador pode ser médico. Vem do
+  // cadastro quando a pessoa que cadastra sabe; a função clínica e o
+  // cadastro sem acesso (que existe para escalar médico) já respondem sozinhos.
+  const atuacaoMedica: boolean | null = role === "medico" || semAcesso
+    ? true
+    : typeof body?.atuacao_medica === "boolean" ? body.atuacao_medica : null;
 
   if (!nome || !ALLOWED_ROLES.has(role)) {
     return NextResponse.json({ error: "Confira nome e área de acesso." }, { status: 400 });
@@ -160,6 +166,7 @@ export async function POST(request: NextRequest) {
     must_reset: !semAcesso,
     permissoes: [],
     sem_acesso: semAcesso,
+    atuacao_medica: atuacaoMedica,
     // O CRM entra já no convite, e não só no cadastro sem acesso.
     //
     // O perfil nasce aqui, no instante do convite — antes de a pessoa clicar
@@ -176,7 +183,7 @@ export async function POST(request: NextRequest) {
     //
     // Recepção e financeiro ficam de fora: eles não entram na escala, e um CRM
     // guardado ali seria dado sem uso à espera de confundir alguém.
-    ...(crm && !SEM_ESCALA.has(role) ? { crm, rqe: rqe || null } : {}),
+    ...(crm && (!SEM_ESCALA.has(role) || atuacaoMedica) ? { crm, rqe: rqe || null } : {}),
   });
   if (profileError) {
     return NextResponse.json({ error: "O usuário foi convidado, mas o perfil não pôde ser criado. Revise a tabela de perfis." }, { status: 500 });

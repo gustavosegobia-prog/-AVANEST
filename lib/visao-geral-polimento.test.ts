@@ -74,8 +74,11 @@ test("a navegação do Financeiro rola por dentro quando não cabe na tela", () 
 });
 
 test("a auditoria nomeia fechar e reabrir período, com a competência e o motivo", () => {
-  assert.match(tela, /periodo_fechado:"Período fechado"/, "sumiu o rótulo de período fechado");
-  assert.match(tela, /periodo_reaberto:"Período reaberto"/, "sumiu o rótulo de período reaberto");
-  assert.match(tela, /detalhes\.motivo\?` — motivo: \$\{detalhes\.motivo\}`/,
-    "a auditoria deixou de mostrar o motivo da reabertura");
+  // Os rótulos e a descrição saíram da tela para lib/auditoria.ts, usados
+  // pelo histórico de atividades e pelo histórico de cada pessoa.
+  const aud = ler("lib/auditoria.ts");
+  assert.match(aud, /periodo_fechado: "Período fechado"/, "sumiu o rótulo de período fechado");
+  assert.match(aud, /periodo_reaberto: "Período reaberto"/, "sumiu o rótulo de período reaberto");
+  assert.match(aud, /return `competência \$\{periodo\}\$\{texto\(d\.motivo\) \? ` — motivo: \$\{texto\(d\.motivo\)\}` : ""\}`;/,
+    "a linha deixou de mostrar a competência e o motivo da reabertura");
 });

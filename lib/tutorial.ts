@@ -242,27 +242,27 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
   if (monta) {
     etapas.push({
       area: "admin",
-      alvo: '[data-secao="usuarios"]',
-      titulo: "Admin: a sua organização",
-      texto: "Aqui se monta a casa. Usuários e permissões lista a equipe: você adiciona, muda a função de cada um — anestesiologista, recepção, financeiro, administrador — e desativa quem saiu.",
+      alvo: '[data-secao="equipe"]',
+      titulo: "Admin: equipe e acessos",
+      texto: "Aqui se monta a casa. Cada pessoa aparece com profissão, função, acesso e locais separados: você adiciona, muda a função — área médica, recepção, financeiro, administrador — e desativa quem saiu, sem perder o histórico.",
     });
     etapas.push({
       area: "admin",
       alvo: '[data-secao="convites"]',
       titulo: "Convites",
-      texto: "Admin → Convites. Envie por e-mail ou gere um link para mandar no WhatsApp. Quem não usa o sistema pode ser cadastrado sem e-mail: entra na escala e no faturamento, e não recebe login.",
+      texto: "Admin → Equipe e acessos → Convites pendentes. Adicionar pessoa convida por e-mail, gera um link para mandar no WhatsApp ou cadastra quem não usa o sistema: entra na escala e no faturamento, e não recebe login. Os convites pendentes ficam aqui, para reenviar ou cancelar.",
     });
     etapas.push({
       area: "admin",
-      alvo: '[data-secao="locais"]',
+      alvo: '[data-secao="organizacao"]',
       titulo: "Locais de atendimento",
-      texto: "Admin → Locais de atendimento. Cadastre cada hospital com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. Sem local cadastrado a escala não tem onde pendurar o plantão.",
+      texto: "Admin → Organização e locais → Locais de atendimento. Cadastre cada hospital com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. Sem local cadastrado a escala não tem onde pendurar o plantão. Os dados da organização também ficam aqui.",
     });
     etapas.push({
       area: "admin",
-      alvo: '[data-secao="dados"]',
-      titulo: "Dados, assinatura e auditoria",
-      texto: "Dados da organização guarda nome, CNPJ e contato, que saem nos documentos. Assinatura mostra o plano e a data de renovação. Auditoria registra quem fez o quê, e é consulta, não rotina.",
+      alvo: '[data-secao="historico"]',
+      titulo: "Documentos, plano e histórico",
+      texto: "Documentos e termos guarda o termo de consentimento, com as versões. Plano e cobrança mostra a assinatura. O histórico registra quem fez o quê, com filtros para investigar — é consulta, não rotina.",
     });
   }
 

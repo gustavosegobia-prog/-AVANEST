@@ -3,8 +3,9 @@
 import { type TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
+import { EtiquetaDeEscopo, Gaveta } from "@/components/admin-ui";
 import {
-  MARCACOES, copiaDoPadrao, ehOPadrao, limpar, problemasDoTermo,
+  MARCACOES, aplicarDados, copiaDoPadrao, ehOPadrao, limpar, problemasDoTermo,
   type TermoDeConsentimento, type VersaoDoTermo,
 } from "@/lib/termo-consentimento";
 
@@ -80,6 +81,7 @@ export function TermoAdmin({
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
+  const [previa, setPrevia] = useState<"rascunho" | "vigente" | null>(null);
 
   const carregar = useMemo(() => async () => {
     const { data, error } = await createClient()
@@ -114,9 +116,9 @@ export function TermoAdmin({
     setMensagem(""); setErro("");
   }
 
-  async function salvar() {
+  async function salvar(): Promise<boolean> {
     const limpo = limpar(rascunho);
-    if (problemasDoTermo(limpo).length) return;
+    if (problemasDoTermo(limpo).length) return false;
     setSalvando(true); setMensagem(""); setErro("");
     const { error } = await createClient().from("termos_consentimento").insert({
       institution_id: institutionId,
@@ -124,10 +126,11 @@ export function TermoAdmin({
       criado_por: perfilId,
     });
     setSalvando(false);
-    if (error) { setErro(`Não foi possível salvar o termo: ${error.message}`); return; }
+    if (error) { setErro(`Não foi possível publicar o termo: ${error.message}`); return false; }
     setMensagem("Termo salvo. Vale para as avaliações concluídas de agora em diante; "
       + "as já concluídas continuam imprimindo o texto que foi assinado.");
     await carregar();
+    return true;
   }
 
   if (carregando) return <section className="clinicalPanel"><div className="emptyClinical compactEmpty">Carregando o termo...</div></section>;
@@ -137,7 +140,13 @@ export function TermoAdmin({
   return <section className="clinicalPanel termoAdmin">
     <div className="panelTitle">
       <strong>Termo de consentimento anestésico</strong>
-      <span>{ehOPadrao(gravado) ? "texto padrão do AVANEST" : `texto próprio · ${versoes.length} versão(ões)`}</span>
+      <span>{versoes.length
+        ? `versão ${versoes.length} em vigor desde ${new Date(versoes[0].criado_em).toLocaleDateString("pt-BR")}`
+        : "texto padrão do AVANEST (nenhuma versão própria)"}</span>
+    </div>
+    <div className="termoEscopo">
+      <EtiquetaDeEscopo escopo="organizacao" />
+      <button type="button" className="outlineClinical compact" onClick={() => setPrevia("vigente")}>Visualizar o termo em vigor</button>
     </div>
 
     {/* A resposta à pergunta que a pessoa faz antes de digitar qualquer coisa:
@@ -228,10 +237,11 @@ export function TermoAdmin({
           Descartar alterações
         </button>
       </div>
+      {/* Publicar passa pela prévia: é o texto que o paciente vai assinar. */}
       <button type="button" className="primaryClinical compact"
         disabled={desativado || !mudou || salvando || problemas.length > 0}
-        onClick={salvar}>
-        {salvando ? "Salvando..." : "Salvar nova versão"}
+        onClick={() => setPrevia("rascunho")}>
+        {salvando ? "Salvando..." : `Revisar e publicar a versão ${versoes.length + 1}`}
       </button>
     </div>
 
@@ -241,13 +251,52 @@ export function TermoAdmin({
           o texto de documentos assinados, e "restaurar" seria gravar uma versão
           nova igual a ela — que é justamente o que o botão de cima faz com o
           padrão. O histórico aqui serve para saber quem mudou o quê e quando. */}
-      {versoes.map((v) => <div className="auditRow" key={v.criado_em}>
+      {versoes.map((v, i) => <div className="auditRow termoVersao" key={v.criado_em}>
         <time>{new Date(v.criado_em).toLocaleString("pt-BR")}</time>
-        <span><strong>{v.itens.length} itens · {v.riscos.length} riscos</strong>
-          <small>por {(v.criado_por && nomesDosPerfis.get(v.criado_por)) || "—"}</small></span>
+        <span><strong>Versão {versoes.length - i} <span className={`statusChip ${i === 0 ? "present" : "paused"}`}>
+          {i === 0 ? "Em vigor" : `Substituída em ${new Date(versoes[i - 1].criado_em).toLocaleDateString("pt-BR")}`}</span></strong>
+          <small>{v.itens.length} itens · {v.riscos.length} riscos · por {(v.criado_por && nomesDosPerfis.get(v.criado_por)) || "—"}</small></span>
       </div>)}
       <p className="termoAjuda"><Icone nome="cadeado" tamanho={14}/> Versões antigas não são
         alteradas nem apagadas: são o texto dos termos já assinados.</p>
     </div>}
+
+    {previa && <Gaveta largura="larga"
+      titulo={previa === "rascunho" ? `Prévia da versão ${versoes.length + 1}` : "Termo em vigor"}
+      subtitulo="Dados de exemplo no lugar do paciente e do local. No papel, saem os do atendimento."
+      onPedirFechar={() => setPrevia(null)}
+      rodape={previa === "rascunho" ? <>
+        <button type="button" className="outlineClinical" onClick={() => setPrevia(null)} disabled={salvando}>Voltar a editar</button>
+        <button type="button" className="primaryClinical compact" disabled={salvando}
+          onClick={async () => { if (await salvar()) setPrevia(null); }}>
+          {salvando ? "Publicando…" : `Publicar a versão ${versoes.length + 1}`}</button>
+      </> : <button type="button" className="outlineClinical" onClick={() => setPrevia(null)}>Fechar</button>}>
+      {erro && <p className="clinicalError" role="alert">{erro}</p>}
+      <PreviaDoTermo termo={previa === "rascunho" ? limpar(rascunho) : gravado} />
+      {previa === "rascunho" && <p className="termoAjuda">Ao publicar, esta versão vale para as avaliações concluídas daqui em diante.
+        As já concluídas continuam imprimindo o texto que foi assinado.</p>}
+    </Gaveta>}
   </section>;
+}
+
+/**
+ * O termo na ordem do papel impresso (print-documents): item 1 de abertura,
+ * os dois primeiros itens, a lista de riscos, o resto dos itens e a
+ * autorização. Com dados de exemplo, marcados como tais.
+ */
+function PreviaDoTermo({ termo }: { termo: TermoDeConsentimento }) {
+  const dados = { clinica: "Hospital Exemplo", cidade: "Sua cidade", paciente: "Nome do paciente" };
+  const t = (x: string) => aplicarDados(x, dados);
+  const n = Math.min(termo.itens.length, 2);
+  return <article className="termoPrevia">
+    <h3>Termo de consentimento anestésico</h3>
+    <p><b>1.</b> Por determinação explícita de minha vontade e em consideração ao meu interesse pessoal, eu: <b>{dados.paciente}</b></p>
+    <p>Por este termo autorizo <b>{dados.clinica}</b> e os médicos anestesiologistas de sua equipe a realizar os procedimentos anestésicos necessários…</p>
+    <ol start={2}>{termo.itens.slice(0, 2).map((x, i) => <li key={i}>{t(x)}</li>)}</ol>
+    <p><b>{n + 2}. Os seguintes pontos me foram esclarecidos:</b></p>
+    <ul>{termo.riscos.map((x, i) => <li key={i}>{t(x)}</li>)}</ul>
+    <ol start={n + 3}>{termo.itens.slice(2).map((x, i) => <li key={i}>{t(x)}</li>)}</ol>
+    <h4>Autorização</h4>
+    <p>{t(termo.autorizacao)}</p>
+  </article>;
 }

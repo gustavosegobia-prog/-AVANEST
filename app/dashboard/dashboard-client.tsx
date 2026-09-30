@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { ChangeEvent, FormEvent, Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -62,6 +62,13 @@ import { DIAS_ADIADO, chaveDoAviso, type Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
+import { EquipeEAcessos, FILTROS_LIMPOS, useDadosDaEquipe, type Filtros } from "@/components/admin-equipe";
+import { NovaPessoa, PainelDaPessoa } from "@/components/admin-pessoa";
+import { VisaoGeralDaAdministracao } from "@/components/admin-visao-geral";
+import { HistoricoDeAtividades } from "@/components/admin-auditoria";
+import { EtiquetaDeEscopo } from "@/components/admin-ui";
+import { indicadores as indicadoresDaEquipe, pendencias as pendenciasDaEquipe } from "@/lib/equipe";
+import { ENTIDADES_ADMINISTRATIVAS, type EventoDeAuditoria } from "@/lib/auditoria";
 import {
   FAIXAS_DE_IDADE, envelhecimento, glosa, itensAReceber, itensVencidos, mesAnterior,
   prazoMedioPorConvenio, projecaoPorPrazoHistorico, saldoAReceber, saldoVencido,
@@ -201,7 +208,6 @@ type Assinatura = {
   // a decisão que foi tomada na hora e não muda mais.
   reembolso_devido: boolean; dias_de_uso: number | null; prazo_de_reembolso: number;
 };
-type Convite = { id:string; email:string; role:string; token:string; status:string; expires_at:string; created_at:string };
 type Paciente = {
   id: string; nome: string; cpf: string | null; rg?: string | null; data_nascimento: string | null;
   sexo?: string | null; telefone: string | null; email: string | null; endereco?: string | null;
@@ -217,7 +223,9 @@ type Financeiro = { id:string; institution_id:string; patient_id:string; avaliac
   glosa_recurso_status?:string; glosa_recurso_prazo?:string|null; glosa_recurso_motivo?:string|null;
   periodo?:string|null; fechado_at?:string|null; observacoes:string|null; created_at:string };
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
-type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; cor_escala?:number|null; created_at:string; updated_at:string };
+type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; cor_escala?:number|null; created_at:string; updated_at:string;
+  /** Profissão, separada da função — ver lib/equipe.ts. NULL = não informada. */
+  atuacao_medica?:boolean|null; pausada_motivo?:string|null };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null; observacoes:string|null;
   /** Retrato da produção enviada no fechamento (202609300005). Nulo com o mês aberto. */
@@ -1339,7 +1347,7 @@ export function DashboardClient({
           </div>
         </div>
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()} nomeDaOrganizacao={organizacao?.nome??null} carregadoEm={carregadoEm}/>
-      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin}/>}
+      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} localAtivo={localAtivo} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin}/>}
 
       {contaAberta&&<div className="patientModalBackdrop" role="presentation">
         <section className="contaModal" role="dialog" aria-modal="true" aria-labelledby="conta-titulo">
@@ -2891,273 +2899,33 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
   </PainelRecolhivel>;
 }
 
-function InvitePanel({perfil,organizacao,onRefresh}:{perfil:Perfil;organizacao:Organizacao|null;onRefresh:()=>void}) {
-  const [convites,setConvites]=useState<Convite[]>([]);
-  const [meio,setMeio]=useState<"email"|"link"|"sem-acesso">("email");
-  // A função escolhida decide se o CRM aparece. Recepção e financeiro não
-  // entram na escala; pedir o registro a eles seria pedir o que não existe.
-  const [papel,setPapel]=useState("medico");
-  const papeisDisponiveis=useMemo(
-    ()=>papeisConvidaveis(modulosDaOrganizacao(organizacao?.modulos)),[organizacao?.modulos]);
-  const [versao,setVersao]=useState(0);
-  const [busy,setBusy]=useState("");
-  const [aviso,setAviso]=useState("");
-  const [copiado,setCopiado]=useState("");
+type SecaoDoAdmin = "visao" | "equipe" | "organizacao" | "documentos" | "plano" | "historico";
 
-  // O RLS já limita a consulta aos convites da própria organização.
-  useEffect(()=>{
-    let ativo=true;
-    createClient().from("convites")
-      .select("id,email,role,token,status,expires_at,created_at")
-      .order("created_at",{ascending:false})
-      .then(({data})=>{ if(ativo) setConvites(data??[]) });
-    return ()=>{ ativo=false };
-  },[versao]);
-  const carregar=useCallback(()=>setVersao(v=>v+1),[]);
-
-  const linkDoConvite=(token:string)=>
-    `${typeof window==="undefined"?"":window.location.origin}/convite/${token}`;
-
-  async function convidar(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();
-    const formulario=event.currentTarget;
-    setBusy("novo");setAviso("");
-    const form=new FormData(formulario);
-    const email=String(form.get("email")??"").trim().toLowerCase();
-    const role=String(form.get("role")??"");
-
-    // O anestesiologista que não usa o sistema. Sem e-mail, sem convite, sem
-    // senha: nasce só para ser escalado e faturado.
-    if(meio==="sem-acesso"){
-      const nome=String(form.get("nome")??"").trim();
-      const crm=String(form.get("crm")??"").trim();
-      if(!nome){setAviso("Informe o nome do profissional.");setBusy("");return}
-      const resposta=await fetch("/api/admin/users",{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({nome,role:"medico",sem_acesso:true,crm,
-          rqe:String(form.get("rqe")??"").trim()}),
-      });
-      const resultado=await resposta.json().catch(()=>({}));
-      setBusy("");
-      if(!resposta.ok){setAviso(resultado.error??"Não foi possível cadastrar.");return}
-      formulario.reset();
-      setAviso(crm
-        ? `${nome} cadastrado. Já pode ser escalado — e não recebe acesso ao sistema.`
-        : `${nome} cadastrado e já pode ser escalado. Falta o CRM: preencha quando tiver, no cadastro dele.`);
-      onRefresh();
-      return;
-    }
-
-    if(!email){setAviso("Informe o e-mail de quem será convidado.");setBusy("");return}
-
-    if(meio==="email"){
-      // O Supabase envia a mensagem e o perfil já nasce com a função escolhida.
-      const nome=String(form.get("nome")??"").trim();
-      if(!nome){setAviso("Informe o nome de quem será convidado.");setBusy("");return}
-      const resposta=await fetch("/api/admin/users",{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        // O CRM vai junto quando o administrador soube informar. É ele que
-        // faz o convidado aparecer na escala hoje, sem esperar a ativação.
-        body:JSON.stringify({nome,email,role,
-          crm:String(form.get("crm")??"").trim(),
-          rqe:String(form.get("rqe")??"").trim()}),
-      });
-      const resultado=await resposta.json().catch(()=>({}));
-      setBusy("");
-      if(!resposta.ok){setAviso(resultado.error??"Não foi possível enviar o convite.");return}
-      const crmInformado=String(form.get("crm")??"").trim();
-      formulario.reset();
-      setPapel("medico");
-      // A segunda frase é o que o administrador precisa saber agora: dá para
-      // escalar hoje, sem esperar a pessoa clicar no e-mail.
-      setAviso(`Convite enviado para ${email}.`
-        +(crmInformado&&papel==="medico"
-          ?" Já pode ser escalado — os plantões estarão lá quando ativar a conta."
-          :""));
-      onRefresh();
-      return;
-    }
-
-    const dias=Number(form.get("dias")??7);
-    const {error}=await createClient().from("convites").insert({
-      institution_id:perfil.institution_id, email, role, invited_by:perfil.id,
-      expires_at:new Date(Date.now()+dias*86400000).toISOString(),
-    });
-    setBusy("");
-    if(error){
-      setAviso(error.code==="23505"
-        ? "Já existe um convite pendente para este e-mail. Cancele o anterior antes de criar outro."
-        : `Não foi possível convidar: ${error.message}`);
-      return;
-    }
-    formulario.reset();
-    carregar();
+/**
+ * A Administração em seis seções.
+ *
+ * Os ids antigos ("usuarios", "convites", "dados", "locais", "termo",
+ * "assinatura", "auditoria") continuam valendo como pedido de abertura — o
+ * "+ Nova escala" da Escala abre em "locais" — e são traduzidos aqui para a
+ * seção e a sub-aba novas.
+ */
+function traduzirAbaDoAdmin(aba:string):{secao:SecaoDoAdmin;equipe?:"pessoas"|"convites";org?:"dados"|"locais"}{
+  switch(aba){
+    case "usuarios": return {secao:"equipe",equipe:"pessoas"};
+    case "convites": return {secao:"equipe",equipe:"convites"};
+    case "dados": return {secao:"organizacao",org:"dados"};
+    case "locais": return {secao:"organizacao",org:"locais"};
+    case "termo": return {secao:"documentos"};
+    case "assinatura": return {secao:"plano"};
+    case "auditoria": return {secao:"historico"};
+    default: return {secao:(["visao","equipe","organizacao","documentos","plano","historico"].includes(aba)?aba:"visao") as SecaoDoAdmin};
   }
-
-  async function revogar(id:string){
-    setBusy(id);
-    const {error}=await createClient().from("convites")
-      .update({status:"revogado"}).eq("id",id);
-    setBusy("");
-    if(error)setAviso(`Não foi possível cancelar: ${error.message}`);
-    else carregar();
-  }
-
-  /**
-   * Uma frase por papel, dizendo onde a pessoa vai trabalhar.
-   *
-   * UMA. A versão anterior listava as oito funções em oito linhas, e o primeiro
-   * convite de verdade mostrou dois problemas de uma vez: o WhatsApp entregou
-   * tudo num parágrafo só, e a lista foi para uma administradora que não faz
-   * plantão. Convite não vende — quem recebe já foi convidado por alguém, e a
-   * decisão de entrar já está tomada. Oito linhas antes do link só afastam o
-   * dedo do link.
-   *
-   * A frase muda com o papel porque o papel muda o sistema inteiro: quem entra
-   * na recepção não tem escala, e quem entra no financeiro não tem paciente.
-   * Prometer a escala a quem não a terá é começar com uma decepção.
-   */
-  const ONDE_TRABALHA:Record<string,string>={
-    medico:"É onde ficam a escala do serviço, os seus plantões e as avaliações pré-anestésicas, com ficha e termo prontos para imprimir.",
-    recepcao:"É onde ficam o cadastro dos pacientes e a agenda das consultas pré-anestésicas.",
-    financeiro:"É onde ficam o faturamento do serviço e o controle dos recebimentos.",
-    admin:"É onde ficam a equipe, os locais de atendimento e a organização do serviço.",
-    owner:"É onde ficam a equipe, os locais de atendimento e a organização do serviço.",
-  };
-
-  // Abre o WhatsApp com a mensagem pronta; o contato é escolhido na hora.
-  function enviarWhatsApp(item:Convite){
-    const papel=ROLE_LABELS[item.role]??item.role;
-    const validade=new Date(item.expires_at).toLocaleDateString("pt-BR");
-    const mensagem=[
-      `Olá! Você foi convidado para o AVANEST — ${organizacao?.nome??"nossa organização"}, como ${papel}.`,
-      "",
-      ONDE_TRABALHA[item.role]??"",
-      "",
-      `Crie seu acesso: ${linkDoConvite(item.token)}`,
-      "",
-      `Válido até ${validade}, apenas para o e-mail ${item.email}.`,
-    // Sem a linha vazia quando não há frase para o papel: duas quebras seguidas
-    // viram um buraco no meio da mensagem.
-    ].filter((l,i,todas)=>l!==""||todas[i-1]!=="").join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`,"_blank","noopener,noreferrer");
-  }
-
-  async function copiar(token:string){
-    try{
-      await navigator.clipboard.writeText(linkDoConvite(token));
-      setCopiado(token);
-      setTimeout(()=>setCopiado(""),2500);
-    }catch{
-      setAviso("Não foi possível copiar. Selecione o link e copie manualmente.");
-    }
-  }
-
-  const pendentes=convites.filter(c=>c.status==="pendente");
-  const expirado=(c:Convite)=>new Date(c.expires_at)<=new Date();
-
-  return <section className="clinicalPanel">
-    <div className="panelTitle">
-      <strong><Icone nome="envelope"/> Convidar para {organizacao?.nome??"a organização"}</strong>
-    </div>
-    <div className="inviteModeSwitch" role="tablist">
-      <button type="button" role="tab" aria-selected={meio==="email"} className={meio==="email"?"active":""}
-        onClick={()=>{setMeio("email");setAviso("")}}>Enviar por e-mail</button>
-      <button type="button" role="tab" aria-selected={meio==="link"} className={meio==="link"?"active":""}
-        onClick={()=>{setMeio("link");setAviso("")}}>Gerar link</button>
-      {/* O terceiro caminho não é um jeito diferente de convidar: é um cadastro
-          que não convida ninguém. Fica junto porque é aqui que o administrador
-          vem quando precisa pôr mais alguém no grupo. */}
-      <button type="button" role="tab" aria-selected={meio==="sem-acesso"} className={meio==="sem-acesso"?"active":""}
-        onClick={()=>{setMeio("sem-acesso");setAviso("")}}>Sem e-mail</button>
-    </div>
-    {/* Fora do formulário de propósito: ele é uma grade de seis colunas, e um
-        parágrafo dentro dela quebraria a linha dos campos ao meio. */}
-    {meio==="email"&&(papel==="medico"||papel==="admin")&&
-      <p className="inviteHint">Com o CRM preenchido, o convidado já entra na escala hoje — sem esperar ele ativar a conta. Os plantões estarão lá quando ele entrar.</p>}
-    <form className="convenioForm" onSubmit={convidar}>
-      {meio!=="link"&&<label className="clinicalField span2"><span>Nome completo *</span>
-        <input name="nome" required autoComplete="off" placeholder="Ex.: Dra. Helena Martins"/></label>}
-      {meio!=="sem-acesso"&&<label className="clinicalField span2"><span>E-mail do convidado *</span>
-        <input name="email" type="email" required autoComplete="off" placeholder="pessoa@exemplo.com"/></label>}
-      {/* A lista sai do que a ORGANIZAÇÃO contratou. Convidar alguém para
-          "Financeiro" numa casa que não comprou financeiro entrega uma conta
-          que cai numa tela sem nenhuma aba — a pessoa faz a senha, entra e não
-          encontra nada. O banco recusa igual, mas o certo é não oferecer. */}
-      {meio!=="sem-acesso"&&<label className="clinicalField"><span>Função</span>
-        <select name="role" value={papeisDisponiveis.includes(papel)?papel:papeisDisponiveis[0]}
-          onChange={e=>setPapel(e.target.value)}>
-          {papeisDisponiveis.map(p=>
-            <option key={p} value={p}>{ROTULO_DO_PAPEL[p]}</option>)}
-        </select></label>}
-      {/* O CRM é obrigatório no cadastro sem acesso e opcional no convite.
-          A diferença é quem preenche depois: quem não entra no sistema nunca
-          vai preencher nada, e sem CRM não aparece na escala — que é a única
-          razão daquele cadastro existir.
-
-          No convite ele existe por outro motivo. O perfil nasce no instante em
-          que o convite é enviado, mas sem CRM ninguém consegue escalar a
-          pessoa até ela ativar a conta. Preenchido aqui, o convidado entra na
-          escala do mês hoje, e os plantões já são dele quando ele entrar. */}
-      {/* No "Gerar link" não: ali o perfil só nasce quando a pessoa aceita, e
-          o que ela digitar no aceite é que vale. Um CRM pedido aqui seria um
-          campo que o sistema aceita e depois joga fora. */}
-      {(meio==="sem-acesso"||(meio==="email"&&(papel==="medico"||papel==="admin")))&&<>
-        <label className="clinicalField">
-          <span>CRM (opcional)</span>
-          <input name="crm" autoComplete="off"
-            placeholder="Ex.: 60593/PR"/></label>
-        <label className="clinicalField"><span>RQE (opcional)</span>
-          <input name="rqe" autoComplete="off" placeholder="Registro da especialidade"/></label>
-      </>}
-      {meio==="link"&&<label className="clinicalField"><span>Validade</span>
-        <select name="dias" defaultValue="7">
-          <option value="3">3 dias</option><option value="7">7 dias</option><option value="30">30 dias</option>
-        </select></label>}
-      <button className="primaryClinical compact" type="submit" disabled={busy==="novo"}>
-        {busy==="novo"?"Salvando...":meio==="email"?"Enviar convite":meio==="link"?"Gerar link":"Cadastrar sem acesso"}</button>
-    </form>
-    {aviso&&<p className={/^(Convite enviado|.+cadastrado\.)/.test(aviso)?"financeSuccess":"clinicalError"} role="alert">{aviso}</p>}
-    <p className="evalHint">{meio==="email"
-      ? "O AVANEST envia um e-mail com um link para a pessoa criar a própria senha. O acesso já entra com a função escolhida."
-      : meio==="link"
-      ? "Copie o link gerado e envie por WhatsApp ou onde preferir. Ele só funciona para o e-mail informado, expira na data escolhida e pode ser cancelado a qualquer momento."
-      : "Para o anestesiologista que não usa o sistema. Ele entra na escala, no faturamento e na ficha impressa, e não recebe login nem senha — não há e-mail, não há convite e não há como ele entrar. Se um dia precisar de acesso, você adiciona o e-mail no cadastro dele e o convite sai na hora, sem perder plantão nenhum."}</p>
-    {pendentes.length===0
-      ? <div className="emptyClinical compactEmpty">Nenhum convite pendente.</div>
-      : pendentes.map(item=><div className="conviteRow" key={item.id}>
-          <span className="conviteQuem">
-            <strong>{item.email}</strong>
-            <small>{ROLE_LABELS[item.role]??item.role} · {expirado(item)?"expirado":`válido até ${new Date(item.expires_at).toLocaleDateString("pt-BR")}`}</small>
-          </span>
-          <div className="conviteAcoes">
-            <button type="button" className="outlineClinical compacto whatsappAction" onClick={()=>enviarWhatsApp(item)}>
-              <Icone nome="whatsapp"/> WhatsApp</button>
-            <button type="button" className="outlineClinical compacto" onClick={()=>copiar(item.token)}>
-              <Icone nome={copiado===item.token?"confirmado":"copiar"}/> {copiado===item.token?"Copiado":"Copiar link"}</button>
-            <button type="button" className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>revogar(item.id)}>
-              {busy===item.id?"Cancelando...":"Cancelar"}</button>
-          </div>
-        </div>)}
-  </section>;
 }
 
-const ACAO_LABELS:Record<string,string>={
-  organizacao_criada:"Organização criada",
-  avaliacao_excluida:"Avaliação excluída",
-  perfil_atualizado:"Perfil atualizado",
-  usuario_excluido:"Acesso excluído",
-  pagamento_registrado:"Pagamento registrado",
-  periodo_conferido:"Período conferido",
-  periodo_fechado:"Período fechado",
-  periodo_reaberto:"Período reaberto",
-  convite_criado:"Convite enviado",
-  convite_aceito:"Convite aceito",
-  avaliacao_concluida:"Avaliação concluída",
-  presenca_confirmada:"Presença confirmada",
-};
-
-function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm,onAberturaAtendida}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];onRefresh:()=>void;
+function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefresh,abrirEm,onAberturaAtendida}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];
+  /** O local escolhido no topo — dito aqui só para avisar que ele NÃO filtra a Administração. */
+  localAtivo?:LocalDisponivel|null;
+  onRefresh:()=>void;
   /**
    * Em que seção abrir, quando quem manda abrir é de fora — hoje, o
    * "+ Nova escala" da coluna da Escala.
@@ -3169,325 +2937,207 @@ function AdminView({perfil,organizacao,perfis,auditoria,onRefresh,abrirEm,onAber
   abrirEm?:{aba:string;token:number}|null;
   /** "Já abri onde você pediu" — o mesmo gasto do pedido que a Escala faz. */
   onAberturaAtendida?:()=>void}) {
-  const [message,setMessage]=useState("");
-  // Qual seção da Administração está aberta, igual ao Financeiro.
-  const [aba,setAba]=useState("usuarios");
+  const [secao,setSecao]=useState<SecaoDoAdmin>("visao");
+  const [subEquipe,setSubEquipe]=useState<"pessoas"|"convites">("pessoas");
+  const [subOrg,setSubOrg]=useState<"dados"|"locais">("dados");
+  const [filtros,setFiltros]=useState<Filtros>(FILTROS_LIMPOS);
+  const [pessoaAberta,setPessoaAberta]=useState<{id:string;aba:"dados"|"acesso"|"historico"}|null>(null);
+  const [adicionando,setAdicionando]=useState(false);
+  const [mensagem,setMensagem]=useState("");
+  const [novoLocal,setNovoLocal]=useState(0);
+  const [locaisCompartilhados,setLocaisCompartilhados]=useState<number|null>(null);
   useEffect(()=>{
     if(!abrirEm) return;
+    const destino=traduzirAbaDoAdmin(abrirEm.aba);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- pedido vindo de outra área
-    setAba(abrirEm.aba);
+    setSecao(destino.secao);
+    if(destino.equipe) setSubEquipe(destino.equipe);
+    if(destino.org) setSubOrg(destino.org);
     // E o pedido se gasta: quem uma vez clicou em "+ Nova escala" não pode
     // passar a abrir o Admin em Locais pelo resto da sessão.
     onAberturaAtendida?.();
   },[abrirEm,onAberturaAtendida]);
-  const [busy,setBusy]=useState("");
+
+  const podeAdministrar=["admin","owner"].includes(perfil.role);
+  const dados=useDadosDaEquipe(true);
+  const modulos=modulosDaOrganizacao(organizacao?.modulos);
+  const papeis=useMemo(()=>papeisConvidaveis(modulos),[modulos]);
+  const ctx={modulos,temEscalista:perfis.some(p=>p.escalista===true&&p.status==="ativo")};
+  const nomes=useMemo(()=>new Map(perfis.map(p=>[p.id,p.nome])),[perfis]);
+
+  // Locais compartilhados e ativos: é o que decide se a equipe tem onde
+  // escolher atender. Só a contagem — a lista mora em LocaisAdmin.
+  useEffect(()=>{
+    let vivo=true;
+    void createClient().from("locais_atendimento").select("id",{count:"exact",head:true})
+      .eq("institution_id",perfil.institution_id).is("owner_id",null).eq("ativo",true).eq("oculto",false)
+      .then(({count,error})=>{ if(vivo) setLocaisCompartilhados(error?null:(count??0)); });
+    return ()=>{ vivo=false };
+  },[perfil.institution_id,novoLocal,secao]);
+
+  const agora=new Date().toISOString();
+  const ind=indicadoresDaEquipe(perfis,dados.logins,dados.convites,agora);
+  const lista=pendenciasDaEquipe({pessoas:perfis,logins:dados.logins,convites:dados.convites,locaisCompartilhadosAtivos:locaisCompartilhados,agora});
+  const ultimas=(auditoria as unknown as EventoDeAuditoria[]).filter(e=>ENTIDADES_ADMINISTRATIVAS.includes(e.entidade??"")).slice(0,6);
+
+  const irParaEquipe=(sub:"pessoas"|"convites"="pessoas")=>{setSecao("equipe");setSubEquipe(sub)};
+  const abrirPessoa=(id:string,aba:"dados"|"acesso"|"historico"="dados")=>{setAdicionando(false);setPessoaAberta({id,aba})};
+  const pessoa=pessoaAberta?perfis.find(p=>p.id===pessoaAberta.id):null;
+
+  // Dados da organização (antes na aba "dados", sem mudança de regra).
+  const [busyOrg,setBusyOrg]=useState(false);
+  const [msgOrg,setMsgOrg]=useState("");
   const [org,setOrg]=useState({nome:organizacao?.nome??"",telefone:organizacao?.telefone??"",email:organizacao?.email??""});
   const orgAlterada=org.nome!==(organizacao?.nome??"")||org.telefone!==(organizacao?.telefone??"")||org.email!==(organizacao?.email??"");
-
   async function saveOrganizacao(){
-    if(!org.nome.trim()){setMessage("Não foi possível salvar: o nome da organização não pode ficar vazio.");return}
-    setBusy("org");setMessage("");
+    if(!org.nome.trim()){setMsgOrg("Não foi possível salvar: o nome da organização não pode ficar vazio.");return}
+    setBusyOrg(true);setMsgOrg("");
     const {error}=await createClient().from("instituicoes")
       .update({nome:org.nome.trim(),telefone:org.telefone.trim()||null,email:org.email.trim()||null,updated_at:new Date().toISOString()})
       .eq("id",perfil.institution_id);
-    setBusy("");
-    if(error)setMessage(`Não foi possível salvar os dados da organização: ${error.message}`);
-    else{setMessage("Dados da organização salvos. O nome novo passa a sair nas fichas impressas.");onRefresh()}
-  }
-  const [editing,setEditing]=useState<Record<string,PerfilGerenciado>>(()=>Object.fromEntries(perfis.map(item=>[item.id,{...item}])));
-  // A edição abre sob demanda: com todas as linhas abertas, seis campos por
-  // usuário viram uma parede de caixas e a lista deixa de ser consultável.
-  const [aberto,setAberto]=useState("");
-  const [buscaUsuario,setBuscaUsuario]=useState("");
-  const [filtroPapel,setFiltroPapel]=useState("todos");
-  const [filtroStatus,setFiltroStatus]=useState("todos");
-  const actorNames=new Map(perfis.map(item=>[item.id,item.nome]));
-
-  async function saveProfile(item:PerfilGerenciado){
-    setBusy(item.id);setMessage("");
-    const {error}=await createClient().rpc("admin_atualizar_perfil",{
-      p_perfil_id:item.id,p_role:item.role,p_status:item.status,p_nome:item.nome,p_crm:item.crm||null,p_rqe:item.rqe||null,
-      // Sempre uma lista, nunca nulo: nulo quer dizer "não mexa", e aqui a
-      // tela está justamente dizendo quais áreas devem valer. Desmarcar todas
-      // precisa apagar as que havia.
-      p_permissoes:areasExtras(item),
-    });
-    // O marcador do escalista vai por fora da RPC, num update próprio.
-    //
-    // Não é preguiça de acrescentar um parâmetro: a RPC tem a assinatura
-    // travada em outra migração, e mudá-la exigiria revogar e reconceder a
-    // função — trabalho que uma coluna booleana não justifica. Quem confere
-    // se esta pessoa pode marcar é o gatilho `protege_escalista`, no banco,
-    // que devolve o valor antigo em vez de aceitar.
-    const antes=perfis.find(p=>p.id===item.id)?.escalista===true;
-    const erroEscalista=error||antes===(item.escalista===true) ? null
-      : (await createClient().from("perfis")
-          .update({escalista:item.escalista===true}).eq("id",item.id)).error;
-    setBusy("");
-    if(error)setMessage(`Não foi possível atualizar o acesso: ${error.message}`);
-    else if(erroEscalista)setMessage(`Perfil salvo, mas o escalista não mudou: ${erroEscalista.message}`);
-    else{setMessage("Perfil atualizado e registrado na auditoria.");onRefresh()}
+    setBusyOrg(false);
+    if(error)setMsgOrg(`Não foi possível salvar os dados da organização: ${error.message}`);
+    else{setMsgOrg("Dados da organização salvos. O nome novo passa a sair nas fichas impressas.");onRefresh()}
   }
 
-  async function removeUser(item:PerfilGerenciado){
-    if(!window.confirm(`Excluir definitivamente o acesso de ${item.nome}? Só é possível para quem ainda não registrou nada no sistema.`))return;
-    setBusy(item.id);setMessage("");
-    const {error}=await createClient().rpc("excluir_usuario",{p_perfil_id:item.id});
-    setBusy("");
-    if(error)setMessage(error.message);
-    else{setMessage(`Acesso de ${item.nome} excluído.`);onRefresh()}
-  }
+  const navegacao:[SecaoDoAdmin,string,number?][]=[
+    ["visao","Visão geral",lista.length||undefined],
+    ["equipe","Equipe e acessos"],
+    ["organizacao","Organização e locais"],
+    ["documentos","Documentos e termos"],
+    ["plano","Plano e cobrança"],
+    ["historico","Histórico de atividades"],
+  ];
 
   return <div className="clinicalMain adminMain">
-    <section><h1>Administração</h1><p>Gerencie usuários, permissões profissionais e acompanhe ações importantes do sistema.</p></section>
-    {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"}>{message}</p>}
-    <section className="metricGrid adminMetrics"><Metric value={perfis.filter(item=>item.status==="ativo").length} label="Usuários ativos" tone="green"/><Metric value={perfis.filter(item=>item.role==="medico").length} label="Médicos" tone="blue"/><Metric value={perfis.filter(item=>item.status==="inativo").length} label="Acessos inativos" tone="red"/><Metric value={auditoria.length} label="Eventos recentes" tone="amber"/></section>
+    <section className="admTopo">
+      <div>
+        <h1>Administração</h1>
+        <p>{organizacao?.nome??"Organização"} · equipe, acessos, locais, documentos e plano.</p>
+      </div>
+      {localAtivo&&<p className="admAvisoLocal" role="note">
+        <Icone nome="alerta" tamanho={15}/><span>O local escolhido no topo (<b>{nomeDoLocal(localAtivo)}</b>) não filtra a Administração. Cada tela diz onde a configuração se aplica.</span>
+      </p>}
+    </section>
 
-    <div className="financeLayout">
-      {/* Mesma coluna de tarefas do Financeiro. O contador é só o de acessos
-          inativos, que é a única coisa aqui que de fato pede uma decisão —
-          inventar contador nas outras faria os números pararem de significar
-          alguma coisa. */}
+    <div className="financeLayout admLayout">
       <nav className="financeTarefas" aria-label="Seções da Administração">
-        {([
-          ["grupo","Equipe"],
-          ["usuarios","Usuários e permissões",perfis.filter(i=>i.status==="inativo").length],
-          ["convites","Convites"],
-          ["grupo","Organização"],
-          ["dados","Dados da organização"],
-          ["locais","Locais de atendimento"],
-          ["termo","Termo de consentimento"],
-          ["assinatura","Assinatura"],
-          ["grupo","Registro"],
-          ["auditoria","Auditoria"],
-        ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
-          id==="grupo"
-            ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
-            : <button
-                type="button" key={id} data-secao={id}
-                className={aba===id?"active":""}
-                aria-current={aba===id?"true":undefined}
-                onClick={()=>setAba(id)}
-              >
-                <span>{rotulo}</span>
-                {contador?<b className="financeTarefaContador">{contador}</b>:null}
-              </button>)}
+        {navegacao.map(([id,rotulo,contador])=><Fragment key={id}>
+          <button type="button" data-secao={id} className={secao===id?"active":""} aria-current={secao===id?"true":undefined}
+            onClick={()=>{setSecao(id);if(id==="equipe")setSubEquipe("pessoas")}}>
+            <span>{rotulo}</span>
+            {contador?<b className="financeTarefaContador" title="Pendências">{contador}</b>:null}
+          </button>
+          {/* Atalho direto para os convites, dentro de Equipe e acessos. */}
+          {id==="equipe"&&<button type="button" data-secao="convites" className={`admNavSub ${secao==="equipe"&&subEquipe==="convites"?"active":""}`}
+            aria-current={secao==="equipe"&&subEquipe==="convites"?"true":undefined} onClick={()=>irParaEquipe("convites")}>
+            <span>Convites pendentes</span>
+            {ind.convitesPendentes+ind.convitesExpirados?<b className="financeTarefaContador">{ind.convitesPendentes+ind.convitesExpirados}</b>:null}
+          </button>}
+        </Fragment>)}
       </nav>
 
       <div className="financeConteudo">
-      {aba==="usuarios"&&<>
-    <section className="clinicalPanel adminUsers">
-      <div className="panelTitle"><strong>Usuários e permissões</strong></div>
-      {/* Quem monta a escala, dito antes de a pessoa procurar. Marcar o
-          primeiro escalista TIRA o poder dos administradores, inclusive de
-          quem está marcando — e descobrir isso pelo efeito é descobrir tarde,
-          no dia em que o plantão precisava ser lançado. */}
-      {podeEscolherEscalista(perfil)&&(
-        <p className="adminEscalaAviso">{explicarEscala(perfis)}</p>
-      )}
-      <div className="adminFiltros">
-        <input
-          className="adminBusca" type="search" value={buscaUsuario}
-          onChange={e=>setBuscaUsuario(e.target.value)}
-          placeholder="Buscar por nome, e-mail ou CRM" aria-label="Buscar usuário"
-        />
-        <label><span>Perfil</span><select value={filtroPapel} onChange={e=>setFiltroPapel(e.target.value)}>
-          <option value="todos">Todos</option>
-          {Object.entries(ROLE_LABELS).map(([valor,rotulo])=><option key={valor} value={valor}>{rotulo}</option>)}
-        </select></label>
-        <label><span>Status</span><select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
-          <option value="todos">Todos</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option>
-        </select></label>
-      </div>
-      {(()=>{
-        const termo=buscaUsuario.trim().toLowerCase();
-        const lista=perfis.filter(item=>
-          (filtroPapel==="todos"||item.role===filtroPapel)&&
-          (filtroStatus==="todos"||item.status===filtroStatus)&&
-          (!termo||`${item.nome} ${item.email??""} ${item.crm??""}`.toLowerCase().includes(termo)));
-        if(!lista.length) return <div className="emptyClinical">
-          <strong>Nenhum usuário encontrado.</strong>
-          {perfis.length
-            ? <>Nenhum dos {perfis.length} usuários combina com a busca ou os filtros. Limpe os filtros para ver todos.</>
-            : <>Convide alguém da equipe pelo painel acima para começar.</>}
-        </div>;
-        return lista.map(source=>{
-          const item=editing[source.id]||source;
-          const setItem=(changes:Partial<PerfilGerenciado>)=>setEditing(state=>({...state,[source.id]:{...item,...changes}}));
-          const expandido=aberto===source.id;
-          const podeExcluir=source.id!==perfil.id&&source.role!=="owner";
-          return <div className={`adminUserItem ${expandido?"expandido":""}`.trim()} key={source.id}>
-            {/* Linha fechada: identidade e situação de relance. */}
-            <div className="adminUserResumo">
-              <span className="avatar" aria-hidden="true">{initials(source.nome)}</span>
-              <span className="adminUserIdent">
-                <strong>{source.nome}</strong>
-                <small>{source.sem_acesso?"não usa o sistema":source.email||"sem e-mail"}{source.crm?` · ${source.crm}`:""}</small>
-              </span>
-              {/* Os papéis ficam numa faixa de largura fixa, e não soltos na
-                  linha: quem tem duas áreas empurrava o status e o botão das
-                  linhas vizinhas para outra posição, e a lista virava escada. */}
-              <span className="adminUserPapeis">
-                <span className="statusChip paused">{ROLE_LABELS[source.role]??source.role}</span>
-                {/* Quem acumula área aparece acumulando: sem isso, a lista mostra
-                    "Financeiro" para alguém que também abre a recepção. */}
-                {areasExtras(source).map(area=><span className="statusChip present" key={area} title="Área extra concedida">+ {ROLE_LABELS[area]??area}</span>)}
-                {/* O escalista aparece na linha fechada de propósito: é a
-                    resposta para "quem mexeu na escala?", e essa pergunta se
-                    faz olhando a lista, não abrindo cadastro por cadastro. */}
-                {source.escalista&&<span className="statusChip present" title="Monta a escala do grupo">Escalista</span>}
-                {/* CRM não é burocracia aqui: a contagem de profissionais do
-                    plano só conta médico com CRM, e a ficha sai sem assinatura. */}
-                {source.role==="medico"&&!source.crm?.trim()&&<span className="statusChip waiting" title="Médico sem CRM não entra na contagem do plano e a ficha impressa sai sem o registro.">Sem CRM</span>}
-                {/* Quem foi cadastrado para ser escalado e não entra no
-                    sistema. Sem esta marca, o administrador vê um usuário que
-                    "nunca fez login" e tenta reenviar convite para um e-mail
-                    que não existe. */}
-                {source.sem_acesso&&<span className="statusChip paused" title="Entra na escala e no faturamento. Não tem login: não há e-mail, senha nem convite.">Sem acesso</span>}
-                {/* A pendência aparece onde a pessoa aparece. Sem isto, o CRM
-                    que deixou de ser obrigatório viraria CRM que nunca é
-                    preenchido — e a escala é documento de quem responde. */}
-                {!(source.crm??"").trim()&&!EQUIPE_DE_APOIO.includes(source.role)&&source.status==="ativo"&&
-                  <span className="statusChip atencao" title="Entra na escala normalmente. O registro é de quem responde pelo ato — preencha quando tiver.">CRM pendente</span>}
-              </span>
-              <span className={`statusChip ${source.status==="ativo"?"present":"waiting"}`}>{source.status==="ativo"?"Ativo":"Inativo"}</span>
-              <button
-                className="outlineClinical" aria-expanded={expandido}
-                onClick={()=>setAberto(atual=>atual===source.id?"":source.id)}
-              >{expandido?"Fechar":"Editar"}</button>
+        {secao==="visao"&&<VisaoGeralDaAdministracao ind={ind} pendencias={lista} ultimas={ultimas} nomes={nomes}
+          podeAdministrar={podeAdministrar} carregandoLogins={!dados.logins&&!dados.erroLogins}
+          onIr={d=>{
+            if(d.tipo==="convites") irParaEquipe("convites");
+            else if(d.tipo==="pendencias") document.getElementById("adm-pendencias")?.focus();
+            else { setFiltros({...FILTROS_LIMPOS,acesso:d.acesso==="habilitado"?"habilitado":"todos"}); irParaEquipe(); }
+          }}
+          onAcaoDaPendencia={p=>{
+            if(p.acao.tipo==="pessoa"&&p.acao.id) abrirPessoa(p.acao.id,/legado|admin-parado|convite-parado/.test(p.chave)?"acesso":"dados");
+            else if(p.acao.tipo==="convites") irParaEquipe("convites");
+            else if(p.acao.tipo==="locais"){ setSecao("organizacao"); setSubOrg("locais"); setNovoLocal(v=>v+1); }
+            else irParaEquipe();
+          }}
+          onAdicionarPessoa={()=>{setPessoaAberta(null);setAdicionando(true)}}
+          onCadastrarLocal={()=>{setSecao("organizacao");setSubOrg("locais");setNovoLocal(v=>v+1)}}
+          onRevisarAcessos={()=>{setFiltros({...FILTROS_LIMPOS,revisar:true});irParaEquipe()}}
+          onVerHistorico={()=>setSecao("historico")}/>}
+
+        {secao==="equipe"&&<EquipeEAcessos pessoas={perfis} logins={dados.logins} erroLogins={dados.erroLogins}
+          convites={dados.convites} erroConvites={dados.erroConvites} podeAdministrar={podeAdministrar}
+          organizacaoNome={organizacao?.nome??null} filtros={filtros} onFiltros={setFiltros}
+          subAba={subEquipe} onSubAba={setSubEquipe} onAbrirPessoa={abrirPessoa}
+          onAdicionar={()=>{setPessoaAberta(null);setAdicionando(true)}}
+          onRecarregar={dados.recarregar} onRefresh={()=>{dados.recarregar();onRefresh()}} mensagem={mensagem}
+          // Quem monta a escala, dito antes de a pessoa procurar. Marcar o
+          // primeiro escalista TIRA o poder dos administradores, inclusive de
+          // quem está marcando — descobrir isso pelo efeito é descobrir tarde.
+          resumoEscala={podeEscolherEscalista(perfil)?explicarEscala(perfis):undefined}/>}
+
+        {secao==="organizacao"&&<section className="admSecao">
+          <header className="admSecaoTopo"><div><h2>Organização e locais</h2>
+            <p>Os dados que saem impressos e os lugares onde a equipe atende.</p></div></header>
+          <div className="admAbas" role="tablist" aria-label="Organização e locais">
+            <button type="button" role="tab" aria-selected={subOrg==="dados"} className={subOrg==="dados"?"ativa":""} onClick={()=>setSubOrg("dados")}>Dados da organização</button>
+            <button type="button" role="tab" aria-selected={subOrg==="locais"} className={subOrg==="locais"?"ativa":""} onClick={()=>setSubOrg("locais")}>Locais de atendimento</button>
+          </div>
+          {subOrg==="dados"&&<div className="admCartao">
+            <EtiquetaDeEscopo escopo="organizacao"/>
+            {msgOrg&&<p className={msgOrg.startsWith("Não")?"clinicalError":"financeSuccess"} role={msgOrg.startsWith("Não")?"alert":"status"}>{msgOrg}</p>}
+            <div className="orgCampos">
+              <label className="clinicalField"><span>Nome da organização</span><input value={org.nome} disabled={!podeAdministrar} onChange={e=>setOrg(v=>({...v,nome:e.target.value}))}/></label>
+              <label className="clinicalField"><span>Telefone</span><input value={org.telefone} disabled={!podeAdministrar} onChange={e=>setOrg(v=>({...v,telefone:e.target.value}))} placeholder="(00) 00000-0000"/></label>
+              <label className="clinicalField"><span>E-mail de contato</span><input value={org.email} disabled={!podeAdministrar} onChange={e=>setOrg(v=>({...v,email:e.target.value}))} placeholder="contato@exemplo.com.br"/></label>
             </div>
-            {expandido&&<div className="adminUserEdicao">
-              <div className="adminUserCampos">
-                <label className="clinicalField"><span>Nome</span><input value={item.nome} onChange={e=>setItem({nome:e.target.value})}/></label>
-                <label className="clinicalField"><span>E-mail</span><input value={item.email||""} readOnly/></label>
-                {/* Marcar o escalista é decisão de quem responde pelo grupo:
-                    se o próprio escalista pudesse escolher outro, a decisão de
-                    quem manda na escala sairia de quem responde por ela — e
-                    ele poderia se desmarcar e trancar a escala sem querer. */}
-                {podeEscolherEscalista(perfil)&&!source.sem_acesso&&(
-                  <label className="clinicalField adminEscalista">
-                    <span>Escala do grupo</span>
-                    <label className="adminEscalistaMarca">
-                      <input type="checkbox" checked={item.escalista===true}
-                        onChange={e=>setItem({escalista:e.target.checked})}/>
-                      <span>Monta a escala do grupo</span>
-                    </label>
-                  </label>
-                )}
-                <label className="clinicalField"><span>Perfil</span><select value={item.role} disabled={source.role==="owner"&&perfil.role!=="owner"} onChange={e=>setItem({role:e.target.value})}><option value="recepcao">Recepção</option><option value="medico">Médico</option><option value="financeiro">Financeiro</option><option value="admin">Administrador</option>{perfil.role==="owner"&&<option value="owner">Proprietário</option>}</select></label>
-                <label className="clinicalField"><span>Status</span><select value={item.status} disabled={source.id===perfil.id} onChange={e=>setItem({status:e.target.value})}><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
-                <label className="clinicalField"><span>CRM / UF</span><input value={item.crm||""} onChange={e=>setItem({crm:e.target.value})} placeholder="Somente médico"/></label>
-                <label className="clinicalField"><span>RQE</span><input value={item.rqe||""} onChange={e=>setItem({rqe:e.target.value})} placeholder="Opcional"/></label>
-              </div>
-              <div className="adminAreasExtras">
-                <strong>Áreas extras</strong>
-                {VE_TUDO.includes(item.role)
-                  ? <small>{ROLE_LABELS[item.role]} já enxerga todas as áreas.</small>
-                  : <>
-                      <small>Além de {ROLE_LABELS[item.role]?.toLowerCase()??item.role}, esta pessoa também acessa:</small>
-                      <div>{AREAS_EXTRAS.filter(area=>area!==item.role).map(area=>{
-                        const marcada=areasExtras(item).includes(area);
-                        return <label key={area}>
-                          <input type="checkbox" checked={marcada}
-                            onChange={()=>setItem({permissoes:marcada
-                              ? areasExtras(item).filter(x=>x!==area)
-                              : [...areasExtras(item),area]})}/>
-                          <span>{ROLE_LABELS[area]??area}</span>
-                        </label>;
-                      })}</div>
-                    </>}
-              </div>
-              <div className="adminUserAcoes">
-                <button className="primaryClinical compact" disabled={busy===item.id} onClick={()=>saveProfile(item)}>{busy===item.id?"Salvando...":"Salvar alterações"}</button>
-              </div>
-              {/* Excluir fica fora do fluxo, numa área separada e discreta: é
-                  irreversível e não deve competir com o botão de salvar. */}
-              {podeExcluir&&<div className="adminZonaPerigo">
-                <span>
-                  <strong>Excluir acesso</strong>
-                  <small>Só funciona para quem ainda não registrou nada no sistema. Para os demais, use Status: Inativo — o histórico clínico precisa continuar atribuído.</small>
-                </span>
-                <button className="outlineClinical red" disabled={busy===item.id} onClick={()=>removeUser(source)}>Excluir</button>
-              </div>}
-            </div>}
-          </div>;
-        });
-      })()}
-    </section>
-      </>}
-      {aba==="convites"&&<>
-    <InvitePanel perfil={perfil} organizacao={organizacao} onRefresh={onRefresh}/>
-      </>}
-      {aba==="dados"&&<>
-    <section className="clinicalPanel">
-      <div className="panelTitle"><strong>Dados da organização</strong><span>sai impresso na ficha e no termo</span></div>
-      <div className="orgCampos">
-        <label className="clinicalField"><span>Nome da organização</span><input value={org.nome} onChange={e=>setOrg(v=>({...v,nome:e.target.value}))}/></label>
-        <label className="clinicalField"><span>Telefone</span><input value={org.telefone} onChange={e=>setOrg(v=>({...v,telefone:e.target.value}))} placeholder="(00) 00000-0000"/></label>
-        <label className="clinicalField"><span>E-mail de contato</span><input value={org.email} onChange={e=>setOrg(v=>({...v,email:e.target.value}))} placeholder="contato@exemplo.com.br"/></label>
-      </div>
-      <div className="orgAcoes">
-        <small>{organizacao?.tipo==="individual"?"Cadastro individual":"Grupo"} · plano e cobrança ficam na página de assinatura.</small>
-        <div>
-          <a className="outlineClinical" href="/assinatura"><Icone nome="assinatura" tamanho={15}/> Plano e cobrança</a>
-          <button className="primaryClinical compact" disabled={busy==="org"||!orgAlterada} onClick={saveOrganizacao}>{busy==="org"?"Salvando...":"Salvar dados"}</button>
-        </div>
-      </div>
-    </section>
-      </>}
-      {aba==="locais"&&<>
-        <section className="clinicalPanel">
-          <div className="panelTitle"><strong>Locais de atendimento</strong></div>
-          <div className="locaisAdminCaixa">
+            <div className="orgAcoes">
+              <small>{organizacao?.tipo==="individual"?"Cadastro individual":"Grupo"} · saem impressos na ficha e no termo.</small>
+              {podeAdministrar&&<button className="primaryClinical compact" disabled={busyOrg||!orgAlterada} onClick={saveOrganizacao}>{busyOrg?"Salvando...":"Salvar dados"}</button>}
+            </div>
+          </div>}
+          {subOrg==="locais"&&<div className="locaisAdminCaixa">
+            <EtiquetaDeEscopo escopo="organizacao"/>
             <LocaisAdmin
               institutionId={perfil.institution_id}
               perfilId={perfil.id}
-              podeCompartilhar={["owner","admin"].includes(perfil.role)||(Array.isArray(perfil.permissoes)&&perfil.permissoes.includes("admin"))}
+              podeCompartilhar={podeAdministrar}
+              nomesDosPerfis={nomes}
+              abrirNovo={novoLocal||undefined}
             />
-          </div>
-        </section>
-      </>}
-      {aba==="termo"&&<>
-        <TermoAdmin
-          institutionId={perfil.institution_id}
-          perfilId={perfil.id}
-          /* Pelo `role`, e não pelas permissões extras: é exatamente a regra
-             que a política do banco aplica. Uma tela mais generosa que o banco
-             entrega um botão que só sabe devolver erro de permissão. */
-          podeEditar={["owner","admin"].includes(perfil.role)}
-          nomesDosPerfis={actorNames}
-        />
-      </>}
-      {aba==="assinatura"&&<>
-    <PainelAssinatura onRefresh={onRefresh}/>
-      </>}
-      {aba==="auditoria"&&<>
-    {/* Auditoria também fica recolhida: é registro para consulta, não painel
-        de rotina, e expõe quem fez o quê a cada acesso à tela. */}
-    <PainelRecolhivel
-      className="auditPanel"
-      chave="adm-auditoria"
-      abrePadrao={false}
-      titulo="Auditoria recente"
-      legenda={`${auditoria.length} evento(s) · conclusões, pagamentos, presenças e mudanças de acesso`}
-    >
-      {auditoria.length?auditoria.slice(0,50).map(item=>{
-        const detalhes=item.detalhes as {paciente?:string;excluida_por?:string;nome?:string;periodo?:string;motivo?:string}|null;
-        // O nome escrito no evento vale mais que o mapa de perfis: quem
-        // excluiu (ou foi excluído) pode não existir mais como perfil.
-        const quem=detalhes?.excluida_por||(item.actor_id?actorNames.get(item.actor_id):null)||"Sistema";
-        // Fechar e reabrir período: a competência, e o MOTIVO da reabertura —
-        // é o motivo que faz a reabertura ser auditada, e sem ele aqui a
-        // linha dizia só "financeiro_periodo".
-        const sobre=detalhes?.paciente?`paciente ${detalhes.paciente}`
-          :detalhes?.periodo?`competência ${detalhes.periodo.split("-").reverse().join("/")}${detalhes.motivo?` — motivo: ${detalhes.motivo}`:""}`
-          :detalhes?.nome||item.entidade;
-        return <div className="auditRow" key={item.id}><time>{new Date(item.created_at).toLocaleString("pt-BR")}</time><span><strong>{ACAO_LABELS[item.acao]??item.acao.replaceAll("_"," ")}</strong><small>{sobre} · por {quem}</small></span></div>;
-      }):<div className="emptyClinical compactEmpty">Nenhum evento de auditoria registrado ainda.</div>}
-    </PainelRecolhivel>
-      </>}
+          </div>}
+        </section>}
+
+        {secao==="documentos"&&<section className="admSecao">
+          <header className="admSecaoTopo"><div><h2>Documentos e termos</h2>
+            <p>O texto que o paciente assina. Cada publicação vira uma versão; as antigas continuam valendo para o que já foi assinado.</p></div></header>
+          <TermoAdmin
+            institutionId={perfil.institution_id}
+            perfilId={perfil.id}
+            /* Pelo `role`, e não pelas permissões extras: é exatamente a regra
+               que a política do banco aplica. Uma tela mais generosa que o banco
+               entrega um botão que só sabe devolver erro de permissão. */
+            podeEditar={["owner","admin"].includes(perfil.role)}
+            nomesDosPerfis={nomes}
+          />
+        </section>}
+
+        {secao==="plano"&&<section className="admSecao">
+          <header className="admSecaoTopo"><div><h2>Plano e cobrança</h2><p>A assinatura da organização.</p>
+            <EtiquetaDeEscopo escopo="organizacao"/></div></header>
+          <PainelAssinatura onRefresh={onRefresh}/>
+        </section>}
+
+        {secao==="historico"&&<HistoricoDeAtividades pessoas={perfis} nomes={nomes}
+          onAbrirPessoa={id=>abrirPessoa(id,"historico")} onAbrirLocais={()=>{setSecao("organizacao");setSubOrg("locais")}}/>}
       </div>
     </div>
+
+    {pessoa&&pessoaAberta&&<PainelDaPessoa key={pessoa.id} pessoa={pessoa} equipe={perfis}
+      ator={{id:perfil.id,role:perfil.role,permissoes:perfil.permissoes}} ctx={ctx}
+      login={dados.logins?.get(pessoa.id)} papeis={papeis} podeEscolherEscalista={podeEscolherEscalista(perfil)}
+      nomes={nomes} abaInicial={pessoaAberta.aba}
+      onFechar={()=>setPessoaAberta(null)}
+      onSalvo={texto=>{setPessoaAberta(null);setMensagem(texto);dados.recarregar();onRefresh()}}
+      onAbrirOutra={id=>setPessoaAberta({id,aba:"dados"})}/>}
+
+    {adicionando&&<NovaPessoa equipe={perfis} convites={dados.convites} ctx={ctx} papeis={papeis}
+      organizacao={{id:perfil.institution_id,nome:organizacao?.nome??null,atorId:perfil.id}}
+      onFechar={()=>setAdicionando(false)}
+      onConcluido={texto=>{setAdicionando(false);if(texto)setMensagem(texto);irParaEquipe();dados.recarregar();onRefresh()}}
+      onAbrirPessoa={id=>abrirPessoa(id)}
+      onConviteCriado={dados.recarregar}/>}
   </div>;
 }
 

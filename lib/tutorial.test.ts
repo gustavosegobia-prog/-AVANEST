@@ -174,7 +174,10 @@ test("todo alvo existe no código da interface", () => {
     const procura = porDado
       ? (porDado[1] === "secao" ? `["${porDado[2]}"` : `data-${porDado[1]}="${porDado[2]}"`)
       : etapa.alvo.slice(1);
-    assert.ok(fonte.includes(procura),
+    // Uma seção também pode ser marcada direto no JSX (data-secao="x"), como
+    // o atalho de convites dentro de Equipe e acessos.
+    const literal = porDado ? `data-${porDado[1]}="${porDado[2]}"` : null;
+    assert.ok(fonte.includes(procura) || (literal !== null && fonte.includes(literal)),
       `o alvo ${etapa.alvo} da etapa "${etapa.titulo}" não existe na interface`);
   }
 });
