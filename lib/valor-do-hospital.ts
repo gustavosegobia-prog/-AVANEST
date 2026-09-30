@@ -40,6 +40,8 @@ export type PlantaoComValor = {
   local_id?: string | null;
   local_texto?: string | null;
   situacao?: string | null;
+  /** true = alguém gravou este valor, mesmo que zero (202609300015). */
+  valor_informado?: boolean;
 };
 
 /** Sem acento, sem caixa, sem espaço dobrado — para comparar nome digitado. */
@@ -117,6 +119,9 @@ export function zeradosNoMesmoLocal(
   return plantoes.filter((p) =>
     p.id !== origem.id
     && Number(p.valor) === 0
+    // Zero INFORMADO é decisão de alguém (plantão de cortesia, acerto à
+    // parte) — não é buraco a preencher.
+    && p.valor_informado !== true
     && String(p.situacao ?? "") !== "cancelado"
     && mesmoLocal(p, origem));
 }

@@ -9,10 +9,9 @@ import { Icone } from "@/components/icone";
 import {
   cssDasCores, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
-  apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, emTurnos, filtroDeHospital, iniciais, montarICS,
+  apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, filtroDeHospital, iniciais, montarICS,
   mesEmMaiusculas, ordemDentroDoDia,
   nomeCurto, nomeDoPeriodo,
-  turnosEscrito,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
@@ -29,6 +28,13 @@ import {
   botaoDeRepetir, perguntaDeRepetir, ultimoValorNoLocal, zeradosNoMesmoLocal,
 } from "@/lib/valor-do-hospital";
 import { hoje, dataLocal, mesAtual, somarMeses, ultimoDiaDoMes } from "@/lib/data-local";
+import {
+  contagem, contagemEscrita, dataCurta, diaDaSemanaCurto, diasDaSemana, filtrarEscala, filtrosAtivos,
+  horarioEscrito, inicioDaSemana, OPCOES_DE_SITUACAO, pendenciasDaEscala, semanaEscrita, situacaoDaConfirmacao,
+  situacaoDaExecucao, situacaoDoPagamento, somarDias, valorAusente, FILTROS_DA_ESCALA,
+  type FiltroDeSituacao, type FiltrosDaEscala, type Situacao,
+} from "@/lib/escala-painel";
+import { Dialogo } from "@/components/admin-ui";
 
 // Plantões: a escala, o valor e a troca.
 //
@@ -50,6 +56,9 @@ type Plantao = {
   id: string; perfil_id: string; local_id: string | null; modelo_id: string | null;
   data: string; hora_inicio: string; hora_fim: string; horas: number;
   valor: number; situacao: string; pago_em: string | null;
+  // Alguém gravou o valor — mesmo que seja zero. O banco guarda 0 também para
+  // "ninguém digitou ainda", e esta marca é o que separa os dois (202609300015).
+  valor_informado?: boolean;
   aberto_para_troca: boolean; observacoes: string | null;
   // Plantão de fora: sedação em consultório, hospital que não é do grupo. Só
   // quem lançou enxerga — o RLS não devolve os dos outros nem para o chefe —,
@@ -73,6 +82,18 @@ type Troca = {
   destinatario_id: string | null; status: string; mensagem: string | null;
   created_at: string;
 };
+
+type VisaoDaEscala = "mes" | "semana" | "lista";
+
+// A largura em que a grade do mês deixa de ser legível — a mesma do CSS da
+// lista (.plantaoLinha.escalaLinha vira duas colunas abaixo de 760px).
+const CONSULTA_CELULAR = "(max-width: 760px)";
+function assinarCelular(avisar: () => void) {
+  const mq = window.matchMedia(CONSULTA_CELULAR);
+  mq.addEventListener("change", avisar);
+  return () => mq.removeEventListener("change", avisar);
+}
+const ehCelular = () => window.matchMedia(CONSULTA_CELULAR).matches;
 
 const MESES = ["janeiro","fevereiro","março","abril","maio","junho",
                "julho","agosto","setembro","outubro","novembro","dezembro"];
@@ -1078,6 +1099,25 @@ export function Plantoes({
   // aberto de dentro do atalho rápido — escolheu o colega, quer outro horário —
   // e reabrir com "Para mim" apagaria a escolha que a pessoa acabou de fazer.
   const [lancando, setLancando] = useState<{ dia: string; para: string } | null>(null);
+  /*
+   * Como o período aparece: o mês em grade, a semana dia a dia, ou só a lista.
+   * Sem escolha, o computador abre no mês e o celular na lista — sete colunas
+   * num aparelho de 390px viram quadrados com duas letras, e a lista diz o
+   * mesmo por extenso. A escolha feita vale até sair da tela.
+   */
+  const [visaoEscolhida, setVisaoEscolhida] = useState<VisaoDaEscala | null>(null);
+  const celular = useSyncExternalStore(assinarCelular, ehCelular, () => false);
+  const visao: VisaoDaEscala = visaoEscolhida ?? (celular ? "lista" : "mes");
+  /** O domingo da semana aberta na visão Semana. */
+  const [semana, setSemana] = useState(() => inicioDaSemana(hoje()));
+  /** Os plantões da semana aberta que caem no mês vizinho — só para a visão Semana. */
+  const [foraDoMes, setForaDoMes] = useState<Plantao[]>([]);
+  // Hospital, turno e situação. Valem para o resumo e para a lista ao mesmo
+  // tempo: um número em cima e outro embaixo sobre filtros diferentes foi
+  // exatamente a confusão do "18 × 14".
+  const [filtros, setFiltros] = useState<FiltrosDaEscala>(FILTROS_DA_ESCALA);
+  const [imprimindo, setImprimindo] = useState(false);
+  const listaRef = useRef<HTMLDivElement>(null);
 
   const nomePorId = useMemo(() => new Map(colegas.map((c) => [c.id, c.nome])), [colegas]);
   const localPorId = useMemo(() => new Map(locais.map((l) => [l.id, nomeDoLocal(l)])), [locais]);
@@ -1237,23 +1277,48 @@ export function Plantoes({
   useEffect(() => { void carregar(); }, [carregar]);
 
   const meus = plantoes.filter((p) => p.perfil_id === perfilId && p.situacao !== "cancelado");
-  const resumo = useMemo(() => {
-    const total = meus.reduce((s, p) => s + Number(p.valor), 0);
-    const pago = meus.filter((p) => p.situacao === "pago").reduce((s, p) => s + Number(p.valor), 0);
-    const horas = meus.reduce((s, p) => s + Number(p.horas), 0);
-    // Plantão é 12 horas, e a contagem sai das HORAS — não do número de
-    // lançamentos. O de 24 horas conta por dois; dois de 6 horas contam por um.
-    // É a mesma regra do fechamento e das folhas de nota: o cartão da tela e o
-    // papel que vai para o financeiro não podem dizer números diferentes sobre
-    // o mesmo mês.
-    return { total, pago, aberto: total - pago, horas, turnos: emTurnos(horas) };
-  }, [meus]);
+  /*
+   * O cartão "Plantões no mês" dizia 18 e a lista embaixo dizia 14 — sobre o
+   * MESMO mês. O cartão contava turnos de 12 horas (o de 24h vale dois, que é a
+   * unidade do fechamento) e a lista contava lançamentos. Os dois estavam
+   * certos; o defeito era dar o mesmo nome a coisas diferentes. Agora o resumo
+   * sai de `contagem`, com plantões, turnos e horas cada um com o seu nome, e
+   * do MESMO conjunto que a lista mostra (período e filtros) — ver `visiveis`.
+   */
 
   function mudarMes(passo: number) {
     // O recado fala de um mês específico ("as onze pessoas com plantão neste
     // mês"); deixá-lo na tela depois de virar o mês seria falar do mês errado.
     setRecado("");
     setMes(somarMeses(mes, passo));
+  }
+
+  /**
+   * Anda uma semana. O mês da tela acompanha a quinta-feira da semana — é o
+   * mês em que a maior parte dela cai —, e os dias da semana que ficam no mês
+   * vizinho vêm de `foraDoMes`.
+   */
+  function mudarSemana(passo: number) {
+    setRecado("");
+    const nova = somarDias(semana, 7 * passo);
+    setSemana(nova);
+    setMes(somarDias(nova, 4).slice(0, 7));
+  }
+
+  function irParaHoje() {
+    setRecado("");
+    setMes(mesAtual());
+    setSemana(inicioDaSemana(hoje()));
+  }
+
+  function trocarVisao(v: VisaoDaEscala) {
+    // Ao entrar na semana, a semana é a de hoje se hoje está no mês aberto; se
+    // não, a primeira do mês — e não uma semana perdida de outro mês.
+    if (v === "semana" && visao !== "semana") {
+      const base = hoje().startsWith(mes) ? hoje() : `${mes}-01`;
+      setSemana(inicioDaSemana(base));
+    }
+    setVisaoEscolhida(v);
   }
 
   /**
@@ -1457,8 +1522,8 @@ export function Plantoes({
     if (!ofertaDeValor) return;
     setAplicandoValor(true); setErro("");
     const { data, error } = await createClient().from("plantoes")
-      .update({ valor: ofertaDeValor.valor, updated_at: new Date().toISOString() })
-      .in("id", ofertaDeValor.ids).eq("valor", 0).select("id");
+      .update({ valor: ofertaDeValor.valor, valor_informado: true, updated_at: new Date().toISOString() })
+      .in("id", ofertaDeValor.ids).eq("valor", 0).eq("valor_informado", false).select("id");
     setAplicandoValor(false);
     if (error) { setErro(error.message || "Não foi possível repetir o valor."); return; }
     const quantos = data?.length ?? 0;
@@ -1728,8 +1793,8 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
   // num deles, seria a mesma palavra repetida em trinta e um quadrados.
   const mostraLocalNaCelula = hospitalAtivo === "todos" || hospitalAtivo === "sem";
 
-  const daEscala = useMemo(
-    () => plantoes.filter((p) => p.situacao !== "cancelado"
+  const naEscala = useCallback(
+    (p: Plantao) => p.situacao !== "cancelado"
       && (escopo === "grupo" || p.perfil_id === perfilId)
       // O plantão privado nunca entra na escala do grupo, nem na sua. O banco
       // já não devolve os dos outros; o seu volta, e sem esta linha ele cairia
@@ -1738,9 +1803,72 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       && (escopo !== "grupo" || !p.privado)
       // A escala pessoal mistura os hospitais de propósito; a do grupo é uma
       // por hospital, pelo motivo explicado em `hospital`.
-      && (escopo !== "grupo" || plantaoNaEscala(p.local_id, hospitalAtivo))),
-    [plantoes, escopo, perfilId, hospitalAtivo],
+      && (escopo !== "grupo" || plantaoNaEscala(p.local_id, hospitalAtivo)),
+    [escopo, perfilId, hospitalAtivo],
   );
+  const daEscala = useMemo(() => plantoes.filter(naEscala), [plantoes, naEscala]);
+
+  // A semana aberta pode atravessar a virada do mês. Os dias do mês vizinho
+  // são buscados à parte, e SÓ servem à visão Semana: misturá-los em
+  // `plantoes` faria o fechamento, a folha impressa e as cores do mês
+  // contarem plantões de outro mês.
+  const diasDaSemanaAberta = useMemo(() => diasDaSemana(semana), [semana]);
+  useEffect(() => {
+    if (visao !== "semana") return;
+    const fora = diasDaSemanaAberta.filter((d) => !d.startsWith(mes));
+    if (fora.length === 0) return;
+    let vivo = true;
+    void (async () => {
+      const { data } = await createClient().from("plantoes").select("*")
+        .gte("data", fora[0]).lte("data", fora[fora.length - 1]).order("data");
+      if (vivo) setForaDoMes((data ?? []) as Plantao[]);
+    })();
+    return () => { vivo = false; };
+    // `plantoes` entra para a semana recarregar junto quando algo é lançado ou
+    // confirmado nela.
+  }, [visao, diasDaSemanaAberta, mes, plantoes]);
+
+  /**
+   * O que o período mostra: o mês, ou a semana aberta. É deste conjunto — e
+   * depois dos filtros — que saem o resumo, a lista, a grade e as pendências.
+   * A folha impressa, o .ics e o fechamento continuam sendo do mês inteiro.
+   */
+  // Por id, e não só pela data: ao voltar de outubro para setembro, por um
+  // instante `plantoes` ainda é o mês anterior e os dois conjuntos se cruzam.
+  const idsDoMes = new Set(plantoes.map((p) => p.id));
+  const foraNaEscala = foraDoMes
+    .filter((p) => !p.data.startsWith(mes) && !idsDoMes.has(p.id)).filter(naEscala);
+  const doPeriodo = visao === "semana"
+    ? [...daEscala, ...foraNaEscala].filter((p) => diasDaSemanaAberta.includes(p.data))
+        .sort((a, b) => a.data.localeCompare(b.data) || a.hora_inicio.localeCompare(b.hora_inicio))
+    : daEscala;
+  // Na escala do grupo o hospital já é a escala escolhida na coluna; o filtro
+  // de hospital é da escala pessoal, que mistura todos.
+  const filtrosEfetivos: FiltrosDaEscala = escopo === "grupo" ? { ...filtros, local: "todos" } : filtros;
+  const filtrando = filtrosAtivos(filtrosEfetivos);
+  const visiveis = filtrarEscala(doPeriodo, filtrosEfetivos, agora, perfilId);
+  const contagemVisivel = contagem(visiveis);
+  const meusVisiveis = visiveis.filter((p) => p.perfil_id === perfilId);
+  const dinheiroVisivel = (() => {
+    const total = meusVisiveis.reduce((s, p) => s + Number(p.valor), 0);
+    const pago = meusVisiveis.filter((p) => p.situacao === "pago").reduce((s, p) => s + Number(p.valor), 0);
+    return { total, pago, aberto: total - pago };
+  })();
+  const pendencias = pendenciasDaEscala(doPeriodo, perfilId, agora);
+  const locaisDaMinhaEscala = [...new Set(daEscala.map((p) => p.local_id ?? "sem"))]
+    .sort((a, b) => (localPorId.get(a) ?? "~").localeCompare(localPorId.get(b) ?? "~", "pt-BR"));
+  const nomeDoPeriodoAberto = visao === "semana"
+    ? `Semana de ${semanaEscrita(semana)}`
+    : `${MESES[Number(mes.slice(5, 7)) - 1].replace(/^./, (c) => c.toUpperCase())} de ${mes.slice(0, 4)}`;
+
+  /** Um toque na faixa de pendências mostra os registros: filtro na lista. */
+  function mostrarPendencia(situacao: FiltroDeSituacao) {
+    setFiltros({ ...FILTROS_DA_ESCALA, situacao });
+    const lista = listaRef.current;
+    const painel = lista?.closest("details");
+    if (painel) painel.open = true;
+    requestAnimationFrame(() => lista?.scrollIntoView({ block: "start" }));
+  }
 
   /**
    * Quem tem plantão no mês em vista — a chave da legenda do telefone.
@@ -1866,8 +1994,8 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
    * iniciais das duas equipes juntas. A tela mostrava uma escala que não
    * existe em lugar nenhum.
    */
-  const turnosDoDia = useCallback((dia: string) => {
-    const doDia = daEscala.filter((p) => p.data === dia);
+  const turnosDoDia = (dia: string) => {
+    const doDia = visiveis.filter((p) => p.data === dia);
     return Object.values(doDia.reduce<Record<string, {
       chave: string; localId: string | null; inicio: string; fim: string;
       horas: number; gente: Plantao[];
@@ -1881,7 +2009,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       return acc;
     }, {})).sort((a, b) => a.inicio.localeCompare(b.inicio)
       || String(a.localId).localeCompare(String(b.localId)));
-  }, [daEscala]);
+  };
 
   /**
    * O dia dividido em manhã, tarde e noite.
@@ -1897,7 +2025,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
    * O vazio é a informação: "sábado à noite não tem ninguém" é a pergunta que
    * traz o coordenador a esta tela.
    */
-  const faixasDoDia = useCallback((dia: string) => {
+  const faixasDoDia = (dia: string) => {
     const turnos = turnosDoDia(dia);
     if (turnos.length === 0) return [];
     const faixas = TURNOS_DO_DIA.map((faixaDoDia) => {
@@ -1919,7 +2047,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       ...f,
       blocos: f.blocos.map((t) => ({ ...t, gente: [...t.gente].sort((a, b) => ordem(a.perfil_id, b.perfil_id)) })),
     }));
-  }, [turnosDoDia, mostraLocalNaCelula]);
+  };
 
   /**
    * A escala no calendário do celular.
@@ -2302,30 +2430,41 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
           em branco não diz o que está escondido, e a pessoa mostra tudo de
           novo só para lembrar o que era. */}
       {mostraMetricas && (() => {
-        // Os cartões viram lista para o olho poder morar no ÚLTIMO deles,
-        // qualquer que ele seja: na escala do grupo os três de dinheiro não
-        // existem, e um botão preso ao "A receber" sumiria junto com eles.
+        // Os cartões viram lista para o olho poder morar no ÚLTIMO deles.
+        // Plantões, turnos e horas lado a lado e com o nome de cada um: o de
+        // 24h é UM plantão e DOIS turnos de 12h, e as duas contas são
+        // verdadeiras. Tudo do mesmo conjunto que a lista abaixo mostra.
         const cartoes = [
-          { chave: "turnos", valor: turnosEscrito(resumo.horas), rotulo: "Plantões no mês", cor: "" },
-          { chave: "horas", valor: `${resumo.horas.toLocaleString("pt-BR")}h`, rotulo: "Horas", cor: "" },
-          { chave: "total", valor: money(resumo.total), rotulo: "Total do mês", cor: "blue" },
-          { chave: "pago", valor: money(resumo.pago), rotulo: "Recebido", cor: "green" },
-          { chave: "aberto", valor: money(resumo.aberto), rotulo: "A receber", cor: "amber" },
+          { chave: "plantoes", valor: contagemVisivel.plantoes.toLocaleString("pt-BR"), rotulo: contagemVisivel.plantoes === 1 ? "Plantão" : "Plantões", cor: "" },
+          { chave: "turnos", valor: contagemVisivel.turnos.toLocaleString("pt-BR", { maximumFractionDigits: 1 }), rotulo: "Turnos de 12h", cor: "" },
+          { chave: "horas", valor: `${contagemVisivel.horas.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} h`, rotulo: "Horas", cor: "" },
+          { chave: "total", valor: money(dinheiroVisivel.total), rotulo: "Total", cor: "blue" },
+          { chave: "pago", valor: money(dinheiroVisivel.pago), rotulo: "Recebido", cor: "green" },
+          { chave: "aberto", valor: money(dinheiroVisivel.aberto), rotulo: "A receber", cor: "amber" },
         ];
         return (
-        <section className="metricGrid plantaoMetrics">
-          {cartoes.map((c, i) => (
-            <div className="metricCard" key={c.chave}>
-              {/* O rótulo fica; só o número some. Cartão em branco não diz o
-                  que está escondido, e a pessoa acaba mostrando tudo de novo
-                  só para lembrar o que era. */}
-              <strong className={c.cor}>{mascara(c.valor)}</strong>
-              <span>{c.rotulo}</span>
-              {i === cartoes.length - 1 && (
-                <OlhoValores oculto={valorOculto} onAlternar={esconderValores} />
-              )}
-            </div>
-          ))}
+        <section className="escalaResumo" aria-label="Resumo do período">
+          <p className="escalaResumoPeriodo">
+            <Icone nome="calendario" tamanho={14} />
+            <span>
+              {nomeDoPeriodoAberto}
+              {filtrando && <b> · com filtros</b>}
+            </span>
+          </p>
+          <div className="metricGrid plantaoMetrics compacta">
+            {cartoes.map((c, i) => (
+              <div className="metricCard" key={c.chave}>
+                {/* O rótulo fica; só o número some. Cartão em branco não diz o
+                    que está escondido, e a pessoa acaba mostrando tudo de novo
+                    só para lembrar o que era. */}
+                <strong className={c.cor}>{mascara(c.valor)}</strong>
+                <span>{c.rotulo}</span>
+                {i === cartoes.length - 1 && (
+                  <OlhoValores oculto={valorOculto} onAlternar={esconderValores} />
+                )}
+              </div>
+            ))}
+          </div>
         </section>
         );
       })()}
@@ -2445,13 +2584,24 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 trocava o mês e perdia de vista o que tinha mudado. */}
             <div className="plantaoBarra">
               <div className="plantaoMesNav">
-                <button className="outlineClinical" onClick={() => mudarMes(-1)} aria-label="Mês anterior">‹</button>
-                <strong>{mesEmMaiusculas(MESES[m - 1])} {ano}</strong>
-                <button className="outlineClinical" onClick={() => mudarMes(1)} aria-label="Próximo mês">›</button>
-                {/* Depois de folhear três meses para trás, voltar é um toque. */}
-                {mes !== mesAtual() && (
-                  <button className="outlineClinical" onClick={() => { setRecado(""); setMes(mesAtual()); }}>Hoje</button>
-                )}
+                <button className="outlineClinical" onClick={() => visao === "semana" ? mudarSemana(-1) : mudarMes(-1)}
+                  aria-label={visao === "semana" ? "Semana anterior" : "Mês anterior"}>‹</button>
+                <strong aria-live="polite">
+                  {visao === "semana" ? semanaEscrita(semana) : `${mesEmMaiusculas(MESES[m - 1])} ${ano}`}
+                </strong>
+                <button className="outlineClinical" onClick={() => visao === "semana" ? mudarSemana(1) : mudarMes(1)}
+                  aria-label={visao === "semana" ? "Próxima semana" : "Próximo mês"}>›</button>
+                {/* Sempre no lugar, e apagado quando já se está em hoje: um
+                    botão que aparece e some empurra os vizinhos a cada mês. */}
+                <button className="outlineClinical"
+                  disabled={visao === "semana" ? semana === inicioDaSemana(hojeISO) : mes === mesAtual()}
+                  onClick={irParaHoje}>Hoje</button>
+              </div>
+              <div className="escalaVisoes" role="group" aria-label="Como ver o período">
+                {([["mes", "Mês"], ["semana", "Semana"], ["lista", "Lista"]] as [VisaoDaEscala, string][]).map(([v, rotulo]) => (
+                  <button key={v} type="button" className={visao === v ? "ativo" : ""}
+                    aria-pressed={visao === v} onClick={() => trocarVisao(v)}>{rotulo}</button>
+                ))}
               </div>
               <div className="plantaoBarraAcoes">
                 {/* Avisar a equipe é um BOTÃO, e não um efeito de lançar
@@ -2469,21 +2619,12 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                   title="Baixa um arquivo .ics: o iPhone abre no Calendário e o Google Agenda importa">
                   Google/Apple
                 </button>
-                {/* A escolha fica COLADA no botão, e não numa tela de
-                    configuração: ela só existe no instante de imprimir, e é
-                    ali que se lembra qual é a impressora da sala. Os dois
-                    rótulos ficam visíveis o tempo todo — um interruptor que
-                    mostra só o estado atual obriga a decifrar se "Colorida"
-                    é o que está ligado ou o que o clique vai fazer. */}
-                <span className="folhaModo" role="group" aria-label="Como imprimir a escala">
-                  <button type="button" className={emCores ? "ativo" : ""}
-                    aria-pressed={emCores} onClick={() => guardarModoDaFolha(true)}
-                    title="Uma cor por pessoa, como no calendário da tela">Colorida</button>
-                  <button type="button" className={emCores ? "" : "ativo"}
-                    aria-pressed={!emCores} onClick={() => guardarModoDaFolha(false)}
-                    title="Para impressora monocromática: pastilhas brancas com o nome em preto">P&amp;B</button>
-                </span>
-                <button className="outlineClinical" onClick={imprimirEscala}>Imprimir</button>
+                {/* Colorida ou P&B e a dica da orientação moram no passo de
+                    imprimir, e não na barra: só importam nesse instante, e
+                    na barra ocupavam uma linha inteira o mês todo. */}
+                <button className="outlineClinical" onClick={() => { setErro(""); setImprimindo(true); }}>
+                  Imprimir
+                </button>
                 {/* Só para quem monta a escala, e só na visão do grupo. É uma
                     folha de pagamento: traz o nome e o valor de cada colega, e
                     na escala pessoal não haveria "cada colega" nenhum. */}
@@ -2500,18 +2641,78 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                   + Lançar plantão
                 </button>
               </div>
-              {/* A DICA DA ORIENTAÇÃO, e ela existe porque o CSS não resolve.
-                  O WebKit — Safari no Mac, e todo navegador no iPhone — ignora
-                  a orientação que a folha pede, e imprime em pé. Quem escolhe é
-                  a pessoa, no campo Orientação da tela de impressão.
-                  Sem esta linha, a descoberta custa uma folha de papel e a
-                  conclusão errada de que o sistema está quebrado. */}
-              <p className="plantaoDicaImpressao">
-                A escala sai deitada. Se a tela de impressão mostrar
-                {" "}<strong>Vertical</strong>, troque para <strong>Horizontal</strong> —
-                o iPhone e o Safari ignoram a orientação pedida pelo site.
-              </p>
             </div>
+            {/* FILTROS — hospital, turno e situação. Valem para o resumo lá em
+                cima, para a grade e para a lista: os três números da tela
+                falam sempre do mesmo conjunto. */}
+            <div className="escalaFiltros" role="group" aria-label="Filtros da escala">
+              {escopo === "minha" && (
+                <label>
+                  <span>Hospital</span>
+                  <select value={filtros.local} onChange={(e) => setFiltros({ ...filtros, local: e.target.value })}>
+                    <option value="todos">Todos</option>
+                    {locaisDaMinhaEscala.map((id) => (
+                      <option key={id} value={id}>{id === "sem" ? "Sem hospital / fora do grupo" : localPorId.get(id) ?? "Hospital"}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label>
+                <span>Turno</span>
+                <select value={filtros.turno}
+                  onChange={(e) => setFiltros({ ...filtros, turno: e.target.value as FiltrosDaEscala["turno"] })}>
+                  <option value="todos">Todos</option>
+                  {TURNOS_DO_DIA.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Situação</span>
+                <select value={filtros.situacao}
+                  onChange={(e) => setFiltros({ ...filtros, situacao: e.target.value as FiltroDeSituacao })}>
+                  <option value="todas">Todas</option>
+                  {OPCOES_DE_SITUACAO.map((g) => (
+                    <optgroup key={g.grupo} label={g.grupo}>
+                      {g.opcoes.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+              {filtrando && (
+                <button type="button" className="outlineClinical escalaLimpar" onClick={() => setFiltros(FILTROS_DA_ESCALA)}>
+                  <Icone nome="fechar" tamanho={14} /> Limpar filtros
+                </button>
+              )}
+            </div>
+            {/* PENDÊNCIAS — só o que pede ação, e cada uma leva aos registros.
+                Some quando não há nada: uma faixa de zeros é ruído. */}
+            {(pendencias.confirmacoes.length + pendencias.semValor.length + pendencias.sobreposicoes.length) > 0 && (
+              <div className="escalaPendencias" role="group" aria-label="Pendências do período">
+                <span className="escalaPendenciasTitulo"><Icone nome="alerta" tamanho={14} /> Pendências</span>
+                {pendencias.confirmacoes.length > 0 && (
+                  <button type="button" onClick={() => mostrarPendencia("confirmacao_pendente")}
+                    aria-pressed={filtros.situacao === "confirmacao_pendente"}>
+                    <b>{pendencias.confirmacoes.length}</b>
+                    {pendencias.confirmacoes.length === 1 ? " confirmação pendente" : " confirmações pendentes"}
+                  </button>
+                )}
+                {pendencias.semValor.length > 0 && (
+                  <button type="button" onClick={() => mostrarPendencia("sem_valor")}
+                    aria-pressed={filtros.situacao === "sem_valor"}
+                    title="Plantões seus sem valor digitado. Valor zero informado não entra aqui.">
+                    <b>{pendencias.semValor.length}</b>
+                    {pendencias.semValor.length === 1 ? " valor não preenchido" : " valores não preenchidos"}
+                  </button>
+                )}
+                {pendencias.sobreposicoes.length > 0 && (
+                  <button type="button" onClick={() => mostrarPendencia("sobreposicao")}
+                    aria-pressed={filtros.situacao === "sobreposicao"}
+                    title="A mesma pessoa em dois plantões com horários que se cruzam, contando a virada do dia.">
+                    <b>{pendencias.sobreposicoes.length}</b>
+                    {pendencias.sobreposicoes.length === 1 ? " sobreposição de horário" : " sobreposições de horário"}
+                  </button>
+                )}
+              </div>
+            )}
             {/* A LEGENDA, e ela só aparece no telefone.
                 No computador o nome está escrito dentro de cada etiqueta e uma
                 tira repetindo os mesmos nomes seria ruído. No telefone a
@@ -2521,7 +2722,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 Só quem tem plantão no mês em vista: uma legenda com a equipe
                 inteira faria procurar, entre treze nomes, os cinco que estão
                 nesta tela. */}
-            {pessoasDoMes.length > 0 && (
+            {visao === "mes" && pessoasDoMes.length > 0 && (
               <div className="plantaoLegenda" role="list" aria-label="Quem é cada cor no calendário">
                 {pessoasDoMes.map((id) => (
                   <span role="listitem" key={id}
@@ -2532,13 +2733,13 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 ))}
               </div>
             )}
-            <div className="plantaoCalendario">
+            {visao === "mes" && <div className="plantaoCalendario">
               <div className="plantaoSemana">{DIAS.map((d, i) => <span key={i}>{d}</span>)}</div>
               <div className="plantaoGrade">
                 {Array.from({ length: primeiroDiaSemana }).map((_, i) => <span key={`v${i}`} />)}
                 {Array.from({ length: diasNoMes }, (_, i) => {
                   const dia = `${mes}-${String(i + 1).padStart(2, "0")}`;
-                  const doDia = daEscala.filter((p) => p.data === dia);
+                  const doDia = visiveis.filter((p) => p.data === dia);
                   const fimDeSemana = new Date(`${dia}T12:00:00`).getDay() % 6 === 0;
                   const feriado = feriados.get(dia);
 
@@ -2693,7 +2894,43 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                   );
                 })}
               </div>
-            </div>
+            </div>}
+            {/* A SEMANA, dia a dia. Cada dia é uma linha com os plantões por
+                extenso — horário, virada do dia e confirmação —, e tocar no
+                dia abre o mesmo painel do calendário do mês. */}
+            {visao === "semana" && (
+              <ol className="escalaSemana" aria-label={`Semana de ${semanaEscrita(semana)}`}>
+                {diasDaSemanaAberta.map((dia) => {
+                  const doDia = visiveis.filter((p) => p.data === dia);
+                  const feriado = dia.startsWith(mes) ? feriados.get(dia) : undefined;
+                  return (
+                    <li key={dia} className={`escalaSemanaDia${dia === hojeISO ? " hoje" : ""}${diaAberto === dia ? " aberto" : ""}`}>
+                      <button type="button" className="escalaSemanaData" onClick={() => setDiaAberto(diaAberto === dia ? null : dia)}
+                        aria-current={dia === hojeISO ? "date" : undefined}
+                        aria-label={`${diaDaSemanaCurto(dia)}, ${dataCurta(dia)}${dia === hojeISO ? " — hoje" : ""}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? plural(doDia.length, "plantão", "plantões") : "sem plantão"}. Abrir o dia.`}>
+                        <b>{diaDaSemanaCurto(dia)}</b>
+                        <span>{dataCurta(dia)}</span>
+                        {dia === hojeISO && <em>hoje</em>}
+                      </button>
+                      <div className="escalaSemanaItens">
+                        {feriado && <u className="plantaoFeriado">{feriado.nome}</u>}
+                        {doDia.length === 0
+                          ? <span className="escalaSemanaVazio">{filtrando ? "Nada com estes filtros" : "Sem plantão"}</span>
+                          : doDia.map((p) => (
+                            <span key={p.id} className={`escalaSemanaItem med-${escopo === "grupo"
+                              ? corPorMedico.get(p.perfil_id) ?? "m8"
+                              : p.local_id ? corPorLocal.get(p.local_id) ?? "m8" : "m8"}`}>
+                              <strong>{escopo === "grupo" ? nomePorId.get(p.perfil_id) ?? "Profissional" : ondeFica(p, localPorId)}</strong>
+                              <small>{horarioEscrito(p)}</small>
+                              {!p.privado && <SeloDeSituacao s={situacaoDaConfirmacao(p, agora)} dimensao="Confirmação" />}
+                            </span>
+                          ))}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </section>
 
           {/* O painel mostra o que ESTA escala mostra, e não a tabela inteira.
@@ -2704,7 +2941,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
               pergunta, num dia só. */}
           {diaAberto && (
             <DiaDetalhe
-              dia={diaAberto} plantoes={daEscala.filter((p) => p.data === diaAberto)}
+              dia={diaAberto} plantoes={[...daEscala, ...foraNaEscala].filter((p) => p.data === diaAberto)}
               modelos={modelos} perfilId={perfilId} ehAdmin={ehAdmin}
               pessoal={escopo === "minha"}
               institutionId={institutionId} conveniosConhecidos={conveniosConhecidos}
@@ -2732,32 +2969,50 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
               cima dele justamente quando alguém está olhando por cima do ombro. */}
           <PainelRecolhivel
             chave={`escala-lista-${escopo}`}
-            titulo={escopo === "grupo"
-              ? `Escala da equipe em ${mesEmMaiusculas(MESES[m - 1])}`
-              : `Meus plantões em ${mesEmMaiusculas(MESES[m - 1])}`}
-            extra={daEscala.length > 0
-              ? <span className="painelContagem">{daEscala.length} plantão{daEscala.length > 1 ? "es" : ""}</span>
+            titulo={visao === "semana"
+              ? `${escopo === "grupo" ? "Escala da equipe" : "Meus plantões"} na semana de ${semanaEscrita(semana)}`
+              : escopo === "grupo"
+                ? `Escala da equipe em ${mesEmMaiusculas(MESES[m - 1])}`
+                : `Meus plantões em ${mesEmMaiusculas(MESES[m - 1])}`}
+            extra={visiveis.length > 0
+              ? <span className="painelContagem">
+                  {contagemEscrita(contagemVisivel)}
+                  {filtrando && ` · ${visiveis.length} de ${plural(doPeriodo.length, "plantão", "plantões")}`}
+                </span>
               : undefined}
           >
+            <div ref={listaRef} className="escalaListaAncora">
             {/* Os nomes das colunas, uma vez só no alto.
                 Antes cada linha carregava "Valor" e "Situação" em cima do
                 próprio campo: quinze plantões viravam quinze repetições do
                 mesmo par de palavras, e cada uma custava uma altura de rótulo.
                 Um mês não cabia na tela. Aqui o nome é dito uma vez e a linha
                 fica com a altura do campo. */}
-            {daEscala.length > 0 && (
+            {visiveis.length > 0 && (
               <div className="escalaCabeca" aria-hidden="true">
                 <span>Dia</span>
                 <span>{escopo === "grupo" ? "Quem" : "Onde"}</span>
                 <span>Valor</span>
-                <span>Situação</span>
-                <span />
+                <span>Execução</span>
+                <span>Ação</span>
               </div>
             )}
-            {daEscala.length === 0
-              ? <div className="emptyClinical compactEmpty">Nenhum plantão lançado neste mês. Toque num dia do calendário para lançar.</div>
-              : daEscala.map((p) => {
+            {visiveis.length === 0
+              ? (doPeriodo.length > 0
+                  ? <div className="emptyClinical compactEmpty escalaVazio">
+                      <span>Nenhum plantão com estes filtros neste período.</span>
+                      <button type="button" className="outlineClinical" onClick={() => setFiltros(FILTROS_DA_ESCALA)}>Limpar filtros</button>
+                    </div>
+                  : <div className="emptyClinical compactEmpty escalaVazio">
+                      <span>Nenhum plantão lançado {visao === "semana" ? "nesta semana" : "neste mês"}.</span>
+                      <button type="button" className="primaryClinical compact"
+                        onClick={() => setLancando({ dia: hojeISO.startsWith(mes) ? hojeISO : `${mes}-01`, para: perfilId })}>
+                        + Lançar plantão
+                      </button>
+                    </div>)
+              : visiveis.map((p) => {
                 const meu = p.perfil_id === perfilId;
+                const podeMudarExecucao = !["faturado", "pago"].includes(p.situacao);
                 return (
                 /* A gaveta só existe onde apagar tem chance de dar certo: o
                    plantão de fora, que é seu e só seu, e a escala do grupo para
@@ -2767,7 +3022,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                   key={p.id}
                   podeApagar={(meu && p.privado) || ehAdmin}
                   onApagar={() => void remover(p.id)}
-                  descricao={`${Number(p.data.slice(8, 10))}/${p.data.slice(5, 7)}`}
+                  descricao={dataCurta(p.data)}
                 >
                 {/* Grade de colunas fixas, e não flex com quebra. As linhas de
                    colega têm menos controles que as suas, e em flex isso
@@ -2776,8 +3031,10 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                    lugar marcado, ocupado ou não. */}
                 <div className="plantaoLinha escalaLinha">
                   <span className="plantaoQuando">
-                    <strong>{Number(p.data.slice(8, 10))}/{p.data.slice(5, 7)}</strong>
-                    <small>{hhmm(p.hora_inicio)}–{hhmm(p.hora_fim)} · {p.horas}h</small>
+                    <strong>{diaDaSemanaCurto(p.data)} {dataCurta(p.data)}</strong>
+                    {/* A virada do dia é escrita: "19h → 07h do dia seguinte".
+                        "19:00–07:00" parecia um horário ao contrário. */}
+                    <small>{horarioEscrito(p)}</small>
                   </span>
                   <span className="plantaoOnde">
                     <strong>{escopo === "grupo" ? nomePorId.get(p.perfil_id) ?? "Profissional" : ondeFica(p, localPorId)}</strong>
@@ -2787,16 +3044,27 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                   {/* O valor do colega não é editável nem visível: quanto cada
                       um recebe é assunto dele com quem paga, e a escala não
                       precisa expor isso para funcionar. O RLS recusaria a
-                      escrita de qualquer forma; esconder evita a tentativa. */}
+                      escrita de qualquer forma; esconder evita a tentativa.
+
+                      Vazio é "não preenchido"; 0 digitado é "valor zero". O
+                      campo mostra a diferença, e gravar — mesmo zero — marca o
+                      valor como informado. */}
                   <span className="plantaoCelula">
                     {meu ? (
                         <input
-                          aria-label="Valor do plantão"
-                          defaultValue={Number(p.valor) || ""} placeholder="R$ 0,00" inputMode="decimal"
+                          key={`${p.id}-${p.valor}-${valorAusente(p)}`}
+                          aria-label={`Valor do plantão de ${dataCurta(p.data)}${valorAusente(p) ? " — não preenchido" : ""}`}
+                          defaultValue={valorAusente(p) ? "" : Number(p.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          placeholder={valorAusente(p) ? "Não preenchido" : "R$ 0,00"} inputMode="decimal"
+                          className={valorAusente(p) ? "valorAusente" : undefined}
                           onBlur={(e) => {
-                            const v = Number(e.target.value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
-                            if (!Number.isFinite(v) || v === Number(p.valor)) return;
-                            void atualizar(p.id, { valor: v });
+                            const texto = e.target.value.trim();
+                            // Apagar o campo não grava nada: "não sei" não
+                            // substitui um valor que alguém já informou.
+                            if (!texto) return;
+                            const v = Number(texto.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+                            if (!Number.isFinite(v) || (v === Number(p.valor) && !valorAusente(p))) return;
+                            void atualizar(p.id, { valor: v, valor_informado: true });
                             // E, se houver outros do mesmo hospital zerados,
                             // oferece repetir. A oferta só aparece com valor
                             // positivo: repetir zero não preenche nada.
@@ -2815,32 +3083,18 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     ) : <span className="plantaoDeColega">de colega</span>}
                   </span>
                   <span className="plantaoCelula">
-                    {meu && (
-                        /* A data do pagamento anda junto com a situação. Sem
-                           isto, "Pago" pelo seletor deixava pago_em vazio e o
-                           fechamento do mês não sabia em que mês somar. */
-                        <select aria-label="Situação do plantão"
+                    {meu && podeMudarExecucao && (
+                        /* O seletor é da EXECUÇÃO — o que aconteceu com o turno.
+                           Confirmação e pagamento têm selo próprio abaixo, e
+                           cada um muda no seu lugar: confirmar no botão ao
+                           lado, receber em Meu financeiro. */
+                        <select aria-label={`Execução do plantão de ${dataCurta(p.data)}`}
                           value={p.situacao} onChange={(e) => void atualizar(p.id, {
                           situacao: e.target.value,
-                          pago_em: e.target.value === "pago"
-                            ? p.pago_em ?? hoje()
-                            : null,
+                          pago_em: null,
                         })}>
-                          {/* Sem "Pago": este seletor diz o que aconteceu com o
-                              TURNO, e receber não é uma coisa que acontece com
-                              o turno. A baixa é em Meu financeiro > Plantões
-                              por local. Um plantão já pago continua aparecendo
-                              como tal — a opção fica para ele não sumir do
-                              seletor e virar "Escalado" sem ninguém pedir. */}
                           <option value="escalado">Escalado</option>
                           <option value="realizado">Realizado</option>
-                          {/* "Nota emitida" e "Pago" existem aqui só para não
-                              sumirem do seletor: sem a opção, um plantão nesse
-                              estado mostraria o seletor em branco e o primeiro
-                              toque o rebaixaria a "Escalado" sem ninguém pedir.
-                              Marcar a nota e dar baixa é em Meu financeiro. */}
-                          {p.situacao === "faturado" && <option value="faturado">Nota emitida</option>}
-                          {p.situacao === "pago" && <option value="pago">Pago</option>}
                           {/* "Cancelado" some da escala igualzinho a apagar, e
                               some sem ninguém saber. Num plantão do grupo é a
                               mesma regra do Remover: sai passando para um
@@ -2851,6 +3105,16 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                           )}
                         </select>
                     )}
+                    {/* Com nota emitida ou pago, o turno está realizado, e mudar
+                        a execução daqui desfaria o pagamento em silêncio. Quem
+                        desfaz a baixa é o Meu financeiro, que tem o botão para
+                        isso — antes o seletor oferecia "Pago" aqui e o primeiro
+                        toque o rebaixava. */}
+                    {meu && !podeMudarExecucao && (
+                      <span className="escalaExecucaoFixa" title="Para desfazer a nota ou o pagamento, use Meu financeiro → Plantões por local.">
+                        Realizado
+                      </span>
+                    )}
                   </span>
                   <span className="plantaoCelula">
                     {/* Plantão privado não se oferece: o colega não o enxerga,
@@ -2858,68 +3122,43 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                         cegas. Ele se apaga, que é o que faz sentido para um
                         turno que só existe para você. */}
                     {/* Um botão só, e ele acompanha a vida do plantão: antes do
-                        dia dá para passar adiante; no dia e depois, o que falta
-                        é dizer que aconteceu; confirmado, o que falta é o
-                        dinheiro cair. Três botões lado a lado numa linha de
-                        celular seriam três alvos de dedo onde cabe um, e dois
-                        deles sempre sem sentido para aquele dia.
-
-                        Passar um plantão de ontem não existe, e confirmar o de
-                        semana que vem o banco recusa — o botão não oferece nem
-                        um nem outro. */}
+                        dia dá para passar adiante; no dia e até meia hora
+                        depois do fim, confirmar. O estado — confirmado, não
+                        confirmado — está nos selos da linha; aqui fica só a
+                        ação, quando há uma. Confirmar o de semana que vem o
+                        banco recusa, e o botão não oferece. */}
                     {meu && !p.privado && (
                       <span className="plantaoAcao">
                         {p.data > hojeISO ? (
                           <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
                             {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
                           </button>
-                        ) : !p.confirmado_em ? (
-                          podeConfirmar(p, agora) ? (
-                            <button className="outlineClinical plantaoConfirmar"
-                              title="Confirma que você fez este plantão. É o que o fechamento do mês soma."
-                              onClick={() => void confirmar(p)}>
-                              Confirmar
-                            </button>
-                          ) : (
-                            /* A janela fechou. Um botão morto aqui só serviria
-                               para produzir o erro do banco a cada toque; o
-                               selo diz o que aconteceu e por quê. */
-                            <span className="statusChip waiting"
-                              title="A confirmação era no dia do plantão. Ele continua no fechamento do mês, marcado como não confirmado.">
-                              NÃO CONFIRMADO
-                            </span>
-                          )
-                        ) : (
-                          /* O DINHEIRO SAIU DAQUI, e de propósito. A escala
-                             responde "isto aconteceu?"; quem responde "isto
-                             entrou?" é o Meu financeiro, que é onde se olha
-                             depósito. Estavam no mesmo lugar, e o resultado era
-                             procurar o pagamento na tela dos turnos.
-                             A baixa agora é em Meu financeiro > Plantões por
-                             local, e lá ela é por hospital e de vários de uma
-                             vez — que é como o dinheiro chega. */
-                          <span className="statusChip ok"
-                            title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}>
-                            CONFIRMADO
-                          </span>
-                        )}
+                        ) : !p.confirmado_em && podeConfirmar(p, agora) ? (
+                          <button className="outlineClinical plantaoConfirmar"
+                            title="Confirma que você fez este plantão. É o que o fechamento do mês soma."
+                            onClick={() => void confirmar(p)}>
+                            Confirmar
+                          </button>
+                        ) : null}
                       </span>
                     )}
-                    {/* Aqui havia o "Recebido" do plantão de fora. Saiu pelo
-                        mesmo motivo do outro: a baixa é em Meu financeiro. Fica
-                        o selo, que diz o estado sem oferecer a ação no lugar
-                        errado. Apagar continua arrastando a linha para a
-                        esquerda. */}
-                    {meu && p.privado && p.situacao === "pago" && (
-                      <span className="plantaoAcao">
-                        <span className="statusChip ok">RECEBIDO</span>
-                      </span>
-                    )}
+                  </span>
+                  {/* CONFIRMAÇÃO, EXECUÇÃO E PAGAMENTO, cada um no seu selo.
+                      Eram um chip só — CONFIRMADO, NÃO CONFIRMADO ou RECEBIDO —
+                      e o chip de uma dimensão escondia as outras duas: um
+                      plantão confirmado e ainda não pago aparecia só como
+                      "confirmado". O pagamento do colega não aparece, pelo
+                      mesmo motivo do valor. */}
+                  <span className="escalaSelos">
+                    {!p.privado && <SeloDeSituacao s={situacaoDaConfirmacao(p, agora)} dimensao="Confirmação" />}
+                    <SeloDeSituacao s={situacaoDaExecucao(p)} dimensao="Execução" />
+                    {meu && <SeloDeSituacao s={situacaoDoPagamento(p)} dimensao="Pagamento" />}
                   </span>
                 </div>
                 </LinhaComGaveta>
                 );
               })}
+            </div>
           </PainelRecolhivel>
         </>
       )}
@@ -2973,6 +3212,40 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
 
       {/* Os modais ficam fora da grade: são sobreposições de tela inteira, e
           dentro da coluna herdariam a largura dela. */}
+      {/* O PASSO DE IMPRIMIR: cor ou preto e branco, e a dica da orientação.
+          A escolha só existe neste instante — é aqui que se lembra qual é a
+          impressora da sala —, e fica guardada neste aparelho. Os dois rótulos
+          aparecem sempre: um interruptor que mostra só o estado atual obriga a
+          decifrar se "Colorida" é o que está ligado ou o que o clique fará. */}
+      {imprimindo && (
+        <Dialogo titulo="Imprimir a escala" confirmar="Gerar PDF" cancelar="Cancelar"
+          onCancelar={() => setImprimindo(false)}
+          onConfirmar={() => { setImprimindo(false); imprimirEscala(); }}>
+          <fieldset className="plantaoDestino escalaImpressao">
+            <legend>Cores da folha</legend>
+            <label className={emCores ? "ativo" : ""}>
+              <input type="radio" name="modoDaFolha" checked={emCores} onChange={() => guardarModoDaFolha(true)} />
+              <span><strong>Colorida</strong><small>Uma cor por pessoa, como no calendário da tela.</small></span>
+            </label>
+            <label className={emCores ? "" : "ativo"}>
+              <input type="radio" name="modoDaFolha" checked={!emCores} onChange={() => guardarModoDaFolha(false)} />
+              <span><strong>P&amp;B</strong><small>Para impressora monocromática: pastilhas brancas com o nome em preto.</small></span>
+            </label>
+          </fieldset>
+          {/* A DICA DA ORIENTAÇÃO existe porque o CSS não resolve: o WebKit —
+              Safari no Mac, e todo navegador no iPhone — ignora a orientação
+              que a folha pede. Sem esta linha, a descoberta custa uma folha. */}
+          <p className="plantaoDicaImpressao">
+            A escala sai deitada, numa folha só. Se a tela de impressão mostrar
+            {" "}<strong>Vertical</strong>, troque para <strong>Horizontal</strong> —
+            o iPhone e o Safari ignoram a orientação pedida pelo site.
+          </p>
+          <p className="plantaoDicaImpressao">
+            A folha traz a escala inteira de {mesEmMaiusculas(MESES[m - 1])} {ano}, sem os filtros da tela.
+          </p>
+        </Dialogo>
+      )}
+
       {lancando && (
         <LancarPlantao
           dia={lancando.dia} para={lancando.para} locais={locais} modelos={modelos}
@@ -3012,6 +3285,23 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       )}
 
     </div>
+  );
+}
+
+/** O ícone de cada estado, por dimensão — a cor nunca vai sozinha. */
+const ICONE_DA_SITUACAO: Record<string, Partial<Record<Situacao["tom"], Parameters<typeof Icone>[0]["nome"]>>> = {
+  "Confirmação": { ok: "confirmado", atencao: "ampulheta", perigo: "alerta", neutro: "calendario" },
+  "Execução": { ok: "confirmado", info: "calendario", perigo: "fechar" },
+  "Pagamento": { ok: "confirmado", info: "nota", atencao: "alerta", neutro: "dinheiro" },
+};
+
+/** "Confirmação: Confirmado" — dimensão, estado, ícone e cor, juntos. */
+function SeloDeSituacao({ s, dimensao }: { s: Situacao; dimensao: "Confirmação" | "Execução" | "Pagamento" }) {
+  return (
+    <span className={`escSelo ${s.tom}`} title={s.detalhe}>
+      <Icone nome={ICONE_DA_SITUACAO[dimensao][s.tom] ?? "calendario"} tamanho={12} />
+      <span className="escSeloDim">{dimensao}:</span> {s.rotulo}
+    </span>
   );
 }
 
@@ -3109,8 +3399,8 @@ function DiaDetalhe({
       {plantoes.map((p) => (
         <div className="plantaoLinha" key={p.id}>
           <span className="plantaoQuando">
-            <strong>{hhmm(p.hora_inicio)}–{hhmm(p.hora_fim)}</strong>
-            <small>{p.horas}h</small>
+            <strong>{horarioEscrito(p).split(" · ")[0]}</strong>
+            <small>{horarioEscrito(p).split(" · ")[1]}</small>
           </span>
           <span className="plantaoOnde">
             <strong>{nomePorId.get(p.perfil_id) ?? "Profissional"}</strong>
