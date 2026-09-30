@@ -2601,19 +2601,41 @@ button:disabled{cursor:not-allowed}
    painel de cima — não há painel de cima. */
 .financeConteudo>*>.clinicalPanel:first-child,.financeConteudo>.clinicalPanel:first-child{margin-top:0}
 
-/* --- Gráficos ----------------------------------------------------------- */
-.grafGrade{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px}
-.grafCartao{background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:17px;padding:20px 22px 22px}
-.grafCartao header{margin-bottom:16px}
-.grafCartao h3{margin:0;font-size:16px}
-.grafCartao header p{margin:4px 0 0;color:var(--cor-tinta-fraca);font-size:13px}
-.grafDestaque{grid-column:1/-1}
-.grafNumeroHeroi strong{display:block;font-size:46px;line-height:1;font-weight:850;color:var(--cor-marca)}
-.grafNumeroHeroi span{display:block;margin-top:8px;color:var(--cor-tinta-fraca);font-size:14px}
+/* --- Gráficos -------------------------------------------------------------
+   Os cartões usavam raio e sombra inventados na hora (17px, nenhuma sombra)
+   em vez dos tokens que o resto do sistema usa (--raio-3, --sombra-1) — cada
+   outro cartão da tela (.clinicalPanel) já erguia do fundo com sombra; só
+   este ficava chapado. Alinhar aos tokens, mais uma faixa de destaque no
+   cartão-manchete e um leve realce ao passar o mouse, é o que muda aqui —
+   as CORES das barras continuam as mesmas, sem gradiente: são as que foram
+   conferidas contra daltonismo, e um gradiente muda o tom exatamente na
+   ponta onde a leitura importa. */
+.grafGrade{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:var(--esp-5)}
+.grafCartao{background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:var(--raio-3);
+  box-shadow:var(--sombra-1);padding:var(--esp-5) var(--esp-6) var(--esp-6);
+  transition:box-shadow var(--transicao),transform var(--transicao)}
+.grafCartao:hover{box-shadow:var(--sombra-2);transform:translateY(-1px)}
+.grafCartao header{margin-bottom:var(--esp-4)}
+.grafCartao h3{margin:0;font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+.grafCartao header p{margin:4px 0 0;color:var(--cor-tinta-fraca);font-size:12.5px}
+/* O cartão-manchete ("quanto do faturado já entrou") é a resposta mais
+   procurada da tela — ganha fundo diferenciado e uma faixa de cor no topo
+   para o olho pousar nele primeiro, antes dos outros quatro. */
+.grafDestaque{grid-column:1/-1;position:relative;overflow:hidden;
+  background:linear-gradient(160deg,var(--cor-superficie) 0%,var(--cor-superficie-suave) 130%)}
+.grafDestaque::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;
+  background:linear-gradient(90deg,var(--graf-1),var(--graf-2))}
+.grafNumeroHeroi strong{display:block;font-size:clamp(32px,5vw,46px);line-height:1;font-weight:850;
+  color:var(--cor-marca);letter-spacing:-.02em}
+.grafNumeroHeroi span{display:block;margin-top:var(--esp-2);color:var(--cor-tinta-fraca);font-size:13.5px}
 
-.grafLegenda{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:14px;font-size:13px;color:var(--cor-tinta-fraca)}
-.grafLegenda span{display:flex;align-items:center;gap:7px}
-.grafLegenda i{width:11px;height:11px;border-radius:3px;flex:none}
+/* Legenda em pílula, não mais ponto + texto soltos: cada série ganha um
+   contorno próprio, mais fácil de separar de relance de um cartão para o
+   outro quando duas séries aparecem lado a lado. */
+.grafLegenda{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:var(--esp-4);font-size:12.5px;color:var(--cor-tinta-fraca)}
+.grafLegenda span{display:flex;align-items:center;gap:6px;padding:4px 11px 4px 8px;
+  border-radius:var(--raio-cheio);background:var(--cor-superficie-suave)}
+.grafLegenda i{width:9px;height:9px;border-radius:50%;flex:none}
 .grafLegenda b{color:var(--cor-tinta)}
 
 .grafBarras{display:flex;flex-direction:column;gap:14px}
@@ -2623,20 +2645,24 @@ button:disabled{cursor:not-allowed}
 .grafTrilha{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:9px;min-width:0}
 .grafPista{min-width:0}
 /* A barra encosta na linha de base e arredonda só a ponta que cresce: ponta
-   arredondada dos dois lados faz uma barra curta parecer maior do que é. */
-.grafBarra{height:13px;border-radius:0 4px 4px 0;flex:none;min-width:3px;transition:width var(--transicao)}
+   arredondada dos dois lados faz uma barra curta parecer maior do que é. O
+   realce interno (inset, branco bem fraco) dá um relevo sutil sem mexer na
+   cor de base — a mesma que passou pela checagem de daltonismo. */
+.grafBarra{height:14px;border-radius:0 7px 7px 0;flex:none;min-width:3px;transition:width var(--transicao);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
 .grafTrilha b{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--cor-tinta-fraca);white-space:nowrap}
 
 .grafColunas{display:flex;align-items:flex-end;gap:10px;height:190px}
 .grafMes{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;min-width:0}
 .grafPar{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%;min-height:0}
-.grafColuna{width:44%;max-width:26px;border-radius:4px 4px 0 0;transition:height var(--transicao)}
+.grafColuna{width:46%;max-width:28px;border-radius:6px 6px 0 0;transition:height var(--transicao);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
 .grafMes>span{font-size:12px;color:var(--cor-tinta-fraca);font-weight:700}
 
-.grafPilha{display:flex;gap:2px;height:15px;margin-bottom:14px}
-.grafPilha>div:first-child{border-radius:4px 0 0 4px}
-.grafPilha>div:last-child{border-radius:0 4px 4px 0}
-.grafPilha>div:only-child{border-radius:4px}
+.grafPilha{display:flex;gap:2px;height:16px;margin-bottom:14px}
+.grafPilha>div:first-child{border-radius:6px 0 0 6px}
+.grafPilha>div:last-child{border-radius:0 6px 6px 0}
+.grafPilha>div:only-child{border-radius:6px}
 
 @media(max-width:1100px){
   /* Abaixo disto a coluna fixa espreme o conteúdo: as tarefas viram uma

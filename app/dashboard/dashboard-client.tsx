@@ -1901,7 +1901,8 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       </nav>
 
       <div className="financeConteudo">
-      {tarefa==="visao-geral"&&<VisaoGeral
+      {tarefa==="visao-geral"&&<>
+      <VisaoGeral
         temAlgumaConfiguracao={convenioValores.length>0}
         temAlgumMovimento={financeiro.length>0||despesas.length>0||(producaoDaReceita?.length??0)>0}
         pendingPatients={pendingPatients.length}
@@ -1916,7 +1917,18 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         onConfigurarValores={openPriceConfig}
         mascara={mascara}
         money={money}
-      />}
+      />
+      {/* OS GRÁFICOS FICAVAM ATRÁS DE TRÊS CLIQUES: Visão geral não é o
+          tarefa "graficos" — era preciso abrir "Relatórios e fechamento" e
+          escolher "Gráficos" para ver qualquer coisa visual. Quem abria o
+          Financeiro só via texto. A mesma condição de VisaoGeral (primeira
+          vez vs. já tem algo) decide se os cartões aparecem aqui: sem
+          nenhum convênio configurado e nenhum movimento, cinco cartões
+          "sem dados nesta competência" empilhados abaixo do convite de
+          configuração seriam ruído, não gráfico. */}
+      {(convenioValores.length>0||financeiro.length>0||despesas.length>0||(producaoDaReceita?.length??0)>0)&&
+        <GraficosFinanceiro receitas={receitas} pagamentos={pagamentos} periodo={period}/>}
+      </>}
       {tarefa==="lancamentos"&&<>
     {pendingPatients.length>0&&<PainelRecolhivel chave="fin-aguardando" titulo="Atendimentos aguardando lançamento" legenda="vindos automaticamente da recepção e agenda">{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</PainelRecolhivel>}
     {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><PainelRecolhivel className="financeGroup" key={convenio} chave={`fin-grupo-${convenio}`} classeCabecalho="financeGroupHead" titulo={convenio} legenda={`${items.length} atendimento(s)`} extra={<b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b>}>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
