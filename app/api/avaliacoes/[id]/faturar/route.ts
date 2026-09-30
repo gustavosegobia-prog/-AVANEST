@@ -31,11 +31,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const { data: actor } = await supabase
     .from("perfis")
-    .select("id,institution_id,role,status")
+    .select("id,institution_id,role,status,permissoes")
     .eq("id", user.id)
     .single();
 
-  if (!actor || actor.status !== "ativo" || !["medico", "admin", "owner"].includes(actor.role)) {
+  // Médico como área extra conclui avaliação (202609300009); sem aceitá-lo
+  // aqui, a avaliação concluía e o lançamento do Financeiro não nascia.
+  const extras: string[] = Array.isArray(actor?.permissoes) ? actor.permissoes : [];
+  const fazAvaliacao = Boolean(actor)
+    && (["medico", "admin", "owner"].includes(actor!.role) || extras.includes("medico") || extras.includes("todos"));
+  if (!actor || actor.status !== "ativo" || !fazAvaliacao) {
     return NextResponse.json({ error: "Perfil sem permissão para concluir avaliações." }, { status: 403 });
   }
 

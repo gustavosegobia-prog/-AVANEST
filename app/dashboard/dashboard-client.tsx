@@ -105,7 +105,10 @@ export const ROLE_LABELS: Record<string, string> = {
  * Administrador e proprietário não aparecem com caixas para marcar: eles já
  * enxergam tudo, e marcar áreas para quem já tem todas só confundiria.
  */
-export const AREAS_EXTRAS = ["recepcao", "medico", "financeiro", "admin"] as const;
+// "Administrador" saiu (202609300009): poder de administrador é o papel, com a
+// trava própria dele, e não uma caixa a mais — o banco também deixou de
+// aceitá-la. As três que ficam valem no banco de verdade.
+export const AREAS_EXTRAS = ["recepcao", "medico", "financeiro"] as const;
 /** Como cada papel se chama na tela. "Anestesiologista", e não "Médico". */
 export const ROTULO_DO_PAPEL: Record<string, string> = {
   medico: "Anestesiologista", recepcao: "Recepção",
