@@ -206,7 +206,7 @@ type Financeiro = { id:string; institution_id:string; patient_id:string; avaliac
 type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string; referencia:string|null; paid_at:string };
 type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; cor_escala?:number|null; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
-type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
+type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null; observacoes:string|null };
 type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string;
   /** Preço zero por DECISÃO (SUS/cortesia) — e não por ninguém ter preenchido. Só importa quando `valor` é 0. */
   gratuito:boolean };
@@ -1439,6 +1439,17 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const [novoConvenio,setNovoConvenio]=useState("");
   // Qual lançamento está com a confirmação de exclusão aberta. Um de cada vez.
   const [lancamentoAExcluir,setLancamentoAExcluir]=useState("");
+  /**
+   * O formulário de reabertura está aberto?, e o motivo digitado nele.
+   *
+   * Reabrir pede motivo por escrito — é a diferença entre "desfazer um
+   * clique" e "explicar por que um mês fechado precisa mudar", que é o que
+   * está de fato acontecendo. O texto fica na tela até ser mandado, e não
+   * como um `prompt()` do navegador: `prompt` não tem como crescer para uma
+   * frase de verdade, e some se a pessoa mudar de aba no meio.
+   */
+  const [reabrindo,setReabrindo]=useState(false);
+  const [motivoReabertura,setMotivoReabertura]=useState("");
   const currentMonth=mesAtual();
   const [period,setPeriod]=useState(currentMonth);
   // Qual tarefa está aberta na coluna da esquerda. Uma de cada vez: a tela
@@ -1739,6 +1750,17 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     });
     setBusy(""); if(error)setMessage(`Não foi possível registrar: ${error.message}`);else{setValues(v=>({...v,[item.id]:""}));setMessage("Pagamento registrado.");onRefresh()}
   }
+  /**
+   * Confirmar conferência FECHA o período — não só marca como revisado.
+   *
+   * Até aqui, "Confirmar conferência" gravava `financeiro_periodos.status`
+   * e mais nada: nenhum lançamento daquele mês ficava protegido. As funções
+   * que registram pagamento, estornam e excluem já conferiam
+   * `fechado_at is not null` antes de mexer — a trava existia, só nunca era
+   * ligada, porque nada nunca escrevia essa coluna. A função do banco foi
+   * corrigida (202609300002_fechamento_de_verdade.sql) para propagar o
+   * fechamento a cada lançamento do período; esta chamada não mudou.
+   */
   async function confirmPeriod(){
     if(periodItems.some(item=>!item.nota_fiscal&&item.status!=="cancelado")){
       setMessage("Ainda há atendimentos sem nota fiscal. Complete ou cancele antes de conferir.");
@@ -1747,8 +1769,27 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     setBusy("period");setMessage("");
     const {error}=await createClient().rpc("conferir_periodo_financeiro",{p_periodo:period});
     setBusy("");
-    if(error)setMessage(`Não foi possível conferir o período: ${error.message}`);
-    else{setMessage("Período conferido e registrado na auditoria.");onRefresh()}
+    if(error)setMessage(`Não foi possível fechar o período: ${error.message}`);
+    else{setMessage("Período fechado. Os lançamentos deste mês ficaram protegidos contra alteração.");onRefresh()}
+  }
+  /**
+   * Reabrir — só quem administra, e só com motivo.
+   *
+   * O motivo não é burocracia: é o que faz "por que este mês fechado
+   * mudou de novo" uma pergunta respondida na hora, em vez de uma
+   * investigação meses depois. Fica gravado na auditoria e em
+   * `financeiro_periodos.observacoes`.
+   */
+  async function reabrirPeriodo(){
+    const motivo=motivoReabertura.trim();
+    if(motivo.length<5){setMessage("Escreva o motivo da reabertura — pelo menos uma frase curta.");return}
+    setBusy("period");setMessage("");
+    const {error}=await createClient().rpc("reabrir_periodo_financeiro",{p_periodo:period,p_motivo:motivo});
+    setBusy("");
+    if(error){setMessage(`Não foi possível reabrir: ${error.message}`);return}
+    setReabrindo(false);setMotivoReabertura("");
+    setMessage("Período reaberto. Ele volta a exigir uma conferência nova antes de fechar de novo.");
+    onRefresh();
   }
   async function reprogramNote(item:Financeiro){
     const due=somarDias(item.nota_vencimento_at||todayIso,15);
@@ -2247,7 +2288,42 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         e nota fiscal não têm equivalente na produção ainda), e estender os
         dois para a produção sem esses campos existirem lá seria inventar dado
         que não há. */}
-    <PainelRecolhivel className="closingPanel" chave="fin-fechamento" titulo={<><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</>} extra={<span className={`statusChip ${periodState?.status==="conferido"?"present":"waiting"}`}>{periodState?.status?.toUpperCase()||"EM PREPARAÇÃO"}</span>}><div className="closingMetrics"><MoneySmall value={receitaTotal.valor} label="Total cobrado" oculto={oculto}/><MoneySmall value={receitaTotal.recebido} label="Recebido" tone="green" oculto={oculto}/><MoneySmall value={receitaTotal.aReceber} label="Pendente" tone="amber" oculto={oculto}/><MoneySmall value={glosasDe(receitasDoMes)} label="Glosas" tone="red" oculto={oculto}/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados (consultas)" tone="blue" oculto={oculto}/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio (consultas)" oculto={oculto}/></div><p className="financeNota">Total, recebido e pendente somam consultas e produção. Repasses e ticket médio são só de consultas — o repasse e a nota fiscal ainda não existem para produção neste sistema.</p><div className="closingFooter"><span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes da conferência.</span><button className="primaryClinical compact" disabled={busy==="period"||periodState?.status==="conferido"} onClick={confirmPeriod}>{periodState?.status==="conferido"?"Período conferido":"Confirmar conferência"}</button></div></PainelRecolhivel>
+    {/* O SELO AGORA DIZ "FECHADO", e não mais "CONFERIDO" — porque é isso
+        que passou a acontecer no mesmo clique (ver conferir_periodo_financeiro
+        em 202609300002_fechamento_de_verdade.sql). "Conferido" sozinho não
+        protegia nenhum lançamento; "fechado" protege, de verdade, a partir
+        de agora. */}
+    <PainelRecolhivel className="closingPanel" chave="fin-fechamento" titulo={<><Icone nome="cadeado"/> Fechamento do período — {period.split("-").reverse().join("/")}</>} extra={<span className={`statusChip ${periodState?.status==="fechado"?"present":"waiting"}`}>{periodState?.status==="fechado"?"FECHADO":"EM PREPARAÇÃO"}</span>}><div className="closingMetrics"><MoneySmall value={receitaTotal.valor} label="Total cobrado" oculto={oculto}/><MoneySmall value={receitaTotal.recebido} label="Recebido" tone="green" oculto={oculto}/><MoneySmall value={receitaTotal.aReceber} label="Pendente" tone="amber" oculto={oculto}/><MoneySmall value={glosasDe(receitasDoMes)} label="Glosas" tone="red" oculto={oculto}/><MoneySmall value={periodItems.reduce((s,i)=>s+(i.repasse_status==="pago"?Number(i.repasse_valor):0),0)} label="Repasses realizados (consultas)" tone="blue" oculto={oculto}/><MoneySmall value={periodItems.length?total/periodItems.length:0} label="Ticket médio (consultas)" oculto={oculto}/></div><p className="financeNota">Total, recebido e pendente somam consultas e produção. Repasses e ticket médio são só de consultas — o repasse e a nota fiscal ainda não existem para produção neste sistema.</p>
+      {/* QUEM VÊ O QUE FICOU FECHADO, e o que passa a ser possível fazer.
+          Fechado: o rodapé de sempre some, e no lugar entra o aviso do que a
+          trava significa — período fechado recusa registrar, estornar e
+          excluir lançamento, com a mesma frase nas três funções. Só
+          admin/owner tem o botão de reabrir: fechar é revisão, reabrir é
+          desfazer uma revisão já assinada, e a régua sobe. */}
+      {periodState?.status==="fechado" ? <>
+        <div className="closingFooter closingFechado">
+          <span><Icone nome="cadeado" tamanho={15}/> Este período está fechado. Registrar pagamento, estornar ou excluir um lançamento daqui não é mais permitido.</span>
+          {podeExcluirLancamento&&!reabrindo&&
+            <button className="outlineClinical compact" disabled={busy==="period"} onClick={()=>setReabrindo(true)}>Reabrir período</button>}
+        </div>
+        {podeExcluirLancamento&&reabrindo&&<div className="reabrirForm">
+          <label>
+            <span>Por que este período precisa ser reaberto?</span>
+            <textarea value={motivoReabertura} onChange={e=>setMotivoReabertura(e.target.value)}
+              placeholder="Ex.: nota fiscal chegou com valor errado, é preciso corrigir antes de refechar." rows={2}/>
+          </label>
+          <div className="reabrirFormAcoes">
+            <button className="outlineClinical" disabled={busy==="period"}
+              onClick={()=>{setReabrindo(false);setMotivoReabertura("")}}>Cancelar</button>
+            <button className="primaryClinical compact" disabled={busy==="period"||motivoReabertura.trim().length<5}
+              onClick={reabrirPeriodo}>{busy==="period"?"Reabrindo...":"Reabrir período"}</button>
+          </div>
+        </div>}
+      </> : <div className="closingFooter">
+        <span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes de fechar.</span>
+        <button className="primaryClinical compact" disabled={busy==="period"} onClick={confirmPeriod}>{busy==="period"?"Fechando...":"Confirmar conferência"}</button>
+      </div>}
+    </PainelRecolhivel>
       </>}
       {tarefa==="extrato"&&<>
     {/* O extrato responde "quando e como entrou cada real" — antes isso era
