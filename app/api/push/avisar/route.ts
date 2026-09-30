@@ -10,6 +10,7 @@ import { destinoDoLembrete } from "@/lib/lembrete-de-plantao";
 import { aceita, comPadrao, comoTocar } from "@/lib/preferencias-de-aviso";
 import { enviarEmail, emailConfigurado, enderecoValido } from "@/lib/email";
 import { escalaPublicadaEmail, type PlantaoDoEmail } from "@/lib/email-escala";
+import { recusaDoAvisoDePlantao, recusaDoAvisoDeTroca } from "@/lib/aviso-autorizado";
 
 // Toca o telefone de quem precisa saber.
 //
@@ -101,12 +102,16 @@ export async function POST(request: NextRequest) {
     if (!id) return NextResponse.json({ error: "Falta a troca." }, { status: 400 });
     const { data: troca } = await supabase
       .from("trocas_plantao")
-      .select("id, plantao_id, solicitante_id, destinatario_id, status, mensagem")
+      .select("id, plantao_id, solicitante_id, destinatario_id, status, mensagem, respondido_por")
       .eq("id", id).maybeSingle();
     // Nulo aqui é o RLS dizendo que esta pessoa não vê esta troca. A resposta é
     // a mesma de "não existe", de propósito: distinguir as duas confirmaria a
     // existência de uma troca de outra organização.
     if (!troca) return NextResponse.json({ error: "Troca não encontrada." }, { status: 404 });
+    // O aviso sai em nome de quem pede. Só sai de quem pediu a troca, ou de
+    // quem a respondeu — ver lib/aviso-autorizado.
+    const recusaTroca = recusaDoAvisoDeTroca(tipo, troca, euPerfil.id);
+    if (recusaTroca) return NextResponse.json({ error: recusaTroca }, { status: 403 });
 
     // O local do plantão vem de dois lugares: `local_texto`, digitado à mão, ou
     // `local_id`, apontando para o cadastro. A escala aceita os dois, e o
@@ -298,6 +303,11 @@ export async function POST(request: NextRequest) {
     if (!plantao.perfil_id || plantao.perfil_id === euPerfil.id) {
       return NextResponse.json({ ok: true, enviadas: 0, motivo: "sem-alvo" });
     }
+    // Plantão de colega: só quem monta a escala mexe nele, e "cancelado" só
+    // sai se ele está cancelado de fato — ver lib/aviso-autorizado.
+    const { data: podeMontar } = await supabase.rpc("pode_montar_escala");
+    const recusaPlantao = recusaDoAvisoDePlantao(tipo, plantao, podeMontar === true);
+    if (recusaPlantao) return NextResponse.json({ error: recusaPlantao }, { status: 403 });
 
     let ondeFica = plantao.local_texto ?? "";
     if (!ondeFica && plantao.local_id) {
