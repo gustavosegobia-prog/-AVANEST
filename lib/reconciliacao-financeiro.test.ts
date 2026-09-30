@@ -124,14 +124,17 @@ test("convênio ativo com preço zero avisa \"preço pendente\", não \"ativo\""
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const i = tela.indexOf("function ConvenioValoresPanel");
   assert.notEqual(i, -1, "não achei o painel de valores por convênio");
-  const painel = tela.slice(i, i + 5000);
-  assert.match(painel, /semPreco=item\.ativo&&Number\(item\.valor\)===0/,
+  const painel = tela.slice(i, i + 6000);
+  // A regra ganhou um terceiro caso — gratuito, por decisão, que NÃO conta
+  // como pendente — mas o núcleo continua o mesmo: zero é suspeito até
+  // provar o contrário.
+  assert.match(painel, /const semPreco=item\.ativo&&zerado&&!item\.gratuito;/,
     "sumiu a regra que distingue preço pendente de preço zero por decisão");
   assert.match(painel, /"PREÇO PENDENTE"/, "sumiu o selo de preço pendente");
-  // A ausência de um quarto estado ("gratuidade") é intencional e documentada
-  // — marcar isso pede um campo novo no banco, decisão que não é de código.
-  assert.match(painel, /gratuidade/i,
-    "sumiu a nota explicando por que \"gratuidade\" ainda não é um estado à parte");
+  // O quarto estado chegou: gratuito por decisão (SUS/cortesia), distinto de
+  // "ninguém preencheu ainda" — migração 202609300001_convenio_gratuito.sql.
+  assert.match(painel, /"GRATUITO"/, "sumiu o selo de convênio gratuito");
+  assert.match(painel, /toggleGratuito/, "sumiu a ação de marcar/desmarcar gratuito");
 });
 
 test("criar lançamento sem preço configurado avisa, e não finge que está tudo certo", () => {
@@ -141,8 +144,10 @@ test("criar lançamento sem preço configurado avisa, e não finge que está tud
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const i = tela.indexOf("async function createBilling");
   assert.notEqual(i, -1, "não achei createBilling");
-  const funcao = tela.slice(i, i + 1700);
-  assert.match(funcao, /semPreco=!price\|\|Number\(price\.valor\)===0/,
+  const funcao = tela.slice(i, i + 2000);
+  // Preço zero DE PROPÓSITO (gratuito) não dispara o aviso — só a ausência
+  // de decisão dispara.
+  assert.match(funcao, /semPreco=!price\|\|\(Number\(price\.valor\)===0&&!price\.gratuito\)/,
     "createBilling deixou de detectar a ausência de preço");
   assert.match(funcao, /Lançamento criado sem preço/,
     "sumiu o aviso de lançamento sem preço");

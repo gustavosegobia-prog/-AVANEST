@@ -207,7 +207,9 @@ type Pagamento = { id:string; atendimento_id:string; valor:number; metodo:string
 type PerfilGerenciado = { id:string; institution_id:string; nome:string; email:string|null; role:string; status:string; crm:string|null; rqe:string|null; permissoes:string[]|null; sem_acesso?:boolean; na_escala?:boolean; escalista?:boolean; cor_escala?:number|null; created_at:string; updated_at:string };
 type Auditoria = { id:string; actor_id:string|null; entidade:string; entidade_id:string|null; acao:string; detalhes:Record<string,unknown>; created_at:string };
 type Periodo = { id:string; periodo:string; status:string; conferido_at:string|null; fechado_at:string|null };
-type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string };
+type ConvenioValor = { id:string; institution_id:string; convenio:string; procedimento:string|null; hospital:string|null; valor:number; repasse_percentual:number|null; ativo:boolean; created_at:string; updated_at:string;
+  /** Preço zero por DECISÃO (SUS/cortesia) — e não por ninguém ter preenchido. Só importa quando `valor` é 0. */
+  gratuito:boolean };
 export type DashboardView = "medico" | "plantoes" | "recepcao" | "financeiro" | "admin";
 
 // A lista de convênios é a mesma no cadastro do paciente e no financeiro:
@@ -1552,7 +1554,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // telas precisam da mesma resposta: o painel de valores (que já a usava) e
   // a fila de "Atenção hoje" da Visão geral. Uma cópia da conta em cada lugar
   // é como as duas comeriam divergir — a mesma lição de `glosasDe`.
-  const convenioPendentes=convenioValores.filter(item=>item.ativo&&Number(item.valor)===0).length;
+  const convenioPendentes=convenioValores.filter(item=>item.ativo&&Number(item.valor)===0&&!item.gratuito).length;
   const todayIso=hoje();
   const noteAlerts=financeiro.filter(item=>{
     if(!item.nota_fiscal||Number(item.recebido)>=Number(item.valor)||item.status==="cancelado") return false;
@@ -1606,7 +1608,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     // pessoa anotaria num papel e lançaria depois, que é exatamente o hábito
     // que este sistema existe para substituir. O que muda é o aviso: antes o
     // lançamento nascia em R$ 0,00 sem ninguém saber que faltou preço.
-    const semPreco=!price||Number(price.valor)===0;
+    // Preço zero DE PROPÓSITO (SUS/cortesia) não é "sem preço" — é a resposta
+    // certa, só que zero. O aviso é para o outro caso: ninguém preencheu ainda.
+    const semPreco=!price||(Number(price.valor)===0&&!price.gratuito);
     const {error}=await createClient().from("financeiro_atendimentos").insert({
       institution_id:perfil.institution_id,patient_id:patient.id,avaliacao_id:evaluation?.id??null,
       convenio:patient.convenio||"Particular",hospital:patient.hospital||null,valor:Number(price?.valor||0),repasse_valor:price?.repasse_percentual?Number(price.valor)*Number(price.repasse_percentual)/100:0,status:"aguardando",
@@ -1667,7 +1671,11 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       const amount=parseMoney(priceValues[convenio]||"0");
       if(!Number.isFinite(amount)||amount<0){setBusy("");setMessage(`Informe um valor válido para ${convenio}.`);return}
       const rule=convenioValores.find(item=>item.convenio===convenio&&!item.procedimento&&!item.hospital);
-      const payload={institution_id:perfil.institution_id,convenio,procedimento:null,hospital:null,valor:amount,repasse_percentual:Number(rule?.repasse_percentual||0),ativo:true,updated_at:new Date().toISOString()};
+      // Digitou um valor de verdade aqui: gratuidade deixa de fazer sentido, e
+      // some. Digitou zero de novo: preserva o que já estava marcado — este
+      // formulário não pergunta sobre gratuidade, não é ele que decide isso.
+      const gratuito=amount===0&&Boolean(rule?.gratuito);
+      const payload={institution_id:perfil.institution_id,convenio,procedimento:null,hospital:null,valor:amount,repasse_percentual:Number(rule?.repasse_percentual||0),ativo:true,gratuito,updated_at:new Date().toISOString()};
       const result=rule
         ? await client.from("convenio_valores").update(payload).eq("id",rule.id)
         : await client.from("convenio_valores").insert(payload);
@@ -3093,11 +3101,28 @@ function ConvenioValoresPanel({perfil,convenioValores,pendentes,onRefresh}:{perf
     const form=new FormData(event.currentTarget);
     const valor=Number(String(form.get("valor")||"").replace(",","."));
     if(!String(form.get("convenio")||"").trim()||!Number.isFinite(valor)||valor<0){setBusy("");setMessage("Informe convênio e um valor válido.");return}
-    const {error}=await createClient().from("convenio_valores").insert({institution_id:perfil.institution_id,convenio:String(form.get("convenio")).trim(),procedimento:String(form.get("procedimento")||"").trim()||null,hospital:String(form.get("hospital")||"").trim()||null,valor,repasse_percentual:Number(String(form.get("repasse")||""))||null,ativo:true});
+    // O checkbox só importa quando o valor digitado é zero — marcar "gratuito"
+    // com um preço real cadastrado seria uma contradição que a tela aceitaria
+    // calada. Fora desse caso, grava sempre `false`: gratuidade não é o
+    // padrão, é exceção declarada.
+    const gratuito=valor===0&&form.get("gratuito")==="on";
+    const {error}=await createClient().from("convenio_valores").insert({institution_id:perfil.institution_id,convenio:String(form.get("convenio")).trim(),procedimento:String(form.get("procedimento")||"").trim()||null,hospital:String(form.get("hospital")||"").trim()||null,valor,repasse_percentual:Number(String(form.get("repasse")||""))||null,ativo:true,gratuito});
     setBusy("");if(error)setMessage(`Não foi possível salvar o valor: ${error.message}`);else{setMessage("Valor do convênio salvo. Os próximos lançamentos usarão esta referência.");event.currentTarget.reset();onRefresh()}
   }
   async function toggleConvenio(item:ConvenioValor){
     setBusy(item.id);const {error}=await createClient().from("convenio_valores").update({ativo:!item.ativo,updated_at:new Date().toISOString()}).eq("id",item.id);setBusy("");if(error)setMessage(`Não foi possível atualizar: ${error.message}`);else onRefresh();
+  }
+  /**
+   * "Este R$ 0,00 é decisão, não esquecimento" — e a volta também.
+   *
+   * Fica na própria linha, ao lado do selo, porque é ali que a dúvida
+   * aparece: alguém olha "PREÇO PENDENTE" e sabe, de cabeça, que aquele
+   * convênio É gratuito mesmo — não falta preencher nada, falta dizer isso ao
+   * sistema. Só aparece quando `valor` é zero: marcar gratuidade num convênio
+   * que cobra R$ 380,00 não faria sentido nenhum.
+   */
+  async function toggleGratuito(item:ConvenioValor){
+    setBusy(item.id);const {error}=await createClient().from("convenio_valores").update({gratuito:!item.gratuito,updated_at:new Date().toISOString()}).eq("id",item.id);setBusy("");if(error)setMessage(`Não foi possível atualizar: ${error.message}`);else onRefresh();
   }
 
   return <>
@@ -3116,22 +3141,39 @@ function ConvenioValoresPanel({perfil,convenioValores,pendentes,onRefresh}:{perf
         quer dizer atendimento gratuito, quer dizer que ninguém preencheu o preço ainda. Lançamentos criados
         enquanto isso ficam com o mesmo R$ 0,00, e é isso que o selo &quot;Preço pendente&quot; abaixo está avisando.
       </p>}
-      {podeEditar&&<form className="convenioForm" onSubmit={saveConvenio}><label><span>Convênio *</span><input name="convenio" required placeholder="Ex.: Unimed"/></label><label><span>Procedimento</span><input name="procedimento" placeholder="Opcional"/></label><label><span>Hospital</span><input name="hospital" placeholder="Opcional"/></label><label><span>Valor R$ *</span><input name="valor" inputMode="decimal" required placeholder="0,00"/></label><label><span>Repasse %</span><input name="repasse" inputMode="decimal" placeholder="Opcional"/></label><button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando...":"Salvar referência"}</button></form>}
-      {/* TRÊS ESTADOS, NÃO DOIS. Antes era só "ATIVO" (verde) ou "INATIVO"
-          (cinza) — e um convênio nunca precificado usava o mesmo verde de
-          confiança de um que cobra R$ 380,00 de verdade. "Preço pendente"
-          (âmbar) é o terceiro: ativo, mas com R$ 0,00 que ninguém confirmou.
-          NÃO EXISTE UM QUARTO ESTADO "gratuidade" ainda — marcar um convênio
-          como deliberadamente gratuito (SUS/cortesia) pede um campo novo no
-          banco, e decidir isso sozinho numa tabela de dinheiro sem confirmar
-          com quem usa o sistema é o tipo de silêncio que este trabalho
-          existe para evitar. Até lá, R$ 0,00 ativo é sempre tratado como
-          pendente — a leitura mais segura, porque supor "de propósito" e
-          estar errado é o que gera atendimento cobrado a menos sem ninguém
-          perceber. */}
+      {podeEditar&&<form className="convenioForm" onSubmit={saveConvenio}><label><span>Convênio *</span><input name="convenio" required placeholder="Ex.: Unimed"/></label><label><span>Procedimento</span><input name="procedimento" placeholder="Opcional"/></label><label><span>Hospital</span><input name="hospital" placeholder="Opcional"/></label><label><span>Valor R$ *</span><input name="valor" inputMode="decimal" required placeholder="0,00"/></label><label><span>Repasse %</span><input name="repasse" inputMode="decimal" placeholder="Opcional"/></label>
+        {/* Só faz sentido junto de um valor 0 — mas não trava o campo por
+            isso: quem está digitando o valor pode marcar a caixa ANTES de
+            terminar de escrever "0,00", e travar por um estado passageiro do
+            próprio formulário é o tipo de regra que confunde mais do que
+            ajuda. `saveConvenio` é quem decide se a marca vale, conferindo o
+            valor no momento de gravar. */}
+        <label className="convenioGratuitoCampo"><input type="checkbox" name="gratuito"/><span>Gratuito (valor R$ 0,00 de propósito)</span></label>
+        <button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando...":"Salvar referência"}</button></form>}
+      {/* QUATRO ESTADOS, NÃO TRÊS. "Preço pendente" (âmbar) resolveu a
+          confusão entre "ninguém preencheu" e "cobra de verdade" — mas ainda
+          faltava o terceiro caso real: um convênio que É gratuito por
+          decisão (SUS que não cobra do serviço, cortesia combinada). Sem ele,
+          quem tivesse um convênio assim via o mesmo aviso amber de "falta
+          preencher" para sempre, porque não havia como dizer ao sistema "não
+          falta, é assim mesmo". `gratuito` (migração
+          202609300001_convenio_gratuito.sql) é essa resposta. */}
       {convenioValores.length?convenioValores.map(item=>{
-        const semPreco=item.ativo&&Number(item.valor)===0;
-        return <div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${!item.ativo?"paused":semPreco?"atencao":"present"}`}>{!item.ativo?"INATIVO":semPreco?"PREÇO PENDENTE":"ATIVO"}</span>{podeEditar?<button className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>toggleConvenio(item)}>{item.ativo?"Desativar":"Ativar"}</button>:<span/>}</div>;
+        const zerado=Number(item.valor)===0;
+        const semPreco=item.ativo&&zerado&&!item.gratuito;
+        const gratuito=item.ativo&&zerado&&item.gratuito;
+        const rotulo=!item.ativo?"INATIVO":semPreco?"PREÇO PENDENTE":gratuito?"GRATUITO":"ATIVO";
+        const tom=!item.ativo?"paused":semPreco?"atencao":gratuito?"paused":"present";
+        return <div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${tom}`}>{rotulo}</span>{podeEditar?<span className="convenioRowAcoes">
+          {/* A VOLTA MORA AO LADO, e não escondida num menu: quem marcou
+              "gratuito" sem querer — ou o convênio deixou de ser cortesia —
+              precisa desfazer com a mesma facilidade que marcou. Só aparece
+              quando o valor é zero: alternar gratuidade num convênio que
+              cobra R$ 380,00 não muda nada visível, e o botão ali seria
+              confuso, não uma opção real. */}
+          {zerado&&<button className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>toggleGratuito(item)}>{item.gratuito?"Não é gratuito":"Marcar como gratuito"}</button>}
+          <button className="outlineClinical compacto" disabled={busy===item.id} onClick={()=>toggleConvenio(item)}>{item.ativo?"Desativar":"Ativar"}</button>
+        </span>:<span/>}</div>;
       }):<div className="emptyClinical compactEmpty">Nenhuma referência de valor cadastrada ainda.</div>}
     </PainelRecolhivel>
   </>;

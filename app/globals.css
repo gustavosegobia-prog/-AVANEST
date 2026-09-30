@@ -901,9 +901,18 @@ button:disabled{cursor:not-allowed}
   .historyRow{padding:14px}.historyRow time{display:none}
 }
 
-.billingPlanGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px 25px}.billingPlan{border:1px solid #d9e4ec;border-radius:12px;padding:15px}.billingPlan div:first-child{display:flex;justify-content:space-between;gap:10px}.billingPlan span,.billingPlan small{color:var(--cor-tinta-fraca);font-size:12px}.billingBar{height:9px;border-radius:99px;background:#e6edf3;overflow:hidden;margin:12px 0 8px}.billingBar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cor-marca),#32c6b2)}.noteAlertRow,.convenioRow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:14px;padding:15px 25px;border-bottom:1px solid var(--cor-borda)}.noteAlertRow small,.convenioRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.convenioForm{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr)) auto;gap:12px;padding:18px 25px;border-bottom:1px solid var(--cor-borda)}.convenioForm label{display:grid;gap:6px;color:var(--cor-tinta-fraca);font-size:12px;font-weight:750}.convenioForm input{height:44px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 12px;font:inherit}.convenioForm .primaryClinical{align-self:end;padding:12px 16px;box-shadow:none}
-@media(max-width:900px){.billingPlanGrid{grid-template-columns:1fr 1fr}.convenioForm{grid-template-columns:1fr 1fr}.noteAlertRow,.convenioRow{grid-template-columns:1fr auto}}
-@media(max-width:560px){.billingPlanGrid,.convenioForm{grid-template-columns:1fr}.noteAlertRow,.convenioRow{padding:14px}.noteAlertRow button,.convenioRow button{width:100%}}
+.billingPlanGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px 25px}.billingPlan{border:1px solid #d9e4ec;border-radius:12px;padding:15px}.billingPlan div:first-child{display:flex;justify-content:space-between;gap:10px}.billingPlan span,.billingPlan small{color:var(--cor-tinta-fraca);font-size:12px}.billingBar{height:9px;border-radius:99px;background:#e6edf3;overflow:hidden;margin:12px 0 8px}.billingBar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cor-marca),#32c6b2)}.noteAlertRow,.convenioRow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:14px;padding:15px 25px;border-bottom:1px solid var(--cor-borda)}.noteAlertRow small,.convenioRow small{display:block;color:var(--cor-tinta-fraca);margin-top:4px}.convenioForm{display:flex;flex-wrap:wrap;align-items:end;gap:12px;padding:18px 25px;border-bottom:1px solid var(--cor-borda)}.convenioForm label{display:grid;gap:6px;color:var(--cor-tinta-fraca);font-size:12px;font-weight:750;flex:1 1 120px;min-width:120px}.convenioForm input{height:44px;border:1px solid var(--cor-borda);background:var(--cor-superficie-suave);border-radius:9px;padding:0 12px;font:inherit;width:100%;box-sizing:border-box}.convenioForm .primaryClinical{padding:12px 16px;box-shadow:none;flex:0 0 auto}
+/* O checkbox não estica como os outros campos — teria espaço demais sobrando
+   ao lado de "Gratuito". `flex:0 0 auto` mantém a largura natural, e ele
+   quebra de linha junto com o botão quando o formulário aperta, em vez de
+   ser espremido até ficar ilegível. */
+.convenioGratuitoCampo{display:flex!important;flex-direction:row!important;align-items:center;gap:8px;height:44px;white-space:nowrap;flex:0 0 auto!important;min-width:0!important}
+.convenioGratuitoCampo input{height:18px;width:18px;flex:none}
+.convenioGratuitoCampo span{font-size:12.5px;color:var(--cor-tinta);font-weight:600}
+/* .convenioForm não é mais grid (virou flex-wrap, que já se ajusta sozinho em
+   qualquer largura) — as duas regras abaixo pararam de mexer nele. */
+@media(max-width:900px){.billingPlanGrid{grid-template-columns:1fr 1fr}.noteAlertRow,.convenioRow{grid-template-columns:1fr auto}}
+@media(max-width:560px){.billingPlanGrid{grid-template-columns:1fr}.noteAlertRow,.convenioRow{padding:14px}.noteAlertRow button,.convenioRow button{width:100%}.convenioForm{padding:14px}}
 
 .avnBrand .brandBlue{color:var(--cor-marca-clara)}.avnBrand .brandMidA{background:linear-gradient(90deg,var(--cor-marca-clara) 0%,var(--cor-marca-clara) 48%,#2bc5a8 52%,#2bc5a8 100%);background-clip:text;-webkit-background-clip:text;color:transparent}.avnBrand .brandTeal{color:#2bc5a8}
 
@@ -1711,16 +1720,28 @@ button:disabled{cursor:not-allowed}
    ========================================================================== */
 
 /* Linha de convenio: acao compacta a direita, nao um botao de linha inteira. */
-.convenioRow{display:grid;grid-template-columns:minmax(0,1fr) 120px 100px auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda)}
+.convenioRow{display:grid;grid-template-columns:minmax(0,1fr) 120px 158px auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda)}
 .convenioRow>b{text-align:right;font-variant-numeric:tabular-nums}
+.convenioRowAcoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .outlineClinical.compacto{height:32px;padding:0 var(--esp-3);font-size:13px}
 
 .auditRow{display:grid;grid-template-columns:180px minmax(0,1fr);gap:var(--esp-3);padding:var(--esp-2) var(--esp-5);border-top:1px solid var(--cor-borda);font-size:13px}
 .auditRow time{color:var(--cor-tinta-fraca);font-variant-numeric:tabular-nums}
 
 @media(max-width:760px){
-  .convenioRow{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--esp-2)}
+  /* UMA COLUNA, e não duas. Com duas colunas e quatro filhos (nome, valor,
+     selo, ações) o grid auto-posiciona em pares — nome+valor na linha 1,
+     selo+ações na linha 2 — e cada linha só cresce até a altura do PRIMEIRO
+     item colocado nela. O nome tem endereço de duas ou três linhas
+     (`Todos os procedimentos · Todos os hospitais` quebrando em telas
+     estreitas) e sempre foi o item mais alto — só que, ao lado dele, o
+     valor "R$ 0,00" é curto, e com `align-items:center` herdado o valor
+     ficava centralizado na altura do NOME, flutuando por cima do texto do
+     endereço em vez de abaixo dele. Empilhado, cada item tem a própria
+     linha, do tamanho que precisar, e não tem como um cobrir o outro. */
+  .convenioRow{grid-template-columns:1fr;row-gap:6px;align-items:start}
   .convenioRow>b{text-align:left}
+  .convenioRowAcoes{justify-content:flex-start}
   .auditRow{grid-template-columns:1fr}
 }
 

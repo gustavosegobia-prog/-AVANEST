@@ -95,10 +95,15 @@ test("o contador de convênio sem preço é UMA conta só, não duas", () => {
   // exatamente como o R$ 2.850,00 divergiu da primeira vez (glosasDe).
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const ocorrencias = [...tela.matchAll(
-    /convenioValores\.filter\(item=>item\.ativo&&Number\(item\.valor\)===0\)\.length/g,
+    /convenioValores\.filter\(item=>item\.ativo&&Number\(item\.valor\)===0&&!item\.gratuito\)\.length/g,
   )];
   assert.equal(ocorrencias.length, 1,
     "a contagem de convênio sem preço voltou a existir em mais de um lugar");
+  // E ela precisa excluir gratuito — senão um convênio marcado deliberadamente
+  // como cortesia voltaria a inflar a fila de "Atenção hoje" como se fosse
+  // uma pendência.
+  assert.match(tela, /&&!item\.gratuito\)\.length/,
+    "a contagem de convênio pendente parou de excluir os marcados como gratuito");
   assert.match(tela, /pendentes:number/,
     "ConvenioValoresPanel deixou de receber a contagem por prop");
 });
