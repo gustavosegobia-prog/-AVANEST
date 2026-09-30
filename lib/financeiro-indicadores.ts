@@ -113,9 +113,18 @@ export const saldoDoItem = (item: ItemFinanceiro) =>
 export const emAberto = (item: ItemFinanceiro) =>
   item.status !== "cancelado" && saldoDoItem(item) > 0;
 
+/**
+ * As linhas que compõem o "a receber" — as mesmas que `saldoAReceber` soma.
+ *
+ * Existe separada para o detalhamento do painel: ao clicar no número, a tela
+ * lista exatamente estas linhas. Uma segunda cópia do filtro na tela é como
+ * o total e a lista embaixo dele começariam a discordar.
+ */
+export const itensAReceber = <T extends ItemFinanceiro>(itens: T[]) => itens.filter(emAberto);
+
 /** O total ainda a receber, de todo o histórico. */
 export function saldoAReceber(itens: ItemFinanceiro[]) {
-  return itens.filter(emAberto).reduce((soma, item) => soma + saldoDoItem(item), 0);
+  return itensAReceber(itens).reduce((soma, item) => soma + saldoDoItem(item), 0);
 }
 
 /**
@@ -151,10 +160,12 @@ export const idadeDoItem = (item: ItemFinanceiro, hoje: string) =>
  * "alguém não cumpriu o combinado".
  */
 export function saldoVencido(itens: ItemFinanceiro[], hoje: string) {
-  return itens
-    .filter((item) => emAberto(item) && item.nota_vencimento_at && item.nota_vencimento_at < hoje)
-    .reduce((soma, item) => soma + saldoDoItem(item), 0);
+  return itensVencidos(itens, hoje).reduce((soma, item) => soma + saldoDoItem(item), 0);
 }
+
+/** As linhas que compõem o vencido — ver `itensAReceber`. */
+export const itensVencidos = <T extends ItemFinanceiro>(itens: T[], hoje: string) =>
+  itens.filter((item) => emAberto(item) && item.nota_vencimento_at && item.nota_vencimento_at < hoje);
 
 // ── Envelhecimento (aging) ──────────────────────────────────────────────────
 

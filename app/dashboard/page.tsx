@@ -467,6 +467,9 @@ export default async function DashboardPage({
       conveniosDaOrganizacao={conveniosDaOrganizacao ?? []}
       producaoDaReceita={producaoDaReceita ?? []}
       despesas={despesas ?? []}
+      // O "atualizado em" do Financeiro: o momento em que ESTA leitura do
+      // banco aconteceu. Um router.refresh() refaz a leitura e o carimbo.
+      carregadoEm={new Date().toISOString()}
       initialView={initialView}
       // A chave PÚBLICA do VAPID. Vem do servidor em vez de NEXT_PUBLIC_ para
       // manter uma variável de ambiente só, e porque ela muda de valor no dia

@@ -53,7 +53,7 @@ test("o Financeiro abre em Visão geral, não mais em Lançamentos", () => {
     "o Financeiro voltou a abrir direto em Lançamentos");
 });
 
-test("VisaoGeral não inventa dado — todo item da fila vem de uma prop contada em FinanceView", () => {
+test("VisaoGeral não inventa dado — a fila vem pronta de montarAtencao, com números contados em FinanceView", () => {
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const i = tela.indexOf("function VisaoGeral(");
   assert.notEqual(i, -1, "não achei o componente VisaoGeral");
@@ -66,24 +66,28 @@ test("VisaoGeral não inventa dado — todo item da fila vem de uma prop contada
     "sumiu a distinção entre primeira vez e tudo em dia");
   assert.match(componente, /Comece configurando os valores por convênio/,
     "sumiu o convite de primeira vez");
-  assert.match(componente, /Tudo em dia\. Nenhuma pendência/,
+  assert.match(ler("components/painel-financeiro.tsx"), /Tudo em dia\.<\/strong> Nenhuma pendência/,
     "sumiu a mensagem de fila vazia");
-  // Nenhum número literal (além de zero, no teste de contagem) dentro do
-  // componente: cada item da fila precisa vir de uma prop recebida, não de um
-  // valor chutado dentro do próprio componente.
-  assert.ok(!/fila\.push\(\{[^}]*:\s*\d+/.test(componente),
-    "algum item da fila ganhou um número fixo em vez de vir de uma prop");
+  // A fila não é montada no componente: ele recebe `pendencias` pronto.
+  assert.match(componente, /pendencias:Pendencia\[\];/, "VisaoGeral deixou de receber a fila pronta");
+  assert.doesNotMatch(componente, /fila\.push/, "VisaoGeral voltou a montar a fila por conta própria");
+  assert.match(tela, /const pendencias:Pendencia\[\]=montarAtencao\(\{/,
+    "a fila deixou de vir de montarAtencao");
+  // Nenhum número fixo dentro de um item da fila: cada contagem vem da
+  // entrada, contada em FinanceView.
+  const lib = ler("lib/painel-financeiro.ts");
+  assert.ok(!/fila\.push\(\{[^}]*:\s*\d+/.test(lib),
+    "algum item da fila ganhou um número fixo em vez de vir da entrada");
 });
 
 test("cada item da fila vai para uma aba que existe de verdade", () => {
+  const lib = ler("lib/painel-financeiro.ts");
+  const i = lib.indexOf("export function montarAtencao(");
+  const destinos = [...lib.slice(i).matchAll(/tarefa: "([a-z-]+)"/g)].map((m) => m[1]);
+  assert.ok(destinos.length >= 8, "a fila de Atenção hoje perdeu itens");
   const tela = ler("app/dashboard/dashboard-client.tsx");
-  const i = tela.indexOf("function VisaoGeral(");
-  const fim = tela.indexOf("\nfunction ", i + 10);
-  const componente = tela.slice(i, fim > i ? fim : i + 6000);
-  const destinos = [...componente.matchAll(/tarefa:"([a-z-]+)"/g)].map((m) => m[1]);
-  assert.ok(destinos.length >= 6, "a fila de Atenção hoje perdeu itens");
   for (const destino of destinos) {
-    assert.ok(IDS_DE_SEMPRE.includes(destino) || destino === "visao-geral",
+    assert.ok(IDS_DE_SEMPRE.includes(destino) || tela.includes(`["${destino}",`),
       `a fila manda para "${destino}", que não é uma aba conhecida`);
   }
 });

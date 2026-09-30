@@ -23,27 +23,39 @@ const tela = ler("app/dashboard/dashboard-client.tsx");
 const grafico = ler("components/graficos-financeiro.tsx");
 const css = ler("app/globals.css");
 
+const lib = ler("lib/painel-financeiro.ts");
+const painel = ler("components/painel-financeiro.tsx");
+
 test("o gráfico por convênio agrupa pela chave normalizada, não pelo texto cru", () => {
-  assert.match(grafico, /const chave = chaveDoPagador\(r\.pagador\);/,
+  // A conta saiu do componente para lib/painel-financeiro.ts:recebimentosPorConvenio
+  // (testada em painel-financeiro.test.ts); o gráfico só a desenha.
+  assert.match(grafico, /recebimentosPorConvenio\(receitasDoMes\)/,
+    "o gráfico deixou de usar a conta por pagador da lib");
+  const i = lib.indexOf("export function recebimentosPorConvenio(");
+  const conta = lib.slice(i, lib.indexOf("\n}\n", i));
+  assert.match(conta, /const chave = chaveDoPagador\(r\.pagador\);/,
     "o gráfico voltou a agrupar pelo texto do pagador");
-  assert.match(grafico, /rotulosDePagador\(doMes\.map\(\(r\) => r\.pagador\)\)/,
+  assert.match(conta, /rotulosDePagador\(receitasDoMes\.map\(\(r\) => r\.pagador\)\)/,
     "o gráfico deixou de escolher uma grafia só para cada pagador");
   assert.doesNotMatch(grafico, /const nome = r\.pagador \|\| "Particular";/,
     "voltou o agrupamento pelo nome cru");
 });
 
-test("o aviso de fechamento pendente olha para 'fechado', o estado que a conferência grava", () => {
-  assert.match(tela, /fechamentoPendente=\{Boolean\(receitaTotal\.valor>0&&periodState\?\.status!=="fechado"\)\}/,
-    "o aviso de mês não fechado voltou a comparar com outro estado");
+test("o fechamento olha para 'fechado', o estado que a conferência grava — e mês correndo não é pendência", () => {
+  assert.match(tela, /const estadoFechamento=estadoDoFechamento\(period,hojeIso,periodState\?\.status,receitasDoMes\.length>0\);/,
+    "o estado do fechamento deixou de vir de estadoDoFechamento");
+  assert.match(lib, /if \(status === "fechado"\) return \{ tipo: "fechado" \};/,
+    "o fechamento voltou a comparar com outro estado");
   assert.doesNotMatch(tela, /periodState\?\.status!=="conferido"/,
     "ainda há comparação com o estado 'conferido', que não é mais gravado");
 });
 
-test("o cartão-manchete tem o medidor, com a largura pela fração exata", () => {
-  assert.match(grafico, /className="grafMedidorTrilha"/, "sumiu o medidor do cartão-manchete");
-  assert.match(grafico, /Math\.min\(100, \(dados\.recebido \/ dados\.faturado\) \* 100\)/,
+test("o recebimento da competência tem o medidor, com a largura pela fração exata", () => {
+  assert.match(painel, /className="pfMedidor"/, "sumiu o medidor do recebimento");
+  assert.match(painel, /const fracao = faturado > 0 \? Math\.min\(1, recebido \/ faturado\) : 0;/,
     "o medidor deixou de usar a fração exata (ou de limitar a 100%)");
-  assert.match(grafico, /ainda a receber/, "sumiu a linha do que falta receber");
+  assert.match(painel, /`\$\{valor\(falta\)\} pendente`/, "sumiu a linha do que falta receber");
+  assert.match(painel, /"Nada pendente"/, "sumiu o 'Nada pendente'");
 });
 
 test("marcas seguem a especificação: ponta de 4px, coluna de no máximo 24px, sem brilho", () => {

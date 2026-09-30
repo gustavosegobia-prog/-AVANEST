@@ -35,7 +35,7 @@ test("GraficosFinanceiro aparece dentro de Visão geral", () => {
   assert.match(bloco, /<VisaoGeral/, "VisaoGeral sumiu do bloco de visão geral");
   assert.match(
     bloco,
-    /<GraficosFinanceiro receitas=\{receitas\} pagamentos=\{pagamentos\} periodo=\{period\}\/>/,
+    /<GraficosFinanceiro receitas=\{receitas\} periodo=\{period\} competenciasComRegistro=\{competenciasComRegistro\}/,
     "os gráficos não aparecem mais dentro de Visão geral",
   );
   // GraficosFinanceiro vem DEPOIS de VisaoGeral no bloco — a fila de
@@ -50,7 +50,7 @@ test("os gráficos na Visão geral só aparecem com alguma configuração ou mov
   const bloco = tela.slice(i, fim > i ? fim : i + 2500);
   assert.match(
     bloco,
-    /\(convenioValores\.length>0\|\|financeiro\.length>0\|\|despesas\.length>0\|\|\(producaoDaReceita\?\.length\?\?0\)>0\)&&\s*\n\s*<GraficosFinanceiro/,
+    /\(convenioValores\.length>0\|\|financeiro\.length>0\|\|despesas\.length>0\|\|\(producaoDaReceita\?\.length\?\?0\)>0\)&&<>\s*\n\s*<GraficosFinanceiro/,
     "os gráficos deixaram de checar se há configuração ou movimento antes de aparecer",
   );
 });

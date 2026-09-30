@@ -25,17 +25,23 @@ test("quem entrou depois é: mês fechado, sem trava, não cancelado", () => {
     "os meses fechados deixaram de vir de financeiro_periodos");
 });
 
+const painel = readFileSync(new URL("./painel-financeiro.ts", import.meta.url), "utf8");
+const componentes = readFileSync(new URL("../components/painel-financeiro.tsx", import.meta.url), "utf8");
+
 test("Atenção hoje avisa, um item por mês, e leva ao fechamento daquele mês", () => {
-  const i = tela.indexOf("function VisaoGeral(");
-  const componente = tela.slice(i, tela.indexOf("\nfunction ", i + 10));
-  assert.match(componente, /for\(const \[mes,quantos\] of depoisDoFechamento\) fila\.push\(\{/,
+  // A fila saiu da tela para lib/painel-financeiro.ts:montarAtencao, onde é
+  // testada de verdade (painel-financeiro.test.ts). Aqui fica o fio que liga
+  // o aviso ao mês certo, de ponta a ponta.
+  assert.match(painel, /for \(const \[mes, quantos\] of e\.depoisDoFechamento\) fila\.push\(\{/,
     "sumiu o aviso de lançamento depois do fechamento");
-  assert.match(componente, /tarefa:"fechamento",\s*\n\s*periodo:mes,/,
+  assert.match(painel, /acao: "Revisar o fechamento", tarefa: "fechamento", periodo: mes,/,
     "o aviso deixou de levar ao mês certo");
-  assert.match(componente, /onClick=\{\(\)=>onIr\(item\.tarefa,item\.periodo\)\}/,
-    "o botão Ver deixou de passar o mês");
-  assert.match(tela, /onIr=\{\(tarefa,mes\)=>\{if\(mes\)setPeriod\(mes\);setTarefa\(tarefa\)\}\}/,
+  assert.match(componentes, /onClick=\{\(\) => onIr\(p\.tarefa, p\.periodo\)\}/,
+    "o botão deixou de passar o mês");
+  assert.match(tela, /const irPara=\(tarefa:string,mes\?:string\)=>\{if\(mes\)setPeriod\(mes\);setTarefa\(tarefa\);/,
     "o Financeiro deixou de trocar para o mês do aviso");
+  assert.match(tela, /depoisDoFechamento:Object\.entries\(depoisDoFechamento\.reduce/,
+    "a fila deixou de receber os lançamentos que entraram depois");
 });
 
 const sql = readFileSync(new URL("../supabase/migrations/202609300005_producao_no_fechamento.sql", import.meta.url), "utf8");
@@ -64,8 +70,9 @@ test("a tela compara o retrato com a produção de agora, dentro da janela carre
     "a comparação passou a somar a produção com outro critério que o retrato");
   assert.match(tela, /p\.periodo>=inicioDaJanela/,
     "a comparação voltou a olhar meses fora da janela carregada — daria alarme falso");
-  assert.match(tela, /for\(const \{mes,antes,agora\} of producaoMudou\) fila\.push\(\{/,
+  assert.match(painel, /for \(const \{ mes, antes, agora \} of e\.producaoMudou\) fila\.push\(\{/,
     "sumiu o aviso de produção alterada em Atenção hoje");
+  assert.match(tela, /^    producaoMudou,$/m, "a fila deixou de receber a produção alterada");
   const i = tela.indexOf('chave="fin-fechamento"');
   assert.match(tela.slice(i, i + 5000), /const producao=producaoMudou\.find\(x=>x\.mes===period\);/,
     "o painel de Fechamento deixou de avisar produção alterada");

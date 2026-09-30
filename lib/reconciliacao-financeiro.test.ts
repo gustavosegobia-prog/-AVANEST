@@ -89,8 +89,13 @@ test("os gráficos leem a mesma receita unificada, não uma cópia à parte", ()
   // Forma de recebimento continua só de consulta, DE PROPÓSITO — produção não
   // registra método de pagamento. Isso precisa continuar sendo dito no
   // código, não só lembrado.
-  assert.match(grafico, /CONSULTA-ONLY/,
-    "sumiu a explicação de por que \"Formas de recebimento\" não usa produção");
+  // As formas de recebimento saíram do gráfico e foram para a composição do
+  // "Recebido" (a gaveta que abre ao clicar no número).
+  const painel = ler("components/painel-financeiro.tsx");
+  assert.match(painel, /CONSULTA-ONLY/,
+    "sumiu a explicação de por que as formas de recebimento não usam produção");
+  assert.match(tela, /const ids=new Set\(composicaoAtual\.linhas\.filter\(l=>l\.id\.startsWith\("consulta:"\)\)/,
+    "as formas de recebimento deixaram de vir só dos pagamentos das consultas do total");
 });
 
 test("todo MoneySmall do Financeiro respeita o olho de esconder valores", () => {

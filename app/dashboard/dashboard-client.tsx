@@ -63,10 +63,18 @@ import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import {
-  FAIXAS_DE_IDADE, envelhecimento, glosa, mesAnterior,
+  FAIXAS_DE_IDADE, envelhecimento, glosa, itensAReceber, itensVencidos, mesAnterior,
   prazoMedioPorConvenio, projecaoPorPrazoHistorico, saldoAReceber, saldoVencido,
   totaisDoEnvelhecimento, variacao,
 } from "@/lib/financeiro-indicadores";
+import {
+  composicao, estadoDoFechamento, montarAtencao, proximosVencimentos, situacaoDosAtendimentos,
+  type Pendencia, type TipoDeComposicao,
+} from "@/lib/painel-financeiro";
+import {
+  AreaInferior, AtencaoHoje, ContextoDaCompetencia, DetalheDaComposicao, IndicadoresPrincipais,
+  RecebimentoDaCompetencia, type Indicador,
+} from "@/components/painel-financeiro";
 import {
   deProducao, deConsulta, doMes, glosasDe, porOrigem, porProfissional, somar,
   type ProducaoBruta, type Receita,
@@ -304,8 +312,11 @@ export function DashboardClient({
   avisos = [],
   chavePush = "",
   producaoDaReceita = [], despesas = [],
+  carregadoEm = null,
 }: {
   perfil: Perfil; email?: string; organizacao?: Organizacao | null;
+  /** Quando o servidor leu os dados desta página (ISO). */
+  carregadoEm?: string | null;
   pacientes: Paciente[]; avaliacoes: Avaliacao[]; agendamentos:Agendamento[];
   financeiro:Financeiro[]; pagamentos:Pagamento[]; perfis:PerfilGerenciado[]; auditoria:Auditoria[]; periodos:Periodo[]; convenioValores:ConvenioValor[];
   /** Nome e situação de cada convênio, sem preço — o que a recepção e o médico podem ler (202609300007). */
@@ -1327,7 +1338,7 @@ export function DashboardClient({
             </div>
           </div>
         </div>
-      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()}/>
+      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()} nomeDaOrganizacao={organizacao?.nome??null} carregadoEm={carregadoEm}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin}/>}
 
       {contaAberta&&<div className="patientModalBackdrop" role="presentation">
@@ -1443,7 +1454,9 @@ export function DashboardClient({
   );
 }
 
-function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,producaoDaReceita=[],despesas=[],perfis=[],ehGrupo=false,onRefresh}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];producaoDaReceita?:ProducaoBruta[];despesas?:Despesa[];perfis?:PerfilGerenciado[];ehGrupo?:boolean;onRefresh:()=>void}) {
+function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,producaoDaReceita=[],despesas=[],perfis=[],ehGrupo=false,onRefresh,nomeDaOrganizacao=null,carregadoEm=null}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];producaoDaReceita?:ProducaoBruta[];despesas?:Despesa[];perfis?:PerfilGerenciado[];ehGrupo?:boolean;onRefresh:()=>void;nomeDaOrganizacao?:string|null;
+  /** Quando o servidor leu estes dados (ISO) — o "atualizado em" do cabeçalho. */
+  carregadoEm?:string|null}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const [configOpen,setConfigOpen]=useState(false);
@@ -1475,6 +1488,29 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // saber "o que precisa da minha atenção", não cair direto numa lista de
   // atendimentos que pode nem ter nada. Ver o painel "visao-geral" abaixo.
   const [tarefa,setTarefa]=useState("visao-geral");
+  // Qual número do topo está com a composição aberta (a gaveta lateral).
+  const [composicaoAberta,setComposicaoAberta]=useState<TipoDeComposicao|null>(null);
+  const fecharComposicao=useCallback(()=>setComposicaoAberta(null),[]);
+  // Meses em que o serviço existiu no sistema por outro caminho que não a
+  // receita: esses, sem faturamento, são "R$ 0" — os outros são "sem dados".
+  const competenciasComRegistro=useMemo(()=>new Set([
+    ...periodos.map(p=>p.periodo),
+    ...despesas.map(d=>d.data.slice(0,7)),
+  ]),[periodos,despesas]);
+  // GRUPOS RECOLHÍVEIS no menu do Financeiro. Lembrados por aparelho — é
+  // conveniência de quem usa, não dado do serviço. Lidos depois de montar,
+  // porque o servidor não tem localStorage e o primeiro render precisa bater.
+  const [gruposRecolhidos,setGruposRecolhidos]=useState<Set<string>>(()=>new Set());
+  useEffect(()=>{
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- estado do aparelho, só existe depois de montar
+    try{const salvo:unknown=JSON.parse(localStorage.getItem("avanest_fin_grupos")??"[]");if(Array.isArray(salvo))setGruposRecolhidos(new Set(salvo.filter((x):x is string=>typeof x==="string")))}catch{/* segue tudo aberto */}
+  },[]);
+  const alternarGrupo=(grupo:string)=>setGruposRecolhidos(atual=>{
+    const novo=new Set(atual);
+    if(novo.has(grupo))novo.delete(grupo);else novo.add(grupo);
+    try{localStorage.setItem("avanest_fin_grupos",JSON.stringify([...novo]))}catch{/* só nesta sessão */}
+    return novo;
+  });
   const patientMap=new Map(pacientes.map(p=>[p.id,p]));
   const perfilMap=new Map(perfis.map(p=>[p.id,p]));
   const evaluationMap=new Map<string,Avaliacao>();
@@ -1624,6 +1660,89 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   const prazoRecursoLimite=somarDias(todayIso,7);
   const glosasPrazoVencendo=glosasParaRecurso.filter(item=>
     item.glosa_recurso_prazo&&item.glosa_recurso_prazo<=prazoRecursoLimite);
+
+  // ── O Resumo como painel de gestão ─────────────────────────────────────
+  // Nenhuma conta nova: tudo abaixo recorta os números que já existem acima
+  // (receitaTotal, aReceber, vencido, recebiveis, noteAlerts...) com as
+  // funções de lib/painel-financeiro.ts. Ver o comentário daquele arquivo.
+  const valorVisivel=(n:number)=>mascara(money(n));
+  // Um mês aberto enquanto ainda corre é o normal. Só vira pendência depois
+  // de terminar sem fechar, ou quando está para terminar — ver
+  // `estadoDoFechamento`. "Tem movimento" é ter QUALQUER lançamento, mesmo
+  // de R$ 0,00: mês com lançamento zerado também precisa ser conferido.
+  const estadoFechamento=estadoDoFechamento(period,hojeIso,periodState?.status,receitasDoMes.length>0);
+  const mesPassado=mesAnterior(currentMonth);
+  const fechamentosParaAtencao=[{competencia:period,estado:estadoFechamento}];
+  if(mesPassado!==period) fechamentosParaAtencao.push({
+    competencia:mesPassado,
+    estado:estadoDoFechamento(mesPassado,hojeIso,periodos.find(p=>p.periodo===mesPassado)?.status,doMes(receitas,mesPassado).length>0),
+  });
+  const repassesPendentes=financeiro.filter(i=>Number(i.repasse_valor)>0&&i.repasse_status!=="pago");
+  const pendencias:Pendencia[]=montarAtencao({
+    aguardandoLancamento:pendingPatients.length,
+    conveniosSemPreco:convenioPendentes,
+    lancamentosSemValor:receitasDoMes.filter(r=>r.valor<=0).length,
+    // Só quem pode salvar preço recebe "Configurar preços": a tabela é de
+    // administrador, e para os outros o botão abria um formulário que não salvava.
+    podeConfigurarPrecos:["admin","owner"].includes(perfil.role),
+    notasSemBaixa:{quantidade:noteAlerts.length,saldo:noteAlerts.reduce((s,i)=>s+Math.max(0,Number(i.valor)-Number(i.recebido)),0)},
+    cobrancasAtrasadas:{convenios:linhasIdade.filter(l=>l.faixas.acima90>0).length,valor:totaisIdade.faixas.acima90},
+    glosasComPrazoVencendo:glosasPrazoVencendo.length,
+    despesasRecorrentesFaltando:faltamRecorrentes.length,
+    repassesPendentes:{quantidade:repassesPendentes.length,valor:repassesPendentes.reduce((s,i)=>s+Number(i.repasse_valor),0)},
+    fechamentos:fechamentosParaAtencao,
+    depoisDoFechamento:Object.entries(depoisDoFechamento.reduce<Record<string,number>>((acc,i)=>{acc[i.periodo!]=(acc[i.periodo!]??0)+1;return acc},{})).sort(([a],[b])=>a.localeCompare(b)),
+    producaoMudou,
+  });
+  // Os quatro números do topo. Recebido e Faturado são da COMPETÊNCIA;
+  // A receber e Vencido, de TODOS os meses — e cada cartão diz isso, porque
+  // lado a lado os quatro pareceriam do mesmo recorte.
+  // UMA contagem de atendimentos para o cartão "Faturado" e para o bloco
+  // "Situação dos atendimentos": com contas separadas, a tela dizia "20
+  // atendimentos" num e "8 faturados" no outro — os 12 de diferença eram
+  // lançamentos em R$ 0,00, que não são faturamento.
+  const aguardandoNoMes=pendingPatients.filter(p=>(p.data_consulta??"").startsWith(period)).length;
+  const situacaoDoMes=situacaoDosAtendimentos(receitasDoMes,aguardandoNoMes);
+  const pctRecebido=receitaTotal.valor>0?Math.floor(Math.min(1,receitaTotal.recebido/receitaTotal.valor)*100):null;
+  const quantosAReceber=itensAReceber(recebiveis).length;
+  const quantosVencidos=itensVencidos(recebiveis,hojeIso).length;
+  const indicadores:Indicador[]=[
+    {tipo:"recebido",rotulo:"Recebido",valor:receitaTotal.recebido,
+      secundaria:pctRecebido===null?"Sem faturamento na competência":`${pctRecebido}% do faturado`,
+      estado:pctRecebido===100?"ok":"neutro",selo:pctRecebido===100?"Completo":undefined,
+      extra:<Variacao atual={receitaTotal.recebido} anterior={recebidoAnterior} oculto={oculto}/>},
+    {tipo:"aReceber",rotulo:"A receber",valor:aReceber,
+      secundaria:aReceber>0?`${plural(quantosAReceber,"lançamento","lançamentos")} · todos os meses`:"Nada pendente",
+      estado:aReceber>0?"info":"ok"},
+    // "Nenhuma nota vencida", e não "nenhum atraso": o vencido só conta o que
+    // tem vencimento declarado. Dinheiro velho sem vencimento aparece em
+    // Atenção hoje (mais de 90 dias) e em Próximos vencimentos (sem data).
+    {tipo:"vencido",rotulo:"Vencido",valor:vencido,
+      secundaria:vencido>0?`${plural(quantosVencidos,"lançamento","lançamentos")} com vencimento passado`:"Nenhuma nota vencida",
+      estado:vencido>0?"perigo":"ok",selo:vencido>0?"Em atraso":undefined},
+    {tipo:"faturado",rotulo:"Faturado",valor:receitaTotal.valor,
+      secundaria:receitaTotal.linhas===0?"Nenhum lançamento na competência"
+        :`${plural(situacaoDoMes.faturados,"atendimento","atendimentos")}${situacaoDoMes.semValor>0?` · ${situacaoDoMes.semValor} sem valor`:""}`,
+      // Âmbar quando há lançamento sem preço: o faturado está menor do que devia.
+      estado:situacaoDoMes.semValor>0?"atencao":"info",extra:<Variacao atual={receitaTotal.valor} anterior={totalAnterior} oculto={oculto}/>},
+  ];
+  const composicaoAtual=composicaoAberta?composicao(composicaoAberta,receitas,period,hojeIso):null;
+  // Formas de pagamento das linhas do Recebido. CONSULTA-ONLY: só o pagamento
+  // de consulta passa pelo registro com método; ver lib/receitas.ts:deProducao.
+  const recebimentosDaComposicao=composicaoAtual?.tipo==="recebido"?(()=>{
+    const ids=new Set(composicaoAtual.linhas.filter(l=>l.id.startsWith("consulta:")).map(l=>l.id.slice("consulta:".length)));
+    const porMetodo=new Map<string,{metodo:string;valor:number;quantidade:number}>();
+    for(const pg of pagamentos){
+      if(!ids.has(pg.atendimento_id)) continue;
+      const metodo=pg.metodo||"Outro";
+      const alvo=porMetodo.get(metodo)??{metodo,valor:0,quantidade:0};
+      alvo.valor+=Number(pg.valor)||0; alvo.quantidade+=1;
+      porMetodo.set(metodo,alvo);
+    }
+    return [...porMetodo.values()].sort((a,b)=>b.valor-a.valor);
+  })():null;
+  const vencimentosProximos=proximosVencimentos(receitas,hojeIso);
+  const irPara=(tarefa:string,mes?:string)=>{if(mes)setPeriod(mes);setTarefa(tarefa);setComposicaoAberta(null)};
 
   /**
    * Lança uma despesa.
@@ -1898,33 +2017,18 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   }
 
   return <div className="clinicalMain financeMain">
-    <section className="financeHeading"><div><h1>Financeiro</h1><p>Consultas organizadas por convênio — sem acesso ao conteúdo clínico das avaliações.</p></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label><button className="outlineClinical" disabled={!periodItems.length} title={periodItems.length?undefined:"Sem lançamentos na competência selecionada"} onClick={exportCsv}><Icone nome="imprimir" tamanho={15}/> Exportar CSV</button>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}</div></section>
+    <section className="financeHeading"><div><h1>Financeiro</h1><ContextoDaCompetencia organizacao={nomeDaOrganizacao} competencia={period} estado={estadoFechamento} carregadoEm={carregadoEm} onAtualizar={onRefresh}/></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label><button className="outlineClinical" disabled={!periodItems.length} title={periodItems.length?undefined:"Sem lançamentos na competência selecionada"} onClick={exportCsv}><Icone nome="imprimir" tamanho={15}/> Exportar CSV</button>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}<OlhoValores oculto={oculto} onAlternar={alternar}/></div></section>
     {message&&<p className={message.includes("não foi")?"clinicalError":"financeSuccess"}>{message}</p>}
-    {/* A barra responde à pergunta certa.
-        Antes ela dizia quanto foi faturado e recebido NO MÊS. Em faturamento
-        por convênio essa não é a pergunta: a nota saiu há dez dias e o convênio
-        paga em quarenta, então o mês corrente quase não tem recebimento e o
-        dinheiro que importa é o dos meses anteriores, ainda na rua.
-        Saem "Atendimentos no mês" (vira ticket médio, no fechamento) e "Notas
-        pendentes" (já tem contador no menu). Entram o saldo, o atraso e a
-        variação — número sem base de comparação não diz se foi bom ou ruim. */}
-    <section className="metricGrid financeMetrics">
-      <MoneyMetric value={aReceber} label="A receber" tone="blue" mascara={mascara}/>
-      <MoneyMetric value={vencido} label="Vencido" tone={vencido>0?"red":"green"} mascara={mascara}/>
-      {/* Faturado e recebido somam as TRÊS fontes — consulta, produção e
-          plantão. `total` e `received` continuam existindo com o recorte antigo
-          (só consultas) porque o fechamento do mês e o CSV falam do ciclo de
-          cobrança por convênio, que é outra coisa. */}
-      <MoneyMetric value={receitaTotal.valor} label="Faturado no mês" tone="blue" mascara={mascara}
-        extra={<Variacao atual={receitaTotal.valor} anterior={totalAnterior} oculto={oculto}/>}/>
-      <MoneyMetric value={receitaTotal.recebido} label="Recebido no mês" tone="green" mascara={mascara}
-        extra={<Variacao atual={receitaTotal.recebido} anterior={recebidoAnterior} oculto={oculto}/>}/>
-      <MoneyMetric value={glosaDoMes.valor} label={glosaDoMes.percentual===null
-        ? "Glosa no mês"
-        : `Glosa no mês — ${glosaDoMes.percentual.toFixed(1).replace(".",",")}% do faturado`}
-        tone={glosaDoMes.valor>0?"red":"green"} mascara={mascara}
-        extra={<OlhoValores oculto={oculto} onAlternar={alternar}/>}/>
-    </section>
+    {/* OS QUATRO NÚMEROS DO TOPO, em todas as abas: Recebido | A receber |
+        Vencido | Faturado. Cada cartão abre a composição do próprio número —
+        as linhas exatas que o somam (lib/painel-financeiro.ts:composicao).
+        A glosa, que era o quinto cartão, desceu para o bloco "Glosas" do
+        Resumo; a variação contra o mês anterior ficou no Faturado. */}
+    <IndicadoresPrincipais indicadores={indicadores} valor={valorVisivel} onAbrir={setComposicaoAberta}/>
+    {composicaoAtual&&<DetalheDaComposicao composicao={composicaoAtual} valor={valorVisivel}
+      recebimentos={recebimentosDaComposicao}
+      recebidoSemMetodo={composicaoAtual.tipo==="recebido"?composicaoAtual.linhas.filter(l=>l.id.startsWith("producao:")).reduce((s,l)=>s+l.parte,0):0}
+      onFechar={fecharComposicao} onIr={t=>irPara(t)}/>}
 
     <div className="financeLayout">
       {/* Coluna de tarefas. Os contadores são só do que pede ação — número em
@@ -1969,58 +2073,69 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ["fechamento","Fechamento do mês"],
           ["grupo","Configurações"],
           ["valores","Valores por convênio"],
-        ] as [string,string,number?][]).map(([id,rotulo,contador],i)=>
-          id==="grupo"
-            ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
-            : <button
+        ] as [string,string,number?][]).map(([id,rotulo,contador],i,lista)=>{
+          // O grupo de cada item é o último título que veio antes dele.
+          const grupo=lista.slice(0,i+1).reverse().find(([x])=>x==="grupo")?.[1]??"";
+          if(id==="grupo"){
+            const aberto=!gruposRecolhidos.has(rotulo);
+            // Um grupo recolhido ainda avisa: a soma dos contadores dele vai
+            // para o título, para "Contas a receber" fechado não esconder
+            // que há glosas esperando.
+            const fim=lista.findIndex(([x],k)=>k>i&&x==="grupo");
+            const pendentesNoGrupo=aberto?0:lista.slice(i+1,fim===-1?undefined:fim).reduce((acc,[,,n])=>acc+(n??0),0);
+            return <button type="button" className="financeTarefaGrupo" key={`g${i}`}
+              aria-expanded={aberto} onClick={()=>alternarGrupo(rotulo)}>
+              <span>{rotulo}</span>
+              {pendentesNoGrupo>0&&<b className="financeTarefaContador">{pendentesNoGrupo}</b>}
+              <i aria-hidden="true">{aberto?"▾":"▸"}</i>
+            </button>;
+          }
+          // A aba aberta nunca some, mesmo com o grupo recolhido: a pessoa
+          // precisa ver onde está.
+          const escondido=gruposRecolhidos.has(grupo)&&tarefa!==id;
+          return <button
                 type="button" key={id} data-secao={id}
-                className={tarefa===id?"active":""}
+                className={`${tarefa===id?"active":""}${escondido?" recolhido":""}`}
                 aria-current={tarefa===id?"true":undefined}
                 onClick={()=>setTarefa(id)}
               >
                 <span>{rotulo}</span>
                 {contador?<b className="financeTarefaContador">{contador}</b>:null}
-              </button>)}
+              </button>;
+        })}
       </nav>
 
       <div className="financeConteudo">
       {tarefa==="visao-geral"&&<>
+      {/* A ORDEM DA TELA é a das quatro perguntas de quem abre o Financeiro:
+          como estamos (os números do topo, acima), o que pede ação (Atenção
+          hoje), quanto entrou (Recebimento da competência), onde e desde
+          quando (a análise) e o que vem pela frente (vencimentos, glosas,
+          repasses, fechamento). */}
       <VisaoGeral
         temAlgumaConfiguracao={convenioValores.length>0}
         temAlgumMovimento={financeiro.length>0||despesas.length>0||(producaoDaReceita?.length??0)>0}
-        pendingPatients={pendingPatients.length}
-        convenioPendentes={convenioPendentes}
-        noteAlerts={noteAlerts.length}
-        cobrancasAtrasadas={linhasIdade.filter(l=>l.faixas.acima90>0).length}
-        valorAtrasado={totaisIdade.faixas.acima90}
-        faltamRecorrentes={faltamRecorrentes.length}
-        repassesPendentes={financeiro.filter(i=>Number(i.repasse_valor)>0&&i.repasse_status!=="pago").length}
-        // "fechado", e não mais "conferido": desde 202609300002 a conferência
-        // grava direto "fechado", e comparar com o estado antigo deixava o
-        // aviso "o mês ainda não foi fechado" aceso para sempre.
-        fechamentoPendente={Boolean(receitaTotal.valor>0&&periodState?.status!=="fechado")}
-        producaoMudou={producaoMudou}
-        depoisDoFechamento={Object.entries(depoisDoFechamento.reduce<Record<string,number>>((acc,i)=>{acc[i.periodo!]=(acc[i.periodo!]??0)+1;return acc},{})).sort(([a],[b])=>a.localeCompare(b))}
-        onIr={(tarefa,mes)=>{if(mes)setPeriod(mes);setTarefa(tarefa)}}
-        // Só quem pode salvar preço recebe o botão: a tabela de preços é de
-        // administrador, e o botão para os outros abria um formulário que não salvava.
+        pendencias={pendencias}
+        faturado={receitaTotal.valor}
+        recebido={receitaTotal.recebido}
+        glosado={glosasDe(receitasDoMes)}
+        onIr={irPara}
         onConfigurarValores={["admin","owner"].includes(perfil.role)?openPriceConfig:undefined}
-        mascara={mascara}
-        money={money}
+        valor={valorVisivel}
       />
-      {/* OS GRÁFICOS FICAVAM ATRÁS DE TRÊS CLIQUES: era preciso abrir
-          "Relatórios e fechamento" e escolher "Gráficos", uma aba à parte,
-          para ver qualquer coisa visual — quem abria o Financeiro só via
-          texto. Aqui é o único lugar onde GraficosFinanceiro renderiza: a
-          aba "Gráficos" separada existiu por uma rodada e foi removida por
-          duplicar exatamente este bloco, sem nenhuma diferença de conteúdo
-          entre as duas. A mesma condição de VisaoGeral (primeira vez vs. já
-          tem algo) decide se os cartões aparecem aqui: sem nenhum convênio
-          configurado e nenhum movimento, cinco cartões "sem dados nesta
-          competência" empilhados abaixo do convite de configuração seriam
-          ruído, não gráfico. */}
-      {(convenioValores.length>0||financeiro.length>0||despesas.length>0||(producaoDaReceita?.length??0)>0)&&
-        <GraficosFinanceiro receitas={receitas} pagamentos={pagamentos} periodo={period}/>}
+      {/* Os gráficos ficam aqui, e só aqui: a aba "Gráficos" separada existiu
+          por uma rodada e foi removida por duplicar este bloco. Primeira vez
+          (nenhum convênio configurado e nenhum movimento) não mostra cartões
+          "sem dados" empilhados abaixo do convite de configuração. */}
+      {(convenioValores.length>0||financeiro.length>0||despesas.length>0||(producaoDaReceita?.length??0)>0)&&<>
+        <GraficosFinanceiro receitas={receitas} periodo={period} competenciasComRegistro={competenciasComRegistro}
+          aguardandoLancamento={aguardandoNoMes}
+          valor={valorVisivel}/>
+        <AreaInferior vencimentos={vencimentosProximos}
+          glosa={{valor:glosaDoMes.valor,percentual:glosaDoMes.percentual,paraRecurso:glosasParaRecurso.length,prazoVencendo:glosasPrazoVencendo.length}}
+          repasses={{quantidade:repassesPendentes.length,valor:repassesPendentes.reduce((s,i)=>s+Number(i.repasse_valor),0)}}
+          fechamento={estadoFechamento} competencia={period} valor={valorVisivel} onIr={irPara}/>
+      </>}
       </>}
       {tarefa==="lancamentos"&&<>
     {pendingPatients.length>0&&<PainelRecolhivel chave="fin-aguardando" titulo="Atendimentos aguardando lançamento" legenda="vindos automaticamente da recepção e agenda">{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</PainelRecolhivel>}
@@ -3477,9 +3592,6 @@ function Metric({ value, label, tone, mascara, extra }: { value: number; label: 
   const texto = value.toLocaleString("pt-BR");
   return <div className="metricCard"><strong className={tomReal}>{mascara?mascara(texto):texto}</strong><span>{label}</span>{extra}</div>;
 }
-function MoneyMetric({value,label,tone,mascara,extra}:{value:number;label:string;tone:string;mascara?:(t:string)=>string;extra?:React.ReactNode}){
-  const texto=value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-  return <div className="metricCard"><strong className={tone}>{mascara?mascara(texto):texto}</strong><span>{label}</span>{extra}</div>}
 /**
  * Lançar uma despesa.
  *
@@ -3593,21 +3705,15 @@ function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
  * já foram buscados do banco. Nenhuma linha aqui é inventada ou estimada.
  */
 function VisaoGeral({
-  temAlgumaConfiguracao, temAlgumMovimento,
-  pendingPatients, convenioPendentes, noteAlerts, cobrancasAtrasadas, valorAtrasado,
-  faltamRecorrentes, repassesPendentes, fechamentoPendente, depoisDoFechamento, producaoMudou,
-  onIr, onConfigurarValores, mascara, money,
+  temAlgumaConfiguracao, temAlgumMovimento, pendencias, faturado, recebido, glosado,
+  onIr, onConfigurarValores, valor,
 }:{
   temAlgumaConfiguracao:boolean; temAlgumMovimento:boolean;
-  pendingPatients:number; convenioPendentes:number; noteAlerts:number;
-  cobrancasAtrasadas:number; valorAtrasado:number; faltamRecorrentes:number;
-  repassesPendentes:number; fechamentoPendente:boolean;
-  /** Lançamentos que entraram num mês já fechado, por mês ("2026-09" → 2). */
-  depoisDoFechamento:[string,number][];
-  /** Meses fechados cuja produção enviada não bate mais com o retrato do fechamento. */
-  producaoMudou:{mes:string;antes:{anotacoes:number;valor:number};agora:{anotacoes:number;valor:number}}[];
+  /** A fila já montada por lib/painel-financeiro.ts:montarAtencao — este componente não conta nada. */
+  pendencias:Pendencia[];
+  faturado:number; recebido:number; glosado:number;
   onIr:(tarefa:string,periodo?:string)=>void; onConfigurarValores?:()=>void;
-  mascara:(t:string)=>string; money:(v:number)=>string;
+  valor:(n:number)=>string;
 }) {
   if(!temAlgumaConfiguracao&&!temAlgumMovimento){
     // PRIMEIRA VEZ. Uma ação só, a que de fato destrava o resto: sem preço
@@ -3628,76 +3734,11 @@ function VisaoGeral({
       </div>
     </section>;
   }
-  const fila:{chave:string;titulo:string;detalhe:string;tarefa:string;periodo?:string}[]=[];
-  if(pendingPatients>0) fila.push({
-    chave:"lancamentos",
-    titulo:`${plural(pendingPatients,"atendimento aguardando","atendimentos aguardando")} lançamento`,
-    detalhe:"vindos da recepção e da agenda, prontos para virar cobrança",
-    tarefa:"lancamentos",
-  });
-  if(convenioPendentes>0) fila.push({
-    chave:"convenio",
-    titulo:`${plural(convenioPendentes,"convênio ativo sem","convênios ativos sem")} preço configurado`,
-    detalhe:"lançamentos criados agora nascem em R$ 0,00 até você preencher o valor",
-    tarefa:"valores",
-  });
-  if(noteAlerts>0) fila.push({
-    chave:"notas",
-    titulo:`${plural(noteAlerts,"nota fiscal","notas fiscais")} para acompanhar`,
-    detalhe:"mais de 15 dias desde a emissão, sem baixa registrada",
-    tarefa:"notas",
-  });
-  if(cobrancasAtrasadas>0) fila.push({
-    chave:"idade",
-    titulo:`${plural(cobrancasAtrasadas,"convênio","convênios")} devendo há mais de 90 dias`,
-    detalhe:`${mascara(money(valorAtrasado))} é o que costuma virar perda se ninguém cobrar`,
-    tarefa:"idade",
-  });
-  if(faltamRecorrentes>0) fila.push({
-    chave:"despesas",
-    titulo:`${plural(faltamRecorrentes,"despesa recorrente","despesas recorrentes")} ainda não lançada${faltamRecorrentes===1?"":"s"} este mês`,
-    detalhe:"o sistema lembra; quem lança é você",
-    tarefa:"despesas",
-  });
-  if(repassesPendentes>0) fila.push({
-    chave:"repasses",
-    titulo:`${plural(repassesPendentes,"repasse","repasses")} ainda não marcado${repassesPendentes===1?"":"s"} como pago`,
-    detalhe:"conferir e liberar aos anestesiologistas",
-    tarefa:"repasses",
-  });
-  if(fechamentoPendente) fila.push({
-    chave:"fechamento",
-    titulo:"O mês ainda não foi fechado",
-    detalhe:"revise notas, glosas e pagamentos pendentes antes de confirmar a conferência",
-    tarefa:"fechamento",
-  });
-  // Um item por mês: cada um leva ao fechamento DAQUELE mês, que pode não
-  // ser o selecionado na tela.
-  for(const [mes,quantos] of depoisDoFechamento) fila.push({
-    chave:`depois-${mes}`,
-    titulo:`${plural(quantos,"lançamento entrou","lançamentos entraram")} em ${mes.split("-").reverse().join("/")} depois do fechamento`,
-    detalhe:"o mês fechado mudou depois da conferência — reabra com o motivo, revise e feche de novo",
-    tarefa:"fechamento",
-    periodo:mes,
-  });
-  for(const {mes,antes,agora} of producaoMudou) fila.push({
-    chave:`producao-${mes}`,
-    titulo:`A produção de ${mes.split("-").reverse().join("/")} mudou depois do fechamento`,
-    detalhe:`era ${mascara(money(antes.valor))} em ${plural(antes.anotacoes,"anotação","anotações")}; agora ${mascara(money(agora.valor))} em ${plural(agora.anotacoes,"anotação","anotações")}`,
-    tarefa:"fechamento",
-    periodo:mes,
-  });
-  return <section className="clinicalPanel">
-    <div className="panelTitle"><strong>Atenção hoje</strong>
-      <span>{fila.length?`${plural(fila.length,"pendência","pendências")} com ação disponível`:"nada pedindo ação agora"}</span>
-    </div>
-    {fila.length===0
-      ? <div className="emptyClinical compactEmpty">Tudo em dia. Nenhuma pendência nas contas, notas ou fechamento deste mês.</div>
-      : fila.map(item=><div className="financeSetupRow" key={item.chave}>
-          <span><strong>{item.titulo}</strong><small>{item.detalhe}</small></span>
-          <button className="outlineClinical" onClick={()=>onIr(item.tarefa,item.periodo)}>Ver</button>
-        </div>)}
-  </section>;
+  return <>
+    <AtencaoHoje pendencias={pendencias} valor={valor} onIr={onIr}/>
+    <RecebimentoDaCompetencia faturado={faturado} recebido={recebido} glosado={glosado} valor={valor}
+      onVerRecebimentos={()=>onIr("recebimentos")}/>
+  </>;
 }
 function MoneySmall({value,label,tone="",oculto=false}:{value:number;label:string;tone?:string;oculto?:boolean}){return <div><strong className={tone}>{oculto?"•••":value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong><span>{label}</span></div>}
 /**

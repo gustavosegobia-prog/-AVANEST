@@ -5019,3 +5019,237 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .appCartao{grid-template-columns:1fr minmax(0,280px);gap:34px;padding:30px 34px}
   .appCartaoTexto{align-self:center}
 }
+
+/* ===========================================================================
+   Financeiro — o Resumo como painel de gestão
+   ===========================================================================
+   Cabeçalho da competência, os quatro números, Atenção hoje, recebimento,
+   análise e acompanhamento. Só tokens do sistema: cor, espaço, raio e sombra
+   vêm das mesmas variáveis do resto da tela, e o tema escuro vem junto.
+   Cor é estado (azul informa, verde concluído, âmbar atenção, vermelho
+   atraso) e nunca aparece sozinha: todo estado tem também texto. */
+
+/* -- Cabeçalho: de onde são os números -- */
+.pfContexto{display:flex;flex-wrap:wrap;align-items:center;gap:var(--esp-2) var(--esp-5);margin-top:var(--esp-2)}
+.pfContextoItem{display:grid;gap:1px}
+.pfContextoItem small{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.pfContextoItem b{font-size:14px;color:var(--cor-tinta)}
+.pfSituacao{align-self:center;font-size:12px;font-weight:800;padding:4px 10px;border-radius:var(--raio-cheio)}
+.pfSituacao.ok{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.pfSituacao.info{background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.pfSituacao.atencao{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.pfSituacao.perigo{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
+.pfSituacao.neutro{background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca)}
+.pfAtualizado{align-self:center;font-size:12.5px;color:var(--cor-tinta-fraca);display:inline-flex;align-items:center;gap:var(--esp-2)}
+.pfAtualizado button{border:0;background:none;padding:2px 4px;font:inherit;font-weight:750;color:var(--cor-marca);cursor:pointer;border-radius:var(--raio-1)}
+.pfAtualizado button:hover{text-decoration:underline}
+.pfAtualizado button:focus-visible{outline:0;box-shadow:var(--foco)}
+/* O olho de esconder números mora no cabeçalho agora, ao lado das ações. */
+.financeHeadingActions .plantaoOlho{position:static;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--cor-borda-forte);border-radius:var(--raio-1);background:var(--cor-superficie);flex:none}
+
+/* -- Os quatro números -- */
+.pfKpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--esp-3);margin:var(--esp-5) 0 0}
+.pfKpi{--pf-estado:var(--cor-borda-forte);display:grid;align-content:start;gap:4px;text-align:left;font:inherit;color:inherit;cursor:pointer;
+  background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:var(--raio-2);
+  box-shadow:inset 3px 0 0 var(--pf-estado),var(--sombra-1);padding:var(--esp-4) var(--esp-5);
+  transition:border-color var(--transicao),box-shadow var(--transicao)}
+.pfKpi.ok{--pf-estado:var(--cor-sucesso)}
+.pfKpi.info{--pf-estado:var(--cor-marca)}
+.pfKpi.atencao{--pf-estado:var(--cor-atencao)}
+.pfKpi.perigo{--pf-estado:var(--cor-perigo)}
+.pfKpi:hover{border-color:var(--cor-borda-forte);box-shadow:inset 3px 0 0 var(--pf-estado),var(--sombra-2)}
+.pfKpi:focus-visible{outline:0;box-shadow:inset 3px 0 0 var(--pf-estado),var(--foco)}
+.pfKpiTopo{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-2);font-size:13px;font-weight:750;color:var(--cor-tinta-fraca)}
+.pfKpi strong{font-size:26px;line-height:1.15;font-weight:850;letter-spacing:-.01em;color:var(--cor-tinta);font-variant-numeric:tabular-nums}
+.pfKpi small{font-size:13px;color:var(--cor-tinta-fraca)}
+.pfKpi .metricVariacao{font-size:12px}
+.pfSelo{font-style:normal;font-size:11px;font-weight:800;padding:2px 8px;border-radius:var(--raio-cheio);white-space:nowrap}
+.pfSelo.ok{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.pfSelo.perigo{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
+.pfSelo.atencao{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.pfSelo.info{background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+
+/* -- Cartões do Resumo -- */
+.pfCartao{background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:var(--raio-3);
+  box-shadow:var(--sombra-1);padding:var(--esp-4) var(--esp-5);margin:0 0 var(--esp-4)}
+.pfCartaoTopo{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-3);flex-wrap:wrap;margin-bottom:var(--esp-2)}
+.pfCartaoTopo h2{margin:0;font-size:16px;font-weight:800}
+.pfCartaoTopo>span{font-size:13px;color:var(--cor-tinta-fraca)}
+.pfVazio{margin:0;color:var(--cor-tinta-fraca);font-size:13.5px}
+.pfNota{margin:var(--esp-2) 0 0;color:var(--cor-tinta-fraca);font-size:12.5px;line-height:1.45}
+
+/* -- Atenção hoje: uma linha por pendência -- */
+.pfAtencao ul{list-style:none;margin:0;padding:0}
+.pfPendencia{display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center;gap:var(--esp-3);
+  padding:var(--esp-3) 0;border-top:1px solid var(--cor-borda)}
+.pfPendencia:first-child{border-top:0}
+.pfPrioridade{font-style:normal;font-size:11px;font-weight:850;text-align:center;padding:3px 0;border-radius:var(--raio-cheio)}
+.pfPrioridade.alta{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
+.pfPrioridade.media{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.pfPrioridade.baixa{background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca)}
+.pfPendenciaTexto{display:grid;gap:2px;min-width:0}
+.pfPendenciaTexto strong{font-size:14.5px}
+.pfPendenciaTexto small{font-size:13px;color:var(--cor-tinta-fraca);line-height:1.4}
+.pfImpacto{color:var(--cor-tinta);font-weight:700}
+.pfPendencia .outlineClinical{white-space:nowrap}
+.pfAtencaoVazia{display:flex;align-items:center;gap:var(--esp-3);color:var(--cor-tinta-fraca);font-size:14px}
+.pfAtencaoVazia svg{color:var(--cor-sucesso);flex:none}
+.pfAtencaoVazia strong{color:var(--cor-sucesso)}
+
+/* -- Recebimento da competência: compacto -- */
+.pfRecebimentoCorpo{display:flex;flex-wrap:wrap;align-items:center;gap:var(--esp-2) var(--esp-6)}
+.pfRecebimentoValor{margin:0;color:var(--cor-tinta-fraca);font-size:14px;font-variant-numeric:tabular-nums}
+.pfRecebimentoValor strong{font-size:22px;font-weight:850;color:var(--cor-tinta)}
+.pfRecebimentoCorpo .pfMedidor{flex:1 1 220px}
+.pfRecebimentoLegenda{margin:0;display:flex;gap:var(--esp-3);flex-wrap:wrap;font-size:13px;color:var(--cor-tinta-fraca)}
+.pfRecebimentoLegenda b{color:var(--cor-tinta)}
+/* Trilha e preenchimento do mesmo tom — a trilha é um degrau claro do verde
+   de "Recebido": lê como "parte de um todo". Ponta de 4px. */
+.pfMedidor{height:10px;border-radius:4px;overflow:hidden;background:color-mix(in srgb,var(--graf-2) 16%,var(--cor-superficie))}
+.pfMedidor>div{height:100%;border-radius:4px;background:var(--graf-2);transition:width var(--transicao)}
+.pfMedidor.pequeno{height:6px}
+
+/* -- Análise -- */
+.pfAnalise{margin-bottom:var(--esp-4)}
+.pfConvenios{list-style:none;margin:0;padding:0;display:grid}
+.pfConvenios li{display:grid;gap:6px;padding:var(--esp-3) 0;border-top:1px solid var(--cor-borda)}
+.pfConvenios li:first-child{border-top:0;padding-top:0}
+.pfConvenioNome{display:flex;align-items:baseline;justify-content:space-between;gap:var(--esp-2);min-width:0}
+.pfConvenioNome strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pfConvenioNome small{font-size:12px;color:var(--cor-tinta-fraca);white-space:nowrap}
+.pfSemValor{font-style:normal;color:var(--cor-atencao);font-weight:750}
+.pfConvenioNumeros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--esp-2);margin:0}
+.pfConvenioNumeros dt{font-size:11px;font-weight:750;color:var(--cor-tinta-fraca)}
+.pfConvenioNumeros dd{margin:0;font-size:13.5px;font-weight:750;font-variant-numeric:tabular-nums}
+.pfConvenioNumeros .pendente dt,.pfConvenioNumeros .pendente dd{color:var(--cor-atencao)}
+.pfConvenioNumeros .pendente dd{font-weight:850}
+
+/* Três séries por mês: colunas mais finas que as duas de antes; o teto de
+   24px e a ponta de 4px continuam os do .grafColuna. */
+.pfEvolucao .grafColuna{width:28%}
+.pfEvolucao .grafMes{position:relative;cursor:default;border-radius:var(--raio-1);outline:0}
+.pfEvolucao .grafMes:hover .grafPar,.pfEvolucao .grafMes:focus-visible .grafPar{background:var(--cor-superficie-suave)}
+.pfEvolucao .grafMes:focus-visible{box-shadow:var(--foco)}
+.pfSemDados,.pfZero{align-self:flex-end;font-size:11px;line-height:1.2;text-align:center;color:var(--cor-tinta-fraca);padding-bottom:4px}
+.pfSemDados{font-style:italic}
+.pfEvolucao .grafMes.sem-dados .grafPar{border-bottom-style:dashed}
+.pfTooltip{position:absolute;bottom:calc(100% - 24px);left:50%;transform:translateX(-50%);z-index:5;display:none;
+  min-width:160px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:var(--raio-1);
+  box-shadow:var(--sombra-3);padding:var(--esp-2) var(--esp-3);font-size:12.5px;color:var(--cor-tinta-fraca);white-space:nowrap}
+.pfTooltip b{display:block;color:var(--cor-tinta);margin-bottom:4px}
+.pfTooltip span{display:flex;align-items:center;gap:6px;line-height:1.6}
+.pfTooltip i{width:10px;height:2px;flex:none}
+.pfTooltip strong{color:var(--cor-tinta);font-variant-numeric:tabular-nums}
+.pfEvolucao .grafMes:hover .pfTooltip,.pfEvolucao .grafMes:focus-visible .pfTooltip{display:block}
+.pfEvolucao .grafMes:first-child .pfTooltip{left:0;transform:none}
+.pfEvolucao .grafMes:last-child .pfTooltip{left:auto;right:0;transform:none}
+.pfComoTabela{margin-top:var(--esp-3);font-size:12.5px}
+.pfComoTabela summary{cursor:pointer;color:var(--cor-marca);font-weight:700;width:max-content}
+.pfComoTabela .pfTabela{margin-top:var(--esp-2)}
+
+.pfEtapas{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--esp-2);margin:0 0 var(--esp-4)}
+.pfEtapas div{background:var(--cor-superficie-suave);border-radius:var(--raio-1);padding:var(--esp-2) var(--esp-3)}
+.pfEtapas dt{font-size:11.5px;font-weight:750;color:var(--cor-tinta-fraca)}
+.pfEtapas dd{margin:2px 0 0;font-size:22px;font-weight:850;font-variant-numeric:tabular-nums;color:var(--cor-tinta)}
+.pfEtapas .destaque{background:var(--cor-sucesso-suave)}
+.pfEtapas .destaque dt{color:var(--cor-sucesso)}
+
+/* -- Acompanhamento: vencimentos, glosas, repasses, fechamento -- */
+.pfInferiores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--esp-3)}
+.pfInferior{display:flex;flex-direction:column;margin:0}
+.pfInferior h3{margin:0 0 var(--esp-2);font-size:14px;font-weight:800}
+.pfInferiorCorpo{flex:1}
+.pfNumero{margin:0;font-size:20px;font-weight:850;color:var(--cor-tinta);font-variant-numeric:tabular-nums}
+.pfNumero small{display:block;font-size:12.5px;font-weight:600;color:var(--cor-tinta-fraca)}
+.pfNumeroTexto{font-size:16px}
+.pfLink{align-self:flex-start;margin-top:var(--esp-3);border:0;background:none;padding:2px 0;font:inherit;font-size:13px;font-weight:750;
+  color:var(--cor-marca);cursor:pointer;border-radius:var(--raio-1)}
+.pfLink:hover{text-decoration:underline}
+.pfLink:focus-visible{outline:0;box-shadow:var(--foco)}
+.pfMiniLista{list-style:none;margin:var(--esp-2) 0 0;padding:0;font-size:13px}
+.pfMiniLista li{display:flex;justify-content:space-between;gap:var(--esp-3);padding:5px 0;border-top:1px dashed var(--cor-borda)}
+.pfMiniLista li:first-child{border-top:0}
+.pfMiniLista span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pfMiniLista small{color:var(--cor-tinta-fraca)}
+.pfMiniLista b{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* -- A composição de um número: gaveta à direita -- */
+.pfGaveta{position:fixed;inset:0;z-index:1000;background:rgba(8,25,42,.38);display:flex;justify-content:flex-end}
+.pfGavetaPainel{width:min(580px,100vw);height:100%;display:flex;flex-direction:column;background:var(--cor-superficie);
+  box-shadow:var(--sombra-3);animation:pfEntrar .18s ease-out}
+@keyframes pfEntrar{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.pfGavetaPainel{animation:none}}
+.pfGavetaPainel>header{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--esp-3);
+  padding:var(--esp-5) var(--esp-6);border-bottom:1px solid var(--cor-borda)}
+.pfGavetaPainel>header h2{margin:0;font-size:18px}
+.pfGavetaPainel>header p{margin:4px 0 0;font-size:13px;color:var(--cor-tinta-fraca)}
+.pfGavetaFechar{border:1px solid var(--cor-borda);background:var(--cor-superficie);color:var(--cor-tinta);width:36px;height:36px;
+  border-radius:var(--raio-1);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.pfGavetaFechar:focus-visible{outline:0;box-shadow:var(--foco)}
+.pfGavetaCorpo{flex:1;overflow-y:auto;padding:var(--esp-4) var(--esp-6) var(--esp-6)}
+.pfGavetaCorpo h3{margin:var(--esp-5) 0 var(--esp-1);font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--cor-tinta-fraca)}
+.pfGavetaRodape{display:flex;gap:var(--esp-2);flex-wrap:wrap;padding:var(--esp-4) var(--esp-6);border-top:1px solid var(--cor-borda)}
+.pfResumo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--esp-2);margin:0}
+.pfResumo div{background:var(--cor-superficie-suave);border-radius:var(--raio-1);padding:var(--esp-2) var(--esp-3)}
+.pfResumo dt{font-size:11.5px;font-weight:750;color:var(--cor-tinta-fraca)}
+.pfResumo dd{margin:2px 0 0;font-size:15px;font-weight:800}
+.pfTabelaRolavel{overflow-x:auto}
+.pfTabela{width:100%;border-collapse:collapse;font-size:13px}
+.pfTabela th{text-align:left;font-size:11.5px;font-weight:800;color:var(--cor-tinta-fraca);padding:6px 8px;border-bottom:1px solid var(--cor-borda)}
+.pfTabela td{padding:7px 8px;border-bottom:1px solid var(--cor-borda);vertical-align:top}
+.pfTabela td small{display:block;font-size:11.5px;color:var(--cor-tinta-fraca)}
+.pfTabela .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* -- Menu com grupos recolhíveis -- */
+.financeTarefas button.financeTarefaGrupo{display:flex;align-items:center;gap:var(--esp-2);justify-content:flex-start;
+  font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--cor-tinta-fraca);
+  padding:12px 12px 4px;border-radius:var(--raio-1)}
+.financeTarefas button.financeTarefaGrupo:first-child{padding-top:4px}
+.financeTarefas button.financeTarefaGrupo span{flex:1}
+.financeTarefas button.financeTarefaGrupo i{font-style:normal;font-size:11px}
+.financeTarefas button.financeTarefaGrupo:hover{background:none;color:var(--cor-tinta)}
+.financeTarefas button.recolhido{display:none}
+
+/* -- Tamanhos -- */
+@media(max-width:1250px){
+  .pfInferiores{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1100px){
+  /* A coluna vira faixa rolável (regra de cima): sem títulos de grupo, e
+     portanto sem nada recolhido — todo item à mão. */
+  .financeTarefas button.financeTarefaGrupo{display:none}
+  .financeTarefas button.recolhido{display:flex}
+}
+@media(max-width:1050px){
+  .pfKpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .pfKpis{grid-template-columns:1fr}
+  .pfInferiores{grid-template-columns:1fr}
+  .pfPendencia{grid-template-columns:auto minmax(0,1fr)}
+  .pfPendencia .pfPrioridade{padding:3px 9px}
+  .pfPendencia .outlineClinical{grid-column:1/-1;justify-content:center;width:100%}
+  .pfEtapas{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pfGavetaPainel>header,.pfGavetaCorpo,.pfGavetaRodape{padding-left:var(--esp-4);padding-right:var(--esp-4)}
+  .pfResumo dd{font-size:14px}
+}
+/* No celular, o olho de esconder números vai para a mesma linha da
+   competência, em vez de ocupar uma linha sozinho antes dos números; e os
+   quatro cartões ficam mais baixos, para "Atenção hoje" aparecer antes. */
+@media(max-width:700px){
+  .financeHeadingActions>label{order:0;flex:1 1 calc(100% - 56px)}
+  .financeHeadingActions>.plantaoOlho{order:1;align-self:flex-end;flex:0 0 44px}
+  .financeHeadingActions>button:not(.plantaoOlho){order:2}
+}
+@media(max-width:600px){
+  .pfKpi{padding:var(--esp-3) var(--esp-4)}
+  .pfKpi strong{font-size:22px}
+}
+/* Entre celular e tela larga a análise cabe em duas colunas: o terceiro
+   cartão (Situação dos atendimentos) ocupa a linha inteira, em vez de ficar
+   sozinho ao lado de meio cartão vazio. */
+@media(min-width:701px) and (max-width:1340px){
+  .pfAnalise{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pfAnalise>:nth-child(3){grid-column:1/-1}
+}
