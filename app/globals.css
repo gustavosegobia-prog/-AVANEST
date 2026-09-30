@@ -5699,7 +5699,7 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
    como complemento. A busca vem logo abaixo, e a agenda do dia depois dos
    números do dia. Cada estado tem texto e ícone além da cor. */
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.recTopo{align-items:center}
+@media(min-width:681px){.recTopo{align-items:center}}
 .recTopoAcoes{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .recAgendar{display:inline-flex;align-items:center;gap:8px;font-size:15.5px;padding:0 20px;min-height:46px}
 .recBusca{display:grid;gap:6px;padding:14px 18px;margin-top:var(--esp-3)}
@@ -5850,7 +5850,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 /* --- Área médica: Meu dia, Avaliações, Pendências e Documentos ------------
    Uma ação principal por bloco (Iniciar/Continuar), o resto em contorno. Cor
    de alerta só onde há algo a fazer; o que está em dia fica neutro. */
-.medTopo{align-items:center}
+@media(min-width:681px){.medTopo{align-items:center}}
 .medOnde{display:flex;flex-wrap:wrap;gap:6px 16px;margin:4px 0 0;font-size:14px;color:var(--cor-tinta-fraca)}
 .medOnde span{display:inline-flex;align-items:center;gap:6px}
 .medEscopo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:var(--esp-3) 0 0}
@@ -5864,7 +5864,9 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .medProximoQuem small{color:var(--cor-tinta-fraca);font-size:13px}
 .medResumo{grid-template-columns:repeat(4,minmax(0,1fr));margin:var(--esp-3) 0 6px}
 .medCartao{text-align:left;cursor:pointer;font:inherit;color:inherit;padding:12px 14px}
-.medCartao:disabled{cursor:default;opacity:.75}
+/* Zero não é clicável, mas continua nítido: opacidade reduzida dava à
+   tela inteira um ar de desfocada no celular. */
+.medCartao:disabled{cursor:default;opacity:1;color:inherit}
 .medCartao:not(:disabled):hover{border-color:var(--cor-marca)}
 .medCartao:focus-visible{outline:0;box-shadow:var(--foco)}
 .medCartao strong{font-size:22px}

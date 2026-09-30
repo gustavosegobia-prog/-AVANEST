@@ -160,9 +160,9 @@ export function AreaMedica({
       <section className="clinicalWelcome medTopo">
         <div>
           <h1>Área médica</h1>
+          {/* Só a data: o local já está na barra do topo, ao lado da marca. */}
           <p className="medOnde">
             <span><Icone nome="calendario" tamanho={14} /> {dataPorExtenso(hoje).replace(/^./, (x) => x.toUpperCase())}</span>
-            <span>📍 {nomeLocalAtivo ?? "Nenhum local escolhido"}</span>
           </p>
         </div>
         <button type="button" className="primaryClinical" data-acao="novo-paciente" onClick={onNovaAvaliacao}>+ Nova avaliação</button>
@@ -193,9 +193,10 @@ export function AreaMedica({
           </div>
         )}
         <p>
-          {descricaoDoEscopo(escopo, nomeLocalAtivo)}.{" "}
-          {escopo.pessoa === "meus" && "Na agenda: consultas marcadas para você e as ainda sem médico definido. "}
-          A agenda não registra o local de atendimento, por isso o recorte de local vale para avaliações e documentos.
+          {descricaoDoEscopo(escopo, nomeLocalAtivo)}.
+          {escopo.pessoa === "meus" && " Na agenda, também as consultas ainda sem médico definido."}
+          {/* O aviso só quando importa: com um local escolhido, a agenda não segue o recorte. */}
+          {escopo.local === "atual" && " A agenda não registra local, então mostra todos."}
         </p>
       </section>
 

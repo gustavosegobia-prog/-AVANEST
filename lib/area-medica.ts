@@ -80,8 +80,8 @@ export function consultaNoEscopo(c: ConsultaDaAgenda, and: Andamento | undefined
 }
 
 export function descricaoDoEscopo(e: Escopo, nomeDoLocal: string | null): string {
-  const quem = e.pessoa === "meus" ? "Seus atendimentos e avaliações" : "Toda a equipe";
-  const onde = e.local === "atual" && nomeDoLocal ? `avaliações de ${nomeDoLocal}` : "avaliações de todos os locais autorizados";
+  const quem = e.pessoa === "meus" ? "Seus atendimentos" : "Toda a equipe";
+  const onde = e.local === "atual" && nomeDoLocal ? `avaliações de ${nomeDoLocal}` : "todos os locais";
   return `${quem} · ${onde}`;
 }
 

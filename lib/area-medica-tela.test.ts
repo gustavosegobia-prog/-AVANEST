@@ -68,3 +68,11 @@ test("avaliação no celular: Voltar ao painel e o estado do salvamento não som
   assert.match(form, /setSaveError\(\(atual\) => atual \|\| motivoDaFalha\(error\?\.message\)\)/,
     "o motivo legível voltou a ser trocado pela mensagem técnica");
 });
+
+test("topo no celular: alinhado à esquerda, sem local repetido e sem cartões apagados", () => {
+  const css = ler("app/globals.css");
+  assert.match(css, /@media\(min-width:681px\)\{\.medTopo\{align-items:center\}\}/, "centralizar o topo só vale no computador");
+  assert.match(css, /@media\(min-width:681px\)\{\.recTopo\{align-items:center\}\}/);
+  assert.doesNotMatch(tela, /Nenhum local escolhido/, "o local já está na barra do topo");
+  assert.match(css, /\.medCartao:disabled\{cursor:default;opacity:1;color:inherit\}/);
+});
