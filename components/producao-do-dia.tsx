@@ -8,6 +8,7 @@ import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-int
 import { hoje as hojeLocal, ultimoDiaDoMes } from "@/lib/data-local";
 import { lerDinheiro } from "@/lib/dinheiro";
 import { camposDaBaixa, type SituacaoDaProducao } from "@/lib/baixa-da-producao";
+import { chaveDoPagador, grafiaConhecida, rotulosDePagador } from "@/lib/financeiro-indicadores";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -388,7 +389,10 @@ export function ProducaoDoDia({
       institution_id: institutionId, perfil_id: perfilId, plantao_id: plantaoId,
       local_id: localId,
       data: dia, paciente,
-      convenio: novo.convenio.trim() || "Particular",
+      // A grafia do cadastro quando o convênio é um já conhecido: a foto da
+      // guia lê "UNIMED" em caixa-alta, e cada grafia virava uma linha
+      // separada nos totais do mês e do Financeiro.
+      convenio: grafiaConhecida(novo.convenio, conveniosConhecidos),
       procedimento: novo.procedimento.trim() || null,
       valor: lerValor(novo.valor),
     });
@@ -469,7 +473,8 @@ export function ProducaoDoDia({
                     className="producaoConvenio" defaultValue={i.convenio} aria-label="Convênio"
                     list="producao-convenios"
                     onBlur={(e) => {
-                      const v = e.target.value.trim() || "Particular";
+                      const v = grafiaConhecida(e.target.value, conveniosConhecidos);
+                      e.target.value = v;
                       if (v !== i.convenio) void mudar(i.id, { convenio: v });
                     }}
                   />
@@ -650,16 +655,21 @@ export function ProducaoDoMes({
 
   // Por convênio é como se fatura: cada operadora recebe a sua remessa, e o
   // particular é cobrado paciente a paciente.
+  // Agrupa pela chave, e não pelo texto: o que já foi gravado como "UNIMED" e
+  // "Unimed" continua no banco assim, e é o mesmo convênio na remessa.
   const porConvenio = useMemo(() => {
+    const rotulos = rotulosDePagador(itens.map((i) => i.convenio));
     const m = new Map<string, { n: number; total: number; aberto: number }>();
     for (const i of itens) {
-      const k = i.convenio || "Particular";
+      const k = chaveDoPagador(i.convenio);
       const t = m.get(k) ?? { n: 0, total: 0, aberto: 0 };
       t.n += 1; t.total += Number(i.valor);
       if (i.situacao !== "recebido" && i.situacao !== "glosado") t.aberto += Number(i.valor);
       m.set(k, t);
     }
-    return [...m.entries()].sort((a, b) => b[1].total - a[1].total);
+    return [...m.entries()]
+      .map(([k, t]) => [rotulos.get(k) ?? k, t] as const)
+      .sort((a, b) => b[1].total - a[1].total);
   }, [itens]);
 
   // O que ainda não foi ao Financeiro. Enviar de novo não duplica nada — a
@@ -1164,12 +1174,15 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
   }, [mes]);
 
   const porConvenio = useMemo(() => {
+    const rotulos = rotulosDePagador(linhas.map((l) => l.convenio));
     const m = new Map<string, Linha[]>();
     for (const l of linhas) {
-      const k = l.convenio || "Particular";
+      const k = chaveDoPagador(l.convenio);
       m.set(k, [...(m.get(k) ?? []), l]);
     }
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
+    return [...m.entries()]
+      .map(([k, ls]) => [rotulos.get(k) ?? k, ls] as const)
+      .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
   }, [linhas]);
 
   const total = linhas.reduce((s, l) => s + Number(l.valor), 0);

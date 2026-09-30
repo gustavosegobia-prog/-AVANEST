@@ -53,6 +53,21 @@ export const chaveDoPagador = (nome: string | null | undefined) =>
   (nome || "Particular").normalize("NFD").replace(/[̀-ͯ]/g, "")
     .trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
 
+/**
+ * O nome a gravar para um convênio digitado (ou lido da foto da ficha).
+ *
+ * Se ele é um convênio já cadastrado escrito de outro jeito — "UNIMED" para
+ * "Unimed", como a guia impressa costuma vir —, grava a grafia do cadastro.
+ * Se não é nenhum conhecido, grava o que foi digitado, só sem espaço sobrando:
+ * "UNIMED LOCAL" pode ser um plano de verdade, e não cabe a esta função decidir
+ * que não é.
+ */
+export function grafiaConhecida(digitado: string, conhecidos: string[]): string {
+  const limpo = digitado.trim().replace(/\s+/g, " ") || "Particular";
+  const chave = chaveDoPagador(limpo);
+  return conhecidos.find((c) => chaveDoPagador(c) === chave) ?? limpo;
+}
+
 const temMinuscula = (s: string) => s !== s.toLocaleUpperCase("pt-BR");
 
 /**

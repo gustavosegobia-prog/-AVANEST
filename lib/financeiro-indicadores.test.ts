@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  chaveDoPagador, rotulosDePagador,
+  chaveDoPagador, grafiaConhecida, rotulosDePagador,
   competenciaDoItem, diasEntre, emAberto, envelhecimento, glosa, idadeDoItem,
   mesAnterior, prazoMedioPorConvenio, projecaoPorPrazoHistorico, referenciaDeIdade,
   saldoAReceber, saldoDoItem, saldoVencido, ticketMedio, totaisDoEnvelhecimento,
@@ -304,6 +304,19 @@ describe("o mesmo pagador escrito de dois jeitos", () => {
     const rotulos = rotulosDePagador(["UNIMED", "UNIMED", "Unimed", "PARTICULAR", "Particular"]);
     assert.equal(rotulos.get(chaveDoPagador("unimed")), "UNIMED");
     assert.equal(rotulos.get(chaveDoPagador("particular")), "Particular");
+  });
+
+  it("ao gravar, um convênio conhecido escrito de outro jeito vira a grafia do cadastro", () => {
+    const cadastro = ["Particular", "Unimed", "Bradesco Saúde"];
+    assert.equal(grafiaConhecida("UNIMED", cadastro), "Unimed");
+    assert.equal(grafiaConhecida("  particular ", cadastro), "Particular");
+    assert.equal(grafiaConhecida("BRADESCO SAUDE", cadastro), "Bradesco Saúde");
+  });
+
+  it("ao gravar, nome desconhecido fica como foi digitado, e vazio vira Particular", () => {
+    const cadastro = ["Particular", "Unimed"];
+    assert.equal(grafiaConhecida("UNIMED  LOCAL", cadastro), "UNIMED LOCAL");
+    assert.equal(grafiaConhecida("   ", cadastro), "Particular");
   });
 
   it("o envelhecimento soma as duas grafias numa linha só", () => {
