@@ -7,7 +7,7 @@ import { Icone } from "@/components/icone";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { dataLocal } from "@/lib/data-local";
 import {
-  andamentoPelasAvaliacoes, avaliacaoNoEscopo, consultaNoEscopo, cpfMascarado, descricaoDoEscopo, etapaMedica,
+  andamentoPelasAvaliacoes, avaliacaoNoEscopo, consultaNoEscopo, cpfMascarado, etapaMedica, semMedico,
   INFORMACOES_INDISPONIVEIS, intervaloDoPeriodo, LEMBRETES_GERAIS, ORIGEM_DOS_LEMBRETES, paraRetomar,
   pendenciasVerificadas, proximoAtendimento, resumoDoDia, TIPOS_DE_DOCUMENTO,
   type AvaliacaoResumo, type Escopo, type Periodo, type Pendencia, type TipoDeDocumento,
@@ -61,9 +61,11 @@ export function AreaMedica({
 }) {
   const hoje = dataLocal();
   const [secao, setSecao] = useState<Secao>("agenda");
-  // Quem atende começa no que é seu; quem administra, na equipe. A escolha
-  // fica à vista e muda com um toque.
-  const [escopo, setEscopo] = useState<Escopo>({ pessoa: perfilEhMedico ? "meus" : "equipe", local: "todos" });
+  // Cada médico entra no que é dele: os pacientes que a recepção lançou para
+  // ele. Não há o que escolher — quem indica o médico é a recepção, ao
+  // agendar. Quem não atende (administração) vê a equipe.
+  const escopo: Escopo = { pessoa: perfilEhMedico ? "meus" : "equipe", local: "todos" };
+  const [verSemMedico, setVerSemMedico] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>({ tipo: "hoje" });
   const [filtroDoDia, setFiltroDoDia] = useState<FiltroDoDia>("todas");
   const [busca, setBusca] = useState("");
@@ -96,11 +98,16 @@ export function AreaMedica({
   }, [avaliacoes]);
   const localPorId = useMemo(() => new Map(locais.map((l) => [l.id, nomeDoLocal(l)])), [locais]);
   const localAtivoId = localAtivo?.id ?? null;
-  const nomeLocalAtivo = localAtivo ? nomeDoLocal(localAtivo) : null;
 
   const avaliacoesNoEscopo = avaliacoes.filter((a) => avaliacaoNoEscopo(a, escopo, perfilId, localAtivoId));
   const andamento = useMemo(() => andamentoPelasAvaliacoes(agendamentos, avaliacaoPorId), [agendamentos, avaliacaoPorId]);
-  const consultasNoEscopo = agendamentos.filter((c) => consultaNoEscopo(c, andamento.get(c.id), escopo, perfilId));
+  const consultasNoEscopo = agendamentos.filter((c) =>
+    consultaNoEscopo(c, andamento.get(c.id), escopo, perfilId) || (verSemMedico && semMedico(c, andamento.get(c.id))));
+  // Consultas de hoje ainda sem médico: não são de ninguém até a recepção
+  // indicar. Um aviso de uma linha, e não uma lista a mais.
+  const semMedicoHoje = escopo.pessoa === "meus"
+    ? agendamentos.filter((c) => c.data === hoje && !FORA_DO_FLUXO(c.status) && semMedico(c, andamento.get(c.id))).length
+    : 0;
   const retomar = paraRetomar(avaliacoesNoEscopo);
   const doDiaDeHoje = consultasNoEscopo.filter((c) => c.data === hoje);
   const resumo = resumoDoDia(doDiaDeHoje, andamento, retomar);
@@ -176,30 +183,6 @@ export function AreaMedica({
         </p>
       )}
 
-      {/* O ESCOPO À VISTA: de quem e de onde é o que a tela mostra. */}
-      <section className="medEscopo" aria-label="O que esta tela mostra">
-        <div className="escalaVisoes" role="group" aria-label="De quem">
-          <button type="button" aria-pressed={escopo.pessoa === "meus"} className={escopo.pessoa === "meus" ? "ativo" : ""}
-            onClick={() => setEscopo({ ...escopo, pessoa: "meus" })}>Meus atendimentos</button>
-          <button type="button" aria-pressed={escopo.pessoa === "equipe"} className={escopo.pessoa === "equipe" ? "ativo" : ""}
-            onClick={() => setEscopo({ ...escopo, pessoa: "equipe" })}>Equipe</button>
-        </div>
-        {localAtivo && locais.length > 1 && (
-          <div className="escalaVisoes" role="group" aria-label="De onde">
-            <button type="button" aria-pressed={escopo.local === "atual"} className={escopo.local === "atual" ? "ativo" : ""}
-              onClick={() => setEscopo({ ...escopo, local: "atual" })}>{nomeLocalAtivo}</button>
-            <button type="button" aria-pressed={escopo.local === "todos"} className={escopo.local === "todos" ? "ativo" : ""}
-              onClick={() => setEscopo({ ...escopo, local: "todos" })}>Todos os locais</button>
-          </div>
-        )}
-        <p>
-          {descricaoDoEscopo(escopo, nomeLocalAtivo)}.
-          {escopo.pessoa === "meus" && " Na agenda, também as consultas ainda sem médico definido."}
-          {/* O aviso só quando importa: com um local escolhido, a agenda não segue o recorte. */}
-          {escopo.local === "atual" && " A agenda não registra local, então mostra todos."}
-        </p>
-      </section>
-
       <div className="financeLayout">
         <nav className="financeTarefas" aria-label="Seções da área médica">
           {secoes.map(([id, rotulo, n]) => (
@@ -236,20 +219,25 @@ export function AreaMedica({
                 ] as [string, number, string, Parameters<typeof Icone>[0]["nome"], FiltroDoDia | "retomar"][]).map(([rotulo, valor, tom, icone, destino]) => (
                   <button type="button" className="metricCard medCartao" key={rotulo} disabled={valor === 0}
                     onClick={() => (destino === "retomar" ? irParaRetomar() : irParaAgenda(destino))}
-                    title={valor === 0 ? "Nada nesta situação agora" : `Ver: ${rotulo.toLowerCase()}`}>
+                    title={destino === "em_atendimento" ? "Paciente que chegou e já tem avaliação aberta nesta consulta"
+                      : destino === "retomar" ? "Toda avaliação iniciada e não concluída, de qualquer dia" : rotulo}>
                     <strong className={valor ? tom : ""}>{valor}</strong>
                     <span><Icone nome={icone} tamanho={13} /> {rotulo}</span>
                   </button>
                 ))}
               </section>
-              <p className="medLegenda">
-                <b>Em atendimento</b>: paciente com chegada registrada e avaliação em curso ligada à consulta.{" "}
-                <b>Avaliações em andamento</b>: toda avaliação iniciada e não concluída, de qualquer dia.
-              </p>
+              {semMedicoHoje > 0 && (
+                <p className="medSemMedico">
+                  {semMedicoHoje === 1 ? "1 consulta de hoje está" : `${semMedicoHoje} consultas de hoje estão`} sem médico definido — a recepção indica o médico ao agendar.{" "}
+                  <button type="button" className="linkLimpo" aria-pressed={verSemMedico} onClick={() => setVerSemMedico(!verSemMedico)}>
+                    {verSemMedico ? "Ocultar" : "Ver na agenda"}
+                  </button>
+                </p>
+              )}
 
               {retomar.length > 0 && (
                 <section className="clinicalPanel medRetomar" ref={retomarRef} aria-label="Avaliações para retomar">
-                  <div className="panelTitle"><strong>Avaliações para retomar</strong><span>{retomar.length === 1 ? "1 avaliação" : `${retomar.length} avaliações`}, da alteração mais recente para a mais antiga</span></div>
+                  <div className="panelTitle"><strong>Avaliações para retomar</strong><span>{retomar.length === 1 ? "1 avaliação" : `${retomar.length} avaliações`}</span></div>
                   <ol className="medLista">
                     {retomar.map((a) => {
                       const outroLocal = a.local_atendimento_id && localAtivoId && a.local_atendimento_id !== localAtivoId;

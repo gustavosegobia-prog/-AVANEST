@@ -197,7 +197,9 @@ type Perfil = { id: string; institution_id: string; nome: string; role: string; 
   /** O que esta pessoa escolheu receber no telefone. Nulo = tudo; ver lib/preferencias-de-aviso. */
   preferencias_aviso?: unknown;
   /** Monta a escala do grupo sem ser administrador — ver lib/escalista. */
-  escalista?: boolean };
+  escalista?: boolean;
+  /** Atua como médico (profissão, separada da função). NULL = não informado. */
+  atuacao_medica?: boolean | null };
 type Organizacao = { nome: string; tipo?: string | null; telefone?: string | null; email?: string | null;
   // O que a organização contratou. Nulo = tudo, que é o caso de quase todas.
   modulos?: string[] | null };
@@ -1023,7 +1025,7 @@ export function DashboardClient({
         /* A área médica mora em components/area-medica.tsx: Meu dia,
            Avaliações, Pendências e Documentos. Abrir e iniciar avaliação
            continuam sendo `openAssessment`, e o cadastro, o PatientModal. */
-        <AreaMedica perfilId={perfil.id} perfilEhMedico={perfil.role==="medico"}
+        <AreaMedica perfilId={perfil.id} perfilEhMedico={perfil.atuacao_medica ?? perfil.role==="medico"}
           pacientes={pacientes} avaliacoes={avaliacoes.map(a=>({...a,created_by:a.created_by??null,concluida_at:a.concluida_at??null,local_atendimento_id:a.local_atendimento_id??null}))}
           agendamentos={agendamentos} locais={locais} localAtivo={localAtivo}
           ocupado={busy} erro={error} falhasDeCarga={falhasDeCarga}
@@ -1183,7 +1185,8 @@ export function DashboardClient({
       {open && <PatientModal busy={busy} error={error}
         duplicado={duplicadoNoCadastro ? { nome: duplicadoNoCadastro.nome } : null}
         onAgendarDuplicado={()=>void agendarParaCadastrado()}
-        onCpfMudou={()=>{ setDuplicadoNoCadastro(null); setError(""); }} convenios={listarConvenios([...convenioValores,...conveniosDaOrganizacao.map(c=>({...c,procedimento:null,hospital:null}))],pacientes)} onClose={() => {
+        onCpfMudou={()=>{ setDuplicadoNoCadastro(null); setError(""); }}
+        medicoPadrao={view==="medico" && (perfil.atuacao_medica ?? perfil.role==="medico") ? perfil.id : null} convenios={listarConvenios([...convenioValores,...conveniosDaOrganizacao.map(c=>({...c,procedimento:null,hospital:null}))],pacientes)} onClose={() => {
         setOpen(false);
         if(initialNewPatient) router.replace(`/dashboard?area=${view}`);
         setDuplicadoNoCadastro(null);
@@ -3137,7 +3140,7 @@ function Variacao({atual,anterior,oculto}:{atual:number;anterior:number;oculto:b
     {subiu?"▲":"▼"} {Math.abs(pct).toFixed(0)}% vs. mês anterior
   </em>;
 }
-function PatientModal({ busy, error, duplicado = null, onAgendarDuplicado, onCpfMudou, convenios, onClose, onSubmit }: { busy:boolean; error:string; duplicado?:{nome:string}|null; onAgendarDuplicado?:()=>void; onCpfMudou?:()=>void; convenios:string[]; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
+function PatientModal({ busy, error, duplicado = null, onAgendarDuplicado, onCpfMudou, medicoPadrao = null, convenios, onClose, onSubmit }: { busy:boolean; error:string; duplicado?:{nome:string}|null; onAgendarDuplicado?:()=>void; onCpfMudou?:()=>void; medicoPadrao?:string|null; convenios:string[]; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
   const [convenio,setConvenio]=useState<string>(PRIVATE_PAY_CONVENIO);
   // PIX primeiro porque é o que mais se usa no balcão hoje.
   const [metodoParticular,setMetodoParticular]=useState("PIX");
@@ -3240,9 +3243,14 @@ function PatientModal({ busy, error, duplicado = null, onAgendarDuplicado, onCpf
             <Field name="horario" label="Horário da consulta" type="time" span2/>
             {/* Opcional: sem ele, a agenda mostra "Médico não definido" até
                 alguém iniciar a avaliação. */}
-            <label className="clinicalField span2"><span>Médico</span>
-              <select name="medico_id" defaultValue="">
-                <option value="">Não definido</option>
+            {/* A recepção indica o médico: é por ele que a consulta chega à tela
+                de quem atende. Obrigatório quando há médicos; já vem escolhido
+                quando há um só, ou quando é o próprio médico quem abre. O `key`
+                remonta o campo quando a lista chega do banco. */}
+            <label className={`clinicalField span2 ${medicos.length?"obrigatorio":""}`.trim()}><span>Médico{medicos.length?" *":""}</span>
+              <select name="medico_id" key={medicos.length} required={medicos.length>0}
+                defaultValue={medicoPadrao && medicos.some(m=>m.id===medicoPadrao) ? medicoPadrao : medicos.length===1 ? medicos[0].id : ""}>
+                <option value="" disabled={medicos.length>0}>{medicos.length?"Selecione o médico":"Não definido"}</option>
                 {medicos.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
               </select></label>
             <p className="modalGrupoAjuda span2">Deixe o horário em branco para o sistema usar o próximo livre da agenda.</p>

@@ -72,6 +72,10 @@ export function RecepcaoView({
   const [agendando, setAgendando] = useState<{ paciente: PacienteDaRecepcao | null } | null>(null);
   const [reagendando, setReagendando] = useState<ConsultaDaRecepcao | null>(null);
   const [confirmando, setConfirmando] = useState<{ consulta: ConsultaDaRecepcao; acao: "cancelar" | "falta" } | null>(null);
+  // Indicar (ou trocar) o médico de uma consulta já marcada — as antigas
+  // nasceram sem ele, e é por ele que a consulta chega à tela do médico.
+  const [indicando, setIndicando] = useState<{ consulta: ConsultaDaRecepcao; medico: string } | null>(null);
+  const [erroIndicando, setErroIndicando] = useState("");
   const [historicoDe, setHistoricoDe] = useState<ConsultaDaRecepcao | null>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
 
@@ -176,6 +180,21 @@ export function RecepcaoView({
       reativar: `Consulta de ${nome} reativada.`,
       reagendar: "",
     } as Record<Acao, string>)[acao]);
+    onAtualizar();
+  }
+
+  async function indicarMedico() {
+    if (!indicando) return;
+    if (!indicando.medico) { setErroIndicando("Escolha o médico."); return; }
+    const c = indicando.consulta;
+    setOcupado(c.id); setErroIndicando("");
+    const { error } = await createClient().from("agendamentos")
+      .update({ medico_id: indicando.medico, updated_at: new Date().toISOString() }).eq("id", c.id);
+    setOcupado("");
+    if (error) { setErroIndicando(`Não foi possível salvar: ${error.message}`); return; }
+    setAjustes((a) => ({ ...a, [c.id]: { ...a[c.id], medico_id: indicando.medico } }));
+    setAviso(`${pacientePorId.get(c.patient_id)?.nome ?? "Consulta"}: médico ${nomeDoMedico(indicando.medico)}.`);
+    setIndicando(null);
     onAtualizar();
   }
 
@@ -401,7 +420,13 @@ export function RecepcaoView({
                               {NOME_DA_ACAO[a]}{a === "cancelar" || a === "falta" || a === "reagendar" ? "…" : ""}
                             </button>
                           ))}
-                          <button type="button" role="menuitem" autoFocus={outras.length === 0}
+                          {!FORA_DO_FLUXO(c.status) && (
+                            <button type="button" role="menuitem" autoFocus={outras.length === 0}
+                              onClick={() => { setMenu(""); setErroIndicando(""); setIndicando({ consulta: c, medico: c.medico_id ?? "" }); }}>
+                              {c.medico_id ? "Trocar médico…" : "Indicar médico…"}
+                            </button>
+                          )}
+                          <button type="button" role="menuitem" autoFocus={outras.length === 0 && FORA_DO_FLUXO(c.status)}
                             onClick={() => { setMenu(""); setHistoricoDe(c); }}>
                             Ver histórico
                           </button>
@@ -477,6 +502,24 @@ export function RecepcaoView({
         </Dialogo>
       )}
 
+      {indicando && (
+        <Dialogo titulo={indicando.consulta.medico_id ? "Trocar o médico" : "Indicar o médico"}
+          confirmar="Salvar" cancelar="Voltar" ocupado={ocupado === indicando.consulta.id} erro={erroIndicando}
+          onCancelar={() => setIndicando(null)}
+          onConfirmar={() => void indicarMedico()}>
+          <p>
+            <strong>{pacientePorId.get(indicando.consulta.patient_id)?.nome}</strong> — {dataCurtaBr(indicando.consulta.data)}
+            {indicando.consulta.horario ? ` às ${horaCurta(indicando.consulta.horario)}` : ""}. A consulta passa a aparecer na tela do médico escolhido.
+          </p>
+          <label className="clinicalField"><span>Médico</span>
+            <select value={indicando.medico} onChange={(e) => setIndicando({ ...indicando, medico: e.target.value })}>
+              <option value="" disabled>Selecione o médico</option>
+              {medicos.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+            </select>
+          </label>
+        </Dialogo>
+      )}
+
       {historicoDe && (
         <Historico consulta={historicoDe} nome={pacientePorId.get(historicoDe.patient_id)?.nome ?? "Paciente"}
           nomes={nomes} perfilId={perfilId} onFechar={() => setHistoricoDe(null)} />
@@ -498,7 +541,8 @@ function AgendarConsulta({
   const [paciente, setPaciente] = useState(pacienteInicial);
   const [termo, setTermo] = useState("");
   const [f, setF] = useState({
-    data: diaSugerido, horario: "", medico: "",
+    // Com um médico só na organização, ele já vem escolhido.
+    data: diaSugerido, horario: "", medico: medicos.length === 1 ? medicos[0].id : "",
     procedimento: pacienteInicial?.cirurgia || pacienteInicial?.procedimento || "",
     hospital: pacienteInicial?.hospital || "", convenio: pacienteInicial?.convenio || "", observacoes: "",
   });
@@ -516,6 +560,9 @@ function AgendarConsulta({
     if (enviando.current || !paciente) return;
     setErro("");
     if (!f.data || f.data < hoje) { setErro("Escolha uma data de hoje em diante."); return; }
+    // O médico é escolhido aqui: é por ele que a consulta aparece na tela de
+    // quem vai atender, sem o médico precisar procurar.
+    if (medicos.length > 0 && !f.medico) { setErro("Escolha o médico que vai atender."); return; }
     if (f.horario && horarioOcupado(consultas, f.data, f.horario)) {
       setErro(`Já existe uma consulta às ${f.horario} nesta data. Escolha outro horário ou deixe em branco para o próximo livre.`);
       return;
@@ -585,9 +632,9 @@ function AgendarConsulta({
             <label className="clinicalField"><span>Horário</span>
               <input type="time" value={f.horario} step={300} onChange={(e) => setF({ ...f, horario: e.target.value })} />
               <small className="campoDica">Em branco: o próximo horário livre.</small></label>
-            <label className="clinicalField wide"><span>Médico</span>
-              <select value={f.medico} onChange={(e) => setF({ ...f, medico: e.target.value })}>
-                <option value="">Não definido</option>
+            <label className="clinicalField wide"><span>Médico *</span>
+              <select value={f.medico} onChange={(e) => setF({ ...f, medico: e.target.value })} required={medicos.length > 0}>
+                <option value="" disabled={medicos.length > 0}>{medicos.length > 0 ? "Selecione o médico" : "Não definido"}</option>
                 {medicos.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
               </select></label>
             <label className="clinicalField wide"><span>Procedimento / cirurgia</span>
@@ -616,13 +663,14 @@ function Reagendar({
 }) {
   const [data, setData] = useState(consulta.data >= hoje ? consulta.data : hoje);
   const [horario, setHorario] = useState("");
-  const [medico, setMedico] = useState(consulta.medico_id ?? "");
+  const [medico, setMedico] = useState(consulta.medico_id ?? (medicos.length === 1 ? medicos[0].id : ""));
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   async function salvar() {
     setErro("");
     if (!data || data < hoje) { setErro("Escolha uma data de hoje em diante."); return; }
+    if (medicos.length > 0 && !medico) { setErro("Escolha o médico que vai atender."); return; }
     if (horario && horarioOcupado(consultas, data, horario, consulta.id)) { setErro(`Já existe uma consulta às ${horario} nesta data.`); return; }
     setSalvando(true);
     const supabase = createClient();
@@ -649,9 +697,9 @@ function Reagendar({
         <label className="clinicalField"><span>Horário</span>
           <input type="time" step={300} value={horario} onChange={(e) => setHorario(e.target.value)} />
           <small className="campoDica">Em branco: o próximo livre.</small></label>
-        <label className="clinicalField wide"><span>Médico</span>
+        <label className="clinicalField wide"><span>Médico *</span>
           <select value={medico} onChange={(e) => setMedico(e.target.value)}>
-            <option value="">Não definido</option>
+            <option value="" disabled={medicos.length > 0}>{medicos.length > 0 ? "Selecione o médico" : "Não definido"}</option>
             {medicos.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </select></label>
       </div>

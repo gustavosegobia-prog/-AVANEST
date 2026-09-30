@@ -53,8 +53,10 @@ describe("escopo", () => {
     assert.equal(avaliacaoNoEscopo(av({ local_atendimento_id: "l2" }), { pessoa: "equipe", local: "atual" }, EU, "l1"), false);
     assert.equal(avaliacaoNoEscopo(av({ local_atendimento_id: "l2" }), { pessoa: "equipe", local: "atual" }, EU, null), true, "sem local escolhido, não esconde nada");
   });
-  it("agenda 'meus' inclui o que ninguém assumiu, e não o que é de outro médico", () => {
-    assert.equal(consultaNoEscopo(c({ medico_id: null }), undefined, meus, EU), true);
+  it("agenda 'meus': só o que a recepção marcou para mim ou que está em avaliação comigo", () => {
+    assert.equal(consultaNoEscopo(c({ medico_id: null }), undefined, meus, EU), false, "sem médico definido não é meu");
+    assert.equal(consultaNoEscopo(c({ medico_id: EU }), undefined, meus, EU), true);
+    assert.equal(consultaNoEscopo(c({ medico_id: null }), { etapa: "em_atendimento", medico_id: EU }, meus, EU), true);
     assert.equal(consultaNoEscopo(c({ medico_id: "outro" }), undefined, meus, EU), false);
     assert.equal(consultaNoEscopo(c({ medico_id: null }), { etapa: "em_atendimento", medico_id: "outro" }, meus, EU), false);
   });

@@ -68,22 +68,19 @@ export function avaliacaoNoEscopo(a: AvaliacaoResumo, e: Escopo, perfilId: strin
 }
 
 /**
- * Na agenda, "meus" = marcados para mim, ou já em avaliação comigo, ou ainda
- * sem médico definido (quem abre a agenda precisa ver o que ninguém assumiu).
+ * Na agenda, "meus" = as consultas que a recepção marcou para mim, e as que já
+ * estão em avaliação comigo. Quem indica o médico é a recepção, ao agendar;
+ * consulta sem médico definido não entra (a tela avisa quantas são).
  * O agendamento não registra o local de atendimento — só o nome do hospital,
- * digitado —, então o recorte de local não vale para a agenda, e a tela diz.
+ * digitado —, então o recorte de local não vale para a agenda.
  */
 export function consultaNoEscopo(c: ConsultaDaAgenda, and: Andamento | undefined, e: Escopo, perfilId: string) {
   if (e.pessoa === "equipe") return true;
-  const medico = c.medico_id ?? and?.medico_id ?? null;
-  return !medico || medico === perfilId;
+  return (c.medico_id ?? and?.medico_id ?? null) === perfilId;
 }
 
-export function descricaoDoEscopo(e: Escopo, nomeDoLocal: string | null): string {
-  const quem = e.pessoa === "meus" ? "Seus atendimentos" : "Toda a equipe";
-  const onde = e.local === "atual" && nomeDoLocal ? `avaliações de ${nomeDoLocal}` : "todos os locais";
-  return `${quem} · ${onde}`;
-}
+/** Consulta ainda sem médico — nem marcado, nem em avaliação. */
+export const semMedico = (c: ConsultaDaAgenda, and: Andamento | undefined) => !(c.medico_id ?? and?.medico_id);
 
 // ── O dia ──────────────────────────────────────────────────────────────────
 

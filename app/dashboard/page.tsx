@@ -23,7 +23,7 @@ export default async function DashboardPage({
 
   const { data: perfil } = await supabase
     .from("perfis")
-    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin, escalista, preferencias_aviso, pausada_motivo")
+    .select("id, institution_id, nome, role, permissoes, status, must_reset, super_admin, escalista, preferencias_aviso, pausada_motivo, atuacao_medica")
     .eq("id", user.id)
     .maybeSingle();
   // Conta criada mas ainda sem organização: conclui o cadastro antes de entrar.

@@ -5949,3 +5949,4 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
    numa linha só ele empurrava a página para o lado. */
 .evalSave.error{white-space:normal;flex-wrap:wrap;max-width:min(560px,48vw)}
 @media(max-width:700px){.evalSave.error{max-width:none}}
+.medSemMedico{margin:6px 0 var(--esp-3);font-size:13px;color:var(--cor-tinta-fraca)}
