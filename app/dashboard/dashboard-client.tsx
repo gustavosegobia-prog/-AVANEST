@@ -442,6 +442,18 @@ export function DashboardClient({
   const captchaSenha = useCaptcha();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  /**
+   * CPF já cadastrado no formulário de nova avaliação. Em vez de mandar a
+   * recepção começar de novo pela busca — lançar duas vezes —, a própria
+   * janela oferece marcar ESTA consulta (data, horário, médico já digitados)
+   * para o cadastro que existe. O cadastro existente não é alterado.
+   */
+  const [duplicadoNoCadastro, setDuplicadoNoCadastro] = useState<{
+    id: string; nome: string;
+    consulta: { data: string; horario: string; hospital: string|null; procedimento: string|null; convenio: string|null; observacoes: string|null; medico_id: string|null;
+      /** Particular pago no balcão: o recebimento entra como no cadastro novo. */
+      valorParticular: number|null; metodoParticular: string };
+  } | null>(null);
   const currentByPatient = useMemo(() => {
     const result = new Map<string,Avaliacao>();
     for (const item of avaliacoes) if (!result.has(item.patient_id)) result.set(item.patient_id, item);
@@ -451,7 +463,7 @@ export function DashboardClient({
 
   async function createPatient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true); setError("");
+    setBusy(true); setError(""); setDuplicadoNoCadastro(null);
     try {
     const fd = new FormData(event.currentTarget);
     const text = (name: string) => String(fd.get(name) ?? "").trim() || null;
@@ -524,7 +536,17 @@ export function DashboardClient({
     if(cpfDigits){
       const {data:duplicate}=await supabase.from("pacientes").select("id,nome").eq("cpf",cpfDigits).maybeSingle();
       if(duplicate){
-        setError(`Já existe um paciente com este CPF: ${duplicate.nome}.`);
+        setDuplicadoNoCadastro({
+          id: duplicate.id, nome: duplicate.nome,
+          consulta: {
+            data: appointmentDate, horario: String(text("horario")??"").trim(),
+            hospital: text("hospital"), procedimento: text("cirurgia"), convenio: convenio,
+            observacoes: text("observacoes"), medico_id: text("medico_id"),
+            valorParticular: convenio===PRIVATE_PAY_CONVENIO ? (lerDinheiro(text("valor_particular")??"") || null) : null,
+            metodoParticular: text("metodo_particular") || "PIX",
+          },
+        });
+        setError(`Já existe um paciente com este CPF: ${duplicate.nome}. Não é preciso cadastrar de novo — marque a consulta para o cadastro dele.`);
         setBusy(false);
         return;
       }
@@ -620,6 +642,47 @@ export function DashboardClient({
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Erro desconhecido ao salvar.";
       setError(`Não foi possível salvar: ${message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Marca a consulta digitada para o paciente que já tem cadastro. */
+  async function agendarParaCadastrado() {
+    const dup = duplicadoNoCadastro;
+    if (!dup || busy) return;
+    setBusy(true); setError("");
+    try {
+      const supabase = createClient();
+      const c = dup.consulta;
+      const {data:doDia,error:erroDoDia}=await supabase.from("agendamentos")
+        .select("horario,status").eq("institution_id",perfil.institution_id).eq("data",c.data);
+      if(erroDoDia){ setError(`Não foi possível conferir a agenda: ${erroDoDia.message}`); return; }
+      if(c.horario && (doDia??[]).some(item=>!["cancelado","reagendado"].includes(item.status)&&String(item.horario??"").slice(0,5)===c.horario)){
+        setError(`Já existe uma consulta às ${c.horario} nesta data. Escolha outro horário ou deixe em branco para o próximo livre.`);
+        return;
+      }
+      const horario = c.horario ? `${c.horario}:00`.slice(0,8) : nextAutomaticAppointmentTime(c.data, doDia ?? []);
+      const {data:criado,error:erroAgenda}=await supabase.from("agendamentos").insert({
+        institution_id: perfil.institution_id, patient_id: dup.id, data: c.data, horario,
+        hospital: c.hospital, procedimento: c.procedimento, convenio: c.convenio ?? PRIVATE_PAY_CONVENIO,
+        observacoes: c.observacoes, medico_id: c.medico_id, created_by: perfil.id,
+      }).select("id").single();
+      if(erroAgenda){ setError(`Não foi possível agendar: ${erroAgenda.message}`); return; }
+      setDuplicadoNoCadastro(null);
+      if(c.valorParticular){
+        const {error:erroPagamento}=await supabase.rpc("receber_particular",{
+          p_patient_id:dup.id, p_valor:c.valorParticular, p_metodo:c.metodoParticular, p_referencia:null,
+        });
+        // A consulta já está marcada: a falha do recebimento vira aviso, e não
+        // desfaz o agendamento — mesma regra do cadastro novo.
+        // A janela fecha (a consulta existe; reenviar criaria outra) e o aviso
+        // fica na tela da Recepção.
+        if(erroPagamento){ setError(`Consulta marcada, mas o recebimento não foi registrado: ${erroPagamento.message}. Lance o valor pelo Financeiro.`); setOpen(false); router.refresh(); return; }
+      }
+      if(autoStartAssessment && criado?.id){ await openAssessment(dup.id, criado.id); return; }
+      setOpen(false);
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -1024,7 +1087,7 @@ export function DashboardClient({
            etapas do atendimento e as ações de balcão. O cadastro completo do
            paciente continua sendo o PatientModal daqui, o mesmo do Médico. */
         <RecepcaoView perfilId={perfil.id} institutionId={perfil.institution_id}
-          pacientes={pacientes} agendamentos={agendamentos}
+          pacientes={pacientes} agendamentos={agendamentos} erroExterno={open ? "" : error}
           onNovoPaciente={()=>setOpen(true)} onAtualizar={()=>router.refresh()} />
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()} nomeDaOrganizacao={organizacao?.nome??null} carregadoEm={carregadoEm}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} localAtivo={localAtivo} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin}/>}
@@ -1117,9 +1180,13 @@ export function DashboardClient({
       {/* A lista sem preço junta com a de preços: quem tem Financeiro recebe as
           duas, a recepção recebe só a primeira — e as duas dizem o mesmo sobre
           quais convênios existem e quais estão desativados. */}
-      {open && <PatientModal busy={busy} error={error} convenios={listarConvenios([...convenioValores,...conveniosDaOrganizacao.map(c=>({...c,procedimento:null,hospital:null}))],pacientes)} onClose={() => {
+      {open && <PatientModal busy={busy} error={error}
+        duplicado={duplicadoNoCadastro ? { nome: duplicadoNoCadastro.nome } : null}
+        onAgendarDuplicado={()=>void agendarParaCadastrado()}
+        onCpfMudou={()=>{ setDuplicadoNoCadastro(null); setError(""); }} convenios={listarConvenios([...convenioValores,...conveniosDaOrganizacao.map(c=>({...c,procedimento:null,hospital:null}))],pacientes)} onClose={() => {
         setOpen(false);
         if(initialNewPatient) router.replace(`/dashboard?area=${view}`);
+        setDuplicadoNoCadastro(null);
       }} onSubmit={createPatient} />}
 
       {/* Vale para todas as áreas: a recepção avisa que a paciente chegou e o
@@ -3070,7 +3137,7 @@ function Variacao({atual,anterior,oculto}:{atual:number;anterior:number;oculto:b
     {subiu?"▲":"▼"} {Math.abs(pct).toFixed(0)}% vs. mês anterior
   </em>;
 }
-function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:boolean; error:string; convenios:string[]; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
+function PatientModal({ busy, error, duplicado = null, onAgendarDuplicado, onCpfMudou, convenios, onClose, onSubmit }: { busy:boolean; error:string; duplicado?:{nome:string}|null; onAgendarDuplicado?:()=>void; onCpfMudou?:()=>void; convenios:string[]; onClose:()=>void; onSubmit:(e:FormEvent<HTMLFormElement>)=>void }) {
   const [convenio,setConvenio]=useState<string>(PRIVATE_PAY_CONVENIO);
   // PIX primeiro porque é o que mais se usa no balcão hoje.
   const [metodoParticular,setMetodoParticular]=useState("PIX");
@@ -3089,9 +3156,12 @@ function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:bool
   // grupos com título: o preenchimento segue a ordem natural da conversa com
   // o paciente, e o que falta fica visível sem rolar tudo.
   return <div className="patientModalBackdrop">
-    <form className="patientModal" onSubmit={onSubmit} role="dialog" aria-modal="true" aria-labelledby="titulo-novo-paciente">
+    {/* Mexer no CPF depois do aviso de duplicado desfaz a oferta de agendar
+        para o cadastro existente: ela valia para aquele CPF. */}
+    <form className="patientModal" onSubmit={onSubmit} role="dialog" aria-modal="true" aria-labelledby="titulo-novo-paciente"
+      onChange={(e)=>{ if(duplicado && (e.target as unknown as HTMLInputElement).name==="cpf") onCpfMudou?.(); }}>
       <div className="patientModalHead">
-        <div><h2 id="titulo-novo-paciente">Novo paciente</h2><p>Cadastro, convênio, procedimento e agendamento. Campos com <b>*</b> são obrigatórios.</p></div>
+        <div><h2 id="titulo-novo-paciente">Nova avaliação pré-anestésica</h2><p>Cadastro do paciente e agendamento da consulta, numa etapa só. Campos com <b>*</b> são obrigatórios.</p></div>
         <button type="button" onClick={onClose} aria-label="Fechar sem salvar">×</button>
       </div>
 
@@ -3190,7 +3260,11 @@ function PatientModal({ busy, error, convenios, onClose, onSubmit }: { busy:bool
           ? <p className="clinicalError modalErro" role="alert" aria-live="assertive">{error}</p>
           : <span className="saveStatus" aria-live="polite">{busy ? "Salvando no banco de dados…" : ""}</span>}
         <button type="button" className="outlineClinical" onClick={onClose}>Cancelar</button>
-        <button type="submit" className="primaryClinical" disabled={busy}>{busy?"Salvando...":"Salvar paciente"}</button>
+        {duplicado && onAgendarDuplicado
+          ? <button type="button" className="primaryClinical" disabled={busy} onClick={onAgendarDuplicado}>
+              {busy?"Agendando...":`Agendar para ${duplicado.nome}`}
+            </button>
+          : <button type="submit" className="primaryClinical" disabled={busy}>{busy?"Salvando...":"Salvar e agendar"}</button>}
       </div>
     </form>
   </div>;

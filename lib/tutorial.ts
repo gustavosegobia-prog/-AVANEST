@@ -91,13 +91,13 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "recepcao",
       alvo: '[data-area="recepcao"]',
       titulo: "Recepção: por onde o paciente entra",
-      texto: "É a primeira porta. No alto, + Novo paciente e a busca por nome, CPF ou telefone — paciente já cadastrado é agendado pelo resultado da busca. Embaixo, a agenda do dia, com as etapas do atendimento: agendado, aguardando, em atendimento e concluído.",
+      texto: "É a primeira porta. No alto, + Nova avaliação pré-anestésica: cadastro e consulta de uma vez só. E a busca por nome, CPF ou telefone para quem já tem cadastro. Embaixo, a agenda do dia, com as etapas do atendimento: agendado, aguardando, em atendimento e concluído.",
     });
     etapas.push({
       area: "recepcao",
       alvo: '[data-acao="novo-paciente"]',
-      titulo: "Novo paciente",
-      texto: "O botão + Novo paciente abre a ficha inteira: dados pessoais, endereço, hospital e cirurgia. O CPF é conferido na hora — se já existir, o sistema avisa antes de duplicar o cadastro.",
+      titulo: "Nova avaliação pré-anestésica",
+      texto: "O botão abre a ficha inteira — dados pessoais, endereço, hospital, cirurgia, data e horário — e salva cadastro e consulta juntos. O CPF é conferido na hora: se o paciente já existir, a mesma janela oferece marcar a consulta para o cadastro dele.",
     });
     etapas.push({
       area: "recepcao",

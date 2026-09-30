@@ -8,7 +8,8 @@ const tela = ler("components/recepcao.tsx");
 const painel = ler("app/dashboard/dashboard-client.tsx");
 const sql = ler("supabase/migrations/202609300016_agenda_da_recepcao.sql");
 
-test("uma ação só no topo: Novo paciente; agendar paciente já cadastrado sai da busca", () => {
+test("uma ação só no topo: Nova avaliação pré-anestésica (cadastro e consulta de uma vez)", () => {
+  assert.match(tela, />\s*\+ Nova avaliação pré-anestésica\s*</);
   assert.match(tela, /className="primaryClinical recAgendar" data-acao="novo-paciente"/);
   assert.doesNotMatch(tela, /data-acao="agendar-consulta"/, "voltou o Agendar consulta repetido no topo");
   assert.doesNotMatch(tela, /setAgendando\(\{ paciente: null \}\)/, "voltou um Agendar consulta sem paciente");
@@ -45,4 +46,12 @@ test("reagendar preserva a marcação antiga e usa a mesma limpeza do desmarcar"
 test("estado vazio com ações úteis, sem repetir o topo", () => {
   assert.match(tela, /Ver próxima data com consultas \(\{dataCurtaBr\(proxima\)\}\)/);
   assert.match(tela, /Cadastrar novo paciente/);
+});
+
+test("CPF já cadastrado: a mesma janela marca a consulta para o cadastro existente", () => {
+  const painel = ler("app/dashboard/dashboard-client.tsx");
+  assert.match(painel, /<h2 id="titulo-novo-paciente">Nova avaliação pré-anestésica<\/h2>/);
+  assert.match(painel, /Agendar para \$\{duplicado\.nome\}/);
+  assert.match(painel, /patient_id: dup\.id, data: c\.data, horario,/);
+  assert.match(painel, /onCpfMudou=\{\(\)=>\{ setDuplicadoNoCadastro\(null\); setError\(""\); \}\}/);
 });

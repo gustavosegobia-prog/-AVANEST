@@ -49,8 +49,10 @@ const ICONE_DA_ETAPA: Record<Etapa, Parameters<typeof Icone>[0]["nome"]> = {
 type FiltroDeEtapa = "todas" | Etapa | "fora";
 
 export function RecepcaoView({
-  perfilId, institutionId, pacientes, agendamentos, onNovoPaciente, onAtualizar,
+  perfilId, institutionId, pacientes, agendamentos, onNovoPaciente, onAtualizar, erroExterno = "",
 }: {
+  /** Aviso vindo do cadastro (ex.: consulta marcada, recebimento não registrado). */
+  erroExterno?: string;
   perfilId: string;
   institutionId: string;
   pacientes: PacienteDaRecepcao[];
@@ -198,13 +200,14 @@ export function RecepcaoView({
           <h1>Recepção</h1>
           <p>Agenda, chegada e cadastro — sem acesso a dados clínicos ou financeiros.</p>
         </div>
-        {/* UMA AÇÃO SÓ NO TOPO. Todo paciente que passa pela recepção sai com
-            consulta, e o cadastro já marca a primeira. Para quem já é
+        {/* UMA AÇÃO SÓ NO TOPO, e ela faz tudo de uma vez: cadastra o paciente
+            e marca a consulta. Se o CPF já existe, a própria janela oferece
+            marcar a consulta para o cadastro existente — sem lançar duas vezes. Para quem já é
             cadastrado (outra cirurgia), "Agendar consulta" fica no resultado
             da busca, ao lado do nome. */}
         <div className="recTopoAcoes">
           <button type="button" className="primaryClinical recAgendar" data-acao="novo-paciente" onClick={onNovoPaciente}>
-            + Novo paciente
+            + Nova avaliação pré-anestésica
           </button>
         </div>
       </section>
@@ -254,6 +257,7 @@ export function RecepcaoView({
         )}
       </section>
 
+      {erroExterno && <p className="clinicalError" role="alert">{erroExterno}</p>}
       {erro && <p className="clinicalError" role="alert">{erro}</p>}
       {aviso && <p className="financeSuccess" role="status">{aviso}</p>}
 
