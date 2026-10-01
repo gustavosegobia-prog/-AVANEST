@@ -64,7 +64,10 @@ export function AreaMedica({
   // Cada médico entra no que é dele: os pacientes que a recepção lançou para
   // ele. Não há o que escolher — quem indica o médico é a recepção, ao
   // agendar. Quem não atende (administração) vê a equipe.
-  const escopo: Escopo = { pessoa: perfilEhMedico ? "meus" : "equipe", local: "todos" };
+  // Abre sempre nos seus pacientes; "Equipe" fica a um toque, para quem quer
+  // ver o dia do grupo. Quem não atende vê só a equipe, e não há o que trocar.
+  const [pessoa, setPessoa] = useState<Escopo["pessoa"]>(perfilEhMedico ? "meus" : "equipe");
+  const escopo: Escopo = { pessoa, local: "todos" };
   const [verSemMedico, setVerSemMedico] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>({ tipo: "hoje" });
   const [filtroDoDia, setFiltroDoDia] = useState<FiltroDoDia>("todas");
@@ -168,9 +171,15 @@ export function AreaMedica({
         <div>
           <h1>Área médica</h1>
           {/* Só a data: o local já está na barra do topo, ao lado da marca. */}
-          <p className="medOnde">
+          <div className="medOnde">
             <span><Icone nome="calendario" tamanho={14} /> {dataPorExtenso(hoje).replace(/^./, (x) => x.toUpperCase())}</span>
-          </p>
+            {perfilEhMedico && (
+              <span className="medQuemVer" role="group" aria-label="De quem ver">
+                <button type="button" aria-pressed={pessoa === "meus"} className={pessoa === "meus" ? "ativo" : ""} onClick={() => setPessoa("meus")}>Meus pacientes</button>
+                <button type="button" aria-pressed={pessoa === "equipe"} className={pessoa === "equipe" ? "ativo" : ""} onClick={() => setPessoa("equipe")}>Equipe</button>
+              </span>
+            )}
+          </div>
         </div>
         <button type="button" className="primaryClinical" data-acao="novo-paciente" onClick={onNovaAvaliacao}>+ Nova avaliação</button>
       </section>

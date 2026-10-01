@@ -78,8 +78,9 @@ test("topo no celular: alinhado à esquerda, sem local repetido e sem cartões a
 });
 
 test("cada médico entra nos pacientes dele: sem seletor de recorte, médico indicado pela recepção", () => {
-  assert.doesNotMatch(tela, /Meus atendimentos/, "o seletor de recorte voltou a poluir a tela");
-  assert.match(tela, /const escopo: Escopo = \{ pessoa: perfilEhMedico \? "meus" : "equipe", local: "todos" \};/);
+  assert.doesNotMatch(tela, /Meus atendimentos|aria-label="De onde"|className="medEscopo"/, "o painel de recorte voltou a poluir a tela");
+  assert.match(tela, /useState<Escopo\["pessoa"\]>\(perfilEhMedico \? "meus" : "equipe"\)/, "médico abre nos pacientes dele");
+  assert.match(tela, />Meus pacientes<\/button>[\s\S]{0,300}>Equipe<\/button>/, "a equipe fica a um toque");
   assert.match(painel, /perfilEhMedico=\{perfil\.atuacao_medica \?\? perfil\.role==="medico"\}/);
   assert.match(ler("app/dashboard/page.tsx"), /pausada_motivo, atuacao_medica"\)/);
   const rec = ler("components/recepcao.tsx");

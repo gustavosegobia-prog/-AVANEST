@@ -5950,3 +5950,9 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evalSave.error{white-space:normal;flex-wrap:wrap;max-width:min(560px,48vw)}
 @media(max-width:700px){.evalSave.error{max-width:none}}
 .medSemMedico{margin:6px 0 var(--esp-3);font-size:13px;color:var(--cor-tinta-fraca)}
+/* "Meus pacientes | Equipe": pequeno, ao lado da data — uma escolha, não um painel. */
+.medOnde{align-items:center}
+.medQuemVer{display:inline-flex;border:1px solid var(--cor-borda);border-radius:var(--raio-cheio);overflow:hidden;background:var(--cor-superficie)}
+.medQuemVer button{border:0;background:none;font:inherit;font-size:13px;font-weight:700;color:var(--cor-tinta-fraca);padding:5px 12px;cursor:pointer;min-height:30px}
+.medQuemVer button.ativo{background:var(--cor-marca);color:var(--cor-marca-contraste)}
+.medQuemVer button:focus-visible{outline:0;box-shadow:var(--foco)}
