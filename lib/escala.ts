@@ -937,10 +937,10 @@ export function corpoDaFolha(opts: {
   const semanas: string[] = [];
   for (let i = 0; i < celulas.length; i += 7) semanas.push(`<tr>${celulas.slice(i, i + 7).join("")}</tr>`);
 
-  // Folha de um hospital só leva o nome dele no título: é o que se lê primeiro
-  // quando ela está pregada na parede daquele centro cirúrgico.
+  // Folha de um hospital só é o nome dele e o mês, e mais nada: é o que se lê
+  // primeiro quando ela está pregada na parede daquele centro cirúrgico.
   const titulo = doGrupo
-    ? `Escala da equipe${hospitais.length === 1 ? ` — ${hospitais[0]}` : ""} — ${mesEmMaiusculas(nomeMes)} de ${ano}`
+    ? `${hospitais.length === 1 ? hospitais[0] : "Escala da equipe"} — ${mesEmMaiusculas(nomeMes)} de ${ano}`
     : `Meus plantões — ${mesEmMaiusculas(nomeMes)} de ${ano}`;
 
   // Na folha do grupo, o calendário É a folha, e mais nada. A lista turno a

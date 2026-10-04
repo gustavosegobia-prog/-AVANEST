@@ -69,9 +69,11 @@ test("as cores vêm da tela, e não são sorteadas de novo", () => {
   assert.equal(dias.get(1)!.find((f) => f.letra === "T")!.pastilhas[0].cor, 2);
 });
 
-test("o título diz o hospital quando a folha é de um só", () => {
-  assert.equal(tituloDaFolha(folha()),
-    "Escala da equipe — Hospital Santa Casa — SETEMBRO de 2026".replace("Hospital Santa Casa", "Santa Casa"));
+test("a folha de um hospital só diz o hospital e o mês, e mais nada", () => {
+  assert.equal(tituloDaFolha(folha()), "Santa Casa — SETEMBRO de 2026");
+  // O nome cadastrado da instituição vale mais que o texto do plantão.
+  assert.equal(tituloDaFolha(folha({ instituicao: { nome: "HOSPITAL SANTA CASA" } })),
+    "HOSPITAL SANTA CASA — SETEMBRO de 2026");
   assert.equal(tituloDaFolha(folha({ doGrupo: false })), "Meus plantões — SETEMBRO de 2026");
   // Com dois hospitais o nome sai do título: a folha não responde por um lugar
   // onde metade do que está impresso não aconteceu.
@@ -80,6 +82,15 @@ test("o título diz o hospital quando a folha é de um só", () => {
                plantao("2026-09-02", "07:00", "13:00", "B", "Unimed")],
   });
   assert.equal(tituloDaFolha(doisLugares), "Escala da equipe — SETEMBRO de 2026");
+});
+
+test("o cabeçalho traz a marca com o slogan, e o hospital e o mês uma vez só", () => {
+  const pdf = escalaEmPdf(folha({ instituicao: { nome: "HOSPITAL SANTA CASA" } }));
+  assert.match(pdf, /\(AVANEST\) Tj/);
+  assert.match(pdf, /\(Gest[^)]*o em anestesiologia\) Tj/);
+  assert.equal((pdf.match(/\(HOSPITAL SANTA CASA\) Tj/g) ?? []).length, 1);
+  assert.equal((pdf.match(/\(SETEMBRO de 2026\) Tj/g) ?? []).length, 1);
+  assert.doesNotMatch(pdf, /Escala da equipe/);
 });
 
 test("UMA folha, deitada — que é o motivo deste arquivo existir", () => {

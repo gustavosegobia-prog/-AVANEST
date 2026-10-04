@@ -429,7 +429,7 @@ test("folha de um hospital só leva o nome dele no título e não o repete nas c
     turno("Santa Casa", "GUSTAVO SEGOBIA DA SILVA"),
     turno("Santa Casa", "ANA PAULA DE SOUZA", "19:00"),
   ]);
-  assert.equal(titulo, "Escala da equipe — Santa Casa — AGOSTO de 2026");
+  assert.equal(titulo, "Santa Casa — AGOSTO de 2026");
   // O nome não se repete em cada célula: numa folha de um hospital só, seria a
   // mesma palavra trinta e uma vezes.
   assert.doesNotMatch(corpo, /07-19h · Santa Casa/);

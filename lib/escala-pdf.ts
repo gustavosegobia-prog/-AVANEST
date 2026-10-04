@@ -113,12 +113,27 @@ export function conteudoDosDias(f: FolhaDaEscala): Map<number, Faixa[]> {
   return porDia;
 }
 
+/**
+ * O cabeçalho da folha: de quem ela é e de que mês.
+ *
+ * A folha do grupo de um hospital só leva o NOME DELE e o mês, e mais nada:
+ * é o que se lê de longe, pregada na parede daquele centro cirúrgico. Antes o
+ * título dizia "Escala da equipe — Santa Casa — OUTUBRO" e repetia o hospital
+ * e o mês logo abaixo e à direita — três vezes a mesma coisa.
+ */
+export function cabecalhoDaFolha(f: FolhaDaEscala): { nome: string; mes: string } {
+  const hospitais = [...new Set(f.plantoes.map((p) => p.local).filter(Boolean))];
+  const unico = f.instituicao?.nome || (hospitais.length === 1 ? hospitais[0] : null);
+  return {
+    nome: f.doGrupo ? unico ?? "Escala da equipe" : "Meus plantões",
+    mes: `${mesEmMaiusculas(f.nomeMes)} de ${f.ano}`,
+  };
+}
+
 /** O título da folha — o mesmo da versão em HTML, para os dois não divergirem. */
 export function tituloDaFolha(f: FolhaDaEscala): string {
-  const hospitais = [...new Set(f.plantoes.map((p) => p.local).filter(Boolean))];
-  return f.doGrupo
-    ? `Escala da equipe${hospitais.length === 1 ? ` — ${hospitais[0]}` : ""} — ${mesEmMaiusculas(f.nomeMes)} de ${f.ano}`
-    : `Meus plantões — ${mesEmMaiusculas(f.nomeMes)} de ${f.ano}`;
+  const { nome, mes } = cabecalhoDaFolha(f);
+  return `${nome} — ${mes}`;
 }
 /**
  * O recuo do dia: onde as pastilhas começam, depois do rótulo da faixa.
@@ -292,7 +307,7 @@ export function escalaEmPdf(f: FolhaDaEscala): string {
     .map((p) => [p.texto, p.cor] as const)).entries()]
     .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
 
-  const topoDaGrade = MARGEM + (f.instituicao ? 44 : 32);
+  const topoDaGrade = MARGEM + 44;
   const alturaDoCabecalho = 13;
   const alturaDaLegenda = tema.temLegenda && rotulos.length ? 16 : 0;
   const alturaUtil = A4_DEITADA.altura - MARGEM - 12 - alturaDaLegenda - topoDaGrade;
@@ -336,12 +351,24 @@ export function escalaEmPdf(f: FolhaDaEscala): string {
   const pagina = new Pagina(A4_DEITADA.largura, A4_DEITADA.altura);
 
   // ---- Cabeçalho ---------------------------------------------------------
-  pagina.texto(MARGEM, MARGEM, titulo, { tamanho: 13, negrito: true, cor: tema.tinta });
-  if (f.instituicao?.nome)
-    pagina.texto(MARGEM, MARGEM + 17, f.instituicao.nome, { tamanho: 9, cor: tema.tintaFraca });
-  pagina.texto(A4_DEITADA.largura - MARGEM, MARGEM + 2,
-    `${mesEmMaiusculas(f.nomeMes)} · ${f.ano}`,
-    { tamanho: 11, negrito: true, cor: tema.tintaFraca, alinhamento: "direita" });
+  // À esquerda, a instituição e o mês — uma vez cada. À direita, a marca com
+  // o slogan: é a primeira coisa que diz de onde veio o papel, e no rodapé, em
+  // letra de 5pt, ela passava despercebida.
+  const { nome, mes } = cabecalhoDaFolha(f);
+  const direita = A4_DEITADA.largura - MARGEM;
+  const larguraDaMarca = Math.max(larguraDoTexto("AVANEST", 11, true), larguraDoTexto(SLOGAN, 7.5));
+  pagina.texto(MARGEM, MARGEM, cortarTexto(nome, direita - larguraDaMarca - 40 - MARGEM, 16, true),
+    { tamanho: 16, negrito: true, cor: tema.tinta });
+  pagina.texto(MARGEM, MARGEM + 21, mes, { tamanho: 10, negrito: true, cor: tema.tintaFraca });
+
+  const azul = tema.emCores ? corDeHex("#0a84c8") : tema.tintaFraca;
+  const xMarca = direita - larguraDaMarca;
+  // O Λ da marca é desenhado: imagem no PDF exigiria embutir e decodificar um
+  // PNG por causa de dois traços.
+  pagina.linha(xMarca - 15, MARGEM + 20, xMarca - 10, MARGEM + 1, azul, 2);
+  pagina.linha(xMarca - 10, MARGEM + 1, xMarca - 5, MARGEM + 20, azul, 2);
+  pagina.texto(xMarca, MARGEM + 1, "AVANEST", { tamanho: 11, negrito: true, cor: tema.tinta });
+  pagina.texto(xMarca, MARGEM + 14, SLOGAN, { tamanho: 7.5, cor: tema.tintaFraca });
 
   // ---- Os dias da semana, sem barra, como na tela -------------------------
   for (let c = 0; c < 7; c++) {
@@ -452,20 +479,9 @@ export function escalaEmPdf(f: FolhaDaEscala): string {
     }
   }
 
-  // ---- Assinatura --------------------------------------------------------
-  // O Λ da marca é desenhado: imagem no PDF exigiria embutir e decodificar um
-  // PNG por causa de dois traços.
-  const yAss = A4_DEITADA.altura - MARGEM - 2;
-  const azul = tema.emCores ? corDeHex("#0a84c8") : tema.tintaFraca;
-  pagina.linha(MARGEM, yAss, MARGEM + 3.4, yAss - 7, azul, 1.3);
-  pagina.linha(MARGEM + 3.4, yAss - 7, MARGEM + 6.8, yAss, azul, 1.3);
-  // O nome E o slogan. A folha em HTML sempre escreveu os dois; no PDF eu tinha
-  // deixado só o nome, e o papel passou a dizer menos do que dizia antes.
-  pagina.texto(MARGEM + 10, yAss - 9.5, "AVANEST",
-    { tamanho: 7.5, negrito: true, cor: tema.tintaFraca });
-  pagina.texto(MARGEM + 10, yAss - 2.5, SLOGAN,
-    { tamanho: 5.6, cor: tema.tintaFraca });
-  pagina.texto(A4_DEITADA.largura - MARGEM, yAss - 7.5,
+  // ---- Rodapé ------------------------------------------------------------
+  // A marca subiu para o cabeçalho; aqui fica só de quando é o papel.
+  pagina.texto(A4_DEITADA.largura - MARGEM, A4_DEITADA.altura - MARGEM - 9.5,
     `Impresso em ${f.impressoEm.toLocaleDateString("pt-BR")} às `
     + `${f.impressoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
     { tamanho: 6.5, cor: tema.tintaFraca, alinhamento: "direita" });
