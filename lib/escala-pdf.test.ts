@@ -84,13 +84,24 @@ test("a folha de um hospital só diz o hospital e o mês, e mais nada", () => {
   assert.equal(tituloDaFolha(doisLugares), "Escala da equipe — SETEMBRO de 2026");
 });
 
-test("o cabeçalho traz a marca com o slogan, e o hospital e o mês uma vez só", () => {
+test("a folha traz a marca com o slogan, e o hospital e o mês uma vez só", () => {
   const pdf = escalaEmPdf(folha({ instituicao: { nome: "HOSPITAL SANTA CASA" } }));
   assert.match(pdf, /\(AVANEST\) Tj/);
   assert.match(pdf, /\(Gest[^)]*o em anestesiologia\) Tj/);
   assert.equal((pdf.match(/\(HOSPITAL SANTA CASA\) Tj/g) ?? []).length, 1);
-  assert.equal((pdf.match(/\(SETEMBRO de 2026\) Tj/g) ?? []).length, 1);
+  assert.equal((pdf.match(/\(SETEMBRO [^)]* 2026\) Tj/g) ?? []).length, 1);
   assert.doesNotMatch(pdf, /Escala da equipe/);
+});
+
+test("o símbolo da instituição entra na folha, como JPEG embutido", () => {
+  const simbolo = { bytes: "\xff\xd8\xff\xd9", largura: 120, altura: 60 };
+  const pdf = escalaEmPdf(folha({ instituicao: { nome: "Santa Casa", simbolo } }));
+  assert.match(pdf, /\/Subtype \/Image \/Width 120 \/Height 60 .*\/Filter \/DCTDecode \/Length 4 >>/);
+  assert.match(pdf, /\/XObject << \/Im1 \d+ 0 R >>/);
+  assert.match(pdf, /cm \/Im1 Do Q/);
+  // Sem símbolo, nada de imagem — e a folha pessoal nunca leva o do hospital.
+  assert.doesNotMatch(escalaEmPdf(folha()), /\/XObject/);
+  assert.doesNotMatch(escalaEmPdf(folha({ doGrupo: false, instituicao: { nome: "Santa Casa", simbolo } })), /Do Q/);
 });
 
 test("UMA folha, deitada — que é o motivo deste arquivo existir", () => {

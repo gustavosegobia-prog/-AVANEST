@@ -19,6 +19,8 @@ import {
   nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes, planilhaPorConvenio,
 } from "@/lib/planilha";
 import { escalaEmPdf, tituloDaFolha } from "@/lib/escala-pdf";
+import { imagemEmJpeg } from "@/lib/imagem-jpeg";
+import type { ImagemJpeg } from "@/lib/pdf";
 import { baixarXLSX } from "@/lib/xlsx";
 import { MeuFinanceiro } from "@/components/meu-financeiro";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
@@ -1132,6 +1134,27 @@ export function Plantoes({
   const marcaDe = useCallback((id: string | null) => {
     const local = id ? locais.find((l) => l.id === id) : null;
     return local ? { nome: nomeDoLocal(local), logo: local.logo_url } : null;
+  }, [locais]);
+  /**
+   * Os símbolos dos hospitais já em JPEG, para o PDF da escala.
+   *
+   * Preparados quando os locais chegam, e não no clique de imprimir: no iPhone
+   * a folha de compartilhar só abre colada no toque, e uma espera pela rede
+   * entre os dois faz o aparelho recusar. As duas versões, a colorida e a
+   * cinza, porque a escolha entre elas é feita na hora de imprimir.
+   */
+  const [simbolos, setSimbolos] = useState<Map<string, ImagemJpeg>>(new Map());
+  useEffect(() => {
+    let vivo = true;
+    for (const l of locais) {
+      if (!l.logo_url) continue;
+      for (const cinza of [false, true]) {
+        void imagemEmJpeg(l.logo_url, cinza).then((img) => {
+          if (vivo && img) setSimbolos((m) => new Map(m).set(`${cinza ? "cinza" : "cor"}:${l.logo_url}`, img));
+        });
+      }
+    }
+    return () => { vivo = false; };
   }, [locais]);
   // O calendário precisa dizer QUAL plantão é, não só que existe um. Cor e
   // nome vêm do modelo; sem modelo, o rótulo cai no horário, que ainda
@@ -2328,7 +2351,12 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       doGrupo: escopo === "grupo",
       mes, nomeMes: MESES[m - 1], ano, diasNoMes, primeiroDiaSemana,
       impressoEm: new Date(),
-      instituicao: unico && !unico.startsWith("fora:") ? marcaDe(unico) : null,
+      instituicao: (() => {
+        const marca = unico && !unico.startsWith("fora:") ? marcaDe(unico) : null;
+        if (!marca) return null;
+        const simbolo = marca.logo ? simbolos.get(`${emCores ? "cor" : "cinza"}:${marca.logo}`) ?? null : null;
+        return { nome: marca.nome, simbolo };
+      })(),
       // As cores do papel são as MESMAS da tela, e vêm daqui de propósito.
       // Quem confere a escala está com a folha na parede e o celular na mão:
       // se a folha sorteasse as cores por conta própria, o Matheus verde do

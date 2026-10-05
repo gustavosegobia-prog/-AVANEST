@@ -172,8 +172,13 @@ export type OpcoesDeTexto = {
  * pensa "o cabeçalho, e abaixo dele a grade". A conversão fica aqui dentro, uma
  * vez, em vez de aparecer invertida em cada linha do desenho.
  */
+/** Um JPEG: os bytes (um caractere por byte) e o tamanho em pixels. */
+export type ImagemJpeg = { bytes: string; largura: number; altura: number };
+
 export class Pagina {
   private readonly partes: string[] = [];
+  /** As imagens que esta página usa; a ordem dá o nome (/Im1, /Im2…). */
+  readonly imagens: ImagemJpeg[] = [];
   // Campos declarados e atribuídos à mão: os testes rodam com o Node em modo
   // "strip-only", que não implementa parâmetro-propriedade no construtor.
   readonly largura: number;
@@ -227,6 +232,21 @@ export class Pagina {
     this.cor(cor, true);
     this.partes.push(`${numero(espessura)} w ${numero(x1)} ${numero(this.altura - y1)} m `
       + `${numero(x2)} ${numero(this.altura - y2)} l S`);
+  }
+
+  /**
+   * Uma imagem JPEG, já em bytes. `y` é a borda de cima.
+   *
+   * Só JPEG, e de propósito: o PDF lê JPEG como ele é (filtro DCTDecode), sem
+   * decodificar nada aqui. PNG exigiria descompactar e recompactar os pixels.
+   * Quem tem um PNG — o símbolo do hospital costuma ser — converte antes, num
+   * canvas do navegador (ver `lib/imagem-jpeg.ts`).
+   */
+  imagem(jpeg: ImagemJpeg, x: number, y: number, largura: number, altura: number) {
+    let nome = this.imagens.findIndex((i) => i === jpeg);
+    if (nome < 0) { this.imagens.push(jpeg); nome = this.imagens.length - 1; }
+    this.partes.push(`q ${numero(largura)} 0 0 ${numero(altura)} ${numero(x)} `
+      + `${numero(this.altura - y - altura)} cm /Im${nome + 1} Do Q`);
   }
 
   /** Texto. `y` é o TOPO da linha, e não a base sobre a qual as letras se apoiam. */
@@ -304,12 +324,24 @@ export function montarPdf(paginas: Pagina[], titulo: string): string {
   // este arquivo veio consertar, e só apareceu porque o PDF foi aberto e
   // olhado — daí o teste que trava os números logo abaixo.
   const idDoPai = paginas.length * 2 + 1;
+  // As imagens vão DEPOIS de tudo o que tem número fixo (árvore, fontes,
+  // catálogo e ficha), para não mexer na conta acima. A página aponta para um
+  // objeto que ainda vai ser escrito, e o formato permite isso.
+  const imagens: ImagemJpeg[] = [];
+  const idDaImagem = (img: ImagemJpeg) => {
+    let i = imagens.indexOf(img);
+    if (i < 0) { imagens.push(img); i = imagens.length - 1; }
+    return idDoPai + 5 + i;
+  };
   for (const p of paginas) {
     const conteudo = p.conteudo;
     const idDoConteudo = guardar(`<< /Length ${conteudo.length} >>\nstream\n${conteudo}\nendstream`);
+    const xobjetos = p.imagens.length
+      ? ` /XObject << ${p.imagens.map((img, i) => `/Im${i + 1} ${idDaImagem(img)} 0 R`).join(" ")} >>`
+      : "";
     idsDasPaginas.push(guardar(
       `<< /Type /Page /Parent ${idDoPai} 0 R /MediaBox [0 0 ${numero(p.largura)} ${numero(p.altura)}]`
-      + ` /Resources << /Font << /F1 ${idDoPai + 1} 0 R /F2 ${idDoPai + 2} 0 R >> >>`
+      + ` /Resources << /Font << /F1 ${idDoPai + 1} 0 R /F2 ${idDoPai + 2} 0 R >>${xobjetos} >>`
       + ` /Contents ${idDoConteudo} 0 R >>`));
   }
   guardar(`<< /Type /Pages /Kids [${idsDasPaginas.map((i) => `${i} 0 R`).join(" ")}] /Count ${paginas.length} >>`);
@@ -325,6 +357,11 @@ export function montarPdf(paginas: Pagina[], titulo: string): string {
   // de "Escala da equipe — SETEMBRO" saía como "Š" no Chrome. Em UTF-16 com
   // marca de ordem de bytes não há o que adivinhar.
   const idDaFicha = guardar(`<< /Title ${textoUtf16(titulo)} /Producer (AVANEST) >>`);
+  for (const img of imagens) {
+    guardar(`<< /Type /XObject /Subtype /Image /Width ${img.largura} /Height ${img.altura}`
+      + ` /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.bytes.length} >>`
+      + `\nstream\n${img.bytes}\nendstream`);
+  }
 
   let arquivo = "%PDF-1.4\n";
   const posicoes: number[] = [];
