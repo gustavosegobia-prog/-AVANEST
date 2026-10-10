@@ -62,7 +62,7 @@ test("a promessa aparece na capa e na página de planos", () => {
   for (const tela of ["app/page.tsx", "app/planos/page.tsx"]) {
     const codigo = ler(tela);
     assert.match(codigo, /2 meses grátis|\{MESES_DE_TESTE\} meses grátis/, `a promessa sumiu de ${tela}`);
-    assert.match(codigo, /sem cartão para começar/i, `${tela} não responde à objeção do cartão`);
+    assert.match(codigo, /sem cartão/i, `${tela} não responde à objeção do cartão`);
   }
 });
 

@@ -106,43 +106,47 @@ export default function HomePage() {
           com uma paciente fictícia (public/capa). */}
       <section className="avnHero avnHeroComTelas">
         <div className="avnHeroContent">
-          <p className="avnEyebrow">GESTÃO EM ANESTESIOLOGIA</p>
-          <h1>
-            Da avaliação pré-anestésica ao fluxo de caixa do serviço.
-          </h1>
+          <p className="avnEyebrow">GESTÃO INTELIGENTE EM ANESTESIOLOGIA</p>
+          {/* O BENEFÍCIO PRIMEIRO, a lista de funções depois. O título anterior
+              ("Da avaliação pré-anestésica ao fluxo de caixa do serviço")
+              dizia o que o sistema cobre; este diz o que ele devolve a quem
+              usa. O que ele cobre vem logo abaixo, em três linhas. */}
+          <h1>Menos burocracia. Mais tempo para o que realmente importa.</h1>
           <p className="avnLead">
-            Para quem trabalha sozinho e para o grupo de anestesia. De
-            anestesiologista para anestesiologista.
+            Gestão clínica, escalas e finanças em uma única plataforma,
+            desenvolvida por anestesiologista para anestesiologistas.
           </p>
-          {/* Três, e não quatro. "Gestão de clínica" e "gestão de grupo" não são
-              uma quarta função: são para QUEM o sistema serve, e isso já está na
-              frase acima. Postas aqui, dividiriam a atenção com as três que de
-              fato descrevem o produto. */}
-          <ul className="avnBenefits">
-            <li>Avaliação pré-anestésica<span>nove etapas e quatro escores validados</span></li>
-            <li>Gestão de escala<span>uma por instituição, e a sua reunindo todas</span></li>
-            <li>Gestão financeira<span>produção, faturamento e fluxo de caixa</span></li>
+          <ul className="avnBeneficios">
+            <li>
+              <b>Avaliação pré-anestésica completa</b>
+              <span>Mais agilidade e padronização, com nove etapas estruturadas e quatro escores clínicos validados.</span>
+            </li>
+            <li>
+              <b>Escalas organizadas, equipe conectada</b>
+              <span>Gerencie plantões por instituição e acompanhe todos os seus compromissos em um só lugar.</span>
+            </li>
+            <li>
+              <b>Controle financeiro sem complicação</b>
+              <span>Acompanhe produção, faturamento, recebimentos e fluxo de caixa com mais clareza.</span>
+            </li>
           </ul>
-          <div className="avnActions">
-            <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
-              Conversar 15 min no WhatsApp
-            </a>
-            <a className="avnSecondary" href="/planos">Ver planos e preços</a>
+          {/* O TESTE GRÁTIS É A AÇÃO PRINCIPAL. Antes o botão de destaque era a
+              conversa no WhatsApp e o teste era uma frase pequena embaixo: quem
+              queria experimentar tinha de achar a porta. Agora a porta é o
+              botão, e a conversa continua a um toque para quem prefere falar
+              antes. "Sem cartão de crédito" responde à objeção que nasce
+              justamente ao olhar o botão. */}
+          <div className="avnOferta">
+            <p className="avnOfertaTitulo">Experimente a AVANEST por 2 meses grátis</p>
+            <p className="avnOfertaTexto">Conheça a plataforma na prática, sem cartão de crédito e sem compromisso.</p>
+            <div className="avnActions">
+              <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=site`}>Começar grátis</a>
+              <a className="avnSecondary" href="/planos">Conhecer os planos</a>
+            </div>
+            <p className="avnAjuda">
+              Precisa de ajuda? <a href={whatsappUrl} target="_blank" rel="noreferrer">Fale com nossa equipe pelo WhatsApp</a>.
+            </p>
           </div>
-          {/* A CAMPANHA, embaixo dos botões e não acima do título.
-              Acima, ela roubaria a primeira linha de quem ainda não sabe o que
-              o sistema faz — e "grátis" antes de "para quê" atrai o curioso e
-              não o anestesiologista. Aqui ela responde à objeção que nasce
-              justamente ao olhar o botão: "vou ter de pôr o cartão agora?".
-              Não vai. É isso que a frase diz, e é por isso que ela cita o
-              cartão em vez de só repetir "grátis". */}
-          {/* A frase é a porta do teste: antes era só texto, e o /2meses não
-              tinha link em lugar nenhum do site — quem queria experimentar
-              tinha de achar o Instagram. */}
-          <p className="avnTeste">
-            <a href={`${CAMINHO_DA_CAMPANHA}?de=site`}><b>Use por 2 meses grátis</b></a> e, se gostar, assine.
-            <span>Sem cartão para começar.</span>
-          </p>
         </div>
         <div className="avnHeroTelas">
           <figure className="avnTelaComputador">
@@ -161,6 +165,38 @@ export default function HomePage() {
             />
           </figure>
           <p className="avnTelaLegenda">Telas reais do sistema, com paciente fictícia.</p>
+        </div>
+      </section>
+
+      {/* DOIS CAMINHOS, logo depois da primeira tela. O AVANEST serve ao
+          anestesiologista que trabalha sozinho e ao grupo que tem escala,
+          recepção e financeiro — e cada um decide por motivos diferentes. Um
+          texto só, para os dois, acabava falando com nenhum. */}
+      <section className="avnPerfis" aria-labelledby="avn-perfis-titulo">
+        <p className="avnPerfisSobre">PARA QUEM É</p>
+        <h2 id="avn-perfis-titulo">Escolha o seu caminho.</h2>
+        <div className="avnPerfisGrade">
+          <article>
+            <h3>Sou anestesiologista</h3>
+            <p className="avnPerfilQuem">Trabalho por conta própria, em um ou em vários hospitais.</p>
+            <ul>
+              <li>A avaliação pré-anestésica no celular, com os escores calculados a partir do que já foi respondido.</li>
+              <li>Os plantões de todas as instituições reunidos em uma escala só.</li>
+              <li>O que você produziu, faturou e ainda tem a receber, mês a mês.</li>
+            </ul>
+            <a className="avnPerfilBotao primario" href={`${CAMINHO_DA_CAMPANHA}?de=perfil-individual`}>Começar 2 meses grátis</a>
+          </article>
+          <article>
+            <h3>Gerencio um grupo de anestesia</h3>
+            <p className="avnPerfilQuem">Coordeno a escala, a recepção e o financeiro de uma equipe.</p>
+            <ul>
+              <li>A escala do grupo por instituição, com as trocas entre colegas registradas.</li>
+              <li>Recepção, área médica e financeiro com acessos separados por função.</li>
+              <li>O fechamento do mês e os repasses, com a composição de cada número.</li>
+            </ul>
+            <a className="avnPerfilBotao" href="/planos">Ver planos para grupos</a>
+            <a className="avnPerfilAlt" href={whatsappUrl} target="_blank" rel="noreferrer">Prefere conversar antes? Fale com a gente</a>
+          </article>
         </div>
       </section>
 

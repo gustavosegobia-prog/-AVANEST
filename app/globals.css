@@ -4694,16 +4694,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   background:var(--cor-marca);color:var(--cor-marca-contraste);white-space:nowrap}
 .testeFaixaBotao:hover{background:var(--cor-marca-forte)}
 
-/* A promessa da campanha, na capa e na página de planos. Discreta de
-   propósito: ela responde a uma objeção ("vou ter de pôr o cartão agora?"),
-   e objeção se responde em voz baixa. Em caixa alta e amarelo ela viraria
-   anúncio, e anúncio o olho pula. */
-.avnTeste{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;
-  margin:18px 0 0;font-size:15px;color:#cfe3f4}
-.avnTeste b{color:#fff;font-weight:750}
-.avnTeste a{color:inherit;text-decoration:underline;text-decoration-color:#43c8b8;text-decoration-thickness:2px;text-underline-offset:4px}
-.avnTeste a:hover b{color:#bff3ea}
-.avnTeste span{font-size:13.5px;color:#9dbdd6}
 /* A vitrine é escura e NÃO usa os tokens do painel: `--cor-tinta-fraca` é um
    cinza pensado para fundo branco, e `--cor-marca-forte` é o azul escuro da
    marca. Os dois sobre o navy da página de planos ficam ilegíveis — conferido
@@ -6221,4 +6211,63 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 }
 @media(max-width:1100px){
   .avnHeroComTelas .avnHeroContent{padding-bottom:36px}
+}
+
+/* ============================================================================
+   Capa: benefícios, oferta e os dois caminhos (app/page.tsx)
+   ========================================================================= */
+.avnBeneficios{list-style:none;margin:32px 0 0;padding:0;display:grid;gap:16px;max-width:620px}
+.avnBeneficios li{position:relative;padding-left:26px}
+.avnBeneficios li::before{content:"";position:absolute;left:0;top:.62em;width:14px;height:2px;background:var(--avn-teal)}
+.avnBeneficios b{display:block;color:var(--avn-teal);font-size:17px;font-weight:800;line-height:1.35}
+.avnBeneficios span{display:block;margin-top:2px;color:#d3e0ea;font-size:15.5px;line-height:1.5}
+.avnOferta{margin-top:34px;padding-top:26px;border-top:1px solid #ffffff1f;max-width:620px}
+.avnOfertaTitulo{margin:0;color:#fff;font-size:20px;font-weight:800;line-height:1.3}
+.avnOfertaTexto{margin:6px 0 0;color:#c5d4df;font-size:15.5px;line-height:1.5}
+.avnOferta .avnActions{margin:20px 0 0}
+.avnAjuda{margin:16px 0 0;color:#9dbdd6;font-size:14px}
+.avnAjuda a{color:#fff;font-weight:700;text-decoration:underline;text-decoration-color:#43c8b8;text-underline-offset:3px}
+/* A oferta tem de caber na primeira tela de um notebook comum (1440×900 e
+   1366×768): o título em duas ou três linhas mais curtas, menos respiro entre
+   os blocos, e a coluna do texto um pouco mais larga que a das telas. */
+@media(min-width:1101px){
+  .avnHero.avnHeroComTelas{grid-template-columns:minmax(0,1.06fr) minmax(0,1fr)}
+  .avnHeroComTelas .avnHeroContent{padding-top:clamp(28px,4.5vh,56px);padding-bottom:16px}
+  .avnHeroComTelas h1{max-width:660px;font-size:clamp(36px,2.9vw,48px);margin:14px 0 16px}
+  .avnHeroComTelas .avnLead{font-size:18px;line-height:1.6}
+  .avnBeneficios{margin-top:22px;gap:11px}
+  .avnBeneficios b{font-size:16px}
+  .avnBeneficios span{font-size:14.5px}
+  .avnOferta{margin-top:24px;padding-top:20px}
+  .avnOferta .avnActions{margin-top:16px}
+  .avnAjuda{margin-top:12px}
+}
+
+.avnPerfis{padding:72px max(20px,calc((100vw - 1180px)/2)) 24px;background:#fff}
+.avnPerfisSobre{margin:0;color:#11776c;font-size:12px;font-weight:850;letter-spacing:.28em}
+.avnPerfis h2{margin:12px 0 28px;font-size:clamp(26px,3.2vw,38px);line-height:1.15;color:var(--avn-ink)}
+.avnPerfisGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.avnPerfisGrade article{display:flex;flex-direction:column;padding:28px;border:1px solid var(--avn-line);border-radius:18px;background:#f7fafc}
+.avnPerfisGrade h3{margin:0;font-size:22px;color:var(--avn-ink)}
+.avnPerfilQuem{margin:6px 0 16px;color:#4a5d6e;font-size:15.5px}
+.avnPerfisGrade ul{margin:0 0 24px;padding-left:20px;display:grid;gap:10px;color:#334657;font-size:15.5px;line-height:1.5;list-style:disc}
+.avnPerfisGrade ul li::marker{color:#11776c}
+.avnPerfilBotao{margin-top:auto;display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;
+  border-radius:12px;border:1px solid var(--avn-navy);color:var(--avn-navy);font-weight:800;text-decoration:none;align-self:flex-start}
+.avnPerfilBotao.primario{background:var(--avn-teal);border-color:var(--avn-teal);color:#062c2a}
+.avnPerfilBotao:hover{filter:brightness(1.05)}
+.avnPerfilAlt{margin-top:12px;color:#0b6aa8;font-weight:700;font-size:14.5px}
+@media(max-width:760px){
+  .avnPerfis{padding-top:52px}
+  .avnPerfisGrade{grid-template-columns:minmax(0,1fr)}
+  .avnPerfisGrade article{padding:22px}
+  .avnPerfilBotao{align-self:stretch}
+}
+@media(max-width:1100px){
+  .avnHeroComTelas .avnLead{font-size:17px;line-height:1.55}
+  .avnBeneficios{margin-top:24px}
+}
+@media(max-width:680px){
+  .avnHeroComTelas .avnHeroContent{padding-top:48px}
+  .avnOferta .avnActions{display:grid;gap:12px}
 }
