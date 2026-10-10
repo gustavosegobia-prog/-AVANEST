@@ -118,6 +118,11 @@ export default async function CriarContaPage({
           <div className="avnLoginContent">
             <h1>Cadastro por convite</h1>
             <p>O acesso ao AVANEST é criado a partir de um convite enviado pelo responsável da sua organização. Peça o link a quem administra o sistema.</p>
+            {/* Quem chegou aqui sem convite e não faz parte de equipe nenhuma
+                — o anestesiologista que quer conhecer o sistema — batia nesta
+                parede sem saída. O teste grátis é a porta dele. */}
+            <p>Ainda não usa o AVANEST? Crie a sua conta pelo teste de {MESES_DE_TESTE} meses grátis.</p>
+            <Link className="avnLoginSubmit avnCampanhaBotao" href="/2meses?de=cadastro">Começar o teste grátis</Link>
             <Link className="avnLoginCancel" href="/login">Voltar para o login</Link>
           </div>
         </section>

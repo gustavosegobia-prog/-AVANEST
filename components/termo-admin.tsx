@@ -181,6 +181,7 @@ export function TermoAdmin({
       {rascunho.itens.map((texto, i) => <li key={i}>
         <span className="termoNumero">{numeroDoItem(i, rascunho.itens.length)}</span>
         <CampoQueCresce value={texto} disabled={desativado} rows={2}
+          aria-label={`Item ${numeroDoItem(i, rascunho.itens.length)} do termo`}
           onChange={(e) => mexerNaLista("itens", (l) => { l[i] = e.target.value; return l; })}/>
         <span className="termoBotoes">
           <button type="button" disabled={desativado || i === 0} title="Subir"
@@ -201,6 +202,7 @@ export function TermoAdmin({
       {rascunho.riscos.map((texto, i) => <li key={i}>
         <span className="termoNumero">•</span>
         <CampoQueCresce value={texto} disabled={desativado} rows={2}
+          aria-label={`Risco ${i + 1} do termo`}
           onChange={(e) => mexerNaLista("riscos", (l) => { l[i] = e.target.value; return l; })}/>
         <span className="termoBotoes">
           <button type="button" disabled={desativado || i === 0} title="Subir"
@@ -218,6 +220,7 @@ export function TermoAdmin({
     <h4 className="termoSecao">Autorização</h4>
     <p className="termoAjuda">O parágrafo final, logo acima das linhas de assinatura.</p>
     <CampoQueCresce className="termoAutorizacao" rows={3} value={rascunho.autorizacao} disabled={desativado}
+      aria-label="Parágrafo de autorização do termo"
       onChange={(e) => { setRascunho((r) => ({ ...r, autorizacao: e.target.value })); setMensagem(""); }}/>
 
     {problemas.length > 0 && <div className="pendingNotice">{problemas.join(" ")}</div>}

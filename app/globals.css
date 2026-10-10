@@ -35,6 +35,7 @@
   --cor-sucesso-suave:#e1f4ed;
   --cor-atencao:#8f6100;
   --cor-atencao-suave:#fff2d8;
+  --cor-atencao-contraste:#fff;
   --cor-perigo:#c02a30;
   --cor-perigo-forte:#982126;
   --cor-perigo-suave:#fde9e9;
@@ -79,6 +80,7 @@
   --cor-sucesso-suave:#123528;
   --cor-atencao:#e0aa4a;
   --cor-atencao-suave:#3a2c0c;
+  --cor-atencao-contraste:#22160a;
   --cor-perigo:#f08b8f;
   --cor-perigo-forte:#f5a9ac;
   --cor-perigo-suave:#3a1618;
@@ -1251,7 +1253,7 @@ button:disabled{cursor:not-allowed}
    descoberto no dia da cirurgia. */
 .navAviso{display:inline-grid;place-items:center;min-width:19px;height:19px;
   margin-left:7px;padding:0 5px;border-radius:999px;
-  background:var(--cor-atencao);color:#22160a;
+  background:var(--cor-atencao);color:var(--cor-atencao-contraste);
   font-size:11.5px;font-weight:850;line-height:1}
 /* No botão aceso o fundo já é a cor da marca: o selo inverte para continuar
    legível em cima dela. */
@@ -1282,7 +1284,7 @@ button:disabled{cursor:not-allowed}
    procurar uma diferença que não existe. */
 .avisosContador{position:absolute;top:1px;right:0;display:grid;place-items:center;
   min-width:18px;height:18px;padding:0 5px;border-radius:999px;
-  background:var(--cor-atencao);color:#22160a;font-size:11px;font-weight:850;line-height:1}
+  background:var(--cor-atencao);color:var(--cor-atencao-contraste);font-size:11px;font-weight:850;line-height:1}
 /* Notícia não ganha número: ganha um ponto. "O Matheus assumiu seu plantão" não
    é tarefa, e um número que soma notícia nunca zera — contador que não zera é
    contador que a pessoa aprende a ignorar. */
@@ -5382,7 +5384,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 
 .admTabela{width:100%;border-collapse:separate;border-spacing:0;background:var(--cor-superficie);border:1px solid var(--cor-borda);
   border-radius:var(--raio-3);overflow:hidden;box-shadow:var(--sombra-1)}
-.admTabela th{text-align:left;font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca);
+.admTabela th{text-align:left;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca);
   padding:10px 14px;background:var(--cor-superficie-suave);border-bottom:1px solid var(--cor-borda)}
 .admTabela td{padding:12px 14px;border-bottom:1px solid var(--cor-borda);vertical-align:middle;font-size:14px}
 .admTabela tr:last-child td{border-bottom:0}
@@ -5392,7 +5394,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .admPessoa strong{font-size:14.5px}
 .admPessoa small{font-size:12.5px;color:var(--cor-tinta-fraca);overflow:hidden;text-overflow:ellipsis}
 .admEtiquetas{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.admEtiqueta{display:inline-block;font-size:11.5px;font-weight:700;padding:1px 8px;border-radius:var(--raio-cheio);
+.admEtiqueta{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:var(--raio-cheio);
   background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
 .admEtiqueta.atencao{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
 .admEtiqueta.neutra{background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca)}
@@ -6100,6 +6102,18 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 /* --- Alvos de toque na Escala --------------------------------------------
    Em tela de toque, os controles da lista e os filtros de pendência ficam com
    44px — eram 32 a 38px. No mouse continua a densidade de antes. */
+/* --- Alvos de toque no resto do sistema ----------------------------------
+   A densidade de 36px é boa no mouse e ruim no dedo: no telefone e no tablet
+   o menu do topo, as abas das áreas e os botões compactos das tabelas ficam
+   com 44px, o mínimo para não errar o vizinho. Recepção e Área médica já
+   faziam isso no telefone; aqui vale para qualquer tela de toque. */
+@media(pointer:coarse){
+  :root{--alt-botao-compacto:44px}
+  .roleNav button,.avisosSino,.userMenuTrigger,.testeFaixaBotao,
+  .financeTarefas button,.admAbas button,.admBusca input,
+  .clinicalShell select,.admAcoesCelula .outlineClinical{min-height:44px}
+}
+
 @media(pointer:coarse){
   .escalaLinha input,.escalaLinha select,.escalaLinha .plantaoAcao>button{height:44px}
   .escalaPendencias button,.escalaFiltros select,.escalaFiltros button,.escalaVisoes button{min-height:44px}

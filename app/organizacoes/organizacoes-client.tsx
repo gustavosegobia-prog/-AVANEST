@@ -143,6 +143,7 @@ export function OrganizacoesClient({ nome, organizacoes, minhaOrganizacao }: {
               </span>
               <select
                 className="orgRowAcao"
+                aria-label={`Alterar a assinatura de ${org.nome}`}
                 value=""
                 disabled={busy === org.id}
                 onChange={(event) => {
