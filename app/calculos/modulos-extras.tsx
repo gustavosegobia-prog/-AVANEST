@@ -33,7 +33,7 @@ export const numero = (texto: string): number | undefined => {
 };
 
 export function Campo({
-  chave, rotulo, valor, aoMudar, passo = "1", tipo = "number",
+  chave, rotulo, valor, aoMudar, passo = "1", tipo = "text",
 }: {
   chave: string; rotulo: string; valor: string;
   aoMudar: (chave: string, valor: string) => void;

@@ -6086,3 +6086,21 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .escalaLinha input,.escalaLinha select,.escalaLinha .plantaoAcao>button{height:44px}
   .escalaPendencias button,.escalaFiltros select,.escalaFiltros button,.escalaVisoes button{min-height:44px}
 }
+
+/* --- Aviso de faixa nos números clínicos (lib/numero-clinico.ts) ---------
+   Avisa sem bloquear: o valor pode ser real (a criança de 3 kg), mas não
+   passa calado — "725 kg" e "IMC 378583" iam para os cálculos sem nada. */
+.evalAvisoFaixa{display:block;margin-top:2px;font-size:13px;font-weight:650;color:var(--cor-atencao)}
+.evalField input[aria-invalid="true"]{border-color:var(--cor-atencao);box-shadow:0 0 0 1px var(--cor-atencao)}
+/* Risco intermediário (STOP-Bang 3–4, Apfel 2) não é sucesso: âmbar claro,
+   entre o azul neutro e o âmbar do alto risco. Antes saía em verde. */
+.scoreResult.atencao{background:color-mix(in srgb,var(--cor-atencao-suave) 60%,var(--cor-superficie));color:var(--cor-atencao)}
+
+/* --- Rascunho impresso -------------------------------------------------------
+   A ficha em rascunho saía com "● Avaliação concluída" e sem marca nenhuma no
+   papel. Agora o selo diz o que é, e cada folha leva a marca d'água. */
+.docSaved.rascunho{color:var(--cor-atencao)}
+.printPaper.rascunho{position:relative}
+.printPaper.rascunho::before{content:"RASCUNHO — SEM VALIDADE";position:absolute;inset:0;display:grid;place-items:center;
+  font-size:54px;font-weight:900;letter-spacing:.08em;color:rgba(192,42,48,.13);transform:rotate(-28deg);
+  pointer-events:none;z-index:2;-webkit-print-color-adjust:exact;print-color-adjust:exact}

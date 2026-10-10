@@ -204,7 +204,7 @@ export function Rotem() {
                     {ehManual(k) ? " · marcado por você" : ""}
                   </small>
                 </div>
-                <input className={estilos.parametroValor} type="number" inputMode="decimal"
+                <input className={estilos.parametroValor} type="text" inputMode="decimal"
                   placeholder="valor" value={valores[k] ?? ""}
                   aria-label={`${e.sigla} ${par.sigla}, valor`}
                   onChange={(ev) => setValores((v) => ({ ...v, [k]: ev.target.value }))} />

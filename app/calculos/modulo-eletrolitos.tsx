@@ -162,7 +162,7 @@ function Sodio({ dados, set }: { dados: Compartilhado; set: (c: string, v: strin
           {solucaoId === "outra" && (
             <label className={estilos.campo}>
               <span>Sódio da solução (mmol/L)</span>
-              <input type="number" inputMode="decimal" value={naOutra} onChange={(e) => setNaOutra(e.target.value)} />
+              <input type="text" inputMode="decimal" value={naOutra} onChange={(e) => setNaOutra(e.target.value)} />
             </label>
           )}
           <Campo chave="volumePlanejado" rotulo="Volume planejado (mL)" valor={dados.volumePlanejado ?? ""} aoMudar={set} />

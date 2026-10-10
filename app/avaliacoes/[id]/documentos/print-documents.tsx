@@ -8,6 +8,7 @@ import {suspensionSummary} from "@/lib/medication-summary";
 import {frasePreditores,preditoresMarcados,resumoViaAerea,riscoNoMasculino} from "@/lib/via-aerea";
 import {BrandMark} from "@/components/brand-mark";
 import {aplicarDados,termoVigenteEm,type VersaoDoTermo} from "@/lib/termo-consentimento";
+import { antropometriaPlausivel } from "@/lib/numero-clinico";
 
 type Data=Record<string,string|boolean>;
 /**
@@ -312,7 +313,9 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
   // A mesma conta da avaliação, do mesmo arquivo: a ficha impressa não pode
   // mostrar uma idade diferente da que entrou nos escores.
   const age=useMemo(()=>idadeDoPaciente(paciente).anos,[paciente]);
-  const weight=Number(dados.peso||0),height=Number(dados.altura||0),imc=weight&&height?weight/((height/100)**2):0;
+  // O mesmo filtro da ficha: altura em metros no campo de centímetros não vira
+  // IMC 378583 no papel (lib/numero-clinico).
+  const weight=Number(dados.peso||0),height=Number(dados.altura||0),imc=antropometriaPlausivel(weight||null,height||null)?weight/((height/100)**2):0;
   const heightInches=height/2.54;
   const idealWeight=height?Math.max(30,(String(dados.sexo||paciente.sexo).toLowerCase()==="masculino"?50:45.5)+2.3*(heightInches-60)):0;
   const adjustedWeight=idealWeight&&weight>idealWeight?idealWeight+0.4*(weight-idealWeight):(weight||idealWeight);
@@ -459,8 +462,11 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
     }
   }
 
+  // Rascunho impresso não pode parecer concluído: a marca d'água vale na tela e
+  // no papel (globals.css, .printPaper.rascunho).
+  const rascunho=avaliacao.status!=="concluida";
   return <main className="documentsShell">
-    <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark"/><span><strong>AVANEST</strong><small>Gestão em anestesiologia</small></span></a><span className="docSaved">● Avaliação concluída</span><nav className="roleNav" aria-label="Áreas do sistema">{canReception&&<a href="/dashboard?area=recepcao">Recepção</a>}{canMedical&&<a href="/dashboard?area=medico">Médico</a>}{canFinance&&<a href="/dashboard?area=financeiro">Financeiro</a>}{canManage&&<a href="/dashboard?area=admin">Admin</a>}</nav></header>
+    <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark"/><span><strong>AVANEST</strong><small>Gestão em anestesiologia</small></span></a>{avaliacao.status==="concluida"?<span className="docSaved">● Avaliação concluída</span>:<span className="docSaved rascunho">● Rascunho — avaliação não concluída</span>}<nav className="roleNav" aria-label="Áreas do sistema">{canReception&&<a href="/dashboard?area=recepcao">Recepção</a>}{canMedical&&<a href="/dashboard?area=medico">Médico</a>}{canFinance&&<a href="/dashboard?area=financeiro">Financeiro</a>}{canManage&&<a href="/dashboard?area=admin">Admin</a>}</nav></header>
     <div className="documentsMain">
       <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}?editar=1`}>← Voltar e corrigir avaliação</a>{/* A concluída só abre nesta tela, então excluir precisa existir aqui —
         era por isso que a opção "sumia" depois da conclusão. */}
@@ -475,7 +481,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>
       <div className="documentsLayout"><div className="paperStack">
-        <article className={`printPaper assessmentPaper ${selected.assessment?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA" referencia={`AVA-${avaliacao.id.slice(0,8)} · v${avaliacao.versao}`}/>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
+        <article className={`printPaper assessmentPaper${rascunho?" rascunho":""} ${selected.assessment?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA" referencia={`AVA-${avaliacao.id.slice(0,8)} · v${avaliacao.versao}`}/>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
           {/* Duas linhas, e a divisão é de propósito: em cima quem é o
               paciente — nome, CPF, idade, sexo —, embaixo as medidas e o
               convênio. Deixar a quebra por conta do acaso jogava o CPF para
@@ -598,7 +604,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
           ])}/>
           {hasText(printablePlan)&&<p className="paperObservations">{text(printablePlan)}</p>}<PaperSignature dados={dados} perfil={perfil}/></article>
 
-        <article className={`printPaper consentPaper officialConsent ${selected.consent?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="TERMO DE CONSENTIMENTO ANESTÉSICO"/><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
+        <article className={`printPaper consentPaper officialConsent${rascunho?" rascunho":""} ${selected.consent?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="TERMO DE CONSENTIMENTO ANESTÉSICO"/><h3>PÓS-INFORMAÇÃO, DECISÃO E ORDEM ANTECIPADA DE TRATAMENTO E CUIDADOS MÉDICOS</h3>
           <p><b>1.</b> Por determinação explícita de minha vontade e em consideração ao meu interesse pessoal, eu: <b>{paciente.nome}</b></p>
           <p>Por este termo autorizo {clinica?<b>{clinica}</b>:"o serviço de anestesiologia responsável pelo meu atendimento"} e os médicos anestesiologistas de sua equipe a realizar os procedimentos anestésicos necessários à realização da cirurgia a que, no momento, me proponho{(() => {
             // O lugar só é dito de novo quando é OUTRO. Com o local
@@ -641,7 +647,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
           </div>
         </article>
 
-        <article className={`printPaper guidancePaper ${selected.guidance?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="ORIENTAÇÕES PRÉ-ANESTÉSICAS"/><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{objectiveMedicationGuidance(m)||"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}
+        <article className={`printPaper guidancePaper${rascunho?" rascunho":""} ${selected.guidance?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="ORIENTAÇÕES PRÉ-ANESTÉSICAS"/><p>Paciente: <b>{paciente.nome}</b> · Anestesiologista: <b>{text(dados.anestesiologista,perfil.nome)}</b></p><PaperTitle>MEDICAMENTOS</PaperTitle>{medications.length?<table className="paperTable"><thead><tr><th>MEDICAMENTO</th><th>ORIENTAÇÃO DEFINIDA PELO ANESTESIOLOGISTA</th></tr></thead><tbody>{medications.map(m=><tr key={m.id}><td><b>{m.nome}</b></td><td><b>{objectiveMedicationGuidance(m)||"A definir pelo anestesiologista"}</b></td></tr>)}</tbody></table>:<p>Não há medicamentos registrados nesta avaliação.</p>}
           <PaperBlock title="PLANEJAMENTO" items={facts([
             ["Tipo de anestesia prevista",dados.tecnica,"wide"],
             ["Jejum — sólidos",dados.jejum_solidos],["Jejum — líquidos claros",dados.jejum_liquidos],

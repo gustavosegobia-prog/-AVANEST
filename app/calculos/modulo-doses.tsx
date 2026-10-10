@@ -347,7 +347,7 @@ function Avulso({ peso }: { peso: number }) {
       <div className={estilos.grade}>
         <label className={estilos.campo}>
           <span>Dose por quilo</span>
-          <input type="number" inputMode="decimal" step="0.001" value={dosePorKg}
+          <input type="text" inputMode="decimal" step="0.001" value={dosePorKg}
             onChange={(e) => setDosePorKg(e.target.value)} />
         </label>
         <label className={estilos.campo}>
@@ -371,7 +371,7 @@ function Avulso({ peso }: { peso: number }) {
         <div className={estilos.gradeCurta}>
           <label className={estilos.campo}>
             <span>Porcentagem (%)</span>
-            <input type="number" inputMode="decimal" step="0.05" value={percentual}
+            <input type="text" inputMode="decimal" step="0.05" value={percentual}
               onChange={(e) => setPercentual(e.target.value)} placeholder="Ex.: 2" />
           </label>
           {apresentacao && (
@@ -382,7 +382,7 @@ function Avulso({ peso }: { peso: number }) {
         <div className={estilos.grade}>
           <label className={estilos.campo}>
             <span>Quantidade na ampola</span>
-            <input type="number" inputMode="decimal" step="0.01" value={quantidade}
+            <input type="text" inputMode="decimal" step="0.01" value={quantidade}
               onChange={(e) => setQuantidade(e.target.value)} />
           </label>
           <label className={estilos.campo}>
@@ -394,7 +394,7 @@ function Avulso({ peso }: { peso: number }) {
           </label>
           <label className={estilos.campo}>
             <span>Em quantos mL</span>
-            <input type="number" inputMode="decimal" step="0.1" value={mL}
+            <input type="text" inputMode="decimal" step="0.1" value={mL}
               onChange={(e) => setML(e.target.value)} />
           </label>
         </div>

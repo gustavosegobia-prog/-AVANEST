@@ -232,7 +232,7 @@ function Gaso({ dados, set }: { dados: Compartilhado; set: (c: string, v: string
           <label key={chave} className={estilos.campo}>
             <span>{rotulo}</span>
             <input
-              type="number"
+              type="text"
               inputMode="decimal"
               step={passo ?? "1"}
               value={bruto[chave] ?? ""}
@@ -379,7 +379,7 @@ function Correcoes({ g }: { g: Gasometria }) {
 
   const campo = (chave: string, rotulo: string, passo = "1") => (
     <label className={estilos.campo}><span>{rotulo}</span>
-      <input type="number" inputMode="decimal" step={passo} value={c[chave] ?? ""}
+      <input type="text" inputMode="decimal" step={passo} value={c[chave] ?? ""}
         onChange={(e) => setC((v) => ({ ...v, [chave]: e.target.value }))} /></label>
   );
 

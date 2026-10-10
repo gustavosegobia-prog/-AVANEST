@@ -17,6 +17,7 @@ import {
 } from "@/lib/escores";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
+import { antropometriaPlausivel, avisoDeFaixa, avisoDePressao, decimalNaTela, lerDecimal, normalizarDecimal } from "@/lib/numero-clinico";
 import {
   AVISO_CLINICO,
   ehPediatrico,
@@ -80,7 +81,10 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       anestesiologista: String(saved.anestesiologista || perfil.nome),
       crm: String(saved.crm || perfil.crm || ""),
       rqe: String(saved.rqe || perfil.rqe || ""),
-      ecg: saved.ecg == null ? "Ritmo sinusal." : String(saved.ecg),
+      // ECG começa vazio. Nascia "Ritmo sinusal." em toda ficha nova e saía
+      // impresso como achado de um exame que pode nem ter sido feito — o
+      // contrário do que a própria tela pede ("só os exames indicados").
+      ecg: saved.ecg == null ? "" : String(saved.ecg),
       // O jejum nasce no padrão do serviço em vez de "Selecione". Era a última
       // etapa a travar a conclusão, e a resposta é a mesma na esmagadora
       // maioria das fichas — quem precisa de outra coisa troca em dois toques.
@@ -326,11 +330,18 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       .update({data_nascimento:nascimento,idade_anos:anos}).eq("id",paciente.id);
     setErroIdade(error?"Não consegui salvar no cadastro do paciente. Tente de novo.":"");
   }
-  const weight = Number(draft.peso || 0), height = Number(draft.altura || 0);
-  const imc = weight && height ? weight / ((height/100) ** 2) : 0;
+  // IMC e peso ideal só com peso e altura plausíveis: "1.72" no campo de
+  // centímetros dava IMC 378583 e marcava "IMC > 35" no STOP-Bang. A fórmula
+  // de Devine só vale para adulto a partir de 152 cm (60 polegadas); abaixo
+  // disso o "Math.max(30, …)" inventava um peso ideal.
+  const pesoLido = lerDecimal(draft.peso), alturaLida = lerDecimal(draft.altura);
+  const plausivel = antropometriaPlausivel(pesoLido, alturaLida);
+  const weight = plausivel ? pesoLido! : 0, height = plausivel ? alturaLida! : 0;
+  const imc = plausivel ? weight / ((height/100) ** 2) : 0;
   const heightInches = height / 2.54;
-  const idealWeight = height
-    ? Math.max(30, (String(draft.sexo || paciente.sexo).toLowerCase() === "masculino" ? 50 : 45.5) + 2.3 * (heightInches - 60))
+  const devineVale = plausivel && height >= 152 && (idade.anos === null || idade.anos >= 18);
+  const idealWeight = devineVale
+    ? (String(draft.sexo || paciente.sexo).toLowerCase() === "masculino" ? 50 : 45.5) + 2.3 * (heightInches - 60)
     : 0;
   const adjustedWeight = idealWeight && weight > idealWeight
     ? idealWeight + 0.4 * (weight - idealWeight)
@@ -368,6 +379,17 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     altura:{min:40,max:250,step:0.1},
   };
   const input = (name:string,label:string,type="text",span="") => {
+    // Número clínico: texto com teclado decimal, e não type="number" — que
+    // descarta a vírgula e transformava "72,5" em 725 (ver lib/numero-clinico).
+    if(type==="number"&&numericLimits[name]){
+      const aviso=avisoDeFaixa(name,draft[name]);
+      return <label className={`evalField ${span}`}><span>{label}</span>
+        <input type="text" inputMode="decimal" autoComplete="off" value={decimalNaTela(draft[name])}
+          aria-invalid={aviso?true:undefined} aria-describedby={aviso?`aviso-${name}`:undefined}
+          onChange={(e)=>set(name,normalizarDecimal(e.target.value))}/>
+        {aviso&&<small id={`aviso-${name}`} className="evalAvisoFaixa" role="status">{aviso}</small>}
+      </label>;
+    }
     const limits=numericLimits[name];
     return <label className={`evalField ${span}`}><span>{label}</span><input type={type} min={limits?.min} max={limits?.max} step={limits?.step} value={String(draft[name]??"")} onChange={(e)=>set(name,e.target.value)}/></label>;
   };
@@ -406,7 +428,6 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
           <Icone nome="voltar" tamanho={16}/>
           {saindo?"Salvando...":"Voltar ao painel"}
         </button>
-        <button type="button" className="active">Médico</button>
       </nav>
     </header>
     {/* Alergia é informação de alta prioridade: acompanha a rolagem em vez de
@@ -437,7 +458,11 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
           </button>;
         })}
       </nav>
-      <div className="evalControls"><button className="pauseButton"><Icone nome="pausa"/> Pausar</button><button onClick={async()=>{await save();router.push("/dashboard")}}><Icone nome="voltar"/> Salvar e voltar</button>{["medico","admin","owner"].includes(perfil.role)&&!confirmDelete&&<button type="button" className="deleteAssessmentButton" onClick={()=>setConfirmDelete(true)}>Excluir avaliação</button>}</div>
+      {/* "Salvar e voltar" passa pelo mesmo caminho do "Voltar ao painel": só
+          sai depois de gravar. Antes ignorava a falha do save() e navegava,
+          perdendo o que fora digitado. O "Pausar", que não fazia nada e era
+          o botão mais destacado da linha, saiu. */}
+      <div className="evalControls"><button type="button" onClick={()=>void voltarAoPainel()} disabled={saindo}><Icone nome="voltar"/> {saindo?"Salvando...":"Salvar e voltar"}</button>{["medico","admin","owner"].includes(perfil.role)&&!confirmDelete&&<button type="button" className="deleteAssessmentButton" onClick={()=>setConfirmDelete(true)}>Excluir avaliação</button>}</div>
       {confirmDelete&&<div className="deleteConfirmStrip" role="alertdialog" aria-label="Confirmar exclusão da avaliação">
         <p><b>Tem certeza de que deseja excluir esta avaliação?</b> Esta ação não poderá ser desfeita. O cadastro do paciente será mantido.</p>
         <div>
@@ -492,7 +517,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
               documentos — o que sai é o campo, não o dado. */}
           {input("prontuario","Nº do prontuário")}{input("responsavel","Responsável (se necessário)","text","span2")}
         </div>
-        <div className="clinicalCalculations"><div><small>IDADE</small><strong>{age!==null?`${age} anos`:"—"}</strong><span>{paciente.data_nascimento&&age===null?"data de nascimento inválida":"calculada automaticamente"}</span></div><div className="amber"><small>IMC</small><strong>{imc?imc.toFixed(1):"—"}</strong><span>{imc>=30?"Obesidade":imc?"Faixa calculada":"informe peso e altura"}</span></div><div><small>PESO IDEAL / AJUSTADO</small><strong>{height?`${idealWeight.toFixed(0)} kg / ${adjustedWeight.toFixed(0)} kg`:"—"}</strong><span>Devine / peso ajustado — confirmar clinicamente</span></div></div>
+        <div className="clinicalCalculations"><div><small>IDADE</small><strong>{age!==null?`${age} anos`:"—"}</strong><span>{paciente.data_nascimento&&age===null?"data de nascimento inválida":"calculada automaticamente"}</span></div><div className="amber"><small>IMC</small><strong>{imc?imc.toFixed(1).replace(".",","):"—"}</strong><span>{imc>=30?"Obesidade":imc?"Faixa calculada":(pesoLido!==null&&alturaLida!==null?"confira peso e altura":"informe peso e altura")}</span></div><div><small>PESO IDEAL / AJUSTADO</small><strong>{devineVale?`${idealWeight.toFixed(0)} kg / ${adjustedWeight.toFixed(0)} kg`:"—"}</strong><span>{devineVale?"Devine / peso ajustado — confirmar clinicamente":plausivel?"Devine vale para adulto a partir de 152 cm":"informe peso e altura"}</span></div></div>
       </section>
 
       <section id="etapa-2" className="evalSection"><h1>2 · Procedimento cirúrgico</h1><div className="evalFormGrid">
@@ -935,7 +960,18 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
     temperatura:{min:30,max:45,step:0.1},
     glicemia_capilar:{min:20,max:1000},
   };
-  const field=(name:string,label:string,type="text")=>{const range=limits[name];return <label className="evalField"><span>{label}</span><input type={type} min={range?.min} max={range?.max} step={range?.step} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>};
+  const field=(name:string,label:string,type="text")=>{
+    const range=limits[name];
+    if(type!=="number")return <label className="evalField"><span>{label}</span><input type={type} min={range?.min} max={range?.max} step={range?.step} value={String(draft[name]??"")} onChange={e=>set(name,e.target.value)}/></label>;
+    // Texto com teclado decimal: "36,5" não vira 365 (lib/numero-clinico).
+    const aviso=avisoDeFaixa(name,draft[name])??(name==="pa_diastolica"?avisoDePressao(draft.pa_sistolica,draft.pa_diastolica):null);
+    return <label className="evalField"><span>{label}</span>
+      <input type="text" inputMode="decimal" autoComplete="off" value={decimalNaTela(draft[name])}
+        aria-invalid={aviso?true:undefined} aria-describedby={aviso?`aviso-${name}`:undefined}
+        onChange={e=>set(name,normalizarDecimal(e.target.value))}/>
+      {aviso&&<small id={`aviso-${name}`} className="evalAvisoFaixa" role="status">{aviso}</small>}
+    </label>;
+  };
   const choice=(name:string,label:string,options:string[])=>{
     const current=String(draft[name]??"");
     const hasLegacyValue=current!==""&&!options.includes(current);
@@ -947,7 +983,7 @@ function PhysicalExam({draft,set}:{draft:Draft;set:(name:string,value:string|boo
   };
   return <section className="evalSection"><h1>5 · Exame físico</h1><div className="physicalGrid">
     {field("pa_sistolica","PA sistólica (mmHg)","number")}{field("pa_diastolica","PA diastólica (mmHg)","number")}{field("fc","FC (bpm)","number")}{field("fr","FR (irpm)","number")}{field("spo2","SpO₂ (%)","number")}{field("temperatura","Temperatura (°C)","number")}
-    {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}
+    {field("glicemia_capilar","Glicemia capilar (mg/dL)","number")}{field("circ_cervical","Circunferência cervical (cm)","number")}
     {choice("estado_geral","Estado geral",["Bom estado geral","Regular estado geral","Mau estado geral"])}
   </div>
   <ToggleChips title="EXAME CARDIOVASCULAR" prefix="cardio" items={["Bulhas normofonéticas","Sopro","Arritmia","Edema","Turgência jugular","Pulsos diminuídos","Perfusão lentificada"]} draft={draft} set={set}/>
@@ -1254,7 +1290,6 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   // Os critérios vêm de lib/escores, que é o mesmo módulo que alimenta as
   // páginas públicas de escore. Duas listas escritas à mão divergiriam calado.
   const rcri=RCRI_CRITERIOS, stop=STOP_BANG_CRITERIOS, apfel=APFEL_CRITERIOS;
-  const rcriScore=rcri.filter(([key])=>key==="rcri_creatinina"?Number(String(draft.creatinina||"").replace(",","."))>2:draft[key]===true).length;
 
   // Preenchimento automático dos escores.
   //
@@ -1283,8 +1318,17 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   // no cadastro ou no exame físico. Uma tabela só, usada tanto pela conta do
   // escore quanto pelo desenho de cada critério — antes eram duas leituras
   // separadas, e o total contava um critério que a tela mostrava desmarcado.
-  const sexoDito=String(sex||draft.sexo||"").trim();
-  const cervical=Number(String(draft.circ_cervical||"").replace(",","."))||0;
+  // Uma fonte só para o sexo: o que está na ficha manda, e o cadastro completa.
+  // A anamnese já lia assim; os escores liam ao contrário, e corrigir o sexo
+  // na ficha não mudava o STOP-Bang nem o Apfel.
+  const sexoDito=String(draft.sexo||sex||"").trim();
+  const cervical=lerDecimal(draft.circ_cervical)??0;
+  const creatinina=lerDecimal(draft.creatinina);
+  // Tabagismo: "Não sabe" ou sem resposta não é "não tabagista". Antes o
+  // critério ficava ligado para quem ainda não tinha respondido — e para quem
+  // escreveu "fuma 1 maço" em vez de marcar "Tabagismo".
+  const habitos=String(draft.habitos||"");
+  const fuma=/tabag|fum|cigarr|maço|maco|narguil|vape/i.test(String(draft.habitos_detalhes||""));
   const derivados:Record<string,{ligado:boolean;origem:string}>={
     stop_imc:{ligado:imc>35,
       origem:imc?`IMC ${imc.toFixed(1)}`:"peso e altura no exame físico"},
@@ -1297,10 +1341,17 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
     apfel_feminino:{ligado:sexoDito.toLowerCase()==="feminino",
       origem:sexoDito||"sexo no cadastro"},
     apfel_nao_tabagista:{
-      ligado:String(draft.habitos||"")!=="Sim"||!String(draft.habitos_detalhes||"").toLowerCase().includes("tabag"),
-      origem:"hábitos, na anamnese"},
+      ligado:habitos==="Não"||(habitos==="Sim"&&!fuma),
+      origem:habitos==="Não"?"hábitos: não"
+        :habitos==="Sim"?(fuma?"hábitos: tabagismo":"hábitos, sem tabagismo")
+        :"a confirmar: hábitos, na anamnese"},
+    // A creatinina conta pelo exame, e aparece marcada quando conta. Antes o
+    // total somava a creatinina de 2,4 calado, com o critério desmarcado.
+    rcri_creatinina:{ligado:creatinina!==null&&creatinina>2,
+      origem:creatinina!==null?`Creatinina ${String(creatinina).replace(".",",")} mg/dL (exames)`:"creatinina nos exames"},
   };
   const vale=(key:string)=>derivados[key]?derivados[key].ligado:draft[key]===true;
+  const rcriScore=rcri.filter(([key])=>vale(key)).length;
   const stopScore=stop.filter(([key])=>vale(key)).length;
   const apfelScore=apfel.filter(([key])=>vale(key)).length;
   const stopRisk=lerStopBang(stopScore);
@@ -1310,7 +1361,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   return <><div className="scoreGrid">
     <section className="evalSection"><h1>8 · Classificação ASA</h1><p className="evalHint">Selecione a classificação médica.</p><div className="asaButtons">{asa.map(item=><button className={draft.asa===item?"selected":""} onClick={()=>set("asa",item)} key={item}>{item}</button>)}<button className={draft.asa_emergencia===true?"selected":""} onClick={()=>set("asa_emergencia",draft.asa_emergencia!==true)}>+ E (emergência)</button></div></section>
     <section className="evalSection"><h1>Índice de Lee (RCRI)</h1><p className="evalHint">Marque os critérios presentes.</p>
-      <div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia}/>)}</div>
+      <div className="scoreList">{rcri.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div>
       <div className={`scoreResult ${rcriScore>=2?"warning":""}`}>
         Lee {rcriScore} ponto(s) · Classe {lee.classe} · evento cardíaco maior ≈ {lee.risco}
       </div>
@@ -1338,8 +1389,8 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
           <p className="cardioAlerta grave"><Icone nome="alerta" tamanho={15}/> Cardiologista não liberou o procedimento.</p>}
       </div>
     </section>
-    <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
-    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className="scoreResult">Apfel {apfelScore}/4 — risco de NVPO {apfelRisk}</div></section>
+    <section className="evalSection"><h1>STOP-Bang (apneia do sono)</h1><div className="scoreChipList">{stop.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className={`scoreResult ${stopScore>=5?"warning":stopScore>=3?"atencao":"success"}`}>STOP-Bang {stopScore}/8 — {stopRisk}</div></section>
+    <section className="evalSection"><h1>Apfel (risco de NVPO)</h1><div className="scoreChipList">{apfel.map(([key,label])=><ScoreToggle key={key} name={key} label={label} draft={draft} set={set} motivo={sugestoes[key]?.motivo} onAlternar={registrarAlternancia} derivado={!!derivados[key]} ligadoDerivado={derivados[key]?.ligado} origem={derivados[key]?.origem}/>)}</div><div className={`scoreResult ${apfelScore>=3?"warning":apfelScore===2?"atencao":""}`}>Apfel {apfelScore}/4 — risco de NVPO {apfelRisk}</div></section>
   </div><section className="evalSection functionalCapacity"><strong>CAPACIDADE FUNCIONAL</strong><div className="asaButtons">{["< 4 METs","4–10 METs","> 10 METs","Não avaliável"].map(item=><button className={draft.capacidade_funcional===item?"selected":""} onClick={()=>set("capacidade_funcional",item)} key={item}>{item}</button>)}</div></section></>;
 }
 
@@ -1350,7 +1401,7 @@ function Conclusion({draft,set,paciente,age,idadeMeses,conclude,retrySave,saveSt
      ficha, e trocar de tela no meio da indução é o que se quer evitar.
      A idade em anos inteiros não serve — abaixo de 1 ano o calibre vem do
      peso, e um lactente de 8 meses apareceria como "0 ano". */
-  const pesoKg=Number(draft.peso||0)||undefined;
+  const pesoKg=lerDecimal(draft.peso)||undefined;
   const usaTubo=["Anestesia geral","Técnica combinada"].includes(String(draft.tecnica??""));
   const opcoesTubo=usaTubo&&ehPediatrico(idadeMeses)
     ?opcoesDeTubo({idadeMeses,pesoKg})
