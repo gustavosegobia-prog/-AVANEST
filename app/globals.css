@@ -6271,3 +6271,31 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .avnHeroComTelas .avnHeroContent{padding-top:48px}
   .avnOferta .avnActions{display:grid;gap:12px}
 }
+
+/* --- Barra do topo das páginas públicas, mais fina --------------------------
+   Eram 88px de altura com botões de 48px: a barra ocupava quase um décimo da
+   tela de um notebook antes de qualquer conteúdo. Agora 64px, botões de 40px
+   e a marca menor — só na barra; no cartão do login a marca continua grande.
+   Em tela de toque os botões voltam aos 44px, o mínimo para o dedo. */
+.avnNav{height:64px}
+.avnNav .avnMark{width:34px;height:34px}
+.avnNav .avnBrand{gap:9px}
+.avnNav .avnBrand strong{font-size:17px}
+.avnNav .avnBrand small{font-size:7.5px}
+/* Só do tablet para cima: no telefone a barra já tem medidas próprias, em
+   degraus até 320px (ver "A marca no telefone"), e esta regra as desfaria. */
+@media(min-width:801px){
+  .avnNav nav a{min-height:40px;padding:0 18px;border-radius:10px;font-size:15px}
+}
+.avnHero{min-height:max(680px,calc(100svh - 64px))}
+@media(min-width:1101px){
+  .avnHero.avnHeroComTelas{min-height:max(640px,calc(100svh - 64px))}
+}
+@media(max-width:800px){
+  .avnNav{height:58px}
+  .avnNav .avnMark{width:30px;height:30px}
+  .avnNav .avnBrand strong{font-size:15px}
+}
+@media(pointer:coarse){
+  .avnNav nav a{min-height:44px}
+}

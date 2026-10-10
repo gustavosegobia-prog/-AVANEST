@@ -93,7 +93,9 @@ export default function HomePage() {
             <span className="avnSoEstreito">Recursos</span>
           </a>
           <a className="avnLogin" href="/login">Login</a>
-          <a className="avnPrimary" href="/planos">Ver planos</a>
+          {/* Sem "Ver planos" aqui: na capa os planos já têm botão próprio, ao
+              lado do "Começar grátis", e dois botões de destaque disputando a
+              mesma tela dividiam a atenção. */}
         </nav>
       </header>
 
