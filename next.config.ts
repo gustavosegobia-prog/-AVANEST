@@ -40,6 +40,11 @@ const CABECALHOS = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "same-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+  // COOP — uma página de outro site, aberta a partir do AVANEST (ou que abriu
+  //   o AVANEST), não ganha referência à nossa janela: sem `window.opener`
+  //   para redirecionar a aba do sistema para um login falso. A variante
+  //   "allow-popups" mantém o que o próprio app abre (WhatsApp, e-mail).
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   {
     key: "Content-Security-Policy",
     value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",

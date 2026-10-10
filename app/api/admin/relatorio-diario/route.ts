@@ -5,6 +5,7 @@ import {
   assuntoDoRelatorio, htmlDoRelatorio, montarRelatorio, textoDoRelatorio,
   type UsuarioDoUso,
 } from "@/lib/relatorio-diario";
+import { segredoConfere } from "@/lib/portaria";
 
 // O relatório diário, e a pausa das contas paradas da campanha.
 //
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     console.error("[api/admin/relatorio-diario] CRON_SECRET não configurado");
     return NextResponse.json({ error: "Rota não configurada." }, { status: 503 });
   }
-  if (request.headers.get("authorization") !== `Bearer ${segredo}`) {
+  if (!segredoConfere(request.headers.get("authorization"), segredo)) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

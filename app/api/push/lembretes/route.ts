@@ -14,6 +14,7 @@ import {
   type PlantaoParaLembrar,
 } from "@/lib/lembrete-de-plantao";
 import { aceita, comPadrao, comoTocar } from "@/lib/preferencias-de-aviso";
+import { segredoConfere } from "@/lib/portaria";
 
 // O lembrete que ninguém dispara.
 //
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
     console.error("[api/push/lembretes] CRON_SECRET não configurado");
     return NextResponse.json({ error: "Rota não configurada." }, { status: 503 });
   }
-  if (request.headers.get("authorization") !== `Bearer ${segredo}`) {
+  if (!segredoConfere(request.headers.get("authorization"), segredo)) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 

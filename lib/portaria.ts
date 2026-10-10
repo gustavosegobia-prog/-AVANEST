@@ -16,6 +16,24 @@
  * de erro — a divisão é essa, e é ela que torna a regra conferível.
  */
 
+import { createHash, timingSafeEqual } from "node:crypto";
+
+/**
+ * O segredo dos agendadores (CRON_SECRET) confere?
+ *
+ * As rotas agendadas comparavam com `!==`, que para no primeiro caractere
+ * diferente — o tempo de resposta diz quantos caracteres do início acertaram.
+ * Pela rede o sinal é fraco, mas a rota usa a chave de serviço e lê a base
+ * inteira: vale a comparação em tempo constante. Os dois lados viram um hash
+ * de tamanho fixo antes, porque `timingSafeEqual` exige tamanhos iguais e
+ * comparar tamanhos já seria um vazamento.
+ */
+export function segredoConfere(cabecalho: string | null, segredo: string | undefined): boolean {
+  if (!segredo || !cabecalho) return false;
+  const h = (t: string) => createHash("sha256").update(t).digest();
+  return timingSafeEqual(h(cabecalho), h(`Bearer ${segredo}`));
+}
+
 /** O teto padrão de corpo de requisição: 32 KB. */
 export const TAMANHO_MAXIMO = 32_768;
 

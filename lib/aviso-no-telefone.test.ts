@@ -134,7 +134,8 @@ test("a rota do lembrete não roda sem segredo", () => {
   // RLS. Aberta, seria um botão para tocar o telefone de toda a base.
   assert.match(rota, /process\.env\.CRON_SECRET/);
   assert.match(rota, /if \(!segredo\)/, "sem segredo configurado, tem de recusar");
-  assert.match(rota, /Bearer \$\{segredo\}/);
+  // A conferência é a de tempo constante (lib/portaria.ts), que exige o Bearer.
+  assert.match(rota, /segredoConfere\(request\.headers\.get\("authorization"\), segredo\)/);
 });
 
 test("o adiar do sino vale para o telefone", () => {

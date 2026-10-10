@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  contarTentativa, formatoAceito, origemAceita, tamanhoAceito, TAMANHO_MAXIMO,
+  contarTentativa, formatoAceito, origemAceita, segredoConfere, tamanhoAceito, TAMANHO_MAXIMO,
 } from "./portaria.ts";
 
 // ---------------------------------------------------------------------------
@@ -155,4 +155,14 @@ test("limite: a espera devolvida nunca é zero", () => {
 
   const meio = contarTentativa({ count: 9, resetAt: 31_000 }, 1_000, 3, 60_000);
   assert.equal((meio as { esperarSegundos: number }).esperarSegundos, 30);
+});
+
+test("segredo dos agendadores: só o Bearer exato passa", () => {
+  assert.equal(segredoConfere("Bearer s3gr3do", "s3gr3do"), true);
+  assert.equal(segredoConfere("Bearer s3gr3dO", "s3gr3do"), false);
+  assert.equal(segredoConfere("s3gr3do", "s3gr3do"), false, "sem o Bearer não vale");
+  assert.equal(segredoConfere(null, "s3gr3do"), false);
+  // Sem segredo configurado, nada passa — nem um cabeçalho "Bearer " vazio.
+  assert.equal(segredoConfere("Bearer ", ""), false);
+  assert.equal(segredoConfere("Bearer undefined", undefined), false);
 });
