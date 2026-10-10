@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { mesEmMaiusculas, money, plural } from "@/lib/escala";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
+import { Dialogo } from "@/components/admin-ui";
 import { AVISO_FICHA, ROTULO_CAMPO, lerFichaDeInternacao } from "@/lib/ficha-internacao";
 import { hoje as hojeLocal, ultimoDiaDoMes } from "@/lib/data-local";
 import { lerDinheiro } from "@/lib/dinheiro";
@@ -414,8 +415,10 @@ export function ProducaoDoDia({
     void carregar();
   }
 
-  async function remover(id: string, paciente: string) {
-    if (!confirm(`Apagar a anotação de ${paciente}?`)) return;
+  const [apagando, setApagando] = useState<{ id: string; paciente: string } | null>(null);
+  async function remover(id: string, paciente: string, confirmado = false) {
+    if (!confirmado) { setApagando({ id, paciente }); return; }
+    setApagando(null);
     // O erro é olhado. Sem isso, uma recusa do banco voltava calada: a lista
     // recarregava, a anotação continuava lá, e a pessoa apagava de novo
     // achando que o clique não tinha pegado.
@@ -427,6 +430,12 @@ export function ProducaoDoDia({
 
   return (
     <div className="producaoBloco">
+      {apagando && (
+        <Dialogo perigo titulo={`Apagar a anotação de ${apagando.paciente}?`} confirmar="Apagar" cancelar="Cancelar"
+          onCancelar={() => setApagando(null)} onConfirmar={() => void remover(apagando.id, apagando.paciente, true)}>
+          <p>A anotação sai da produção do dia e do envio ao financeiro.</p>
+        </Dialogo>
+      )}
       <div className="producaoCabeca">
         <div>
           <strong>Produção do dia</strong>

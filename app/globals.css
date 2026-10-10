@@ -3075,7 +3075,7 @@ button:disabled{cursor:not-allowed}
 .plantaoDia.feriado.f-facultativo{background:color-mix(in srgb,var(--cor-atencao) 8%,var(--cor-superficie))}
 .plantaoDia.fds.feriado{background:color-mix(in srgb,var(--cor-perigo) 11%,var(--cor-superficie))}
 .plantaoDia.fds.feriado.f-facultativo{background:color-mix(in srgb,var(--cor-atencao) 12%,var(--cor-superficie))}
-.plantaoFeriado{display:block;text-decoration:none;font-size:9px;font-weight:800;line-height:1.15;
+.plantaoFeriado{display:block;text-decoration:none;font-size:11px;font-weight:800;line-height:1.15;
   letter-spacing:.01em;color:var(--cor-perigo);margin:-1px 0 2px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plantaoDia.f-facultativo .plantaoFeriado{color:#8a5a00}
@@ -3089,7 +3089,7 @@ button:disabled{cursor:not-allowed}
    financeiro: número em pastilha cheia. O dia aberto fica com o anel. Um é
    "onde estamos", o outro é "o que estou olhando", e agora não se confundem. */
 .plantaoDia.hoje{border-color:var(--cor-marca)}
-.plantaoDia.hoje>b{background:var(--cor-marca);color:#fff;font-weight:850;
+.plantaoDia.hoje>b{background:var(--cor-marca);color:var(--cor-marca-contraste);font-weight:850;
   border-radius:8px;padding:1px 7px;margin:-1px -2px 0}
 .plantaoDia.aberto{box-shadow:var(--foco);border-color:var(--cor-marca);border-width:2px;
   padding:6px 6px 5px}
@@ -3102,7 +3102,7 @@ button:disabled{cursor:not-allowed}
    As classes são etq-*, e não as cor-* que os chips de modelo usam: aquelas
    pintam o FUNDO, e aqui isso apagava o texto — a etiqueta virava uma barra
    sólida sem nome, que é exatamente o problema que ela existe para resolver. */
-.plantaoEtiqueta{font-style:normal;font-size:10.5px;font-weight:700;line-height:1.25;
+.plantaoEtiqueta{font-style:normal;font-size:11.5px;font-weight:700;line-height:1.25;
   padding:2px 5px 2px 6px;border-radius:4px;border-left:3px solid var(--cor-tinta-fraca);
   background:var(--cor-superficie-suave);color:var(--cor-tinta);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -3129,7 +3129,7 @@ button:disabled{cursor:not-allowed}
 /* Plantão de colega fica esmaecido: na escala do grupo, o que é seu precisa
    saltar sem exigir leitura. */
 .plantaoEtiqueta.deOutro{opacity:.6;font-weight:600}
-.plantaoMais{font-style:normal;font-size:10px;font-weight:700;color:var(--cor-tinta-fraca);padding-left:3px}
+.plantaoMais{font-style:normal;font-size:11px;font-weight:700;color:var(--cor-tinta-fraca);padding-left:3px}
 .plantaoEtiqueta.etq-azul{border-left-color:var(--graf-1)}
 .plantaoEtiqueta.etq-verde{border-left-color:var(--graf-2)}
 .plantaoEtiqueta.etq-roxo{border-left-color:var(--graf-3)}
@@ -3139,7 +3139,7 @@ button:disabled{cursor:not-allowed}
 /* Na escala pessoal a etiqueta tem duas linhas: o horário e o lugar. Quem roda
    três hospitais no mesmo mês precisa do lugar para saber onde ir; quem roda um
    só ignora a segunda linha sem esforço. */
-.plantaoEtiqueta b{display:block;font-size:10.5px;font-weight:800;color:var(--cor-tinta)}
+.plantaoEtiqueta b{display:block;font-size:11.5px;font-weight:800;color:var(--cor-tinta)}
 .plantaoEtiqueta>span{display:block;font-weight:600;color:var(--cor-tinta-fraca);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
@@ -3161,12 +3161,16 @@ button:disabled{cursor:not-allowed}
   gap:4px;align-items:start;min-width:0;
   padding:2px 5px;border-radius:4px;background:var(--cor-superficie-suave)}
 .plantaoDia.fds .plantaoFaixa{background:var(--cor-superficie)}
-.plantaoFaixa>b{font-size:10px;font-weight:850;color:var(--cor-tinta-fraca);
+.plantaoFaixa>b{font-size:11px;font-weight:850;color:var(--cor-tinta-fraca);
   letter-spacing:.2px;line-height:1.5;text-align:center}
 /* A faixa sem ninguém fica, e fica apagada. O vazio é a informação: "sábado à
    noite não tem ninguém" é a pergunta que traz o coordenador a esta tela, e
    uma faixa que some não responde nada — o dia só encolhe e ninguém percebe. */
-.plantaoFaixa.vazia{background:none;opacity:.45}
+/* Era apagada (45% de opacidade): o "N" vazio ficava em 1,87:1 e o turno sem
+   ninguém, que é a informação, virava o elemento mais fraco da tela. Agora o
+   vazio é marcado — contorno tracejado e letra em âmbar —, e legível. */
+.plantaoFaixa.vazia{background:none;outline:1px dashed color-mix(in srgb,var(--cor-atencao) 60%,transparent);outline-offset:-1px}
+.plantaoFaixa.vazia>b,.plantaoFaixa.vazia .plantaoVazio{color:var(--cor-atencao)}
 /* O resultado que não é sucesso nem erro: a operação correu bem e não havia o
    que fazer. Âmbar, que é a cor de "olha isto", e não vermelho, que é a de
    "algo quebrou" — vermelho gasto em resultado correto é vermelho que se
@@ -3174,7 +3178,7 @@ button:disabled{cursor:not-allowed}
 .plantaoRecado{background:var(--cor-atencao-suave);color:var(--cor-tinta);
   border-left:3px solid var(--cor-atencao);border-radius:10px;
   padding:13px 16px;margin:0 0 14px;line-height:1.55}
-.plantaoVazio{font-style:normal;font-size:9.5px;font-weight:700;line-height:1.5;
+.plantaoVazio{font-style:normal;font-size:11px;font-weight:700;line-height:1.5;
   color:var(--cor-tinta-fraca)}
 .plantaoQuem{display:flex;flex-wrap:wrap;gap:3px;min-width:0}
 /* Cada bloco é um turno de um hospital. Sem essa caixa, as iniciais de dois
@@ -3214,12 +3218,12 @@ button:disabled{cursor:not-allowed}
   /* A pastilha da cor leva as MESMAS duas letras da etiqueta do calendário. A
      legenda liga três coisas — as letras, a cor e o nome —, e sem as letras
      ela ligaria só duas, deixando justamente a ponta que precisa ser decifrada. */
-  .plantaoLegendaItem>i{font-style:normal;font-size:9.5px;font-weight:850;
+  .plantaoLegendaItem>i{font-style:normal;font-size:11px;font-weight:850;
     min-width:20px;height:18px;padding:0 4px;border-radius:999px;
     display:inline-flex;align-items:center;justify-content:center;
     background:var(--med-cor,var(--cor-tinta-fraca));color:var(--med-tinta,#fff)}
 }
-.plantaoQuem em{font-style:normal;font-size:10px;font-weight:800;line-height:1.25;
+.plantaoQuem em{font-style:normal;font-size:11px;font-weight:800;line-height:1.25;
   padding:2px 5px;border-radius:3px;letter-spacing:.1px;
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   background:var(--med-cor,var(--cor-tinta-fraca));color:var(--med-tinta,#fff)}
@@ -3307,6 +3311,12 @@ button:disabled{cursor:not-allowed}
 .plantaoTrocaAviso{color:var(--cor-atencao)!important;font-weight:700}
 .plantaoLinha select,.plantaoLinha .inlineMoney input{height:40px;border:1px solid var(--cor-borda);
   background:var(--cor-superficie-suave);border-radius:9px;padding:0 11px;font:inherit}
+/* O valor da linha é campo, e tem de parecer campo. A regra de cima mirava
+   `.inlineMoney`, que a marcação não usa mais: o input ficava sem borda nem
+   fundo, lido como texto — e o tracejado de "valor não preenchido" sumia
+   junto, porque a borda tinha largura zero. */
+.escalaLinha input{border:1px solid var(--cor-borda-forte);background:var(--cor-superficie);padding:0 10px;font:inherit;color:var(--cor-tinta)}
+.escalaLinha input:focus-visible{outline:0;border-color:var(--cor-marca);box-shadow:var(--foco)}
 .plantaoLinha .inlineMoney{width:130px}
 
 .plantaoLancar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:16px 25px;
@@ -3405,7 +3415,7 @@ button:disabled{cursor:not-allowed}
   .plantaoModeloForm .clinicalField.wide{grid-column:1/-1}
   .plantaoLinha{gap:10px}
   .plantaoDia{min-height:86px;padding:5px}
-  .plantaoEtiqueta{font-size:9.5px}
+  .plantaoEtiqueta{font-size:11px}
   /* No celular a letra encosta nas iniciais: sete colunas em 360px deixam
      ~44px por célula, e cada pixel da coluna da esquerda sai das iniciais. */
   .plantaoFaixa{grid-template-columns:9px minmax(0,1fr);gap:3px;padding:1px 3px}
@@ -3989,7 +3999,7 @@ button:disabled{cursor:not-allowed}
    Sem sublinhado, apesar de ser <u>: a tag foi escolhida por ser inline e não
    ter significado próprio dentro de <em>/<b>, e o traço só faria a palavra
    parecer um link no meio das iniciais. */
-.plantaoOnde1{font-size:9px;font-weight:700;color:var(--cor-tinta-fraca);
+.plantaoOnde1{font-size:11px;font-weight:700;color:var(--cor-tinta-fraca);
   text-decoration:none;line-height:1.5;max-width:100%;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plantaoDeColega{color:var(--cor-tinta-fraca);font-size:13px;min-width:0}
@@ -5660,7 +5670,7 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
 .escalaSelos{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:-2px}
 .escSelo{display:inline-flex;align-items:center;gap:5px;border-radius:var(--raio-cheio);padding:2px 9px;
   font-size:11.5px;font-weight:700;line-height:1.6;background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca)}
-.escSelo .escSeloDim{font-weight:600;opacity:.85}
+.escSelo .escSeloDim{font-weight:600}
 .escSelo.ok{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
 .escSelo.atencao{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
 .escSelo.perigo{background:var(--cor-perigo-suave);color:var(--cor-perigo)}
@@ -6052,3 +6062,27 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .clinicalDark .clinicalMain p.financeSuccess{color:var(--cor-sucesso)}
 .clinicalDark .clinicalMain p.medAvisoPendencias{color:var(--cor-atencao)}
 .clinicalDark .clinicalPanel.medProximo{background:var(--cor-marca-suave);border-color:transparent}
+
+/* --- Escala no celular: o mês pessoal em barras -------------------------
+   Sete colunas em 360px deixam ~44px por dia; "07-19h / Santa Casa" virava
+   "07-:" e "H…". No celular o mês pessoal mostra a barra da cor do hospital
+   (a legenda dos hospitais diz qual é qual) e o dia aberto, logo abaixo,
+   traz o texto inteiro. */
+@media(max-width:560px){
+  .plantaoDia .plantaoEtiqueta.etqLocal{font-size:0;line-height:0;min-height:7px;padding:0;
+    border-left:0;border-radius:3px;background:var(--med-cor,var(--cor-tinta-fraca))}
+  .plantaoDia .plantaoEtiqueta.etqLocal *{display:none}
+}
+
+/* --- Botão principal no tema escuro ---------------------------------------
+   Branco sobre o azul claro do tema escuro dava 2,85:1. A tinta de contraste
+   da marca (#08192a no escuro) dá 6,2:1 — e no claro continua branco. */
+.clinicalDark .primaryClinical{color:var(--cor-marca-contraste)}
+
+/* --- Alvos de toque na Escala --------------------------------------------
+   Em tela de toque, os controles da lista e os filtros de pendência ficam com
+   44px — eram 32 a 38px. No mouse continua a densidade de antes. */
+@media(pointer:coarse){
+  .escalaLinha input,.escalaLinha select,.escalaLinha .plantaoAcao>button{height:44px}
+  .escalaPendencias button,.escalaFiltros select,.escalaFiltros button,.escalaVisoes button{min-height:44px}
+}

@@ -36,7 +36,7 @@ import {
   situacaoDaExecucao, situacaoDoPagamento, somarDias, valorAusente, FILTROS_DA_ESCALA,
   type FiltroDeSituacao, type FiltrosDaEscala, type Situacao,
 } from "@/lib/escala-painel";
-import { Dialogo } from "@/components/admin-ui";
+import { Dialogo, useFocoPreso, useTravaDeRolagem } from "@/components/admin-ui";
 
 // Plantões: a escala, o valor e a troca.
 //
@@ -99,7 +99,8 @@ const ehCelular = () => window.matchMedia(CONSULTA_CELULAR).matches;
 
 const MESES = ["janeiro","fevereiro","março","abril","maio","junho",
                "julho","agosto","setembro","outubro","novembro","dezembro"];
-const DIAS = ["D","S","T","Q","Q","S","S"];
+// Três letras, e não uma: "S" era segunda e sábado, "Q" quarta e quinta.
+const DIAS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
 // Atalhos de duração. 6h e 12h cobrem o padrão; o horário continua editável,
 // porque plantão de 24h e cobertura de 4h existem e não podem ficar de fora.
@@ -1119,6 +1120,8 @@ export function Plantoes({
   // exatamente a confusão do "18 × 14".
   const [filtros, setFiltros] = useState<FiltrosDaEscala>(FILTROS_DA_ESCALA);
   const [imprimindo, setImprimindo] = useState(false);
+  /** A confirmação de remover, na janela do sistema e não no confirm() do navegador. */
+  const [removendo, setRemovendo] = useState<{ id: string; privado: boolean } | null>(null);
   const listaRef = useRef<HTMLDivElement>(null);
 
   const nomePorId = useMemo(() => new Map(colegas.map((c) => [c.id, c.nome])), [colegas]);
@@ -1732,12 +1735,12 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
    * vez de traduzir por conta própria — mensagem inventada aqui envelhece
    * separada da regra que a produziu.
    */
-  async function remover(id: string) {
-    const alvo = plantoes.find((p) => p.id === id);
-    const pergunta = alvo?.privado
-      ? "Apagar este plantão? Ele é só seu, ninguém do grupo o enxerga."
-      : "Remover este plantão da escala?";
-    if (!confirm(pergunta)) return;
+  async function remover(id: string, confirmado = false) {
+    if (!confirmado) {
+      setRemovendo({ id, privado: Boolean(plantoes.find((p) => p.id === id)?.privado) });
+      return;
+    }
+    setRemovendo(null);
     setErro(""); setAviso("");
     // O .select() no fim não é enfeite: a política de apagar do banco esconde
     // a linha em vez de recusar, e sem ele um DELETE barrado volta como
@@ -2416,6 +2419,15 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
 
   return (
     <div className="clinicalMain plantaoMain">
+      {removendo && (
+        <Dialogo perigo titulo={removendo.privado ? "Apagar este plantão?" : "Remover este plantão da escala?"}
+          confirmar={removendo.privado ? "Apagar" : "Remover"} cancelar="Cancelar"
+          onCancelar={() => setRemovendo(null)} onConfirmar={() => void remover(removendo.id, true)}>
+          <p>{removendo.privado
+            ? "Ele é só seu: ninguém do grupo o enxerga, e ele sai também do seu financeiro."
+            : "O turno fica vazio na escala do grupo."}</p>
+        </Dialogo>
+      )}
       <section className="clinicalWelcome">
         <div>
           <h1>Escala</h1>
@@ -2581,8 +2593,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
               {plural(semCRM.length, "profissional está", "profissionais estão")} na
               escala <strong>sem CRM registrado</strong>: <strong>{semCRM.join(", ")}</strong>.
               A escala funciona assim, mas o registro é de quem responde pelo ato —
-              preencha em Admin → Equipe quando tiver.
-              Preencha em <strong>Admin → Equipe</strong>.
+              preencha em <strong>Admin → Equipe</strong> quando tiver.
             </p>
           )}
           {/* Fica aqui, e não na barra de ações do calendário, por dois
@@ -2648,7 +2659,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 )}
                 <button className="outlineClinical" onClick={exportarAgenda}
                   title="Baixa um arquivo .ics: o iPhone abre no Calendário e o Google Agenda importa">
-                  Google/Apple
+                  Adicionar à agenda
                 </button>
                 {/* Colorida ou P&B e a dica da orientação moram no passo de
                     imprimir, e não na barra: só importam nesse instante, e
@@ -2753,7 +2764,9 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 Só quem tem plantão no mês em vista: uma legenda com a equipe
                 inteira faria procurar, entre treze nomes, os cinco que estão
                 nesta tela. */}
-            {visao === "mes" && pessoasDoMes.length > 0 && (
+            {/* Só na escala do grupo: na pessoal as células são coloridas por
+                hospital, e uma legenda de pessoas ensinava a ler a cor errado. */}
+            {visao === "mes" && escopo === "grupo" && pessoasDoMes.length > 0 && (
               <div className="plantaoLegenda" role="list" aria-label="Quem é cada cor no calendário">
                 {pessoasDoMes.map((id) => (
                   <span role="listitem" key={id}
@@ -2798,7 +2811,15 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                       // Para quem usa leitor de tela, a pastilha azul do número
                       // não existe: `aria-current="date"` é o que anuncia "hoje".
                       aria-current={dia === hojeISO ? "date" : undefined}
-                      aria-label={`${i + 1}${dia === hojeISO ? " — hoje" : ""}${feriado ? ` — ${feriado.nome}` : ""} — ${doDia.length ? contagemEscrita(contagem(doDia)) : "sem plantão"}`}
+                      // Na escala do grupo o rótulo diz QUEM está em cada
+                      // turno, e qual turno está vazio — a pergunta que traz o
+                      // coordenador aqui. Antes dizia só "2 plantões · 24 h".
+                      aria-label={`${i + 1}${dia === hojeISO ? " — hoje" : ""}${feriado ? ` — ${feriado.nome}` : ""} — ${
+                        escopo === "grupo" && faixasDia.length
+                          ? faixasDia.map((f) => `${f.nome}: ${f.blocos.length
+                              ? f.blocos.flatMap((t) => t.gente.map((g) => nomePorId.get(g.perfil_id) ?? "")).join(", ")
+                              : "ninguém"}`).join("; ")
+                          : doDia.length ? contagemEscrita(contagem(doDia)) : "sem plantão"}`}
                     >
                       <b>{i + 1}</b>
                       {/* O nome do feriado, e não só uma cor. Cor sozinha diz
@@ -2873,7 +2894,6 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                                             vez de ouvir "MG" no telefone. */}
                                         {t.gente.slice(0, 3).map((g) => (
                                           <em key={g.id}
-                                            aria-label={nomePorId.get(g.perfil_id) ?? ""}
                                             className={`med-${corPorMedico.get(g.perfil_id) ?? "m8"}${g.perfil_id === perfilId ? " eu" : ""}`}>
                                             <span className="nomeLargo" aria-hidden="true">
                                               {apelidos.get(g.perfil_id) ?? nomeCurto(nomePorId.get(g.perfil_id) ?? "")}
@@ -3598,8 +3618,10 @@ function ModelosPainel({
     setForm(vazio); onMudou();
   }
 
-  async function apagar(id: string) {
-    if (!confirm("Apagar este modelo? Os plantões já lançados continuam.")) return;
+  const [apagando, setApagando] = useState<string | null>(null);
+  async function apagar(id: string, confirmado = false) {
+    if (!confirmado) { setApagando(id); return; }
+    setApagando(null);
     // Modelo da equipe só quem administra apaga, e o RLS recusa o resto. Sem
     // olhar o erro, a recusa voltava calada e o modelo reaparecia na lista sem
     // explicação nenhuma.
@@ -3612,6 +3634,12 @@ function ModelosPainel({
 
   return (
     <section className="clinicalPanel">
+      {apagando && (
+        <Dialogo perigo titulo="Apagar este modelo?" confirmar="Apagar" cancelar="Cancelar"
+          onCancelar={() => setApagando(null)} onConfirmar={() => void apagar(apagando, true)}>
+          <p>Os plantões já lançados com ele continuam como estão.</p>
+        </Dialogo>
+      )}
       <div className="panelTitle">
         <strong>Modelos de plantão</strong>
         <span>o turno que se repete</span>
@@ -3699,6 +3727,20 @@ function ModelosPainel({
  * Escolher um modelo aqui preenche o resto — continua sendo atalho, e agora
  * também sem ser obrigação.
  */
+/**
+ * O que toda janela desta tela precisa: o foco entra nela e não escapa para o
+ * painel de trás pelo Tab, o Esc fecha, e a página atrás não rola. As três
+ * janelas próprias da Escala (lançar, passar plantão, quem entra na escala)
+ * não faziam nada disso — o foco ficava no botão de fora, e 40 Tabs depois
+ * estava num "Remover" atrás do modal.
+ */
+function useJanelaDaEscala(onFechar: () => void) {
+  const caixa = useRef<HTMLElement>(null);
+  useFocoPreso(true, caixa, onFechar);
+  useTravaDeRolagem(true);
+  return caixa;
+}
+
 function LancarPlantao({
   dia, para, locais, modelos, colegas, apelidos, corPorMedico,
   perfilId, ehAdmin, localSugerido, onFechar, onSalvar,
@@ -3765,9 +3807,11 @@ function LancarPlantao({
     });
   }
 
+  const caixa = useJanelaDaEscala(onFechar);
+
   return (
     <div className="patientModalBackdrop" role="presentation">
-      <section className="localModal" role="dialog" aria-modal="true" aria-labelledby="lancar-plantao">
+      <section ref={caixa} className="localModal" role="dialog" aria-modal="true" aria-labelledby="lancar-plantao">
         <div className="patientModalHead">
           <div><h2 id="lancar-plantao">Lançar plantão</h2>
             <p>O valor pode ser ajustado depois, direto na lista.</p></div>
@@ -4013,9 +4057,11 @@ function PedirTroca({
   const [destino, setDestino] = useState("");
   const [mensagem, setMensagem] = useState("");
 
+  const caixa = useJanelaDaEscala(onFechar);
+
   return (
     <div className="patientModalBackdrop" role="presentation">
-      <section className="localModal" role="dialog" aria-modal="true" aria-labelledby="pedir-troca">
+      <section ref={caixa} className="localModal" role="dialog" aria-modal="true" aria-labelledby="pedir-troca">
         <div className="patientModalHead">
           <div>
             <h2 id="pedir-troca">Passar plantão</h2>
@@ -4201,7 +4247,7 @@ function TrocasPainel({
           <span>aguardando alguém assumir</span>
         </div>
         {enviados.length === 0
-          ? <div className="emptyClinical compactEmpty">Você não tem pedidos em aberto. Use “Solicitar troca” na Escala.</div>
+          ? <div className="emptyClinical compactEmpty">Você não tem pedidos em aberto. Para pedir, abra o plantão na Escala e use “Passar plantão”.</div>
           : enviados.map((t) => <Linha key={t.id} troca={t} lado="enviado" />)}
       </section>
     </>
@@ -4278,9 +4324,11 @@ function QuemEntraNaEscala({
     ? equipe.filter((p) => `${p.nome} ${p.crm ?? ""}`.toLowerCase().includes(alvo))
     : equipe;
 
+  const caixa = useJanelaDaEscala(onFechar);
+
   return (
     <div className="patientModalBackdrop" role="presentation">
-      <section className="localModal escalaModal" role="dialog" aria-modal="true" aria-labelledby="quem-escala">
+      <section ref={caixa} className="localModal escalaModal" role="dialog" aria-modal="true" aria-labelledby="quem-escala">
         <div className="patientModalHead">
           <div>
             <h2 id="quem-escala">Quem entra na escala</h2>
