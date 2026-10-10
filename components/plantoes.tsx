@@ -1979,6 +1979,24 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     ? (escopo === "minha" ? "minha" : `grupo:${hospitalAtivo}`)
     : aba;
 
+  // GRUPOS RETRÁTEIS no menu, como no Financeiro. Lembrados por aparelho — é
+  // conveniência de quem usa, não dado do serviço. Lidos depois de montar,
+  // porque o servidor não tem localStorage e o primeiro render precisa bater.
+  const [gruposRecolhidos, setGruposRecolhidos] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    try {
+      const salvo: unknown = JSON.parse(localStorage.getItem("avanest_escala_grupos") ?? "[]");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- estado do aparelho, só existe depois de montar
+      if (Array.isArray(salvo)) setGruposRecolhidos(new Set(salvo.filter((x): x is string => typeof x === "string")));
+    } catch { /* segue tudo aberto */ }
+  }, []);
+  const alternarGrupo = (grupo: string) => setGruposRecolhidos((atual) => {
+    const novo = new Set(atual);
+    if (novo.has(grupo)) novo.delete(grupo); else novo.add(grupo);
+    try { localStorage.setItem("avanest_escala_grupos", JSON.stringify([...novo])); } catch { /* só nesta sessão */ }
+    return novo;
+  });
+
   function irPara(secao: string) {
     if (secao === "minha") { setAba("escala"); setEscopo("minha"); return; }
     if (secao.startsWith("grupo:")) {
@@ -2545,13 +2563,13 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
               { rotulo: "Faturamento", icone: "dinheiro", itens: [["producao", "Produção"], ["meufinanceiro", "Meu financeiro"]] },
               { rotulo: "Configuração", icone: "ajustes", itens: [["modelos", "Modelos"]] },
             ];
-            const botao = (id: string, rotulo: string, contador: number | undefined, classe: string, icone?: NomeDoIcone) =>
+            const botao = (id: string, rotulo: string, contador: number | undefined, classe: string, icone?: NomeDoIcone, escondido = false) =>
               <button
                 type="button" key={id}
                 // O tutorial ancora nesta marca para acender o item enquanto
                 // fala dele. Nome estável, independente do rótulo.
                 data-secao={id}
-                className={`${classe}${id === "novoLocal" ? " escalaNova" : secaoAtiva === id ? " active" : ""}`}
+                className={`${classe}${id === "novoLocal" ? " escalaNova" : secaoAtiva === id ? " active" : ""}${escondido ? " recolhido" : ""}`}
                 aria-current={secaoAtiva === id ? "true" : undefined}
                 onClick={() => id === "novoLocal" ? onNovoLocal?.() : irPara(id)}
               >
@@ -2562,10 +2580,22 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
             return grupos.filter((g) => g.itens.length > 0).map((g) =>
               g.itens.length === 1 && !g.fixo
                 ? botao(g.itens[0][0], g.itens[0][1], g.itens[0][2], "finMenuDireto", g.icone)
-                : <div key={g.rotulo} className="menuGrupo" role="group" aria-label={g.rotulo}>
-                    <span className="menuGrupoTitulo"><Icone nome={g.icone} tamanho={18} />{g.rotulo}</span>
-                    {g.itens.map(([id, rotulo, contador]) => botao(id, rotulo, contador, "finMenuItem"))}
-                  </div>,
+                : (() => {
+                    const aberto = !gruposRecolhidos.has(g.rotulo);
+                    // Recolhido, o grupo ainda avisa: a soma dos contadores
+                    // vai para o título. E a seção aberta nunca some.
+                    const pendentes = aberto ? 0 : g.itens.reduce((acc, [, , n]) => acc + (n ?? 0), 0);
+                    return <div key={g.rotulo} className="menuGrupo" role="group" aria-label={g.rotulo}>
+                      <button type="button" className={`financeTarefaGrupo${g.itens.some(([id]) => id === secaoAtiva) ? " contemAtiva" : ""}`}
+                        aria-expanded={aberto} onClick={() => alternarGrupo(g.rotulo)}>
+                        <Icone nome={g.icone} tamanho={18} /><span>{g.rotulo}</span>
+                        {pendentes ? <b className="financeTarefaContador">{pendentes}</b> : null}
+                        <Icone nome="seta" tamanho={14} className={`finMenuSeta${aberto ? " aberta" : ""}`} />
+                      </button>
+                      {g.itens.map(([id, rotulo, contador]) =>
+                        botao(id, rotulo, contador, "finMenuItem", undefined, !aberto && id !== secaoAtiva))}
+                    </div>;
+                  })(),
             );
           })()}
         </nav>
