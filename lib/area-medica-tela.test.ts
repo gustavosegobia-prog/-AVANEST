@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 const ler = (c: string) => readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
 const tela = ler("components/area-medica.tsx");
 const painel = ler("app/dashboard/dashboard-client.tsx");
+const recepcao = ler("components/recepcao.tsx");
 const form = ler("app/avaliacoes/[id]/assessment-form.tsx");
 
 test("entrada: Área médica, local e data, Nova avaliação e as quatro seções", () => {
@@ -19,15 +20,60 @@ test("pendências verificadas separadas de lembretes e do que não é registrado
   assert.match(tela, /aria-label="Pendências verificadas"/);
   assert.match(tela, /aria-label="Lembretes gerais"/);
   assert.match(tela, /aria-label="Informações indisponíveis"/);
-  assert.match(tela, /Nenhuma pendência nos registros deste escopo\./);
+  assert.match(tela, /Nenhuma pendência nos registros \{nomeDoEscopo === "na equipe" \? "da equipe" : "dos seus pacientes"\}\./);
   assert.doesNotMatch(tela + painel, /orientacoes_enviadas/, "o envio não é registrado: não pode virar contagem");
   assert.doesNotMatch(painel, /action="ENVIAR"/);
 });
 
-test("várias avaliações para retomar aparecem em lista, com local, datas e Continuar", () => {
-  assert.match(tela, /retomar\.map\(\(a\) =>/);
+test("várias avaliações abertas aparecem em lista, com local, datas e Continuar", () => {
+  assert.match(tela, /outrasAbertas\.map\(\(a\) =>/);
   assert.match(tela, /Outro local: /);
-  assert.match(tela, /Iniciada em \{momentoBr\(a\.created_at\)\} · última alteração \{momentoBr\(a\.updated_at\)\}/);
+  assert.match(tela, /Iniciada \{quando\(a\.created_at\)\} · última alteração \{quando\(a\.updated_at\)\}/);
+});
+
+test("a mesma avaliação não aparece três vezes em Meu dia", () => {
+  // Paciente de hoje já tem o botão na linha da agenda (e no cartão do topo).
+  assert.match(tela, /const outrasAbertas = retomar\.filter\(\(a\) => !pacientesDeHoje\.has\(a\.patient_id\)\)/);
+  assert.doesNotMatch(tela, /retomar\.map\(\(a\) =>/);
+});
+
+test("o cartão do topo diz a etapa, e não chama de próximo quem já está em atendimento", () => {
+  assert.match(tela, /<span className="medProximoRotulo">\{destaque\.rotulo\}<\/span>/);
+  assert.match(tela, /destaque\.depois &&/);
+  const css = ler("app/globals.css");
+  assert.match(css, /\.medProximo>\.medAcaoCaixa\{grid-column:1\/-1/, "a regra precisa mirar o filho da grade, e não o botão");
+  assert.doesNotMatch(css, /\.medProximo\{[^}]*border-left:4px/, "a faixa lateral voltou");
+});
+
+test("só o botão tocado diz Abrindo…, e cada botão diz de quem é", () => {
+  assert.doesNotMatch(tela, /\{ocupado \? "Abrindo…"/, "todos os botões trocavam de texto juntos");
+  assert.match(tela, /\{abrindo \? "Abrindo…" : rotulo\}/);
+  assert.match(tela, /aria-label=\{`\$\{rotulo\} de \$\{nome\}`\}/);
+});
+
+test("no celular: abas em grade, cartões viram faixa de etapas e alvos de 44px", () => {
+  const css = ler("app/globals.css");
+  assert.match(css, /\.medAbas\{display:grid;grid-template-columns:1fr 1fr/);
+  assert.match(css, /\.medResumo\{display:none\}/);
+  assert.match(css, /\.medMain\{--alt-botao-compacto:44px\}/);
+  assert.match(css, /\.receptionMain\{--alt-botao-compacto:44px\}/);
+  assert.doesNotMatch(css, /\.medConsulta\.fora\{opacity/, "opacidade apagava o texto abaixo de 4,5:1");
+  assert.doesNotMatch(css, /\.recLinha\.etapa-faltou\{opacity/);
+});
+
+test("quem inicia a avaliação vira o médico da consulta, e a troca fica no histórico", () => {
+  assert.match(painel, /const assume=\(perfil\.atuacao_medica \?\? perfil\.role==="medico"\)\?\{medico_id:perfil\.id\}:\{\}/);
+  assert.match(painel, /\.update\(\{avaliacao_id:data\.id,\.\.\.assume,/);
+  const mig = ler("supabase/migrations/202610100001_troca_de_medico_no_historico.sql");
+  assert.match(mig, /new\.medico_id is distinct from old\.medico_id/);
+  assert.match(mig, /then 'assumiu' else 'indicado'/);
+  assert.match(recepcao, /e\.origem === "medico"/);
+});
+
+test("o menu Mais fecha ao tocar fora, e o Esc devolve o foco ao botão", () => {
+  assert.match(recepcao, /document\.addEventListener\("pointerdown", fora\)/);
+  assert.match(recepcao, /querySelector<HTMLButtonElement>\(`\[data-menu-botao="\$\{id\}"\]`\)\?\.focus\(\)/);
+  assert.doesNotMatch(recepcao, /\?\? "Médico" : null/, "o nome que faltava saía como \"Médico: Médico\"");
 });
 
 test("sem CPF completo nem horário inventado na listagem", () => {

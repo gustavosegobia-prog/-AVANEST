@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { dataLocal } from "@/lib/data-local";
 import {
-  andamentoPelasAvaliacoes, avaliacaoNoEscopo, consultaNoEscopo, cpfMascarado, etapaMedica, semMedico,
-  INFORMACOES_INDISPONIVEIS, intervaloDoPeriodo, LEMBRETES_GERAIS, ORIGEM_DOS_LEMBRETES, paraRetomar,
-  pendenciasVerificadas, proximoAtendimento, resumoDoDia, TIPOS_DE_DOCUMENTO,
-  type AvaliacaoResumo, type Escopo, type Periodo, type Pendencia, type TipoDeDocumento,
+  andamentoPelasAvaliacoes, avaliacaoNoEscopo, consultaNoEscopo, cpfMascarado, destaqueDoDia, etapaMedica, semMedico,
+  INFORMACOES_INDISPONIVEIS, intervaloDoPeriodo, LEMBRETES_GERAIS, momentoRelativo, ORIGEM_DOS_LEMBRETES, paraRetomar,
+  pendenciasVerificadas, resumoDoDia, TIPOS_DE_DOCUMENTO,
+  type AvaliacaoResumo, type Escopo, type Periodo, type Pendencia,
 } from "@/lib/area-medica";
-import { dataPorExtenso, horaCurta, momentoBr, NOME_DA_ETAPA, proximaDataComConsultas, FORA_DO_FLUXO, type Etapa } from "@/lib/recepcao";
+import { dataPorExtenso, horaCurta, NOME_DA_ETAPA, proximaDataComConsultas, FORA_DO_FLUXO, type Etapa } from "@/lib/recepcao";
+import { AvisoFlutuante } from "@/components/aviso-flutuante";
 
 // A área médica: o dia, as avaliações, as pendências e os documentos.
 //
@@ -74,6 +75,18 @@ export function AreaMedica({
   const [busca, setBusca] = useState("");
   const retomarRef = useRef<HTMLElement>(null);
   const agendaRef = useRef<HTMLElement>(null);
+  // Qual botão foi tocado: só ele diz "Abrindo…". Antes, ao abrir uma
+  // avaliação, TODOS os botões da tela trocavam de texto ao mesmo tempo.
+  const [tocado, setTocado] = useState<string | null>(null);
+  const abrir = (chave: string, patientId: string, appointmentId?: string, assessmentId?: string | null) => {
+    setTocado(chave); onAbrirAvaliacao(patientId, appointmentId, assessmentId);
+  };
+  // O erro vem do painel; o X o esconde aqui até chegar um erro diferente.
+  const [erroFechado, setErroFechado] = useState("");
+  // "Avaliações em aberto" leva à aba Avaliações já filtrada; a chave remonta
+  // a lista para o filtro valer.
+  const [situacaoInicial, setSituacaoInicial] = useState<{ v: string; n: number }>({ v: "todas", n: 0 });
+  const nomeDoEscopo = pessoa === "meus" ? "nos seus pacientes" : "na equipe";
 
   // Nomes de quem atende e de quem registrou — só id e nome.
   const [nomes, setNomes] = useState<Map<string, string>>(new Map());
@@ -86,6 +99,7 @@ export function AreaMedica({
     return () => { vivo = false; };
   }, []);
   const quem = (id: string | null | undefined) => (!id ? null : id === perfilId ? "você" : nomes.get(id) ?? "outro profissional");
+  const quando = (iso: string) => momentoRelativo(iso, hoje);
 
   const pacientePorId = useMemo(() => new Map(pacientes.map((p) => [p.id, p])), [pacientes]);
   const avaliacaoPorId = useMemo(() => new Map(avaliacoes.map((a) => [a.id, a])), [avaliacoes]);
@@ -114,14 +128,19 @@ export function AreaMedica({
   const retomar = paraRetomar(avaliacoesNoEscopo);
   const doDiaDeHoje = consultasNoEscopo.filter((c) => c.data === hoje);
   const resumo = resumoDoDia(doDiaDeHoje, andamento, retomar);
-  const proximo = proximoAtendimento(doDiaDeHoje, andamento);
+  const destaque = destaqueDoDia(doDiaDeHoje, andamento);
+  const proximo = destaque?.consulta ?? null;
+  // "Para retomar" lista só o que NÃO está na agenda de hoje: a avaliação de
+  // um paciente de hoje já tem o botão na linha dele (e no cartão do topo).
+  // Antes a mesma avaliação aparecia três vezes, com três botões.
+  const pacientesDeHoje = new Set(doDiaDeHoje.filter((c) => !FORA_DO_FLUXO(c.status)).map((c) => c.patient_id));
+  const outrasAbertas = retomar.filter((a) => !pacientesDeHoje.has(a.patient_id));
   const pendencias = pendenciasVerificadas(avaliacoesNoEscopo, consultasNoEscopo, hoje);
 
   const intervalo = intervaloDoPeriodo(periodo, hoje);
   const termo = busca.trim().toLowerCase();
-  const daAgenda = consultasNoEscopo
+  const doPeriodo = consultasNoEscopo
     .filter((c) => c.data >= intervalo.de && c.data <= intervalo.ate)
-    .filter((c) => filtroDoDia === "todas" || etapaMedica(c, andamento.get(c.id)) === filtroDoDia)
     .filter((c) => {
       if (!termo) return true;
       const p = pacientePorId.get(c.patient_id);
@@ -130,6 +149,10 @@ export function AreaMedica({
         || (digitos.length >= 3 && String(p?.cpf ?? "").includes(digitos));
     })
     .sort((a, b) => a.data.localeCompare(b.data) || (a.horario ?? "99").localeCompare(b.horario ?? "99"));
+  const daAgenda = doPeriodo.filter((c) => filtroDoDia === "todas" || etapaMedica(c, andamento.get(c.id)) === filtroDoDia);
+  // As etapas com a contagem do período na tela — no celular são elas que
+  // ficam no lugar dos cartões de número.
+  const contagemDaEtapa = (e: Etapa) => doPeriodo.filter((c) => etapaMedica(c, andamento.get(c.id)) === e).length;
   const proximaData = proximaDataComConsultas(consultasNoEscopo, intervalo.ate);
 
   function irParaAgenda(filtro: FiltroDoDia) {
@@ -137,13 +160,18 @@ export function AreaMedica({
     requestAnimationFrame(() => agendaRef.current?.scrollIntoView({ block: "start" }));
   }
   function irParaRetomar() {
+    // Com outras avaliações abertas (de outros dias), elas estão logo abaixo.
+    // Se todas são de pacientes de hoje, a lista certa é a aba Avaliações.
+    if (outrasAbertas.length === 0) {
+      setSituacaoInicial((x) => ({ v: "rascunho", n: x.n + 1 })); setSecao("avaliacoes"); return;
+    }
     setSecao("agenda");
     requestAnimationFrame(() => retomarRef.current?.scrollIntoView({ block: "start" }));
   }
 
   function abrirPendencia(p: Pendencia) {
-    if (p.acao === "continuar" && p.avaliacaoId) onAbrirAvaliacao(p.patientId, undefined, p.avaliacaoId);
-    else if (p.acao === "iniciar") onAbrirAvaliacao(p.patientId, p.agendamentoId);
+    if (p.acao === "continuar" && p.avaliacaoId) abrir(p.id, p.patientId, undefined, p.avaliacaoId);
+    else if (p.acao === "iniciar") abrir(p.id, p.patientId, p.agendamentoId);
     else if (p.acao === "ver_na_agenda") {
       const c = agendamentos.find((x) => x.id === p.agendamentoId);
       if (c) { setSecao("agenda"); setFiltroDoDia("todas"); setPeriodo({ tipo: "dia", dia: c.data }); }
@@ -158,6 +186,8 @@ export function AreaMedica({
   };
 
   // O id vira data-secao — é por ele que o tutorial acha cada item.
+  const [anuncio, setAnuncio] = useState("");
+  const irParaSecao = (id: Secao, rotulo: string) => { setSecao(id); setAnuncio(`Seção ${rotulo}`); };
   const secoes: [Secao, string, number | null][] = [
     ["agenda", "Meu dia", resumo.agendados + resumo.aguardando + resumo.emAtendimento || null],
     ["avaliacoes", "Avaliações", retomar.length || null],
@@ -181,10 +211,13 @@ export function AreaMedica({
             )}
           </div>
         </div>
-        <button type="button" className="primaryClinical" data-acao="novo-paciente" onClick={onNovaAvaliacao}>+ Nova avaliação</button>
+        {/* Em contorno, e não cheio: o médico quase sempre abre a próxima
+            consulta já marcada, e o botão mais forte do topo competia com ela.
+            Continua aqui para quem atende sem passar pela recepção. */}
+        <button type="button" className="outlineClinical medNova" data-acao="novo-paciente" onClick={onNovaAvaliacao}>+ Nova avaliação</button>
       </section>
 
-      {erro && <p className="clinicalError" role="alert">{erro}</p>}
+      {erro && erro !== erroFechado && <AvisoFlutuante tipo="erro" texto={erro} onFechar={() => setErroFechado(erro)} />}
       {falhasDeCarga.length > 0 && (
         <p className="clinicalError" role="alert">
           Não foi possível carregar {falhasDeCarga.join(" e ")} agora — o que aparece abaixo pode estar incompleto.{" "}
@@ -193,43 +226,62 @@ export function AreaMedica({
       )}
 
       <div className="financeLayout">
-        <nav className="financeTarefas" aria-label="Seções da área médica">
+        <nav className="financeTarefas medAbas" aria-label="Seções da área médica">
           {secoes.map(([id, rotulo, n]) => (
             <button type="button" key={id} data-secao={id} className={secao === id ? "active" : ""}
-              aria-current={secao === id ? "true" : undefined} onClick={() => setSecao(id)}>
+              aria-current={secao === id ? "true" : undefined} onClick={() => irParaSecao(id, rotulo)}>
               <span>{rotulo}</span>
-              {n ? <b className="financeTarefaContador">{n}</b> : null}
+              {/* Âmbar só em Pendências, que é o que pede ação. Nas outras o
+                  número só conta — e o leitor de tela ouve "Meu dia, 3". */}
+              {n ? <b className={`financeTarefaContador${id === "pendencias" ? "" : " neutro"}`}><span className="sr-only">, </span>{n}</b> : null}
             </button>
           ))}
         </nav>
+        <p className="sr-only" aria-live="polite">{anuncio}</p>
 
         <div className="financeConteudo">
           {secao === "agenda" && (
             <>
-              {proximo ? (
-                <section className="clinicalPanel medProximo" aria-label="Próximo atendimento">
-                  <span className="medProximoRotulo">Próximo atendimento</span>
-                  <time>{proximo.horario ? horaCurta(proximo.horario) : "Sem horário"}</time>
+              {destaque && proximo ? (
+                <section className="clinicalPanel medProximo" aria-label={destaque.rotulo}>
+                  <span className="medProximoRotulo">{destaque.rotulo}</span>
+                  <time dateTime={proximo.horario ? `${proximo.data}T${proximo.horario.slice(0, 5)}` : proximo.data}>
+                    {proximo.horario ? horaCurta(proximo.horario) : "Sem horário"}
+                  </time>
                   <span className="medProximoQuem">
                     <strong>{pacientePorId.get(proximo.patient_id)?.nome ?? "Paciente"}</strong>
                     <small>{proximo.procedimento || pacientePorId.get(proximo.patient_id)?.procedimento || "Procedimento não informado"} · {NOME_DA_ETAPA[etapaMedica(proximo, andamento.get(proximo.id))]}</small>
                   </span>
-                  <AcaoDaConsulta c={proximo} av={proximo.avaliacao_id ? avaliacaoPorId.get(proximo.avaliacao_id) : undefined}
-                    aberta={abertaDoPaciente.get(proximo.patient_id)} quem={quem} ocupado={ocupado} onAbrir={onAbrirAvaliacao} />
+                  <AcaoDaConsulta c={proximo} nome={pacientePorId.get(proximo.patient_id)?.nome ?? "paciente"}
+                    av={proximo.avaliacao_id ? avaliacaoPorId.get(proximo.avaliacao_id) : undefined}
+                    aberta={abertaDoPaciente.get(proximo.patient_id)} quem={quem} ocupado={ocupado}
+                    abrindo={ocupado && tocado === `destaque-${proximo.id}`} destacar
+                    onAbrir={(...a) => abrir(`destaque-${proximo.id}`, ...a)} />
+                  {destaque.depois && (
+                    <small className="medDepois">
+                      Depois: {destaque.depois.horario ? horaCurta(destaque.depois.horario) : "sem horário"} ·{" "}
+                      {pacientePorId.get(destaque.depois.patient_id)?.nome ?? "Paciente"} · {NOME_DA_ETAPA[etapaMedica(destaque.depois, andamento.get(destaque.depois.id))]}
+                    </small>
+                  )}
                 </section>
               ) : null}
 
+              {/* No computador, os números do dia em cartões que filtram a
+                  agenda. No celular eles somem (globals.css) e a mesma coisa
+                  vira a faixa de etapas no alto da agenda. */}
               <section className="metricGrid medResumo" aria-label="Hoje">
                 {([
-                  ["Agendados hoje", resumo.agendados, "blue", "calendario", "agendado"],
+                  ["A chegar hoje", resumo.agendados, "blue", "calendario", "agendado"],
                   ["Aguardando atendimento", resumo.aguardando, "amber", "ampulheta", "aguardando"],
                   ["Em atendimento", resumo.emAtendimento, "blue", "pessoa", "em_atendimento"],
-                  ["Avaliações em andamento", resumo.emAndamento, "amber", "nota", "retomar"],
+                  ["Avaliações em aberto", resumo.emAndamento, "amber", "nota", "retomar"],
                 ] as [string, number, string, Parameters<typeof Icone>[0]["nome"], FiltroDoDia | "retomar"][]).map(([rotulo, valor, tom, icone, destino]) => (
                   <button type="button" className="metricCard medCartao" key={rotulo} disabled={valor === 0}
                     onClick={() => (destino === "retomar" ? irParaRetomar() : irParaAgenda(destino))}
+                    aria-label={`${valor} ${rotulo.toLowerCase()}${valor ? (destino === "retomar" ? ". Mostrar as avaliações" : ". Mostrar na agenda") : ""}`}
                     title={destino === "em_atendimento" ? "Paciente que chegou e já tem avaliação aberta nesta consulta"
-                      : destino === "retomar" ? "Toda avaliação iniciada e não concluída, de qualquer dia" : rotulo}>
+                      : destino === "retomar" ? "Toda avaliação iniciada e não concluída, de qualquer dia"
+                      : destino === "agendado" ? "Consultas de hoje sem chegada registrada" : rotulo}>
                     <strong className={valor ? tom : ""}>{valor}</strong>
                     <span><Icone nome={icone} tamanho={13} /> {rotulo}</span>
                   </button>
@@ -238,36 +290,37 @@ export function AreaMedica({
               {semMedicoHoje > 0 && (
                 <p className="medSemMedico">
                   {semMedicoHoje === 1 ? "1 consulta de hoje está" : `${semMedicoHoje} consultas de hoje estão`} sem médico definido — a recepção indica o médico ao agendar.{" "}
-                  <button type="button" className="linkLimpo" aria-pressed={verSemMedico} onClick={() => setVerSemMedico(!verSemMedico)}>
-                    {verSemMedico ? "Ocultar" : "Ver na agenda"}
+                  <button type="button" className="linkLimpo medLinkToque" onClick={() => setVerSemMedico(!verSemMedico)}>
+                    {verSemMedico ? "Ocultar da agenda" : "Mostrar na agenda"}
                   </button>
                 </p>
               )}
 
-              {retomar.length > 0 && (
-                <section className="clinicalPanel medRetomar" ref={retomarRef} aria-label="Avaliações para retomar">
-                  <div className="panelTitle"><strong>Avaliações para retomar</strong><span>{retomar.length === 1 ? "1 avaliação" : `${retomar.length} avaliações`}</span></div>
+              {outrasAbertas.length > 0 && (
+                <section className="clinicalPanel medRetomar" ref={retomarRef} aria-label="Outras avaliações em aberto">
+                  <div className="panelTitle"><strong>Outras avaliações em aberto</strong><span>de outros dias ou sem consulta hoje</span></div>
                   <ol className="medLista">
-                    {retomar.map((a) => {
+                    {outrasAbertas.map((a) => {
                       const outroLocal = a.local_atendimento_id && localAtivoId && a.local_atendimento_id !== localAtivoId;
+                      const nome = pacientePorId.get(a.patient_id)?.nome ?? "Paciente não localizado";
                       return (
                         <li key={a.id} className="medLinha">
                           <span className="medQuem">
-                            <strong>{pacientePorId.get(a.patient_id)?.nome ?? "Paciente não localizado"}</strong>
+                            <strong>{nome}</strong>
                             <small>{identificacao(a.patient_id)}</small>
                             <small>
-                              Iniciada em {momentoBr(a.created_at)} · última alteração {momentoBr(a.updated_at)}
+                              Iniciada {quando(a.created_at)} · última alteração {quando(a.updated_at)}
                               {escopo.pessoa === "equipe" && quem(a.created_by) ? ` · por ${quem(a.created_by)}` : ""}
                             </small>
                           </span>
                           <span className={`medLocal${outroLocal ? " outro" : ""}`}>
                             {outroLocal && <Icone nome="alerta" tamanho={12} />}
-                            {a.local_atendimento_id ? `${outroLocal ? "Outro local: " : ""}${localPorId.get(a.local_atendimento_id) ?? "Local"}` : "Sem local registrado"}
+                            {a.local_atendimento_id ? `${outroLocal ? "Outro local: " : ""}${localPorId.get(a.local_atendimento_id) ?? "Local"}` : "Local não registrado"}
                           </span>
-                          <button type="button" className="primaryClinical compact" disabled={ocupado}
-                            onClick={() => onAbrirAvaliacao(a.patient_id, undefined, a.id)}
-                            aria-label={`Continuar a avaliação de ${pacientePorId.get(a.patient_id)?.nome ?? "paciente"}${outroLocal ? `, feita em ${localPorId.get(a.local_atendimento_id!) ?? "outro local"}` : ""}`}>
-                            Continuar
+                          <button type="button" className="outlineClinical medAcao" disabled={ocupado}
+                            onClick={() => abrir(`retomar-${a.id}`, a.patient_id, undefined, a.id)}
+                            aria-label={`Continuar a avaliação de ${nome}${outroLocal ? `, feita em ${localPorId.get(a.local_atendimento_id!) ?? "outro local"}` : ""}`}>
+                            {ocupado && tocado === `retomar-${a.id}` ? "Abrindo…" : "Continuar avaliação"}
                           </button>
                         </li>
                       );
@@ -284,15 +337,26 @@ export function AreaMedica({
                         onClick={() => setPeriodo({ tipo: t })}>{r}</button>
                     ))}
                   </div>
+                  {/* A data mostra sempre o dia que está na tela — também em
+                      Hoje e Amanhã. Vazia, ela parecia dizer outra coisa. */}
                   <label className="medCampo"><span>Data</span>
-                    <input type="date" value={periodo.tipo === "dia" ? periodo.dia : ""} onChange={(e) => e.target.value && setPeriodo({ tipo: "dia", dia: e.target.value })} />
+                    <input type="date" value={periodo.tipo === "dia" ? periodo.dia : intervalo.de} onChange={(e) => e.target.value && setPeriodo({ tipo: "dia", dia: e.target.value })} />
                   </label>
                   <label className="medCampo medBusca"><span>Buscar</span>
-                    <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Paciente, procedimento ou 3+ números do CPF" />
+                    <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome, procedimento ou CPF" />
                   </label>
+                </div>
+                <div className="medEtapasCurtas" role="group" aria-label="Filtrar por etapa">
+                  <button type="button" aria-pressed={filtroDoDia === "todas"} onClick={() => setFiltroDoDia("todas")}>Todas <b>{doPeriodo.length}</b></button>
+                  {(["agendado", "aguardando", "em_atendimento", "concluido"] as Etapa[]).map((e) => (
+                    <button type="button" key={e} aria-pressed={filtroDoDia === e} onClick={() => setFiltroDoDia(e)}>
+                      <Icone nome={ICONE_DA_ETAPA[e] ?? "calendario"} tamanho={13} /> {NOME_DA_ETAPA[e]} <b>{contagemDaEtapa(e)}</b>
+                    </button>
+                  ))}
                 </div>
                 <p className="medPeriodo" aria-live="polite">
                   <b>{intervalo.rotulo}</b>
+                  {perfilEhMedico && <> · {pessoa === "meus" ? "Meus pacientes" : "Equipe"}</>}
                   {filtroDoDia !== "todas" && <> · só “{NOME_DA_ETAPA[filtroDoDia]}” <button type="button" className="linkLimpo" onClick={() => setFiltroDoDia("todas")}>mostrar todos</button></>}
                   {" · "}{daAgenda.length === 1 ? "1 consulta" : `${daAgenda.length} consultas`}
                 </p>
@@ -300,6 +364,11 @@ export function AreaMedica({
                   <div className="emptyClinical medVazio">
                     <p>{termo || filtroDoDia !== "todas" ? "Nenhuma consulta com estes filtros neste período." : `Nenhuma consulta agendada — ${intervalo.rotulo.toLowerCase()}.`}</p>
                     <div>
+                      {(termo || filtroDoDia !== "todas") && (
+                        <button type="button" className="outlineClinical" onClick={() => { setFiltroDoDia("todas"); setBusca(""); }}>
+                          Limpar busca e filtros
+                        </button>
+                      )}
                       {proximaData && (
                         <button type="button" className="outlineClinical" onClick={() => { setFiltroDoDia("todas"); setBusca(""); setPeriodo({ tipo: "dia", dia: proximaData }); }}>
                           Ver próximos agendamentos ({proximaData.slice(8, 10)}/{proximaData.slice(5, 7)})
@@ -311,29 +380,38 @@ export function AreaMedica({
                   </div>
                 ) : (
                   <ol className="medLista">
-                    {daAgenda.map((c) => {
+                    {daAgenda.map((c, i) => {
                       const p = pacientePorId.get(c.patient_id);
                       const and = andamento.get(c.id);
                       const etapa = etapaMedica(c, and);
                       const av = c.avaliacao_id ? avaliacaoPorId.get(c.avaliacao_id) : undefined;
-                      const medico = quem(c.medico_id ?? and?.medico_id);
+                      const medicoId = c.medico_id ?? and?.medico_id ?? null;
+                      // Em "Meus pacientes" todas são suas: dizer "Responsável:
+                      // você" em cada linha era ruído. A linha só aparece quando
+                      // informa — outro médico, ou nenhum.
+                      const medico = medicoId === perfilId && pessoa === "meus" ? null : quem(medicoId);
+                      const novoDia = intervalo.de !== intervalo.ate && (i === 0 || daAgenda[i - 1].data !== c.data);
                       return (
-                        <li key={c.id} className={`medLinha medConsulta etapa-${etapa}${FORA_DO_FLUXO(c.status) ? " fora" : ""}`}>
-                          <time>
-                            {intervalo.de !== intervalo.ate && <small>{c.data.slice(8, 10)}/{c.data.slice(5, 7)}</small>}
-                            {c.horario ? horaCurta(c.horario) : <em>Sem horário</em>}
-                          </time>
-                          <span className="medQuem">
-                            <strong>{p?.nome ?? "Paciente não localizado"}</strong>
-                            <small>{identificacao(c.patient_id)}</small>
-                            <small>{c.procedimento || p?.procedimento || p?.cirurgia || "Procedimento não informado"} · {c.hospital || p?.hospital || "Local não informado"}</small>
-                            <small>{medico ? `Responsável: ${medico}` : "Sem médico definido"}</small>
-                          </span>
-                          <span className={`recEtapa etapa-${etapa}`}>
-                            <Icone nome={ICONE_DA_ETAPA[etapa] ?? "calendario"} tamanho={13} /> {NOME_DA_ETAPA[etapa]}
-                          </span>
-                          <AcaoDaConsulta c={c} av={av} aberta={abertaDoPaciente.get(c.patient_id)} quem={quem} ocupado={ocupado} onAbrir={onAbrirAvaliacao} />
-                        </li>
+                        <Fragment key={c.id}>
+                          {novoDia && <li className="medDiaSeparador">{dataPorExtenso(c.data).replace(/^./, (x) => x.toUpperCase())}</li>}
+                          <li className={`medLinha medConsulta etapa-${etapa}${FORA_DO_FLUXO(c.status) || c.status === "faltou" ? " fora" : ""}`}>
+                            <time dateTime={c.horario ? `${c.data}T${c.horario.slice(0, 5)}` : c.data}>
+                              {c.horario ? horaCurta(c.horario) : <em>Sem horário</em>}
+                            </time>
+                            <span className="medQuem">
+                              <strong>{p?.nome ?? "Paciente não localizado"}</strong>
+                              <small>{identificacao(c.patient_id)}</small>
+                              <small>{c.procedimento || p?.procedimento || p?.cirurgia || "Procedimento não informado"} · {c.hospital || p?.hospital || "Local não informado"}</small>
+                              {medicoId ? (medico && <small>Responsável: {medico}</small>) : <small>Sem médico definido</small>}
+                            </span>
+                            <span className={`recEtapa etapa-${etapa}`}>
+                              <Icone nome={ICONE_DA_ETAPA[etapa] ?? "calendario"} tamanho={13} /> {NOME_DA_ETAPA[etapa]}
+                            </span>
+                            <AcaoDaConsulta c={c} nome={p?.nome ?? "paciente"} av={av} aberta={abertaDoPaciente.get(c.patient_id)}
+                              quem={quem} ocupado={ocupado} abrindo={ocupado && tocado === `agenda-${c.id}`}
+                              onAbrir={(...a) => abrir(`agenda-${c.id}`, ...a)} />
+                          </li>
+                        </Fragment>
                       );
                     })}
                   </ol>
@@ -342,43 +420,49 @@ export function AreaMedica({
 
               {pendencias.length > 0 && (
                 <p className="medAvisoPendencias">
-                  <Icone nome="alerta" tamanho={14} /> {pendencias.length === 1 ? "1 pendência verificada" : `${pendencias.length} pendências verificadas`} neste escopo.{" "}
-                  <button type="button" className="linkLimpo" onClick={() => setSecao("pendencias")}>Ver pendências</button>
+                  <Icone nome="alerta" tamanho={14} /> {pendencias.length === 1 ? "1 pendência verificada" : `${pendencias.length} pendências verificadas`} {nomeDoEscopo}.{" "}
+                  <button type="button" className="linkLimpo medLinkToque" onClick={() => irParaSecao("pendencias", "Pendências")}>Ver pendências</button>
                 </p>
               )}
             </>
           )}
 
           {secao === "avaliacoes" && (
-            <Avaliacoes avaliacoes={avaliacoesNoEscopo} total={avaliacoes.length} pacientePorId={pacientePorId}
-              identificacao={identificacao} locais={locais} localPorId={localPorId} quem={quem} ocupado={ocupado}
-              onAbrir={onAbrirAvaliacao} onNova={onNovaAvaliacao} />
+            <Avaliacoes key={situacaoInicial.n} situacaoInicial={situacaoInicial.v} avaliacoes={avaliacoesNoEscopo} total={avaliacoes.length} pacientePorId={pacientePorId}
+              identificacao={identificacao} locais={locais} localPorId={localPorId} quem={quem} quando={quando}
+              ocupado={ocupado} tocado={tocado} nomeDoEscopo={perfilEhMedico ? (pessoa === "meus" ? "Meus pacientes" : "Equipe") : null}
+              onAbrir={(chave, ...a) => abrir(chave, ...a)} onNova={onNovaAvaliacao} />
           )}
 
           {secao === "pendencias" && (
             <>
               <section className="clinicalPanel medPendencias" aria-label="Pendências verificadas">
-                <div className="panelTitle"><strong>Pendências verificadas</strong><span>encontradas nos registros deste escopo</span></div>
+                <div className="panelTitle"><strong>Pendências verificadas</strong><span>encontradas nos registros {nomeDoEscopo === "na equipe" ? "da equipe" : "dos seus pacientes"}</span></div>
                 {pendencias.length === 0 ? (
-                  <p className="medTranquilo"><Icone nome="confirmado" tamanho={16} /> Nenhuma pendência nos registros deste escopo.</p>
+                  <p className="medTranquilo"><Icone nome="confirmado" tamanho={16} /> Nenhuma pendência nos registros {nomeDoEscopo === "na equipe" ? "da equipe" : "dos seus pacientes"}.</p>
                 ) : (
                   <ol className="medLista">
-                    {pendencias.map((p) => (
-                      <li key={p.id} className="medLinha">
-                        <span className="medQuem">
-                          <strong>{pacientePorId.get(p.patientId)?.nome ?? "Paciente não localizado"}</strong>
-                          <small>{p.motivo}</small>
-                          <small>
-                            {p.rotuloDaData}: {p.data.length > 10 ? momentoBr(p.data) : p.data.split("-").reverse().join("/")}
-                            {quem(p.responsavel) ? ` · ${p.tipo === "chegou_sem_avaliacao" ? "registrada por" : "responsável:"} ${quem(p.responsavel)}` : ""}
-                            {p.localId ? ` · ${localPorId.get(p.localId) ?? "Local"}` : ""}
-                          </small>
-                        </span>
-                        <button type="button" className="outlineClinical" disabled={ocupado && p.acao !== "ver_na_agenda"} onClick={() => abrirPendencia(p)}>
-                          {p.acao === "continuar" ? "Continuar avaliação" : p.acao === "iniciar" ? "Iniciar avaliação" : "Ver na agenda"}
-                        </button>
-                      </li>
-                    ))}
+                    {pendencias.map((p) => {
+                      const nome = pacientePorId.get(p.patientId)?.nome ?? "Paciente não localizado";
+                      const rotulo = p.acao === "continuar" ? "Continuar avaliação" : p.acao === "iniciar" ? "Iniciar avaliação" : "Ver na agenda";
+                      return (
+                        <li key={p.id} className="medLinha">
+                          <span className="medQuem">
+                            <strong>{nome}</strong>
+                            <small>{p.motivo}</small>
+                            <small>
+                              {p.rotuloDaData}: {p.data.length > 10 ? quando(p.data) : p.data.split("-").reverse().join("/")}
+                              {quem(p.responsavel) ? ` · ${p.tipo === "chegou_sem_avaliacao" ? "registrada por" : "responsável:"} ${quem(p.responsavel)}` : ""}
+                              {p.localId ? ` · ${localPorId.get(p.localId) ?? "Local"}` : ""}
+                            </small>
+                          </span>
+                          <button type="button" className="outlineClinical medAcao" disabled={ocupado && p.acao !== "ver_na_agenda"}
+                            aria-label={`${rotulo} de ${nome}`} onClick={() => abrirPendencia(p)}>
+                            {ocupado && tocado === p.id ? "Abrindo…" : rotulo}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ol>
                 )}
               </section>
@@ -400,7 +484,7 @@ export function AreaMedica({
 
           {secao === "documentos" && (
             <Documentos avaliacoes={avaliacoesNoEscopo} pacientePorId={pacientePorId} identificacao={identificacao}
-              localPorId={localPorId} quem={quem} haAlguma={avaliacoes.length > 0} />
+              localPorId={localPorId} quem={quem} quando={quando} haAlguma={avaliacoes.length > 0} />
           )}
         </div>
       </div>
@@ -408,24 +492,33 @@ export function AreaMedica({
   );
 }
 
-/** "Iniciar avaliação" / "Continuar avaliação" / "Ver documentos" — pelo registro que existe. */
-function AcaoDaConsulta({ c, av, aberta, quem, ocupado, onAbrir }: {
-  c: ConsultaDaAreaMedica; av?: AvaliacaoResumo; aberta?: AvaliacaoResumo; ocupado: boolean;
+/**
+ * "Iniciar avaliação" / "Continuar avaliação" / "Ver documentos" — pelo registro que existe.
+ *
+ * Cheio só quando é a hora de agir (o paciente chegou, ou está em atendimento,
+ * ou é o cartão do topo); quem ainda não chegou fica em contorno. Antes eram
+ * seis botões azuis cheios na mesma tela, e nenhum se destacava.
+ */
+function AcaoDaConsulta({ c, nome, av, aberta, quem, ocupado, abrindo, destacar, onAbrir }: {
+  c: ConsultaDaAreaMedica; nome: string; av?: AvaliacaoResumo; aberta?: AvaliacaoResumo; ocupado: boolean; abrindo: boolean;
+  destacar?: boolean;
   quem: (id: string | null | undefined) => string | null;
   onAbrir: (patientId: string, appointmentId?: string, assessmentId?: string | null) => void;
 }) {
   if (FORA_DO_FLUXO(c.status)) return <span className="medSemAcao">{c.status === "cancelado" ? "Consulta desmarcada" : "Remarcada em outra data"}</span>;
   if (c.status === "faltou") return <span className="medSemAcao">Falta registrada</span>;
-  if (av?.status === "concluida") return <Link className="outlineClinical medAcao" href={`/avaliacoes/${av.id}/documentos`}>Ver documentos</Link>;
+  if (av?.status === "concluida") return <Link className="outlineClinical medAcao" href={`/avaliacoes/${av.id}/documentos`} aria-label={`Ver documentos de ${nome}`}>Ver documentos</Link>;
   // Sem avaliação ligada, mas com uma aberta para o paciente: abrir continua
   // aquela (não nasce uma segunda), e o botão diz de quem ela é.
   const continua = av?.status === "rascunho" ? av : !av ? aberta : undefined;
   const de = continua && continua !== av && quem(continua.created_by) !== "você" ? quem(continua.created_by) : null;
+  const rotulo = continua ? "Continuar avaliação" : "Iniciar avaliação";
+  const cheio = destacar || c.status === "presente";
   return (
     <span className="medAcaoCaixa">
-      <button type="button" className="primaryClinical compact medAcao" disabled={ocupado} aria-busy={ocupado}
-        onClick={() => onAbrir(c.patient_id, c.id, continua?.id ?? c.avaliacao_id)}>
-        {ocupado ? "Abrindo…" : continua ? "Continuar avaliação" : "Iniciar avaliação"}
+      <button type="button" className={`${cheio ? "primaryClinical compact" : "outlineClinical"} medAcao`} disabled={ocupado} aria-busy={abrindo}
+        aria-label={`${rotulo} de ${nome}`} onClick={() => onAbrir(c.patient_id, c.id, continua?.id ?? c.avaliacao_id)}>
+        {abrindo ? "Abrindo…" : rotulo}
       </button>
       {de && <small>aberta por {de}</small>}
     </span>
@@ -435,15 +528,17 @@ function AcaoDaConsulta({ c, av, aberta, quem, ocupado, onAbrir }: {
 // ── Avaliações ─────────────────────────────────────────────────────────────
 
 function Avaliacoes({
-  avaliacoes, total, pacientePorId, identificacao, locais, localPorId, quem, ocupado, onAbrir, onNova,
+  avaliacoes, total, pacientePorId, identificacao, locais, localPorId, quem, quando, ocupado, tocado, nomeDoEscopo,
+  situacaoInicial, onAbrir, onNova,
 }: {
   avaliacoes: AvaliacaoDaAreaMedica[]; total: number; pacientePorId: Map<string, PacienteDaAreaMedica>;
   identificacao: (id: string) => string; locais: LocalDisponivel[]; localPorId: Map<string, string>;
-  quem: (id: string | null | undefined) => string | null; ocupado: boolean;
-  onAbrir: (patientId: string, appointmentId?: string, assessmentId?: string | null) => void; onNova: () => void;
+  quem: (id: string | null | undefined) => string | null; quando: (iso: string) => string;
+  ocupado: boolean; tocado: string | null; nomeDoEscopo: string | null; situacaoInicial: string;
+  onAbrir: (chave: string, patientId: string, appointmentId?: string, assessmentId?: string | null) => void; onNova: () => void;
 }) {
   const [q, setQ] = useState("");
-  const [situacao, setSituacao] = useState("todas");
+  const [situacao, setSituacao] = useState(situacaoInicial);
   const [local, setLocal] = useState("todos");
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
@@ -459,6 +554,8 @@ function Avaliacoes({
       && (!de || ref >= de) && (!ate || ref <= ate);
   }).sort((a, b) => (b.concluida_at || b.updated_at).localeCompare(a.concluida_at || a.updated_at));
   const concluidas = lista.filter((a) => a.status === "concluida");
+  const emAndamento = lista.filter((a) => a.status === "rascunho").length;
+  const canceladas = lista.filter((a) => a.status === "cancelada").length;
   const asa = concluidas.filter((a) => ["ASA III", "ASA IV", "ASA V", "ASA VI"].includes(String(a.dados?.asa ?? ""))).length;
 
   return (
@@ -468,12 +565,13 @@ function Avaliacoes({
       <p className="medRecorte">
         <b>{lista.length}</b> {lista.length === 1 ? "avaliação" : "avaliações"} com estes filtros ·{" "}
         <b>{concluidas.length}</b> concluída{concluidas.length === 1 ? "" : "s"} ·{" "}
-        <b>{lista.length - concluidas.length}</b> em andamento ou canceladas ·{" "}
+        <b>{emAndamento}</b> em andamento ·{" "}
+        {canceladas > 0 && <><b>{canceladas}</b> cancelada{canceladas === 1 ? "" : "s"} ·{" "}</>}
         <b>{asa}</b> ASA III ou mais entre as concluídas
       </p>
       <div className="historyFilters">
         <label className="historyBusca">Buscar
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome, procedimento, hospital, profissional ou 3+ números do CPF" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Paciente, hospital, médico ou CPF" />
         </label>
         <label>Situação
           <select value={situacao} onChange={(e) => setSituacao(e.target.value)}>
@@ -502,8 +600,8 @@ function Avaliacoes({
               <strong>{p?.nome ?? "Paciente não localizado"}</strong>
               <small>{identificacao(a.patient_id)}</small>
               <small>
-                {feita && a.concluida_at ? `Concluída em ${momentoBr(a.concluida_at)}` : `Iniciada em ${momentoBr(a.created_at)} · última alteração ${momentoBr(a.updated_at)}`}
-                {a.local_atendimento_id ? ` · ${localPorId.get(a.local_atendimento_id) ?? "Local"}` : " · Sem local registrado"}
+                {feita && a.concluida_at ? `Concluída ${quando(a.concluida_at)}` : `Iniciada ${quando(a.created_at)} · última alteração ${quando(a.updated_at)}`}
+                {a.local_atendimento_id ? ` · ${localPorId.get(a.local_atendimento_id) ?? "Local"}` : " · Local não registrado"}
                 {quem(a.created_by) ? ` · ${quem(a.created_by)}` : ""}
               </small>
             </span>
@@ -511,16 +609,26 @@ function Avaliacoes({
               {feita ? "Concluída" : a.status === "rascunho" ? "Em andamento" : a.status === "cancelada" ? "Cancelada" : a.status}
             </span>
             {feita
-              ? <Link className="outlineClinical medAcao" href={`/avaliacoes/${a.id}/documentos`}>Ver documentos</Link>
+              ? <Link className="outlineClinical medAcao" href={`/avaliacoes/${a.id}/documentos`} aria-label={`Ver documentos de ${p?.nome ?? "paciente"}`}>Ver documentos</Link>
               : a.status === "rascunho"
-                ? <button type="button" className="primaryClinical compact medAcao" disabled={ocupado} onClick={() => onAbrir(a.patient_id, undefined, a.id)}>Continuar</button>
+                ? <button type="button" className="outlineClinical medAcao" disabled={ocupado} aria-label={`Continuar a avaliação de ${p?.nome ?? "paciente"}`}
+                    onClick={() => onAbrir(`lista-${a.id}`, a.patient_id, undefined, a.id)}>
+                    {ocupado && tocado === `lista-${a.id}` ? "Abrindo…" : "Continuar avaliação"}
+                  </button>
                 : <span className="medSemAcao">Sem ação</span>}
           </div>
         );
       })}
       {lista.length === 0 && (total === 0
         ? <div className="emptyClinical compactEmpty"><strong>Ainda não há avaliação nenhuma.</strong> A primeira nasce em <button type="button" className="linkLimpo" onClick={onNova}>Nova avaliação</button>.</div>
-        : <div className="emptyClinical compactEmpty">Nenhuma avaliação combina com estes filtros e com o escopo escolhido no alto da tela.</div>)}
+        : (
+          <div className="emptyClinical compactEmpty medVazioFiltro">
+            <span>Nenhuma avaliação combina com estes filtros{nomeDoEscopo ? ` em “${nomeDoEscopo}”` : ""}.</span>
+            {(q || situacao !== "todas" || local !== "todos" || de || ate) && (
+              <button type="button" className="outlineClinical" onClick={() => { setQ(""); setSituacao("todas"); setLocal("todos"); setDe(""); setAte(""); }}>Limpar filtros</button>
+            )}
+          </div>
+        ))}
       {lista.length > 50 && <div className="historyLimit">Mostrando as 50 mais recentes de {lista.length}. Refine os filtros para ver uma lista menor.</div>}
     </section>
   );
@@ -529,13 +637,13 @@ function Avaliacoes({
 // ── Documentos ─────────────────────────────────────────────────────────────
 
 function Documentos({
-  avaliacoes, pacientePorId, identificacao, localPorId, quem, haAlguma,
+  avaliacoes, pacientePorId, identificacao, localPorId, quem, quando, haAlguma,
 }: {
   avaliacoes: AvaliacaoDaAreaMedica[]; pacientePorId: Map<string, PacienteDaAreaMedica>; identificacao: (id: string) => string;
-  localPorId: Map<string, string>; quem: (id: string | null | undefined) => string | null; haAlguma: boolean;
+  localPorId: Map<string, string>; quem: (id: string | null | undefined) => string | null; quando: (iso: string) => string;
+  haAlguma: boolean;
 }) {
   const [q, setQ] = useState("");
-  const [tipo, setTipo] = useState<TipoDeDocumento>("assessment");
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
   const termo = q.trim().toLowerCase();
@@ -548,7 +656,11 @@ function Documentos({
     return (!termo || (p?.nome ?? "").toLowerCase().includes(termo) || (digitos.length >= 3 && String(p?.cpf ?? "").includes(digitos)))
       && (!de || dia >= de) && (!ate || dia <= ate);
   }).sort((a, b) => (b.concluida_at || b.updated_at).localeCompare(a.concluida_at || a.updated_at));
-  const nomeDoTipo = TIPOS_DE_DOCUMENTO.find(([t]) => t === tipo)![1];
+  // Os três documentos saem juntos da conclusão, e a página deles troca entre
+  // um e outro. Escolher o tipo ANTES, num filtro solto no alto da lista, era
+  // uma coisa a mais para lembrar — e o selo "Gerado" em toda linha não
+  // diferenciava nada.
+  const osTres = TIPOS_DE_DOCUMENTO.map(([, r]) => r).join(", ").replace(/, ([^,]*)$/, " e $1");
 
   return (
     <section className="clinicalPanel medDocumentos">
@@ -559,12 +671,7 @@ function Documentos({
         {rascunhos > 0 && ` ${rascunhos === 1 ? "1 avaliação em andamento ainda não gerou" : `${rascunhos} avaliações em andamento ainda não geraram`} documentos.`}
       </p>
       <div className="historyFilters medDocFiltros">
-        <label className="historyBusca">Paciente<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome ou 3+ números do CPF" /></label>
-        <label>Tipo
-          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoDeDocumento)}>
-            {TIPOS_DE_DOCUMENTO.map(([t, r]) => <option key={t} value={t}>{r}</option>)}
-          </select>
-        </label>
+        <label className="historyBusca">Paciente<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome ou CPF" /></label>
         <label>De<input type="date" value={de} onChange={(e) => setDe(e.target.value)} /></label>
         <label>Até<input type="date" value={ate} onChange={(e) => setAte(e.target.value)} /></label>
       </div>
@@ -574,13 +681,13 @@ function Documentos({
             <strong>{pacientePorId.get(a.patient_id)?.nome ?? "Paciente não localizado"}</strong>
             <small>{identificacao(a.patient_id)}</small>
             <small>
-              {nomeDoTipo} · gerado na conclusão, em {momentoBr(a.concluida_at || a.updated_at)}
+              {osTres} · concluída {quando(a.concluida_at || a.updated_at)}
               {a.local_atendimento_id ? ` · ${localPorId.get(a.local_atendimento_id) ?? "Local"}` : ""}
               {quem(a.created_by) ? ` · ${quem(a.created_by)}` : ""}
             </small>
           </span>
-          <span className="statusChip present">Gerado</span>
-          <Link className="outlineClinical medAcao" href={`/avaliacoes/${a.id}/documentos?doc=${tipo}`}>Abrir</Link>
+          <Link className="outlineClinical medAcao" href={`/avaliacoes/${a.id}/documentos`}
+            aria-label={`Abrir os documentos de ${pacientePorId.get(a.patient_id)?.nome ?? "paciente"}`}>Abrir documentos</Link>
         </div>
       ))}
       {lista.length === 0 && (

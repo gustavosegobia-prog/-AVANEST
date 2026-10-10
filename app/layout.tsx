@@ -129,6 +129,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
           media="print"
+          // O script abaixo troca para `all` antes de o React hidratar, de
+          // propósito. Sem isto, o React acusava a diferença a cada página.
+          suppressHydrationWarning
         />
         {/* A VOLTA PARA `all` VEM DAQUI, e não de um `onLoad` no <link>.
             Foi tentado: o React descarta esse atributo ao renderizar no

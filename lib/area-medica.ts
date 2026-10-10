@@ -17,7 +17,7 @@
 // dita; o que o sistema não registra (envio e leitura de orientações,
 // assinatura) é declarado como indisponível, e não como zero.
 
-import { etapaDaConsulta, FORA_DO_FLUXO, type Andamento, type ConsultaDaAgenda, type Etapa } from "./recepcao.ts";
+import { etapaDaConsulta, FORA_DO_FLUXO, horaDoInstante, momentoBr, type Andamento, type ConsultaDaAgenda, type Etapa } from "./recepcao.ts";
 
 export type AvaliacaoResumo = {
   id: string;
@@ -103,11 +103,44 @@ export function resumoDoDia(
 export const paraRetomar = (avaliacoes: AvaliacaoResumo[]) =>
   avaliacoes.filter((a) => a.status === "rascunho").sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
-/** O próximo atendimento: o primeiro de hoje, pela hora, que ainda não terminou nem saiu da agenda. */
-export function proximoAtendimento<T extends ConsultaDaAgenda>(doDia: T[], andamento: Map<string, Andamento>): T | null {
+/** A fila de hoje: quem ainda não terminou nem saiu da agenda, pela hora. */
+export function filaDoDia<T extends ConsultaDaAgenda>(doDia: T[], andamento: Map<string, Andamento>): T[] {
   return doDia
     .filter((c) => !FORA_DO_FLUXO(c.status) && c.status !== "faltou" && etapaMedica(c, andamento.get(c.id)) !== "concluido")
-    .sort((a, b) => (a.horario ?? "99").localeCompare(b.horario ?? "99"))[0] ?? null;
+    .sort((a, b) => (a.horario ?? "99").localeCompare(b.horario ?? "99"));
+}
+
+/** O próximo atendimento: o primeiro da fila de hoje. */
+export function proximoAtendimento<T extends ConsultaDaAgenda>(doDia: T[], andamento: Map<string, Andamento>): T | null {
+  return filaDoDia(doDia, andamento)[0] ?? null;
+}
+
+/**
+ * O destaque do topo de "Meu dia", com o nome certo.
+ *
+ * O primeiro da fila pode já estar em atendimento — e aí ele não é o
+ * "próximo", é o de agora. O cartão dizia "Próximo atendimento" sobre um
+ * paciente marcado "Em atendimento". Agora o rótulo segue a etapa, e quando o
+ * de agora já está sendo atendido o cartão diz também quem vem depois.
+ */
+export function destaqueDoDia<T extends ConsultaDaAgenda>(doDia: T[], andamento: Map<string, Andamento>) {
+  const fila = filaDoDia(doDia, andamento);
+  const agora = fila[0] ?? null;
+  if (!agora) return null;
+  const emAtendimento = etapaMedica(agora, andamento.get(agora.id)) === "em_atendimento";
+  return {
+    consulta: agora,
+    rotulo: emAtendimento ? "Em atendimento agora" : "Próximo atendimento",
+    depois: emAtendimento ? fila[1] ?? null : null,
+  };
+}
+
+/** "hoje, 08:00" · "ontem, 17:40" · "05/10/2026, 09:12" — o dia por extenso só quando é outro. */
+export function momentoRelativo(iso: string, hoje: string): string {
+  const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+  if (dia === hoje) return `hoje, ${horaDoInstante(iso)}`;
+  if (dia === somar(hoje, -1)) return `ontem, ${horaDoInstante(iso)}`;
+  return momentoBr(iso);
 }
 
 // ── Agenda: período ────────────────────────────────────────────────────────

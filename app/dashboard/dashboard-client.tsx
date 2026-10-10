@@ -725,9 +725,14 @@ export function DashboardClient({
     // continua sem saber dela: o paciente aparece como não avaliado, e alguém
     // começa uma segunda avaliação do mesmo caso. A avaliação já está criada,
     // então isto não impede de seguir — avisa e segue.
+    // Quem inicia a avaliação passa a ser o médico da consulta. Sem isto, o
+    // médico que assumia o paciente de um colega (pela Equipe) avaliava, mas a
+    // consulta seguia no nome do outro — na lista dele e na recepção. A troca
+    // fica no histórico da consulta (202610100001). Quem não atende, não.
+    const assume=(perfil.atuacao_medica ?? perfil.role==="medico")?{medico_id:perfil.id}:{};
     if(appointmentId){
       const {error:linkError}=await supabase.from("agendamentos")
-        .update({avaliacao_id:data.id,updated_at:new Date().toISOString()}).eq("id",appointmentId);
+        .update({avaliacao_id:data.id,...assume,updated_at:new Date().toISOString()}).eq("id",appointmentId);
       if(linkError) setError("A avaliação foi criada, mas não ficou ligada ao agendamento da recepção. Avise quem administra.");
     }
     router.push(`/avaliacoes/${data.id}`);

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
 import { Dialogo, Gaveta } from "@/components/admin-ui";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
+import { AvisoFlutuante } from "@/components/aviso-flutuante";
 import { dataLocal, hoje as hojeNoBrasil } from "@/lib/data-local";
 import {
   acoesDaConsulta, buscarPacientes, confirmacaoDaConsulta, dataCurtaBr, dataPorExtenso, DESTINO_DA_ACAO,
@@ -33,7 +34,10 @@ export type ConsultaDaRecepcao = {
   medico_id?: string | null; status_at?: string | null; status_by?: string | null; reagendado_de?: string | null;
 };
 
-type Evento = { id: string; de: string | null; para: string; por: string | null; em: string; origem: string; detalhe: string | null };
+type Evento = {
+  id: string; de: string | null; para: string; por: string | null; em: string; origem: string; detalhe: string | null;
+  medico_de?: string | null; medico_para?: string | null;
+};
 type Medico = { id: string; nome: string };
 
 const NOME_DO_STATUS: Record<string, string> = {
@@ -127,7 +131,36 @@ export function RecepcaoView({
     // `agendamentos` entra para o andamento acompanhar cada atualização da agenda.
   }, [mesDoDia, agendamentos]);
 
-  const nomeDoMedico = (id: string | null) => (id ? medicos.find((m) => m.id === id)?.nome ?? nomes.get(id) ?? "Médico" : null);
+  // Sem o nome (médico que saiu da equipe, lista que não carregou) a linha diz
+  // isso — antes saía "Médico: Médico", que parece defeito e não informa nada.
+  const nomeDoMedico = (id: string | null) => (id ? medicos.find((m) => m.id === id)?.nome ?? nomes.get(id) ?? "nome indisponível" : null);
+
+  // O menu "Mais" fecha ao tocar fora dele, como qualquer menu. Antes só
+  // fechava tocando de novo no próprio botão, e ficava aberto por cima da
+  // linha de baixo.
+  useEffect(() => {
+    if (!menu) return;
+    const fora = (e: PointerEvent) => {
+      if (!(e.target as Element | null)?.closest?.(`[data-menu="${menu}"]`)) setMenu("");
+    };
+    document.addEventListener("pointerdown", fora);
+    return () => document.removeEventListener("pointerdown", fora);
+  }, [menu]);
+  /** Setas andam entre as opções; Esc fecha e devolve o foco ao botão; Tab sai. */
+  function teclasDoMenu(e: KeyboardEvent<HTMLElement>, id: string) {
+    const itens = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
+    const i = itens.indexOf(document.activeElement as HTMLButtonElement);
+    const ir = (n: number) => { e.preventDefault(); itens[(n + itens.length) % itens.length]?.focus(); };
+    if (e.key === "ArrowDown") ir(i + 1);
+    else if (e.key === "ArrowUp") ir(i - 1);
+    else if (e.key === "Home") ir(0);
+    else if (e.key === "End") ir(itens.length - 1);
+    else if (e.key === "Tab") setMenu("");
+    else if (e.key === "Escape") {
+      e.preventDefault(); setMenu("");
+      document.querySelector<HTMLButtonElement>(`[data-menu-botao="${id}"]`)?.focus();
+    }
+  }
 
   // ── O dia ──────────────────────────────────────────────────────────────
   const doDia = consultas.filter((c) => c.data === dia).sort(ordemDaAgenda);
@@ -236,9 +269,10 @@ export function RecepcaoView({
           o paciente em dobro. */}
       <section className="clinicalPanel recBusca" role="search">
         <label htmlFor="rec-busca" className="recBuscaCampo">
+          <span className="sr-only">Buscar paciente</span>
           <Icone nome="busca" tamanho={18} />
           <input id="rec-busca" ref={buscaRef} value={busca} onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar paciente por nome, CPF ou telefone" autoComplete="off"
+            placeholder="Nome, CPF ou telefone" autoComplete="off"
             aria-describedby="rec-busca-dica" />
           {busca && <button type="button" className="recLimpar" onClick={() => { setBusca(""); buscaRef.current?.focus(); }} aria-label="Limpar busca"><Icone nome="fechar" tamanho={14} /></button>}
         </label>
@@ -277,8 +311,8 @@ export function RecepcaoView({
       </section>
 
       {erroExterno && <p className="clinicalError" role="alert">{erroExterno}</p>}
-      {erro && <p className="clinicalError" role="alert">{erro}</p>}
-      {aviso && <p className="financeSuccess" role="status">{aviso}</p>}
+      {erro && <AvisoFlutuante tipo="erro" texto={erro} onFechar={() => setErro("")} />}
+      {aviso && <AvisoFlutuante tipo="ok" texto={aviso} onFechar={() => setAviso("")} />}
 
       {/* OS NÚMEROS DO DIA ESCOLHIDO — e do médico escolhido, se houver. Os do
           mês ficam embaixo, recolhidos: no balcão a pergunta é "quem falta
@@ -329,6 +363,14 @@ export function RecepcaoView({
           {dia === hoje && <em> · hoje</em>}
         </h2>
 
+        {/* No celular os cinco cartões de número somem (globals.css): as etapas
+            logo abaixo já trazem a contagem de cada uma. O que só os cartões
+            diziam — quantas previstas e quantas a confirmar — vira esta linha. */}
+        <p className="recResumoCurto">
+          <b>{indicadores.previstas}</b> {indicadores.previstas === 1 ? "prevista" : "previstas"}
+          {indicadores.confirmacoesPendentes > 0 && <> · <b className="atencao">{indicadores.confirmacoesPendentes}</b> a confirmar</>}
+        </p>
+
         {/* AS ETAPAS, com a contagem de cada uma. Tocar filtra a lista. */}
         <div className="recEtapas" role="group" aria-label="Filtrar por etapa do atendimento">
           <button type="button" aria-pressed={etapaFiltro === "todas"} onClick={() => setEtapaFiltro("todas")}>
@@ -378,7 +420,7 @@ export function RecepcaoView({
               const marca = carimbo(c);
               const trabalhando = ocupado === c.id;
               return (
-                <li key={c.id} className={`recLinha etapa-${etapa}`}>
+                <li key={c.id} className={`recLinha etapa-${etapa}${FORA_DO_FLUXO(c.status) || c.status === "faltou" ? " fora" : ""}`}>
                   <time className={c.horario ? "" : "semHora"}>{c.horario ? horaCurta(c.horario) : "Sem horário"}</time>
                   <div className="recQuem">
                     <strong>{p?.nome ?? "Paciente"}</strong>
@@ -407,12 +449,12 @@ export function RecepcaoView({
                         {trabalhando ? "Salvando…" : NOME_DA_ACAO[principal]}
                       </button>
                     )}
-                    <span className="locaisMenu">
-                      <button type="button" className="outlineClinical" aria-haspopup="menu" aria-expanded={menu === c.id}
+                    <span className="locaisMenu" data-menu={c.id}>
+                      <button type="button" className="outlineClinical" aria-haspopup="menu" aria-expanded={menu === c.id} data-menu-botao={c.id}
                         aria-label={`Mais ações para ${p?.nome ?? "a consulta"}`} disabled={trabalhando}
                         onClick={() => setMenu(menu === c.id ? "" : c.id)}>Mais ▾</button>
                       {menu === c.id && (
-                        <span className="locaisMenuLista" role="menu" onKeyDown={(e) => { if (e.key === "Escape") setMenu(""); }}>
+                        <span className="locaisMenuLista" role="menu" onKeyDown={(e) => teclasDoMenu(e, c.id)}>
                           {outras.map((a, i) => (
                             <button type="button" role="menuitem" key={a} autoFocus={i === 0}
                               className={a === "cancelar" || a === "falta" ? "perigo" : ""}
@@ -720,7 +762,7 @@ function Historico({
     let vivo = true;
     void (async () => {
       const { data, error } = await createClient().from("agendamento_eventos")
-        .select("id,de,para,por,em,origem,detalhe").eq("agendamento_id", consulta.id).order("em");
+        .select("id,de,para,por,em,origem,detalhe,medico_de,medico_para").eq("agendamento_id", consulta.id).order("em");
       if (!vivo) return;
       setFalhou(Boolean(error));
       setEventos((data ?? []) as Evento[]);
@@ -729,6 +771,7 @@ function Historico({
   }, [consulta.id]);
 
   const quem = (id: string | null) => (id ? (id === perfilId ? "você" : nomes.get(id) ?? "alguém da equipe") : "não registrado");
+  const medicoDoEvento = (id: string | null | undefined) => (id ? (id === perfilId ? "você" : nomes.get(id) ?? "médico fora da equipe") : "sem médico");
   const antigos = eventos?.some((e) => e.origem === "auditoria" || e.origem === "ultima_mudanca");
 
   return (
@@ -746,7 +789,12 @@ function Historico({
                   <strong>
                     {e.origem === "criacao"
                       ? (e.detalhe === "reagendamento" ? "Marcada (reagendamento)" : "Marcada")
-                      : `${e.de ? `${NOME_DO_STATUS[e.de] ?? e.de} → ` : ""}${NOME_DO_STATUS[e.para] ?? e.para}`}
+                      : e.origem === "medico"
+                        ? (!e.medico_para ? `Médico retirado (${medicoDoEvento(e.medico_de)})`
+                          : e.detalhe === "assumiu"
+                            ? `Assumida por ${medicoDoEvento(e.medico_para)}${e.medico_de ? ` (era de ${medicoDoEvento(e.medico_de)})` : ""}`
+                            : `Médico: ${e.medico_de ? `${medicoDoEvento(e.medico_de)} → ` : ""}${medicoDoEvento(e.medico_para)}`)
+                        : `${e.de ? `${NOME_DO_STATUS[e.de] ?? e.de} → ` : ""}${NOME_DO_STATUS[e.para] ?? e.para}`}
                   </strong>
                   <small>por {quem(e.por)}</small>
                 </span>

@@ -2621,7 +2621,7 @@ button:disabled{cursor:not-allowed}
 /* O contador diz "isto aqui está esperando você". Só aparece quando há algo. */
 .financeTarefaContador{background:var(--cor-atencao-suave);color:var(--cor-atencao);
   border-radius:999px;padding:2px 9px;font-size:12px;font-weight:850}
-.financeTarefas button.active .financeTarefaContador{background:var(--cor-marca);color:#fff}
+.financeTarefas button.active .financeTarefaContador{background:var(--cor-marca);color:var(--cor-marca-contraste)}
 /* Dentro da coluna, o primeiro painel não precisa da margem que o separava do
    painel de cima — não há painel de cima. */
 .financeConteudo>*>.clinicalPanel:first-child,.financeConteudo>.clinicalPanel:first-child{margin-top:0}
@@ -5727,7 +5727,7 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
 .recNavDia{gap:8px}
 .recData input{height:38px;border-radius:8px;font-size:14px;padding:0 10px}
 .recFiltro{display:grid;gap:3px;min-width:200px}
-.recFiltro>span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.recFiltro>span{font-size:12.5px;font-weight:700;color:var(--cor-tinta-fraca)}
 .recFiltro select{height:38px;border-radius:8px}
 .recDiaTitulo{font-size:17px;margin:14px 18px 8px}
 .recDiaTitulo em{font-style:normal;color:var(--cor-marca)}
@@ -5743,7 +5743,10 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
 .recLinha.etapa-aguardando{border-left-color:var(--cor-atencao)}
 .recLinha.etapa-em_atendimento{border-left-color:var(--cor-marca)}
 .recLinha.etapa-concluido{border-left-color:var(--cor-sucesso)}
-.recLinha.etapa-cancelado,.recLinha.etapa-reagendado,.recLinha.etapa-faltou{opacity:.72}
+/* Falta, desmarcada e remarcada saem do fluxo do dia: fundo de superfície, e
+   o texto continua legível. Era opacidade de 72%, e o cinza caía para 3:1. */
+.recLinha.fora{background:var(--cor-superficie-suave)}
+.recLinha.fora time,.recLinha.fora .recQuem strong{color:var(--cor-tinta-fraca)}
 .recLinha time{font-size:17px;font-weight:800;color:var(--cor-tinta)}
 .recLinha time.semHora{font-size:12.5px;font-weight:700;color:var(--cor-tinta-fraca)}
 .recQuem{display:grid;gap:2px;min-width:0}
@@ -5790,7 +5793,30 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
   .recSituacao,.recAcoes{grid-column:2/-1}
   .recAcoes{justify-content:flex-start;flex-wrap:wrap}
 }
+.recResumoCurto{display:none}
 @media(max-width:560px){
+  /* No celular a agenda precisa aparecer cedo. Os cinco cartões repetiam as
+     contagens das etapas logo abaixo; o que só eles diziam vira uma linha. */
+  .receptionMain{--alt-botao-compacto:44px}
+  .recIndicadores{display:none}
+  .recAgenda .recResumoCurto{display:block;margin:0 16px 8px;font-size:13.5px;color:var(--cor-tinta-fraca)}
+  .recResumoCurto b{color:var(--cor-tinta)}
+  .recResumoCurto b.atencao{color:var(--cor-atencao)}
+  .recData input,.recFiltro select{height:44px}
+  /* As etapas numa faixa só, que rola de lado — eram três fileiras. A borda
+     direita esmaece para mostrar que há mais. */
+  .recEtapas{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
+  .recEtapas::-webkit-scrollbar{display:none}
+  .recEtapas button{flex:0 0 auto;min-height:44px;scroll-snap-align:start}
+  .recEtapas button:last-child{margin-right:24px}
+  /* A ação principal ocupa a linha, e "Mais" fica ao lado — sempre. Antes
+     "Registrar chegada" + "Mais" passavam 5px da largura e um caía embaixo
+     do outro, enquanto "Reagendar" + "Mais" cabiam lado a lado. */
+  .recAcoes{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-column:1/-1}
+  .recAcoes>button{width:100%;justify-content:center}
+  .recAcoes>button,.recAcoes .locaisMenu>button{padding:0 12px;font-size:15px}
+  .recAcoes>.locaisMenu:only-child{grid-column:1/-1;justify-self:start}
   .recTopoAcoes{width:100%;display:grid;grid-template-columns:1fr}
   .recTopoAcoes .recAgendar{order:-1;justify-content:center}
   .recIndicadores,.recTotais{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -5855,15 +5881,18 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .medOnde span{display:inline-flex;align-items:center;gap:6px}
 .medEscopo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:var(--esp-3) 0 0}
 .medEscopo p{flex-basis:100%;margin:0;font-size:12.5px;color:var(--cor-tinta-fraca)}
-.medProximo{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:6px 16px;
-  padding:16px 20px;margin-top:0;border-left:4px solid var(--cor-marca)}
-.medProximoRotulo{grid-column:1/-1;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cor-marca-forte)}
+/* O cartão do topo se distingue pela superfície da marca, e não por uma faixa
+   colorida na borda — e o rótulo é texto normal, não etiqueta em maiúsculas. */
+.medProximo{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px 16px;
+  padding:16px 20px;margin-top:0;background:var(--cor-marca-suave);border-color:transparent}
+.medProximoRotulo{grid-column:1/-1;font-size:13.5px;font-weight:750;color:var(--cor-marca-forte)}
+.medDepois{grid-column:1/-1;font-size:13px;color:var(--cor-tinta-fraca);border-top:1px solid var(--cor-borda);padding-top:8px;margin-top:4px}
 .medProximo time{font-size:24px;font-weight:800;color:var(--cor-tinta-forte)}
 .medProximoQuem{display:grid;gap:2px;min-width:0}
 .medProximoQuem strong{font-size:16px}
 .medProximoQuem small{color:var(--cor-tinta-fraca);font-size:13px}
 .medResumo{grid-template-columns:repeat(4,minmax(0,1fr));margin:var(--esp-3) 0 6px}
-.medCartao{text-align:left;cursor:pointer;font:inherit;color:inherit;padding:12px 14px}
+.medCartao{text-align:left;cursor:pointer;font:inherit;color:inherit;padding:12px 14px;display:grid;align-content:start}
 /* Zero não é clicável, mas continua nítido: opacidade reduzida dava à
    tela inteira um ar de desfocada no celular. */
 .medCartao:disabled{cursor:default;opacity:1;color:inherit}
@@ -5884,15 +5913,27 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .medLocal.outro{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
 .medConsulta{grid-template-columns:70px minmax(0,1fr) auto auto}
 .medConsulta time{display:grid;font-size:17px;font-weight:800;color:var(--cor-tinta)}
-.medConsulta time small{font-size:11px;font-weight:700;color:var(--cor-tinta-fraca)}
+.medConsulta time small{font-size:12px;font-weight:700;color:var(--cor-tinta-fraca)}
 .medConsulta time em{font-style:normal;font-size:12px;font-weight:700;color:var(--cor-tinta-fraca)}
-.medConsulta.fora{opacity:.7}
+/* Fora do fluxo: superfície mais apagada, texto ainda legível (era opacidade de 70%). */
+.medConsulta.fora{background:var(--cor-superficie-suave)}
+.medConsulta.fora time,.medConsulta.fora .medQuem strong{color:var(--cor-tinta-fraca)}
+.medDiaSeparador{list-style:none;padding:10px 20px 6px;font-size:13px;font-weight:800;color:var(--cor-tinta);
+  background:var(--cor-superficie-suave);border-bottom:1px solid var(--cor-borda)}
+.medEtapasCurtas{display:none}
+.medVazioFiltro{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.medMain input::placeholder,.receptionMain input::placeholder{color:var(--cor-tinta-fraca);opacity:1}
+.financeTarefaContador.neutro{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+/* `.clinicalDark b` pinta todo <b> com a tinta do texto, e o contador perdia o âmbar. */
+.clinicalDark .financeTarefaContador{color:var(--cor-atencao)}
+.clinicalDark .financeTarefaContador.neutro{color:var(--cor-tinta)}
+.clinicalDark .financeTarefas button.active .financeTarefaContador{color:var(--cor-marca-contraste)}
 .medAcao{white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 .medSemAcao{font-size:12.5px;color:var(--cor-tinta-fraca)}
 .medAgenda{padding:0}
 .medAgendaBarra{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;padding:14px 20px;border-bottom:1px solid var(--cor-borda)}
 .medCampo{display:grid;gap:3px}
-.medCampo>span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.medCampo>span{font-size:12.5px;font-weight:700;color:var(--cor-tinta-fraca)}
 .medCampo input{height:38px;border:1px solid var(--cor-borda);border-radius:var(--raio-1);padding:0 10px;font:inherit;font-size:14px;
   background:var(--cor-superficie);color:var(--cor-tinta)}
 .medCampo input[type=date]{min-width:140px}
@@ -5916,8 +5957,42 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .medHistorico{padding-left:25px;padding-right:25px}
 @media(max-width:900px){.medResumo{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){
-  .medProximo{grid-template-columns:auto minmax(0,1fr)}
-  .medProximo .medAcao{grid-column:1/-1}
+  /* No celular a lista do dia sobe: os cartões de número viram a faixa de
+     etapas da agenda, e o destaque do topo fica em três linhas limpas. */
+  .medMain{--alt-botao-compacto:44px}
+  /* A faixa de etapas não quebra linha; sem o mínimo zero, a grade crescia
+     até caber a faixa inteira e a página passava a ter 700px de largura. */
+  .medMain .financeLayout{grid-template-columns:minmax(0,1fr)}
+  .medMain .financeConteudo{min-width:0}
+  .medResumo{display:none}
+  .medTopo .medNova{width:100%;justify-content:center;height:44px}
+  .medProximo{grid-template-columns:auto minmax(0,1fr);padding:14px 16px}
+  .medProximo>.medAcaoCaixa{grid-column:1/-1;justify-items:stretch}
+  .medProximo .medAcao{width:100%}
+  .medEtapasCurtas{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;padding:10px 16px;border-bottom:1px solid var(--cor-borda);
+    scroll-snap-type:x proximity;scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
+  .medEtapasCurtas::-webkit-scrollbar{display:none}
+  .medEtapasCurtas button{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 12px;
+    border:1px solid var(--cor-borda);border-radius:var(--raio-cheio);background:var(--cor-superficie);color:var(--cor-tinta);
+    font:inherit;font-size:13px;cursor:pointer;scroll-snap-align:start}
+  .medEtapasCurtas button:last-child{margin-right:24px}
+  .medEtapasCurtas button b{font-weight:800}
+  .medEtapasCurtas button[aria-pressed="true"]{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+  .medEtapasCurtas button:focus-visible{outline:0;box-shadow:var(--foco)}
+  /* As quatro seções em grade 2×2: numa faixa que rola, "Documentos"
+     ficava fora da tela e "Pendências" aparecia cortada. */
+  .medAbas{display:grid;grid-template-columns:1fr 1fr;overflow:visible;gap:6px;padding:0;
+    background:none;border:0;box-shadow:none}
+  .medAbas button{width:100%;min-height:44px;white-space:normal;border:1px solid var(--cor-borda);background:var(--cor-superficie)}
+  .medAbas button.active{border-color:var(--cor-marca)}
+  .medMain .medQuemVer button{min-height:44px;padding:8px 16px}
+  .medLinkToque{display:inline-flex;align-items:center;min-height:44px}
+  .medCampo input{height:44px}
+  .medCampo.medBusca{flex-basis:100%}
+  .medAgendaBarra .escalaVisoes button{min-height:44px}
+  .medConsulta>.recEtapa,.medHistorico>.statusChip{justify-self:start}
+  .medDiaSeparador{padding-left:16px;padding-right:16px}
   .medLinha,.medConsulta{grid-template-columns:minmax(0,1fr);padding:12px 16px}
   .medConsulta{grid-template-columns:56px minmax(0,1fr)}
   .medConsulta>.recEtapa,.medConsulta>.medAcao,.medConsulta>.medSemAcao{grid-column:2}
@@ -5956,3 +6031,24 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .medQuemVer button{border:0;background:none;font:inherit;font-size:13px;font-weight:700;color:var(--cor-tinta-fraca);padding:5px 12px;cursor:pointer;min-height:30px}
 .medQuemVer button.ativo{background:var(--cor-marca);color:var(--cor-marca-contraste)}
 .medQuemVer button:focus-visible{outline:0;box-shadow:var(--foco)}
+
+/* --- Aviso flutuante (components/aviso-flutuante.tsx) ---------------------
+   No computador, no fluxo da página. No celular, preso ao pé da tela: o
+   retorno aparece onde o polegar acabou de tocar, e não uma tela acima. */
+.avisoFlutuante{display:flex;align-items:flex-start;gap:10px}
+.avisoFlutuante>span{flex:1;min-width:0}
+.avisoFechar{flex:none;display:grid;place-items:center;width:28px;height:28px;margin:-4px -8px -4px 0;
+  border:0;border-radius:6px;background:none;color:inherit;cursor:pointer}
+.avisoFechar:focus-visible{outline:0;box-shadow:var(--foco)}
+@media(max-width:680px){
+  .avisoFlutuante{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:70;
+    margin:0;box-shadow:var(--sombra-3)}
+  .avisoFechar{width:44px;height:44px;margin:-12px -14px -12px 0}
+}
+/* O tema escuro pinta todo parágrafo da área de trabalho de cinza
+   (`.clinicalDark .clinicalMain p`), e com ele o erro, a confirmação e o aviso
+   de pendências perdiam a cor que diz o que são. */
+.clinicalDark .clinicalMain p.clinicalError{color:var(--cor-perigo-forte)}
+.clinicalDark .clinicalMain p.financeSuccess{color:var(--cor-sucesso)}
+.clinicalDark .clinicalMain p.medAvisoPendencias{color:var(--cor-atencao)}
+.clinicalDark .clinicalPanel.medProximo{background:var(--cor-marca-suave);border-color:transparent}

@@ -1,8 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  andamentoPelasAvaliacoes, avaliacaoNoEscopo, consultaNoEscopo, cpfMascarado, intervaloDoPeriodo,
-  paraRetomar, pendenciasVerificadas, proximoAtendimento, resumoDoDia,
+  andamentoPelasAvaliacoes, avaliacaoNoEscopo, consultaNoEscopo, cpfMascarado, destaqueDoDia, intervaloDoPeriodo,
+  momentoRelativo, paraRetomar, pendenciasVerificadas, proximoAtendimento, resumoDoDia,
   type AvaliacaoResumo, type Escopo,
 } from "./area-medica.ts";
 import type { ConsultaDaAgenda } from "./recepcao.ts";
@@ -91,5 +91,36 @@ describe("período e identificação", () => {
   it("CPF mascarado", () => {
     assert.equal(cpfMascarado("12345678901"), "***.456.789-**");
     assert.equal(cpfMascarado(null), null);
+  });
+});
+
+describe("o destaque do topo diz o que o paciente está fazendo", () => {
+  it("quem já está em atendimento é o de agora, e o cartão mostra quem vem depois", () => {
+    const curso = av({ id: "curso" });
+    const dia = [c({ id: "d1", horario: "08:00:00", status: "presente", avaliacao_id: "curso" }),
+      c({ id: "d2", horario: "08:30:00", status: "presente" }), c({ id: "d3", horario: "09:00:00" })];
+    const d = destaqueDoDia(dia, andamentoPelasAvaliacoes(dia, new Map([["curso", curso]])));
+    assert.equal(d?.rotulo, "Em atendimento agora");
+    assert.equal(d?.consulta.id, "d1");
+    assert.equal(d?.depois?.id, "d2");
+  });
+  it("sem ninguém em atendimento, é o próximo — e não há 'depois'", () => {
+    const dia = [c({ id: "e1", horario: "10:00:00" }), c({ id: "e2", horario: "09:00:00", status: "presente" })];
+    const d = destaqueDoDia(dia, andamentoPelasAvaliacoes(dia, new Map()));
+    assert.equal(d?.rotulo, "Próximo atendimento");
+    assert.equal(d?.consulta.id, "e2");
+    assert.equal(d?.depois, null);
+  });
+  it("dia sem fila não tem destaque", () => {
+    assert.equal(destaqueDoDia([c({ status: "faltou" })], new Map()), null);
+  });
+});
+
+describe("as datas dizem 'hoje' e 'ontem' quando é o caso", () => {
+  it("no fuso de Brasília, e não no do servidor", () => {
+    assert.equal(momentoRelativo("2026-09-30T11:00:00Z", HOJE), "hoje, 08:00");
+    // 01:30 UTC do dia 30 ainda é dia 29 em Brasília
+    assert.equal(momentoRelativo("2026-09-30T01:30:00Z", HOJE), "ontem, 22:30");
+    assert.equal(momentoRelativo("2026-09-20T13:05:00Z", HOJE), "20/09/2026, 10:05");
   });
 });
