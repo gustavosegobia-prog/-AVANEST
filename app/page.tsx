@@ -118,33 +118,24 @@ export default function HomePage() {
             Gestão clínica, escalas e finanças em uma única plataforma,
             desenvolvida por anestesiologista para anestesiologistas.
           </p>
+          {/* Os três benefícios em uma linha cada, sem parágrafo embaixo: quem
+              chega quer saber o que o sistema faz em um olhar; o detalhe está
+              na seção "O que o sistema cobre" e em /recursos. */}
           <ul className="avnBeneficios">
-            <li>
-              <b>Avaliação pré-anestésica completa</b>
-              <span>Mais agilidade e padronização, com nove etapas estruturadas e quatro escores clínicos validados.</span>
-            </li>
-            <li>
-              <b>Escalas organizadas, equipe conectada</b>
-              <span>Gerencie plantões por instituição e acompanhe todos os seus compromissos em um só lugar.</span>
-            </li>
-            <li>
-              <b>Controle financeiro sem complicação</b>
-              <span>Acompanhe produção, faturamento, recebimentos e fluxo de caixa com mais clareza.</span>
-            </li>
+            <li>Avaliação pré-anestésica completa</li>
+            <li>Escalas organizadas, equipe conectada</li>
+            <li>Controle financeiro sem complicação</li>
           </ul>
-          {/* O TESTE GRÁTIS É A AÇÃO PRINCIPAL. Antes o botão de destaque era a
-              conversa no WhatsApp e o teste era uma frase pequena embaixo: quem
-              queria experimentar tinha de achar a porta. Agora a porta é o
-              botão, e a conversa continua a um toque para quem prefere falar
-              antes. "Sem cartão de crédito" responde à objeção que nasce
-              justamente ao olhar o botão. */}
+          {/* O TESTE GRÁTIS É A AÇÃO PRINCIPAL, e o próprio botão diz a oferta —
+              sem título nem descrição repetindo "2 meses grátis" acima dele.
+              "Sem cartão de crédito" responde à objeção que nasce justamente
+              ao olhar o botão. */}
           <div className="avnOferta">
-            <p className="avnOfertaTitulo">Experimente a AVANEST por 2 meses grátis</p>
-            <p className="avnOfertaTexto">Conheça a plataforma na prática, sem cartão de crédito e sem compromisso.</p>
             <div className="avnActions">
-              <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=site`}>Começar grátis</a>
+              <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=site`}>Começar 2 meses grátis</a>
               <a className="avnSecondary" href="/planos">Conhecer os planos</a>
             </div>
+            <p className="avnOfertaApoio">Sem cartão de crédito e sem compromisso.</p>
             <p className="avnAjuda">
               Precisa de ajuda? <a href={whatsappUrl} target="_blank" rel="noreferrer">Fale com nossa equipe pelo WhatsApp</a>.
             </p>
