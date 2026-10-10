@@ -405,9 +405,14 @@ export function AreaMedica({
                             </time>
                             <span className="medQuem">
                               <strong>{p?.nome ?? "Paciente não localizado"}</strong>
-                              <small>{identificacao(c.patient_id)}</small>
+                              {/* Três linhas, e não quatro: o que importa ao anestesiologista
+                                  (procedimento e local) logo abaixo do nome; identificação e
+                                  responsável juntos, numa linha mais discreta. */}
                               <small>{c.procedimento || p?.procedimento || p?.cirurgia || "Procedimento não informado"} · {c.hospital || p?.hospital || "Local não informado"}</small>
-                              {medicoId ? (medico && <small>Responsável: {medico}</small>) : <small>Sem médico definido</small>}
+                              <small className="medQuemMeta">
+                                {identificacao(c.patient_id)}
+                                {medicoId ? (medico ? ` · Responsável: ${medico}` : "") : " · Sem médico definido"}
+                              </small>
                             </span>
                             <span className={`recEtapa etapa-${etapa}`}>
                               <Icone nome={ICONE_DA_ETAPA[etapa] ?? "calendario"} tamanho={13} /> {NOME_DA_ETAPA[etapa]}

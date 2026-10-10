@@ -6358,3 +6358,33 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 /* Escolha do local (depois do login): o mesmo respiro curto. */
 .localMain{padding-top:20px}
 @media(max-width:680px){.localMain{padding-top:12px}}
+
+/* ============================================================================
+   Recepção e Área médica: listas com cara de sistema
+   ----------------------------------------------------------------------------
+   Os botões das linhas tinham o corpo do texto da página (17px) e o mesmo peso
+   do nome do paciente — quatro "Registrar chegada" em azul cheio viravam uma
+   parede. E a situação começava em um ponto diferente a cada linha, porque a
+   coluna se ajustava ao conteúdo: o olho não tinha onde descer.
+   Agora: botões compactos (14px, altura padrão do sistema — 44px no toque),
+   e no computador colunas de largura fixa para situação e ações. */
+.recAcoes .primaryClinical,.recAcoes .outlineClinical,
+.medConsulta .medAcao,.medLinha .medAcao{
+  min-height:var(--alt-botao-compacto);height:auto;padding:0 14px;
+  font-size:14px;font-weight:700;border-radius:10px;box-shadow:none}
+.recLinha time,.medConsulta time{font-size:16px}
+.recAcoes .locaisMenu>button{white-space:nowrap}
+.medQuem .medQuemMeta{font-size:12px}
+@media(min-width:1101px){
+  .recLinha{grid-template-columns:64px minmax(0,1fr) 330px 280px;padding:10px 18px}
+  .recSituacao{justify-self:start}
+  .medConsulta{grid-template-columns:64px minmax(0,1fr) 160px 190px;padding:10px 20px}
+  .medConsulta>.recEtapa{justify-self:start}
+  .medConsulta>.medAcao,.medConsulta>.medAcaoCaixa,.medConsulta>.medSemAcao{justify-self:end}
+}
+
+/* Recepção: a linha-resumo ("8 previstas · 2 a confirmar") também no
+   computador, no lugar dos cinco cartões — os mesmos números já estão nos
+   filtros logo abaixo, com a contagem de cada etapa. */
+.recIndicadores{display:none}
+.recAgenda .recResumoCurto{display:block;margin:0 18px 10px;font-size:14px;color:var(--cor-tinta-fraca)}
