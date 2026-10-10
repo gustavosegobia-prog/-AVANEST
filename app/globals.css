@@ -6311,9 +6311,13 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .menuLateral button.financeTarefaGrupo:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
 .menuLateral .finMenuSeta{transition:transform .15s ease;transform:rotate(-90deg)}
 .menuLateral .finMenuSeta.aberta{transform:none}
+/* A HIERARQUIA: o nome do grupo é o mais forte (negrito, com ícone); as
+   opções de dentro vêm em peso normal, e a aberta fica em negrito na cor da
+   marca. Com as duas em negrito — ou o filho mais forte que o pai — o menu
+   parecia de cabeça para baixo. */
 .menuLateral button.finMenuItem{margin-left:20px;width:calc(100% - 20px);padding:8px 12px 8px 16px;
-  border-left:2px solid var(--cor-borda);border-radius:0 9px 9px 0;font-weight:700;color:var(--cor-tinta)}
-.menuLateral button.finMenuItem.active{border-left-color:var(--cor-marca)}
+  border-left:2px solid var(--cor-borda);border-radius:0 9px 9px 0;font-weight:500;color:var(--cor-tinta)}
+.menuLateral button.finMenuItem.active{border-left-color:var(--cor-marca);font-weight:800;color:var(--cor-marca-forte)}
 .menuLateral button.finMenuDireto.active svg,.menuLateral button.financeTarefaGrupo.contemAtiva svg:first-child{color:var(--cor-marca)}
 .menuLateral button.financeTarefaGrupo.contemAtiva{color:var(--cor-marca-forte)}
 @media(prefers-reduced-motion:reduce){.menuLateral .finMenuSeta{transition:none}}
@@ -6333,12 +6337,12 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
    fica em negrito — era 650, perto demais do texto comum. */
 .financeTarefas button{font-weight:750}
 
-/* Título de grupo que NÃO é botão (Escala): ícone e nome em cinza, sem
-   negrito — só o que se clica fica em negrito. */
-.menuLateral .menuGrupoTitulo{display:flex;align-items:center;gap:9px;padding:12px 10px 4px;
-  font-size:13px;font-weight:600;color:var(--cor-tinta-fraca)}
+/* Título de grupo que não é botão (Escala): o mesmo peso do título de grupo
+   do Financeiro — é o pai das opções de baixo, e tem de parecer. */
+.menuLateral .menuGrupoTitulo{display:flex;align-items:center;gap:9px;padding:10px 10px 4px;
+  font-size:14px;font-weight:800;color:var(--cor-tinta)}
 .menuLateral .menuGrupoTitulo:first-child{padding-top:6px}
-.menuLateral .menuGrupoTitulo svg{flex:none}
+.menuLateral .menuGrupoTitulo svg{flex:none;color:var(--cor-tinta-fraca)}
 .menuLateral button.finMenuItem.escalaNova{color:var(--cor-marca)}
 @media(max-width:1100px){.menuLateral .menuGrupoTitulo{display:none}}
 /* O grupo é só semântica (role="group"): os botões dele entram direto no
