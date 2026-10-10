@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useFocoPreso, useTravaDeRolagem } from "@/components/admin-ui";
 import { Icone } from "@/components/icone";
 import type {
   Composicao, EstadoDoFechamento, Pendencia, TipoDeComposicao,
@@ -339,27 +340,27 @@ export function DetalheDaComposicao({
   onFechar: () => void;
   onIr: (tarefa: string) => void;
 }) {
-  const fechar = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    fechar.current?.focus();
-    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar(); };
-    document.addEventListener("keydown", tecla);
-    return () => document.removeEventListener("keydown", tecla);
-  }, [onFechar]);
+  // O foco fica preso na gaveta enquanto ela está aberta, e volta ao número
+  // que a abriu ao fechar. Antes o Tab saía da gaveta e passeava pela página
+  // coberta — que o leitor de tela continuava lendo — e a página rolava por
+  // baixo dela no celular.
+  const caixa = useRef<HTMLElement>(null);
+  useFocoPreso(true, caixa, onFechar);
+  useTravaDeRolagem(true);
 
   const c = composicao;
   const temProducao = c.linhas.some((l) => l.id.startsWith("producao:"));
   const [rotuloAcao, tarefaAcao] = ACAO_COMPOSICAO[c.tipo];
   return (
     <div className="pfGaveta" role="presentation" onClick={onFechar}>
-      <aside className="pfGavetaPainel" role="dialog" aria-modal="true" aria-labelledby="pf-gaveta-titulo"
+      <aside ref={caixa} className="pfGavetaPainel" role="dialog" aria-modal="true" aria-labelledby="pf-gaveta-titulo"
         onClick={(e) => e.stopPropagation()}>
         <header>
           <div>
             <h2 id="pf-gaveta-titulo">{TITULO_COMPOSICAO[c.tipo](valor(c.total))}</h2>
             <p>{ESCOPO_COMPOSICAO[c.tipo]}</p>
           </div>
-          <button type="button" ref={fechar} className="pfGavetaFechar" onClick={onFechar} aria-label="Fechar">
+          <button type="button" data-foco-inicial className="pfGavetaFechar" onClick={onFechar} aria-label="Fechar">
             <Icone nome="fechar" tamanho={18} />
           </button>
         </header>

@@ -1279,11 +1279,12 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // Cadastros incompletos da recepção não devem virar cobrança.
   const pendingPatients=pacientes.filter(p=>!billedPatients.has(p.id)&&evaluationMap.get(p.id)?.status==="concluida");
   const money=(value:number)=>Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-  const parseMoney=(value:string)=>{
-    const normalized=value.trim().replace(/\s/g,"").replace(/^R\$/i,"");
-    const decimal=normalized.includes(",")?normalized.replace(/\./g,"").replace(",","."):normalized;
-    return Number(decimal);
-  };
+  // O valor já gravado volta ao campo como se escreve aqui: "1.100,50", e não
+  // "1100.5" — que lerDinheiro também lê, mas que ninguém digitaria.
+  const valorNoCampo=(v:unknown)=>Number(v)?Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}):"";
+  // Valor digitado: lerDinheiro, a mesma regra da recepção. A conta antiga
+  // só tratava o ponto como milhar quando havia vírgula — "1.100" virava
+  // R$ 1,10 e o pagamento de mil e cem reais era registrado como um real.
   const periodItems=financeiro.filter(item=>(item.periodo||item.created_at.slice(0,7))===period);
   const total=periodItems.reduce((sum,item)=>sum+Number(item.valor),0);
   const received=periodItems.reduce((sum,item)=>sum+Number(item.recebido),0);
@@ -1609,7 +1610,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     setBusy("prices");setMessage("");
     const client=createClient();
     for(const convenio of knownConvenios){
-      const amount=parseMoney(priceValues[convenio]||"0");
+      const amount=lerDinheiro(priceValues[convenio]||"0");
       if(!Number.isFinite(amount)||amount<0){setBusy("");setMessage(`Informe um valor válido para ${convenio}.`);return}
       const rule=convenioValores.find(item=>item.convenio===convenio&&!item.procedimento&&!item.hospital);
       // Digitou um valor de verdade aqui: gratuidade deixa de fazer sentido, e
@@ -1674,7 +1675,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   }
 
   async function registerPayment(item:Financeiro) {
-    const amount=parseMoney(values[item.id]||"");
+    const amount=lerDinheiro(values[item.id]||"");
     const balance=Math.max(0,Number(item.valor)-Number(item.recebido));
     if(!Number.isFinite(amount)||amount<=0){setMessage("Informe um valor de pagamento válido.");return}
     if(amount>balance){setMessage(`O pagamento não pode ultrapassar o saldo de ${money(balance)}.`);return}
@@ -1898,9 +1899,9 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       </>}
       {tarefa==="lancamentos"&&<>
     {pendingPatients.length>0&&<PainelRecolhivel chave="fin-aguardando" titulo="Atendimentos aguardando lançamento" legenda="vindos automaticamente da recepção e agenda">{pendingPatients.slice(0,8).map(patient=><div className="financeSetupRow" key={patient.id}><span><strong>{patient.nome}</strong><small>{patient.hospital||"Hospital não informado"} · {patient.convenio||"Particular"} · {patient.data_consulta?brDate(patient.data_consulta):"sem data"}</small></span><button className="outlineClinical" disabled={busy===patient.id} onClick={()=>createBilling(patient)}>Criar lançamento</button></div>)}</PainelRecolhivel>}
-    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><PainelRecolhivel className="financeGroup" key={convenio} chave={`fin-grupo-${convenio}`} classeCabecalho="financeGroupHead" titulo={convenio} legenda={`${items.length} atendimento(s)`} extra={<b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b>}>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* parseMoney, não Number(replace): "1.234,56" com replace simples vira
+    {groups.length===0?<div className="emptyClinical">Nenhum lançamento financeiro cadastrado.</div>:groups.map(([convenio,items])=><PainelRecolhivel className="financeGroup" key={convenio} chave={`fin-grupo-${convenio}`} classeCabecalho="financeGroupHead" titulo={convenio} legenda={`${items.length} atendimento(s)`} extra={<b>{valorVisivel(items.reduce((s,i)=>s+Number(i.valor),0))}</b>}>{items.map(item=>{const patient=patientMap.get(item.patient_id);return <div className="financeItemRow" key={item.id}><div><strong>{patient?.nome||"Paciente"}</strong><small>{item.hospital||patient?.hospital||"Hospital não informado"} · Consulta {patient?.data_consulta?brDate(patient.data_consulta):"sem data"}</small></div>{/* lerDinheiro, não Number(replace): "1.234,56" com replace simples vira
     "1.234.56", que é NaN — e o valor da consulta zerava sem aviso. */}
-<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input defaultValue={Number(item.valor)||""} placeholder="R$ 0,00" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><label className="inlineMoney"><span>Situação</span><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select>{item.status==="glosa"&&<input className="financeGlosado" defaultValue={Number(item.glosa_valor)||""} placeholder="Glosado: R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=parseMoney(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/>}</label><label className="inlineMoney"><span>Nota fiscal</span><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Número" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/></label><label className="inlineMoney"><span>Emissão</span><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Vencimento</span><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Lote</span><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="—" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></label></div></div>})}</PainelRecolhivel>)}
+<div className="financeItemFields"><label className="inlineMoney"><span>Valor</span><input inputMode="decimal" defaultValue={valorNoCampo(item.valor)} placeholder="R$ 0,00" onBlur={e=>{const v=lerDinheiro(e.target.value);updateItem(item.id,{valor:Number.isFinite(v)&&v>=0?v:0})}}/></label><label className="inlineMoney"><span>Situação</span><select value={item.status} onChange={e=>updateItem(item.id,{status:e.target.value})}><option value="aguardando">Aguardando</option><option value="pago">Pago</option><option value="glosa">Glosa</option><option value="cancelado">Cancelado</option></select>{item.status==="glosa"&&<input className="financeGlosado" inputMode="decimal" defaultValue={valorNoCampo(item.glosa_valor)} placeholder="Glosado: R$ 0,00" aria-label="Valor glosado pelo convênio" onBlur={e=>{const v=lerDinheiro(e.target.value);updateItem(item.id,{glosa_valor:Number.isFinite(v)&&v>=0?v:0})}}/>}</label><label className="inlineMoney"><span>Nota fiscal</span><input className="financeSmallInput" defaultValue={item.nota_fiscal??""} placeholder="Número" onBlur={e=>updateItem(item.id,{nota_fiscal:e.target.value||null})}/></label><label className="inlineMoney"><span>Emissão</span><input className="financeSmallInput" type="date" defaultValue={item.nota_emitida_at??""} onBlur={e=>updateItem(item.id,{nota_emitida_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Vencimento</span><input className="financeSmallInput" type="date" defaultValue={item.nota_vencimento_at??""} onBlur={e=>updateItem(item.id,{nota_vencimento_at:e.target.value||null})}/></label><label className="inlineMoney"><span>Lote</span><input className="financeSmallInput" defaultValue={item.lote??""} placeholder="—" onBlur={e=>updateItem(item.id,{lote:e.target.value||null})}/></label></div></div>})}</PainelRecolhivel>)}
       </>}
       {tarefa==="recebimentos"&&<>
     <PainelRecolhivel chave="fin-recebimentos" titulo="Recebimentos" legenda="PIX, dinheiro, cartão ou transferência; pagamentos parciais atualizam o saldo">
@@ -1945,7 +1946,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         const balance=Math.max(0,Number(item.valor)-Number(item.recebido));
         const quitado=balance<=0;
         const parcial=!quitado&&Number(item.recebido)>0;
-        const digitado=parseMoney(values[item.id]||"");
+        const digitado=lerDinheiro(values[item.id]||"");
         // O botão só habilita quando o valor digitado é aceitável — antes ele
         // ficava aceso e só reclamava depois do clique.
         const valorValido=Number.isFinite(digitado)&&digitado>0&&digitado<=balance;
@@ -1955,11 +1956,11 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
             <small>{item.convenio}{item.hospital?` · ${item.hospital}`:""}</small>
           </span>
           <span className="paymentValores">
-            <b>{money(item.valor)}</b>
-            <small>recebido {money(item.recebido)}</small>
+            <b>{valorVisivel(item.valor)}</b>
+            <small>recebido {valorVisivel(item.recebido)}</small>
           </span>
           <span className="paymentSaldo">
-            <b className={quitado?"green":""}>{quitado?"quitado":money(balance)}</b>
+            <b className={quitado?"green":""}>{quitado?"quitado":valorVisivel(balance)}</b>
             {!quitado&&<small>em aberto</small>}
           </span>
           <span className={`statusChip ${quitado?"present":parcial?"waiting":"paused"}`}>{quitado?"Quitado":parcial?"Parcial":"A receber"}</span>
@@ -2019,7 +2020,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
             <p><strong>Estornar pagamento de {patient?.nome||"paciente"}</strong> — {item.convenio}. O lançamento volta a ficar em aberto e sai da conta do recebido; depois disso ele pode ser excluído.</p>
             <div className="paymentEstornoLista">
               {pagamentosDoItem.map(pg=><span key={pg.id}>
-                <b>{money(pg.valor)}</b>
+                <b>{valorVisivel(pg.valor)}</b>
                 <small>{pg.metodo}{pg.paid_at?` · ${brDate(pg.paid_at.slice(0,10))}`:""}</small>
                 <button type="button" className="paymentExcluirConfirma" disabled={busy===item.id}
                   onClick={()=>void estornarPagamento(pg.id,item)}>
@@ -2093,7 +2094,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       {tarefa==="producao"&&<ProducaoRecebida mes={period} nomeMes={NOMES_MES[Number(period.slice(5,7))-1]??""} ano={Number(period.slice(0,4))}/>}
 
       {tarefa==="lotes"&&<>
-    <PainelRecolhivel chave="fin-lotes" titulo="📦 Lotes de cobrança" legenda="agrupamento por convênio/hospital, sem dados clínicos" abrePadrao={false}>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{money(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</PainelRecolhivel>
+    <PainelRecolhivel chave="fin-lotes" titulo="📦 Lotes de cobrança" legenda="agrupamento por convênio/hospital, sem dados clínicos" abrePadrao={false}>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{valorVisivel(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</PainelRecolhivel>
       </>}
       {tarefa==="repasses"&&<>
     <PainelRecolhivel chave="fin-repasses" titulo="Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao={false}>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=>{
@@ -2102,7 +2103,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       // banco desde a criação da tabela, e perfis (com .nome) já chegava
       // como prop do FinanceView; ninguém tinha ligado os dois.
       const profissional=item.medico_id?perfilMap.get(item.medico_id)?.nome:null;
-      return <div className="repasseRow" key={item.id}><span><strong>{profissional||"Profissional não identificado"}</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{money(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>;
+      return <div className="repasseRow" key={item.id}><span><strong>{profissional||"Profissional não identificado"}</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{valorVisivel(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>;
     })}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</PainelRecolhivel>
       </>}
       {tarefa==="despesas"&&<>
@@ -2934,12 +2935,13 @@ function ConvenioValoresPanel({perfil,convenioValores,pendentes,onRefresh}:{perf
 
   return <>
     {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"}>{message}</p>}
-    {/* Recolhida por padrão: é configuração, consultada de vez em quando, e
-        aberta ocupava a tela inteira com uma linha por convênio. */}
+    {/* Aberta por padrão: desde que ganhou aba própria, é o único conteúdo da
+        aba "Valores por convênio" — recolhida, quem clicava na aba via só uma
+        barra fechada e tinha de clicar de novo. Quem fechar, fica fechado. */}
     <PainelRecolhivel
       className="convenioAdmin"
       chave="convenio-valores"
-      abrePadrao={false}
+      abrePadrao
       titulo="Valores por convênio"
       legenda={`${convenioValores.length} referência(s) cadastrada(s) · o Financeiro sugere o valor ao criar o lançamento`}
     >

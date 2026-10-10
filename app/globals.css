@@ -1733,6 +1733,18 @@ button:disabled{cursor:not-allowed}
   .paymentRow input,.paymentRow select,.paymentButton{grid-column:auto}
   .paymentPago{grid-column:1/-1;text-align:left}
 }
+/* No telefone, três colunas não cabem: os valores se sobrepunham ("R$ 2.740,90"
+   por cima de "R$ 1.370,45") e o campo de valor ficava com 90px, onde mal
+   cabia "Val". Duas colunas iguais: valor e saldo lado a lado, o campo e a
+   forma de pagamento lado a lado, e o botão de registrar na largura toda. */
+@media(max-width:640px){
+  .paymentRow,.paymentRow.comExcluir{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:var(--esp-3) var(--esp-4)}
+  .paymentRow>.statusChip{grid-column:1/-1;justify-self:start;grid-row:2}
+  .paymentRow>.paymentValores{grid-row:3}
+  .paymentRow>.paymentSaldo{grid-row:3;text-align:right}
+  .paymentRow input,.paymentRow select,.paymentButton{height:44px}
+  .paymentButton,.paymentRow>.paymentExcluir{grid-column:1/-1}
+}
 
 /* ============================================================================
    Paineis recolhiveis
@@ -2704,7 +2716,7 @@ button:disabled{cursor:not-allowed}
 @media(max-width:1100px){
   /* Abaixo disto a coluna fixa espreme o conteúdo: as tarefas viram uma
      faixa rolável no topo, e o painel usa a largura toda. */
-  .financeLayout{grid-template-columns:1fr}
+  .financeLayout{grid-template-columns:minmax(0,1fr)}
   .financeTarefas{position:static;flex-direction:row;overflow-x:auto;gap:6px}
   .financeTarefaGrupo{display:none}
   .financeTarefas button{width:auto;white-space:nowrap}
@@ -5243,7 +5255,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 }
 @media(max-width:600px){
   .pfKpis{grid-template-columns:1fr}
-  .pfInferiores{grid-template-columns:1fr}
+  .pfInferiores{grid-template-columns:minmax(0,1fr)}
   .pfPendencia{grid-template-columns:auto minmax(0,1fr)}
   .pfPendencia .pfPrioridade{padding:3px 9px}
   .pfPendencia .outlineClinical{grid-column:1/-1;justify-content:center;width:100%}
