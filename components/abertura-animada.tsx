@@ -57,8 +57,13 @@
  * apenas o TRILHO do Λ, e não o traço pintado, não há nada repetido a evitar:
  * uma linha do tempo só, igual para todo mundo.
  */
+// AS PÁGINAS DE VENDA NÃO TOCAM A ABERTURA. Quem chega ao /planos ou ao
+// /2meses por um anúncio ou por um link do Instagram veio ler um preço ou
+// apertar um botão, e quase dois segundos de cortina branca antes disso é o
+// tempo em que se fecha a aba. A capa e o sistema continuam com ela.
 const ROTEIRO_DA_ABERTURA = `try{
-if(sessionStorage.getItem('avanest:abertura')){document.documentElement.className+=' semAbertura'}
+if(/^\\/(planos|2meses|recursos|privacidade|termos)(\\/|$)/.test(location.pathname)){document.documentElement.className+=' semAbertura'}
+else if(sessionStorage.getItem('avanest:abertura')){document.documentElement.className+=' semAbertura'}
 else{sessionStorage.setItem('avanest:abertura','1')}
 }catch(e){}`;
 

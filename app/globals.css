@@ -1905,6 +1905,10 @@ button:disabled{cursor:not-allowed}
   margin:var(--esp-5) 0 0;font-size:16px;line-height:1.5;
   font-weight:700;color:var(--cor-tinta-forte);
 }
+.planosIndisponivel{grid-column:1/-1;max-width:560px;margin:0 auto;padding:var(--esp-6);border:1px solid var(--cor-borda);border-radius:var(--raio-3);background:#fff;text-align:center}
+.planosIndisponivel h2{margin:0 0 var(--esp-2);font-size:20px}
+.planosIndisponivel p{margin:0 0 var(--esp-5);color:#4a5d6e}
+.planosIndisponivel .planoBotao{display:inline-flex;width:auto;padding:0 var(--esp-6)}
 .planoFundadorNota{
   margin:var(--esp-2) 0 0;font-size:12.5px;line-height:1.45;color:var(--cor-sucesso);font-weight:600;
 }
@@ -4695,6 +4699,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .avnTeste{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;
   margin:18px 0 0;font-size:15px;color:#cfe3f4}
 .avnTeste b{color:#fff;font-weight:750}
+.avnTeste a{color:inherit;text-decoration:underline;text-decoration-color:#43c8b8;text-decoration-thickness:2px;text-underline-offset:4px}
+.avnTeste a:hover b{color:#bff3ea}
 .avnTeste span{font-size:13.5px;color:#9dbdd6}
 /* A vitrine é escura e NÃO usa os tokens do painel: `--cor-tinta-fraca` é um
    cinza pensado para fundo branco, e `--cor-marca-forte` é o azul escuro da
@@ -6116,3 +6122,25 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .printPaper.rascunho::before{content:"RASCUNHO — SEM VALIDADE";position:absolute;inset:0;display:grid;place-items:center;
   font-size:54px;font-weight:900;letter-spacing:.08em;color:rgba(192,42,48,.13);transform:rotate(-28deg);
   pointer-events:none;z-index:2;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+/* ============================================================================
+   Site público — ajustes da auditoria
+   ----------------------------------------------------------------------------
+   O verde-água da marca (#43c8b8 / #209d90) é cor de fundo escuro: sobre o
+   branco ele dava 2,1:1 e 3,3:1, abaixo do mínimo de leitura. Em texto sobre
+   branco vai o tom escuro da mesma família (5,4:1).
+   No telefone, o título de seção (42px) ficava MAIOR que o título da página
+   (31px) — a hierarquia invertida. E o título dos cartões tinha o mesmo corpo
+   e peso do parágrafo: só a cor separava um do outro.
+   O rodapé herdava os 11px da regra antiga de `footer`.
+   ========================================================================= */
+.avnInfo>p,.avnGrid article b,.recHero .avnEyebrow{color:#11776c}
+.avnInfo h2{line-height:1.15}
+.avnGrid h3{font-size:18px;font-weight:700;color:var(--avn-ink);line-height:1.3}
+.avnFooter{font-size:13px}
+@media(max-width:640px){
+  .avnInfo h2{font-size:clamp(24px,6.6vw,28px);margin-bottom:28px}
+}
+/* O botão principal quebra em duas linhas no telefone ("Agendar uma conversa
+   de 15 minutos"): centralizado e com entrelinha de botão, e não de parágrafo. */
+.avnActions .avnPrimary,.avnActions .avnSecondary{text-align:center;line-height:1.25;padding-top:10px;padding-bottom:10px}

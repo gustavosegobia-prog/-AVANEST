@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
+import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
 import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 
 // O que o site é, em linguagem de máquina.
@@ -128,8 +129,11 @@ export default function HomePage() {
               justamente ao olhar o botão: "vou ter de pôr o cartão agora?".
               Não vai. É isso que a frase diz, e é por isso que ela cita o
               cartão em vez de só repetir "grátis". */}
+          {/* A frase é a porta do teste: antes era só texto, e o /2meses não
+              tinha link em lugar nenhum do site — quem queria experimentar
+              tinha de achar o Instagram. */}
           <p className="avnTeste">
-            <b>Use por 2 meses grátis</b> e, se gostar, assine.
+            <a href={`${CAMINHO_DA_CAMPANHA}?de=site`}><b>Use por 2 meses grátis</b></a> e, se gostar, assine.
             <span>Sem cartão para começar.</span>
           </p>
         </div>

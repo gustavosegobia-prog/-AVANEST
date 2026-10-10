@@ -251,6 +251,16 @@ export default async function PlanosPage() {
       </section>
 
       <section className="planosGrade" id="planos">
+        {/* Sem plano nenhum (o banco não respondeu), a grade ficava vazia: sem
+            preço, sem botão e sem dizer nada. Quem chegou para ver o preço
+            precisa de uma saída. */}
+        {planos.length === 0 && (
+          <div className="planosIndisponivel" role="status">
+            <h2>Não conseguimos carregar os preços agora.</h2>
+            <p>Tente de novo em alguns minutos, ou fale com a gente: respondemos com a tabela na hora.</p>
+            <a className="planoBotao" href={WHATSAPP + encodeURIComponent("Olá! Quero ver os planos e preços do AVANEST.")} target="_blank" rel="noreferrer">Falar no WhatsApp</a>
+          </div>
+        )}
         {planos.map((plano) => {
           // A campanha agora vale para qualquer plano: são meses grátis, não um
           // preço especial de um plano só.
@@ -264,7 +274,7 @@ export default async function PlanosPage() {
               className={`planoCard${plano.destaque ? " destacado" : ""}${plano.sob_consulta ? " sobConsulta" : ""}`}
             >
               <div className="planoSelos">
-                {plano.destaque && <span className="planoSelo escolhido">Mais escolhido</span>}
+                {plano.destaque && <span className="planoSelo escolhido">Recomendado</span>}
                 {daCampanha && (
                   <span className="planoSelo fundador">
                     <Icone nome="estrela" tamanho={13} /> {vagas!.rotulo}
@@ -296,11 +306,6 @@ export default async function PlanosPage() {
                 </p>
               )}
 
-              {daCampanha && (
-                <p className="planoFundadorNota">
-                  {vagas!.meses_gratis} {vagas!.meses_gratis === 1 ? "mês" : "meses"} sem cobrança para quem assinar durante a campanha.
-                </p>
-              )}
 
               {plano.sob_consulta ? (
                 <a className="planoBotao" href={propostaHospital} target="_blank" rel="noreferrer">

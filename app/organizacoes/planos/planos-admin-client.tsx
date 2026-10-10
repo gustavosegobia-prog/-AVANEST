@@ -235,7 +235,7 @@ export function PlanosAdminClient({
             <span className="planoAdminNome">
               <strong>
                 {plano.nome}
-                {plano.destaque && <em className="planoAdminTag">Mais escolhido</em>}
+                {plano.destaque && <em className="planoAdminTag">Recomendado</em>}
                 {plano.codigo === campanha?.plano_codigo && (
                   <em className="planoAdminTag campanha">Campanha</em>
                 )}
