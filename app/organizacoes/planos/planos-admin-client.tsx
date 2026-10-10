@@ -216,6 +216,13 @@ export function PlanosAdminClient({
         </div>
 
         <p className="campanhaAjuda">
+          <b>Os meses grátis daqui não entram mais no checkout.</b> A oferta é o
+          teste de 2 meses, para todo mundo: quem assina durante o teste paga a
+          primeira vez quando ele acaba, e quem assina depois paga na hora. Somar
+          os meses da campanha dava até quatro meses a quem assinava no fim do
+          teste.
+        </p>
+        <p className="campanhaAjuda">
           Encerrar a promoção faz os novos clientes pagarem o preço de tabela do
           plano {planoDaCampanha?.nome ?? "da campanha"}. Quem já entrou como
           fundador continua pagando o valor que contratou. Reativar abre a

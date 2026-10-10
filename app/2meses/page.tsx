@@ -60,7 +60,7 @@ export default async function DoisMesesPage({
           <p>Avaliação pré-anestésica, escala e financeiro do serviço de anestesia em um sistema só.</p>
         </div>
         <div className="avnLoginContent avnCampanha">
-          <p className="avnCampanhaSelo">Oferta de lançamento</p>
+          <p className="avnCampanhaSelo">Teste grátis</p>
           <h1>Use por {MESES_DE_TESTE} meses grátis.<br/>Se gostar, assine.</h1>
           <p className="avnCampanhaLead">
             Sem cartão de crédito para começar, sem cobrança automática e sem fidelidade.

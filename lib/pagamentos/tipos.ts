@@ -33,6 +33,17 @@ export type NovaAssinatura = {
    */
   mesesGratis?: number;
   /**
+   * Até quando a organização não paga: o fim do teste grátis que ela já está
+   * usando. Quando vem, manda no lugar de `mesesGratis`.
+   *
+   * A oferta é "2 meses grátis" — e são dois no total. Somar os meses da
+   * campanha no checkout dava mais dois a quem já tinha usado o teste: quatro
+   * meses para quem assinava no fim do teste, dois para quem assinava no
+   * começo. Agora quem assina durante o teste paga a primeira vez quando ele
+   * acaba, e quem assina depois paga na hora. `null`: sem período grátis.
+   */
+  gratisAte?: Date | null;
+  /**
    * O cupom de desconto, já conferido no gateway.
    *
    * Objeto, e não uma string com o código: quem chama tem de ter ido buscar o

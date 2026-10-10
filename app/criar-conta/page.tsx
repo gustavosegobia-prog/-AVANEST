@@ -45,12 +45,6 @@ export default async function CriarContaPage({
     const { data: planoData } = await supabase
       .from("planos").select("nome,preco_mensal,preco_por_profissional")
       .eq("codigo", plano).eq("ativo", true).maybeSingle();
-    const { data: vagasData } = await supabase.rpc("vagas_fundador");
-    const vagas = Array.isArray(vagasData) ? vagasData[0] : vagasData;
-    // A campanha vale para qualquer plano agora: são meses grátis, não um
-    // preço especial de um plano só. A data de término já entra no `ativa`.
-    const mesesGratis = Number(vagas?.meses_gratis ?? 0);
-    const naCampanha = vagas?.ativa === true && mesesGratis > 0;
     const reais = (valor: number) =>
       Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -69,8 +63,8 @@ export default async function CriarContaPage({
                 {planoData.preco_por_profissional != null
                   ? <>por <b>{reais(Number(planoData.preco_por_profissional))} por anestesiologista/mês</b></>
                   : <>por <b>{reais(Number(planoData.preco_mensal))}/mês</b></>}
-                {naCampanha && <> — com <b>{mesesGratis} {mesesGratis === 1 ? "mês" : "meses"} grátis</b> pela campanha de lançamento</>}.
-                {" "}Depois de criar a conta você escolhe individual ou grupo e conclui o pagamento.
+                {" "}— com <b>{MESES_DE_TESTE} meses grátis</b>: a primeira cobrança só vence quando o teste acabar.
+                {" "}Depois de criar a conta você escolhe individual ou grupo e conclui a assinatura.
               </p>
             ) : (
               <p>Crie sua conta para escolher o plano e concluir a assinatura.</p>

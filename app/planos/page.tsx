@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 import { Icone } from "@/components/icone";
+import { MESES_DE_TESTE } from "@/lib/teste-gratis";
 
 // Vitrine pública de preços.
 //
@@ -28,14 +29,11 @@ export const metadata: Metadata = {
   // capa, que é bem pior do que não ter nenhum.
   alternates: { canonical: "/planos" },
   title: "Planos e preços | AVANEST",
-  // Sem número de vagas aqui: metadata é estática, e um "100 primeiros"
-  // escrito à mão sobrevive à mudança da campanha e passa a mentir. O número
-  // que vale aparece na página, vindo do banco.
   description:
-    "Escala, avaliação pré-anestésica, produção e fluxo de caixa — do anestesiologista sozinho ao grupo inteiro. Oferta de lançamento por tempo limitado.",
+    "Escala, avaliação pré-anestésica, produção e fluxo de caixa — do anestesiologista sozinho ao grupo inteiro. 2 meses grátis, sem cartão para começar.",
 };
 
-// A página mostra contagem de vagas: cachear daria número velho.
+// Preço vem do banco e o botão depende de quem está logado: nada de cache.
 export const dynamic = "force-dynamic";
 
 const WHATSAPP = "https://wa.me/5541997870810?text=";
@@ -58,11 +56,7 @@ const querPlano = (nome: string) =>
  * para 100 é pior do que não ter FAQ — e é exatamente o que acontece quando o
  * número é digitado uma segunda vez.
  */
-const perguntas = (a: {
-  mesesGratis: number | null;
-  terminaEm: string | null;
-  suporte: string;
-}) => [
+const perguntas = () => [
   {
     p: "Preciso pagar taxa de instalação ou assinar contrato de fidelidade?",
     r: "Não. O AVANEST não cobra taxa de instalação e não exige fidelidade. O cancelamento é feito pela sua própria conta, em Admin › Assinatura, a qualquer momento e sem passar por atendimento: não há nova cobrança, e o acesso continua até o fim do período que você já pagou.",
@@ -71,16 +65,14 @@ const perguntas = (a: {
     p: "Se eu cancelar, recebo o dinheiro de volta?",
     r: "Cancelando nos primeiros 14 dias depois da cobrança, o valor daquele mês é devolvido pela mesma forma de pagamento. Depois disso o mês em curso não é reembolsado, mas o acesso continua até o fim dele e não há nova cobrança. A tela mostra em que dia do mês você está antes de confirmar o cancelamento.",
   },
-  a.mesesGratis
-    ? {
-        p: `Como funciona a campanha de ${a.mesesGratis} ${a.mesesGratis === 1 ? "mês" : "meses"} grátis?`,
-        r:
-          `Quem contrata durante a campanha não paga os ${a.mesesGratis} primeiros ${a.mesesGratis === 1 ? "mês" : "meses"}: ` +
-          `a assinatura fica ativa desde o primeiro dia e a primeira cobrança só vence depois desse período. ` +
-          `Não é desconto no valor — o preço mensal segue o do seu plano, e não sobe na renovação por causa da campanha.` +
-          (a.terminaEm ? ` A campanha vale para quem assinar até ${a.terminaEm}.` : ""),
-      }
-    : null,
+  {
+    p: `Como funcionam os ${MESES_DE_TESTE} meses grátis?`,
+    r:
+      `Você cria a conta e usa o AVANEST por ${MESES_DE_TESTE} meses sem pagar nada e sem cadastrar cartão. ` +
+      `No teste ficam abertas a ficha anestésica e a escala; Recepção e Financeiro abrem ao assinar. ` +
+      `Se assinar durante o teste, a primeira cobrança só vence quando ele acaba — os dias que faltam não se perdem. ` +
+      `Não é desconto: depois do teste, o preço mensal é o do seu plano. Se não assinar, nada é apagado: os dados ficam guardados e voltam a ser editáveis quando você assinar.`,
+  },
   {
     p: "Como escolho o plano certo?",
     r: "Pelo tamanho da equipe. Cada plano atende a uma faixa de anestesiologistas, indicada no próprio cartão aqui em cima, e o preço é fechado: não varia com a quantidade de avaliações nem com o número de pacientes. Só contam anestesiologistas ativos com CRM — recepção, financeiro e administração não ocupam vaga.",
@@ -119,19 +111,6 @@ type Plano = {
   sob_consulta: boolean;
 };
 
-type Vagas = {
-  ativa: boolean;
-  limite: number;
-  ocupadas: number;
-  restantes: number;
-  meses_gratis: number;
-  termina_em: string | null;
-  preco: number;
-  preco_padrao: number | null;
-  rotulo: string;
-  plano_codigo: string;
-};
-
 const INCLUSO = [
   "Suporte",
   "Atualizações gratuitas",
@@ -147,9 +126,8 @@ const reais = (valor: number) =>
 export default async function PlanosPage() {
   const supabase = await createClient();
 
-  const [{ data: planosData }, { data: vagasData }, { data: { user } }] = await Promise.all([
+  const [{ data: planosData }, { data: { user } }] = await Promise.all([
     supabase.from("planos").select("*,preco_por_profissional").eq("ativo", true).order("ordem"),
-    supabase.rpc("vagas_fundador"),
     supabase.auth.getUser(),
   ]);
 
@@ -167,23 +145,10 @@ export default async function PlanosPage() {
     podeContratar ? `/assinatura?plano=${codigo}` : `/criar-conta?plano=${codigo}`;
 
   const planos = (planosData ?? []) as Plano[];
-  const vagas = (Array.isArray(vagasData) ? vagasData[0] : vagasData) as Vagas | null;
-
-  // A campanha só vale enquanto está ligada E sobra vaga. Depois disso a
-  // página inteira passa a falar no preço de tabela, sem nenhuma edição.
-  // A data de término já entra no `ativa` que a função devolve, então aqui
-  // basta perguntar se a campanha está valendo e se ela dá algum mês.
-  const campanhaVale = Boolean(vagas?.ativa) && Number(vagas?.meses_gratis ?? 0) > 0;
-  const planoDaCampanha = vagas?.plano_codigo ?? "";
-
-  // A validade da oferta acompanha o fim da campanha quando há um; sem
-  // campanha, o último dia do ano em curso. O Google recusa oferta com preço e
-  // sem validade, e uma data no passado é pior do que nenhuma — por isso ela é
-  // calculada, e não escrita à mão.
-  const fimDaCampanha = vagas?.termina_em?.slice(0, 10);
+  // O Google recusa oferta com preço e sem validade, e uma data no passado é
+  // pior do que nenhuma — por isso ela é calculada, e não escrita à mão.
   const fimDoAno = `${new Date().getFullYear()}-12-31`;
-  const oferta = ofertaDosPlanos(planos,
-    fimDaCampanha && fimDaCampanha > fimDoAno ? fimDaCampanha : fimDoAno);
+  const oferta = ofertaDosPlanos(planos, fimDoAno);
 
   return (
     <>
@@ -210,33 +175,27 @@ export default async function PlanosPage() {
       </header>
 
       <section className="planosHero">
-        {campanhaVale && (
-          <p className="planosCampanha">
-            <Icone nome="estrela" tamanho={18} />
-            <span>
-              <b>{vagas!.meses_gratis} {vagas!.meses_gratis === 1 ? "mês grátis" : "meses grátis"}</b>{" "}
-              para quem assinar
-              {vagas!.termina_em
-                ? <> até {new Date(`${vagas!.termina_em}T12:00:00`).toLocaleDateString("pt-BR")}</>
-                : " durante a campanha"}.
-              {" "}A primeira cobrança só vence depois desse período.
-            </span>
-          </p>
-        )}
         <h1>Um preço para cada tamanho de equipe.</h1>
-        {/* A promessa REPETIDA aqui, e não só na capa: esta é a página em que
-            a pessoa está olhando número, e é aqui que ela decide se fecha a
-            aba. Quem chega direto no /planos por um link nunca viu a capa. */}
+        {/* UMA OFERTA SÓ, dita uma vez. Antes eram quatro frases de grátis ao
+            mesmo tempo — a faixa da campanha, "use por 2 meses", um selo em
+            cada cartão e uma nota embaixo de cada preço — e a pessoa não sabia
+            se eram dois meses ou quatro, nem se precisava de cartão. São dois,
+            sem cartão, e quem assina durante o teste só paga quando ele acaba.
+            Quem chega direto no /planos por um link nunca viu a capa, então a
+            oferta está aqui também. */}
+        <p className="planosCampanha">
+          <Icone nome="estrela" tamanho={18} />
+          <span>
+            <b>{MESES_DE_TESTE} meses grátis</b>, sem cartão para começar. Se assinar durante o
+            teste, a primeira cobrança só vence quando ele acaba.
+          </span>
+        </p>
+        {/* O ESCOPO DO TESTE dito aqui, e não só descoberto lá dentro.
+            Vender "dois meses grátis" e entregar metade do sistema sem avisar
+            é a forma mais rápida de transformar um teste em reclamação. */}
         <p className="planosTeste">
-          <b>Use por 2 meses grátis</b> e, se gostar, assine. Sem cartão para começar.
-          {/* O ESCOPO DO TESTE dito aqui, e não só descoberto lá dentro.
-              Vender "dois meses grátis" e entregar metade do sistema sem avisar
-              é a forma mais rápida de transformar um teste em reclamação. Fica
-              nesta página e não na capa: aqui a pessoa está comparando o que
-              recebe por cada preço, que é exatamente a pergunta que esta frase
-              responde. */}
-          <span> No teste você usa a ficha anestésica e a escala; Recepção
-          e Financeiro abrem ao assinar.</span>
+          No teste você usa a ficha anestésica e a escala; Recepção e Financeiro abrem ao assinar.{" "}
+          <Link href="/2meses?de=planos">Começar o teste grátis</Link>
         </p>
         <p className="planosLead">
           Do anestesiologista que trabalha sozinho ao grupo de anestesia com recepção,
@@ -262,9 +221,6 @@ export default async function PlanosPage() {
           </div>
         )}
         {planos.map((plano) => {
-          // A campanha agora vale para qualquer plano: são meses grátis, não um
-          // preço especial de um plano só.
-          const daCampanha = campanhaVale;
           const porProfissional = plano.preco_por_profissional;
           const preco = plano.preco_mensal;
 
@@ -275,11 +231,6 @@ export default async function PlanosPage() {
             >
               <div className="planoSelos">
                 {plano.destaque && <span className="planoSelo escolhido">Recomendado</span>}
-                {daCampanha && (
-                  <span className="planoSelo fundador">
-                    <Icone nome="estrela" tamanho={13} /> {vagas!.rotulo}
-                  </span>
-                )}
               </div>
 
               <h2>{plano.nome}</h2>
@@ -343,13 +294,7 @@ export default async function PlanosPage() {
             Enter e por Espaço, o leitor de tela anuncia recolhido/expandido, e
             o buscador enxerga a resposta mesmo fechada. */}
         <div className="planosFaqLista">
-          {perguntas({
-            mesesGratis: campanhaVale ? Number(vagas!.meses_gratis) : null,
-            terminaEm: vagas?.termina_em
-              ? new Date(`${vagas.termina_em}T12:00:00`).toLocaleDateString("pt-BR")
-              : null,
-            suporte: WHATSAPP,
-          })
+          {perguntas()
             .filter((item) => item !== null)
             .map((item) => (
               <details key={item!.p}>

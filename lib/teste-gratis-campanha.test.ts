@@ -61,9 +61,18 @@ test("a promessa aparece na capa e na página de planos", () => {
   // está olhando número — é onde a objeção do cartão nasce.
   for (const tela of ["app/page.tsx", "app/planos/page.tsx"]) {
     const codigo = ler(tela);
-    assert.match(codigo, /Use por 2 meses grátis/, `a promessa sumiu de ${tela}`);
-    assert.match(codigo, /Sem cartão para começar/, `${tela} não responde à objeção do cartão`);
+    assert.match(codigo, /2 meses grátis|\{MESES_DE_TESTE\} meses grátis/, `a promessa sumiu de ${tela}`);
+    assert.match(codigo, /sem cartão para começar/i, `${tela} não responde à objeção do cartão`);
   }
+});
+
+test("uma oferta só: sem preço de fundador e sem selo de campanha nos cartões", () => {
+  // Eram quatro frases de grátis ao mesmo tempo, e a pessoa não sabia se eram
+  // dois meses ou quatro. A oferta é o teste de 2 meses, dita uma vez.
+  const planos = ler("app/planos/page.tsx");
+  assert.doesNotMatch(planos, /vagas_fundador|planoSelo fundador|planoFundadorNota/);
+  assert.doesNotMatch(ler("app/termos/page.tsx"), /Preço de fundador/);
+  assert.doesNotMatch(ler("app/assinatura/page.tsx"), /Preço de fundador garantido|Promoção para os/);
 });
 
 test("a faixa do teste só aparece para quem está testando", () => {

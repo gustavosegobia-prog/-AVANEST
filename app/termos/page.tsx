@@ -24,7 +24,7 @@ export default function TermosPage() {
     <PaginaLegal
       titulo="Termos de Uso"
       resumo="Estas condições regem o uso do AVANEST. Ao criar uma conta ou usar o sistema, você concorda com elas."
-      vigencia="19 de agosto de 2026"
+      vigencia="10 de outubro de 2026"
     >
       <h2>1. Quem somos</h2>
       <p>
@@ -76,10 +76,10 @@ export default function TermosPage() {
         é necessário mudar de plano.
       </p>
       <p>
-        <b>Preço de fundador:</b> quando a campanha de lançamento estiver ativa e houver vaga, o
-        valor promocional fica garantido enquanto a assinatura seguir ativa e ininterrupta.
-        Cancelada a assinatura, a vaga retorna para o grupo de vagas disponíveis e a organização
-        <b> não retorna à campanha</b> — uma nova contratação será pelo preço de tabela vigente.
+        <b>Primeira cobrança:</b> quem assina durante o período de teste (item 6) só é cobrado
+        quando o teste termina — os dias que faltam não se perdem. Quem assina depois do teste é
+        cobrado no ato da contratação. O período de teste não é desconto: depois dele, vale o preço
+        mensal do plano contratado.
       </p>
       <p>
         <b>Cancelamento:</b> pode ser feito a qualquer momento pela própria conta, em
@@ -99,8 +99,14 @@ export default function TermosPage() {
 
       <h2>6. Período de teste</h2>
       <p>
-        Novas organizações começam com um período de teste gratuito. Encerrado o período sem
-        contratação, o acesso é bloqueado até que um plano seja contratado.
+        Novas organizações usam o AVANEST por <b>2 meses grátis</b>, sem cadastrar cartão: o teste
+        vai até o último dia do segundo mês seguinte ao cadastro. No teste ficam disponíveis a
+        avaliação pré-anestésica e a escala; Recepção e Financeiro são liberados com a assinatura.
+      </p>
+      <p>
+        Encerrado o teste sem contratação, o lançamento de novos dados fica bloqueado até que um
+        plano seja contratado. Nada é apagado: os dados continuam guardados e voltam a ser
+        editáveis com a assinatura, observado o item 8.
       </p>
 
       <h2>7. Seus dados são seus</h2>

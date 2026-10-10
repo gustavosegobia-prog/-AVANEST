@@ -4712,6 +4712,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .planosTeste{margin:6px 0 0;font-size:15.5px;color:#c5d4df}
 .planosTeste b{color:#fff;font-weight:750}
 .planosTeste span{display:block;margin-top:3px;font-size:14px;color:#9dbdd6}
+.planosTeste a{color:#fff;font-weight:750;text-decoration:underline;text-decoration-color:#43c8b8;text-decoration-thickness:2px;text-underline-offset:4px;white-space:nowrap}
 
 /* ── Edição do termo de consentimento (Admin) ───────────────────────────────
    Tudo em tokens, e não em cor fixa: o painel é uma parede de texto longo, e

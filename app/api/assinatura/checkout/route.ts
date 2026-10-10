@@ -9,7 +9,7 @@ import { normalizarCupom } from "@/lib/pagamentos/cupom";
 // grava o aceite para não sair de sincronia com o texto: mudou /termos ou
 // /privacidade, muda aqui, e os aceites novos passam a apontar para a versão
 // nova sem mexer nos antigos.
-const VERSAO_DOCUMENTOS = "2026-08-19";
+const VERSAO_DOCUMENTOS = "2026-10-10";
 
 // Abre o checkout da assinatura mensal.
 //
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   // vínculo — a renovação da primeira chegaria sem dono. Trocar de plano ou
   // encerrar é pelo painel da conta.
   const { data: atual } = await supabase
-    .from("instituicoes").select("plano,pagamento_assinatura_id")
+    .from("instituicoes").select("plano,pagamento_assinatura_id,assinatura_ate")
     .eq("id", perfil.institution_id).maybeSingle();
   if (atual?.plano === "ativo" && atual.pagamento_assinatura_id) {
     return NextResponse.json({
@@ -106,10 +106,12 @@ export async function POST(request: NextRequest) {
   }
   const reserva = Array.isArray(reservaData) ? reservaData[0] : reservaData;
   const valorMensal = Number(reserva?.preco ?? 0);
-  // Os meses grátis saem da campanha, no banco, junto com o preço. Vêm daqui e
-  // não de uma constante no código para que ligar, desligar ou encurtar a
-  // campanha seja um update de uma linha, sem deploy.
-  const mesesGratis = Number(reserva?.meses_gratis ?? 0);
+  // OS 2 MESES GRÁTIS SÃO O TESTE, e são dois no total. Quem assina durante o
+  // teste só paga quando ele acaba — os dias que faltam não se perdem; quem
+  // assina depois paga na hora. Antes, os meses da campanha eram somados de
+  // novo aqui, e quem assinava no fim do teste ganhava quatro meses.
+  const emTeste = atual?.plano === "trial" && atual?.assinatura_ate;
+  const gratisAte = emTeste ? new Date(String(atual!.assinatura_ate)) : null;
   if (!(valorMensal > 0)) {
     return NextResponse.json({ error: "Não foi possível calcular o valor do plano." }, { status: 500 });
   }
@@ -160,7 +162,8 @@ export async function POST(request: NextRequest) {
       plano: String(reserva?.plano_nome ?? codigo),
       emailPagador: user.email ?? "",
       valorMensal,
-      mesesGratis,
+      mesesGratis: 0,
+      gratisAte,
       cupom,
       retornoSucesso: `${site}/assinatura/retorno`,
       retornoCancelado: `${site}/dashboard`,

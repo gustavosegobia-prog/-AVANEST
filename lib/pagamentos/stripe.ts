@@ -184,10 +184,25 @@ function traduzirCupom(promo: PromotionCode): Cupom | null {
   };
 }
 
+/**
+ * O fim do teste, em segundos, para o `trial_end` do Stripe — ou nada.
+ *
+ * O Stripe recusa a sessão inteira com `trial_end` a menos de 48 horas. Quem
+ * assina no último dia do teste paga na hora: perde-se no máximo um dia de
+ * teste, em vez de a pessoa ver um erro no lugar do pagamento.
+ */
+export function fimDoTesteNoStripe(ate: Date | null | undefined, agora = new Date()): number | undefined {
+  if (!ate || !Number.isFinite(ate.getTime())) return undefined;
+  if (ate.getTime() - agora.getTime() < 49 * 3600_000) return undefined;
+  return Math.floor(ate.getTime() / 1000);
+}
+
 type SessaoCheckout = { id: string; url: string | null };
 
 export async function criarAssinatura(dados: NovaAssinatura): Promise<AssinaturaCriada> {
-  const trialEm = fimDoPeriodoGratis(dados.mesesGratis ?? 0);
+  const trialEm = dados.gratisAte !== undefined
+    ? fimDoTesteNoStripe(dados.gratisAte)
+    : fimDoPeriodoGratis(dados.mesesGratis ?? 0);
   const centavos = Math.round(dados.valorMensal * 100);
   if (!(centavos > 0)) throw new Error("Valor mensal inválido para o Stripe.");
 

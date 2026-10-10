@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
-import { Icone } from "@/components/icone";
 import { AssinarButton } from "./assinar-button";
 import { SairButton } from "./sair-button";
 
@@ -68,6 +67,7 @@ export default async function AssinaturaPage({
   const ate = data(assinatura.assinatura_ate ?? null);
   const situacao = String(assinatura.plano ?? "");
   const jaEFundador = assinatura.preco_fundador === true;
+  const emTeste = liberada && situacao === "trial";
 
   // O plano em foco é o que veio da vitrine; sem isso, o que a organização já
   // contratou; sem isso, a sugestão do banco pelo tamanho da equipe.
@@ -75,10 +75,10 @@ export default async function AssinaturaPage({
     planos.find((p) => p.codigo === escolhido && !p.sob_consulta)
     ?? planos.find((p) => p.codigo === assinatura.plano_codigo);
 
-  // Enquanto a campanha valer e a organização couber nela, o preço mostrado é
-  // o de lançamento. Quem já é fundador mantém o preço congelado que contratou.
-  // Campanha de tempo: vale enquanto estiver ativa e der algum mês grátis. A
-  // data de término já entra no `ativa` que a função devolve.
+  // O valor mostrado espelha o que reservar_plano cobra no checkout. A
+  // campanha antiga não aparece mais para o cliente (a oferta é só o teste de
+  // 2 meses), mas uma organização antiga que tenha preço contratado continua
+  // vendo — e pagando — o valor dela.
   const campanhaVale = Boolean(vagas?.ativa) && Number(vagas?.meses_gratis ?? 0) > 0;
   const alvoNaCampanha = Boolean(alvo) && alvo!.codigo === vagas?.plano_codigo;
   const precoFundador = jaEFundador && alvoNaCampanha;
@@ -121,24 +121,18 @@ export default async function AssinaturaPage({
               <div className="avnPlanoEscolhido">
                 <div className="avnPlanoEscolhidoTopo">
                   <strong>Plano {alvo.nome}</strong>
-                  {precoFundador && (
-                    <span className="planoSelo fundador">
-                      <Icone nome="estrela" tamanho={13} /> {vagas!.rotulo}
-                    </span>
-                  )}
                 </div>
                 <small>{alvo.descricao}</small>
                 <p className="avnPlanoValor">
                   <strong>{dinheiro(mensal)}</strong><span>/mês</span>
                 </p>
-                {precoFundador ? (
+                {/* A nota diz quando vence a primeira cobrança, que é o que a
+                    pessoa precisa saber aqui. Antes falava em "preço de
+                    fundador" e em "promoção para os N primeiros" — e N era o
+                    limite técnico da campanha, um número de dez dígitos. */}
+                {emTeste && ate ? (
                   <p className="avnPlanoNota sucesso">
-                    Preço de fundador garantido enquanto a assinatura seguir ativa.
-                  </p>
-                ) : precoDaCampanha ? (
-                  <p className="avnPlanoNota sucesso">
-                    Promoção para os {vagas!.limite} primeiros: este valor fica
-                    travado para sempre enquanto a assinatura seguir ativa.
+                    Você está no teste grátis: assinando agora, a primeira cobrança só vence em {ate}.
                   </p>
                 ) : null}
               </div>

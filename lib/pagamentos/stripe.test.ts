@@ -1,7 +1,8 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { conferirWebhook, fimDoPeriodoGratis, lerEvento } from "./stripe.ts";
+import fs from "node:fs";
+import { conferirWebhook, fimDoPeriodoGratis, fimDoTesteNoStripe, lerEvento } from "./stripe.ts";
 
 // O que estes testes protegem é dinheiro e acesso: uma conta errada aqui vira
 // cliente pagando sem entrar, ou entrando sem pagar. Nenhum deles chama a API
@@ -14,6 +15,33 @@ function assinar(corpo: string, t: number, segredo = SEGREDO) {
   const v1 = createHmac("sha256", segredo).update(`${t}.${corpo}`, "utf8").digest("hex");
   return `t=${t},v1=${v1}`;
 }
+
+// ---------------------------------------------------------------------------
+describe("2 meses grátis no total: o período sem cobrança é o resto do teste", () => {
+  const agora = new Date("2026-10-10T12:00:00Z");
+
+  it("quem assina no meio do teste só paga quando ele acaba", () => {
+    const fim = new Date("2026-12-31T23:59:59.999Z");
+    assert.equal(fimDoTesteNoStripe(fim, agora), Math.floor(fim.getTime() / 1000));
+  });
+
+  it("quem assina sem teste, ou com o teste vencido, paga na hora", () => {
+    assert.equal(fimDoTesteNoStripe(null, agora), undefined);
+    assert.equal(fimDoTesteNoStripe(new Date("2026-10-01T00:00:00Z"), agora), undefined);
+  });
+
+  it("a menos de 48 horas do fim, paga na hora — o Stripe recusaria a sessão", () => {
+    assert.equal(fimDoTesteNoStripe(new Date("2026-10-11T12:00:00Z"), agora), undefined);
+    assert.ok(fimDoTesteNoStripe(new Date("2026-10-13T12:00:00Z"), agora));
+  });
+
+  it("o checkout não soma de novo os meses da campanha", () => {
+    // Era assim que quem assinava no fim do teste ganhava quatro meses.
+    const rota = fs.readFileSync(new URL("../../app/api/assinatura/checkout/route.ts", import.meta.url), "utf8");
+    assert.doesNotMatch(rota, /reserva\?\.meses_gratis/);
+    assert.match(rota, /mesesGratis: 0,\s*\n\s*gratisAte,/);
+  });
+});
 
 // ---------------------------------------------------------------------------
 describe("fimDoPeriodoGratis", () => {
