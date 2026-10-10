@@ -98,6 +98,8 @@ import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
 import { lerDinheiro } from "@/lib/dinheiro";
 import { senhaRecusada } from "@/lib/senha-recusada";
+import { exigeDuasEtapas } from "@/lib/duas-etapas";
+import { DuasEtapasNaConta } from "@/components/duas-etapas-na-conta";
 import { explicarEscala, podeEscolherEscalista, podeMontarEscala } from "@/lib/escalista";
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
 import { InstalarNaTela } from "@/components/instalar-na-tela";
@@ -1183,6 +1185,7 @@ export function DashboardClient({
               <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
             </div>
           </form>
+          <DuasEtapasNaConta obrigatorio={exigeDuasEtapas(perfil)}/>
       </Janela>}
 
       {/* A lista sem preço junta com a de preços: quem tem Financeiro recebe as

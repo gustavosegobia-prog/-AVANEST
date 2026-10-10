@@ -38,6 +38,7 @@ export function UpdatePasswordForm() {
   const [checking, setChecking] = useState(true);
   const [linkInvalido, setLinkInvalido] = useState(false);
   const [error, setError] = useState("");
+  const [pedeCodigo, setPedeCodigo] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -117,7 +118,13 @@ export function UpdatePasswordForm() {
     if (updateError) {
       // Senha fraca ou vazada não é link vencido: mandar pedir outro link faria
       // a pessoa refazer tudo e esbarrar na mesma senha.
-      setError(senhaRecusada(updateError) ?? "Não foi possível alterar a senha. Solicite um novo link de recuperação.");
+      // Com a verificação em duas etapas ativa, o Supabase só troca a senha
+      // depois do código ("insufficient_aal"). Não é link vencido: é o código.
+      const faltaCodigo = updateError.code === "insufficient_aal" || /aal|mfa/i.test(updateError.message);
+      setPedeCodigo(faltaCodigo);
+      setError(senhaRecusada(updateError) ?? (faltaCodigo
+        ? "Sua conta usa verificação em duas etapas: confirme o código do aplicativo autenticador e volte para salvar a nova senha."
+        : "Não foi possível alterar a senha. Solicite um novo link de recuperação."));
       setLoading(false);
       return;
     }
@@ -136,6 +143,7 @@ export function UpdatePasswordForm() {
       <label htmlFor="password-confirmation">Confirme a nova senha</label>
       <input id="password-confirmation" name="confirmation" type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="Digite novamente" minLength={8} required disabled={checking || linkInvalido} />
       {error && <p className="loginError" role="alert">{error}</p>}
+      {pedeCodigo && <a className="avnLoginSubmit avnCampanhaBotao" href="/duas-etapas?depois=%2Fatualizar-senha">Confirmar o código</a>}
       <button className="avnLoginSubmit" type="submit" disabled={loading || checking || linkInvalido}>
         {loading ? "Alterando..." : checking ? "Validando link..." : "Salvar nova senha"}
       </button>

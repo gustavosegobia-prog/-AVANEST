@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { exigeDuasEtapas } from "@/lib/duas-etapas";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
@@ -34,6 +35,12 @@ export default async function DashboardPage({
   // fecha em silêncio vira chamado de suporte com raiva.
   if (perfil.status !== "ativo") {
     redirect(perfil.pausada_motivo === "inatividade" ? "/login?conta=pausada" : "/login");
+  }
+  // Proprietário e administrador precisam da verificação em duas etapas. O
+  // login já manda cadastrar; esta linha alcança quem estava com a sessão
+  // aberta de antes da regra existir.
+  if (exigeDuasEtapas(perfil) && !user.factors?.some((f) => f.status === "verified")) {
+    redirect("/duas-etapas?depois=%2Fdashboard");
   }
 
   // AS TRÊS JUNTAS, e não uma depois da outra.

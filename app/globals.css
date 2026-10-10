@@ -6159,3 +6159,19 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 /* O botão principal quebra em duas linhas no telefone ("Agendar uma conversa
    de 15 minutos"): centralizado e com entrelinha de botão, e não de parágrafo. */
 .avnActions .avnPrimary,.avnActions .avnSecondary{text-align:center;line-height:1.25;padding-top:10px;padding-bottom:10px}
+
+/* --- Verificação em duas etapas (/duas-etapas e o passo do código no login) */
+.duasEtapasCodigo{font-size:26px!important;letter-spacing:.35em;text-align:center;font-variant-numeric:tabular-nums}
+.duasEtapasPassos{margin:4px 0 18px;padding-left:22px;display:grid;gap:8px;color:#425466;line-height:1.5;list-style:decimal}
+.duasEtapasPassos li::marker{font-weight:800;color:#0b6aa8}
+.duasEtapasQr{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;margin-bottom:6px}
+.duasEtapasQr img{display:block;width:196px;height:196px;border:1px solid #dce5eb;border-radius:12px;background:#fff;padding:6px}
+.duasEtapasQr p{margin:0 0 6px}
+.duasEtapasSegredo{display:block;font-size:14px;font-weight:700;letter-spacing:.06em;word-break:break-all;background:#f2f6f8;border-radius:8px;padding:8px 10px;color:#0d2a42}
+.duasEtapasAjuda{font-size:13.5px;color:#5b6c7a;line-height:1.5;margin-top:14px}
+.duasEtapasAjuda a{color:#0b6aa8;font-weight:700}
+@media(max-width:560px){.duasEtapasQr{grid-template-columns:minmax(0,1fr);justify-items:center;text-align:center}}
+.contaDuasEtapas{margin-top:var(--esp-5);padding-top:var(--esp-5);border-top:1px solid var(--cor-borda)}
+.contaDuasEtapas h3{margin:0 0 var(--esp-2)}
+.contaDuasEtapas p{margin:0 0 var(--esp-3);color:var(--cor-tinta-fraca);line-height:1.5}
+.contaDuasEtapasAtiva{color:var(--cor-sucesso)}

@@ -12,6 +12,8 @@ export default async function OrganizacoesPage() {
   // A função no banco também recusa quem não é super-admin; aqui é só para não
   // mostrar uma tela vazia a quem não deveria vê-la.
   if (!perfil || perfil.status !== "ativo" || perfil.super_admin !== true) redirect("/dashboard");
+  // O operador da plataforma enxerga todas as organizações: o código é obrigatório.
+  if (!user.factors?.some((f) => f.status === "verified")) redirect("/duas-etapas?depois=%2Forganizacoes");
 
   const { data: organizacoes } = await supabase.rpc("listar_organizacoes");
 

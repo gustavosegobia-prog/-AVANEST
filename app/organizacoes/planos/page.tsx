@@ -12,6 +12,7 @@ export default async function PlanosAdminPage() {
   // As funções no banco também recusam quem não é super-admin; aqui é só para
   // não mostrar uma tela vazia a quem não deveria vê-la.
   if (!perfil || perfil.status !== "ativo" || perfil.super_admin !== true) redirect("/dashboard");
+  if (!user.factors?.some((f) => f.status === "verified")) redirect("/duas-etapas?depois=%2Forganizacoes%2Fplanos");
 
   const [{ data: planos }, { data: campanha }, { data: vagas }] = await Promise.all([
     supabase.from("planos").select("*").order("ordem"),
