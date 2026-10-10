@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { autorEmSchema } from "./autoria.ts";
-import { ID_DA_ORGANIZACAO, migalhas, ofertaDosPlanos, organizacao } from "./schema.ts";
+import { ID_DA_ORGANIZACAO, migalhas, ofertaDosPlanos, organizacao, paginaDeConteudo } from "./schema.ts";
 
 const plano = (extra: Partial<Parameters<typeof ofertaDosPlanos>[0][number]> = {}) => ({
   codigo: "solo", nome: "Solo", descricao: "Para quem trabalha sozinho",
@@ -89,7 +89,7 @@ test("o CNPJ da marcação é o mesmo impresso no rodapé", () => {
   // Dois números diferentes para a mesma empresa é o defeito que ninguém
   // confere e que desmente justamente a identidade que a marcação declara.
   const cnpj = organizacao().taxID;
-  for (const arquivo of ["../app/page.tsx", "../components/pagina-de-escore.tsx"]) {
+  for (const arquivo of ["../components/rodape-publico.tsx"]) {
     const texto = fs.readFileSync(new URL(arquivo, import.meta.url), "utf8");
     assert.ok(texto.includes(cnpj), `${arquivo} devia trazer o CNPJ ${cnpj}`);
   }
@@ -133,9 +133,25 @@ test("as páginas legais têm descrição de tamanho aproveitável", () => {
   // parágrafo, que não convida ninguém a clicar. Acima de 160 ele corta.
   for (const arquivo of ["../app/termos/page.tsx", "../app/privacidade/page.tsx"]) {
     const texto = fs.readFileSync(new URL(arquivo, import.meta.url), "utf8");
-    const achado = texto.match(/^\s*description: "(.+)",$/m);
+    const achado = texto.match(/^\s*descri(?:ption|cao): "(.+)",$/m);
     assert.ok(achado, `${arquivo} sem description`);
     const n = achado![1].length;
     assert.ok(n >= 100 && n <= 160, `${arquivo}: ${n} caracteres`);
   }
+});
+
+test("o guia clínico leva autor, revisor e data de revisão; a página do produto não", () => {
+  // Conteúdo que orienta conduta é avaliado por quem o assina. A página da
+  // escala, que é do produto, não tem revisão clínica a declarar — marcá-la
+  // como médica seria afirmar o que ela não é.
+  const base = { nome: "x", descricao: "y", caminho: "/x", revisadoEm: "2026-10-10" };
+  const guia = paginaDeConteudo({ ...base, medica: true }) as Record<string, unknown>;
+  assert.equal(guia["@type"], "MedicalWebPage");
+  assert.equal(guia.lastReviewed, "2026-10-10");
+  assert.deepEqual(guia.author, autorEmSchema());
+  assert.deepEqual(guia.reviewedBy, autorEmSchema());
+  const produto = paginaDeConteudo({ ...base, medica: false }) as Record<string, unknown>;
+  assert.equal(produto["@type"], "WebPage");
+  assert.equal(produto.reviewedBy, undefined);
+  assert.deepEqual(produto.publisher, { "@id": ID_DA_ORGANIZACAO });
 });

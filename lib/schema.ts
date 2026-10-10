@@ -185,5 +185,43 @@ export function organizacao() {
   };
 }
 
+/**
+ * A página que responde a uma busca: o guia de avaliação pré-anestésica, o da
+ * ficha anestésica, a página da escala médica.
+ *
+ * DUAS ESPÉCIES, e a diferença está no que o Google cobra de cada uma. O texto
+ * clínico é `MedicalWebPage`, com autor, revisor e data de revisão: conteúdo
+ * que orienta conduta é avaliado por quem o assina, e a assinatura é a mesma
+ * que aparece escrita na página (lib/autoria.ts). A página do produto é um
+ * `WebPage` comum — declará-la médica pediria uma revisão clínica que ela não
+ * tem do que ter.
+ *
+ * `publisher` só aponta a empresa do layout; repetir o objeto criaria uma
+ * segunda organização com o mesmo nome.
+ */
+export function paginaDeConteudo(a: {
+  nome: string; descricao: string; caminho: string; revisadoEm: string; medica: boolean;
+}) {
+  const pagina = {
+    "@context": "https://schema.org",
+    "@type": a.medica ? "MedicalWebPage" : "WebPage",
+    name: a.nome,
+    description: a.descricao,
+    url: `${SITE}${a.caminho}`,
+    inLanguage: "pt-BR",
+    dateModified: a.revisadoEm,
+    isPartOf: { "@type": "WebSite", name: "AVANEST", url: SITE },
+    publisher: { "@id": ID_DA_ORGANIZACAO },
+  };
+  if (!a.medica) return pagina;
+  return {
+    ...pagina,
+    lastReviewed: a.revisadoEm,
+    author: autorEmSchema(),
+    reviewedBy: autorEmSchema(),
+    audience: { "@type": "MedicalAudience", audienceType: "Anestesiologistas" },
+  };
+}
+
 /** Pronto para o `dangerouslySetInnerHTML` — o conteúdo é sempre nosso. */
 export const comoJson = (dados: unknown) => JSON.stringify(dados);

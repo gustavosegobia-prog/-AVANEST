@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import Link from "next/link";
 import Image from "next/image";
 import { AppLogo } from "@/components/app-logo";
 import { GlifoDoPasso } from "@/components/icones-de-instalacao";
+import { RodapePublico } from "@/components/rodape-publico";
 
 // Onde o botão "Baixar o app AVANEST" chega.
 //
@@ -24,13 +26,12 @@ import { GlifoDoPasso } from "@/components/icones-de-instalacao";
 // e-mail, lido no celular, muitas vezes por quem ainda não entrou no sistema
 // nenhuma vez. Uma parede de login aqui devolveria a pessoa para o começo.
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/app" },
-  title: "Instale o AVANEST no seu celular | AVANEST",
-  description:
-    "O passo a passo para pôr o AVANEST na tela de início do iPhone e do Android — "
+export const metadata: Metadata = paginaPublica({
+  titulo: "Instale o AVANEST no seu celular | AVANEST",
+  descricao: "O passo a passo para pôr o AVANEST na tela de início do iPhone e do Android — "
     + "e receber os avisos de plantão no aparelho.",
-};
+  caminho: "/app",
+});
 
 /**
  * Os quatro toques do iPhone, cada um com a tela que a pessoa vai ver.
@@ -270,15 +271,7 @@ export default function InstalarNoCelular() {
         </div>
       </section>
 
-      <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
-        <nav className="avnFooterLinks">
-          <Link href="/">Início</Link>
-          <Link href="/recursos">O que o AVANEST faz</Link>
-          <a href="/termos">Termos de Uso</a>
-          <a href="/privacidade">Política de Privacidade</a>
-        </nav>
-      </footer>
+      <RodapePublico />
     </main>
   );
 }

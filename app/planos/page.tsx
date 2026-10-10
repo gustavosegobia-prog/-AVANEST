@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import { comoJson, migalhas, ofertaDosPlanos } from "@/lib/schema";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 import { Icone } from "@/components/icone";
 import { MESES_DE_TESTE } from "@/lib/teste-gratis";
+import { RodapePublico } from "@/components/rodape-publico";
 
 // Vitrine pública de preços.
 //
@@ -18,20 +20,12 @@ import { MESES_DE_TESTE } from "@/lib/teste-gratis";
 // a URL crua não diz nada.
 const TRILHA = [{ nome: "Início", caminho: "/" }, { nome: "Planos e preços", caminho: "/planos" }];
 
-export const metadata: Metadata = {
-  // O endereço oficial desta página.
-  //
-  // Sem canonical, `avanest.com.br/x`, `www.avanest.com.br/x` e a mesma página
-  // com `?utm_source=...` são três endereços distintos para o buscador, que
-  // então divide entre eles a força que deveria ser de um só — e escolhe
-  // sozinho qual mostrar. O canonical não fica no layout de propósito: no Next
-  // ele é HERDADO, e um canonical no layout apontaria TODAS as páginas para a
-  // capa, que é bem pior do que não ter nenhum.
-  alternates: { canonical: "/planos" },
-  title: "Planos e preços | AVANEST",
-  description:
+export const metadata: Metadata = paginaPublica({
+  titulo: "Planos e preços | AVANEST",
+  descricao:
     "Escala, avaliação pré-anestésica, produção e fluxo de caixa — do anestesiologista sozinho ao grupo inteiro. 2 meses grátis, sem cartão para começar.",
-};
+  caminho: "/planos",
+});
 
 // Preço vem do banco e o botão depende de quem está logado: nada de cache.
 export const dynamic = "force-dynamic";
@@ -312,13 +306,7 @@ export default async function PlanosPage() {
         </p>
       </section>
 
-      <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
-        <nav className="avnFooterLinks">
-          <Link href="/termos">Termos de Uso</Link>
-          <Link href="/privacidade">Política de Privacidade</Link>
-        </nav>
-      </footer>
+      <RodapePublico />
     </main>
     </>
   );

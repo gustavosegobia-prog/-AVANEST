@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import { comoJson, migalhas } from "@/lib/schema";
 import { CalculadoraDeEscore } from "@/components/calculadora-de-escore";
 import { PaginaDeEscore, dadosDeEscore } from "@/components/pagina-de-escore";
@@ -11,13 +12,13 @@ const TRILHA = [
 ];
 const REVISADO_EM = "2026-08-27";
 
-export const metadata: Metadata = {
-  title: "Escore de Apfel: risco de náusea e vômito pós-operatório | AVANEST",
-  description:
-    "Calculadora do escore de Apfel para NVPO: os quatro fatores, a incidência esperada "
+export const metadata: Metadata = paginaPublica({
+  titulo: "Escore de Apfel: risco de náusea e vômito pós-operatório | AVANEST",
+  descricao: "Calculadora do escore de Apfel para NVPO: os quatro fatores, a incidência esperada "
     + "de cada total e como a profilaxia costuma acompanhar o número.",
-  alternates: { canonical: CAMINHO },
-};
+  caminho: CAMINHO,
+  artigo: true,
+});
 
 export default function ApfelPage() {
   return (

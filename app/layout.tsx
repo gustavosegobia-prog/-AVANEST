@@ -4,6 +4,7 @@ import {
 } from "@/lib/tela-de-abertura";
 import { AberturaAnimada, RoteiroDaAbertura } from "@/components/abertura-animada";
 import { comoJson, organizacao } from "@/lib/schema";
+import { IMAGEM_DE_COMPARTILHAMENTO } from "@/lib/metadados";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,17 +29,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_BR",
     siteName: "AVANEST",
-    url: "/",
+    // Sem `url` aqui: a página que herdasse este bloco declararia ser a capa.
+    // Cada página pública declara o próprio endereço em lib/metadados.ts.
     title: "AVANEST | Gestão em anestesiologia",
     description: "Da avaliação pré-anestésica ao fluxo de caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",
-    images: [{
-      url: "/compartilhar.png",
-      width: 1200,
-      height: 630,
-      // O alt não é enfeite: leitor de tela e cliente de e-mail que não baixa
-      // imagem mostram este texto no lugar dela.
-      alt: "AVANEST — gestão em anestesiologia: avaliação pré-anestésica, escala do serviço e o controle do que você tem a receber.",
-    }],
+    // A mesma imagem que as páginas públicas declaram por lib/metadados.ts —
+    // uma fonte só, para a prévia não mudar de uma página para a outra.
+    images: [IMAGEM_DE_COMPARTILHAMENTO],
   },
   /* `summary_large_image`, e não `summary`: com `summary` o X e o LinkedIn
      mostram a imagem num quadradinho ao lado do texto, e uma peça 1200×630

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import { comoJson, migalhas } from "@/lib/schema";
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
+import { RodapePublico } from "@/components/rodape-publico";
 
 // A trilha que aparece no lugar da URL crua no resultado do Google.
 // Breadcrumb é dos poucos dados estruturados que ainda mudam o que se
@@ -9,21 +11,13 @@ import { AppLogo } from "@/components/app-logo";
 // em junho de 2026.
 const TRILHA = [{ nome: "Início", caminho: "/" }, { nome: "O que o AVANEST faz", caminho: "/recursos" }];
 
-export const metadata: Metadata = {
-  // O endereço oficial desta página.
-  //
-  // Sem canonical, `avanest.com.br/x`, `www.avanest.com.br/x` e a mesma página
-  // com `?utm_source=...` são três endereços distintos para o buscador, que
-  // então divide entre eles a força que deveria ser de um só — e escolhe
-  // sozinho qual mostrar. O canonical não fica no layout de propósito: no Next
-  // ele é HERDADO, e um canonical no layout apontaria TODAS as páginas para a
-  // capa, que é bem pior do que não ter nenhum.
-  alternates: { canonical: "/recursos" },
-  title: "O que o AVANEST faz | Sistema para anestesiologistas",
-  description:
+export const metadata: Metadata = paginaPublica({
+  titulo: "O que o AVANEST faz | Sistema para anestesiologistas",
+  descricao:
     "Avaliação pré-anestésica, escala por hospital, produção do plantão e faturamento "
     + "— o dia inteiro do anestesiologista em um sistema só.",
-};
+  caminho: "/recursos",
+});
 
 /**
  * A apresentação do sistema, para quem ainda não é cliente.
@@ -38,11 +32,15 @@ export const metadata: Metadata = {
  * semana de uso, e num sistema clínico vira desconfiança do resto.
  */
 
-type Bloco = { titulo: string; itens: [string, string][] };
+// `leia`: a página que trata o assunto do bloco por inteiro, para quem quer
+// mais do que os cartões. É também o que liga o /recursos às páginas que
+// respondem às buscas — com o nome da busca no texto do link.
+type Bloco = { titulo: string; itens: [string, string][]; leia?: [string, string] };
 
 const BLOCOS: Bloco[] = [
   {
     titulo: "A avaliação pré-anestésica",
+    leia: ["/avaliacao-pre-anestesica", "O que a avaliação pré-anestésica deve conter"],
     itens: [
       ["Nove etapas, salvas enquanto você digita",
         "Identificação, anamnese, exame físico, via aérea, exames, medicamentos, escores, "
@@ -64,6 +62,7 @@ const BLOCOS: Bloco[] = [
   },
   {
     titulo: "O que sai impresso",
+    leia: ["/ficha-anestesica", "As fichas da anestesia e um modelo para imprimir"],
     itens: [
       ["Ficha, termo de consentimento e orientações",
         "Cada documento sai com o logo e o nome do hospital onde aquele paciente foi atendido. Se "
@@ -75,6 +74,7 @@ const BLOCOS: Bloco[] = [
   },
   {
     titulo: "A escala do serviço",
+    leia: ["/escala-medica", "A escala médica em detalhe"],
     itens: [
       ["Uma escala por hospital, e a sua com todos juntos",
         "O grupo não tem uma escala: tem a de cada hospital em que atende. A sua junta "
@@ -230,6 +230,9 @@ export default function RecursosPage() {
               </article>
             ))}
           </div>
+          {bloco.leia && (
+            <Link className="avnCartaoLink" href={bloco.leia[0]}>{bloco.leia[1]} →</Link>
+          )}
         </section>
       ))}
 
@@ -248,15 +251,7 @@ export default function RecursosPage() {
         </div>
       </section>
 
-      <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
-        <nav className="avnFooterLinks">
-          <Link href="/">Início</Link>
-          <Link href="/escores">Escores da avaliação</Link>
-          <a href="/termos">Termos de Uso</a>
-          <a href="/privacidade">Política de Privacidade</a>
-        </nav>
-      </footer>
+      <RodapePublico />
     </main>
     </>
   );

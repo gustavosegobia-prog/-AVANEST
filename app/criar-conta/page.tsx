@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 
 // Título próprio: herdava o da capa, igual ao de /login e /comecar. Ver o
 // comentário em app/login/page.tsx.
-export const metadata: Metadata = {
-  title: "Criar conta no AVANEST",
-  description: "Crie sua conta no AVANEST e comece a usar a avaliação pré-anestésica, a escala do serviço e o controle financeiro em um sistema só.",
-  alternates: { canonical: "/criar-conta" },
-};
+export const metadata: Metadata = paginaPublica({
+  titulo: "Criar conta no AVANEST",
+  descricao: "Crie sua conta no AVANEST e comece a usar a avaliação pré-anestésica, a escala do serviço e o controle financeiro em um sistema só.",
+  caminho: "/criar-conta",
+});
 
 import { redirect } from "next/navigation";
 import Link from "next/link";

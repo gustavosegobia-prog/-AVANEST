@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import { comoJson, migalhas } from "@/lib/schema";
 import { CalculadoraDeEscore } from "@/components/calculadora-de-escore";
 import { PaginaDeEscore, dadosDeEscore } from "@/components/pagina-de-escore";
@@ -11,13 +12,13 @@ const TRILHA = [
 ];
 const REVISADO_EM = "2026-08-27";
 
-export const metadata: Metadata = {
-  title: "STOP-Bang: calculadora e interpretação | AVANEST",
-  description:
-    "Calculadora do STOP-Bang para rastreio de apneia obstrutiva do sono antes da "
+export const metadata: Metadata = paginaPublica({
+  titulo: "STOP-Bang: calculadora e interpretação | AVANEST",
+  descricao: "Calculadora do STOP-Bang para rastreio de apneia obstrutiva do sono antes da "
     + "cirurgia: os oito critérios, os pontos de corte e o que fazer com o resultado.",
-  alternates: { canonical: CAMINHO },
-};
+  caminho: CAMINHO,
+  artigo: true,
+});
 
 export default function StopBangPage() {
   return (

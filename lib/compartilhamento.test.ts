@@ -20,12 +20,30 @@ test("o layout declara a imagem de compartilhamento por inteiro", () => {
   const layout = ler("app/layout.tsx");
   const og = layout.match(/openGraph:\s*\{([^]*?)\n  \},/);
   assert.ok(og, "sumiu o bloco openGraph do layout");
-  for (const campo of ["type:", "locale:", "siteName:", "url:", "images:"])
+  for (const campo of ["type:", "locale:", "siteName:", "images: [IMAGEM_DE_COMPARTILHAMENTO]"])
     assert.ok(og![1].includes(campo), `falta ${campo} no openGraph`);
   // Largura e altura evitam o pulo de layout na prévia, e o alt é o que o
   // leitor de tela e o cliente de e-mail sem imagem mostram no lugar dela.
+  const metadados = ler("lib/metadados.ts");
   for (const campo of ["width: 1200", "height: 630", "alt:"])
-    assert.ok(og![1].includes(campo), `falta ${campo} na imagem`);
+    assert.ok(metadados.includes(campo), `falta ${campo} na imagem`);
+});
+
+test("cada página pública declara o próprio endereço na prévia do link", () => {
+  // Herdando o bloco do layout, todas as páginas saíam com o og:url e o título
+  // da capa: o link do STOP-Bang no WhatsApp virava "AVANEST | Gestão em
+  // anestesiologia", e o crédito de cada compartilhamento ia para a capa.
+  assert.doesNotMatch(ler("app/layout.tsx"), /^\s*url: "\/",$/m);
+  const paginas = [
+    "app/page.tsx", "app/recursos/page.tsx", "app/planos/page.tsx", "app/2meses/page.tsx",
+    "app/escores/page.tsx", "app/escores/stop-bang/page.tsx", "app/escores/apfel/page.tsx",
+    "app/escores/indice-de-lee/page.tsx", "app/escores/classificacao-asa/page.tsx",
+    "app/avaliacao-pre-anestesica/page.tsx", "app/ficha-anestesica/page.tsx",
+    "app/escala-medica/page.tsx", "app/termos/page.tsx", "app/privacidade/page.tsx",
+    "app/app/page.tsx", "app/login/page.tsx", "app/criar-conta/page.tsx",
+  ];
+  for (const p of paginas)
+    assert.match(ler(p), /export const metadata: Metadata = paginaPublica\(\{/, p);
 });
 
 test("o cartão do Twitter é o grande, e leva imagem", () => {

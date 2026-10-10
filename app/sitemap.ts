@@ -17,6 +17,12 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   { caminho: "/", prioridade: 1.0, frequencia: "weekly" },
   { caminho: "/recursos", prioridade: 0.9, frequencia: "weekly" },
   { caminho: "/planos", prioridade: 0.9, frequencia: "weekly" },
+  // As três páginas que respondem às buscas de quem ainda não conhece o
+  // AVANEST: "avaliação pré-anestésica", "ficha anestésica" e "escala médica".
+  // Mesma prioridade da capa de produto: são portas de entrada, não anexos.
+  { caminho: "/avaliacao-pre-anestesica", prioridade: 0.9, frequencia: "monthly" },
+  { caminho: "/ficha-anestesica", prioridade: 0.9, frequencia: "monthly" },
+  { caminho: "/escala-medica", prioridade: 0.9, frequencia: "monthly" },
   // A seção de escores é a porta de entrada de quem ainda não conhece o
   // AVANEST: ninguém pesquisa o nome de um sistema que não conhece, mas todo
   // anestesiologista pesquisa "STOP-Bang". Prioridade alta de propósito.

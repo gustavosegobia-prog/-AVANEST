@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import { comoJson, migalhas } from "@/lib/schema";
 import { CalculadoraDeEscore } from "@/components/calculadora-de-escore";
 import { PaginaDeEscore, dadosDeEscore } from "@/components/pagina-de-escore";
@@ -11,13 +12,13 @@ const TRILHA = [
 ];
 const REVISADO_EM = "2026-08-27";
 
-export const metadata: Metadata = {
-  title: "Índice de Lee (RCRI): calculadora de risco cardíaco | AVANEST",
-  description:
-    "Calculadora do índice de Lee para risco cardíaco em cirurgia não cardíaca: os seis "
+export const metadata: Metadata = paginaPublica({
+  titulo: "Índice de Lee (RCRI): calculadora de risco cardíaco | AVANEST",
+  descricao: "Calculadora do índice de Lee para risco cardíaco em cirurgia não cardíaca: os seis "
     + "critérios do RCRI, a classe e a taxa de evento cardíaco maior de cada total.",
-  alternates: { canonical: CAMINHO },
-};
+  caminho: CAMINHO,
+  artigo: true,
+});
 
 export default function IndiceDeLeePage() {
   return (

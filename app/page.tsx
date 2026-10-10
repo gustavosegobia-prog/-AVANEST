@@ -1,18 +1,28 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 
-// A capa herda título e descrição do layout; o que ela precisa por conta
-// própria é o canonical. Sem ele, a capa responde em quatro endereços — com e
-// sem www, com e sem barra final, e com qualquer `?utm_...` colado por uma
-// campanha — e o buscador reparte entre eles a força que deveria ser de um só.
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-};
+// O TÍTULO DA CAPA É A BUSCA, e não a marca. Ninguém pesquisa "AVANEST" antes
+// de conhecer o AVANEST; quem procura um sistema digita "software para
+// anestesista". A marca continua no fim do título e é o que basta para a busca
+// pelo nome — que o Google resolve com qualquer título, porque o domínio já é
+// a marca.
+//
+// O canonical continua aqui: sem ele a capa responde em quatro endereços — com
+// e sem www, com e sem barra final, e com qualquer `?utm_...` de campanha.
+export const metadata: Metadata = paginaPublica({
+  titulo: "Software para anestesista e grupos de anestesia | AVANEST",
+  descricao:
+    "Software para anestesiologistas: avaliação pré-anestésica com ficha impressa, escala "
+    + "médica do grupo e o que você tem a receber. 2 meses grátis.",
+  caminho: "/",
+});
 
 import Image from "next/image";
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
 import { ID_DA_ORGANIZACAO } from "@/lib/schema";
+import { RodapePublico } from "@/components/rodape-publico";
 
 // O que o site é, em linguagem de máquina.
 //
@@ -39,9 +49,9 @@ const DADOS_ESTRUTURADOS = {
   url: "https://www.avanest.com.br",
   inLanguage: "pt-BR",
   description:
-    "Sistema para anestesiologistas: avaliação pré-anestésica em nove etapas com "
-    + "escores de risco, escala de plantões por hospital, registro da produção do dia "
-    + "e controle do que foi faturado e recebido.",
+    "Software para anestesiologistas e grupos de anestesia: avaliação pré-anestésica em "
+    + "nove etapas com escores de risco e ficha impressa, escala médica por hospital, "
+    + "registro da produção do dia e controle do que foi faturado e recebido.",
   featureList: [
     "Avaliação pré-anestésica digital com ficha para impressão",
     "Escores de risco: ASA, STOP-BANG, Apfel e índice de Lee (RCRI)",
@@ -206,19 +216,30 @@ export default function HomePage() {
               "01",
               "Avaliação pré-anestésica",
               "Nove etapas, com ASA, índice de Lee, STOP-Bang e Apfel calculados a partir do que já foi respondido. Ao final saem a ficha, o termo de consentimento e as orientações ao paciente, impressos no timbre do hospital em que ele foi atendido.",
+              "/avaliacao-pre-anestesica",
+              "Guia da avaliação pré-anestésica",
             ],
             [
               "02",
               "Escala do serviço",
               "Uma escala por instituição, e a do profissional reunindo todas em um calendário. O plantão do grupo não se apaga: é transferido a um colega, com autor, data e resposta registrados.",
+              "/escala-medica",
+              "Escala médica do grupo",
             ],
             [
               "03",
               "Controle de caixa",
               "A produção do dia registrada em uma linha, ainda no hospital. O fechamento do mês sai pronto para o financeiro, e o sistema aponta o que foi faturado e ainda não foi recebido.",
+              "/recursos",
+              "O controle financeiro por dentro",
             ],
-          ].map(([n, title, text]) => (
-            <article key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></article>
+          ].map(([n, title, text, href, rotulo]) => (
+            <article key={n}>
+              <b>{n}</b><h3>{title}</h3><p>{text}</p>
+              {/* O texto do link é o nome da busca: é a âncora que diz ao
+                  Google do que trata a página de destino. */}
+              <a className="avnCartaoLink" href={href}>{rotulo} →</a>
+            </article>
           ))}
         </div>
         {/* Os três cartões acima são o gancho. Quem quer saber de verdade —
@@ -230,17 +251,48 @@ export default function HomePage() {
           </a>
         </div>
       </section>
-      <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
-        <nav className="avnFooterLinks">
-          {/* A seção de escores é ligada daqui, e não só pelo sitemap: página
-              que nenhuma outra aponta o buscador trata como periferia, por mais
-              bem escrita que seja. */}
-          <a href="/escores">Escores da avaliação</a>
-          <a href="/termos">Termos de Uso</a>
-          <a href="/privacidade">Política de Privacidade</a>
-        </nav>
-      </footer>
+      {/* PERGUNTAS FREQUENTES, em texto na página. Respondem às dúvidas de
+          quem chega pela busca ("o AVANEST faz a ficha anestésica?") e levam
+          cada uma à página que trata do assunto por inteiro. Sem marcação
+          FAQPage: o Google encerrou o suporte a ela em junho de 2026. */}
+      <section className="recBloco avnPerguntasCapa" aria-labelledby="avn-perguntas">
+        <h2 id="avn-perguntas">Perguntas frequentes</h2>
+        <div className="conteudoPerguntas">
+          <article>
+            <h3>O que um software para anestesista precisa fazer?</h3>
+            <p>Registrar a avaliação pré-anestésica com o que a Resolução CFM 2.174/2017 pede,
+              imprimir a ficha, o termo e as orientações, organizar a escala do grupo e mostrar o
+              que foi produzido e recebido. O AVANEST faz as quatro coisas no mesmo lugar.</p>
+          </article>
+          <article>
+            <h3>O AVANEST faz a ficha anestésica?</h3>
+            <p>Faz a parte pré-anestésica: a ficha de avaliação, o termo de consentimento e as
+              orientações ao paciente. A diferença entre as fichas está explicada na página da{" "}
+              <a href="/ficha-anestesica">ficha anestésica</a>.</p>
+          </article>
+          <article>
+            <h3>Serve para a escala médica do grupo?</h3>
+            <p>Sim. Uma escala por hospital, troca de plantão com aceite, aviso no celular e o
+              fechamento do mês. Veja como funciona a <a href="/escala-medica">escala médica</a>.</p>
+          </article>
+          <article>
+            <h3>Funciona no celular?</h3>
+            <p>Sim. Abre no navegador e pode ser <a href="/app">instalado na tela de início</a> do
+              iPhone e do Android.</p>
+          </article>
+          <article>
+            <h3>Quanto custa?</h3>
+            <p>Os dois primeiros meses são grátis e sem cartão de crédito. Os valores depois disso
+              estão em <a href="/planos">planos e preços</a>.</p>
+          </article>
+          <article>
+            <h3>Os dados dos pacientes ficam seguros?</h3>
+            <p>Cada serviço só enxerga os próprios dados, a trava fica no banco de dados e cada
+              alteração guarda autor, data e hora. A recepção não abre o conteúdo clínico.</p>
+          </article>
+        </div>
+      </section>
+      <RodapePublico />
       <a
         className="avnInstagram"
         href="https://www.instagram.com/useavanest/"

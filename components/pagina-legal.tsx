@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
+import { RodapePublico } from "@/components/rodape-publico";
 
 // Moldura compartilhada de /termos e /privacidade. Os dois documentos têm a
 // mesma estrutura de leitura — cabeçalho, data de vigência, corpo em seções
@@ -39,9 +40,7 @@ export function PaginaLegal({
         </nav>
       </article>
 
-      <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
-      </footer>
+      <RodapePublico />
     </main>
   );
 }

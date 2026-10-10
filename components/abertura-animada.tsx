@@ -57,12 +57,21 @@
  * apenas o TRILHO do Λ, e não o traço pintado, não há nada repetido a evitar:
  * uma linha do tempo só, igual para todo mundo.
  */
-// AS PÁGINAS DE VENDA NÃO TOCAM A ABERTURA. Quem chega ao /planos ou ao
-// /2meses por um anúncio ou por um link do Instagram veio ler um preço ou
-// apertar um botão, e quase dois segundos de cortina branca antes disso é o
-// tempo em que se fecha a aba. A capa e o sistema continuam com ela.
+// AS PÁGINAS PÚBLICAS NÃO TOCAM A ABERTURA. Quem chega ao /planos ou ao
+// /2meses por um anúncio veio ler um preço ou apertar um botão, e quase dois
+// segundos de cortina branca antes disso é o tempo em que se fecha a aba.
+//
+// A CAPA E AS PÁGINAS DE CONTEÚDO ENTRARAM NA LISTA pelo mesmo motivo, visto
+// do Google: quem clica num resultado e encontra uma tela branca por dois
+// segundos volta para a busca e clica no seguinte — e é exatamente essa volta
+// que o buscador aprende a ler como "o resultado não servia". A abertura é do
+// aplicativo: ele abre no /login (app/manifest.ts), e ali ela continua.
+const PAGINAS_SEM_ABERTURA = [
+  "planos", "2meses", "recursos", "privacidade", "termos", "escores", "app", "criar-conta",
+  "avaliacao-pre-anestesica", "ficha-anestesica", "escala-medica",
+];
 const ROTEIRO_DA_ABERTURA = `try{
-if(/^\\/(planos|2meses|recursos|privacidade|termos)(\\/|$)/.test(location.pathname)){document.documentElement.className+=' semAbertura'}
+if(location.pathname==='/'||/^\\/(${PAGINAS_SEM_ABERTURA.join("|")})(\\/|$)/.test(location.pathname)){document.documentElement.className+=' semAbertura'}
 else if(sessionStorage.getItem('avanest:abertura')){document.documentElement.className+=' semAbertura'}
 else{sessionStorage.setItem('avanest:abertura','1')}
 }catch(e){}`;

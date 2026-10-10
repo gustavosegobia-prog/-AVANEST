@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import { comoJson, migalhas } from "@/lib/schema";
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
+import { RodapePublico } from "@/components/rodape-publico";
 
 const CAMINHO = "/escores";
 
@@ -10,13 +12,12 @@ const TRILHA = [
   { nome: "Escores", caminho: "/escores" },
 ];
 
-export const metadata: Metadata = {
-  title: "Escores da avaliação pré-anestésica | AVANEST",
-  description:
-    "Calculadoras livres de STOP-Bang, Apfel e índice de Lee (RCRI), e a classificação "
+export const metadata: Metadata = paginaPublica({
+  titulo: "Escores da avaliação pré-anestésica | AVANEST",
+  descricao: "Calculadoras livres de STOP-Bang, Apfel e índice de Lee (RCRI), e a classificação "
     + "ASA com exemplos. Feitas para a consulta pré-anestésica, por anestesiologista.",
-  alternates: { canonical: CAMINHO },
-};
+  caminho: CAMINHO,
+});
 
 // A porta de entrada da seção.
 //
@@ -136,14 +137,7 @@ export default function EscoresPage() {
         </div>
       </section>
 
-      <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
-        <nav className="avnFooterLinks">
-          <Link href="/">Início</Link>
-          <a href="/termos">Termos de Uso</a>
-          <a href="/privacidade">Política de Privacidade</a>
-        </nav>
-      </footer>
+      <RodapePublico />
     </main>
   );
 }

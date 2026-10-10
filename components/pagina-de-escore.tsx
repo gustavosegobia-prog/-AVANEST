@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { autorEmSchema, dataPorExtenso, nomeCompleto, registro } from "@/lib/autoria";
+import { RodapePublico } from "@/components/rodape-publico";
 
 // A moldura das páginas públicas de escore.
 //
@@ -101,15 +102,7 @@ export function PaginaDeEscore({
         </nav>
       </section>
 
-      <footer className="avnFooter">
-        <span>G. Segobia Serviços Médicos Ltda. — CNPJ 55.965.276/0001-04</span>
-        <nav className="avnFooterLinks">
-          <Link href="/">Início</Link>
-          <Link href="/escores">Escores</Link>
-          <a href="/termos">Termos de Uso</a>
-          <a href="/privacidade">Política de Privacidade</a>
-        </nav>
-      </footer>
+      <RodapePublico />
     </main>
   );
 }

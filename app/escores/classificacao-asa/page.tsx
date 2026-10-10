@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import { comoJson, migalhas } from "@/lib/schema";
 import { ASA_CLASSES, ASA_EMERGENCIA } from "@/lib/escores";
 import { PaginaDeEscore, dadosDeEscore } from "@/components/pagina-de-escore";
@@ -11,13 +12,13 @@ const TRILHA = [
 ];
 const REVISADO_EM = "2026-08-27";
 
-export const metadata: Metadata = {
-  title: "Classificação ASA: as seis classes com exemplos | AVANEST",
-  description:
-    "A classificação do estado físico da ASA, de I a VI, com a definição e exemplos de "
+export const metadata: Metadata = paginaPublica({
+  titulo: "Classificação ASA: as seis classes com exemplos | AVANEST",
+  descricao: "A classificação do estado físico da ASA, de I a VI, com a definição e exemplos de "
     + "cada classe — e o que o sufixo E de emergência muda (e o que não muda).",
-  alternates: { canonical: CAMINHO },
-};
+  caminho: CAMINHO,
+  artigo: true,
+});
 
 export default function ClassificacaoAsaPage() {
   return (

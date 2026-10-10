@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { paginaPublica } from "@/lib/metadados";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppLogo } from "@/components/app-logo";
@@ -24,12 +25,11 @@ import { CAMINHO_DA_CAMPANHA, origemDoLink } from "@/lib/link-da-campanha";
 // mais rápida de transformar um teste em reclamação — e uma reclamação vinda
 // do Instagram volta pelo mesmo caminho, em público.
 
-export const metadata: Metadata = {
-  title: "2 meses grátis no AVANEST",
-  description:
-    "Crie sua conta e use o AVANEST por 2 meses grátis: avaliação pré-anestésica completa e escala do serviço. Sem cartão de crédito para começar.",
-  alternates: { canonical: CAMINHO_DA_CAMPANHA },
-};
+export const metadata: Metadata = paginaPublica({
+  titulo: "2 meses grátis no AVANEST",
+  descricao: "Crie sua conta e use o AVANEST por 2 meses grátis: avaliação pré-anestésica completa e escala do serviço. Sem cartão de crédito para começar.",
+  caminho: CAMINHO_DA_CAMPANHA,
+});
 
 export default async function DoisMesesPage({
   searchParams,
