@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { Icone } from "@/components/icone";
+import { Icone, type NomeDoIcone } from "@/components/icone";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { dataLocal } from "@/lib/data-local";
 import {
@@ -188,6 +188,10 @@ export function AreaMedica({
   // O id vira data-secao — é por ele que o tutorial acha cada item.
   const [anuncio, setAnuncio] = useState("");
   const irParaSecao = (id: Secao, rotulo: string) => { setSecao(id); setAnuncio(`Seção ${rotulo}`); };
+  // O mesmo desenho dos menus do Financeiro, da Escala e da Administração.
+  const ICONE_DA_SECAO: Record<Secao, NomeDoIcone> = {
+    agenda: "calendario", avaliacoes: "nota", pendencias: "alerta", documentos: "imprimir",
+  };
   const secoes: [Secao, string, number | null][] = [
     ["agenda", "Meu dia", resumo.agendados + resumo.aguardando + resumo.emAtendimento || null],
     ["avaliacoes", "Avaliações", retomar.length || null],
@@ -226,10 +230,11 @@ export function AreaMedica({
       )}
 
       <div className="financeLayout">
-        <nav className="financeTarefas medAbas" aria-label="Seções da área médica">
+        <nav className="financeTarefas menuLateral medAbas" aria-label="Seções da área médica">
           {secoes.map(([id, rotulo, n]) => (
-            <button type="button" key={id} data-secao={id} className={secao === id ? "active" : ""}
+            <button type="button" key={id} data-secao={id} className={`finMenuDireto${secao === id ? " active" : ""}`}
               aria-current={secao === id ? "true" : undefined} onClick={() => irParaSecao(id, rotulo)}>
+              <Icone nome={ICONE_DA_SECAO[id]} tamanho={18} />
               <span>{rotulo}</span>
               {/* Âmbar só em Pendências, que é o que pede ação. Nas outras o
                   número só conta — e o leitor de tela ouve "Meu dia, 3". */}

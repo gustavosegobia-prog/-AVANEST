@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/producao-do-dia";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
-import { Icone } from "@/components/icone";
+import { Icone, type NomeDoIcone } from "@/components/icone";
 import {
   cssDasCores, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
@@ -2517,65 +2517,57 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
           além de ocuparem duas alturas antes do calendário davam à Escala uma
           navegação diferente da de todas as outras áreas do sistema. */}
       <div className="financeLayout">
-        <nav className="financeTarefas" aria-label="Seções da Escala">
-          {([
-            ["grupo", "Escala"],
-            ["minha", "Minha escala"],
-            // Uma escala por hospital, cada uma na sua linha. O grupo não tem
-            // uma escala: tem a da Santa Casa, a do Hospital da Unimed, a do
-            // Instituto. Serviços diferentes, equipes diferentes — e cada uma
-            // se lê inteira sem a outra atravessada no meio.
-            ["grupo", "Escala do grupo"],
-            // O cadeado marca o hospital que a equipe ainda não enxerga. Quem
-            // não administra nunca vê este item — o banco não devolve o local —,
-            // e quem administra precisa saber qual escala está montando às
-            // claras e qual está montando em silêncio.
-            ...locaisDaColuna.map((l) =>
-              [`grupo:${l.id}`, `${nomeDoLocal(l)}${l.oculto ? " 🔒" : ""}`] as [string, string]),
-            // A coluna lista hospitais, e só. Saíram daqui "Todos os
-            // hospitais" — a pergunta dele, "onde eu estou este mês?", Minha
-            // escala responde melhor, já juntando tudo — e "Sem hospital",
-            // que era uma gaveta de conserto ocupando lugar de escala.
-            //
-            // Plantão sem lugar continua existindo e continua visível em Minha
-            // escala, que não filtra por hospital. O que ele não tem mais é
-            // linha própria na escala do grupo: uma escala é de um serviço, e
-            // "nenhum serviço" não é um deles.
-            // Um hospital novo é um cadastro, e cadastro mora no Admin — mas
-            // quem descobre que falta um hospital descobre AQUI, olhando esta
-            // lista. Mandar procurar sozinho em outra área é onde a pessoa
-            // desiste. O item leva ao lugar certo; não duplica o formulário.
-            ...(ehAdmin && onNovoLocal
-              ? [["novoLocal", "+ Nova escala"] as [string, string]]
-              : []),
-            ["grupo", "Equipe"],
-            ["trocas", "Trocas", trocasParaMim],
-            ["grupo", "Faturamento"],
-            ["producao", "Produção"],
-            // A conta da PESSOA, e não a do serviço. Ela mora aqui, e não no
-            // Financeiro, porque o anestesiologista do grupo não tem acesso ao
-            // Financeiro — nem deveria: o caixa comum não é assunto dele. O
-            // dele é.
-            ["meufinanceiro", "Meu financeiro"],
-            ["grupo", "Configuração"],
-            ["modelos", "Modelos"],
-          ] as [string, string, number?][]).map(([id, rotulo, contador], i) =>
-            id === "grupo"
-              ? <span className="financeTarefaGrupo" key={`g${i}`}>{rotulo}</span>
-              : <button
-                  type="button" key={id}
-                  // O tutorial ancora nesta marca para acender o item enquanto
-                  // fala dele. Nome estável, independente do rótulo.
-                  data-secao={id}
-                  className={id === "novoLocal" ? "escalaNova"
-                    : secaoAtiva === id ? "active" : ""}
-                  aria-current={secaoAtiva === id ? "true" : undefined}
-                  onClick={() => id === "novoLocal" ? onNovoLocal?.() : irPara(id)}
-                >
-                  <span>{rotulo}</span>
-                  {contador ? <b className="financeTarefaContador">{contador}</b> : null}
-                </button>,
-          )}
+        <nav className="financeTarefas menuLateral" aria-label="Seções da Escala">
+          {(() => {
+            // O mesmo desenho do Financeiro e da Administração: ícone, nome em
+            // negrito no que se clica, e grupo de um item só sem título
+            // próprio — "Escala › Minha escala", "Equipe › Trocas" e
+            // "Configuração › Modelos" viram uma linha cada.
+            const grupos: { rotulo: string; icone: NomeDoIcone; fixo?: boolean; itens: [string, string, number?][] }[] = [
+              { rotulo: "Escala", icone: "calendario", itens: [["minha", "Minha escala"]] },
+              // Uma escala por hospital, cada uma na sua linha. O grupo não tem
+              // uma escala: tem a da Santa Casa, a do Hospital da Unimed, a do
+              // Instituto — serviços diferentes, equipes diferentes. O cadeado
+              // marca o hospital que a equipe ainda não enxerga (só quem
+              // administra vê o item). Plantão sem hospital continua em Minha
+              // escala; "Nova escala" leva ao cadastro do hospital, no Admin,
+              // porque é aqui que se descobre que ele falta. Este grupo nunca
+              // vira link único: com um hospital só, o nome dele sozinho
+              // perderia o "Escala do grupo" que diz o que é.
+              { rotulo: "Escala do grupo", icone: "grupo", fixo: true, itens: [
+                ...locaisDaColuna.map((l) =>
+                  [`grupo:${l.id}`, `${nomeDoLocal(l)}${l.oculto ? " 🔒" : ""}`] as [string, string]),
+                ...(ehAdmin && onNovoLocal ? [["novoLocal", "+ Nova escala"] as [string, string]] : []),
+              ] },
+              { rotulo: "Equipe", icone: "troca", itens: [["trocas", "Trocas", trocasParaMim]] },
+              // A conta da PESSOA, e não a do serviço: mora aqui porque o
+              // anestesiologista do grupo não tem acesso ao Financeiro.
+              { rotulo: "Faturamento", icone: "dinheiro", itens: [["producao", "Produção"], ["meufinanceiro", "Meu financeiro"]] },
+              { rotulo: "Configuração", icone: "ajustes", itens: [["modelos", "Modelos"]] },
+            ];
+            const botao = (id: string, rotulo: string, contador: number | undefined, classe: string, icone?: NomeDoIcone) =>
+              <button
+                type="button" key={id}
+                // O tutorial ancora nesta marca para acender o item enquanto
+                // fala dele. Nome estável, independente do rótulo.
+                data-secao={id}
+                className={`${classe}${id === "novoLocal" ? " escalaNova" : secaoAtiva === id ? " active" : ""}`}
+                aria-current={secaoAtiva === id ? "true" : undefined}
+                onClick={() => id === "novoLocal" ? onNovoLocal?.() : irPara(id)}
+              >
+                {icone && <Icone nome={icone} tamanho={18} />}
+                <span>{rotulo}</span>
+                {contador ? <b className="financeTarefaContador">{contador}</b> : null}
+              </button>;
+            return grupos.filter((g) => g.itens.length > 0).map((g) =>
+              g.itens.length === 1 && !g.fixo
+                ? botao(g.itens[0][0], g.itens[0][1], g.itens[0][2], "finMenuDireto", g.icone)
+                : <div key={g.rotulo} className="menuGrupo" role="group" aria-label={g.rotulo}>
+                    <span className="menuGrupoTitulo"><Icone nome={g.icone} tamanho={18} />{g.rotulo}</span>
+                    {g.itens.map(([id, rotulo, contador]) => botao(id, rotulo, contador, "finMenuItem"))}
+                  </div>,
+            );
+          })()}
         </nav>
 
         <div className="financeConteudo">

@@ -1797,7 +1797,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     <div className="financeLayout">
       {/* Coluna de tarefas. Os contadores são só do que pede ação — número em
           tarefa parada vira ruído e a pessoa para de olhar para todos. */}
-      <nav className="financeTarefas finMenu" aria-label="Seções do Financeiro">
+      <nav className="financeTarefas menuLateral" aria-label="Seções do Financeiro">
         {/* SETE GRUPOS, e não três. A reorganização segue a pergunta que cada um
             responde, e não a ordem em que as telas foram construídas:
               Visão geral        — o que precisa de mim agora
@@ -2583,7 +2583,7 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
 
   return <PainelRecolhivel
     chave="adm-assinatura"
-    abrePadrao={false}
+    abrePadrao
     titulo="Assinatura"
     legenda={cancelada
       ? (ate?`cancelada — acesso liberado até ${ate}`:"cancelada")
@@ -2772,6 +2772,10 @@ function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefres
     else{setMsgOrg("Dados da organização salvos. O nome novo passa a sair nas fichas impressas.");onRefresh()}
   }
 
+  // O mesmo desenho do menu do Financeiro: ícone e nome em negrito.
+  const ICONE_DA_SECAO:Record<SecaoDoAdmin,NomeDoIcone>={
+    visao:"painel",equipe:"pessoa",organizacao:"predio",documentos:"nota",plano:"assinatura",historico:"relogio",
+  };
   const navegacao:[SecaoDoAdmin,string,number?][]=[
     ["visao","Visão geral",lista.length||undefined],
     ["equipe","Equipe e acessos"],
@@ -2793,15 +2797,16 @@ function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefres
     </section>
 
     <div className="financeLayout admLayout">
-      <nav className="financeTarefas" aria-label="Seções da Administração">
+      <nav className="financeTarefas menuLateral" aria-label="Seções da Administração">
         {navegacao.map(([id,rotulo,contador])=><Fragment key={id}>
-          <button type="button" data-secao={id} className={secao===id?"active":""} aria-current={secao===id?"true":undefined}
+          <button type="button" data-secao={id} className={`finMenuDireto${secao===id?" active":""}`} aria-current={secao===id?"true":undefined}
             onClick={()=>{setSecao(id);if(id==="equipe")setSubEquipe("pessoas")}}>
+            <Icone nome={ICONE_DA_SECAO[id]} tamanho={18}/>
             <span>{rotulo}</span>
             {contador?<b className="financeTarefaContador" title="Pendências">{contador}</b>:null}
           </button>
           {/* Atalho direto para os convites, dentro de Equipe e acessos. */}
-          {id==="equipe"&&<button type="button" data-secao="convites" className={`admNavSub ${secao==="equipe"&&subEquipe==="convites"?"active":""}`}
+          {id==="equipe"&&<button type="button" data-secao="convites" className={`finMenuItem admNavSub${secao==="equipe"&&subEquipe==="convites"?" active":""}`}
             aria-current={secao==="equipe"&&subEquipe==="convites"?"true":undefined} onClick={()=>irParaEquipe("convites")}>
             <span>Convites pendentes</span>
             {ind.convitesPendentes+ind.convitesExpirados?<b className="financeTarefaContador">{ind.convitesPendentes+ind.convitesExpirados}</b>:null}

@@ -6295,41 +6295,52 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .avnNav nav a{min-height:44px}
 }
 
-/* --- Menu do Financeiro (finMenu) -------------------------------------------
+/* --- Menu lateral (Financeiro, Administração e Escala) ----------------------
    Antes: títulos de grupo em caixa alta cinza, que pareciam rótulo e não
    botão, e grupos de um item só que pediam dois cliques para chegar ao mesmo
    lugar. Agora todo o clicável está em negrito: o topo de cada grupo e os
    links diretos com ícone, os itens de dentro recuados sob o ícone, com uma
    linha-guia que acende no item aberto. */
-.finMenu{gap:2px}
-.finMenu button svg{flex:none;color:var(--cor-tinta-fraca)}
-.finMenu button.financeTarefaGrupo,.finMenu button.finMenuDireto{
+.menuLateral{gap:2px}
+.menuLateral button svg{flex:none;color:var(--cor-tinta-fraca)}
+.menuLateral button.financeTarefaGrupo,.menuLateral button.finMenuDireto{
   justify-content:flex-start;gap:10px;padding:10px 12px;
   font-size:14.5px;font-weight:800;letter-spacing:0;text-transform:none;color:var(--cor-tinta)}
-.finMenu button.financeTarefaGrupo:first-child{padding-top:10px}
-.finMenu button.financeTarefaGrupo span,.finMenu button.finMenuDireto span{flex:1}
-.finMenu button.financeTarefaGrupo:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
-.finMenu .finMenuSeta{transition:transform .15s ease;transform:rotate(-90deg)}
-.finMenu .finMenuSeta.aberta{transform:none}
-.finMenu button.finMenuItem{margin-left:20px;width:calc(100% - 20px);padding:8px 12px 8px 16px;
+.menuLateral button.financeTarefaGrupo:first-child{padding-top:10px}
+.menuLateral button.financeTarefaGrupo span,.menuLateral button.finMenuDireto span{flex:1}
+.menuLateral button.financeTarefaGrupo:hover{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+.menuLateral .finMenuSeta{transition:transform .15s ease;transform:rotate(-90deg)}
+.menuLateral .finMenuSeta.aberta{transform:none}
+.menuLateral button.finMenuItem{margin-left:20px;width:calc(100% - 20px);padding:8px 12px 8px 16px;
   border-left:2px solid var(--cor-borda);border-radius:0 9px 9px 0;font-weight:700;color:var(--cor-tinta)}
-.finMenu button.finMenuItem.active{border-left-color:var(--cor-marca)}
-.finMenu button.finMenuDireto.active svg,.finMenu button.financeTarefaGrupo.contemAtiva svg:first-child{color:var(--cor-marca)}
-.finMenu button.financeTarefaGrupo.contemAtiva{color:var(--cor-marca-forte)}
-@media(prefers-reduced-motion:reduce){.finMenu .finMenuSeta{transition:none}}
+.menuLateral button.finMenuItem.active{border-left-color:var(--cor-marca)}
+.menuLateral button.finMenuDireto.active svg,.menuLateral button.financeTarefaGrupo.contemAtiva svg:first-child{color:var(--cor-marca)}
+.menuLateral button.financeTarefaGrupo.contemAtiva{color:var(--cor-marca-forte)}
+@media(prefers-reduced-motion:reduce){.menuLateral .finMenuSeta{transition:none}}
 @media(max-width:1100px){
   /* Faixa rolável no celular e no tablet: sem recuo nem linha-guia. */
-  .finMenu button.finMenuItem{margin-left:0;width:auto;padding:8px 12px;border-left:0;border-radius:9px}
-  .finMenu button.finMenuDireto{padding:8px 12px;font-size:14.5px}
+  .menuLateral button.finMenuItem{margin-left:0;width:auto;padding:8px 12px;border-left:0;border-radius:9px}
+  .menuLateral button.finMenuDireto{padding:8px 12px;font-size:14.5px}
 }
 /* A coluna do menu ganha 30px: com os nomes em negrito, "Produção e
    faturamento" e "Relatórios e fechamento" quebravam em duas linhas. */
 @media(min-width:1101px){
-  .financeLayout:has(> .finMenu){grid-template-columns:288px minmax(0,1fr)}
-  .finMenu button.financeTarefaGrupo,.finMenu button.finMenuDireto{padding:10px;gap:9px;font-size:14px}
-  .finMenu button.finMenuItem{font-size:14px}
+  .financeLayout:has(> .menuLateral){grid-template-columns:288px minmax(0,1fr)}
+  .menuLateral button.financeTarefaGrupo,.menuLateral button.finMenuDireto{padding:10px;gap:9px;font-size:14px}
+  .menuLateral button.finMenuItem{font-size:14px}
 }
 /* Em todo menu lateral (Financeiro, Administração, Escala) o que é clicável
    fica em negrito — era 650, perto demais do texto comum. */
 .financeTarefas button{font-weight:750}
-.financeTarefas button.admNavSub{font-weight:650}
+
+/* Título de grupo que NÃO é botão (Escala): ícone e nome em cinza, sem
+   negrito — só o que se clica fica em negrito. */
+.menuLateral .menuGrupoTitulo{display:flex;align-items:center;gap:9px;padding:12px 10px 4px;
+  font-size:13px;font-weight:600;color:var(--cor-tinta-fraca)}
+.menuLateral .menuGrupoTitulo:first-child{padding-top:6px}
+.menuLateral .menuGrupoTitulo svg{flex:none}
+.menuLateral button.finMenuItem.escalaNova{color:var(--cor-marca)}
+@media(max-width:1100px){.menuLateral .menuGrupoTitulo{display:none}}
+/* O grupo é só semântica (role="group"): os botões dele entram direto no
+   fluxo da coluna — e, no celular, na faixa rolável. */
+.menuLateral .menuGrupo{display:contents}

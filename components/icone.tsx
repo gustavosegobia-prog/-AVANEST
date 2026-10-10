@@ -51,6 +51,10 @@ const TRACOS = {
   painel: <><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></>,
   grafico: <><path d="M4 20.5h16"/><path d="M7.5 16.5v-5"/><path d="M12 16.5v-9"/><path d="M16.5 16.5v-6.5"/></>,
   ajustes: <><path d="M4 7h9"/><path d="M18.5 7h1.5"/><circle cx="15.8" cy="7" r="2.3"/><path d="M4 17h2.5"/><path d="M11.5 17H20"/><circle cx="8.8" cy="17" r="2.3"/></>,
+  // Do menu da Administração e da Escala.
+  predio: <><rect x="5.5" y="3.5" width="13" height="17" rx="1.6"/><path d="M3.5 20.5h17"/><path d="M9 7.5h1.5"/><path d="M13.5 7.5H15"/><path d="M9 11h1.5"/><path d="M13.5 11H15"/><path d="M10.5 20.5v-4h3v4"/></>,
+  relogio: <><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></>,
+  grupo: <><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><circle cx="16.8" cy="9.2" r="2.6"/><path d="M16 14.3a5 5 0 0 1 5 5.2"/></>,
   dinheiro: <><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.8"/></>,
   boia: <><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="m6 6 3.5 3.5"/><path d="m18 6-3.5 3.5"/><path d="m6 18 3.5-3.5"/><path d="m18 18-3.5-3.5"/></>,
   calendario: <><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3.5v3"/><path d="M16 3.5v3"/><path d="M8 13.5h3"/><path d="M8 17h8"/></>,
