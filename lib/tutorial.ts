@@ -136,7 +136,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     etapas.push({
       area: "medico",
       titulo: "O que já vem respondido",
-      texto: "A via aérea começa preenchida como normal — você só mexe no que for diferente. Os preditores são etiquetas: marque as presentes, o resto é ausência. O risco de via aérea difícil e os escores ASA, Lee, STOP-Bang e Apfel são calculados sozinhos, como sugestão.",
+      texto: "A via aérea começa preenchida como normal — você só mexe no que for diferente. Os preditores são etiquetas: marque as presentes, o resto é ausência. O risco de via aérea difícil e os escores de Lee, STOP-Bang e Apfel são calculados sozinhos, como sugestão. A ASA é você quem escolhe.",
     });
     etapas.push({
       area: "medico",

@@ -125,11 +125,12 @@ export default function EscoresPage() {
       </section>
 
       <section className="recFim">
-        <h2>No AVANEST, os quatro já vêm preenchidos.</h2>
+        <h2>No AVANEST, três deles já vêm preenchidos.</h2>
         <p>
           Idade, sexo, IMC, circunferência cervical, diabetes em uso de insulina, hábitos —
-          o que já foi respondido na anamnese e no exame físico marca os critérios sozinho.
-          O que sobra para você é conferir, e o resultado sai impresso junto com a ficha.
+          o que já foi respondido na anamnese e no exame físico marca sozinho os critérios do
+          STOP-Bang, do Apfel e do índice de Lee. A classificação ASA continua sendo decisão sua.
+          O resultado sai impresso junto com a ficha.
         </p>
         <div className="avnActions">
           <a className="avnPrimary" href="/recursos">Ver o que o sistema faz</a>

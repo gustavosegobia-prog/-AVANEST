@@ -79,14 +79,30 @@ export function PaginaDeEscore({
         </p>
       </section>
 
+      {/* A ASA NÃO É CALCULADA no sistema — é escolhida pelo anestesiologista,
+          com a definição de cada classe na tela. Dizer na página dela que "já vem
+          calculada" seria prometer o que a avaliação não faz. */}
       <section className="recFim">
-        <h2>Estes escores já vêm calculados dentro do AVANEST.</h2>
-        <p>
-          No sistema você não marca nada disso à mão: o que já foi respondido na
-          anamnese, no cadastro e no exame físico preenche os critérios sozinho — idade,
-          sexo, IMC, circunferência cervical, diabetes em uso de insulina. O que sobra
-          para você é conferir.
-        </p>
+        {atual === "/escores/classificacao-asa" ? (
+          <>
+            <h2>No AVANEST, a ASA fica ao lado dos escores calculados.</h2>
+            <p>
+              A classe é escolha sua, com a definição de cada uma na tela. O índice de Lee, o
+              STOP-Bang e o Apfel saem calculados do que já foi respondido na anamnese, no
+              cadastro e no exame físico, e tudo vai impresso na ficha.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2>Estes escores já vêm calculados dentro do AVANEST.</h2>
+            <p>
+              No sistema você não marca nada disso à mão: o que já foi respondido na
+              anamnese, no cadastro e no exame físico preenche os critérios sozinho — idade,
+              sexo, IMC, circunferência cervical, diabetes em uso de insulina. O que sobra
+              para você é conferir.
+            </p>
+          </>
+        )}
         <div className="avnActions">
           <a className="avnPrimary" href="/recursos">Ver o que o sistema faz</a>
           <a className="avnSecondary" href="/planos">Planos e preços</a>

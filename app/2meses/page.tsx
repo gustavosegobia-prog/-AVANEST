@@ -69,8 +69,8 @@ export default async function DoisMesesPage({
 
           <ul className="avnCampanhaLista">
             <li><b>Avaliação pré-anestésica completa</b>
-              <span>Nove etapas, com ASA, índice de Lee, STOP-Bang e Apfel calculados a partir
-              do que você já respondeu. No fim saem a ficha, o termo de consentimento e as
+              <span>Nove etapas, com índice de Lee, STOP-Bang e Apfel calculados a partir do que
+              você já respondeu. No fim saem a ficha, o termo de consentimento e as
               orientações, impressos no timbre do hospital.</span></li>
             <li><b>Escala do serviço</b>
               <span>Uma escala por instituição e a sua reunindo todas. O plantão não se apaga:

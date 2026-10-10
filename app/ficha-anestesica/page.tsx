@@ -307,8 +307,8 @@ export default function FichaAnestesicaPage() {
             legível, fica guardada no prontuário do paciente e sai de novo igual à original.
           </p>
           <p>
-            O AVANEST cuida da parte pré-anestésica: a avaliação em nove etapas, com ASA, índice de
-            Lee, STOP-Bang e Apfel calculados a partir do que já foi respondido; o termo de
+            O AVANEST cuida da parte pré-anestésica: a avaliação em nove etapas, com índice de Lee,
+            STOP-Bang e Apfel calculados a partir do que já foi respondido; o termo de
             consentimento; e as orientações de jejum e de medicamentos que o paciente leva para
             casa. A ficha de anestesia do intraoperatório e a da recuperação continuam no
             prontuário do hospital.

@@ -23,6 +23,9 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   { caminho: "/avaliacao-pre-anestesica", prioridade: 0.9, frequencia: "monthly" },
   { caminho: "/ficha-anestesica", prioridade: 0.9, frequencia: "monthly" },
   { caminho: "/escala-medica", prioridade: 0.9, frequencia: "monthly" },
+  // A avaliação como produto: "avaliação pré-anestésica digital", "software de
+  // avaliação pré-anestésica". O guia acima responde o que ela é; esta, onde fazer.
+  { caminho: "/avaliacao-pre-anestesica-digital", prioridade: 0.9, frequencia: "monthly" },
   // A seção de escores é a porta de entrada de quem ainda não conhece o
   // AVANEST: ninguém pesquisa o nome de um sistema que não conhece, mas todo
   // anestesiologista pesquisa "STOP-Bang". Prioridade alta de propósito.

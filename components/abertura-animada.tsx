@@ -68,7 +68,8 @@
 // aplicativo: ele abre no /login (app/manifest.ts), e ali ela continua.
 const PAGINAS_SEM_ABERTURA = [
   "planos", "2meses", "recursos", "privacidade", "termos", "escores", "app", "criar-conta",
-  "avaliacao-pre-anestesica", "ficha-anestesica", "escala-medica",
+  "avaliacao-pre-anestesica", "avaliacao-pre-anestesica-digital", "ficha-anestesica",
+  "escala-medica",
 ];
 const ROTEIRO_DA_ABERTURA = `try{
 if(location.pathname==='/'||/^\\/(${PAGINAS_SEM_ABERTURA.join("|")})(\\/|$)/.test(location.pathname)){document.documentElement.className+=' semAbertura'}

@@ -33,7 +33,8 @@ export function PaginaDeConteudo({
   origem: string;
   /** O href desta página, para não se listar em "Leia também". */
   atual: string;
-  fim: { titulo: string; texto: string };
+  /** `link` troca o segundo botão do fim, que por padrão leva ao /recursos. */
+  fim: { titulo: string; texto: string; link?: { href: string; rotulo: string } };
   children: React.ReactNode;
 }) {
   const teste = `${CAMINHO_DA_CAMPANHA}?de=${origem}`;
@@ -87,7 +88,9 @@ export function PaginaDeConteudo({
         <p>{fim.texto}</p>
         <div className="avnActions">
           <a className="avnPrimary" href={teste}>Começar 2 meses grátis</a>
-          <a className="avnSecondary" href="/recursos">Ver todos os recursos</a>
+          <a className="avnSecondary" href={fim.link?.href ?? "/recursos"}>
+            {fim.link?.rotulo ?? "Ver todos os recursos"}
+          </a>
         </div>
       </section>
 

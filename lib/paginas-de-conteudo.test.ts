@@ -15,6 +15,9 @@ const PAGINAS = [
   { caminho: "/avaliacao-pre-anestesica", arquivo: "app/avaliacao-pre-anestesica/page.tsx" },
   { caminho: "/ficha-anestesica", arquivo: "app/ficha-anestesica/page.tsx" },
   { caminho: "/escala-medica", arquivo: "app/escala-medica/page.tsx" },
+  // A página de produto da avaliação é o destino dos anúncios: o rodapé e o
+  // guia apontam para ela; a capa e o /recursos continuam levando ao guia.
+  { caminho: "/avaliacao-pre-anestesica-digital", arquivo: "app/avaliacao-pre-anestesica-digital/page.tsx", produto: true },
 ];
 
 test("as páginas de conteúdo estão no sitemap e fora do bloqueio do robots", () => {
@@ -32,7 +35,12 @@ test("as páginas de conteúdo são ligadas pelo rodapé, pela capa e pelo /recu
   const capa = ler("app/page.tsx");
   const recursos = ler("app/recursos/page.tsx");
   for (const p of PAGINAS) {
-    assert.ok(rodape.includes(`href: "${p.caminho}"`), `${p.caminho} fora do rodapé`);
+    assert.ok(rodape.includes(`"${p.caminho}"`), `${p.caminho} fora do rodapé`);
+    if ("produto" in p) {
+      assert.ok(ler("app/avaliacao-pre-anestesica/page.tsx").includes(`"${p.caminho}"`),
+        `${p.caminho} sem link no guia`);
+      continue;
+    }
     assert.ok(capa.includes(`"${p.caminho}"`), `${p.caminho} sem link na capa`);
     assert.ok(recursos.includes(`"${p.caminho}"`), `${p.caminho} sem link no /recursos`);
   }

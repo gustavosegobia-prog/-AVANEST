@@ -215,7 +215,7 @@ export default function HomePage() {
             [
               "01",
               "Avaliação pré-anestésica",
-              "Nove etapas, com ASA, índice de Lee, STOP-Bang e Apfel calculados a partir do que já foi respondido. Ao final saem a ficha, o termo de consentimento e as orientações ao paciente, impressos no timbre do hospital em que ele foi atendido.",
+              "Nove etapas, com índice de Lee, STOP-Bang e Apfel calculados a partir do que já foi respondido. Ao final saem a ficha, o termo de consentimento e as orientações ao paciente, impressos no timbre do hospital em que ele foi atendido.",
               "/avaliacao-pre-anestesica",
               "Guia da avaliação pré-anestésica",
             ],

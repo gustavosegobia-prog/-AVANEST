@@ -140,10 +140,11 @@ export default function AvaliacaoPreAnestesicaPage() {
         fim={{
           titulo: "A avaliação pré-anestésica inteira, no celular ou no computador.",
           texto: "No AVANEST a avaliação tem nove etapas: identificação, procedimento, anamnese, "
-            + "medicamentos, exame físico, via aérea, exames, escores e conclusão. ASA, índice de "
-            + "Lee, STOP-Bang e Apfel saem calculados do que já foi respondido. A ficha, o termo de "
+            + "medicamentos, exame físico, via aérea, exames, escores e conclusão. O índice de "
+            + "Lee, o STOP-Bang e o Apfel saem calculados do que já foi respondido. A ficha, o termo de "
             + "consentimento e as orientações ao paciente saem impressos no timbre do hospital, "
             + "com a sua assinatura, CRM e RQE.",
+          link: { href: "/avaliacao-pre-anestesica-digital", rotulo: "Ver a avaliação no AVANEST" },
         }}
       >
         <section className="recBloco" id="o-que-e">
