@@ -4709,7 +4709,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    marca. Os dois sobre o navy da página de planos ficam ilegíveis — conferido
    na tela, o "Use por 2 meses grátis" sumia dentro do fundo. As cores aqui são
    as mesmas que a frase de apoio ao lado já usa. */
-.planosTeste{margin:6px 0 0;font-size:15.5px;color:#c5d4df}
+.planosTeste{margin:12px 0 22px;font-size:15.5px;line-height:1.6;color:#c5d4df}
 .planosTeste b{color:#fff;font-weight:750}
 .planosTeste span{display:block;margin-top:3px;font-size:14px;color:#9dbdd6}
 .planosTeste a{color:#fff;font-weight:750;text-decoration:underline;text-decoration-color:#43c8b8;text-decoration-thickness:2px;text-underline-offset:4px;white-space:nowrap}
