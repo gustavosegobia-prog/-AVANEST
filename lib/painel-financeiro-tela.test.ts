@@ -60,9 +60,15 @@ test("Atenção hoje não tem botão genérico", () => {
 });
 
 test("grupos do menu recolhem, mas a aba aberta nunca some", () => {
-  assert.match(tela, /const escondido=gruposRecolhidos\.has\(grupo\)&&tarefa!==id;/);
-  assert.match(tela, /aria-expanded=\{aberto\} onClick=\{\(\)=>alternarGrupo\(rotulo\)\}/);
+  assert.match(tela, /const escondido=!aberto&&tarefa!==id;/);
+  assert.match(tela, /aria-expanded=\{aberto\} onClick=\{\(\)=>alternarGrupo\(g\.rotulo\)\}/);
   assert.match(css, /\.financeTarefas button\.recolhido\{display:none\}/);
+});
+
+test("grupo de um item só é link direto: um clique, e não dois", () => {
+  // "Repasses" abria um grupo com um item "Repasses" dentro.
+  assert.match(tela, /if\(g\.itens\.length===1\)\{/);
+  assert.match(tela, /className=\{`finMenuDireto\$\{tarefa===id\?" active":""\}`\}/);
 });
 
 test("responsividade: 4 números no desktop, 2 no tablet, 1 no celular", () => {

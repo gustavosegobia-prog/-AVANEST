@@ -32,19 +32,19 @@ test("a navegação ganhou sete grupos, sem perder nenhuma aba antiga", () => {
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const i = tela.indexOf('aria-label="Seções do Financeiro"');
   assert.notEqual(i, -1, "não achei a navegação do Financeiro");
-  const nav = tela.slice(i, i + 2600);
+  const nav = tela.slice(i, i + 4200);
   for (const grupo of [
     "Visão geral", "Produção e faturamento", "Contas a receber",
     "Contas a pagar", "Repasses", "Relatórios e fechamento", "Configurações",
   ]) {
-    assert.match(nav, new RegExp(`\\["grupo","${grupo}"\\]`),
+    assert.match(nav, new RegExp(`\\{rotulo:"${grupo}",icone:"`),
       `sumiu o grupo "${grupo}" da navegação`);
   }
   for (const id of IDS_DE_SEMPRE) {
     assert.match(nav, new RegExp(`\\["${id}",`),
       `a aba "${id}" sumiu da navegação — algo que apontava para ela quebrou`);
   }
-  assert.match(nav, /\["visao-geral","Resumo"\]/, "sumiu a aba de Resumo");
+  assert.match(nav, /\["visao-geral","Visão geral"\]/, "sumiu a aba da Visão geral");
 });
 
 test("o Financeiro abre em Visão geral, não mais em Lançamentos", () => {

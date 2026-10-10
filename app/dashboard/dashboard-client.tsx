@@ -7,7 +7,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { useCaptcha } from "@/components/turnstile";
-import { Icone } from "@/components/icone";
+import { Icone, type NomeDoIcone } from "@/components/icone";
 import { estadoDoTeste, fraseDoTeste } from "@/lib/teste-gratis";
 import { AREAS_QUE_A_ASSINATURA_ABRE, NOME_DO_MODULO } from "@/lib/modulos";
 import { idadePorNascimento, lerIdadeInformada } from "@/lib/idade";
@@ -1797,7 +1797,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     <div className="financeLayout">
       {/* Coluna de tarefas. Os contadores são só do que pede ação — número em
           tarefa parada vira ruído e a pessoa para de olhar para todos. */}
-      <nav className="financeTarefas" aria-label="Seções do Financeiro">
+      <nav className="financeTarefas finMenu" aria-label="Seções do Financeiro">
         {/* SETE GRUPOS, e não três. A reorganização segue a pergunta que cada um
             responde, e não a ordem em que as telas foram construídas:
               Visão geral        — o que precisa de mim agora
@@ -1811,62 +1811,72 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
             arquivo continua navegando por `setTarefa("recebimentos")` etc., e
             trocar o id quebraria esses saltos (o botão "Dar baixa" de Notas
             fiscais, por exemplo) sem nenhum aviso do TypeScript. */}
-        {([
-          ["grupo","Visão geral"],
-          ["visao-geral","Resumo"],
-          ["grupo","Produção e faturamento"],
-          ["lancamentos","Lançamentos",pendingPatients.length],
-          ["producao","Produção da equipe"],
-          ["notas","Notas fiscais",noteAlerts.length],
-          ["lotes","Lotes de cobrança"],
-          ["faturamento","Faturado por convênio"],
-          ["grupo","Contas a receber"],
-          ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
-          ["glosas","Glosas",glosasParaRecurso.length],
-          // O contador é o que está vencido, e não o total a receber: a coluna
-          // conta o que pede ação hoje.
-          ["idade","Cobranças em atraso",linhasIdade.filter(l=>l.faixas.acima90>0).length],
-          ["extrato","Extrato de pagamentos"],
-          ["grupo","Contas a pagar"],
-          ["despesas","Despesas",faltamRecorrentes.length],
-          ["grupo","Repasses"],
-          ["repasses","Repasses"],
-          ["grupo","Relatórios e fechamento"],
-          ["resultado","Resultado do mês"],
-          ["origem","Origem da receita"],
-          ["fechamento","Fechamento do mês"],
-          ["grupo","Configurações"],
-          ["valores","Valores por convênio"],
-        ] as [string,string,number?][]).map(([id,rotulo,contador],i,lista)=>{
-          // O grupo de cada item é o último título que veio antes dele.
-          const grupo=lista.slice(0,i+1).reverse().find(([x])=>x==="grupo")?.[1]??"";
-          if(id==="grupo"){
-            const aberto=!gruposRecolhidos.has(rotulo);
-            // Um grupo recolhido ainda avisa: a soma dos contadores dele vai
-            // para o título, para "Contas a receber" fechado não esconder
-            // que há glosas esperando.
-            const fim=lista.findIndex(([x],k)=>k>i&&x==="grupo");
-            const pendentesNoGrupo=aberto?0:lista.slice(i+1,fim===-1?undefined:fim).reduce((acc,[,,n])=>acc+(n??0),0);
-            return <button type="button" className="financeTarefaGrupo" key={`g${i}`}
-              aria-expanded={aberto} onClick={()=>alternarGrupo(rotulo)}>
-              <span>{rotulo}</span>
-              {pendentesNoGrupo>0&&<b className="financeTarefaContador">{pendentesNoGrupo}</b>}
-              <i aria-hidden="true">{aberto?"▾":"▸"}</i>
-            </button>;
-          }
-          // A aba aberta nunca some, mesmo com o grupo recolhido: a pessoa
-          // precisa ver onde está.
-          const escondido=gruposRecolhidos.has(grupo)&&tarefa!==id;
-          return <button
-                type="button" key={id} data-secao={id}
-                className={`${tarefa===id?"active":""}${escondido?" recolhido":""}`}
-                aria-current={tarefa===id?"true":undefined}
-                onClick={()=>setTarefa(id)}
-              >
-                <span>{rotulo}</span>
-                {contador?<b className="financeTarefaContador">{contador}</b>:null}
+        {(()=>{
+          // Cada grupo com o seu ícone e os seus itens. GRUPO DE UM ITEM SÓ É
+          // UM LINK: antes "Repasses" abria um grupo que tinha dentro um item
+          // "Repasses", e a pessoa clicava duas vezes para chegar no mesmo
+          // lugar — o mesmo em Visão geral, Contas a pagar e Configurações.
+          const grupos:{rotulo:string;icone:NomeDoIcone;itens:[string,string,number?][]}[]=[
+            {rotulo:"Visão geral",icone:"painel",itens:[["visao-geral","Visão geral"]]},
+            {rotulo:"Produção e faturamento",icone:"nota",itens:[
+              ["lancamentos","Lançamentos",pendingPatients.length],
+              ["producao","Produção da equipe"],
+              ["notas","Notas fiscais",noteAlerts.length],
+              ["lotes","Lotes de cobrança"],
+              ["faturamento","Faturado por convênio"],
+            ]},
+            {rotulo:"Contas a receber",icone:"dinheiro",itens:[
+              ["recebimentos","Recebimentos",financeiro.filter(i=>Number(i.valor)-Number(i.recebido)>0).length],
+              ["glosas","Glosas",glosasParaRecurso.length],
+              // O contador é o que está vencido, e não o total a receber: a
+              // coluna conta o que pede ação hoje.
+              ["idade","Cobranças em atraso",linhasIdade.filter(l=>l.faixas.acima90>0).length],
+              ["extrato","Extrato de pagamentos"],
+            ]},
+            {rotulo:"Contas a pagar",icone:"assinatura",itens:[["despesas","Contas a pagar",faltamRecorrentes.length]]},
+            {rotulo:"Repasses",icone:"troca",itens:[["repasses","Repasses"]]},
+            {rotulo:"Relatórios e fechamento",icone:"grafico",itens:[
+              ["resultado","Resultado do mês"],
+              ["origem","Origem da receita"],
+              ["fechamento","Fechamento do mês"],
+            ]},
+            {rotulo:"Configurações",icone:"ajustes",itens:[["valores","Valores por convênio"]]},
+          ];
+          const contador=(n?:number)=>n?<b className="financeTarefaContador">{n}</b>:null;
+          return grupos.map(g=>{
+            if(g.itens.length===1){
+              const [id,rotulo,n]=g.itens[0];
+              return <button type="button" key={id} data-secao={id}
+                className={`finMenuDireto${tarefa===id?" active":""}`}
+                aria-current={tarefa===id?"true":undefined} onClick={()=>setTarefa(id)}>
+                <Icone nome={g.icone} tamanho={18}/><span>{rotulo}</span>{contador(n)}
               </button>;
-        })}
+            }
+            const aberto=!gruposRecolhidos.has(g.rotulo);
+            // Um grupo recolhido ainda avisa: a soma dos contadores dele vai
+            // para o título, para "Contas a receber" fechado não esconder que
+            // há glosas esperando.
+            const pendentes=aberto?0:g.itens.reduce((acc,[,,n])=>acc+(n??0),0);
+            return <Fragment key={g.rotulo}>
+              <button type="button" className={`financeTarefaGrupo${g.itens.some(([id])=>id===tarefa)?" contemAtiva":""}`}
+                aria-expanded={aberto} onClick={()=>alternarGrupo(g.rotulo)}>
+                <Icone nome={g.icone} tamanho={18}/><span>{g.rotulo}</span>
+                {contador(pendentes)}
+                <Icone nome="seta" tamanho={14} className={`finMenuSeta${aberto?" aberta":""}`}/>
+              </button>
+              {g.itens.map(([id,rotulo,n])=>{
+                // A aba aberta nunca some, mesmo com o grupo recolhido: a
+                // pessoa precisa ver onde está.
+                const escondido=!aberto&&tarefa!==id;
+                return <button type="button" key={id} data-secao={id}
+                  className={`finMenuItem${tarefa===id?" active":""}${escondido?" recolhido":""}`}
+                  aria-current={tarefa===id?"true":undefined} onClick={()=>setTarefa(id)}>
+                  <span>{rotulo}</span>{contador(n)}
+                </button>;
+              })}
+            </Fragment>;
+          });
+        })()}
       </nav>
 
       <div className="financeConteudo">
@@ -2098,17 +2108,23 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       {tarefa==="producao"&&<ProducaoRecebida mes={period} nomeMes={NOMES_MES[Number(period.slice(5,7))-1]??""} ano={Number(period.slice(0,4))}/>}
 
       {tarefa==="lotes"&&<>
-    <PainelRecolhivel chave="fin-lotes" titulo="📦 Lotes de cobrança" legenda="agrupamento por convênio/hospital, sem dados clínicos" abrePadrao={false}>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{valorVisivel(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</PainelRecolhivel>
+    <PainelRecolhivel chave="fin-lotes" titulo="Lotes de cobrança" legenda="agrupamento por convênio/hospital, sem dados clínicos" abrePadrao>{lots.length?lots.map(([lot,items])=><div className="financeLotRow" key={lot}><strong>{lot}</strong><span>{items[0]?.convenio} · {items.length} atendimento(s)</span><b>{valorVisivel(items.reduce((s,i)=>s+Number(i.valor),0))}</b><span className={`statusChip ${items.every(i=>i.status==="pago")?"present":"waiting"}`}>{items.every(i=>i.status==="pago")?"PAGO":"EM ABERTO"}</span></div>):<div className="emptyClinical compactEmpty">Informe o número do lote nos atendimentos para agrupá-los aqui.</div>}</PainelRecolhivel>
       </>}
       {tarefa==="repasses"&&<>
-    <PainelRecolhivel chave="fin-repasses" titulo="Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao={false}>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=>{
+    <PainelRecolhivel chave="fin-repasses" titulo="Repasses aos anestesiologistas" legenda="liberação após recebimento; valores visíveis conforme as permissões do perfil" abrePadrao>{financeiro.filter(i=>Number(i.repasse_valor)>0).map(item=>{
       // O NOME NUNCA SAÍA DAQUI. A linha mostrava o texto fixo "Profissional
       // vinculado ao atendimento" para todo mundo — medico_id já vem do
       // banco desde a criação da tabela, e perfis (com .nome) já chegava
       // como prop do FinanceView; ninguém tinha ligado os dois.
       const profissional=item.medico_id?perfilMap.get(item.medico_id)?.nome:null;
       return <div className="repasseRow" key={item.id}><span><strong>{profissional||"Profissional não identificado"}</strong><small>{item.convenio} · {patientMap.get(item.patient_id)?.nome}</small></span><b>{valorVisivel(item.repasse_valor)}</b><select value={item.repasse_status} onChange={e=>updateItem(item.id,{repasse_status:e.target.value})}><option value="pendente">Repasse pendente</option><option value="aguardando_recebimento">Aguardando recebimento</option><option value="pago">Pago</option></select></div>;
-    })}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">Nenhum repasse configurado.</div>}</PainelRecolhivel>
+    })}{!financeiro.some(i=>Number(i.repasse_valor)>0)&&<div className="emptyClinical compactEmpty">
+      {/* "Nenhum repasse configurado" e só: a pessoa não sabia onde se
+          configura. O repasse nasce do percentual em Valores por convênio. */}
+      <p>Nenhum repasse configurado.</p>
+      <p>O repasse de cada atendimento é calculado pelo percentual definido em Valores por convênio.</p>
+      <button type="button" className="outlineClinical" onClick={()=>setTarefa("valores")}>Abrir Valores por convênio</button>
+    </div>}</PainelRecolhivel>
       </>}
       {tarefa==="despesas"&&<>
     {faltamRecorrentes.length>0&&
@@ -2417,7 +2433,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
         uma frase de rodapé com a contagem, inútil para conferência. */}
     <PainelRecolhivel
       chave="fin-extrato"
-      abrePadrao={false}
+      abrePadrao
       titulo="Extrato de pagamentos recebidos"
       legenda={`${pagamentos.length} registro(s) · data, paciente, forma e valor`}
     >
