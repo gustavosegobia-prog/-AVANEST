@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { useCaptcha } from "@/components/turnstile";
+import { senhaRecusada } from "@/lib/senha-recusada";
 
 // Três modos. Com token, o e-mail vem do convite e não pode ser trocado — a
 // conta precisa nascer no endereço convidado. Com plano, o visitante digita o
@@ -61,7 +62,7 @@ export function SignUpForm({ token, email, plano = "", origem = "" }: { token: s
       // pelo CAPTCHA com a mensagem do erro anterior na tela.
       captcha.reiniciar();
       setErro(
-        texto.includes("captcha")
+        senhaRecusada(error) ?? (texto.includes("captcha")
           ? "A verificação de segurança falhou. Tente de novo em alguns segundos."
           : texto.includes("already")
           ? "Já existe uma conta com este e-mail. Use a opção de entrar."
@@ -69,7 +70,7 @@ export function SignUpForm({ token, email, plano = "", origem = "" }: { token: s
           // esta mensagem a pessoa recebe "Signups not allowed" em inglês.
           : texto.includes("signup") && texto.includes("not allowed")
             ? "O cadastro de novas contas está desativado no momento. Fale com o AVANEST pelo WhatsApp."
-            : error.message,
+            : error.message),
       );
       setBusy(false);
       return;

@@ -97,6 +97,7 @@ const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
 import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
 import { lerDinheiro } from "@/lib/dinheiro";
+import { senhaRecusada } from "@/lib/senha-recusada";
 import { explicarEscala, podeEscolherEscalista, podeMontarEscala } from "@/lib/escalista";
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
 import { InstalarNaTela } from "@/components/instalar-na-tela";
@@ -1160,9 +1161,9 @@ export function DashboardClient({
               // A recusa mais comum é senha atual errada — que a conferência
               // acima já pega, mas o servidor confere de novo por conta dele.
               const recusouSenha=/current password|invalid|credential/i.test(error.message);
-              setSenhaMsg(recusouSenha
+              setSenhaMsg(senhaRecusada(error) ?? (recusouSenha
                 ?"A senha atual não confere."
-                :`Não foi possível alterar: ${error.message}`);
+                :`Não foi possível alterar: ${error.message}`));
               return;
             }
             setSenha({atual:"",nova:"",confirma:""});

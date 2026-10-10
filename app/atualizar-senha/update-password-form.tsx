@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { temCodigoNaUrl } from "@/lib/troca-do-codigo";
+import { senhaRecusada } from "@/lib/senha-recusada";
 import { sessaoVeioDeRecuperacao } from "@/lib/sessao-de-recuperacao";
 
 // A mensagem antiga era "Este link expirou ou já foi utilizado", e ela MENTIA
@@ -114,7 +115,9 @@ export function UpdatePasswordForm() {
     const supabase = createClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) {
-      setError("Não foi possível alterar a senha. Solicite um novo link de recuperação.");
+      // Senha fraca ou vazada não é link vencido: mandar pedir outro link faria
+      // a pessoa refazer tudo e esbarrar na mesma senha.
+      setError(senhaRecusada(updateError) ?? "Não foi possível alterar a senha. Solicite um novo link de recuperação.");
       setLoading(false);
       return;
     }
