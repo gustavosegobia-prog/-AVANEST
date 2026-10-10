@@ -115,7 +115,7 @@
 .loginPage,.dashboardPage{min-height:100vh;padding:40px;display:grid;place-items:center;background:var(--blue);position:relative;overflow:hidden}.loginPage:before,.dashboardPage:before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;background:var(--yellow);border:var(--border);right:-140px;top:-160px}.loginBack{position:absolute;left:32px;top:28px;color:white;font-weight:900;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid white;z-index:2}.loginCard,.dashboardCard{width:min(560px,100%);background:white;border:var(--border);box-shadow:12px 12px 0 var(--black);padding:46px;position:relative;z-index:1}.loginCard h1,.dashboardCard h1{font-size:clamp(48px,7vw,76px);line-height:.86;letter-spacing:-.055em;margin:34px 0 24px;font-weight:900}.loginCard h1 span,.dashboardCard h1 span{color:var(--red)}.loginCard>p,.dashboardCard>p{line-height:1.5}.loginForm{display:grid;gap:10px;margin-top:30px}.loginForm label{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.1em}.loginForm input{width:100%;border:3px solid var(--black);background:var(--paper);padding:15px;font:inherit;margin-bottom:8px}.loginForm input:focus{outline:4px solid var(--yellow);outline-offset:1px}.loginForm .btn{margin-top:12px;cursor:pointer}.loginForm .btn:disabled{opacity:.65;cursor:wait}.loginError{background:#ffe2e2;border:2px solid var(--red);padding:10px;font-weight:700}.loginNotice{background:var(--yellow);border:3px solid var(--black);padding:14px;margin:24px 0}.dashboardCard .btn{margin-top:20px}@media(max-width:560px){.loginPage,.dashboardPage{padding:72px 18px 30px}.loginCard,.dashboardCard{padding:28px}.loginBack{left:18px;top:22px}}
 
 :root{--avn-navy:#071c2f;--avn-navy2:#0d2a42;--avn-teal:#43c8b8;--avn-ink:var(--cor-tinta);--avn-muted:#667888;--avn-bg:#f2f6f8;--avn-line:#dce5eb}
-.avnLanding,.avnShell{min-height:100vh;background:var(--avn-bg);color:var(--avn-ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.avnNav,.avnTopbar{background:var(--avn-navy);color:#fff;display:flex;align-items:center;justify-content:space-between}.avnNav{height:108px;padding:0 max(28px,calc((100vw - 1180px)/2));border-bottom:1px solid #ffffff2b}.avnTopbar{height:82px;padding:0 30px}.avnBrand{display:inline-flex;align-items:center;gap:14px}.avnMark{width:54px;height:54px;border:2px solid var(--avn-teal);border-radius:15px;display:grid;place-items:center;color:var(--avn-teal)}.avnBrand strong{display:block;font-size:23px;letter-spacing:.13em}.avnBrand small{display:block;margin-top:5px;color:#82a6be;font-size:9px;letter-spacing:.28em}.avnNav nav,.avnTopbarMeta{display:flex;gap:12px;align-items:center}.avnPrimary,.avnSecondary,.avnLogin,.avnButton{min-height:48px;border-radius:12px;padding:0 25px;display:inline-flex;align-items:center;justify-content:center;font-weight:750;border:0;cursor:pointer}.avnPrimary,.avnButton{background:var(--avn-teal);color:#062c2a}.avnSecondary,.avnLogin{border:1px solid #ffffff59;color:#fff;background:#ffffff0d}.avnHero{min-height:710px;position:relative;background:var(--avn-navy) url("/hero-bg.jpg") center/cover;color:#fff}.avnOverlay{position:absolute;inset:0;background:linear-gradient(90deg,#041626fa 0%,#041626e0 48%,#0416264d)}.avnHeroContent{position:relative;z-index:1;width:min(1180px,calc(100% - 56px));margin:auto;padding:130px 0 80px}.avnEyebrow{font-size:13px;font-weight:800;letter-spacing:.3em;color:var(--avn-teal)}.avnHero h1{font-size:clamp(44px,5vw,68px);line-height:1.05;letter-spacing:-.035em;margin:24px 0 28px}.avnLead{font-size:20px;line-height:1.8;color:#c5d4df;max-width:780px}.avnActions{display:flex;gap:18px;margin:38px 0}.avnBenefits{list-style:none;display:flex;flex-wrap:wrap;gap:24px 34px;margin:50px 0 0;padding:0;color:var(--avn-teal);font-weight:900}.avnBenefits span{color:#d9e5ec;margin-left:8px}
+.avnLanding,.avnShell{min-height:100vh;background:var(--avn-bg);color:var(--avn-ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.avnNav,.avnTopbar{background:var(--avn-navy);color:#fff;display:flex;align-items:center;justify-content:space-between}.avnNav{height:108px;padding:0 max(28px,calc((100vw - 1180px)/2));border-bottom:1px solid #ffffff2b}.avnTopbar{height:82px;padding:0 30px}.avnBrand{display:inline-flex;align-items:center;gap:14px}.avnMark{width:54px;height:54px;border:2px solid var(--avn-teal);border-radius:15px;display:grid;place-items:center;color:var(--avn-teal)}.avnBrand strong{display:block;font-size:23px;letter-spacing:.13em}.avnBrand small{display:block;margin-top:5px;color:#82a6be;font-size:9px;letter-spacing:.28em}.avnNav nav,.avnTopbarMeta{display:flex;gap:12px;align-items:center}.avnPrimary,.avnSecondary,.avnLogin,.avnButton{min-height:48px;border-radius:12px;padding:0 25px;display:inline-flex;align-items:center;justify-content:center;font-weight:750;border:0;cursor:pointer}.avnPrimary,.avnButton{background:var(--avn-teal);color:#062c2a}.avnSecondary,.avnLogin{border:1px solid #ffffff59;color:#fff;background:#ffffff0d}.avnHero{min-height:710px;position:relative;background:var(--avn-navy);color:#fff}.avnOverlay{position:absolute;inset:0;background:linear-gradient(90deg,#041626fa 0%,#041626e0 48%,#0416264d)}.avnHeroContent{position:relative;z-index:1;width:min(1180px,calc(100% - 56px));margin:auto;padding:130px 0 80px}.avnEyebrow{font-size:13px;font-weight:800;letter-spacing:.3em;color:var(--avn-teal)}.avnHero h1{font-size:clamp(44px,5vw,68px);line-height:1.05;letter-spacing:-.035em;margin:24px 0 28px}.avnLead{font-size:20px;line-height:1.8;color:#c5d4df;max-width:780px}.avnActions{display:flex;gap:18px;margin:38px 0}.avnBenefits{list-style:none;display:flex;flex-wrap:wrap;gap:24px 34px;margin:50px 0 0;padding:0;color:var(--avn-teal);font-weight:900}.avnBenefits span{color:#d9e5ec;margin-left:8px}
 /* Os três incisos do topo: um traço curto marca cada um, o rótulo carrega
    o peso e a descrição vem em peso normal. Antes os dois estavam em 900 e
    a linha inteira gritava — sem hierarquia, o olho não sabe onde pousar. */
@@ -763,7 +763,7 @@ button:disabled{cursor:not-allowed}
   min-height:max(720px,calc(100svh - 108px));
   overflow:hidden;
   background-color:var(--avn-navy);
-  background-image:url("/hero-bg.jpg");
+  background-image:none;
   background-repeat:no-repeat;
   background-position:right center;
   background-size:auto 100%;
@@ -6175,3 +6175,50 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .contaDuasEtapas h3{margin:0 0 var(--esp-2)}
 .contaDuasEtapas p{margin:0 0 var(--esp-3);color:var(--cor-tinta-fraca);line-height:1.5}
 .contaDuasEtapasAtiva{color:var(--cor-sucesso)}
+
+/* ============================================================================
+   Capa com as telas de verdade (app/page.tsx)
+   ----------------------------------------------------------------------------
+   No lugar da foto gerada: a avaliação real, numa moldura de navegador, e o
+   escore no celular por cima. O fundo vira um azul-marinho com duas luzes
+   suaves — sem foto atrás do texto, não há mais escurecimento a calibrar
+   para o título não cair em cima de um monitor.
+   ========================================================================= */
+.avnHero.avnHeroComTelas{
+  min-height:0;
+  display:grid;grid-template-columns:minmax(0,1fr);
+  padding-bottom:56px;
+  background:
+    radial-gradient(900px 520px at 88% 38%,#0f4466 0%,transparent 62%),
+    radial-gradient(700px 480px at 0% 100%,#0b3049 0%,transparent 60%),
+    var(--avn-navy);
+}
+.avnHeroTelas{position:relative;width:min(1180px,calc(100% - 40px));margin:0 auto;padding:4px 0 0}
+.avnTelaComputador{margin:0;border-radius:14px;overflow:hidden;background:#fff;
+  box-shadow:0 34px 80px -24px #000000b3,0 0 0 1px #ffffff24}
+.avnTelaBarra{display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;background:#e8eef3;border-bottom:1px solid #d3dde6}
+.avnTelaBarra i{width:10px;height:10px;border-radius:50%;background:#c6d1da}
+.avnTelaBarra span{margin-left:10px;padding:2px 12px;border-radius:6px;background:#fff;color:#5b6c7a;font-size:12px}
+.avnTelaComputador img{display:block;width:100%;height:auto}
+.avnTelaCelular{position:absolute;margin:0;right:-6px;bottom:18px;width:min(34%,170px);
+  padding:6px;border-radius:26px;background:#09141f;box-shadow:0 26px 60px -14px #000000d9,0 0 0 1px #ffffff2e}
+.avnTelaCelular img{display:block;width:100%;height:auto;border-radius:20px}
+.avnTelaLegenda{margin:40px 0 0;font-size:13px;color:#9db4c6}
+@media(min-width:1101px){
+  .avnHero.avnHeroComTelas{
+    grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);align-items:center;
+    column-gap:clamp(32px,4vw,64px);
+    padding:0 var(--avn-moldura) 24px;
+    min-height:max(680px,calc(100svh - 88px));
+  }
+  .avnHeroComTelas .avnHeroContent{width:auto;margin:0;padding:clamp(48px,7vh,88px) 0 24px}
+  .avnHeroComTelas h1{width:auto;max-width:640px;font-size:clamp(40px,3.4vw,56px)}
+  .avnHeroComTelas .avnLead{max-width:560px}
+  .avnHeroComTelas .avnBenefits{max-width:none;display:grid;gap:12px;margin-top:36px}
+  .avnHeroTelas{width:auto;margin:0;padding:24px 0 24px}
+  .avnTelaCelular{left:-44px;right:auto;bottom:-6px;width:clamp(150px,12.5vw,200px)}
+  .avnTelaLegenda{margin-top:20px;text-align:right}
+}
+@media(max-width:1100px){
+  .avnHeroComTelas .avnHeroContent{padding-bottom:36px}
+}

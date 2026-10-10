@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+import Image from "next/image";
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
@@ -96,8 +97,14 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <section className="avnHero">
-        <div className="avnOverlay" />
+      {/* A CAPA MOSTRA O SISTEMA DE VERDADE. A foto anterior era uma imagem
+          gerada: monitor com o logo antigo de coração, "AVANEST" gravado num
+          carrinho de anestesia — como se o produto fosse um aparelho — e um
+          texto ilegível com erro ("Solver rascunho") na tela. Para quem vai
+          confiar a avaliação pré-anestésica a um sistema, a primeira imagem
+          dele não pode ser inventada. Estas são capturas da avaliação real,
+          com uma paciente fictícia (public/capa). */}
+      <section className="avnHero avnHeroComTelas">
         <div className="avnHeroContent">
           <p className="avnEyebrow">GESTÃO EM ANESTESIOLOGIA</p>
           <h1>
@@ -118,7 +125,7 @@ export default function HomePage() {
           </ul>
           <div className="avnActions">
             <a className="avnPrimary" href={whatsappUrl} target="_blank" rel="noreferrer">
-              Agendar uma conversa de 15 minutos
+              Conversar 15 min no WhatsApp
             </a>
             <a className="avnSecondary" href="/planos">Ver planos e preços</a>
           </div>
@@ -136,6 +143,24 @@ export default function HomePage() {
             <a href={`${CAMINHO_DA_CAMPANHA}?de=site`}><b>Use por 2 meses grátis</b></a> e, se gostar, assine.
             <span>Sem cartão para começar.</span>
           </p>
+        </div>
+        <div className="avnHeroTelas">
+          <figure className="avnTelaComputador">
+            <div className="avnTelaBarra" aria-hidden="true"><i /><i /><i /><span>avanest.com.br</span></div>
+            <Image
+              src="/capa/avaliacao-computador.webp" width={1600} height={1025} priority
+              sizes="(min-width: 1101px) 52vw, calc(100vw - 40px)"
+              alt="Avaliação pré-anestésica no AVANEST: as nove etapas, a identificação da paciente e o IMC e o peso ideal calculados (dados fictícios)"
+            />
+          </figure>
+          <figure className="avnTelaCelular">
+            <Image
+              src="/capa/avaliacao-celular.webp" width={780} height={1688}
+              sizes="(min-width: 1101px) 200px, 34vw"
+              alt="No celular, o Índice de Lee calculado a partir da cirurgia e da creatinina (dados fictícios)"
+            />
+          </figure>
+          <p className="avnTelaLegenda">Telas reais do sistema, com paciente fictícia.</p>
         </div>
       </section>
 

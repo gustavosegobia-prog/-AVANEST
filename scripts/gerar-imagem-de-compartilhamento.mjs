@@ -33,9 +33,14 @@ const SAIDA = join(RAIZ, "public", "compartilhar.png");
 const LARGURA = 1200;
 const ALTURA = 630;
 
-/** A foto do topo do site, embutida — o navegador do script não tem servidor. */
-const foto = await readFile(join(RAIZ, "public", "hero-bg.jpg"));
-const fundo = `data:image/jpeg;base64,${foto.toString("base64")}`;
+/**
+ * A tela da avaliação, a mesma da capa do site, embutida — o navegador do
+ * script não tem servidor. Antes era a foto gerada do hero (monitor com o logo
+ * antigo de coração); a prévia do link é a primeira imagem do sistema que
+ * muita gente vê, e não pode ser inventada.
+ */
+const tela = await readFile(join(RAIZ, "public", "capa", "avaliacao-computador.webp"));
+const fundo = `data:image/webp;base64,${tela.toString("base64")}`;
 
 /**
  * A folha da fonte.
@@ -75,11 +80,15 @@ ${await folhaDaFonte()}
   *{margin:0;padding:0;box-sizing:border-box}
   body{width:${LARGURA}px;height:${ALTURA}px;overflow:hidden;
     font-family:Outfit,'Segoe UI',system-ui,sans-serif;background:#041626}
-  .foto{position:absolute;inset:0;background:url("${fundo}") center/cover}
-  /* O mesmo véu da capa do site: o texto branco precisa de contraste, e a foto
-     sozinha não garante nenhum. Mais fechado à esquerda, onde o texto fica. */
+  body{background:radial-gradient(700px 420px at 85% 35%,#0f4466 0%,transparent 62%),#071c2f}
+  /* A tela entra pela direita e passa da borda: é o sistema, não um enfeite.
+     O véu à esquerda garante o contraste do texto onde os dois se encontram. */
+  .foto{position:absolute;left:640px;top:96px;width:760px;border-radius:16px;overflow:hidden;
+    background:#fff;box-shadow:0 30px 80px -20px #000c,0 0 0 1px #ffffff26}
+  .foto i{display:block;height:30px;background:#e8eef3;border-bottom:1px solid #d3dde6}
+  .foto img{display:block;width:100%}
   .veu{position:absolute;inset:0;
-    background:linear-gradient(100deg,#041626f7 0%,#041626ea 52%,#04162699 100%)}
+    background:linear-gradient(90deg,#071c2f 0%,#071c2ff2 46%,#071c2f66 60%,#071c2f00 72%)}
   .conteudo{position:absolute;inset:0;padding:90px;display:flex;flex-direction:column;
     justify-content:center;gap:26px}
   .marca{display:flex;align-items:center;gap:22px}
@@ -91,7 +100,7 @@ ${await folhaDaFonte()}
   .selo{position:absolute;left:90px;bottom:78px;font-size:19px;font-weight:600;
     letter-spacing:.24em;text-transform:uppercase;color:#2bc5a8}
 </style>
-<div class="foto"></div><div class="veu"></div>
+<div class="foto"><i></i><img src="${fundo}" alt=""></div><div class="veu"></div>
 <div class="conteudo">
   <div class="marca">
     <svg viewBox="0 0 128 128">
