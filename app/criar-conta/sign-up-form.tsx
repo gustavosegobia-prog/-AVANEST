@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { useCaptcha } from "@/components/turnstile";
 import { senhaRecusada } from "@/lib/senha-recusada";
+import { registrarConversao } from "@/lib/anuncios";
 
 // Três modos. Com token, o e-mail vem do convite e não pode ser trocado — a
 // conta precisa nascer no endereço convidado. Com plano, o visitante digita o
@@ -75,6 +76,12 @@ export function SignUpForm({ token, email, plano = "", origem = "" }: { token: s
       setBusy(false);
       return;
     }
+
+    // A conversão do anúncio conta AQUI, na mesma aba em que a pessoa chegou
+    // pelo clique: a confirmação do e-mail muitas vezes é aberta noutro
+    // aparelho, onde o Google não teria como ligar o cadastro ao anúncio.
+    // Convite não conta — o colega convidado não veio de anúncio nenhum.
+    if (!porConvite) await registrarConversao("cadastro");
 
     // Com confirmação de e-mail ligada, o Supabase não devolve sessão agora.
     if (!data.session) {

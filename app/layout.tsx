@@ -3,6 +3,7 @@ import {
   TELAS_DE_ABERTURA, arquivoDaAbertura, consultaDaAbertura,
 } from "@/lib/tela-de-abertura";
 import { AberturaAnimada, RoteiroDaAbertura } from "@/components/abertura-animada";
+import { MedicaoDeAnuncios } from "@/components/medicao-de-anuncios";
 import { comoJson, organizacao } from "@/lib/schema";
 import { IMAGEM_DE_COMPARTILHAMENTO } from "@/lib/metadados";
 import "./globals.css";
@@ -165,6 +166,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             pessoa já começou a ler. Some sozinha, sem JavaScript. */}
         <AberturaAnimada />
         {children}
+        {/* Aviso de cookies e tag do Google Ads: só nas páginas públicas, só
+            com o "aceito" e só com o ID configurado (lib/anuncios.ts). */}
+        <MedicaoDeAnuncios />
         {/* REGISTRA O SERVICE WORKER EM TODA VISITA.
             Antes ele só era registrado quando a pessoa ligava as notificações,
             em components/ativar-notificacoes.tsx — e quem nunca ligou não

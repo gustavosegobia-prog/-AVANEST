@@ -6497,3 +6497,23 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .avnCartaoLink{display:inline-flex;align-items:center;min-height:40px;margin-top:10px;
   color:#0f7f74;font-weight:700;font-size:14.5px;text-decoration:none}
 .avnCartaoLink:hover{text-decoration:underline}
+
+/* ── Aviso de cookies (components/medicao-de-anuncios.tsx) ─────────────────
+   Embaixo, sem cobrir a tela: a pessoa veio ler a página, e um aviso que
+   tapa o conteúdo até ser respondido vira "aceito" por cansaço — que não é
+   consentimento. Recusar tem o mesmo peso visual de aceitar. */
+.avisoCookies{position:fixed;left:16px;right:16px;bottom:16px;z-index:60;max-width:760px;margin:0 auto;
+  display:flex;align-items:center;gap:16px;padding:14px 16px;border:1px solid var(--avn-line);
+  border-radius:14px;background:#fff;color:var(--avn-ink);box-shadow:0 12px 32px rgba(7,28,47,.16)}
+.avisoCookies p{margin:0;font-size:13.5px;line-height:1.55;color:var(--avn-muted)}
+.avisoCookies a{color:#0f7f74;font-weight:650}
+.avisoCookies>div{display:flex;gap:8px;flex:none}
+.avisoCookies button{min-height:40px;padding:0 16px;border-radius:10px;font-weight:700;cursor:pointer;
+  border:1px solid var(--avn-line);background:#fff;color:var(--avn-navy)}
+.avisoCookies .avisoCookiesAceitar{border-color:var(--avn-navy);background:var(--avn-navy);color:#fff}
+@media(max-width:640px){
+  .avisoCookies{flex-direction:column;align-items:stretch;left:12px;right:12px;bottom:12px}
+  .avisoCookies>div button{flex:1;min-height:44px}
+}
+@media print{.avisoCookies{display:none}}
+.mudarCookies{margin-top:4px;border-color:var(--avn-line);color:var(--avn-navy);background:#fff}

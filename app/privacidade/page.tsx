@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { paginaPublica } from "@/lib/metadados";
 import { PaginaLegal } from "@/components/pagina-legal";
+import { MudarEscolhaDeCookies } from "@/components/medicao-de-anuncios";
 
 export const metadata: Metadata = paginaPublica({
   titulo: "Política de Privacidade | AVANEST",
@@ -17,7 +18,7 @@ export default function PrivacidadePage() {
     <PaginaLegal
       titulo="Política de Privacidade"
       resumo="Como o AVANEST trata dados pessoais, em especial dados de saúde, conforme a Lei nº 13.709/2018 (LGPD)."
-      vigencia="19 de agosto de 2026"
+      vigencia="10 de outubro de 2026"
     >
       <h2>1. Quem responde pelo quê</h2>
       <p>
@@ -89,6 +90,10 @@ export default function PrivacidadePage() {
         <li><b>Dados cadastrais de pacientes:</b> execução do serviço e obrigação legal (art. 7º, II e V).</li>
         <li><b>Dados de conta e cobrança:</b> execução do contrato (art. 7º, V).</li>
         <li><b>Auditoria e segurança:</b> legítimo interesse e obrigação legal (art. 7º, IX e II).</li>
+        <li>
+          <b>Cookie de medição de anúncios</b>, nas páginas públicas do site: consentimento
+          (art. 7º, I), que pode ser revogado a qualquer momento (seção 10).
+        </li>
       </ul>
 
       <h2>5. Com quem os dados são compartilhados</h2>
@@ -100,6 +105,11 @@ export default function PrivacidadePage() {
         <li><b>Supabase</b> — banco de dados, autenticação e armazenamento de arquivos.</li>
         <li><b>Vercel</b> — hospedagem da aplicação.</li>
         <li><b>Stripe</b> — processamento de pagamentos (não recebe dados de pacientes).</li>
+        <li>
+          <b>Google</b> — medição dos anúncios do AVANEST (Google Ads), só nas páginas públicas do
+          site e só para quem aceita o cookie. Não recebe dados de pacientes nem nada do que é
+          registrado dentro do sistema.
+        </li>
       </ul>
       <p>
         Também compartilhamos quando houver ordem judicial ou requisição de autoridade competente.
@@ -162,11 +172,18 @@ export default function PrivacidadePage() {
         informando o que aconteceu, quais dados foram atingidos e as medidas tomadas.
       </p>
 
-      <h2>10. Cookies</h2>
+      <h2 id="cookies">10. Cookies</h2>
       <p>
-        O AVANEST usa apenas cookies necessários para manter você conectado e lembrar sua preferência
-        de tema. Não há cookies de publicidade nem rastreamento de terceiros.
+        Dentro do sistema, o AVANEST usa apenas cookies necessários para manter você conectado e
+        lembrar sua preferência de tema. Ali não há cookie de publicidade nem rastreamento de
+        terceiros.
       </p>
+      <p>
+        Nas páginas públicas do site (a página inicial, os planos, os guias e o cadastro), e somente
+        se você aceitar no aviso de cookies, usamos o cookie do Google Ads para saber quais anúncios
+        trouxeram visitas e cadastros. Se você recusar, ou não responder, ele não é carregado.
+      </p>
+      <MudarEscolhaDeCookies />
 
       <h2>11. Encarregado (DPO) e contato</h2>
       <p>
