@@ -6348,3 +6348,13 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 /* O grupo é só semântica (role="group"): os botões dele entram direto no
    fluxo da coluna — e, no celular, na faixa rolável. */
 .menuLateral .menuGrupo{display:contents}
+
+/* --- Menos vazio entre a barra do topo e o título da área --------------------
+   Eram 38px de respiro (24px no celular) antes do título de cada área —
+   Recepção, Médico, Escala, Financeiro, Admin —, e a primeira tela já começa
+   com a barra fixa e o cabeçalho da área. O conteúdo sobe ~20px. */
+.clinicalMain{padding-top:16px}
+@media(max-width:680px){.clinicalMain{padding-top:12px}}
+/* Escolha do local (depois do login): o mesmo respiro curto. */
+.localMain{padding-top:20px}
+@media(max-width:680px){.localMain{padding-top:12px}}
