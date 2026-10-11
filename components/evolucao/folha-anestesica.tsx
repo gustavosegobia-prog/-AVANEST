@@ -666,8 +666,8 @@ function DoseNaLinha({ item, grupo, onRegistrar, onDetalhes, onFechar }: {
       onKeyDown={(e) => { if (e.key === "Escape") onFechar(); }}>
       <input inputMode="decimal" autoFocus value={texto} onChange={(e) => setTexto(e.target.value)}
         aria-label={`Dose de ${item.nome} em ${item.unidade}`} placeholder="dose" />
-      <span>{item.unidade} {item.via ?? grupo.via}</span>
-      <button type="submit" className="evoBotao pequeno" disabled={!valida} aria-label={`Registrar ${item.nome} agora`}>✓</button>
+      <span className="evoDoseUnidade"><b>{item.unidade}</b><small>{item.via ?? grupo.via}</small></span>
+      <button type="submit" className="evoBotao pequeno" disabled={!valida} aria-label={`Registrar ${item.nome} agora`}>✓ Registrar</button>
       <button type="button" className="evoBotao pequeno secundario" onClick={() => onDetalhes(valida ? dose : null)}
         aria-label="Mais detalhes: horário, concentração, via">⋯</button>
     </form>
