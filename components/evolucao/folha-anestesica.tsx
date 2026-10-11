@@ -28,7 +28,8 @@ import { JanelaLancar, JanelaMover, JanelaPonto, JanelaSinal, MODOS, Historico, 
 import { JanelaMedicamento } from "./janela-medicamento";
 import { numero } from "./campos";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
-import { PreAnestesicaResumo, SecaoCirurgia, SecaoEquipe, SecaoPreAnestesica, SecaoSaida, SecaoTecnica } from "./secoes";
+import { PreAnestesicaResumo, SecaoPreAnestesica } from "./secoes";
+import { RodapeDaFolha } from "./rodape-da-folha";
 
 // A folha de anestesia digital.
 //
@@ -427,6 +428,12 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
             </p>
           </div>
 
+          <label className="evoObservacoes">
+            <span>Espaço para observações e outras drogas</span>
+            <textarea rows={2} value={String(dados.observacoes ?? "")} disabled={!aberta}
+              onChange={(e) => f.mudarCabecalho({ observacoes: e.target.value })} />
+          </label>
+
           {aberta && (
             <div className="evoAcoesRegistro" aria-label="Registrar">
               <div className="evoAcoesLinha">
@@ -560,28 +567,11 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
         </aside>
       </div>
 
-      {/* Embaixo, na ordem do papel: posição e técnica, cirurgia, saída, equipe */}
-      <div className="evoBase">
-        <section className="evoPainel largo">
-          <header><h2>Posição e técnica</h2></header>
-          <SecaoTecnica dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} />
-        </section>
-        <section className="evoPainel">
-          <header><h2>Cirurgia</h2></header>
-          <SecaoCirurgia dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} marcos={{
-            inicioAnestesia: horarioDoMarco(atuais, "inicio_anestesia"), fimAnestesia: fimAnestesia,
-            inicioCirurgia: horarioDoMarco(atuais, "inicio_cirurgia"), fimCirurgia: horarioDoMarco(atuais, "fim_cirurgia"),
-          }} />
-        </section>
-        <section className="evoPainel">
-          <header><h2>Saída da sala</h2></header>
-          <SecaoSaida dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} />
-        </section>
-        <section className="evoPainel largo">
-          <header><h2>Equipe</h2></header>
-          <SecaoEquipe dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} />
-        </section>
-      </div>
+      {/* O rodapé do papel: posições, técnica, cirurgia, alta e o médico — tudo de um toque */}
+      <RodapeDaFolha dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} marcos={{
+        inicioAnestesia: horarioDoMarco(atuais, "inicio_anestesia"), fimAnestesia: fimAnestesia,
+        inicioCirurgia: horarioDoMarco(atuais, "inicio_cirurgia"), fimCirurgia: horarioDoMarco(atuais, "fim_cirurgia"),
+      }} />
 
       {aviso && (
         <div className="evoAviso" role="status">

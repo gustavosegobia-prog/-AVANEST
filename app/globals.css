@@ -7069,3 +7069,57 @@ button.evoMedItem:disabled{cursor:default}
   font:inherit;font-size:16px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 .evoDoseLinha span{font-size:13px;font-weight:650;color:var(--cor-tinta-fraca);white-space:nowrap}
 .evoDoseLinha .evoBotao{min-height:40px;padding:0}
+
+/* ── O rodapé da ficha de papel, clicável (components/evolucao/rodape-da-folha.tsx) ──
+   Linhas finas como as do papel; "○" vira um toque, "____" um campo curto na
+   linha. Denso de propósito: a ficha inteira cabe com pouca rolagem. */
+.evoPapel{margin-top:12px;background:var(--cor-superficie);border:1.5px solid var(--cor-tinta-forte);border-radius:4px;
+  color:var(--cor-tinta)}
+.evoRLinha{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px;padding:3px 8px;min-height:40px;
+  border-bottom:1px solid var(--cor-borda-forte)}
+.evoRLinha b{margin:0 4px 0 2px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-forte)}
+.evoRTexto{font-size:13.5px;color:var(--cor-tinta-fraca)}
+.evoRTexto.forte{font-weight:750;color:var(--cor-tinta)}
+.evoRValor{margin-right:8px;font-size:15px;font-weight:750;font-variant-numeric:tabular-nums}
+.evoOp{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 7px;border:0;border-radius:6px;
+  background:none;color:var(--cor-tinta);font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+.evoOp i{font-style:normal;font-size:15px;color:var(--cor-tinta-fraca)}
+.evoOp:hover:not(:disabled){background:var(--cor-superficie-suave)}
+.evoOp.marcado{background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-weight:750}
+.evoOp.marcado i{color:var(--cor-marca)}
+.evoOp:disabled{cursor:default}
+.evoLinhaCampo{display:inline-flex;align-items:baseline;gap:3px}
+.evoLinhaCampo input{min-height:32px;max-width:100%;padding:0 3px;border:0;border-bottom:1.5px solid var(--cor-borda-forte);
+  border-radius:0;background:transparent;font:inherit;font-size:15px;font-weight:650;color:var(--cor-tinta)}
+.evoLinhaCampo input:focus{outline:none;border-bottom-color:var(--cor-marca);background:var(--cor-marca-suave)}
+.evoLinhaCampo span{font-size:13px;color:var(--cor-tinta-fraca)}
+.evoRLinha.larga .evoLinhaCampo{flex:1}
+.evoRLinha.larga .evoLinhaCampo input{width:100%!important}
+.evoRTecnica{display:grid;grid-template-columns:26px minmax(0,1fr);border-bottom:1px solid var(--cor-borda-forte)}
+.evoRTira{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--cor-borda-forte);
+  writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--cor-tinta-fraca)}
+.evoRTecnicaLinhas .evoRLinha:last-child{border-bottom:0}
+.evoRBase{display:grid;grid-template-columns:minmax(0,1fr) 300px}
+.evoRBaseEsq .evoRLinha:last-child{border-bottom:0}
+.evoRAldreteItem{display:inline-flex;align-items:center;gap:2px;margin-right:6px}
+.evoOpNum{min-width:32px;min-height:32px;border:1px solid var(--cor-borda-forte);border-radius:6px;background:var(--cor-superficie);
+  font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.evoOpNum.marcado{border-color:var(--cor-marca);background:var(--cor-marca);color:var(--cor-marca-contraste)}
+.evoRMedico{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-left:1px solid var(--cor-borda-forte)}
+.evoRMedico>small{font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca);text-align:center}
+.evoRProfissional{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px}
+.evoRProfissional small{flex-basis:100%;font-size:11.5px;color:var(--cor-tinta-fraca)}
+.evoRProfissional input,.evoRProfissional select{min-height:32px;padding:0 3px;border:0;border-bottom:1.5px solid var(--cor-borda-forte);
+  background:transparent;font:inherit;font-size:14.5px}
+.evoRProfissional input.nome{flex:1 1 100%;font-weight:800;text-align:center;text-transform:uppercase}
+.evoRProfissional input.uf{width:3.2ch}
+.evoRProfissional input.crm{width:9ch}
+.evoRMedico .evoRLinha{border:0;padding:0;min-height:0;justify-content:center}
+.evoRAssinar{margin-top:auto;padding-top:14px;border-top:1px solid var(--cor-tinta-forte);text-align:center;
+  font-size:11.5px;color:var(--cor-tinta-fraca)}
+.evoObservacoes{display:grid;gap:3px;margin-top:8px}
+.evoObservacoes span{font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.evoObservacoes textarea{min-height:52px;padding:6px 8px;border:1px solid var(--cor-borda-forte);border-radius:6px;font:inherit;
+  font-size:14.5px;resize:vertical}
+@media(max-width:980px){.evoRBase{grid-template-columns:minmax(0,1fr)}.evoRMedico{border-left:0;border-top:1px solid var(--cor-borda-forte)}}
