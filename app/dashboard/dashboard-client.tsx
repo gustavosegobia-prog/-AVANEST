@@ -942,6 +942,9 @@ export function DashboardClient({
                 <Link role="menuitem" href="/calculos" onClick={()=>setUserMenu(false)}>
                   <Icone nome="calculadora"/> Cálculos extras
                 </Link>
+                <Link role="menuitem" href="/evolucao" onClick={()=>setUserMenu(false)}>
+                  <Icone nome="grafico"/> Evolução anestésica
+                </Link>
                 <hr/>
               </>}
               {/* menuitemcheckbox, nao menuitem: o item liga e desliga um estado

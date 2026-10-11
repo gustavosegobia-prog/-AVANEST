@@ -19,6 +19,15 @@ export const LIQUIDOS_SAIDA: Array<{ categoria: CategoriaDeLiquido; rotulo: stri
   { categoria: "outra_perda", rotulo: "Outra perda" },
 ];
 
+/** O nome que aparece: a solução, na entrada; a categoria, na saída sem nome. */
+export function rotuloDoLiquido(dados: Record<string, unknown>): string {
+  const nome = typeof dados.nome === "string" ? dados.nome.trim() : "";
+  if (nome) return nome;
+  const cat = String(dados.categoria ?? "");
+  return [...LIQUIDOS_ENTRADA, ...LIQUIDOS_SAIDA].find((l) => l.categoria === cat)?.rotulo
+    ?? (dados.sentido === "saida" ? "Perda" : "Entrada");
+}
+
 export type Balanco = {
   entradas: number;
   saidas: number;

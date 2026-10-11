@@ -6517,3 +6517,420 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 }
 @media print{.avisoCookies{display:none}}
 .mudarCookies{margin-top:4px;border-color:var(--avn-line);color:var(--avn-navy);background:#fff}
+
+/* ══ Evolução anestésica digital ══════════════════════════════════════════
+   A folha de anestesia como ferramenta de sala. Tablet deitado preso ao
+   aparelho é o uso principal: alvos de toque de 44px, números grandes,
+   nada que dependa de passar o mouse. A distribuição é a do papel —
+   pré-anestésica no alto, gases e líquidos à esquerda, gráfico no meio,
+   medicamentos à direita, técnica e saída embaixo. */
+.evoFolha,.evoInicio{
+  --evo-pa:var(--cor-marca);
+  --evo-pam:var(--cor-tinta-forte);
+  --evo-fc:var(--cor-perigo);
+  --evo-grade:color-mix(in srgb,var(--cor-borda) 75%,transparent);
+  --evo-grade-forte:var(--cor-borda-forte);
+  min-height:100dvh;background:var(--cor-fundo);color:var(--cor-tinta);
+  padding:0 12px 96px;font-variant-numeric:tabular-nums}
+.evoFolha button,.evoInicio button{font:inherit}
+
+/* Botões da folha */
+.evoBotao{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;
+  border:1px solid var(--cor-marca);border-radius:10px;background:var(--cor-marca);color:var(--cor-marca-contraste);
+  font-weight:650;font-size:14.5px;cursor:pointer;text-decoration:none;white-space:nowrap;
+  transition:background .15s ease,border-color .15s ease,color .15s ease}
+.evoBotao:hover{background:var(--cor-marca-forte);border-color:var(--cor-marca-forte)}
+.evoBotao:disabled{opacity:.45;cursor:not-allowed}
+.evoBotao.secundario{background:var(--cor-superficie);border-color:var(--cor-borda-forte);color:var(--cor-tinta)}
+.evoBotao.secundario:hover{border-color:var(--cor-marca);color:var(--cor-marca-forte)}
+.evoBotao.perigo{background:var(--cor-perigo);border-color:var(--cor-perigo)}
+.evoBotao.fantasma{background:transparent;border-color:transparent;color:inherit;text-decoration:underline;text-underline-offset:3px}
+.evoBotao.pequeno{min-height:34px;padding:0 12px;font-size:13.5px}
+.evoBotao.icone{width:40px;padding:0;font-size:19px}
+@media(pointer:coarse){.evoBotao{min-height:44px}.evoBotao.pequeno{min-height:44px}.evoBotao.icone{width:44px}}
+.evoFolha :focus-visible,.evoInicio :focus-visible,.janela :focus-visible{outline:2px solid var(--cor-marca);outline-offset:2px}
+
+/* Topo fixo: quem é o paciente, em que pé está a folha, e se salvou. */
+.evoTopo{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;margin:0 -12px;
+  padding:8px 12px;background:var(--cor-superficie);border-bottom:1px solid var(--cor-borda)}
+.evoVoltar{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;padding:0 10px;
+  border-radius:10px;color:var(--cor-tinta);text-decoration:none;font-weight:650}
+.evoVoltar:hover{background:var(--cor-superficie-suave)}
+.evoPaciente{flex:1;min-width:0}
+.evoPaciente h1{margin:0;font-size:18px;line-height:1.2;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evoPaciente p{margin:2px 0 0;font-size:13px;color:var(--cor-tinta-fraca);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evoTopoAcoes{display:flex;gap:8px;flex:none}
+.evoSituacao{flex:none;padding:4px 10px;border-radius:999px;font-size:12.5px;font-weight:700;
+  background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.evoSituacao.encerrada{background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca)}
+.evoSincronia{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
+.evoSincronia::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cor-borda-forte)}
+.evoSincronia.ok::before{background:var(--cor-sucesso)}
+.evoSincronia.atencao{color:var(--cor-atencao)}.evoSincronia.atencao::before{background:var(--cor-atencao)}
+.evoSincronia.perigo{color:var(--cor-perigo)}.evoSincronia.perigo::before{background:var(--cor-perigo)}
+
+.evoFaixa{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0 0;padding:10px 14px;border-radius:10px;font-size:14px}
+.evoFaixa.perigo{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
+.evoFaixa.atencao{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.evoFaixa span{flex:1;min-width:200px}
+
+/* Pré-anestésica: recolhida numa linha, abre a folha toda. */
+.evoPre{margin-top:12px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:12px}
+.evoPre summary{display:flex;align-items:baseline;gap:12px;min-height:48px;padding:12px 14px;cursor:pointer;list-style:none}
+.evoPre summary::-webkit-details-marker{display:none}
+.evoPre summary::after{content:"▾";margin-left:auto;color:var(--cor-tinta-fraca)}
+.evoPre[open] summary::after{content:"▴"}
+.evoPre summary b{flex:none;font-size:15px}
+.evoPre summary span{min-width:0;font-size:13.5px;color:var(--cor-tinta-fraca);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evoPre .evoSecaoCorpo{padding:0 14px 14px}
+.evoGradePre{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px;align-items:end}
+.evoGradePre .largo{grid-column:span 2}
+.evoGradePre .evoEscolha{grid-column:span 2}
+
+/* O corpo: três colunas, como o papel. */
+.evoCorpo{display:grid;grid-template-columns:236px minmax(0,1fr) 268px;gap:12px;margin-top:12px;align-items:start}
+.evoEsquerda,.evoDireita{display:grid;gap:12px}
+.evoPainel{background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:12px;padding:12px}
+.evoPainel>header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.evoCorpo>*{min-width:0}
+.evoPainel h2{margin:0;font-size:15px;font-weight:750;letter-spacing:-.01em}
+.evoPainel h3{margin:0 0 6px;font-size:12.5px;font-weight:700;color:var(--cor-tinta-fraca)}
+.evoVazio{margin:0;font-size:13.5px;color:var(--cor-tinta-fraca)}
+.evoNota{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--cor-tinta-fraca)}
+.evoErro{margin:0;font-size:13.5px;color:var(--cor-perigo-forte)}
+
+.evoGases,.evoBalanco{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0}
+.evoGases div,.evoBalanco div{padding:8px 10px;border-radius:8px;background:var(--cor-superficie-suave)}
+.evoGases dt,.evoBalanco dt{font-size:12px;color:var(--cor-tinta-fraca)}
+.evoGases dd,.evoBalanco dd{margin:2px 0 0;font-size:16px;font-weight:700}
+.evoBalanco{grid-template-columns:repeat(3,minmax(0,1fr))}
+.evoSevo{margin:10px 0 0;font-size:14px}
+.evoSevo b{font-size:16px}
+.evoSevo small{display:block;font-size:12px;color:var(--cor-tinta-fraca)}
+
+.evoLista{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.evoLista>li{display:grid;gap:2px;padding:8px 0;border-top:1px solid var(--cor-borda)}
+.evoLista>li:first-child{border-top:0;padding-top:0}
+.evoLista b{font-size:14.5px}
+.evoLista span,.evoLista small{font-size:13px;color:var(--cor-tinta-fraca)}
+.evoLista.compacta{margin-top:8px;gap:0}
+.evoLista.compacta li{padding:0;border:0}
+.evoLista.compacta button{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:6px;align-items:center;width:100%;
+  min-height:36px;padding:4px 6px;border:0;border-radius:8px;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.evoLista.compacta button:hover{background:var(--cor-superficie-suave)}
+.evoLista.compacta b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evoAcoesLinha{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+
+/* O centro: ferramentas, gráfico, eventos. */
+.evoCentro{min-width:0;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:12px;padding:10px}
+.evoFerramentas{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-bottom:8px}
+.evoModos{display:flex;flex-wrap:wrap;gap:4px;padding:3px;border-radius:12px;background:var(--cor-superficie-suave)}
+.evoModo{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:0;border-radius:9px;
+  background:transparent;color:var(--cor-tinta);font-weight:650;font-size:14px;cursor:pointer}
+.evoModo i{font-style:normal;font-weight:800}
+.evoModo.pa i,.evoModo.pas i,.evoModo.pad i{color:var(--evo-pa)}
+.evoModo.pam i{color:var(--evo-pam)}
+.evoModo.fc i{color:var(--evo-fc)}
+.evoModo.ativo{background:var(--cor-superficie);box-shadow:0 1px 3px rgba(8,25,42,.14);color:var(--cor-marca-forte)}
+@media(pointer:coarse){.evoModo{min-height:44px}}
+.evoNavegar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.evoSelecao{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--cor-tinta-fraca)}
+.evoSelecao select{min-height:36px;border:1px solid var(--cor-borda-forte);border-radius:8px;background:var(--cor-superficie);color:var(--cor-tinta);padding:0 8px;font:inherit}
+.evoSegmento{display:inline-flex;border:1px solid var(--cor-borda-forte);border-radius:9px;overflow:hidden}
+.evoSegmento button{min-height:36px;min-width:40px;padding:0 10px;border:0;border-left:1px solid var(--cor-borda);
+  background:var(--cor-superficie);color:var(--cor-tinta);font-weight:600;font-size:13.5px;cursor:pointer}
+.evoSegmento button:first-child{border-left:0}
+.evoSegmento button.ativo{background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.evoSegmento button:disabled{color:var(--cor-borda-forte);cursor:not-allowed}
+@media(pointer:coarse){.evoSegmento button,.evoSelecao select{min-height:44px}}
+
+/* O gráfico: o quadriculado do papel. Sem rolagem nem zoom do navegador
+   enquanto o dedo está nele — o toque é registro. */
+.evoGraficoCaixa{width:100%;overflow:hidden}
+.evoGraficoCarregando{height:470px;border-radius:8px;background:var(--cor-superficie-suave)}
+.evoGrafico{display:block;touch-action:none;user-select:none;-webkit-user-select:none;cursor:crosshair}
+.evoGrafico.leitura{cursor:default}
+.evoGrafico text{font-family:inherit;fill:var(--cor-tinta-fraca)}
+.evoGradeFina{stroke:var(--evo-grade);stroke-width:1}
+.evoGradeForte{stroke:var(--evo-grade-forte);stroke-width:1}
+.evoBorda{stroke:var(--cor-tinta-fraca);stroke-width:1}
+.evoLinhaFundo{fill:var(--cor-superficie-suave)}
+.evoRotuloLinha{font-size:11.5px;font-weight:700}
+.evoValorLinha{font-size:12.5px;font-weight:700;fill:var(--cor-tinta)!important}
+.evoValorLinha.pendente{opacity:.5}
+.evoHora{font-size:11px;font-weight:600}
+.evoEixo{font-size:11px;font-weight:600}
+.evoLacuna{fill:color-mix(in srgb,var(--cor-atencao) 9%,transparent)}
+.evoAgora{stroke:var(--cor-marca);stroke-width:1.5;stroke-dasharray:4 4}
+.evoEvento line{stroke:var(--cor-tinta-fraca);stroke-width:1;stroke-dasharray:2 3}
+.evoEvento text{font-size:10.5px;font-weight:700;fill:var(--cor-tinta)!important}
+.evoEvento.pendente{opacity:.5}
+.evoSerie polyline{stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+.evoSerie.pas,.evoSerie.pad{color:var(--evo-pa);stroke:var(--evo-pa)}
+.evoSerie.pam{color:var(--evo-pam);stroke:var(--evo-pam)}
+.evoSerie.fc{color:var(--evo-fc);stroke:var(--evo-fc)}
+.evoSerie.pam polyline{stroke-dasharray:5 3}
+.evoSimbolo{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.evoSimbolo.cheio{fill:currentColor;stroke:none}
+.evoSimbolo.estimado{opacity:.55;stroke-dasharray:2 2}
+.evoSimbolo.pendente{opacity:.45}
+.evoSimbolo.arrastando{opacity:.2}
+.evoSerie.fantasma .evoSimbolo{stroke-width:3}
+
+.evoLegenda{display:flex;flex-wrap:wrap;gap:4px 14px;margin:6px 0 0;font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
+.evoLegenda .pas,.evoLegenda .pad{color:var(--evo-pa)}
+.evoLegenda .pam{color:var(--evo-pam)}
+.evoLegenda .pamEst{color:var(--evo-pam);opacity:.6}
+.evoLegenda .fc{color:var(--evo-fc)}
+.evoLegenda .lacuna::before{content:"";display:inline-block;width:12px;height:10px;margin-right:5px;vertical-align:-1px;
+  background:color-mix(in srgb,var(--cor-atencao) 22%,transparent);border-radius:2px}
+
+.evoEventos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--cor-borda)}
+.evoEventoBotao{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1px solid var(--cor-borda-forte);
+  border-radius:10px;background:var(--cor-superficie);color:var(--cor-tinta);font-size:13.5px;font-weight:600;cursor:pointer}
+.evoEventoBotao:hover{border-color:var(--cor-marca)}
+.evoEventoBotao.marco{font-weight:750}
+.evoEventoBotao.feito{background:var(--cor-sucesso-suave);border-color:transparent;color:var(--cor-sucesso)}
+.evoEventoBotao small{font-weight:750;font-size:12.5px}
+@media(pointer:coarse){.evoEventoBotao{min-height:44px}}
+.evoLinhaDoTempo{display:flex;flex-wrap:wrap;gap:4px 8px;list-style:none;margin:10px 0 0;padding:0}
+.evoLinhaDoTempo button{display:inline-flex;gap:6px;align-items:baseline;min-height:32px;padding:4px 8px;border:0;border-radius:8px;
+  background:var(--cor-superficie-suave);color:var(--cor-tinta);font-size:13px;cursor:pointer}
+.evoLinhaDoTempo span{font-weight:750}
+.evoLinhaDoTempo em{font-style:normal;color:var(--cor-tinta-fraca);font-size:12px}
+
+/* Medicamentos: só o administrado, com cada dose e o total. */
+.evoMedicamentos{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.evoMedicamentos>li>header{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:2px}
+.evoMedicamentos>li>header b{font-size:14.5px}
+.evoMedicamentos>li>header span{font-size:12.5px;font-weight:700;color:var(--cor-tinta-fraca)}
+.evoDose{display:grid;grid-template-columns:44px minmax(0,1fr) auto 10px;gap:8px;align-items:center;width:100%;min-height:36px;
+  padding:4px 6px;border:0;border-radius:8px;background:transparent;color:inherit;text-align:left;cursor:pointer;font-size:13.5px}
+.evoDose:hover{background:var(--cor-superficie-suave)}
+.evoDose span{color:var(--cor-tinta-fraca)}
+.evoDose.pendente{opacity:.55}
+.evoAlertaPonto{width:8px;height:8px;border-radius:50%}
+.evoAlertaPonto.amarelo{background:var(--cor-atencao)}
+.evoAlertaPonto.vermelho{background:var(--cor-perigo)}
+.evoPlanejados{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--cor-borda)}
+
+/* Embaixo: técnica, equipe, saída. */
+.evoBase{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
+.evoSecaoCorpo{display:grid;gap:12px}
+.evoDetalhe{display:grid;gap:10px;margin:0;padding:12px;border:1px solid var(--cor-borda);border-radius:10px}
+.evoDetalhe legend{padding:0 6px;font-size:13px;font-weight:750}
+.evoProfissional{display:grid;grid-template-columns:minmax(0,1fr) 92px 54px auto;gap:8px;align-items:end;
+  padding:8px 0;border-top:1px solid var(--cor-borda)}
+.evoProfissional>b{grid-column:1/-1;font-size:12.5px;color:var(--cor-tinta-fraca)}
+.evoProfissional:first-of-type{border-top:0}
+
+/* Campos (folha e janelas) */
+.evoForm{display:grid;gap:14px}
+.evoCampo{display:grid;gap:5px;min-width:0}
+.evoCampo>span{font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
+.evoCampo input,.evoCampo select,.evoCampo textarea{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--cor-borda-forte);
+  border-radius:10px;background:var(--cor-superficie);color:var(--cor-tinta);font:inherit;font-size:16px}
+.evoCampo textarea{resize:vertical;line-height:1.45}
+.evoCampo input:disabled,.evoCampo textarea:disabled,.evoCampo select:disabled{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+.evoCampo.comAviso input{border-color:var(--cor-perigo)}
+.evoCampo small{font-size:12.5px;color:var(--cor-perigo-forte)}
+.evoNumero{display:flex;align-items:center;gap:6px}
+.evoNumero input{text-align:right;font-weight:700}
+.evoNumero em{flex:none;font-style:normal;font-size:13px;color:var(--cor-tinta-fraca)}
+.evoLinhaCampos{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.evoLinhaCampos>*{flex:1 1 120px}
+.evoLinhaCampos>.evoUnidade{flex:0 0 112px}
+.evoLinhaCampos>.evoMarca{flex:0 1 auto}
+.evoGradeCampos{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.evoCampoHora{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.evoCampoHora label{display:grid;gap:5px}
+.evoCampoHora label span{font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
+.evoCampoHora input{min-height:44px;padding:0 10px;border:1px solid var(--cor-borda-forte);border-radius:10px;
+  background:var(--cor-superficie);color:var(--cor-tinta);font:inherit;font-size:17px;font-weight:700}
+.evoHoraAtalhos{display:flex;gap:6px}
+.evoHoraAtalhos button{min-height:44px;padding:0 12px;border:1px solid var(--cor-borda-forte);border-radius:10px;
+  background:var(--cor-superficie);color:var(--cor-tinta);font-weight:650;cursor:pointer}
+.evoEscolha{margin:0;padding:0;border:0;min-width:0}
+.evoEscolha legend{padding:0;margin-bottom:6px;font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
+.evoEscolha>div{display:flex;flex-wrap:wrap;gap:6px}
+.evoEscolha button{min-height:40px;padding:0 12px;border:1px solid var(--cor-borda-forte);border-radius:10px;
+  background:var(--cor-superficie);color:var(--cor-tinta);font-weight:600;font-size:14px;cursor:pointer}
+.evoEscolha button.ativo{background:var(--cor-marca-suave);border-color:var(--cor-marca);color:var(--cor-marca-forte);font-weight:750}
+@media(pointer:coarse){.evoEscolha button{min-height:44px}}
+.evoMarca{display:flex;gap:10px;align-items:flex-start;min-height:44px;padding:10px 0;font-size:14.5px;cursor:pointer}
+.evoMarca input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--cor-marca);flex:none}
+.evoMarca small{display:block;margin-top:2px;font-size:12.5px;color:var(--cor-tinta-fraca)}
+.evoMarca.desligada{color:var(--cor-tinta-fraca);cursor:not-allowed}
+.evoOpcoesMotivo{display:flex;flex-wrap:wrap;gap:6px}
+.evoOpcoesMotivo button{min-height:40px;padding:0 12px;border:1px solid var(--cor-borda-forte);border-radius:10px;
+  background:var(--cor-superficie);color:var(--cor-tinta);font-size:13.5px;cursor:pointer}
+.evoOpcoesMotivo button.ativo{background:var(--cor-marca-suave);border-color:var(--cor-marca);color:var(--cor-marca-forte)}
+.evoMover{display:flex;align-items:center;gap:12px;margin:0;font-size:17px;font-weight:700}
+.evoMover b{color:var(--cor-marca)}
+
+/* A conferência de dose: a cor diz o nível, o texto diz o porquê. */
+.evoConferencia{display:grid;gap:6px;padding:12px 14px;border-radius:10px;font-size:14px;line-height:1.45}
+.evoConferencia header{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.evoConferencia header b{font-size:14.5px}
+.evoConferencia p,.evoConferencia ul{margin:0}
+.evoConferencia ul{padding-left:18px}
+.evoConferencia.verde{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.evoConferencia.amarelo{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.evoConferencia.vermelho,.evoConferencia.erro{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
+.evoConferencia.indisponivel{background:var(--cor-superficie-suave);color:var(--cor-tinta)}
+.evoConferencia .evoCampo>span{color:inherit}
+
+.evoHistorico{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.evoHistorico li{display:grid;gap:1px;padding-left:12px;border-left:2px solid var(--cor-borda)}
+.evoHistorico b{font-size:13px}
+.evoHistorico span{font-size:14px}
+.evoHistorico small{font-size:12.5px;color:var(--cor-tinta-fraca)}
+
+.evoCatalogo{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;
+  max-height:52dvh;overflow:auto}
+.evoCatalogo button{display:grid;gap:2px;width:100%;min-height:52px;padding:8px 12px;border:1px solid var(--cor-borda);
+  border-radius:10px;background:var(--cor-superficie);color:var(--cor-tinta);text-align:left;cursor:pointer}
+.evoCatalogo button:hover{border-color:var(--cor-marca)}
+.evoCatalogo strong{font-size:14.5px}
+.evoCatalogo span{font-size:12px;color:var(--cor-tinta-fraca)}
+
+.evoAviso{position:fixed;left:50%;bottom:20px;z-index:60;transform:translateX(-50%);display:flex;align-items:center;gap:14px;
+  max-width:calc(100vw - 24px);padding:12px 16px;border-radius:12px;background:var(--cor-tinta-forte);color:var(--cor-superficie);
+  font-size:14.5px;font-weight:600;box-shadow:0 10px 26px rgba(8,25,42,.25)}
+.evoAviso button{min-height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:inherit;
+  font-weight:750;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* Página das folhas */
+.evoInicio{max-width:960px;margin:0 auto;padding-top:16px}
+.evoInicioTopo{display:flex;gap:12px;align-items:flex-start}
+.evoInicioTopo h1{margin:4px 0 2px;font-size:24px;letter-spacing:-.02em}
+.evoInicioTopo p{margin:0;font-size:14px;color:var(--cor-tinta-fraca)}
+.evoNova,.evoInicioFolhas{margin-top:16px;padding:16px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:12px}
+.evoNova h2,.evoInicioFolhas h2{margin:0 0 12px;font-size:16px}
+.evoBusca{display:grid;gap:6px}
+.evoBusca span{font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
+.evoBusca input{min-height:48px;padding:0 14px;border:1px solid var(--cor-borda-forte);border-radius:10px;background:var(--cor-superficie);
+  color:var(--cor-tinta);font:inherit;font-size:16px}
+.evoResultados,.evoInicioFolhas ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.evoResultados button,.evoInicioFolhas a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;width:100%;min-height:56px;
+  padding:10px 14px;border:1px solid var(--cor-borda);border-radius:10px;background:var(--cor-superficie);color:var(--cor-tinta);
+  text-align:left;text-decoration:none;cursor:pointer}
+.evoResultados button:hover,.evoInicioFolhas a:hover{border-color:var(--cor-marca)}
+.evoResultados span,.evoInicioFolhas a>span{font-size:13px;color:var(--cor-tinta-fraca)}
+.evoResultados em{grid-row:1/3;grid-column:2;align-self:center;font-style:normal;font-weight:700;color:var(--cor-marca-forte)}
+.evoInicioFolhas a{grid-template-columns:minmax(0,1fr) auto auto}
+.evoInicioFolhas a strong{grid-column:1}
+.evoInicioFolhas a>span:nth-of-type(1){grid-column:1}
+.evoInicioData{grid-column:2;grid-row:1/3;align-self:center}
+.evoInicioFolhas .evoSituacao{grid-column:3;grid-row:1/3;align-self:center}
+
+/* Tablet em pé e computador pequeno: a coluna da direita desce. */
+@media(max-width:1180px){
+  .evoCorpo{grid-template-columns:220px minmax(0,1fr) 248px}
+  .evoBase{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .evoBase>.largo{grid-column:1/-1}
+  .evoGradePre{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:980px){
+  .evoCorpo{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .evoCentro{grid-column:1/-1;order:-1}
+  .evoTopo{flex-wrap:wrap}
+  .evoPaciente{flex-basis:calc(100% - 60px)}
+}
+@media(max-width:640px){
+  .evoCorpo,.evoBase{grid-template-columns:minmax(0,1fr)}
+  .evoGradePre{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .evoGradePre .largo,.evoGradePre .evoEscolha{grid-column:1/-1}
+  .evoTopoAcoes{width:100%;justify-content:flex-end}
+  .evoProfissional{grid-template-columns:minmax(0,1fr) 80px 54px}
+}
+
+/* ── Folha de anestesia impressa (app/evolucao/[id]/imprimir) ──────────────
+   A4 retrato, no desenho da ficha de papel do serviço. Tudo em milímetros e
+   pontos: é medida de papel, não de tela. A tela só mostra a folha como vai
+   sair, com a barra de imprimir em cima. */
+.imprPagina{min-height:100dvh;background:#e6ebf0;color:#111}
+.imprBarra{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 16px;
+  background:var(--cor-superficie);border-bottom:1px solid var(--cor-borda);color:var(--cor-tinta)}
+.imprBarra p{flex:1;margin:0;font-size:13.5px;line-height:1.45;color:var(--cor-tinta-fraca)}
+.imprBarra .evoBotao.fantasma{color:var(--cor-tinta)}
+.imprFolhas{overflow-x:auto;padding:24px 16px 40px}
+.imprFolha{box-sizing:content-box;width:196mm;min-height:281mm;margin:0 auto 24px;padding:7mm;background:#fff;
+  box-shadow:0 2px 14px rgba(8,25,42,.14);display:flex;flex-direction:column;gap:1.4mm;
+  font:7.2pt/1.28 Arial,Helvetica,sans-serif;color:#111;font-variant-numeric:tabular-nums;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.imprFolha small{font-size:5.8pt;color:#555;text-transform:uppercase;letter-spacing:.03em}
+.imprFolha p{margin:0}
+
+.imprTopo{display:grid;grid-template-columns:50mm 1fr 50mm;border:.35mm solid #111}
+.imprInstituicao{display:flex;align-items:center;padding:1.4mm 2mm;font-weight:700;font-size:8pt;line-height:1.15}
+.imprTopo h1{margin:0;padding:1.6mm 2mm;background:#5f6670;color:#fff;font-size:15pt;letter-spacing:.05em;text-align:center}
+.imprResponsavel{display:flex;align-items:center;justify-content:center;padding:1.4mm 2mm;background:#5f6670;color:#fff;
+  border-left:.35mm solid #fff;font-weight:700;font-size:8pt;text-align:center}
+.imprRascunho{padding:1mm 2mm;border:.3mm dashed #b42318;color:#b42318;font-weight:700}
+
+.imprPaciente{display:flex;border:.3mm solid #111}
+.imprPaciente span{flex:0 0 30mm;padding:.7mm 1.5mm;border-left:.15mm solid #9aa1ab;font-weight:700;font-size:8pt}
+.imprPaciente span.largo{flex:1;border-left:0}
+.imprPaciente small,.imprObservacoes small{display:block;font-weight:400}
+.imprPreGrade small{display:block}
+
+.imprPre{display:grid;grid-template-columns:5mm 1fr;border:.3mm solid #111}
+.imprPreTira{display:flex;align-items:center;justify-content:center;border-right:.3mm solid #111;
+  writing-mode:vertical-rl;transform:rotate(180deg);font-size:6.2pt;color:#333}
+.imprPreGrade{display:grid;grid-template-columns:repeat(6,1fr)}
+.imprPreGrade span{min-height:4.4mm;padding:.5mm 1.2mm;border-right:.15mm solid #9aa1ab;border-bottom:.15mm solid #9aa1ab}
+.imprPreGrade .dobro{grid-column:span 2}
+.imprPreGrade .metade{grid-column:span 3}
+.imprPreGrade .todo{grid-column:1/-1}
+.imprPreGrade .alerta{font-weight:700}
+
+.imprCorpo{display:grid;grid-template-columns:146mm 1fr;align-items:stretch}
+.imprTempo{display:flex;flex-direction:column}
+.imprRegistro{display:block}
+.imprLegendas{padding:.8mm 1.5mm;border:.3mm solid #111;border-top:0;font-size:6.5pt}
+.imprLegendas:empty{display:none}
+.imprLegendas p+p{margin-top:.5mm}
+.imprObservacoes{flex:1;min-height:9mm;padding:.8mm 1.5mm;border:.3mm solid #111;border-top:0}
+.imprMedicacao{padding:1.2mm 1.6mm;border:.35mm solid #111;border-left:0;font-size:6.8pt}
+.imprMedicacao h2{margin:0 0 .8mm;font-size:7.4pt;font-weight:700;text-align:center;letter-spacing:0}
+.imprMedicacao h3{margin:1.2mm 0 .3mm;font-size:7pt;font-weight:700;letter-spacing:0}
+.imprMedicacao ul{margin:0;padding:0;list-style:none}
+.imprMedicacao li{margin:0 0 .7mm;break-inside:avoid}
+.imprDose{display:block;padding-left:2mm;font-size:6.5pt}
+.imprDose em{display:block;font-style:normal;color:#7a2e0e}
+.imprTotal{font-size:6.5pt;color:#333}
+.imprVazio,.imprNotaPequena{font-size:6pt;color:#444}
+.imprMedicacao .imprNotaPequena{margin-top:1.4mm}
+
+.imprBase{border:.35mm solid #111;break-inside:avoid}
+.imprLinha{padding:.7mm 1.5mm;border-bottom:.15mm solid #9aa1ab}
+.imprLinha small,.imprGradeBase small,.imprAssinaturas p small{margin-right:1.5mm}
+.imprTecnica p{display:inline}
+.imprTecnica p+p::before{content:" · "}
+.imprGradeBase{display:grid;grid-template-columns:2fr 1fr}
+.imprGradeBase p{padding:.7mm 1.5mm;border-bottom:.15mm solid #9aa1ab}
+.imprGradeBase p+p{border-left:.15mm solid #9aa1ab}
+.imprAssinaturas{display:grid;grid-template-columns:1fr 64mm}
+.imprFechamento p{padding:.7mm 1.5mm;border-bottom:.15mm solid #9aa1ab}
+.imprFechamento p:last-child{border-bottom:0}
+.imprFechamento .depois{margin-left:4mm}
+.imprAssinatura{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  gap:.3mm;padding:1mm 2mm 1.2mm;border-left:.15mm solid #9aa1ab;text-align:center;font-size:7.4pt}
+.imprAssinatura b{font-size:8pt}
+.imprLinhaAssinar{display:block;align-self:stretch;height:7mm;margin:0 3mm .6mm;border-bottom:.25mm solid #111}
+.imprAssinaturaCurta{display:flex;flex-direction:column;align-items:flex-end;width:90mm;margin:2mm 0 0 auto;text-align:right}
+.imprAssinaturaCurta .imprLinhaAssinar{width:100%;margin:0 0 .6mm}
+
+.imprRodape{display:flex;justify-content:space-between;gap:4mm;margin-top:auto;padding-top:.8mm;
+  border-top:.15mm solid #9aa1ab;font-size:5.8pt;color:#555}
+
+@media screen and (max-width:860px){.imprFolhas{padding:16px 8px 32px}.imprBarra{flex-wrap:wrap}.imprBarra p{flex-basis:100%;order:3}}
+@media print{
+  body:has(.imprPagina){background:#fff}
+  .imprBarra{display:none!important}
+  .imprPagina{min-height:0;background:#fff}
+  .imprFolhas{overflow:visible;padding:0}
+  .imprFolha{margin:0;padding:0;box-shadow:none;min-height:280mm;break-after:page}
+  .imprFolha:last-child{break-after:auto}
+}
