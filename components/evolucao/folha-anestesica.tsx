@@ -9,7 +9,7 @@ import { janelaVisivel } from "@/lib/evolucao/grafico";
 import { pamEstimadaCabe, PARAMETROS, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
-  administrados, agruparPorMedicamento, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
+  administrados, agruparPorMedicamento, doseAcumulada, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
 } from "@/lib/evolucao/medicamentos";
 import {
   LISTA_DA_FOLHA, grupoDaAdministracao, itemDaAdministracao, type CodigoDoGrupo, type GrupoDaLista, type ItemDaLista,
@@ -20,12 +20,13 @@ import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evoluca
 import { EVENTOS, conferirEncerramento, horarioDoMarco, imcDaFolha, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { marcasDeEvento } from "@/lib/evolucao/impressao";
-import { idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
+import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
 import type { PacienteDaFolha } from "@/lib/evolucao/importar";
 import { useFolha, type Folha } from "./use-folha";
 import { GraficoSinais, type AlvoDaFaixa, type Toque } from "./grafico-sinais";
 import { JanelaLancar, JanelaMover, JanelaPonto, JanelaSinal, MODOS, Historico, type ModoDoGrafico, type NovoSinal } from "./janelas-sinais";
 import { JanelaMedicamento } from "./janela-medicamento";
+import { numero } from "./campos";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
 import { PreAnestesicaResumo, SecaoCirurgia, SecaoEquipe, SecaoPreAnestesica, SecaoSaida, SecaoTecnica } from "./secoes";
 
@@ -43,7 +44,7 @@ type Abrir =
   | { tipo: "ponto"; registro: Registro }
   | { tipo: "mover"; registro: Registro; t: Toque }
   | { tipo: "lancar" }
-  | { tipo: "medicamento"; planejado?: Registro; escolhido?: { item: ItemDaLista; grupo: GrupoDaLista } }
+  | { tipo: "medicamento"; planejado?: Registro; escolhido?: { item: ItemDaLista; grupo: GrupoDaLista; dose?: number } }
   | { tipo: "infusao"; acao: "iniciar" | "ajustar" | "encerrar"; infusao: Infusao | null; ms?: number; nome?: string }
   | { tipo: "infusaoAcoes"; infusao: Infusao; ms: number }
   | { tipo: "gas"; ms?: number }
@@ -88,6 +89,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [preAberta, setPreAberta] = useState(true);
+  const [linhaAberta, setLinhaAberta] = useState<string | null>(null);
   const [editandoPre, setEditandoPre] = useState(false);
 
   useEffect(() => {
@@ -196,6 +198,35 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
     else if (a.tipo === "infusao") {
       setAbrir(a.infusao ? { tipo: "infusaoAcoes", infusao: a.infusao, ms: a.ms } : { tipo: "infusao", acao: "iniciar", infusao: null, ms: a.ms, nome: a.nome });
     } else setAbrir({ tipo: "liquido", sentido: a.sentido, ms: a.ms, inicial: { nome: a.nome, categoria: a.categoria } });
+  }
+
+  // A dose escrita na própria linha da lista. Grava direto quando não há nada a
+  // conferir; com alergia registrada, alerta de dose ou dado inválido, abre a
+  // janela completa — a justificativa não se pula, e o servidor confere de novo.
+  function doseRapida(item: ItemDaLista, grupo: GrupoDaLista, dose: number) {
+    const via = item.via ?? grupo.via;
+    const momento = minutoAtual();
+    const anteriores = dadas.filter((a) => mesmoFarmaco(a.nome, item.nome)).map((a) => a.momento)
+      .sort((a, b) => Date.parse(b) - Date.parse(a));
+    const conferencia = avaliarDose(regras, {
+      medicamento: item.nome, via, indicacao: grupo.indicacao ?? "", dose, unidade: item.unidade, pesoKg, idadeDias,
+      acumuladoAntes: doseAcumulada(dadas, item.nome, item.unidade) ?? 0,
+      minutosDesdeUltima: anteriores[0] ? minutosEntre(anteriores[0], momento) : null,
+    });
+    setLinhaAberta(null);
+    if (conferirAlergia(dados, item.nome) || conferencia.exigeJustificativa || conferencia.nivel === "erro") {
+      setAbrir({ tipo: "medicamento", escolhido: { item, grupo, dose } });
+      return;
+    }
+    f.registrar({
+      tipo: "medicamento", momento, dados: {
+        nome: item.nome, status: "administrado", via, forma: grupo.forma, unidade: item.unidade, dose, grupo: grupo.codigo,
+        ...(item.apresentacao ? { apresentacao: item.apresentacao } : {}),
+        ...(grupo.indicacao ? { indicacao: grupo.indicacao } : {}),
+      },
+    });
+    contarFavorito(item.nome);
+    setAviso({ texto: `${item.nome} ${fmt(dose)} ${item.unidade} ${via} às ${hora(momento)}`, desfazer: true });
   }
 
   function contarFavorito(nome: string) {
@@ -484,15 +515,22 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                     {g.itens.map((it, ii) => {
                       const vezes = doGrupo.filter((a) => itemDaAdministracao(g, a, porId.get(a.id)) === ii);
                       const total = vezes.length > 1 ? agruparPorMedicamento(vezes)[0]?.total ?? null : null;
+                      const chave = `${g.codigo}-${ii}`;
                       return (
                         <li key={`${it.nome}${ii}`} className={vezes.length ? "feito" : ""}>
-                          <button type="button" className="evoMedItem" disabled={!aberta}
-                            onClick={() => setAbrir({ tipo: "medicamento", escolhido: { item: it, grupo: g } })}>
+                          <button type="button" className="evoMedItem" disabled={!aberta} aria-expanded={linhaAberta === chave}
+                            onClick={() => setLinhaAberta(linhaAberta === chave ? null : chave)}>
                             <i aria-hidden="true">{vezes.length ? "✓" : "○"}</i>
                             <span>{it.rotulo ?? it.nome}</span>
                             {total !== null && <small>Total {fmt(total)} {vezes[0].unidade}</small>}
                             {conferirAlergia(dados, it.nome) && <em className="evoAlergiaTag">Alergia</em>}
                           </button>
+                          {aberta && linhaAberta === chave && (
+                            <DoseNaLinha item={it} grupo={g}
+                              onRegistrar={(dose) => doseRapida(it, g, dose)}
+                              onDetalhes={(dose) => { setLinhaAberta(null); setAbrir({ tipo: "medicamento", escolhido: { item: it, grupo: g, dose: dose ?? undefined } }); }}
+                              onFechar={() => setLinhaAberta(null)} />
+                          )}
                           {vezes.map((a) => <LinhaDose key={a.id} a={a} registro={porId.get(a.id)!} cabecalho={dados}
                             pendente={f.idsPendentes.has(a.id)} onAbrir={(r) => setAbrir({ tipo: "registro", registro: r })} />)}
                         </li>
@@ -632,6 +670,31 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           onReabrir={(m) => void reabrir(m)} onFechar={() => setAbrir(null)} />
       )}
     </main>
+  );
+}
+
+/**
+ * A linha do papel "○ Fentanil ____ mcg EV", só que a dose se escreve na
+ * própria linha. Enter (ou ✓) grava; "⋯" abre a janela completa com a dose
+ * já escrita — para mudar o horário, pôr concentração ou outra via.
+ */
+function DoseNaLinha({ item, grupo, onRegistrar, onDetalhes, onFechar }: {
+  item: ItemDaLista; grupo: GrupoDaLista;
+  onRegistrar: (dose: number) => void; onDetalhes: (dose: number | null) => void; onFechar: () => void;
+}) {
+  const [texto, setTexto] = useState("");
+  const dose = numero(texto);
+  const valida = dose !== null && dose > 0;
+  return (
+    <form className="evoDoseLinha" onSubmit={(e) => { e.preventDefault(); if (valida) onRegistrar(dose!); }}
+      onKeyDown={(e) => { if (e.key === "Escape") onFechar(); }}>
+      <input inputMode="decimal" autoFocus value={texto} onChange={(e) => setTexto(e.target.value)}
+        aria-label={`Dose de ${item.nome} em ${item.unidade}`} placeholder="dose" />
+      <span>{item.unidade} {item.via ?? grupo.via}</span>
+      <button type="submit" className="evoBotao pequeno" disabled={!valida} aria-label={`Registrar ${item.nome} agora`}>✓</button>
+      <button type="button" className="evoBotao pequeno secundario" onClick={() => onDetalhes(valida ? dose : null)}
+        aria-label="Mais detalhes: horário, concentração, via">⋯</button>
+    </form>
   );
 }
 

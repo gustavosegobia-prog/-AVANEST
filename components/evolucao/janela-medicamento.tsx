@@ -66,14 +66,14 @@ export function JanelaMedicamento({
   /** Ao administrar algo planejado: a folha abre com os campos dele. */
   inicial?: Record<string, unknown> | null;
   /** Tocou num item da lista da folha: já vem o fármaco, a unidade e a via do grupo — nunca dose. */
-  escolhido?: { item: ItemDaLista; grupo: GrupoDaLista } | null;
+  escolhido?: { item: ItemDaLista; grupo: GrupoDaLista; dose?: number } | null;
   onConfirmar: (m: NovoMedicamento) => void;
   onFechar: () => void;
 }) {
   const inicial: Record<string, unknown> | null = planejado ?? (escolhido ? {
     nome: escolhido.item.nome, unidade: escolhido.item.unidade, via: escolhido.item.via ?? escolhido.grupo.via,
     forma: escolhido.grupo.forma, apresentacao: escolhido.item.apresentacao, indicacao: escolhido.grupo.indicacao,
-    grupo: escolhido.grupo.codigo,
+    grupo: escolhido.grupo.codigo, dose: escolhido.dose,
   } : null);
   const grupo = typeof inicial?.grupo === "string" ? inicial.grupo : null;
   const [busca, setBusca] = useState("");
