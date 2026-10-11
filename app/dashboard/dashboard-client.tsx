@@ -1033,7 +1033,7 @@ export function DashboardClient({
           </div>
         </div>
       ) : view === "medico" ? (
-        /* A área médica mora em components/area-medica.tsx: Meu dia,
+        /* A área médica mora em components/area-medica.tsx: Agenda do dia,
            Avaliações, Pendências e Documentos. Abrir e iniciar avaliação
            continuam sendo `openAssessment`, e o cadastro, o PatientModal. */
         <AreaMedica perfilId={perfil.id} perfilEhMedico={perfil.atuacao_medica ?? perfil.role==="medico"}

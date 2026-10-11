@@ -118,7 +118,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "medico",
       alvo: '[data-secao="agenda"]',
       titulo: "Área médica: o seu dia",
-      texto: "Meu dia abre com o próximo atendimento, quem está aguardando, as avaliações para retomar e a agenda. Em cada consulta: Iniciar avaliação ou Continuar avaliação. Pendências e Documentos ficam na coluna ao lado.",
+      texto: "Agenda do dia abre com o próximo atendimento, quem está aguardando, as avaliações para retomar e a agenda. Em cada consulta: Iniciar avaliação ou Continuar avaliação. Pendências e Documentos ficam na coluna ao lado.",
     });
     etapas.push({
       area: "medico",

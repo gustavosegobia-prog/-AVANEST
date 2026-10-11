@@ -116,7 +116,7 @@ export function proximoAtendimento<T extends ConsultaDaAgenda>(doDia: T[], andam
 }
 
 /**
- * O destaque do topo de "Meu dia", com o nome certo.
+ * O destaque do topo de "Agenda do dia", com o nome certo.
  *
  * O primeiro da fila pode já estar em atendimento — e aí ele não é o
  * "próximo", é o de agora. O cartão dizia "Próximo atendimento" sobre um

@@ -11,7 +11,7 @@ const form = ler("app/avaliacoes/[id]/assessment-form.tsx");
 
 test("entrada: Área médica, local e data, Nova avaliação e as quatro seções", () => {
   assert.match(tela, /<h1>Área médica<\/h1>/);
-  assert.match(tela, /\["agenda", "Meu dia"[\s\S]*\["avaliacoes", "Avaliações"[\s\S]*\["pendencias", "Pendências"[\s\S]*\["documentos", "Documentos"/);
+  assert.match(tela, /\["agenda", "Agenda do dia"[\s\S]*\["avaliacoes", "Avaliações"[\s\S]*\["pendencias", "Pendências"[\s\S]*\["documentos", "Documentos"/);
   assert.doesNotMatch(painel, /Consultas pré-anestésicas agendadas/);
   assert.doesNotMatch(painel, /Documentos mais recentes/, "o atalho desabilitado sem explicação voltou");
 });
@@ -31,7 +31,7 @@ test("várias avaliações abertas aparecem em lista, com local, datas e Continu
   assert.match(tela, /Iniciada \{quando\(a\.created_at\)\} · última alteração \{quando\(a\.updated_at\)\}/);
 });
 
-test("a mesma avaliação não aparece três vezes em Meu dia", () => {
+test("a mesma avaliação não aparece três vezes na Agenda do dia", () => {
   // Paciente de hoje já tem o botão na linha da agenda (e no cartão do topo).
   assert.match(tela, /const outrasAbertas = retomar\.filter\(\(a\) => !pacientesDeHoje\.has\(a\.patient_id\)\)/);
   assert.doesNotMatch(tela, /retomar\.map\(\(a\) =>/);

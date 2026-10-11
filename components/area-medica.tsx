@@ -18,7 +18,7 @@ import { AvisoFlutuante } from "@/components/aviso-flutuante";
 // A área médica: o dia, as avaliações, as pendências e os documentos.
 //
 // Quem abre precisa saber, sem procurar: quem é o próximo, quem está
-// esperando, o que ficou pela metade e o que exige revisão. Por isso "Meu dia"
+// esperando, o que ficou pela metade e o que exige revisão. Por isso "Agenda do dia"
 // abre com o próximo atendimento, os números do dia e as avaliações para
 // retomar — e a agenda vem depois. Uma agenda vazia não esconde uma avaliação
 // aberta: as duas coisas aparecem juntas.
@@ -193,7 +193,7 @@ export function AreaMedica({
     agenda: "calendario", avaliacoes: "nota", pendencias: "alerta", documentos: "imprimir",
   };
   const secoes: [Secao, string, number | null][] = [
-    ["agenda", "Meu dia", resumo.agendados + resumo.aguardando + resumo.emAtendimento || null],
+    ["agenda", "Agenda do dia", resumo.agendados + resumo.aguardando + resumo.emAtendimento || null],
     ["avaliacoes", "Avaliações", retomar.length || null],
     ["pendencias", "Pendências", pendencias.length || null],
     ["documentos", "Documentos", null],
@@ -237,7 +237,7 @@ export function AreaMedica({
               <Icone nome={ICONE_DA_SECAO[id]} tamanho={18} />
               <span>{rotulo}</span>
               {/* Âmbar só em Pendências, que é o que pede ação. Nas outras o
-                  número só conta — e o leitor de tela ouve "Meu dia, 3". */}
+                  número só conta — e o leitor de tela ouve "Agenda do dia, 3". */}
               {n ? <b className={`financeTarefaContador${id === "pendencias" ? "" : " neutro"}`}><span className="sr-only">, </span>{n}</b> : null}
             </button>
           ))}

@@ -5894,7 +5894,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .patientModalHead{border-radius:0}
 }
 
-/* --- Área médica: Meu dia, Avaliações, Pendências e Documentos ------------
+/* --- Área médica: Agenda do dia, Avaliações, Pendências e Documentos ------------
    Uma ação principal por bloco (Iniciar/Continuar), o resto em contorno. Cor
    de alerta só onde há algo a fazer; o que está em dia fica neutro. */
 @media(min-width:681px){.medTopo{align-items:center}}
