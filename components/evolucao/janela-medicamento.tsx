@@ -9,6 +9,7 @@ import {
 } from "@/lib/evolucao/medicamentos";
 import { avaliarDose, type RegraDeDose } from "@/lib/evolucao/doses";
 import { conferirAlergia, situacaoDaAlergia } from "@/lib/evolucao/alergias";
+import type { GrupoDaLista, ItemDaLista } from "@/lib/evolucao/lista-da-folha";
 import { minutosEntre } from "@/lib/evolucao/registros";
 import { momentoDeHora } from "./use-folha";
 import { CampoHora, CampoNumero, Escolha, numero } from "./campos";
@@ -53,7 +54,7 @@ const NIVEL: Record<string, string> = {
 };
 
 export function JanelaMedicamento({
-  pesoKg, idadeDias, regras, dadas, favoritos, inicial, alergias, onConfirmar, onFechar,
+  pesoKg, idadeDias, regras, dadas, favoritos, inicial: planejado, escolhido, alergias, onConfirmar, onFechar,
 }: {
   pesoKg: number | null;
   /** O cabeçalho da folha: alergias e "nega alergia". */
@@ -64,9 +65,17 @@ export function JanelaMedicamento({
   favoritos: string[];
   /** Ao administrar algo planejado: a folha abre com os campos dele. */
   inicial?: Record<string, unknown> | null;
+  /** Tocou num item da lista da folha: já vem o fármaco, a unidade e a via do grupo — nunca dose. */
+  escolhido?: { item: ItemDaLista; grupo: GrupoDaLista } | null;
   onConfirmar: (m: NovoMedicamento) => void;
   onFechar: () => void;
 }) {
+  const inicial: Record<string, unknown> | null = planejado ?? (escolhido ? {
+    nome: escolhido.item.nome, unidade: escolhido.item.unidade, via: escolhido.item.via ?? escolhido.grupo.via,
+    forma: escolhido.grupo.forma, apresentacao: escolhido.item.apresentacao, indicacao: escolhido.grupo.indicacao,
+    grupo: escolhido.grupo.codigo,
+  } : null);
+  const grupo = typeof inicial?.grupo === "string" ? inicial.grupo : null;
   const [busca, setBusca] = useState("");
   const [item, setItem] = useState<ItemDoCatalogo | { nome: string; unidade: UnidadeDeDose } | null>(
     inicial ? { nome: String(inicial.nome), unidade: (inicial.unidade as UnidadeDeDose) ?? "mg" } : null);
@@ -144,6 +153,7 @@ export function JanelaMedicamento({
       ...(obs.trim() ? { observacao: obs.trim() } : {}),
       ...(precisaJustificar ? { alerta: { justificativa: justificativa.trim() } } : {}),
       ...(alergia ? { alerta_alergia: { ...alergia, justificativa: administrando ? justificaAlergia.trim() : null } } : {}),
+      ...(grupo ? { grupo } : {}),
     };
     if (dados.dose === null) delete dados.dose;
     onConfirmar({ momento, dados });
@@ -187,11 +197,12 @@ export function JanelaMedicamento({
   }
 
   return (
-    <Janela titulo={nome} subtitulo={inicial ? "Registrar a administração do que estava planejado." : undefined}
+    <Janela titulo={nome}
+      subtitulo={planejado ? "Registrar a administração do que estava planejado." : escolhido ? escolhido.grupo.titulo : undefined}
       largura="larga" onFechar={onFechar}
       rodape={<>
-        <button type="button" className="evoBotao secundario" onClick={inicial ? onFechar : () => setItem(null)}>
-          {inicial ? "Cancelar" : "Trocar medicamento"}
+        <button type="button" className="evoBotao secundario" onClick={planejado ? onFechar : () => setItem(null)}>
+          {planejado ? "Cancelar" : "Trocar medicamento"}
         </button>
         <button type="submit" form="evoFormMed" className={`evoBotao${conferencia?.nivel === "vermelho" && administrando ? " perigo" : ""}`} disabled={!ok}>
           {administrando ? "Registrar como administrado" : `Registrar como ${situacao}`}

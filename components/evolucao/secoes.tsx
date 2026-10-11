@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BLOQUEIOS, FUNCOES, POSICOES, PROTECOES, TECNICAS, imcDaFolha, type Profissional } from "@/lib/evolucao/folha";
 import { Escolha, Marcas } from "./campos";
 import { horaLocal } from "@/lib/data-local";
+import { ALDRETE, somaAldrete } from "@/lib/evolucao/lista-da-folha";
 
 // As partes da folha que se preenchem uma vez: pré-anestésica conferida,
 // técnica, equipe e saída da sala. Tudo grava no cabeçalho (com histórico na
@@ -333,6 +334,14 @@ export function SecaoEquipe({ dados, onMudar, leitura, medicos }: {
 export function SecaoSaida({ dados, onMudar, leitura }: { dados: Dados; onMudar: Mudar; leitura: boolean }) {
   const s = sub(dados, "saida");
   const mudar = (campo: string, v: unknown) => onMudar({ saida: { ...s, [campo]: v } });
+  const pontos = sub(s, "aldrete_pontos");
+  const totalAldrete = somaAldrete(pontos);
+  // A soma vai para `aldrete`, que é o que a impressão lê; os critérios ficam guardados.
+  function mudarAldrete(chave: string, v: number) {
+    const novos = { ...pontos, [chave]: v };
+    const soma = somaAldrete(novos);
+    onMudar({ saida: { ...s, aldrete_pontos: novos, aldrete: soma !== null ? String(soma) : "" } });
+  }
   return (
     <div className="evoSecaoCorpo">
       <Escolha rotulo="Destino" valor={t(s.destino) as "RPA"} onMudar={(v) => !leitura && mudar("destino", v)}
@@ -349,9 +358,17 @@ export function SecaoSaida({ dados, onMudar, leitura }: { dados: Dados; onMudar:
       </div>
       <Escolha rotulo="Oxigênio" valor={t(s.oxigenio) as "Sem O₂"} onMudar={(v) => !leitura && mudar("oxigenio", v)}
         opcoes={["Sem O₂", "Com O₂"].map((v) => ({ valor: v as "Sem O₂", rotulo: v }))} />
-      <div className="evoLinhaCampos">
-        <Texto rotulo="Aldrete na saída da RPA" valor={t(s.aldrete)} onMudar={(v) => mudar("aldrete", v)} disabled={leitura} />
-      </div>
+      <fieldset className="evoDetalhe evoAldrete"><legend>Aldrete e Kroulik — alta da RPA</legend>
+        {ALDRETE.map((c) => (
+          <Escolha key={c.chave} rotulo={c.nome} valor={(typeof pontos[c.chave] === "number" ? String(pontos[c.chave]) : "") as "0"}
+            opcoes={c.opcoes.map((o, i) => ({ valor: String(i) as "0", rotulo: `${i} · ${o}` }))}
+            onMudar={(v) => !leitura && mudarAldrete(c.chave, Number(v))} />
+        ))}
+        <p className="evoAldreteTotal">
+          Total: <b>{totalAldrete ?? (t(s.aldrete) || "—")}</b>
+          {totalAldrete === null && <small> marque os cinco critérios</small>}
+        </p>
+      </fieldset>
       <Texto rotulo="Observações e intercorrências" valor={t(dados.observacoes)} onMudar={(v) => onMudar({ observacoes: v })} linhas={3} largo disabled={leitura} />
     </div>
   );

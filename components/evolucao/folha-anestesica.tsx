@@ -9,8 +9,11 @@ import { janelaVisivel } from "@/lib/evolucao/grafico";
 import { pamEstimadaCabe, PARAMETROS, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
-  administrados, agruparPorMedicamento, exposicaoAnestesicoLocal, type Administracao,
+  administrados, agruparPorMedicamento, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
 } from "@/lib/evolucao/medicamentos";
+import {
+  LISTA_DA_FOLHA, grupoDaAdministracao, itemDaAdministracao, type CodigoDoGrupo, type GrupoDaLista, type ItemDaLista,
+} from "@/lib/evolucao/lista-da-folha";
 import { consumoSevoflurano, formatarMl, lerAjuste, type AjusteDeGas } from "@/lib/evolucao/sevoflurano";
 import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/infusoes";
 import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evolucao/liquidos";
@@ -40,8 +43,8 @@ type Abrir =
   | { tipo: "ponto"; registro: Registro }
   | { tipo: "mover"; registro: Registro; t: Toque }
   | { tipo: "lancar" }
-  | { tipo: "medicamento"; planejado?: Registro }
-  | { tipo: "infusao"; acao: "iniciar" | "ajustar" | "encerrar"; infusao: Infusao | null; ms?: number }
+  | { tipo: "medicamento"; planejado?: Registro; escolhido?: { item: ItemDaLista; grupo: GrupoDaLista } }
+  | { tipo: "infusao"; acao: "iniciar" | "ajustar" | "encerrar"; infusao: Infusao | null; ms?: number; nome?: string }
   | { tipo: "infusaoAcoes"; infusao: Infusao; ms: number }
   | { tipo: "gas"; ms?: number }
   | { tipo: "liquido"; sentido: "entrada" | "saida"; ms?: number; inicial?: { nome: string; categoria: string } }
@@ -127,7 +130,17 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   // ---- Derivados ---------------------------------------------------------
   const dadas = useMemo(() => administrados(atuais), [atuais]);
-  const grupos = useMemo(() => agruparPorMedicamento(dadas), [dadas]);
+  const porId = useMemo(() => new Map(atuais.map((r) => [r.id, r])), [atuais]);
+  // Cada administração no grupo do papel em que ela aparece (lib/evolucao/lista-da-folha.ts).
+  const tecnicas = useMemo(() => (Array.isArray(dados.tecnicas) ? (dados.tecnicas as string[]) : []), [dados.tecnicas]);
+  const administradosPorGrupo = useMemo(() => {
+    const mapa = new Map<CodigoDoGrupo, Administracao[]>();
+    for (const a of dadas) {
+      const g = grupoDaAdministracao(porId.get(a.id)!, tecnicas);
+      mapa.set(g, [...(mapa.get(g) ?? []), a]);
+    }
+    return mapa;
+  }, [dadas, porId, tecnicas]);
   const planejados = atuais.filter((r) => r.tipo === "medicamento" && (r.dados.status === "planejado" || r.dados.status === "preparado"));
   const ajustes = atuais.map(lerAjuste).filter((a): a is AjusteDeGas => a !== null);
   const gasAtual = ajustes[ajustes.length - 1] ?? null;
@@ -181,7 +194,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   function tocarFaixa(a: AlvoDaFaixa) {
     if (a.tipo === "gas") setAbrir({ tipo: "gas", ms: a.ms });
     else if (a.tipo === "infusao") {
-      setAbrir(a.infusao ? { tipo: "infusaoAcoes", infusao: a.infusao, ms: a.ms } : { tipo: "infusao", acao: "iniciar", infusao: null, ms: a.ms });
+      setAbrir(a.infusao ? { tipo: "infusaoAcoes", infusao: a.infusao, ms: a.ms } : { tipo: "infusao", acao: "iniciar", infusao: null, ms: a.ms, nome: a.nome });
     } else setAbrir({ tipo: "liquido", sentido: a.sentido, ms: a.ms, inicial: { nome: a.nome, categoria: a.categoria } });
   }
 
@@ -438,8 +451,9 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
         <aside className="evoDireita" aria-label="Medicação">
           <section className="evoPainel">
             <header><h2>Medicação</h2>
-              {aberta && <button type="button" className="evoBotao" onClick={() => setAbrir({ tipo: "medicamento" })}>+ Medicamento</button>}
+              {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "medicamento" })}>Buscar outro</button>}
             </header>
+            {aberta && <p className="evoNota">Toque no medicamento para registrar. Na impressão sai só o que foi administrado.</p>}
             {planejados.length > 0 && (
               <div className="evoPlanejados">
                 <h3>Planejados e preparados</h3>
@@ -459,17 +473,45 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                 </ul>
               </div>
             )}
-            {grupos.length ? (
-              <ul className="evoMedicamentos">
-                {grupos.map((g) => (
-                  <li key={g.nome}>
-                    <header><b>{g.nome}</b>{g.total !== null && g.vezes.length > 1 && <span>Total {fmt(g.total)} {g.unidade}</span>}</header>
-                    {g.vezes.map((a) => <LinhaDose key={a.id} a={a} registro={atuais.find((r) => r.id === a.id)!} cabecalho={dados}
-                      pendente={f.idsPendentes.has(a.id)} onAbrir={(r) => setAbrir({ tipo: "registro", registro: r })} />)}
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="evoVazio">Só aparece aqui o que for administrado.</p>}
+            {LISTA_DA_FOLHA.map((g, gi) => {
+              const doGrupo = administradosPorGrupo.get(g.codigo) ?? [];
+              const foraDaLista = doGrupo.filter((a) => !g.itens.some((it) => mesmoFarmaco(it.nome, a.nome)));
+              const extras = agruparPorMedicamento(foraDaLista);
+              return (
+                <section key={g.codigo} className="evoGrupoMed" aria-labelledby={`evo-g-${g.codigo}`}>
+                  <h3 id={`evo-g-${g.codigo}`}>{gi + 1}. {g.titulo}</h3>
+                  <ul>
+                    {g.itens.map((it, ii) => {
+                      const vezes = doGrupo.filter((a) => itemDaAdministracao(g, a, porId.get(a.id)) === ii);
+                      const total = vezes.length > 1 ? agruparPorMedicamento(vezes)[0]?.total ?? null : null;
+                      return (
+                        <li key={`${it.nome}${ii}`} className={vezes.length ? "feito" : ""}>
+                          <button type="button" className="evoMedItem" disabled={!aberta}
+                            onClick={() => setAbrir({ tipo: "medicamento", escolhido: { item: it, grupo: g } })}>
+                            <i aria-hidden="true">{vezes.length ? "✓" : "○"}</i>
+                            <span>{it.rotulo ?? it.nome}</span>
+                            {total !== null && <small>Total {fmt(total)} {vezes[0].unidade}</small>}
+                            {conferirAlergia(dados, it.nome) && <em className="evoAlergiaTag">Alergia</em>}
+                          </button>
+                          {vezes.map((a) => <LinhaDose key={a.id} a={a} registro={porId.get(a.id)!} cabecalho={dados}
+                            pendente={f.idsPendentes.has(a.id)} onAbrir={(r) => setAbrir({ tipo: "registro", registro: r })} />)}
+                        </li>
+                      );
+                    })}
+                    {extras.map((x) => (
+                      <li key={`x${x.nome}`} className="feito">
+                        <div className="evoMedItem">
+                          <i aria-hidden="true">✓</i><span>{x.nome}</span>
+                          {x.total !== null && x.vezes.length > 1 && <small>Total {fmt(x.total)} {x.unidade}</small>}
+                        </div>
+                        {x.vezes.map((a) => <LinhaDose key={a.id} a={a} registro={porId.get(a.id)!} cabecalho={dados}
+                          pendente={f.idsPendentes.has(a.id)} onAbrir={(r) => setAbrir({ tipo: "registro", registro: r })} />)}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            })}
             {exposicao.length > 0 && (
               <p className="evoNota">
                 Anestésico local: {exposicao.map((e) => `${e.nome} ${e.mg !== null ? `${fmt(e.mg)} mg` : "—"}${e.mgPorKg !== null ? ` (${fmt(e.mgPorKg)} mg/kg)` : ""}`).join(" · ")}.
@@ -541,7 +583,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       )}
       {abrir?.tipo === "medicamento" && (
         <JanelaMedicamento pesoKg={pesoKg} idadeDias={idadeDias} regras={regras} dadas={dadas}
-          favoritos={favoritos} inicial={abrir.planejado?.dados ?? null} alergias={dados}
+          favoritos={favoritos} inicial={abrir.planejado?.dados ?? null} escolhido={abrir.escolhido ?? null} alergias={dados}
           onConfirmar={({ momento, dados: d }) => {
             if (abrir.planejado) f.corrigir(abrir.planejado, { momento, dados: d });
             else f.registrar({ tipo: "medicamento", momento, dados: d });
@@ -552,7 +594,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "infusao" && (
-        <JanelaInfusao acao={abrir.acao} infusao={abrir.infusao} alergias={dados} ms={abrir.ms}
+        <JanelaInfusao acao={abrir.acao} infusao={abrir.infusao} alergias={dados} ms={abrir.ms} nomeInicial={abrir.nome}
           onConfirmar={(momento, d) => { f.registrar({ tipo: "infusao", momento, dados: d }); setAbrir(null); }}
           onFechar={() => setAbrir(null)} />
       )}

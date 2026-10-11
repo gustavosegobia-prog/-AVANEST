@@ -27,11 +27,13 @@ function Rodape({ onFechar, form, rotulo, ok, perigo = false }: {
 // ---------------------------------------------------------------------------
 // Infusão contínua
 // ---------------------------------------------------------------------------
-export function JanelaInfusao({ infusao, acao, alergias, ms, onConfirmar, onFechar }: {
+export function JanelaInfusao({ infusao, acao, alergias, ms, nomeInicial, onConfirmar, onFechar }: {
   infusao: Infusao | null;
   acao: "iniciar" | "ajustar" | "encerrar";
   /** O horário tocado na faixa do gráfico; sem ele, agora. */
   ms?: number;
+  /** Tocou na faixa de um fármaco (noradrenalina, remifentanil…): já vem com ele. */
+  nomeInicial?: string;
   /** O cabeçalho da folha: alergias e "nega alergia". */
   alergias: { alergias?: unknown; nega_alergia?: unknown };
   onConfirmar: (momento: string, dados: Record<string, unknown>) => void;
@@ -39,7 +41,7 @@ export function JanelaInfusao({ infusao, acao, alergias, ms, onConfirmar, onFech
 }) {
   const ultimo = infusao?.passos[infusao.passos.length - 1];
   const [hora, setHora] = useState(horaLocal(ms ? new Date(ms) : undefined));
-  const [nome, setNome] = useState(infusao?.nome ?? "");
+  const [nome, setNome] = useState(infusao?.nome ?? nomeInicial ?? "");
   const [diluicao, setDiluicao] = useState("");
   const [conc, setConc] = useState("");
   const [uConc, setUConc] = useState<UnidadeDeConcentracao>("mcg/mL");

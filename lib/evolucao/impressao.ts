@@ -8,9 +8,10 @@
 import { num, type Registro } from "./registros.ts";
 import { TECNICAS, rotuloDoEvento } from "./folha.ts";
 import {
-  CATALOGO, CATEGORIAS, agruparPorMedicamento, mesmoMedicamento,
+  CATALOGO, agruparPorMedicamento, mesmoMedicamento,
   type Administracao, type Agrupado, type Categoria,
 } from "./medicamentos.ts";
+import { LISTA_DA_FOLHA, grupoDaAdministracao, type CodigoDoGrupo } from "./lista-da-folha.ts";
 import { lerAjuste } from "./sevoflurano.ts";
 import { rotuloDoLiquido } from "./liquidos.ts";
 
@@ -222,15 +223,25 @@ export function categoriaDe(nome: string): Categoria {
   return item?.categoria ?? "outros";
 }
 
-export type GrupoDeMedicacao = { categoria: Categoria; titulo: string; medicamentos: Agrupado[] };
+export type GrupoDeMedicacao = { codigo: CodigoDoGrupo; numero: number; titulo: string; medicamentos: Agrupado[] };
 
-/** Na ordem dos grupos do catálogo; grupo sem nada administrado não aparece. */
-export function medicacaoPorGrupo(lista: readonly Administracao[]): GrupoDeMedicacao[] {
-  const ordem = Object.keys(CATEGORIAS) as Categoria[];
-  return ordem.map((categoria) => ({
-    categoria,
-    titulo: CATEGORIAS[categoria],
-    medicamentos: agruparPorMedicamento(lista.filter((a) => categoriaDe(a.nome) === categoria)),
+/**
+ * A coluna de medicação do papel: os mesmos seis grupos da lista da tela
+ * (antibioticoprofilaxia, sedação, raqui, geral, bloqueio, outras), na mesma
+ * ordem — mas só com o que foi ADMINISTRADO. Grupo vazio não aparece.
+ */
+export function medicacaoPorGrupo(
+  lista: readonly Administracao[], porId: ReadonlyMap<string, Registro>, tecnicas: readonly string[],
+): GrupoDeMedicacao[] {
+  return LISTA_DA_FOLHA.map((g, i) => ({
+    codigo: g.codigo,
+    // O número do papel: "4. Anestesia geral" continua 4 mesmo sem sedação.
+    numero: i + 1,
+    titulo: g.titulo,
+    medicamentos: agruparPorMedicamento(lista.filter((a) => {
+      const r = porId.get(a.id);
+      return r ? grupoDaAdministracao(r, tecnicas) === g.codigo : g.codigo === "outras";
+    })),
   })).filter((g) => g.medicamentos.length);
 }
 

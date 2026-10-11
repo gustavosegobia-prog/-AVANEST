@@ -9,6 +9,9 @@ import {
   type Parametro,
 } from "@/lib/evolucao/sinais";
 import { linhasDeGas, linhasDeLiquido, marcasDeEvento, pistasDeEventos } from "@/lib/evolucao/impressao";
+import { INFUSOES_DA_FOLHA, LIQUIDOS_DA_FOLHA } from "@/lib/evolucao/lista-da-folha";
+import { mesmoFarmaco, mesmoMedicamento } from "@/lib/evolucao/medicamentos";
+import { LIQUIDOS_RAPIDOS } from "@/lib/evolucao/liquidos";
 import { montarInfusoes, type Infusao } from "@/lib/evolucao/infusoes";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { horaLocal } from "@/lib/data-local";
@@ -37,7 +40,7 @@ const TOQUE = 18;          // raio de acerto num ponto (dedo com luva)
 export type Toque = { ms: number; valor: number };
 export type AlvoDaFaixa =
   | { tipo: "gas"; ms: number }
-  | { tipo: "infusao"; infusao: Infusao | null; ms: number }
+  | { tipo: "infusao"; infusao: Infusao | null; nome?: string; ms: number }
   | { tipo: "liquido"; sentido: "entrada" | "saida"; nome: string; categoria: string; ms: number };
 
 type Marca = { id: string; ms: number; texto: string; ligado: boolean };
@@ -114,50 +117,75 @@ export function GraficoSinais({
   const faixas = useMemo<Faixa[]>(() => {
     const ate = fimMs ?? agoraMs;
     const lista: Faixa[] = [];
-    for (const g of linhasDeGas(atuais)) {
+    // Gases: O₂, ar e sevoflurano sempre, como no papel; N₂O só se usado.
+    const gases = linhasDeGas(atuais);
+    for (const chave of ["o2", "ar", "n2o", "sevo"] as const) {
+      const g = gases.find((x) => x.chave === chave);
+      if (!g && chave === "n2o") continue;
       lista.push({
-        chave: `gas-${g.chave}`, secao: "Gases", rotulo: ROTULO_GAS[g.chave], detalhe: "", alerta: false, modo: "passos",
-        marcas: g.passos.map((p) => ({ id: p.id, ms: Date.parse(p.momento), texto: fmt(p.valor), ligado: p.valor > 0 })),
+        chave: `gas-${chave}`, secao: "Gases", rotulo: ROTULO_GAS[chave], detalhe: "", alerta: false, modo: "passos",
+        marcas: (g?.passos ?? []).map((p) => ({ id: p.id, ms: Date.parse(p.momento), texto: fmt(p.valor), ligado: p.valor > 0 })),
         ateMs: ate, tracejadoAte: null, alvo: (ms) => ({ tipo: "gas", ms }),
       });
     }
+
+    // Infusões: uma faixa por fármaco. As de sempre vêm escritas (folha aberta),
+    // como as linhas pré-impressas do papel; as outras entram quando iniciadas.
     const infusoes = montarInfusoes(atuais);
-    for (const inf of infusoes) {
-      const unidade = inf.passos[0]?.unidade ?? "";
+    const nomes = [...(aberta ? INFUSOES_DA_FOLHA : [])];
+    for (const inf of infusoes) if (!nomes.some((n) => mesmoFarmaco(n, inf.nome))) nomes.push(inf.nome);
+    for (const nome of nomes) {
+      const doFarmaco = infusoes.filter((inf) => mesmoFarmaco(inf.nome, nome));
+      const correndo = doFarmaco.find((inf) => !inf.fim) ?? null;
+      const ultima = doFarmaco[doFarmaco.length - 1];
+      const marcas: Marca[] = [];
+      for (const inf of doFarmaco) {
+        const unidade = inf.passos[0]?.unidade ?? "";
+        inf.passos.forEach((p, k) => marcas.push({
+          id: p.id ?? inf.id, ms: Date.parse(p.momento), ligado: p.valor > 0,
+          texto: `${fmt(p.valor, 3)}${k === 0 || p.unidade !== unidade ? ` ${p.unidade}` : ""}`,
+        }));
+        if (inf.fim) marcas.push({ id: inf.fimId ?? inf.id, ms: Date.parse(inf.fim), texto: "fim", ligado: false });
+      }
       lista.push({
-        chave: `inf-${inf.id}`, secao: "Infusões", rotulo: inf.nome, detalhe: "",
-        alerta: conferirAlergia(cabecalho, inf.nome) !== null, modo: "passos",
-        marcas: [
-          ...inf.passos.map((p, k) => ({
-            id: p.id ?? inf.id, ms: Date.parse(p.momento), ligado: p.valor > 0,
-            texto: `${fmt(p.valor, 3)}${k === 0 || p.unidade !== unidade ? ` ${p.unidade}` : ""}`,
-          })),
-          ...(inf.fim ? [{ id: inf.fimId ?? inf.id, ms: Date.parse(inf.fim), texto: "fim", ligado: false }] : []),
-        ],
-        ateMs: Date.parse(inf.fim ?? inf.ultimoRegistro),
-        tracejadoAte: !inf.fim && aberta ? agoraMs : null,
-        alvo: inf.fim ? null : (ms) => ({ tipo: "infusao", infusao: inf, ms }),
+        chave: `inf-${nome}`, secao: "Infusões", rotulo: doFarmaco[0]?.nome ?? nome, detalhe: "",
+        alerta: conferirAlergia(cabecalho, nome) !== null, modo: "passos", marcas,
+        ateMs: ultima ? Date.parse(ultima.fim ?? ultima.ultimoRegistro) : null,
+        tracejadoAte: correndo && aberta ? agoraMs : null,
+        alvo: (ms) => (correndo
+          ? { tipo: "infusao", infusao: correndo, ms }
+          : { tipo: "infusao", infusao: null, nome: doFarmaco[0]?.nome ?? nome, ms }),
       });
     }
-    if (!infusoes.length) {
+    if (!nomes.length) {
       lista.push({
-        chave: "inf-nenhuma", secao: "Infusões", rotulo: aberta ? "Toque para iniciar" : "Nenhuma", detalhe: "",
-        alerta: false, modo: "passos", marcas: [], ateMs: null, tracejadoAte: null,
-        alvo: (ms) => ({ tipo: "infusao", infusao: null, ms }),
+        chave: "inf-nenhuma", secao: "Infusões", rotulo: "Nenhuma", detalhe: "",
+        alerta: false, modo: "passos", marcas: [], ateMs: null, tracejadoAte: null, alvo: null,
       });
     }
-    for (const l of linhasDeLiquido(atuais)) {
-      lista.push({
-        chave: `liq-${l.sentido}-${l.rotulo}`, secao: "Líquidos", rotulo: l.rotulo,
-        detalhe: l.total > 0 ? `${fmt(l.total, 0)} mL` : "", alerta: false, modo: "pontos",
-        marcas: l.itens.map((i) => ({ id: i.id, ms: Date.parse(i.momento), texto: fmt(i.volume, 0), ligado: true })),
-        ateMs: null, tracejadoAte: null,
-        alvo: (ms) => ({
-          tipo: "liquido", sentido: l.sentido, nome: l.rotulo, ms,
-          categoria: l.categoria || (l.sentido === "saida" ? "diurese" : "cristaloide"),
-        }),
-      });
-    }
+
+    // Líquidos: SF 0,9% e Ringer escritos como no papel; as outras soluções e as
+    // perdas quando houver. A diurese desce para junto da temperatura.
+    const liquidos = linhasDeLiquido(atuais);
+    const fixos = aberta ? LIQUIDOS_DA_FOLHA : [];
+    const linhasLiq = [
+      ...fixos.map((nome) => liquidos.find((l) => l.sentido === "entrada" && mesmoMedicamento(l.rotulo, nome))
+        ?? { rotulo: nome, sentido: "entrada" as const, total: 0, categoria: "cristaloide", itens: [] }),
+      ...liquidos.filter((l) => l.rotulo !== "Diurese" && !(l.sentido === "entrada" && fixos.some((n) => mesmoMedicamento(n, l.rotulo)))),
+    ];
+    const faixaDeLiquido = (l: (typeof linhasLiq)[number], secao: Faixa["secao"]): Faixa => ({
+      chave: `liq-${l.sentido}-${l.rotulo}`, secao,
+      rotulo: LIQUIDOS_RAPIDOS.find((r) => mesmoMedicamento(r.nome, l.rotulo))?.curto ?? l.rotulo,
+      detalhe: l.total > 0 ? `${fmt(l.total, 0)} mL` : "", alerta: false, modo: "pontos",
+      marcas: l.itens.map((i) => ({ id: i.id, ms: Date.parse(i.momento), texto: fmt(i.volume, 0), ligado: true })),
+      ateMs: null, tracejadoAte: null,
+      alvo: (ms) => ({
+        tipo: "liquido", sentido: l.sentido, nome: l.rotulo, ms,
+        categoria: l.categoria || (l.sentido === "saida" ? "diurese" : "cristaloide"),
+      }),
+    });
+    for (const l of linhasLiq) lista.push(faixaDeLiquido(l, "Líquidos"));
+
     for (const p of EM_LINHA) {
       lista.push({
         chave: `sinal-${p}`, secao: null, rotulo: `${PARAMETROS[p].curto} ${PARAMETROS[p].unidade}`, detalhe: "",
@@ -168,6 +196,9 @@ export function GraficoSinais({
         })),
       });
     }
+    const diurese = liquidos.find((l) => l.rotulo === "Diurese")
+      ?? { rotulo: "Diurese", sentido: "saida" as const, total: 0, categoria: "diurese", itens: [] };
+    lista.push(faixaDeLiquido(diurese, null));
     return lista;
   }, [atuais, cabecalho, fimMs, agoraMs, aberta]);
 
@@ -303,7 +334,7 @@ export function GraficoSinais({
           const detalheLarg = f.detalhe ? f.detalhe.length * 6 + 6 : 0;
           return (
             <g key={f.chave}>
-              <rect className={f.modo === "sinal" ? "evoLinhaFundo" : "evoFaixaFundo"} x={0} y={y0} width={largura} height={LINHA} />
+              <rect className={f.secao === null ? "evoLinhaFundo" : "evoFaixaFundo"} x={0} y={y0} width={largura} height={LINHA} />
               <line className="evoFaixaDivisa" x1={0} x2={largura} y1={y0 + LINHA} y2={y0 + LINHA} />
               <text className={`evoRotuloLinha${f.alerta ? " alerta" : ""}${f.alvo && !f.marcas.length && f.modo !== "sinal" ? " vazio" : ""}`}
                 x={x0} y={y0 + LINHA / 2 + 4}>

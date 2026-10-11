@@ -42,15 +42,19 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
 
   const gases = linhasDeGas(vigentes);
   const infusoes = montarInfusoes(vigentes);
-  const liquidos = linhasDeLiquido(vigentes);
+  // A diurese vai junto de SpO₂, EtCO₂ e temperatura, como na ficha de papel.
+  const todosLiquidos = linhasDeLiquido(vigentes);
+  const diurese = todosLiquidos.find((l) => l.rotulo === "Diurese")!;
+  const liquidos = todosLiquidos.filter((l) => l !== diurese);
+  const linhasDeLiq = Math.max(1, liquidos.length);
   const linhasDeInfusao = Math.max(2, infusoes.length);
 
   // As faixas, de cima para baixo.
   const yGases = CAB;
   const yInf = yGases + gases.length * LINHA;
   const yLiq = yInf + linhasDeInfusao * LINHA;
-  const ySinais = yLiq + liquidos.length * LINHA;
-  const yEventos = ySinais + 3 * LINHA;
+  const ySinais = yLiq + linhasDeLiq * LINHA;
+  const yEventos = ySinais + 4 * LINHA;
   const yGrafico = yEventos + EVENTOS;
   const H = yGrafico + GRAFICO;
   const y = (v: number) => yGrafico + GRAFICO - ((v - EIXO_Y.min) / (EIXO_Y.max - EIXO_Y.min)) * GRAFICO;
@@ -135,7 +139,7 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
       ))}
 
       {/* Líquidos */}
-      {tira(yLiq, liquidos.length, "Líquidos")}
+      {tira(yLiq, linhasDeLiq, "Líquidos")}
       {liquidos.map((l, i) => (
         <g key={`${l.sentido}${l.rotulo}`}>
           <text x={FAIXA + 1} y={yLiq + i * LINHA + 2.75} fontSize={2}>{l.rotulo.slice(0, 20)}</text>
@@ -149,6 +153,8 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
           {p === "temp" ? "Temperatura (°C)" : `${PARAMETROS[p].curto} (${PARAMETROS[p].unidade})`}
         </text>
       ))}
+      <text x={1} y={ySinais + 3 * LINHA + 2.75} fontSize={2}>Diurese (mL)</text>
+      {diurese.total > 0 && <text x={ROT - 1} y={ySinais + 3 * LINHA + 2.75} fontSize={1.8} textAnchor="end">{numero(diurese.total, 0)} mL</text>}
 
       {/* Eixo do gráfico e o código dos símbolos, como no papel */}
       {Array.from({ length: (EIXO_Y.max - EIXO_Y.min) / EIXO_Y.passoFino + 1 }, (_, i) => EIXO_Y.min + i * EIXO_Y.passoFino).map((v) => (
@@ -221,8 +227,8 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
           );
         })}
 
-        {/* Líquidos: o volume na coluna do horário */}
-        {liquidos.map((l, i) => {
+        {/* Líquidos e diurese: o volume na coluna do horário */}
+        {[...liquidos.map((l, i) => ({ l, y0: yLiq + i * LINHA })), { l: diurese, y0: ySinais + 3 * LINHA }].map(({ l, y0 }) => {
           const porColuna = new Map<number, number>();
           for (const it of l.itens) {
             const ms = Date.parse(it.momento);
@@ -231,7 +237,7 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
             porColuna.set(c, (porColuna.get(c) ?? 0) + it.volume);
           }
           return [...porColuna].map(([c, v]) => (
-            <text key={`${l.rotulo}${c}`} x={ROT + c * COL + COL / 2} y={yLiq + i * LINHA + 2.75} fontSize={2} textAnchor="middle">{numero(v, 0)}</text>
+            <text key={`${l.rotulo}${c}`} x={ROT + c * COL + COL / 2} y={y0 + 2.75} fontSize={2} textAnchor="middle">{numero(v, 0)}</text>
           ));
         })}
 

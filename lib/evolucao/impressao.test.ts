@@ -104,23 +104,30 @@ test("Impressão — líquidos por solução, com total; a diurese tem linha mes
 // ---------------------------------------------------------------------------
 // Medicação: só o administrado, por grupo
 // ---------------------------------------------------------------------------
-test("Teste G — a impressão leva só o administrado, agrupado e na ordem dos grupos", () => {
+test("Teste G — a impressão leva só o administrado, nos grupos do papel", () => {
   const v = [
     reg("medicamento", 0, { nome: "Kefazol", status: "administrado", dose: 2, unidade: "g", via: "EV" }),
     reg("medicamento", 5, { nome: "Fentanil", status: "administrado", dose: 150, unidade: "mcg", via: "EV" }),
     reg("medicamento", 6, { nome: "Propofol", status: "planejado", dose: 150, unidade: "mg", via: "EV" }),
     reg("medicamento", 7, { nome: "Rocurônio", status: "cancelado", dose: 50, unidade: "mg", via: "EV" }),
     reg("medicamento", 60, { nome: "Fentanil", status: "administrado", dose: 50, unidade: "mcg", via: "EV" }),
+    reg("medicamento", 61, { nome: "Fentanil", status: "administrado", dose: 20, unidade: "mcg", via: "intratecal" }),
+    reg("medicamento", 62, { nome: "Bupivacaína", status: "administrado", dose: 15, unidade: "mg", via: "perineural", forma: "bloqueio" }),
     reg("medicamento", 70, { nome: "Soro antiofídico", status: "administrado", dose: 1, unidade: "mL", via: "EV" }),
   ];
-  const g = medicacaoPorGrupo(administrados(v));
-  assert.deepEqual(g.map((x) => x.categoria), ["antibiotico", "opioide", "outros"]);
-  const fentanil = g[1].medicamentos[0];
-  assert.equal(fentanil.vezes.length, 2);
-  assert.equal(fentanil.total, 200);
+  const porId = new Map(v.map((r) => [r.id, r]));
+  const g = medicacaoPorGrupo(administrados(v), porId, ["geral_balanceada"]);
+  assert.deepEqual(g.map((x) => x.codigo), ["antibiotico", "neuroeixo", "geral", "bloqueio", "outras"]);
+  const geral = g.find((x) => x.codigo === "geral")!.medicamentos;
+  assert.equal(geral[0].nome, "Fentanil");
+  assert.equal(geral[0].total, 200);
+  assert.equal(g.find((x) => x.codigo === "neuroeixo")!.medicamentos[0].total, 20);
   const nomes = g.flatMap((x) => x.medicamentos.map((m) => m.nome));
   assert.ok(!nomes.includes("Propofol") && !nomes.includes("Rocurônio"));
   assert.equal(categoriaDe("neocaína"), "anestesico_local");
+  // Só sedação na técnica: o fentanil EV vai para o grupo da sedação.
+  const sed = medicacaoPorGrupo(administrados(v.slice(1, 2)), porId, ["sedacao"]);
+  assert.deepEqual(sed.map((x) => x.codigo), ["sedacao"]);
 });
 
 // ---------------------------------------------------------------------------

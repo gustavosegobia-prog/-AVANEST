@@ -61,6 +61,7 @@ export const CATALOGO: ItemDoCatalogo[] = [
   { id: "efedrina", nome: "Efedrina", categoria: "vasoativo", sinonimos: [], unidade: "mg" },
   { id: "metaraminol", nome: "Metaraminol", categoria: "vasoativo", sinonimos: ["Aramin"], unidade: "mg" },
   { id: "fenilefrina", nome: "Fenilefrina", categoria: "vasoativo", sinonimos: [], unidade: "mcg" },
+  { id: "vasopressina", nome: "Vasopressina", categoria: "vasoativo", sinonimos: ["Encrise"], unidade: "UI" },
   { id: "bupivacaina", nome: "Bupivacaína", categoria: "anestesico_local", sinonimos: ["Bupivacaina", "Neocaína", "Marcaína"], unidade: "mg", anestesicoLocal: true },
   { id: "levobupivacaina", nome: "Levobupivacaína", categoria: "anestesico_local", sinonimos: ["Levobupivacaina", "Novabupi"], unidade: "mg", anestesicoLocal: true },
   { id: "ropivacaina", nome: "Ropivacaína", categoria: "anestesico_local", sinonimos: ["Ropivacaina", "Naropin"], unidade: "mg", anestesicoLocal: true },
@@ -84,6 +85,7 @@ export const CATALOGO: ItemDoCatalogo[] = [
   { id: "ocitocina", nome: "Ocitocina", categoria: "outros", sinonimos: ["Syntocinon"], unidade: "UI" },
   { id: "metilergometrina", nome: "Metilergometrina", categoria: "outros", sinonimos: ["Methergin"], unidade: "mg" },
   { id: "escopolamina", nome: "Escopolamina", categoria: "outros", sinonimos: ["Buscopan"], unidade: "mg" },
+  { id: "hidrocortisona", nome: "Hidrocortisona", categoria: "outros", sinonimos: ["Solu-Cortef"], unidade: "mg" },
 ];
 
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
@@ -104,6 +106,17 @@ export function buscarNoCatalogo(texto: string, lista: readonly ItemDoCatalogo[]
 }
 
 export const mesmoMedicamento = (a: string, b: string) => semAcento(a) === semAcento(b);
+
+/** O item do catálogo de um nome — princípio ativo ou comercial. */
+export const itemDoCatalogo = (nome: string) =>
+  CATALOGO.find((c) => mesmoMedicamento(c.nome, nome) || c.sinonimos.some((s) => mesmoMedicamento(s, nome)));
+
+/** Mesmo fármaco, pelo catálogo: "Kefazol" e "Cefazolina" são o mesmo. */
+export function mesmoFarmaco(a: string, b: string): boolean {
+  if (mesmoMedicamento(a, b)) return true;
+  const ia = itemDoCatalogo(a);
+  return Boolean(ia && ia === itemDoCatalogo(b));
+}
 
 // ---------------------------------------------------------------------------
 // Unidades

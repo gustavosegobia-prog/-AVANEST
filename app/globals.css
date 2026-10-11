@@ -7037,3 +7037,27 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .evoPreCampo.metade,.evoPreCampo.dobro{grid-column:1/-1}
   .evoPreTopo .evoAcoesLinha{margin-left:0}
 }
+
+/* ── Coluna de medicação no desenho do papel: a lista inteira, o que foi dado marcado ── */
+.evoDireita{position:sticky;top:84px;max-height:calc(100dvh - 96px);overflow:auto;overscroll-behavior:contain;
+  border-radius:12px}
+.evoGrupoMed{margin-top:10px}
+.evoGrupoMed h3{margin:0 0 2px;padding:4px 0;font-size:12.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;
+  color:var(--cor-tinta-fraca);border-bottom:1px solid var(--cor-borda)}
+.evoGrupoMed ul{margin:0;padding:0;list-style:none}
+.evoGrupoMed li{border-bottom:1px solid color-mix(in srgb,var(--cor-borda) 60%,transparent)}
+.evoMedItem{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:4px 4px;border:0;background:none;
+  color:var(--cor-tinta);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+button.evoMedItem:hover:not(:disabled){background:var(--cor-superficie-suave)}
+button.evoMedItem:disabled{cursor:default}
+.evoMedItem i{display:inline-grid;place-items:center;flex:none;width:20px;font-style:normal;color:var(--cor-tinta-fraca)}
+.evoMedItem span{flex:1;min-width:0}
+.evoMedItem small{flex:none;font-size:12px;font-weight:700;color:var(--cor-tinta-fraca)}
+.evoGrupoMed li.feito>.evoMedItem{font-weight:750}
+.evoGrupoMed li.feito>.evoMedItem i{color:var(--cor-sucesso);font-weight:800}
+.evoGrupoMed .evoDose{padding-left:28px}
+.evoAldrete .evoEscolha button{font-size:13px}
+.evoAldreteTotal{margin:4px 0 0;font-size:15px}
+.evoAldreteTotal small{color:var(--cor-tinta-fraca)}
+@media(max-width:980px){.evoDireita{position:static;max-height:none;overflow:visible}}
+.evoGrupoMed .evoDose b{white-space:nowrap}

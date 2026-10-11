@@ -68,8 +68,9 @@ export const TECNICAS: Array<{ codigo: string; rotulo: string }> = [
   { codigo: "local_assistida", rotulo: "Local assistida" },
 ];
 
-export const BLOQUEIOS = ["Interescalênico", "Supraclavicular", "Infraclavicular", "Axilar", "ESP (eretor da espinha)",
-  "TAP", "Femoral", "Fáscia ilíaca", "Poplíteo", "Safeno", "PENG", "Quadrado lombar", "Outro"];
+export const BLOQUEIOS = ["Interescalênico", "Supraclavicular", "Infraclavicular", "Axilar", "Femoral", "PEC I", "PEC II",
+  "ESP (eretor da espinha)", "TAP", "Ilioinguinal / ílio-hipogástrico", "Fáscia ilíaca", "Poplíteo", "Safeno", "PENG",
+  "Quadrado lombar", "Outro"];
 
 export type Profissional = {
   /** Id do perfil, quando é alguém do sistema; nulo para quem vem de fora. */

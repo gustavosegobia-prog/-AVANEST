@@ -147,6 +147,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
               lista={n === 0 ? meds : meds.filter((a) => noPeriodo(a, janela))}
               titulo={n === 0 ? "MEDICAÇÃO ADMINISTRADA" : "MEDICAÇÃO NESTE PERÍODO"}
               porId={porId} peso={peso} locais={n === 0 ? locais : []} cabecalho={d}
+              tecnicas={Array.isArray(d.tecnicas) ? (d.tecnicas as string[]) : []}
             />
           </div>
 
@@ -238,11 +239,12 @@ function PreAnestesica({ d, sexo }: { d: Dados; sexo: string | null }) {
   );
 }
 
-function Medicacao({ lista, titulo, porId, peso, locais, cabecalho }: {
+function Medicacao({ lista, titulo, porId, peso, locais, cabecalho, tecnicas }: {
   lista: Administracao[]; titulo: string; porId: Map<string, Registro>; peso: number | null; cabecalho: Dados;
+  tecnicas: string[];
   locais: Array<{ nome: string; mg: number | null; mgPorKg: number | null }>;
 }) {
-  const grupos = medicacaoPorGrupo(lista);
+  const grupos = medicacaoPorGrupo(lista, porId, tecnicas);
   const dose = (v: number, u: string) => `${numero(v, 3)} ${u}`;
   // Grama vira mg/kg: "0,048 g/kg" ninguém lê; "47,6 mg/kg" todo mundo.
   const porKg = (a: Administracao) => {
@@ -256,9 +258,9 @@ function Medicacao({ lista, titulo, porId, peso, locais, cabecalho }: {
     <aside className="imprMedicacao">
       <h2>{titulo}</h2>
       {!grupos.length && <p className="imprVazio">Nenhum medicamento administrado registrado.</p>}
-      {grupos.map((g, i) => (
-        <section key={g.categoria}>
-          <h3>{i + 1}. {g.titulo}</h3>
+      {grupos.map((g) => (
+        <section key={g.codigo}>
+          <h3>{g.numero}. {g.titulo}</h3>
           <ul>
             {g.medicamentos.map((m) => (
               <li key={m.nome}>
@@ -271,6 +273,7 @@ function Medicacao({ lista, titulo, porId, peso, locais, cabecalho }: {
                   return (
                     <span className="imprDose" key={a.id}>
                       {hora(a.momento)} · {dose(a.dose, a.unidade)} {a.via}{porKg(a)}
+                      {typeof porId.get(a.id)?.dados.apresentacao === "string" && ` · ${String(porId.get(a.id)?.dados.apresentacao)}`}
                       {alerta?.justificativa && (alerta.nivel === "amarelo" || alerta.nivel === "vermelho") && (
                         <em> Alerta {alerta.nivel === "vermelho" ? "crítico" : "de conferência"} — justificativa: {alerta.justificativa}</em>
                       )}
