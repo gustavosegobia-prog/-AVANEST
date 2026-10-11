@@ -6683,6 +6683,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoEventoBotao:hover{border-color:var(--cor-marca)}
 .evoEventoBotao.marco{font-weight:750}
 .evoEventoBotao.feito{background:var(--cor-sucesso-suave);border-color:transparent;color:var(--cor-sucesso)}
+.evoEventoBotao.ativo{background:var(--cor-atencao-suave);border-color:var(--cor-atencao);color:var(--cor-atencao);font-weight:750}
 .evoEventoBotao small{font-weight:750;font-size:12.5px}
 @media(pointer:coarse){.evoEventoBotao{min-height:44px}}
 .evoLinhaDoTempo{display:flex;flex-wrap:wrap;gap:4px 8px;list-style:none;margin:10px 0 0;padding:0}

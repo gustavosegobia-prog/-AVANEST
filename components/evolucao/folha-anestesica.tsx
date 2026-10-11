@@ -17,7 +17,10 @@ import {
 import { consumoSevoflurano, formatarMl, lerAjuste, type AjusteDeGas } from "@/lib/evolucao/sevoflurano";
 import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/infusoes";
 import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evolucao/liquidos";
-import { EVENTOS, conferirEncerramento, horarioDoMarco, imcDaFolha, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
+import {
+  EVENTOS_DA_TELA, conferirEncerramento, duracaoEmMinutos, horarioDoMarco, imcDaFolha, minutosDeTorniquete, periodosDeTorniquete,
+  rotuloDoEvento, type Profissional,
+} from "@/lib/evolucao/folha";
 import { asaRomana, sexoAbreviado } from "@/lib/evolucao/pre-papel";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { marcasDeEvento } from "@/lib/evolucao/impressao";
@@ -164,6 +167,20 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
     }
     setAbrir(null);
     setAviso({ texto: `${itens.map((i) => `${PARAMETROS[i.parametro].curto} ${fmt(i.valor, 1)}`).join(" · ")} às ${hora(momento)}`, desfazer: false });
+  }
+
+  // O torniquete: um botão que insufla e desinsufla, com o tempo somado.
+  const torniquete = periodosDeTorniquete(atuais);
+  const torniqueteInsuflado = torniquete.length > 0 && !torniquete[torniquete.length - 1].fim;
+  const minutosTorniquete = minutosDeTorniquete(torniquete, agora);
+
+  function botaoDeEvento(codigo: string) {
+    const feito = horarioDoMarco(atuais, codigo);
+    return (
+      <button type="button" key={codigo} className={`evoEventoBotao marco${feito ? " feito" : ""}`} onClick={() => evento(codigo)}>
+        {rotuloDoEvento(codigo)}{feito && <small>{hora(feito)}</small>}
+      </button>
+    );
   }
 
   function evento(codigo: string) {
@@ -447,15 +464,15 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
           {aberta && (
             <div className="evoEventos" aria-label="Eventos">
-              {EVENTOS.map((ev) => {
-                const feito = horarioDoMarco(atuais, ev.codigo);
-                return (
-                  <button type="button" key={ev.codigo} className={`evoEventoBotao${feito ? " feito" : ""}${ev.marco ? " marco" : ""}`}
-                    onClick={() => evento(ev.codigo)}>
-                    {ev.rotulo}{feito && <small>{hora(feito)}</small>}
-                  </button>
-                );
-              })}
+              {EVENTOS_DA_TELA.antes.map(botaoDeEvento)}
+              <button type="button" className={`evoEventoBotao marco${torniqueteInsuflado ? " ativo" : torniquete.length ? " feito" : ""}`}
+                aria-pressed={torniqueteInsuflado}
+                title={torniqueteInsuflado ? "Toque para registrar a desinsuflação" : "Toque para registrar a insuflação"}
+                onClick={() => evento(torniqueteInsuflado ? "fim_torniquete" : "inicio_torniquete")}>
+                {torniqueteInsuflado ? "Desinsuflar torniquete" : "Tempo de torniquete"}
+                {torniquete.length > 0 && <small>{duracaoEmMinutos(minutosTorniquete)}</small>}
+              </button>
+              {EVENTOS_DA_TELA.depois.map(botaoDeEvento)}
               <button type="button" className="evoEventoBotao" onClick={() => setAbrir({ tipo: "evento" })}>Outro…</button>
             </div>
           )}

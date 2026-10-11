@@ -2,7 +2,10 @@ import { RegistroImpresso } from "./registro-impresso";
 import { RodapeDaFolha } from "./rodape-da-folha";
 import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { administrados, dosePorKg, exposicaoAnestesicoLocal, type Administracao } from "@/lib/evolucao/medicamentos";
-import { equipeParaImpressao, horarioDoMarco, type Profissional } from "@/lib/evolucao/folha";
+import {
+  duracaoEmMinutos, equipeParaImpressao, horarioDoMarco, minutosDeTorniquete, periodosDeTorniquete, type PeriodoDeTorniquete,
+  type Profissional,
+} from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { montarInfusoes, totalDaInfusao } from "@/lib/evolucao/infusoes";
 import { balancoHidrico } from "@/lib/evolucao/liquidos";
@@ -62,6 +65,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
 
   const meds = administrados(vigentes);
   const porId = new Map(vigentes.map((r) => [r.id, r]));
+  const torniquete = periodosDeTorniquete(vigentes);
   const sevo = consumoSevoflurano(vigentes.map(lerAjuste).filter((a) => a !== null), new Date(fimMs).toISOString());
   const infusoes = montarInfusoes(vigentes);
   const balanco = balancoHidrico(vigentes, peso);
@@ -127,6 +131,8 @@ export function FolhaImpressa(p: DadosDaImpressao) {
                     { alergias?: string; justificativa?: string | null } | null,
                 })) : []}
                 balanco={n === janelas.length - 1 ? balanco : null}
+                torniquete={n === janelas.length - 1 ? torniquete : []}
+                fimMs={fimMs}
               />
               {n === 0 && (
                 <div className="imprObservacoes">
@@ -224,7 +230,7 @@ function Medicacao({ lista, titulo, porId, peso, locais, cabecalho, tecnicas }: 
   );
 }
 
-function Legendas({ eventos, sevo, aberta, infusoes, balanco }: {
+function Legendas({ eventos, sevo, aberta, infusoes, balanco, torniquete, fimMs }: {
   eventos: Array<{ id: string; momento: string; simbolo: string; rotulo: string }>;
   sevo: number | null;
   aberta: boolean;
@@ -233,11 +239,19 @@ function Legendas({ eventos, sevo, aberta, infusoes, balanco }: {
     alergia: { alergias?: string; justificativa?: string | null } | null;
   }>;
   balanco: ReturnType<typeof balancoHidrico> | null;
+  torniquete: PeriodoDeTorniquete[];
+  fimMs: number;
 }) {
   return (
     <div className="imprLegendas">
       {eventos.length > 0 && (
         <p><b>Eventos:</b> {eventos.map((e) => `${e.simbolo}) ${hora(e.momento)} ${e.rotulo}`).join(" · ")}</p>
+      )}
+      {torniquete.length > 0 && (
+        <p>
+          <b>Torniquete:</b> {torniquete.map((p) => `${hora(p.inicio)}–${p.fim ? hora(p.fim) : "sem desinsuflação registrada"}`).join(" · ")}
+          {" "}— total {duracaoEmMinutos(minutosDeTorniquete(torniquete, fimMs))}.
+        </p>
       )}
       {sevo !== null && sevo > 0 && (
         <p>

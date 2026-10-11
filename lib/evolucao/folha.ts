@@ -37,7 +37,51 @@ export const EVENTOS: Array<{ codigo: string; rotulo: string; marco?: boolean }>
   { codigo: "fim_anestesia", rotulo: "Fim da anestesia", marco: true },
   { codigo: "transferencia_rpa", rotulo: "Transferência à RPA" },
   { codigo: "transferencia_uti", rotulo: "Transferência à UTI" },
+  { codigo: "inicio_torniquete", rotulo: "Torniquete insuflado" },
+  { codigo: "fim_torniquete", rotulo: "Torniquete desinsuflado" },
 ];
+
+/**
+ * Os botões da tela, na ordem da sala. O resto do catálogo acima continua
+ * só para ler as fichas que já usaram aqueles eventos; o que não tem botão
+ * entra pelo "Outro…". O torniquete tem botão próprio, entre a cirurgia.
+ */
+export const EVENTOS_DA_TELA = {
+  antes: ["inicio_anestesia", "inicio_cirurgia"],
+  depois: ["fim_cirurgia", "fim_anestesia", "transferencia_rpa", "transferencia_uti"],
+} as const;
+
+export type PeriodoDeTorniquete = { inicio: string; fim: string | null };
+
+/** Cada insuflação do torniquete até a desinsuflação seguinte (ou aberta, se ainda insuflado). */
+export function periodosDeTorniquete(vigentes: readonly Registro[]): PeriodoDeTorniquete[] {
+  const periodos: PeriodoDeTorniquete[] = [];
+  const marcas = vigentes
+    .filter((r) => r.tipo === "evento" && (r.dados.codigo === "inicio_torniquete" || r.dados.codigo === "fim_torniquete"))
+    .sort((a, b) => Date.parse(a.momento) - Date.parse(b.momento));
+  for (const r of marcas) {
+    const ultimo = periodos[periodos.length - 1];
+    if (r.dados.codigo === "inicio_torniquete") {
+      if (!ultimo || ultimo.fim) periodos.push({ inicio: r.momento, fim: null });
+    } else if (ultimo && !ultimo.fim) {
+      ultimo.fim = r.momento;
+    }
+  }
+  return periodos;
+}
+
+/** Minutos de torniquete somando as insuflações; a que está aberta conta até `agoraMs`. */
+export function minutosDeTorniquete(periodos: readonly PeriodoDeTorniquete[], agoraMs: number): number {
+  return Math.round(periodos.reduce((soma, p) =>
+    soma + Math.max(0, (p.fim ? Date.parse(p.fim) : agoraMs) - Date.parse(p.inicio)), 0) / 60000);
+}
+
+/** "45 min", "1 h", "1 h 10 min". */
+export function duracaoEmMinutos(min: number): string {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
 
 export const rotuloDoEvento = (codigo: string, descricao?: string) =>
   EVENTOS.find((e) => e.codigo === codigo)?.rotulo ?? (descricao || codigo);

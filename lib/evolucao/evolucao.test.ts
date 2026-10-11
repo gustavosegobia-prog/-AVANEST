@@ -12,7 +12,9 @@ import {
 import { montarInfusoes, totalDaInfusao } from "./infusoes.ts";
 import { balancoHidrico } from "./liquidos.ts";
 import { SEM_REFERENCIA, avaliarDose, idadeEmDias, type RegraDeDose } from "./doses.ts";
-import { conferirEncerramento, equipeParaImpressao, horarioDoMarco } from "./folha.ts";
+import {
+  conferirEncerramento, duracaoEmMinutos, equipeParaImpressao, horarioDoMarco, minutosDeTorniquete, periodosDeTorniquete,
+} from "./folha.ts";
 import { classificarErro, motivoLegivel } from "./fila.ts";
 
 const T0 = Date.parse("2026-10-10T10:00:00-03:00");
@@ -358,4 +360,16 @@ test("a fila trata reenvio como salvo e dado recusado como definitivo", () => {
   assert.equal(classificarErro({ code: "P0001", message: "REGISTRO_INVALIDO: pas fora da faixa possível (20 a 300)" }), "recusado");
   assert.equal(classificarErro({ message: "TypeError: Failed to fetch" }), "tentar_de_novo");
   assert.equal(motivoLegivel("REGISTRO_INVALIDO: dose, concentração e volume não batem"), "dose, concentração e volume não batem");
+});
+
+test("torniquete: insuflações somadas, a aberta conta até agora", () => {
+  const ev = (min: number, codigo: string) => reg("evento", min, { codigo });
+  const periodos = periodosDeTorniquete([ev(10, "inicio_torniquete"), ev(12, "inicio_torniquete"), ev(70, "fim_torniquete"),
+    ev(71, "fim_torniquete"), ev(90, "inicio_torniquete"), ev(5, "inicio_anestesia")]);
+  assert.deepEqual(periodos, [{ inicio: em(10), fim: em(70) }, { inicio: em(90), fim: null }]);
+  assert.equal(minutosDeTorniquete(periodos, Date.parse(em(105))), 75);
+  assert.deepEqual(periodosDeTorniquete([ev(3, "fim_torniquete")]), []);
+  assert.equal(duracaoEmMinutos(45), "45 min");
+  assert.equal(duracaoEmMinutos(60), "1 h");
+  assert.equal(duracaoEmMinutos(75), "1 h 15 min");
 });
