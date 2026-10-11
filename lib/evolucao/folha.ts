@@ -4,6 +4,20 @@
 import { num, type Registro } from "./registros.ts";
 import { montarInfusoes } from "./infusoes.ts";
 import { periodosSemMonitorizacao, lacunaPadrao } from "./sinais.ts";
+import { conferirAlergia } from "./alergias.ts";
+import { antropometriaPlausivel } from "../numero-clinico.ts";
+
+/**
+ * IMC do peso e da altura da folha, com uma casa. Nulo sem os dois ou com
+ * valor fora do plausível — a mesma régua da avaliação, que já pegou "1,72"
+ * no campo de centímetros virando IMC de seis dígitos. Em criança o número
+ * sai igual, mas a leitura é por percentil, não pelos cortes do adulto.
+ */
+export function imcDaFolha(dados: Record<string, unknown>): number | null {
+  const peso = num(dados.peso_kg), altura = num(dados.altura_cm);
+  if (!antropometriaPlausivel(peso, altura)) return null;
+  return Math.round((peso! / (altura! / 100) ** 2) * 10) / 10;
+}
 
 // ---------------------------------------------------------------------------
 // Eventos rápidos
@@ -116,6 +130,16 @@ export function conferirEncerramento(
   }
   for (const inf of montarInfusoes(vigentes)) {
     if (!inf.fim) p.push({ tipo: "inconsistencia", texto: `Infusão de ${inf.nome} sem horário de término.` });
+  }
+  // Dado que coincide com a alergia sem justificativa gravada — típico da
+  // alergia escrita DEPOIS da administração: a conferência final aponta.
+  for (const r of vigentes) {
+    const dado = r.tipo === "medicamento" && r.dados.status === "administrado"
+      || r.tipo === "infusao" && r.dados.acao === "iniciar";
+    const justificada = Boolean((r.dados.alerta_alergia as { justificativa?: unknown } | undefined)?.justificativa);
+    if (!dado || justificada) continue;
+    const c = conferirAlergia(dados, String(r.dados.nome ?? ""));
+    if (c) p.push({ tipo: "aviso", texto: `${String(r.dados.nome)} coincide com a alergia registrada (${c.alergias}).` });
   }
   const pendentes = vigentes.filter((r) => r.tipo === "medicamento"
     && (r.dados.status === "planejado" || r.dados.status === "preparado"));

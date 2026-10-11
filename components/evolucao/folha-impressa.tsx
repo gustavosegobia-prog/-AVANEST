@@ -1,6 +1,7 @@
 import { RegistroImpresso } from "./registro-impresso";
 import { administrados, dosePorKg, exposicaoAnestesicoLocal, type Administracao } from "@/lib/evolucao/medicamentos";
-import { equipeParaImpressao, horarioDoMarco, FUNCOES, type Profissional } from "@/lib/evolucao/folha";
+import { equipeParaImpressao, horarioDoMarco, imcDaFolha, FUNCOES, type Profissional } from "@/lib/evolucao/folha";
+import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { montarInfusoes, totalDaInfusao } from "@/lib/evolucao/infusoes";
 import { balancoHidrico } from "@/lib/evolucao/liquidos";
 import { consumoSevoflurano, formatarMl, lerAjuste } from "@/lib/evolucao/sevoflurano";
@@ -127,7 +128,11 @@ export function FolhaImpressa(p: DadosDaImpressao) {
                 eventos={eventos.filter((e) => Date.parse(e.momento) >= janela.inicio && Date.parse(e.momento) < janela.fim)}
                 sevo={n === janelas.length - 1 ? sevo.totalMl : null}
                 aberta={aberta}
-                infusoes={n === janelas.length - 1 ? infusoes.map((inf) => ({ inf, total: totalDaInfusao(inf, peso) })) : []}
+                infusoes={n === janelas.length - 1 ? infusoes.map((inf) => ({
+                  inf, total: totalDaInfusao(inf, peso),
+                  alergia: (porId.get(inf.id)?.dados.alerta_alergia ?? conferirAlergia(d, inf.nome)) as
+                    { alergias?: string; justificativa?: string | null } | null,
+                })) : []}
                 balanco={n === janelas.length - 1 ? balanco : null}
               />
               {n === 0 && (
@@ -141,7 +146,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
             <Medicacao
               lista={n === 0 ? meds : meds.filter((a) => noPeriodo(a, janela))}
               titulo={n === 0 ? "MEDICAÇÃO ADMINISTRADA" : "MEDICAÇÃO NESTE PERÍODO"}
-              porId={porId} peso={peso} locais={n === 0 ? locais : []}
+              porId={porId} peso={peso} locais={n === 0 ? locais : []} cabecalho={d}
             />
           </div>
 
@@ -202,6 +207,7 @@ const noPeriodo = (a: Administracao, j: Janela) => Date.parse(a.momento) >= j.in
 
 function PreAnestesica({ d, sexo }: { d: Dados; sexo: string | null }) {
   const asa = t(d.asa);
+  const imc = imcDaFolha(d);
   const alergia = d.nega_alergia === true ? "Nega alergia a medicamentos" : t(d.alergias) || "Não informado";
   const campo = (rotulo: string, valor: string, classe = "") => (
     <span className={classe}><small>{rotulo}</small>{valor}</span>
@@ -214,8 +220,8 @@ function PreAnestesica({ d, sexo }: { d: Dados; sexo: string | null }) {
         {campo("Sexo", t(sexo))}
         {campo("Peso", t(d.peso_kg) ? `${t(d.peso_kg)} kg` : "")}
         {campo("Altura", t(d.altura_cm) ? `${t(d.altura_cm)} cm` : "")}
-        {campo("ASA", asa ? `${asa}${d.asa_emergencia === true ? " E" : ""}` : "")}
-        {campo("Emergência", d.asa_emergencia === true ? "Sim" : asa ? "Não" : "")}
+        {campo("IMC", imc !== null ? `${numero(imc, 1)} kg/m²` : "")}
+        {campo("ASA", asa ? `${asa}${d.asa_emergencia === true ? " E (emergência)" : ""}` : "")}
         {campo("Hospital / sala", [t(d.hospital), t(d.sala)].filter(Boolean).join(" · "), "dobro")}
         {campo("Sinais", t(d.sinais_pre), "dobro")}
         {campo("Jejum", t(d.jejum), "dobro")}
@@ -232,8 +238,8 @@ function PreAnestesica({ d, sexo }: { d: Dados; sexo: string | null }) {
   );
 }
 
-function Medicacao({ lista, titulo, porId, peso, locais }: {
-  lista: Administracao[]; titulo: string; porId: Map<string, Registro>; peso: number | null;
+function Medicacao({ lista, titulo, porId, peso, locais, cabecalho }: {
+  lista: Administracao[]; titulo: string; porId: Map<string, Registro>; peso: number | null; cabecalho: Dados;
   locais: Array<{ nome: string; mg: number | null; mgPorKg: number | null }>;
 }) {
   const grupos = medicacaoPorGrupo(lista);
@@ -260,11 +266,16 @@ function Medicacao({ lista, titulo, porId, peso, locais }: {
                 {m.vezes.length > 1 && m.total !== null && <span className="imprTotal"> total {dose(m.total, m.unidade)}</span>}
                 {m.vezes.map((a) => {
                   const alerta = (porId.get(a.id)?.dados.alerta ?? null) as { nivel?: string; justificativa?: string | null } | null;
+                  const alergia = (porId.get(a.id)?.dados.alerta_alergia ?? conferirAlergia(cabecalho, a.nome)) as
+                    { alergias?: string; justificativa?: string | null } | null;
                   return (
                     <span className="imprDose" key={a.id}>
                       {hora(a.momento)} · {dose(a.dose, a.unidade)} {a.via}{porKg(a)}
                       {alerta?.justificativa && (alerta.nivel === "amarelo" || alerta.nivel === "vermelho") && (
                         <em> Alerta {alerta.nivel === "vermelho" ? "crítico" : "de conferência"} — justificativa: {alerta.justificativa}</em>
+                      )}
+                      {alergia && (
+                        <em> Coincide com alergia registrada ({alergia.alergias}){alergia.justificativa ? ` — justificativa: ${alergia.justificativa}` : "."}</em>
                       )}
                     </span>
                   );
@@ -287,7 +298,10 @@ function Legendas({ eventos, sevo, aberta, infusoes, balanco }: {
   eventos: Array<{ id: string; momento: string; simbolo: string; rotulo: string }>;
   sevo: number | null;
   aberta: boolean;
-  infusoes: Array<{ inf: ReturnType<typeof montarInfusoes>[number]; total: ReturnType<typeof totalDaInfusao> }>;
+  infusoes: Array<{
+    inf: ReturnType<typeof montarInfusoes>[number]; total: ReturnType<typeof totalDaInfusao>;
+    alergia: { alergias?: string; justificativa?: string | null } | null;
+  }>;
   balanco: ReturnType<typeof balancoHidrico> | null;
 }) {
   return (
@@ -304,10 +318,11 @@ function Legendas({ eventos, sevo, aberta, infusoes, balanco }: {
       {infusoes.length > 0 && (
         <p>
           <b>Infusões:</b>{" "}
-          {infusoes.map(({ inf, total }) => `${inf.nome}${inf.diluicao ? ` (${inf.diluicao})` : ""}, ${hora(inf.inicio)}–${inf.fim ? hora(inf.fim) : "sem término"}: ${[
+          {infusoes.map(({ inf, total, alergia }) => `${inf.nome}${inf.diluicao ? ` (${inf.diluicao})` : ""}, ${hora(inf.inicio)}–${inf.fim ? hora(inf.fim) : "sem término"}: ${[
             total.quantidade !== null && total.unidadeQuantidade && `${numero(total.quantidade, 2)} ${total.unidadeQuantidade}`,
             total.volumeMl !== null && `${numero(total.volumeMl, 1)} mL`,
-          ].filter(Boolean).join(", ") || "total desconhecido"}${total.incompleto ? " (contada até o último registro)" : ""}`).join(" · ")}
+          ].filter(Boolean).join(", ") || "total desconhecido"}${total.incompleto ? " (contada até o último registro)" : ""}${
+            alergia ? ` — coincide com alergia registrada (${alergia.alergias})${alergia.justificativa ? `, justificativa: ${alergia.justificativa}` : ""}` : ""}`).join(" · ")}
         </p>
       )}
       {balanco && (balanco.entradas > 0 || balanco.saidas > 0) && (

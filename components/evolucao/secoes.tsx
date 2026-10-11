@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BLOQUEIOS, FUNCOES, POSICOES, PROTECOES, TECNICAS, type Profissional } from "@/lib/evolucao/folha";
+import { BLOQUEIOS, FUNCOES, POSICOES, PROTECOES, TECNICAS, imcDaFolha, type Profissional } from "@/lib/evolucao/folha";
 import { Escolha, Marcas } from "./campos";
 
 // As partes da folha que se preenchem uma vez: pré-anestésica conferida,
@@ -29,7 +29,11 @@ function Texto({ rotulo, valor, onMudar, linhas = 1, largo = false, disabled }: 
 // ---------------------------------------------------------------------------
 // Pré-anestésica conferida
 // ---------------------------------------------------------------------------
-export function SecaoPreAnestesica({ dados, onMudar, leitura }: { dados: Dados; onMudar: Mudar; leitura: boolean }) {
+export function SecaoPreAnestesica({ dados, onMudar, leitura, idadeAnos }: {
+  dados: Dados; onMudar: Mudar; leitura: boolean; idadeAnos: number | null;
+}) {
+  const imc = imcDaFolha(dados);
+  const crianca = idadeAnos !== null && idadeAnos < 18;
   const origem = dados.preanestesica_origem as { importado_em?: string } | null | undefined;
   const peso = typeof dados.peso_kg === "number" ? String(dados.peso_kg).replace(".", ",") : "";
   const [pesoTexto, setPesoTexto] = useState(peso);
@@ -51,6 +55,11 @@ export function SecaoPreAnestesica({ dados, onMudar, leitura }: { dados: Dados; 
         </label>
         <Texto rotulo="Altura (cm)" valor={t(dados.altura_cm)} disabled={leitura}
           onMudar={(v) => onMudar({ altura_cm: v.trim() ? Number(v.replace(",", ".")) || null : null })} />
+        <div className="evoCampo evoCalculado">
+          <span>IMC</span>
+          <output>{imc !== null ? imc.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "—"}</output>
+          <small>{imc === null ? "precisa de peso e altura" : crianca ? "em criança, ler por percentil" : "kg/m², do peso e altura acima"}</small>
+        </div>
         <Escolha rotulo="ASA" valor={t(dados.asa) as "I"}
           opcoes={["I", "II", "III", "IV", "V", "VI"].map((v) => ({ valor: v as "I", rotulo: v }))}
           onMudar={(v) => !leitura && onMudar({ asa: v })} />

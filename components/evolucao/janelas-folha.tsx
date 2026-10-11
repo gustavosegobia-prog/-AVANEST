@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { conferirAlergia, situacaoDaAlergia } from "@/lib/evolucao/alergias";
 import { Janela } from "@/components/janela";
 import { horaLocal } from "@/lib/data-local";
 import { buscarNoCatalogo, type UnidadeDeConcentracao } from "@/lib/evolucao/medicamentos";
@@ -26,9 +27,11 @@ function Rodape({ onFechar, form, rotulo, ok, perigo = false }: {
 // ---------------------------------------------------------------------------
 // Infusão contínua
 // ---------------------------------------------------------------------------
-export function JanelaInfusao({ infusao, acao, onConfirmar, onFechar }: {
+export function JanelaInfusao({ infusao, acao, alergias, onConfirmar, onFechar }: {
   infusao: Infusao | null;
   acao: "iniciar" | "ajustar" | "encerrar";
+  /** O cabeçalho da folha: alergias e "nega alergia". */
+  alergias: { alergias?: unknown; nega_alergia?: unknown };
   onConfirmar: (momento: string, dados: Record<string, unknown>) => void;
   onFechar: () => void;
 }) {
@@ -44,8 +47,11 @@ export function JanelaInfusao({ infusao, acao, onConfirmar, onFechar }: {
   const velN = numero(vel);
   const sugestoes = acao === "iniciar" && nome.trim().length >= 2 && !buscarNoCatalogo(nome).some((i) => i.nome === nome)
     ? buscarNoCatalogo(nome).slice(0, 5) : [];
+  const [justificaAlergia, setJustificaAlergia] = useState("");
+  const alergia = acao === "iniciar" && nome.trim() ? conferirAlergia(alergias, nome.trim()) : null;
   const ok = Boolean(momento) && (acao === "encerrar" || (velN !== null && velN >= 0))
-    && (acao !== "iniciar" || nome.trim().length > 0);
+    && (acao !== "iniciar" || nome.trim().length > 0)
+    && (!alergia || justificaAlergia.trim().length >= 5);
 
   function confirmar(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +62,7 @@ export function JanelaInfusao({ infusao, acao, onConfirmar, onFechar }: {
         acao, nome: nome.trim(), velocidade: { valor: velN, unidade: uVel },
         ...(diluicao.trim() ? { diluicao: diluicao.trim() } : {}),
         ...(c && c > 0 ? { concentracao: { valor: c, unidade: uConc } } : {}),
+        ...(alergia ? { alerta_alergia: { ...alergia, justificativa: justificaAlergia.trim() } } : {}),
       });
     } else if (acao === "ajustar") {
       onConfirmar(momento, { acao, infusao_id: infusao!.id, velocidade: { valor: velN, unidade: uVel } });
@@ -79,6 +86,18 @@ export function JanelaInfusao({ infusao, acao, onConfirmar, onFechar }: {
               {sugestoes.map((s) => <button type="button" key={s.id} onClick={() => setNome(s.nome)}>{s.nome}</button>)}
             </div>
           )}
+          {alergia ? (
+            <section className="evoAlergia" role="alert">
+              <b>Possível alergia</b>
+              <p>
+                O paciente tem alergia registrada a “{alergia.alergias}”, e {nome.trim()} coincide com “{alergia.termo}”.
+                A conferência compara nomes; não avalia reação cruzada entre classes.
+              </p>
+              <label className="evoCampo"><span>Justificativa para iniciar mesmo assim (fica registrada)</span>
+                <textarea value={justificaAlergia} onChange={(e) => setJustificaAlergia(e.target.value)} rows={2} maxLength={500} />
+              </label>
+            </section>
+          ) : <p className="evoAlergiaSituacao">{situacaoDaAlergia(alergias)}</p>}
           <label className="evoCampo"><span>Diluição</span>
             <input value={diluicao} onChange={(e) => setDiluicao(e.target.value)} placeholder="Ex.: 4 mg em 250 mL de SG 5%" />
           </label>

@@ -8,6 +8,7 @@ import {
   type Administracao, type ItemDoCatalogo, type UnidadeDeConcentracao, type UnidadeDeDose,
 } from "@/lib/evolucao/medicamentos";
 import { avaliarDose, type RegraDeDose } from "@/lib/evolucao/doses";
+import { conferirAlergia, situacaoDaAlergia } from "@/lib/evolucao/alergias";
 import { minutosEntre } from "@/lib/evolucao/registros";
 import { momentoDeHora } from "./use-folha";
 import { CampoHora, CampoNumero, Escolha, numero } from "./campos";
@@ -52,9 +53,11 @@ const NIVEL: Record<string, string> = {
 };
 
 export function JanelaMedicamento({
-  pesoKg, idadeDias, regras, dadas, favoritos, inicial, onConfirmar, onFechar,
+  pesoKg, idadeDias, regras, dadas, favoritos, inicial, alergias, onConfirmar, onFechar,
 }: {
   pesoKg: number | null;
+  /** O cabeçalho da folha: alergias e "nega alergia". */
+  alergias: { alergias?: unknown; nega_alergia?: unknown };
   idadeDias: number | null;
   regras: RegraDeDose[];
   dadas: Administracao[];
@@ -82,6 +85,7 @@ export function JanelaMedicamento({
   const [indicacao, setIndicacao] = useState(String(inicial?.indicacao ?? ""));
   const [obs, setObs] = useState(String(inicial?.observacao ?? ""));
   const [justificativa, setJustificativa] = useState("");
+  const [justificaAlergia, setJustificaAlergia] = useState("");
 
   const momento = momentoDeHora(hora);
   const concN = numero(conc);
@@ -106,10 +110,13 @@ export function JanelaMedicamento({
   const porKg = doseN && unidade !== "mL" ? dosePorKg(doseN, pesoKg) : null;
   const administrando = situacao === "administrado";
   const precisaJustificar = administrando && conferencia?.exigeJustificativa === true;
+  // Alergia: avisa sempre; para ADMINISTRAR, pede justificativa (o servidor confere de novo).
+  const alergia = nome ? conferirAlergia(alergias, nome) : null;
   const ok = Boolean(nome && momento) && !unidadesIncompativeis
     && (!administrando || (doseN !== null && doseN > 0))
     && !(administrando && conferencia?.nivel === "erro")
-    && (!precisaJustificar || justificativa.trim().length >= 5);
+    && (!precisaJustificar || justificativa.trim().length >= 5)
+    && (!(administrando && alergia) || justificaAlergia.trim().length >= 5);
 
   const lista = useMemo(() => {
     const achados = buscarNoCatalogo(busca);
@@ -136,6 +143,7 @@ export function JanelaMedicamento({
       ...(indicacao ? { indicacao } : {}),
       ...(obs.trim() ? { observacao: obs.trim() } : {}),
       ...(precisaJustificar ? { alerta: { justificativa: justificativa.trim() } } : {}),
+      ...(alergia ? { alerta_alergia: { ...alergia, justificativa: administrando ? justificaAlergia.trim() : null } } : {}),
     };
     if (dados.dose === null) delete dados.dose;
     onConfirmar({ momento, dados });
@@ -149,6 +157,9 @@ export function JanelaMedicamento({
             <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} autoFocus
               placeholder="Ex.: fentanil, Dormonid, rocurônio" />
           </label>
+          <p className={`evoAlergiaSituacao${alergias.nega_alergia !== true && String(alergias.alergias ?? "").trim() ? " tem" : ""}`}>
+            {situacaoDaAlergia(alergias)}
+          </p>
           {!busca.trim() && favoritos.length > 0 && <p className="evoNota">Os que você mais usa:</p>}
           <ul className="evoCatalogo">
             {lista.map((i) => (
@@ -156,6 +167,7 @@ export function JanelaMedicamento({
                 <button type="button" onClick={() => escolher(i)}>
                   <strong>{i.nome}</strong>
                   <span>{CATEGORIAS[i.categoria]}{i.sinonimos.length ? ` · ${i.sinonimos.join(", ")}` : ""}</span>
+                  {conferirAlergia(alergias, i.nome) && <em className="evoAlergiaTag">Alergia registrada</em>}
                 </button>
               </li>
             ))}
@@ -164,6 +176,7 @@ export function JanelaMedicamento({
                 <button type="button" onClick={() => setItem({ nome: busca.trim(), unidade: "mg" })}>
                   <strong>Usar “{busca.trim()}”</strong>
                   <span>Medicamento fora da lista</span>
+                  {conferirAlergia(alergias, busca.trim()) && <em className="evoAlergiaTag">Alergia registrada</em>}
                 </button>
               </li>
             )}
@@ -185,6 +198,20 @@ export function JanelaMedicamento({
         </button>
       </>}>
       <form id="evoFormMed" className="evoForm" onSubmit={confirmar}>
+        {alergia ? (
+          <section className="evoAlergia" role="alert">
+            <b>Possível alergia</b>
+            <p>
+              O paciente tem alergia registrada a “{alergia.alergias}”, e {nome} coincide com “{alergia.termo}”.
+              A conferência compara nomes; não avalia reação cruzada entre classes.
+            </p>
+            {administrando && (
+              <label className="evoCampo"><span>Justificativa para administrar mesmo assim (fica registrada)</span>
+                <textarea value={justificaAlergia} onChange={(e) => setJustificaAlergia(e.target.value)} rows={2} maxLength={500} />
+              </label>
+            )}
+          </section>
+        ) : <p className="evoAlergiaSituacao">{situacaoDaAlergia(alergias)}</p>}
         <Escolha rotulo="Situação" valor={situacao as "administrado"} opcoes={[...SITUACOES]} onMudar={setSituacao} />
         <div className="evoLinhaCampos">
           <CampoHora valor={hora} onMudar={setHora} />

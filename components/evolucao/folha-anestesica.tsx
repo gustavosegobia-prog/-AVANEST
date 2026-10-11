@@ -14,7 +14,8 @@ import {
 import { consumoSevoflurano, formatarMl, lerAjuste, type AjusteDeGas } from "@/lib/evolucao/sevoflurano";
 import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/infusoes";
 import { balancoHidrico, rotuloDoLiquido } from "@/lib/evolucao/liquidos";
-import { EVENTOS, conferirEncerramento, horarioDoMarco, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
+import { EVENTOS, conferirEncerramento, horarioDoMarco, imcDaFolha, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
+import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
 import type { PacienteDaFolha } from "@/lib/evolucao/importar";
 import { useFolha, type Folha } from "./use-folha";
@@ -67,6 +68,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   const aberta = folha.status === "aberta";
   const dados = folha.dados;
   const pesoKg = typeof dados.peso_kg === "number" ? dados.peso_kg : null;
+  const imc = imcDaFolha(dados);
 
   const [montado, setMontado] = useState(false);
   const [agora, setAgora] = useState(0);
@@ -196,6 +198,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           <h1>{paciente.nome}</h1>
           <p>
             {[idade !== null && `${idade} anos`, paciente.sexo, pesoKg !== null && `${fmt(pesoKg, 1)} kg`,
+              imc !== null && `IMC ${fmt(imc, 1)}`,
               dados.asa && `ASA ${dados.asa}${dados.asa_emergencia ? " E" : ""}`, String(dados.procedimento ?? "")]
               .filter(Boolean).join(" · ")}
           </p>
@@ -233,11 +236,13 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       <details className="evoPre">
         <summary>
           <b>Avaliação pré-anestésica</b>
-          <span>{[dados.alergias ? `Alergias: ${dados.alergias}` : dados.nega_alergia ? "Nega alergias" : "Alergias não informadas",
-            dados.via_aerea && `Via aérea: ${String(dados.via_aerea).slice(0, 60)}`, dados.jejum && `Jejum: ${dados.jejum}`]
-            .filter(Boolean).join(" · ")}</span>
+          {dados.alergias && dados.nega_alergia !== true
+            ? <span className="evoPreAlergia">Alergias: {String(dados.alergias)}</span>
+            : <span>{dados.nega_alergia ? "Nega alergias" : "Alergias não informadas"}</span>}
+          <span>{[imc !== null && `IMC ${fmt(imc, 1)}`, dados.via_aerea && `Via aérea: ${String(dados.via_aerea).slice(0, 60)}`,
+            dados.jejum && `Jejum: ${dados.jejum}`].filter(Boolean).join(" · ")}</span>
         </summary>
-        <SecaoPreAnestesica dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} />
+        <SecaoPreAnestesica dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} idadeAnos={idade} />
       </details>
 
       <div className="evoCorpo">
@@ -268,7 +273,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                 const total = totalDaInfusao(inf, pesoKg);
                 return (
                   <li key={inf.id}>
-                    <b>{inf.nome}</b>
+                    <b>{inf.nome}{conferirAlergia(dados, inf.nome) && <em className="evoAlergiaTag">Alergia registrada</em>}</b>
                     <span>{inf.fim ? `encerrada às ${hora(inf.fim)}` : `${fmt(passo.valor)} ${passo.unidade} desde ${hora(passo.momento)}`}</span>
                     <small>
                       {[total.volumeMl !== null && `${fmt(total.volumeMl, 1)} mL`, total.quantidade !== null && `${fmt(total.quantidade)} ${total.unidadeQuantidade}`]
@@ -422,7 +427,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                 {grupos.map((g) => (
                   <li key={g.nome}>
                     <header><b>{g.nome}</b>{g.total !== null && g.vezes.length > 1 && <span>Total {fmt(g.total)} {g.unidade}</span>}</header>
-                    {g.vezes.map((a) => <LinhaDose key={a.id} a={a} registro={atuais.find((r) => r.id === a.id)!}
+                    {g.vezes.map((a) => <LinhaDose key={a.id} a={a} registro={atuais.find((r) => r.id === a.id)!} cabecalho={dados}
                       pendente={f.idsPendentes.has(a.id)} onAbrir={(r) => setAbrir({ tipo: "registro", registro: r })} />)}
                   </li>
                 ))}
@@ -491,7 +496,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       )}
       {abrir?.tipo === "medicamento" && (
         <JanelaMedicamento pesoKg={pesoKg} idadeDias={idadeDias} regras={regras} dadas={dadas}
-          favoritos={favoritos} inicial={abrir.planejado?.dados ?? null}
+          favoritos={favoritos} inicial={abrir.planejado?.dados ?? null} alergias={dados}
           onConfirmar={({ momento, dados: d }) => {
             if (abrir.planejado) f.corrigir(abrir.planejado, { momento, dados: d });
             else f.registrar({ tipo: "medicamento", momento, dados: d });
@@ -502,7 +507,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "infusao" && (
-        <JanelaInfusao acao={abrir.acao} infusao={abrir.infusao}
+        <JanelaInfusao acao={abrir.acao} infusao={abrir.infusao} alergias={dados}
           onConfirmar={(momento, d) => { f.registrar({ tipo: "infusao", momento, dados: d }); setAbrir(null); }}
           onFechar={() => setAbrir(null)} />
       )}
@@ -548,10 +553,12 @@ function Sincronia({ estado, pendentes, cabecalho }: { estado: string; pendentes
   return <span className={`evoSincronia ${classe}`} role="status" aria-live="polite">{texto}</span>;
 }
 
-function LinhaDose({ a, registro, pendente, onAbrir }: {
-  a: Administracao; registro: Registro; pendente: boolean; onAbrir: (r: Registro) => void;
+function LinhaDose({ a, registro, cabecalho, pendente, onAbrir }: {
+  a: Administracao; registro: Registro; cabecalho: Record<string, unknown>; pendente: boolean; onAbrir: (r: Registro) => void;
 }) {
   const alerta = (registro?.dados.alerta ?? null) as { nivel?: string } | null;
+  // Gravada com justificativa, ou alergia escrita depois de dar: as duas aparecem.
+  const alergia = Boolean(registro?.dados.alerta_alergia) || conferirAlergia(cabecalho, a.nome) !== null;
   return (
     <button type="button" className={`evoDose${pendente ? " pendente" : ""}`} onClick={() => onAbrir(registro)}>
       <span>{hora(a.momento)}</span>
@@ -560,6 +567,7 @@ function LinhaDose({ a, registro, pendente, onAbrir }: {
       {alerta?.nivel && ["amarelo", "vermelho"].includes(alerta.nivel) && (
         <i className={`evoAlertaPonto ${alerta.nivel}`} title="Dose registrada com alerta e justificativa" />
       )}
+      {alergia && <em className="evoAlergiaTag" title="Coincide com alergia registrada na folha">Alergia</em>}
     </button>
   );
 }
@@ -586,6 +594,7 @@ function JanelaRegistro({ registro, todos, nomes, leitura, onMudarHora, onExclui
   const [excluindo, setExcluindo] = useState(false);
   const [motivo, setMotivo] = useState("");
   const alerta = registro.dados.alerta as { nivel?: string; motivos?: string[]; justificativa?: string } | undefined;
+  const alergia = registro.dados.alerta_alergia as { termo?: string; alergias?: string; justificativa?: string | null } | undefined;
   // O novo horário no mesmo dia do registro (ou no vizinho, se cruzar a meia-noite).
   const novo = (() => {
     const [h, m] = horaTxt.split(":").map(Number);
@@ -616,6 +625,12 @@ function JanelaRegistro({ registro, todos, nomes, leitura, onMudarHora, onExclui
           <label className="evoCampo"><span>Horário</span>
             <input type="time" value={horaTxt} onChange={(e) => setHoraTxt(e.target.value)} />
           </label>
+        )}
+        {alergia && (
+          <section className="evoAlergia">
+            <b>Alergia registrada: {alergia.alergias}</b>
+            <p>Coincide com “{alergia.termo}”.{alergia.justificativa ? ` Justificativa: ${alergia.justificativa}` : ""}</p>
+          </section>
         )}
         {alerta?.nivel && alerta.nivel !== "verde" && (
           <section className={`evoConferencia ${alerta.nivel}`}>

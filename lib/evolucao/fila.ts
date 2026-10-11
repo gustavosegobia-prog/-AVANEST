@@ -79,3 +79,20 @@ export function gravarFila(evolucaoId: string, fila: readonly Pendente[]) {
     // que salvou.
   }
 }
+
+/**
+ * Por que a folha não abriu. "Confira a conexão" só quando é mesmo a conexão:
+ * banco sem a migração, falta de permissão e paciente de outro serviço têm
+ * outra saída, e mandar tentar de novo nesses casos é mandar bater na mesma
+ * porta.
+ */
+export function motivoAoAbrirFolha(erro: { code?: string; message?: string; details?: string } | null): string {
+  const texto = `${erro?.code ?? ""} ${erro?.message ?? ""} ${erro?.details ?? ""}`;
+  if (/PGRST205|42P01|does not exist|Could not find the table/i.test(texto)) {
+    return "O banco da evolução anestésica ainda não está instalado: falta rodar a migração no Supabase.";
+  }
+  if (/row-level security|42501/.test(texto)) return "Sem permissão para abrir folha neste serviço.";
+  if (texto.includes("PACIENTE_DE_OUTRA_INSTITUICAO")) return "Este paciente é de outro serviço.";
+  if (texto.includes("AVALIACAO_NAO_CONFERE")) return "A avaliação pré-anestésica não confere com este paciente.";
+  return "Não foi possível abrir a folha. Confira a conexão e tente de novo.";
+}

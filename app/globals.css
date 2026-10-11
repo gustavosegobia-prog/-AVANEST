@@ -6934,3 +6934,23 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .imprFolha{margin:0;padding:0;box-shadow:none;min-height:280mm;break-after:page}
   .imprFolha:last-child{break-after:auto}
 }
+
+/* ── Alergia × medicamento (lib/evolucao/alergias.ts) ───────────────────────
+   Vermelho só onde há conflito de verdade. A situação da alergia aparece em
+   toda janela de medicamento, discreta; o conflito ocupa espaço e pede
+   justificativa. */
+.evoAlergiaSituacao{margin:0;font-size:13.5px;color:var(--cor-tinta-fraca)}
+.evoAlergiaSituacao.tem{color:var(--cor-perigo-forte);font-weight:650}
+.evoAlergia{display:grid;gap:6px;padding:12px 14px;border:1.5px solid var(--cor-perigo);border-radius:10px;
+  background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
+.evoAlergia b{font-size:15px}
+.evoAlergia p{margin:0;font-size:14px;line-height:1.45;color:var(--cor-tinta)}
+.evoAlergiaTag{display:inline-flex;align-items:center;margin-left:6px;padding:1px 7px;border-radius:99px;
+  background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);font-size:11.5px;font-style:normal;font-weight:700;
+  white-space:nowrap}
+.evoPreAlergia{color:var(--cor-perigo-forte);font-weight:700}
+.evoCalculado output{display:flex;align-items:center;min-height:44px;font-size:16px;font-weight:700}
+.evoCalculado small{font-size:12px;color:var(--cor-tinta-fraca)}
+.evoPre summary .evoPreAlergia{flex:none;max-width:45%;color:var(--cor-perigo-forte);font-weight:700}
+/* Na linha da dose a coluna é estreita: a etiqueta de alergia desce para baixo da dose. */
+.evoDose .evoAlergiaTag{grid-column:2/-1;justify-self:start;margin:-4px 0 2px}

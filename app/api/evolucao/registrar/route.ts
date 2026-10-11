@@ -5,6 +5,7 @@ import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses
 import { administrados, doseAcumulada, mesmoMedicamento, type UnidadeDeDose } from "@/lib/evolucao/medicamentos";
 import { minutosEntre, vigentes, type Registro } from "@/lib/evolucao/registros";
 import { classificarErro, motivoLegivel } from "@/lib/evolucao/fila";
+import { conferirAlergia } from "@/lib/evolucao/alergias";
 
 // A porta por onde cada registro da folha de anestesia entra no banco.
 //
@@ -14,6 +15,9 @@ import { classificarErro, motivoLegivel } from "@/lib/evolucao/fila";
 // já dadas — e é o resultado DAQUI que fica gravado no registro. Alerta
 // amarelo ou vermelho sem justificativa não entra; erro técnico (unidade que
 // não converte, falta de peso para uma regra por kg) não entra nunca.
+//
+// A alergia registrada também é conferida aqui: medicamento que coincide com
+// ela só entra administrado com justificativa.
 //
 // O resto da validação (faixas, unidades, coerência dose × volume) está no
 // gatilho do banco, que vale para qualquer caminho de escrita. E a gravação
@@ -52,6 +56,37 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Sua sessão expirou. Entre novamente." }, { status: 401 });
   const limitado = enforceRateLimit(`evolucao-registro:${user.id}`, { limit: 600, windowMs: 60_000 });
   if (limitado) return limitado;
+
+  // ---- Alergia registrada × medicamento, conferida aqui ----------------
+  // O texto das alergias vem do cabeçalho da folha NO BANCO, não do aparelho.
+  // Coincidiu: administrar (ou iniciar infusão) só com justificativa, e o
+  // que fica gravado é o que o servidor achou. Não coincidiu: nenhum
+  // "alerta_alergia" vindo da tela entra.
+  const dado = !anulado && ((tipo === "medicamento" && dados.status === "administrado")
+    || (tipo === "infusao" && dados.acao === "iniciar"));
+  if (!anulado && (tipo === "medicamento" || (tipo === "infusao" && dados.acao === "iniciar"))) {
+    const { data: folhaAlergia } = await supabase
+      .from("evolucoes_anestesicas").select("dados").eq("id", evolucaoId).maybeSingle();
+    const conflito = folhaAlergia ? conferirAlergia(folhaAlergia.dados ?? {}, String(dados.nome ?? "")) : null;
+    const enviada = (dados.alerta_alergia ?? {}) as Record<string, unknown>;
+    const justificativa = String(enviada.justificativa ?? "").trim().slice(0, 500);
+    // Corrigir o horário de algo JÁ dado não é dar de novo: não trava a
+    // correção. Administrar o que estava planejado, sim, é dar.
+    let jaDado = false;
+    if (conflito && dado && substitui) {
+      const { data: antigo } = await supabase.from("evolucao_registros").select("dados").eq("id", substitui).maybeSingle();
+      const d0 = (antigo?.dados ?? {}) as Record<string, unknown>;
+      jaDado = d0.status === "administrado" || d0.acao === "iniciar";
+    }
+    if (conflito && dado && !jaDado && justificativa.length < 5) {
+      return NextResponse.json({
+        error: `${String(dados.nome)} coincide com a alergia registrada (${conflito.alergias}). Registre a justificativa para seguir.`,
+        alergia: conflito,
+      }, { status: 422 });
+    }
+    if (conflito) dados.alerta_alergia = { ...conflito, justificativa: dado && justificativa ? justificativa : null };
+    else delete dados.alerta_alergia;
+  }
 
   // ---- Conferência de dose, refeita aqui -------------------------------
   if (tipo === "medicamento" && !anulado && dados.status === "administrado") {

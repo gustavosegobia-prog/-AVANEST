@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { cabecalhoInicial, type PacienteDaFolha } from "@/lib/evolucao/importar";
+import { motivoAoAbrirFolha } from "@/lib/evolucao/fila";
 
 type Encontrado = PacienteDaFolha & { id: string };
 
@@ -50,7 +51,7 @@ export function NovaFolha({ institutionId }: { institutionId: string }) {
       .select("id")
       .single();
     if (error || !data) {
-      setErro("Não foi possível abrir a folha. Confira a conexão e tente de novo.");
+      setErro(motivoAoAbrirFolha(error));
       setAbrindo(null);
       return;
     }
