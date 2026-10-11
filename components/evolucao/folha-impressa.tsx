@@ -1,13 +1,14 @@
 import { RegistroImpresso } from "./registro-impresso";
+import { RodapeDaFolha } from "./rodape-da-folha";
 import { administrados, dosePorKg, exposicaoAnestesicoLocal, type Administracao } from "@/lib/evolucao/medicamentos";
-import { equipeParaImpressao, horarioDoMarco, imcDaFolha, FUNCOES, type Profissional } from "@/lib/evolucao/folha";
+import { equipeParaImpressao, horarioDoMarco, imcDaFolha, type Profissional } from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { camposDoPapel } from "@/lib/evolucao/pre-papel";
 import { montarInfusoes, totalDaInfusao } from "@/lib/evolucao/infusoes";
 import { balancoHidrico } from "@/lib/evolucao/liquidos";
 import { consumoSevoflurano, formatarMl, lerAjuste } from "@/lib/evolucao/sevoflurano";
 import {
-  dataDoDia, dataHora, descreverPosicao, descreverSaida, descreverTecnica, hora, idadeParaImpressao,
+  dataDoDia, dataHora, hora, idadeParaImpressao,
   janelasDaImpressao, marcasDeEvento, medicacaoPorGrupo, numero, type Janela,
 } from "@/lib/evolucao/impressao";
 import { num, type Registro } from "@/lib/evolucao/registros";
@@ -50,8 +51,6 @@ export function FolhaImpressa(p: DadosDaImpressao) {
 
   const inicioAnestesia = horarioDoMarco(vigentes, "inicio_anestesia");
   const fimAnestesia = horarioDoMarco(vigentes, "fim_anestesia");
-  const inicioCirurgia = horarioDoMarco(vigentes, "inicio_cirurgia");
-  const fimCirurgia = horarioDoMarco(vigentes, "fim_cirurgia");
   const ultimo = vigentes.reduce((m, r) => Math.max(m, Date.parse(r.momento)), 0);
   const primeiro = vigentes.reduce((m, r) => Math.min(m, Date.parse(r.momento)), Number.POSITIVE_INFINITY);
   // O fim do papel: o fim da anestesia, ou o último registro. Folha aberta
@@ -69,17 +68,10 @@ export function FolhaImpressa(p: DadosDaImpressao) {
   const locais = exposicaoAnestesicoLocal(meds, peso);
   const equipe = equipeParaImpressao((d.equipe as Profissional[] | undefined) ?? []);
   const responsavel = equipe.find((e) => e.funcao === "responsavel") ?? null;
-  const outros = equipe.filter((e) => e !== responsavel);
   const eventos = marcasDeEvento(vigentes).filter((e) => e.simbolo !== "X" && e.simbolo !== "O");
-  const tecnica = descreverTecnica(d);
   const intercorrencias = vigentes.filter((r) => r.tipo === "evento" && r.dados.codigo === "intercorrencia");
 
   const idade = idadeParaImpressao(paciente.data_nascimento, new Date(`${t(d.data_procedimento) || agora.slice(0, 10)}T12:00:00-03:00`), paciente.idade_anos);
-  const duracao = (a: string | null, b: string | null) => {
-    if (!a || !b) return "";
-    const min = Math.round((Date.parse(b) - Date.parse(a)) / 60000);
-    return min > 0 ? ` (${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")})` : "";
-  };
   const crm = (e: Profissional) => (e.crm ? `CRM-${e.uf || "—"} ${e.crm}` : "");
 
   const cabecalho = (n: number) => (
@@ -152,44 +144,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
             />
           </div>
 
-          {n === 0 && (
-            <section className="imprBase">
-              {descreverPosicao(d) && <p className="imprLinha">{descreverPosicao(d)}</p>}
-              <div className="imprLinha imprTecnica">
-                <small>Técnica</small>
-                {tecnica.length ? tecnica.map((l) => <p key={l}>{l}</p>) : <p>&nbsp;</p>}
-              </div>
-              <div className="imprGradeBase">
-                <p className="largo"><small>Cirurgia</small>{t(d.procedimento)}</p>
-                <p><small>Cirurgião</small>{t(d.cirurgiao)}</p>
-              </div>
-              <div className="imprAssinaturas">
-                <div className="imprFechamento">
-                  <p>
-                    <small>Anestesia</small>
-                    {inicioAnestesia ? hora(inicioAnestesia) : "—"} às {fimAnestesia ? hora(fimAnestesia) : "—"}{duracao(inicioAnestesia, fimAnestesia)}
-                    <small className="depois">Cirurgia</small>
-                    {inicioCirurgia ? hora(inicioCirurgia) : "—"} às {fimCirurgia ? hora(fimCirurgia) : "—"}{duracao(inicioCirurgia, fimCirurgia)}
-                  </p>
-                  <p><small>Saída da sala</small>{descreverSaida(d)}</p>
-                  <p><small>Alta da RPA — Aldrete</small>{t((d.saida as Dados | undefined)?.aldrete)}</p>
-                  {outros.map((e) => (
-                    <p key={`${e.funcao}${e.nome}`}>
-                      <small>{FUNCOES[e.funcao]}{e.funcao === "residente" && e.ano_residencia ? ` (${e.ano_residencia})` : ""}</small>
-                      {e.nome}{crm(e) ? ` · ${crm(e)}` : ""}
-                    </p>
-                  ))}
-                </div>
-                <div className="imprAssinatura">
-                  <small>Médico anestesista</small>
-                  <span className="imprLinhaAssinar" aria-hidden="true" />
-                  <b>{responsavel?.nome.toUpperCase() ?? ""}</b>
-                  <span>{responsavel ? crm(responsavel) : ""}</span>
-                  <small>Assinatura e carimbo</small>
-                </div>
-              </div>
-            </section>
-          )}
+          {n === 0 && <RodapeDaFolha dados={{ ...d, equipe }} marcos={{ inicioAnestesia, fimAnestesia }} />}
 
           {n > 0 && (
             <div className="imprAssinaturaCurta">

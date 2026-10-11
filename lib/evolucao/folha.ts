@@ -57,6 +57,8 @@ export const POSICOES = ["DDH", "Litotomia", "DLE", "DLD", "Decúbito ventral", 
 export const PROTECOES = ["Proteção ocular", "Coxim — cabeça", "Coxim — face", "Coxim — braços", "Coxim — pernas", "Colchão inflável", "Manta térmica"];
 
 export const TECNICAS: Array<{ codigo: string; rotulo: string }> = [
+  // "Anestesia geral" marcada no papel sem dizer o tipo.
+  { codigo: "geral", rotulo: "Geral" },
   { codigo: "geral_balanceada", rotulo: "Geral balanceada" },
   { codigo: "geral_inalatoria", rotulo: "Geral inalatória" },
   { codigo: "geral_venosa_total", rotulo: "Geral venosa total" },

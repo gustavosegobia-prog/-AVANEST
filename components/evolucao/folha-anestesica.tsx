@@ -576,7 +576,6 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       {/* O rodapé do papel: posições, técnica, cirurgia, alta e o médico — tudo de um toque */}
       <RodapeDaFolha dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} marcos={{
         inicioAnestesia: horarioDoMarco(atuais, "inicio_anestesia"), fimAnestesia: fimAnestesia,
-        inicioCirurgia: horarioDoMarco(atuais, "inicio_cirurgia"), fimCirurgia: horarioDoMarco(atuais, "fim_cirurgia"),
       }} />
 
       {aviso && (

@@ -297,7 +297,7 @@ export function descreverTecnica(dados: Dados): string[] {
   if (tecnicas.includes("bloqueio_periferico")) {
     const tipos = (b.tipos as string[] | undefined) ?? [];
     linhas.push(juntar([
-      "Bloqueio periférico", tipos.join(", ").toLowerCase(), t(b.lado) && `lado ${t(b.lado)}`,
+      "Bloqueio periférico", tipos.map((x) => (x === "Outro" && t(b.outro) ? t(b.outro) : x)).join(", ").toLowerCase(), t(b.lado) && `lado ${t(b.lado)}`,
       b.usg === true && "guiado por ultrassom", b.neuroestimulador === true && "neuroestimulador",
       t(b.agulha) && `agulha ${t(b.agulha)}`,
     ]));
