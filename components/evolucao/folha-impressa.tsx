@@ -1,9 +1,9 @@
 import { RegistroImpresso } from "./registro-impresso";
 import { RodapeDaFolha } from "./rodape-da-folha";
+import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { administrados, dosePorKg, exposicaoAnestesicoLocal, type Administracao } from "@/lib/evolucao/medicamentos";
-import { equipeParaImpressao, horarioDoMarco, imcDaFolha, type Profissional } from "@/lib/evolucao/folha";
+import { equipeParaImpressao, horarioDoMarco, type Profissional } from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
-import { camposDoPapel } from "@/lib/evolucao/pre-papel";
 import { montarInfusoes, totalDaInfusao } from "@/lib/evolucao/infusoes";
 import { balancoHidrico } from "@/lib/evolucao/liquidos";
 import { consumoSevoflurano, formatarMl, lerAjuste } from "@/lib/evolucao/sevoflurano";
@@ -84,12 +84,15 @@ export function FolhaImpressa(p: DadosDaImpressao) {
       {aberta && (
         <p className="imprRascunho">Ficha ABERTA — rascunho sujeito a alteração. Impresso em {dataHora(agora)}.</p>
       )}
-      <div className="imprPaciente">
-        <span className="largo"><small>Nome do paciente</small>{paciente.nome}</span>
-        <span><small>Idade</small>{idade}</span>
-        <span><small>Data</small>{dataDoDia(t(d.data_procedimento))}</span>
-        {n > 0 && <span><small>Continuação</small>página {n + 1}</span>}
-      </div>
+      {/* Na primeira página a linha do paciente vem junto da pré-anestésica, como no papel. */}
+      {n > 0 && (
+        <div className="imprPaciente">
+          <span className="largo"><small>Nome do paciente</small>{paciente.nome}</span>
+          <span><small>Idade</small>{idade}</span>
+          <span><small>Data</small>{dataDoDia(t(d.data_procedimento))}</span>
+          <span><small>Continuação</small>página {n + 1}</span>
+        </div>
+      )}
     </>
   );
 
@@ -112,7 +115,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
         <article className="imprFolha" key={janela.inicio}>
           {cabecalho(n)}
 
-          {n === 0 && <PreAnestesica d={d} sexo={paciente.sexo} />}
+          {n === 0 && <PreAnestesicaDaFolha dados={d} paciente={paciente} idade={idade} idadeAnos={paciente.idade_anos} />}
 
           <div className="imprCorpo">
             <div className="imprTempo">
@@ -166,51 +169,6 @@ const noPeriodo = (a: Administracao, j: Janela) => Date.parse(a.momento) >= j.in
  * A pré-anestésica no desenho exato da ficha: cinco colunas à esquerda, os
  * aparelhos à direita. Campo vazio sai vazio, com a linha para escrever à mão.
  */
-function PreAnestesica({ d, sexo }: { d: Dados; sexo: string | null }) {
-  const c = camposDoPapel(d);
-  const asa = t(d.asa);
-  const imc = imcDaFolha(d);
-  const alergia = d.nega_alergia === true ? "Nega alergia a medicamentos" : t(d.alergias) || "Não informado";
-  const campo = (rotulo: string, valor: string, classe = "") => (
-    <span className={classe}><small>{rotulo}</small>{valor}</span>
-  );
-  return (
-    <section className="imprPre" aria-label="Avaliação pré-anestésica">
-      <div className="imprPreTira">Avaliação pré-anestésica</div>
-      <div className="imprPreGrade papel">
-        {campo("Convênio", c.convenio)}
-        {campo("Sexo", t(sexo))}
-        {campo("Cor", c.cor)}
-        {campo("Peso", t(d.peso_kg) ? `${t(d.peso_kg)} kg` : "")}
-        {campo("Altura", t(d.altura_cm) ? `${t(d.altura_cm)} cm${imc !== null ? ` · IMC ${numero(imc, 1)}` : ""}` : "")}
-        {campo("Ap. respiratório", c.ap_respiratorio, "direita")}
-        {campo("Pressão arterial", c.pa)}
-        {campo("Pulso", c.pulso)}
-        {campo("Respiração", c.respiracao)}
-        {campo("Temperatura", c.temperatura)}
-        {campo("Tipo sanguíneo", c.tipo_sanguineo)}
-        {campo("Ap. digestivo", c.ap_digestivo, "direita")}
-        {campo("TAP / INR", c.tap_inr)}
-        {campo("Plaquetas", c.plaquetas)}
-        {campo("Hemoglobina", c.hemoglobina)}
-        {campo("Hematócrito", c.hematocrito)}
-        {campo("Glicemia", c.glicemia)}
-        {campo("Ap. circulatório", c.ap_circulatorio, "direita")}
-        {campo("Creatinina", c.creatinina)}
-        {campo("Outros", c.exames_outros)}
-        {campo("ASA", asa ? `${asa}${d.asa_emergencia === true ? " E" : ""}   ·   cirurgia de emergência: ${d.asa_emergencia === true ? "sim" : "não"}` : "", "tres")}
-        {campo("Ap. endócrino", c.ap_endocrino, "direita")}
-        {campo("Medicação em uso", c.medicacao_uso, "cinco")}
-        {campo("Estado mental", c.estado_mental, "direita")}
-        {campo("Obs.", c.observacoes_pre, "cinco")}
-        {campo("Anestesia anterior", c.anestesia_anterior, "direita")}
-        {campo("Diagnóstico pré-operatório", c.diagnostico, "cinco")}
-        {campo("Alergias", alergia, `direita${d.nega_alergia !== true && t(d.alergias) ? " alerta" : ""}`)}
-      </div>
-    </section>
-  );
-}
-
 function Medicacao({ lista, titulo, porId, peso, locais, cabecalho, tecnicas }: {
   lista: Administracao[]; titulo: string; porId: Map<string, Registro>; peso: number | null; cabecalho: Dados;
   tecnicas: string[];

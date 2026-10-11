@@ -6575,14 +6575,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoFaixa span{flex:1;min-width:200px}
 
 /* Pré-anestésica: recolhida numa linha, abre a folha toda. */
-.evoPre{margin-top:12px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:12px}
-.evoPre summary{display:flex;align-items:baseline;gap:12px;min-height:48px;padding:12px 14px;cursor:pointer;list-style:none}
-.evoPre summary::-webkit-details-marker{display:none}
-.evoPre summary::after{content:"▾";margin-left:auto;color:var(--cor-tinta-fraca)}
-.evoPre[open] summary::after{content:"▴"}
-.evoPre summary b{flex:none;font-size:15px}
-.evoPre summary span{min-width:0;font-size:13.5px;color:var(--cor-tinta-fraca);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.evoPre .evoSecaoCorpo{padding:0 14px 14px}
 .evoGradePre{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px;align-items:end}
 .evoGradePre .largo{grid-column:span 2}
 .evoGradePre .evoEscolha{grid-column:span 2}
@@ -6876,17 +6868,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .imprPaciente span{flex:0 0 30mm;padding:.7mm 1.5mm;border-left:.15mm solid #9aa1ab;font-weight:700;font-size:8pt}
 .imprPaciente span.largo{flex:1;border-left:0}
 .imprPaciente small,.imprObservacoes small{display:block;font-weight:400}
-.imprPreGrade small{display:block}
 
-.imprPre{display:grid;grid-template-columns:5mm 1fr;border:.3mm solid #111}
-.imprPreTira{display:flex;align-items:center;justify-content:center;border-right:.3mm solid #111;
-  writing-mode:vertical-rl;transform:rotate(180deg);font-size:6.2pt;color:#333}
-.imprPreGrade{display:grid;grid-template-columns:repeat(6,1fr)}
-.imprPreGrade span{min-height:4.4mm;padding:.5mm 1.2mm;border-right:.15mm solid #9aa1ab;border-bottom:.15mm solid #9aa1ab}
-.imprPreGrade .dobro{grid-column:span 2}
-.imprPreGrade .metade{grid-column:span 3}
-.imprPreGrade .todo{grid-column:1/-1}
-.imprPreGrade .alerta{font-weight:700}
 
 .imprCorpo{display:grid;grid-template-columns:146mm 1fr;align-items:stretch}
 .imprTempo{display:flex;flex-direction:column}
@@ -6939,7 +6921,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoPreAlergia{color:var(--cor-perigo-forte);font-weight:700}
 .evoCalculado output{display:flex;align-items:center;min-height:44px;font-size:16px;font-weight:700}
 .evoCalculado small{font-size:12px;color:var(--cor-tinta-fraca)}
-.evoPre summary .evoPreAlergia{flex:none;max-width:45%;color:var(--cor-perigo-forte);font-weight:700}
 /* Na linha da dose a coluna é estreita: a etiqueta de alergia desce para baixo da dose. */
 .evoDose .evoAlergiaTag{grid-column:2/-1;justify-self:start;margin:-4px 0 2px}
 
@@ -6958,13 +6939,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
    registro anestésico com as faixas de gases, infusões e líquidos no mesmo
    eixo de tempo do gráfico — a coluna da esquerda do papel virou a calha de
    rótulos do SVG. */
-.evoPre{padding:0}
-.evoPreTopo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-height:48px;padding:8px 10px 8px 14px}
-.evoPreTopo h2{margin:0;font-size:15px}
-.evoPreTopo .evoAcoesLinha{margin-left:auto}
-.evoPreLinha{display:flex;gap:12px;min-width:0;flex:1;margin:0;font-size:13.5px;color:var(--cor-tinta-fraca)}
-.evoPreLinha span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.evoPreLinha .evoPreAlergia{flex:none;max-width:45%}
 .evoPreGradeResumo{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-top:1px solid var(--cor-borda)}
 .evoPreCampo{min-width:0;padding:6px 10px 7px;border-right:1px solid var(--cor-borda);border-bottom:1px solid var(--cor-borda)}
 .evoPreCampo small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
@@ -6973,7 +6947,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoPreCampo.metade{grid-column:span 3}
 .evoPreCampo.todo{grid-column:1/-1}
 .evoPreCampo.alerta span{color:var(--cor-perigo-forte);font-weight:750}
-.evoPre>.evoSecaoCorpo{padding:14px;border-top:1px solid var(--cor-borda)}
 
 .evoFaixaFundo{fill:var(--cor-superficie)}
 .evoFaixaDivisa{stroke:var(--evo-grade);stroke-width:1}
@@ -7020,7 +6993,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 @media(max-width:640px){
   .evoPreGradeResumo{grid-template-columns:repeat(2,minmax(0,1fr))}
   .evoPreCampo.metade,.evoPreCampo.dobro{grid-column:1/-1}
-  .evoPreTopo .evoAcoesLinha{margin-left:0}
 }
 
 /* ── Coluna de medicação no desenho do papel: a lista inteira, o que foi dado marcado ── */
@@ -7153,60 +7125,92 @@ button.evoMedItem:disabled{cursor:default}
   font-size:20px;font-weight:500;letter-spacing:.06em;text-transform:uppercase}
 .evoCabResp{display:flex;align-items:center;justify-content:center;padding:8px;border-left:2px solid #fff;background:#5f6670;
   color:#fff;font-size:13px;font-weight:800;text-align:center;text-transform:uppercase}
-.evoPacientePapel{display:grid;grid-template-columns:minmax(0,1fr) 150px 150px;margin-top:6px}
-.evoPacientePapel span{padding:5px 10px;border-left:1px solid var(--cor-borda-forte);font-size:15px;font-weight:800}
-.evoPacientePapel span.nome{border-left:0}
-.evoPacientePapel small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
-.evoPre.evoPapel{margin-top:6px;border-radius:4px}
-.evoPrePapel{display:grid;grid-template-columns:24px minmax(0,1fr);border-top:1px solid var(--cor-borda-forte)}
-.evoPrePapel>.evoPreOrigem{grid-column:1/-1}
-.evoPreTiraV{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--cor-borda-forte);
-  writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
-  color:var(--cor-tinta-fraca)}
-.evoPreGradePapel{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) minmax(0,1.7fr)}
-.evoCel{display:flex;flex-direction:column;min-width:0;padding:3px 8px 4px;border-right:1px solid var(--cor-borda);
-  border-bottom:1px solid var(--cor-borda)}
-.evoCel>small{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
-.evoCel>small b{letter-spacing:0;text-transform:none;color:var(--cor-tinta)}
-.evoCel input,.evoCel textarea{width:100%;min-height:28px;padding:0 2px;border:0;border-radius:3px;background:transparent;
-  font:inherit;font-size:14.5px;font-weight:600;color:var(--cor-tinta);resize:none;field-sizing:content}
-.evoCel input:focus,.evoCel textarea:focus{outline:none;background:var(--cor-marca-suave)}
-.evoCel input:disabled,.evoCel textarea:disabled{color:var(--cor-tinta);-webkit-text-fill-color:var(--cor-tinta)}
-.evoCel>span{display:flex;align-items:center;min-height:28px;font-size:14.5px;font-weight:600}
-.evoCel.direita{grid-column:6;border-right:0;background:color-mix(in srgb,var(--cor-superficie-suave) 60%,transparent)}
-.evoCel.cinco{grid-column:1/span 5}
-.evoCel.tres{grid-column:span 3}
-.evoCelAsa>div{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
-.evoCel.alerta textarea{color:var(--cor-perigo-forte);-webkit-text-fill-color:var(--cor-perigo-forte);font-weight:800}
-.evoCel .evoOp{align-self:flex-start;min-height:30px;font-size:13px}
-.evoPreOrigem{margin:0;padding:5px 10px;font-size:12.5px;color:var(--cor-tinta-fraca)}
-@media(max-width:980px){
-  .evoPreGradePapel{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .evoCel.direita,.evoCel.cinco,.evoCel.tres{grid-column:1/-1}
+/* O topo do papel: a linha do paciente e a pré-anestésica numa grade só, como
+   na ficha — rótulo e valor na mesma linha, linhas baixas. Colunas na
+   proporção do papel: tira, cinco colunas de sinais e exames, e os aparelhos
+   à direita (que a linha do paciente divide em idade e data). */
+.evoPF{margin-top:6px;border-radius:4px}
+.evoPFGrade{display:grid;
+  grid-template-columns:26px minmax(0,105fr) minmax(0,140fr) minmax(0,175fr) minmax(0,145fr) minmax(0,120fr) minmax(0,90fr) minmax(0,135fr);
+  grid-template-areas:
+    "nome nome nome nome nome nome idade data"
+    "tira conv sexo cor peso alt resp resp"
+    "tira pa pulso fr temp tipo dig dig"
+    "tira tap plaq hb ht glic circ circ"
+    "tira cr outros outros asa asa endo endo"
+    "tira med med med med med mental mental"
+    "tira obs obs obs obs obs anterior anterior"
+    "tira diag diag diag diag diag alerg alerg"}
+.evoPFGrade.recolhida{grid-template-areas:"nome nome nome nome nome nome idade data" "resumo resumo resumo resumo resumo resumo resumo resumo"}
+.evoPFCel{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;min-width:0;min-height:30px;padding:2px 8px;
+  border-right:1px solid var(--cor-borda-forte);border-bottom:1px solid var(--cor-borda-forte)}
+.evoPFCel .r{flex:none;font-size:13px;color:var(--cor-tinta);white-space:nowrap}
+.evoPFCel .v{min-width:0;font-size:14.5px;font-weight:650;color:var(--cor-tinta-forte);overflow-wrap:break-word}
+.evoPFCel b.v{font-weight:800}
+.evoPFCel input,.evoPFCel textarea{flex:1 1 auto;min-width:0;width:auto;min-height:26px;padding:1px 3px;border:0;border-radius:3px;
+  background:transparent;font:inherit;font-size:14.5px;font-weight:650;line-height:1.35;color:var(--cor-tinta-forte)}
+.evoPFCel textarea{flex-basis:10ch;width:10ch;resize:none;field-sizing:content}
+.evoPFCel input:focus,.evoPFCel textarea:focus{outline:none;background:var(--cor-marca-suave);box-shadow:inset 0 -1.5px 0 var(--cor-marca)}
+.evoPFCel input:disabled,.evoPFCel textarea:disabled{color:var(--cor-tinta-forte);-webkit-text-fill-color:var(--cor-tinta-forte)}
+.evoPFCel .u{flex:none;font-size:13px;color:var(--cor-tinta-fraca)}
+.evoPFCel.peso input,.evoPFCel.alt input{flex:0 0 5ch;width:5ch}
+.evoPFImc{flex:none;margin-left:auto;font-size:12px;font-weight:700;color:var(--cor-tinta-fraca)}
+.evoPFCel.nome{grid-area:nome}.evoPFCel.idade{grid-area:idade}.evoPFCel.data{grid-area:data}
+.evoPFCel.conv{grid-area:conv}.evoPFCel.sexo{grid-area:sexo}.evoPFCel.cor{grid-area:cor}.evoPFCel.peso{grid-area:peso}
+.evoPFCel.alt{grid-area:alt}.evoPFCel.resp{grid-area:resp}
+.evoPFCel.pa{grid-area:pa}.evoPFCel.pulso{grid-area:pulso}.evoPFCel.fr{grid-area:fr}.evoPFCel.temp{grid-area:temp}
+.evoPFCel.tipo{grid-area:tipo}.evoPFCel.dig{grid-area:dig}
+.evoPFCel.tap{grid-area:tap}.evoPFCel.plaq{grid-area:plaq}.evoPFCel.hb{grid-area:hb}.evoPFCel.ht{grid-area:ht}
+.evoPFCel.glic{grid-area:glic}.evoPFCel.circ{grid-area:circ}
+.evoPFCel.cr{grid-area:cr}.evoPFCel.outros{grid-area:outros}.evoPFCel.asa{grid-area:asa}.evoPFCel.endo{grid-area:endo}
+.evoPFCel.med{grid-area:med}.evoPFCel.mental{grid-area:mental}
+.evoPFCel.obs{grid-area:obs}.evoPFCel.anterior{grid-area:anterior}
+.evoPFCel.diag{grid-area:diag}.evoPFCel.alerg{grid-area:alerg}
+.evoPFCel.data,.evoPFCel.resp,.evoPFCel.dig,.evoPFCel.circ,.evoPFCel.endo,.evoPFCel.mental,.evoPFCel.anterior,.evoPFCel.alerg{border-right:0}
+.evoPFCel.diag,.evoPFCel.alerg{border-bottom:0}
+.evoPFTira{grid-area:tira;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;
+  padding:4px 0;border:0;border-right:1px solid var(--cor-borda-forte);background:none;color:var(--cor-tinta);font:inherit;font-size:12px}
+.evoPFTira span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap}
+button.evoPFTira{cursor:pointer}
+button.evoPFTira:hover{background:var(--cor-superficie-suave)}
+button.evoPFTira svg{flex:none;transform:rotate(180deg);color:var(--cor-tinta-fraca)}
+.evoPFJejum{display:inline-flex;align-items:baseline;gap:3px;flex:none;margin-left:auto}
+.evoPFCel.asa{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:0;padding-top:1px;padding-bottom:1px}
+.evoPFAsa,.evoPFEmergencia{display:flex;align-items:center;gap:4px}
+.evoPFAsa{justify-content:space-between}
+.evoPFAsaN{display:inline-grid;place-items:center;flex:none;width:30px;height:30px;padding:0;border:1px solid transparent;
+  border-radius:50%;background:none;font:inherit;font-size:14.5px;font-weight:700;color:var(--cor-tinta)}
+button.evoPFAsaN{cursor:pointer}
+button.evoPFAsaN:hover:not(:disabled){border-color:var(--cor-borda-forte);background:var(--cor-superficie-suave)}
+button.evoPFAsaN:disabled{cursor:default}
+.evoPFAsaN.marcado{border:2px solid var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.evoPFEmergencia .r{font-size:12px}
+.evoPFCel .evoOp{min-height:30px;padding:0 5px;font-size:13px}
+.evoPFNega{flex:none;margin-left:auto}
+.evoPFCel.alerta{background:var(--cor-perigo-suave)}
+.evoPFCel.alerta textarea,.evoPFCel.alerta .v{color:var(--cor-perigo-forte);-webkit-text-fill-color:var(--cor-perigo-forte);font-weight:800}
+.evoPFCel.resumo{grid-area:resumo;flex-wrap:wrap;align-items:center;gap:4px 14px;border-right:0;border-bottom:0;font-size:13.5px}
+.evoPFResumo{color:var(--cor-tinta-fraca)}
+.evoPFCel.resumo .evoBotao{margin-left:auto}
+.evoPreOrigem{margin:0;padding:4px 10px;border-top:1px solid var(--cor-borda);font-size:12.5px;color:var(--cor-tinta-fraca)}
+/* Tela estreita: a grade vira duas ou três colunas. Só na tela — a impressão é A4 e fica no desenho do papel. */
+@media screen and (max-width:980px){
   .evoCabecalhoPapel{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .evoCabInst{grid-column:1/-1}
+  .evoPFGrade,.evoPFGrade.recolhida{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:none;grid-auto-flow:row dense}
+  .evoPFGrade .evoPFCel{grid-area:auto;border-right:1px solid var(--cor-borda-forte);border-bottom:1px solid var(--cor-borda-forte)}
+  .evoPFGrade .evoPFTira{display:none}
+  .evoPFGrade .evoPFCel:is(.nome,.resp,.dig,.circ,.endo,.med,.mental,.obs,.anterior,.diag,.alerg,.asa,.outros,.resumo){grid-column:1/-1}
 }
-@media(max-width:640px){
-  .evoPreGradePapel{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .evoPacientePapel{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .evoPacientePapel span.nome{grid-column:1/-1;border-bottom:1px solid var(--cor-borda-forte)}
-  .evoPacientePapel span:nth-child(2){border-left:0}
+@media screen and (max-width:640px){
+  .evoPFGrade,.evoPFGrade.recolhida{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-/* Impressão: a mesma grade do papel */
-.imprPreGrade.papel{grid-template-columns:repeat(5,minmax(0,1fr)) minmax(0,1.6fr)}
-.imprPreGrade.papel span{min-height:5.6mm}
-.imprPreGrade.papel .direita{grid-column:6;border-right:0}
-.imprPreGrade.papel .cinco{grid-column:1/span 5}
-.imprPreGrade.papel .tres{grid-column:span 3}
 /* Registro e medicação com a moldura do papel, colados como na ficha. */
 .evoFolha .evoCorpo{margin-top:6px;gap:6px}
 .evoFolha .evoCentro,.evoFolha .evoDireita>.evoPainel{border:1.5px solid var(--cor-tinta-forte);border-radius:4px;
   background:var(--cor-superficie)}
 .evoFolha .evoDireita{border-radius:4px}
 .evoFolha .evoRodape{margin-top:6px}
-.evoPreTopo{min-height:40px;padding:4px 10px 4px 14px}
-.evoPreTopo h2{font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
-@media(max-width:640px){.evoPreTiraV{display:none}.evoPrePapel{grid-template-columns:minmax(0,1fr)}}
 
 /* ══ Ficha anestésica: a entrada ═══════════════════════════════════════════
    Três trabalhos, nesta ordem: abrir a ficha do próximo paciente, voltar à
@@ -7334,3 +7338,21 @@ button.evoMedItem:disabled{cursor:default}
 .imprFolha .evoRBase{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.82fr) minmax(0,.86fr);
   grid-template-areas:"inicio fim caixa medico" "alta alta caixa medico" "estavel estavel aldrete medico"}
 .imprFolha .evoRCel.caixa{display:block}
+
+/* O topo do papel na impressão: a mesma grade, em linhas pretas finas. */
+.imprFolha .evoPF{margin:0;border:.35mm solid #111;border-radius:0;background:#fff;color:#111}
+.imprFolha .evoPFGrade{grid-template-columns:4.6mm minmax(0,105fr) minmax(0,140fr) minmax(0,175fr) minmax(0,145fr) minmax(0,120fr) minmax(0,90fr) minmax(0,135fr)}
+.imprFolha .evoPFCel{min-height:4.6mm;padding:.3mm 1.2mm;gap:1mm;border-color:#111;border-width:0 .15mm .15mm 0}
+.imprFolha .evoPFCel:is(.data,.resp,.dig,.circ,.endo,.mental,.anterior,.alerg){border-right:0}
+.imprFolha .evoPFCel:is(.diag,.alerg){border-bottom:0}
+.imprFolha .evoPFCel .r{font-size:7pt;color:#111}
+.imprFolha .evoPFCel .v{font-size:7.4pt;font-weight:700;color:#111}
+.imprFolha .evoPFCel.nome .v{font-size:8.4pt}
+.imprFolha .evoPFTira{border-right:.15mm solid #111;font-size:6.6pt;color:#111}
+.imprFolha .evoPFCel.asa{padding-top:.2mm;padding-bottom:.2mm}
+.imprFolha .evoPFAsaN{width:4.2mm;height:4.2mm;border-width:.3mm;font-size:7.4pt;font-weight:400;color:#111}
+.imprFolha .evoPFAsaN.marcado{border:.3mm solid #111;background:none;color:#111;font-weight:700}
+.imprFolha .evoPFEmergencia .r{font-size:6.6pt}
+.imprFolha .evoPFImc{font-size:6.2pt;font-weight:400;letter-spacing:0;text-transform:none;color:#444}
+.imprFolha .evoPFCel.alerta{background:none}
+.imprFolha .evoPFCel.alerta .v{color:#111}

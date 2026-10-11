@@ -17,7 +17,7 @@ type Dados = Record<string, unknown>;
 export const CAMPOS_DO_PAPEL = [
   "convenio", "cor", "pa", "pulso", "respiracao", "temperatura", "tipo_sanguineo",
   "tap_inr", "plaquetas", "hemoglobina", "hematocrito", "glicemia", "creatinina", "exames_outros",
-  "ap_respiratorio", "ap_digestivo", "ap_circulatorio", "ap_endocrino", "estado_mental",
+  "ap_respiratorio", "ap_digestivo", "jejum_horas", "ap_circulatorio", "ap_endocrino", "estado_mental",
   "medicacao_uso", "observacoes_pre", "anestesia_anterior", "diagnostico",
 ] as const;
 export type CampoDoPapel = (typeof CAMPOS_DO_PAPEL)[number];
@@ -73,7 +73,19 @@ export function camposDoPapel(d: Dados): Record<CampoDoPapel, string> {
   }
   // A via aérea não tem campo próprio no papel: vai junto do aparelho respiratório.
   saida.ap_respiratorio = [respiratorio, texto(d.via_aerea) && `Via aérea: ${texto(d.via_aerea)}`].filter(Boolean).join(" · ");
-  saida.ap_digestivo = texto(d.jejum) && `Jejum: ${texto(d.jejum)}`;
+  // Jejum: "sólidos 8 horas antes; líquidos claros Jejum absoluto". O papel
+  // tem "jejum > __ h" dentro do aparelho digestivo: as horas dos sólidos vão
+  // para lá, e o que não for número de horas fica escrito na célula.
+  const sobraJejum: string[] = [];
+  for (const p of partes(d.jejum)) {
+    const horas = /^sólidos\s+(\d+(?:[.,]\d+)?)\s*h/i.exec(p);
+    if (horas && !saida.jejum_horas) saida.jejum_horas = horas[1];
+    else if (p.startsWith("líquidos claros ")) {
+      const v = semRotulo(p, "líquidos claros");
+      sobraJejum.push(/líquido/i.test(v) ? v : `Líquidos claros: ${v.charAt(0).toLowerCase()}${v.slice(1)}`);
+    } else sobraJejum.push(`Jejum: ${p}`);
+  }
+  saida.ap_digestivo = sobraJejum.join("; ");
   saida.observacoes_pre = [texto(d.observacoes_pre), ...sobraAntecedentes].filter(Boolean).join("; ");
 
   saida.convenio = texto(d.convenio);

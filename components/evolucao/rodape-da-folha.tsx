@@ -16,15 +16,13 @@
 // (sentado, manta térmica, máscara laríngea…) continua aparecendo, marcada,
 // no fim da linha dela — para ser vista e, se for o caso, desmarcada.
 
-import type { ReactNode } from "react";
 import { BLOQUEIOS, FUNCOES, type Profissional } from "@/lib/evolucao/folha";
 import { ALDRETE, somaAldrete } from "@/lib/evolucao/lista-da-folha";
 import { hora } from "@/lib/evolucao/impressao";
+import { Linha, Op, Txt, type Modo } from "./papel";
 
 type Dados = Record<string, unknown>;
 type Mudar = (m: Dados) => void;
-/** Tela (editável ou só leitura) ou papel impresso. */
-type Modo = { impresso: boolean; leitura: boolean };
 
 const t = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
 const sub = (d: Dados, k: string) => ((d[k] as Dados | undefined) ?? {});
@@ -51,37 +49,6 @@ const OUTROS_BLOQUEIOS = BLOQUEIOS.filter((x) => !BLOQUEIOS_DO_PAPEL.some(([v]) 
 
 /** "29156" → "29.156", como no carimbo. Número com letra fica como veio. */
 const crmEscrito = (crm: string) => (/^\d{4,}$/.test(crm) ? crm.replace(/\B(?=(\d{3})+$)/g, ".") : crm);
-
-/** O "○" do papel: um toque marca, outro desmarca. */
-function Op({ m, marcado, rotulo, onClick }: { m: Modo; marcado: boolean; rotulo: string; onClick: () => void }) {
-  const bola = <i aria-hidden="true">{marcado ? "◉" : "○"}</i>;
-  if (m.impresso) return <span className={`evoOp${marcado ? " marcado" : ""}`}>{bola}{rotulo}</span>;
-  return (
-    <button type="button" className={`evoOp${marcado ? " marcado" : ""}`} aria-pressed={marcado} disabled={m.leitura} onClick={onClick}>
-      {bola}{rotulo}
-    </button>
-  );
-}
-
-/** O "____" do papel: um campo curto na própria linha. */
-function Linha({ m, valor, onMudar, largura = 6, rotulo, sufixo, numerico, sugestoes }: {
-  m: Modo; valor: string; onMudar: (v: string) => void; largura?: number; rotulo: string;
-  sufixo?: string; numerico?: boolean; sugestoes?: string;
-}) {
-  return (
-    <label className="evoLinhaCampo">
-      {m.impresso ? (
-        <span className="valor" style={{ minWidth: `${largura}ch` }}>{valor}</span>
-      ) : (
-        <input value={valor} onChange={(e) => onMudar(e.target.value)} disabled={m.leitura} aria-label={rotulo}
-          style={{ width: `${largura + 1.5}ch` }} inputMode={numerico ? "decimal" : undefined} list={sugestoes} />
-      )}
-      {sufixo && <span>{sufixo}</span>}
-    </label>
-  );
-}
-
-const Txt = ({ children }: { children: ReactNode }) => <span className="evoRTexto">{children}</span>;
 
 export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos = [] }: {
   dados: Dados;

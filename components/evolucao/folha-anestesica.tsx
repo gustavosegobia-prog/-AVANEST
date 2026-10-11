@@ -19,7 +19,7 @@ import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/inf
 import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evolucao/liquidos";
 import { EVENTOS, conferirEncerramento, horarioDoMarco, imcDaFolha, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
-import { dataDoDia, marcasDeEvento } from "@/lib/evolucao/impressao";
+import { marcasDeEvento } from "@/lib/evolucao/impressao";
 import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
 import type { PacienteDaFolha } from "@/lib/evolucao/importar";
 import { useFolha, type Folha } from "./use-folha";
@@ -28,8 +28,7 @@ import { JanelaLancar, JanelaMover, JanelaPonto, JanelaSinal, MODOS, Historico, 
 import { JanelaMedicamento } from "./janela-medicamento";
 import { numero } from "./campos";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
-import { PreAnestesicaPapel } from "./secoes";
-import { camposDoPapel } from "@/lib/evolucao/pre-papel";
+import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { RodapeDaFolha } from "./rodape-da-folha";
 
 // A folha de anestesia digital.
@@ -271,8 +270,6 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   const pendenciasEncerrar = abrir?.tipo === "encerrar" ? conferirEncerramento(dados, atuais, folha.intervalo_minutos) : [];
   const idade = paciente.idade_anos ?? (idadeDias !== null ? Math.floor(idadeDias / 365.25) : null);
-  const temAlergia = Boolean(dados.alergias) && dados.nega_alergia !== true;
-  const papel = camposDoPapel(dados);
   const responsavelNome = ((dados.equipe as Profissional[] | undefined) ?? []).find((x) => x.funcao === "responsavel")?.nome ?? "";
 
   return (
@@ -324,30 +321,8 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
         <h2>Ficha anestésica</h2>
         <div className="evoCabResp">{responsavelNome || "—"}</div>
       </div>
-      <div className="evoPapel evoPacientePapel">
-        <span className="nome"><small>Nome do paciente</small>{paciente.nome}</span>
-        <span><small>Idade</small>{idade !== null ? `${idade} anos` : "—"}</span>
-        <span><small>Data</small>{dataDoDia(String(dados.data_procedimento ?? "")) || "—"}</span>
-      </div>
-
-      <section className="evoPapel evoPre" aria-labelledby="evo-pre-titulo">
-        <header className="evoPreTopo">
-          <h2 id="evo-pre-titulo">Avaliação pré-anestésica</h2>
-          {!preAberta && (
-            <p className="evoPreLinha">
-              {temAlergia
-                ? <span className="evoPreAlergia">Alergias: {String(dados.alergias)}</span>
-                : <span>{dados.nega_alergia ? "Nega alergias" : "Alergias não informadas"}</span>}
-              <span>{[imc !== null && `IMC ${fmt(imc, 1)}`, papel.ap_respiratorio, papel.ap_digestivo].filter(Boolean).join(" · ")}</span>
-            </p>
-          )}
-          <button type="button" className="evoBotao pequeno fantasma" aria-expanded={preAberta}
-            onClick={() => mudarPreAberta(!preAberta)}>{preAberta ? "Recolher" : "Mostrar"}</button>
-        </header>
-        {preAberta && (
-          <PreAnestesicaPapel dados={dados} sexo={paciente.sexo} onMudar={f.mudarCabecalho} leitura={!aberta} idadeAnos={idade} />
-        )}
-      </section>
+      <PreAnestesicaDaFolha dados={dados} paciente={paciente} idade={idade !== null ? `${idade} ${idade === 1 ? "ano" : "anos"}` : ""}
+        idadeAnos={idade} onMudar={f.mudarCabecalho} leitura={!aberta} aberta={preAberta} onAlternar={() => mudarPreAberta(!preAberta)} />
 
       <div className="evoCorpo">
         <section className="evoCentro" aria-label="Registro anestésico">

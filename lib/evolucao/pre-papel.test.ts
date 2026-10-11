@@ -26,7 +26,8 @@ test("Papel — a folha antiga é separada campo a campo, sem mexer no gravado",
   assert.equal(c.ap_respiratorio, "asma leve · Via aérea: Mallampati II");
   assert.equal(c.ap_endocrino, "Diabetes: DM2");
   assert.equal(c.estado_mental, "sem déficit");
-  assert.equal(c.ap_digestivo, "Jejum: sólidos 8 h");
+  assert.equal(c.jejum_horas, "8");
+  assert.equal(c.ap_digestivo, "");
   assert.equal(c.observacoes_pre, "Hábitos: tabagismo");
   assert.equal(c.convenio, "Particular");
   assert.equal(c.cor, "");
@@ -52,4 +53,13 @@ test("Papel — a folha nova já nasce com as células separadas", () => {
   assert.equal(c.papel_ap_respiratorio, "DPOC");
   assert.equal(c.papel_convenio, "SUS");
   assert.equal(c.papel_cor, "");
+});
+
+test("Papel — o jejum da avaliação: horas dos sólidos no \"jejum > __ h\", o resto na célula", () => {
+  const c = camposDoPapel({ jejum: "sólidos 8 horas antes; líquidos claros Jejum absoluto" });
+  assert.equal(c.jejum_horas, "8");
+  assert.equal(c.ap_digestivo, "Líquidos claros: jejum absoluto");
+  const d = camposDoPapel({ jejum: "sólidos Protocolo especial; líquidos claros Líquidos claros até 2 h antes" });
+  assert.equal(d.jejum_horas, "");
+  assert.equal(d.ap_digestivo, "Jejum: sólidos Protocolo especial; Líquidos claros até 2 h antes");
 });
