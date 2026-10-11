@@ -36,7 +36,10 @@ function Celula({ m, area, rotulo, valor, onMudar, longo, alerta, children }: {
       <span className="r">{rotulo}</span>
       {m.impresso ? <span className="v">{valor}</span>
         : longo ? <textarea rows={1} value={valor} disabled={m.leitura} aria-label={nome} onChange={(e) => onMudar(e.target.value)} />
-        : <input value={valor} size={Math.max(4, valor.length + 1)} disabled={m.leitura} aria-label={nome}
+        // Largura pelo tamanho do texto, em ch. O atributo size do navegador
+        // soma uma folga do caractere mais largo da fonte: "Particular" saía
+        // com 196 px e descia para a linha de baixo da célula.
+        : <input value={valor} style={{ width: `${Math.max(4, valor.length + 1)}ch` }} disabled={m.leitura} aria-label={nome}
           onChange={(e) => onMudar(e.target.value)} />}
       {children}
     </div>
@@ -70,9 +73,9 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
   const c = camposDoPapel(dados);
   const campo = (k: CampoDoPapel) => (v: string) => mudar({ [chaveDoCampo(k)]: v });
   const imc = imcDaFolha(dados);
-  const imcTexto = imc !== null
-    ? `IMC ${imc.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}${idadeAnos !== null && idadeAnos < 18 ? " (percentil)" : ""}`
-    : "";
+  const imcTexto = imc !== null ? `IMC ${imc.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}` : "";
+  // Abaixo de 18 anos o IMC se lê pelo percentil: o aviso fica no toque/passar do mouse, sem ocupar a linha.
+  const imcDica = idadeAnos !== null && idadeAnos < 18 ? "Menor de 18 anos: interpretar pelo percentil" : undefined;
   const asa = asaRomana(dados.asa);
   // Cirurgia de emergência: sim, não, ou sem resposta. A folha antiga só
   // guardava o "sim" (asa_emergencia); o "não" passa a ser escolha marcada.
@@ -141,6 +144,8 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
               leitura={leitura} onMudar={(v) => mudar({ peso_kg: v })} />
             <span className="u">kg</span>
           </>}
+          {/* O IMC ao lado do peso: na célula da altura ele quebrava a linha. */}
+          {imcTexto && <small className="evoPFImc" title={imcDica}>{imcTexto}{imcDica ? "*" : ""}</small>}
         </div>
         <div className="evoPFCel alt">
           <span className="r">Altura:</span>
@@ -149,7 +154,6 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
               leitura={leitura} onMudar={(v) => mudar({ altura_cm: v })} />
             <span className="u">cm</span>
           </>}
-          {imcTexto && <small className="evoPFImc">{imcTexto}</small>}
         </div>
         <Celula m={m} area="resp" rotulo="Ap. Respiratório:" valor={c.ap_respiratorio} onMudar={campo("ap_respiratorio")} longo />
 

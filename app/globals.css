@@ -7065,7 +7065,7 @@ button.evoMedItem:disabled{cursor:default}
 .evoRodape .evoRLinha{gap:2px 3px}
 .evoRLinha.alta{min-height:52px}
 /* A grade de baixo do papel: início | fim | caixa | médico; alta da sala; estável | Aldrete. */
-.evoRBase{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.6fr) minmax(0,1fr);
+.evoRBase{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.8fr) minmax(0,1fr);
   grid-template-areas:"inicio fim caixa medico" "alta alta caixa medico" "estavel estavel aldrete medico"}
 .evoRCel{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px;min-width:0;min-height:40px;padding:3px 8px;
   border-right:1px solid var(--cor-borda-forte);border-bottom:1px solid var(--cor-borda-forte)}
@@ -7131,7 +7131,7 @@ button.evoMedItem:disabled{cursor:default}
    à direita (que a linha do paciente divide em idade e data). */
 .evoPF{margin-top:6px;border-radius:4px}
 .evoPFGrade{display:grid;
-  grid-template-columns:26px minmax(0,105fr) minmax(0,140fr) minmax(0,175fr) minmax(0,145fr) minmax(0,120fr) minmax(0,90fr) minmax(0,135fr);
+  grid-template-columns:26px minmax(0,130fr) minmax(0,125fr) minmax(0,140fr) minmax(0,145fr) minmax(0,125fr) minmax(0,95fr) minmax(0,130fr);
   grid-template-areas:
     "nome nome nome nome nome nome idade data"
     "tira conv sexo cor peso alt resp resp"
@@ -7144,7 +7144,7 @@ button.evoMedItem:disabled{cursor:default}
 .evoPFGrade.recolhida{grid-template-areas:"nome nome nome nome nome nome idade data" "resumo resumo resumo resumo resumo resumo resumo resumo"}
 .evoPFCel{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;min-width:0;min-height:30px;padding:2px 8px;
   border-right:1px solid var(--cor-borda-forte);border-bottom:1px solid var(--cor-borda-forte)}
-.evoPFCel .r{flex:none;font-size:13px;color:var(--cor-tinta);white-space:nowrap}
+.evoPFCel .r{flex:none;font-size:12.5px;color:var(--cor-tinta);white-space:nowrap}
 .evoPFCel .v{min-width:0;font-size:14.5px;font-weight:650;color:var(--cor-tinta-forte);overflow-wrap:break-word}
 .evoPFCel b.v{font-weight:800}
 .evoPFCel input,.evoPFCel textarea{flex:1 1 auto;min-width:0;width:auto;min-height:26px;padding:1px 3px;border:0;border-radius:3px;
@@ -7153,7 +7153,7 @@ button.evoMedItem:disabled{cursor:default}
 .evoPFCel input:focus,.evoPFCel textarea:focus{outline:none;background:var(--cor-marca-suave);box-shadow:inset 0 -1.5px 0 var(--cor-marca)}
 .evoPFCel input:disabled,.evoPFCel textarea:disabled{color:var(--cor-tinta-forte);-webkit-text-fill-color:var(--cor-tinta-forte)}
 .evoPFCel .u{flex:none;font-size:13px;color:var(--cor-tinta-fraca)}
-.evoPFCel.peso input,.evoPFCel.alt input{flex:0 0 5ch;width:5ch}
+.evoPFCel.peso input,.evoPFCel.alt input{flex:0 0 4.5ch;width:4.5ch;text-align:right}
 .evoPFImc{flex:none;margin-left:auto;font-size:12px;font-weight:700;color:var(--cor-tinta-fraca)}
 .evoPFCel.nome{grid-area:nome}.evoPFCel.idade{grid-area:idade}.evoPFCel.data{grid-area:data}
 .evoPFCel.conv{grid-area:conv}.evoPFCel.sexo{grid-area:sexo}.evoPFCel.cor{grid-area:cor}.evoPFCel.peso{grid-area:peso}
@@ -7454,3 +7454,22 @@ button.evoPFAsaN:disabled{cursor:default}
 .imprFolha .evoPFCel .v{font-size:7.1pt}
 .imprFolha .evoPFCel.nome .v{font-size:8.2pt}
 .imprFolha .evoPFImc{display:none}
+
+/* Rodapé na tela, com a altura das linhas da técnica: o quadro do médico
+   leva só o responsável (residente e preceptor têm a linha "Equipe"), e a
+   soma do Aldrete mora na caixa que o papel deixa em branco. */
+.evoRCel.caixa{position:relative;display:flex;align-items:center;justify-content:center}
+.evoRCel.caixa .evoRCalc summary{font-size:13px}
+.evoRCel.caixa .evoRCalcPainel{right:auto;left:50%;transform:translateX(-50%)}
+.evoRCel.medico{gap:2px;padding:4px 10px}
+.evoRProfissional.principal{gap:0}
+.evoREquipe{border-top:1px solid var(--cor-borda-forte);border-bottom:0}
+.evoRMembro{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;margin-right:14px}
+.evoRMembro input,.evoRMembro select{min-height:32px;padding:0 3px;border:0;border-bottom:1.5px solid var(--cor-borda-forte);
+  border-radius:0;background:transparent;font:inherit;font-size:14px;color:inherit}
+.evoRMembro input:focus{outline:none;border-bottom-color:var(--cor-marca);background:var(--cor-marca-suave)}
+.evoRMembro input.nome{width:24ch;font-weight:700;text-transform:uppercase}
+.evoRMembro input.uf{width:3.2ch;text-align:center}
+.evoRMembro input.crm{width:8ch}
+.evoRMembro .evoRCrm{display:inline-flex;align-items:baseline;gap:2px;font-size:13.5px}
+.evoRMembro .evoRRemover{min-width:36px;justify-content:center;font-size:16px}

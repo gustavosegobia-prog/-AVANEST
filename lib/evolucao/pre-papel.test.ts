@@ -92,3 +92,12 @@ test("Papel — a ficha nasce com ASA, diagnóstico e cirurgião da avaliação"
   assert.equal(c.procedimento, "Colecistectomia");
   assert.equal(c.cirurgiao, "Dr. Fictício");
 });
+
+test("Papel — a célula do aparelho respiratório gravada sozinha pela regra antiga segue a nova", () => {
+  const via = "Mallampati Classe I; DTM > 6,5 cm; abertura oral > 4 cm";
+  const antiga = camposDoPapel({ via_aerea: via, [chaveDoCampo("ap_respiratorio")]: `Via aérea: ${via}` });
+  assert.equal(antiga.ap_respiratorio, "");
+  // Escrita à mão, fica como está.
+  const editada = camposDoPapel({ via_aerea: via, [chaveDoCampo("ap_respiratorio")]: "Asma controlada" });
+  assert.equal(editada.ap_respiratorio, "Asma controlada");
+});

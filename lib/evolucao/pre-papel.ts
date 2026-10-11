@@ -76,6 +76,9 @@ export function camposDoPapel(d: Dados): Record<CampoDoPapel, string> {
   // só entra o que muda a conduta na sala: via aérea difícil, quando houver.
   const dificil = /via a[ée]rea dif[ií]cil/i.test(texto(d.via_aerea));
   saida.ap_respiratorio = [respiratorio, dificil && "Via aérea difícil"].filter(Boolean).join(" · ");
+  // O que a ficha aberta antes desta regra gravou sozinha na célula, com o
+  // exame inteiro. Se ninguém mexeu nela, vale a regra nova; se mexeu, fica.
+  const respiratorioAntigo = [respiratorio, texto(d.via_aerea) && `Via aérea: ${texto(d.via_aerea)}`].filter(Boolean).join(" · ");
   // Jejum: "sólidos 8 horas antes; líquidos claros Jejum absoluto". O papel
   // tem "jejum > __ h" dentro do aparelho digestivo: as horas dos sólidos vão
   // para lá, e o que não for número de horas fica escrito na célula.
@@ -100,7 +103,9 @@ export function camposDoPapel(d: Dados): Record<CampoDoPapel, string> {
   // vazio: apagar a célula é uma escolha, e o texto antigo não volta.
   for (const c of CAMPOS_DO_PAPEL) {
     const v = d[chaveDoCampo(c)];
-    if (typeof v === "string") saida[c] = v.trim();
+    if (typeof v !== "string") continue;
+    if (c === "ap_respiratorio" && respiratorioAntigo && v.trim() === respiratorioAntigo) continue;
+    saida[c] = v.trim();
   }
   return saida;
 }

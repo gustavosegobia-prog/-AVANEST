@@ -114,6 +114,32 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
   const dispositivo = t(g.dispositivo);
   const modo = t(g.modo);
   const h = (iso: string | null) => (iso ? hora(iso) : m.impresso ? "" : "—");
+  // Nome (com a lista dos médicos da casa), CRM-UF e, para o residente, o ano.
+  const camposDoProfissional = (x: Profissional) => (
+    <>
+      <input className="nome" list="evoMedicosRodape" value={x.nome} disabled={leitura} aria-label={`Nome — ${FUNCOES[x.funcao]}`}
+        onChange={(e) => {
+          const achado = medicos.find((y) => y.nome === e.target.value);
+          trocarProfissional(x, achado
+            ? { nome: achado.nome, crm: achado.crm.replace(/\D/g, "") || achado.crm, perfil_id: achado.id }
+            : { nome: e.target.value, perfil_id: null });
+        }} />
+      <span className="evoRCrm">
+        CRM-
+        <input className="uf" value={x.uf} maxLength={2} disabled={leitura} aria-label={`UF do CRM — ${FUNCOES[x.funcao]}`}
+          onChange={(e) => trocarProfissional(x, { uf: e.target.value.toUpperCase() })} />
+        :
+        <input className="crm" value={x.crm} disabled={leitura} aria-label={`Número do CRM — ${FUNCOES[x.funcao]}`} inputMode="numeric"
+          onChange={(e) => trocarProfissional(x, { crm: e.target.value })} />
+        {x.funcao === "residente" && (
+          <select value={x.ano_residencia ?? "R1"} disabled={leitura} aria-label="Ano da residência"
+            onChange={(e) => trocarProfissional(x, { ano_residencia: e.target.value as "R1" })}>
+            <option>R1</option><option>R2</option><option>R3</option>
+          </select>
+        )}
+      </span>
+    </>
+  );
   const somaMarcada = somaAldrete(pontos);
 
   return (
@@ -238,7 +264,29 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
         <div className="evoRCel fim" title={m.impresso ? undefined : "Vem do evento de fim da anestesia, no gráfico"}>
           <b>Fim:</b><span className="evoRValor">{h(marcos.fimAnestesia)}</span>
         </div>
-        <div className="evoRCel caixa" aria-hidden="true" />
+        {/* A caixa que o papel deixa em branco. Na tela ela guarda a soma do
+            Aldrete pelos cinco critérios — fora da linha do Aldrete, que fica
+            com a altura das outras. Impressa, continua em branco. */}
+        {m.impresso || leitura ? <div className="evoRCel caixa" aria-hidden="true" /> : (
+          <div className="evoRCel caixa">
+            <details className="evoRCalc">
+              <summary>Somar Aldrete</summary>
+              <div className="evoRCalcPainel">
+                {ALDRETE.map((c) => (
+                  <div key={c.chave} className="evoRCalcItem" role="group" aria-label={c.nome}>
+                    <span>{c.nome.replace(" (PA)", "")}</span>
+                    {[0, 1, 2].map((v) => (
+                      <button type="button" key={v} className={`evoOpNum${pontos[c.chave] === v ? " marcado" : ""}`}
+                        aria-pressed={pontos[c.chave] === v} title={`${v} · ${c.opcoes[v]}`}
+                        onClick={() => mudarAldrete(c.chave, v)}>{v}</button>
+                    ))}
+                  </div>
+                ))}
+                <p aria-live="polite">{somaMarcada === null ? "Marque os cinco critérios." : `Soma: ${somaMarcada}`}</p>
+              </div>
+            </details>
+          </div>
+        )}
 
         <div className="evoRCel alta">
           <b>Alta da sala p/</b>
@@ -280,25 +328,6 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
           <b>Alta da RPA c/ Aldrete:</b>
           <Linha m={m} rotulo="Aldrete na alta da RPA" valor={t(saida.aldrete)} largura={3} numerico
             onMudar={(v) => mudarSaida({ aldrete: v })} />
-          {!m.impresso && !leitura && (
-            // Os cinco critérios ficam guardados aqui, fora do desenho do papel: tocar soma sozinho.
-            <details className="evoRCalc">
-              <summary>somar</summary>
-              <div className="evoRCalcPainel">
-                {ALDRETE.map((c) => (
-                  <div key={c.chave} className="evoRCalcItem" role="group" aria-label={c.nome}>
-                    <span>{c.nome.replace(" (PA)", "")}</span>
-                    {[0, 1, 2].map((v) => (
-                      <button type="button" key={v} className={`evoOpNum${pontos[c.chave] === v ? " marcado" : ""}`}
-                        aria-pressed={pontos[c.chave] === v} title={`${v} · ${c.opcoes[v]}`}
-                        onClick={() => mudarAldrete(c.chave, v)}>{v}</button>
-                    ))}
-                  </div>
-                ))}
-                <p aria-live="polite">{somaMarcada === null ? "Marque os cinco critérios." : `Soma: ${somaMarcada}`}</p>
-              </div>
-            </details>
-          )}
         </div>
 
         <div className="evoRCel medico">
@@ -316,51 +345,38 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
             </>
           ) : (
             <>
-              {(responsavel ? [responsavel, ...demais] : demais).map((x, i) => (
-                <div key={i} className={`evoRProfissional${x.funcao === "responsavel" ? " principal" : ""}`}>
-                  {x.funcao !== "responsavel" && <small>{FUNCOES[x.funcao]}</small>}
-                  <input className="nome" list="evoMedicosRodape" value={x.nome} disabled={leitura} aria-label={FUNCOES[x.funcao]}
-                    onChange={(e) => {
-                      const achado = medicos.find((y) => y.nome === e.target.value);
-                      trocarProfissional(x, achado
-                        ? { nome: achado.nome, crm: achado.crm.replace(/\D/g, "") || achado.crm, perfil_id: achado.id }
-                        : { nome: e.target.value, perfil_id: null });
-                    }} />
-                  <span className="evoRCrm">
-                    CRM-
-                    <input className="uf" value={x.uf} maxLength={2} disabled={leitura} aria-label="UF do CRM"
-                      onChange={(e) => trocarProfissional(x, { uf: e.target.value.toUpperCase() })} />
-                    :
-                    <input className="crm" value={x.crm} disabled={leitura} aria-label="Número do CRM" inputMode="numeric"
-                      onChange={(e) => trocarProfissional(x, { crm: e.target.value })} />
-                    {x.funcao === "residente" && (
-                      <select value={x.ano_residencia ?? "R1"} disabled={leitura} aria-label="Ano da residência"
-                        onChange={(e) => trocarProfissional(x, { ano_residencia: e.target.value as "R1" })}>
-                        <option>R1</option><option>R2</option><option>R3</option>
-                      </select>
-                    )}
-                  </span>
-                  {!leitura && x.funcao !== "responsavel" && (
-                    <button type="button" className="evoOp evoRRemover" onClick={() => mudarEquipe(equipe.filter((y) => y !== x))}>
-                      Remover {FUNCOES[x.funcao].toLowerCase()}
-                    </button>
-                  )}
-                </div>
-              ))}
-              {!leitura && (!equipe.some((x) => x.funcao === "residente") || !equipe.some((x) => x.funcao === "preceptor")) && (
-                <div className="evoRMais">
-                  {!equipe.some((x) => x.funcao === "residente") && (
-                    <button type="button" className="evoOp" onClick={() => mudarEquipe([...equipe, { perfil_id: null, nome: "", crm: "", uf: "PR", funcao: "residente", ano_residencia: "R1" }])}>+ residente</button>
-                  )}
-                  {!equipe.some((x) => x.funcao === "preceptor") && (
-                    <button type="button" className="evoOp" onClick={() => mudarEquipe([...equipe, { perfil_id: null, nome: "", crm: "", uf: "PR", funcao: "preceptor" }])}>+ preceptor</button>
-                  )}
-                </div>
+              {responsavel && (
+                <div className="evoRProfissional principal">{camposDoProfissional(responsavel)}</div>
               )}
             </>
           )}
         </div>
       </div>
+
+      {/* Residente e preceptor numa linha só deles, na tela. Dentro do quadro do
+          médico eles empilhavam seis linhas e esticavam a grade inteira do
+          rodapé; aqui a grade fica com a altura das linhas da técnica. */}
+      {!m.impresso && (demais.length > 0 || !leitura) && (
+        <div className="evoRLinha evoREquipe">
+          <b>Equipe:</b>
+          {demais.map((x, i) => (
+            <span key={i} className="evoRMembro" role="group" aria-label={FUNCOES[x.funcao]}>
+              <span className="evoRTexto">{FUNCOES[x.funcao]}</span>
+              {camposDoProfissional(x)}
+              {!leitura && (
+                <button type="button" className="evoOp evoRRemover" aria-label={`Remover ${FUNCOES[x.funcao].toLowerCase()}`}
+                  onClick={() => mudarEquipe(equipe.filter((y) => y !== x))}>×</button>
+              )}
+            </span>
+          ))}
+          {!leitura && !equipe.some((x) => x.funcao === "residente") && (
+            <button type="button" className="evoOp" onClick={() => mudarEquipe([...equipe, { perfil_id: null, nome: "", crm: "", uf: "PR", funcao: "residente", ano_residencia: "R1" }])}>+ residente</button>
+          )}
+          {!leitura && !equipe.some((x) => x.funcao === "preceptor") && (
+            <button type="button" className="evoOp" onClick={() => mudarEquipe([...equipe, { perfil_id: null, nome: "", crm: "", uf: "PR", funcao: "preceptor" }])}>+ preceptor</button>
+          )}
+        </div>
+      )}
     </section>
   );
 }
