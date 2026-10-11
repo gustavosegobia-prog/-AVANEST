@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { camposDoPapel, chaveDoCampo } from "./pre-papel.ts";
+import { asaRomana, camposDoPapel, chaveDoCampo } from "./pre-papel.ts";
 import { cabecalhoInicial } from "./importar.ts";
 
 const ANTIGA = {
@@ -23,7 +23,8 @@ test("Papel — a folha antiga é separada campo a campo, sem mexer no gravado",
   assert.equal(c.glicemia, "92 mg/dL");
   assert.equal(c.exames_outros, "K 4,1; SpO₂ 99%");
   assert.equal(c.ap_circulatorio, "HAS");
-  assert.equal(c.ap_respiratorio, "asma leve · Via aérea: Mallampati II");
+  // O exame da via aérea fica na avaliação: na célula, só a via aérea difícil.
+  assert.equal(c.ap_respiratorio, "asma leve");
   assert.equal(c.ap_endocrino, "Diabetes: DM2");
   assert.equal(c.estado_mental, "sem déficit");
   assert.equal(c.jejum_horas, "8");
@@ -62,4 +63,32 @@ test("Papel — o jejum da avaliação: horas dos sólidos no \"jejum > __ h\", 
   const d = camposDoPapel({ jejum: "sólidos Protocolo especial; líquidos claros Líquidos claros até 2 h antes" });
   assert.equal(d.jejum_horas, "");
   assert.equal(d.ap_digestivo, "Jejum: sólidos Protocolo especial; Líquidos claros até 2 h antes");
+});
+
+test("Papel — via aérea difícil é a única coisa da via aérea que vai para a célula", () => {
+  const c = camposDoPapel({ via_aerea: "Mallampati III; DTM < 6 cm; história de via aérea difícil" });
+  assert.equal(c.ap_respiratorio, "Via aérea difícil");
+  assert.equal(camposDoPapel({ via_aerea: "Mallampati I; DTM > 6,5 cm" }).ap_respiratorio, "");
+});
+
+test("Papel — o ASA da avaliação (\"ASA II\") é circulado na ficha", () => {
+  assert.equal(asaRomana("ASA II"), "II");
+  assert.equal(asaRomana("II"), "II");
+  assert.equal(asaRomana("asa iv e"), "IV");
+  assert.equal(asaRomana("3"), "III");
+  assert.equal(asaRomana("ASA VII"), "");
+  assert.equal(asaRomana(""), "");
+});
+
+test("Papel — a ficha nasce com ASA, diagnóstico e cirurgião da avaliação", () => {
+  const c = cabecalhoInicial(
+    { nome: "Paciente Teste", data_nascimento: null, idade_anos: 40, sexo: "F", convenio: "SUS", hospital: null, cirurgia: null, procedimento: null },
+    { id: "a1", dados: { asa: "ASA II", diagnostico: "Colelitíase", cirurgia: "Colecistectomia", cirurgiao: "Dr. Fictício" } },
+    new Date("2026-10-10T09:00:00-03:00"),
+  );
+  assert.equal(c.asa, "II");
+  assert.equal(c.diagnostico, "Colelitíase");
+  assert.equal(c.papel_diagnostico, "Colelitíase");
+  assert.equal(c.procedimento, "Colecistectomia");
+  assert.equal(c.cirurgiao, "Dr. Fictício");
 });

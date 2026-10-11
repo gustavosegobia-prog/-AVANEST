@@ -71,8 +71,11 @@ export function camposDoPapel(d: Dados): Record<CampoDoPapel, string> {
     else if (p.startsWith("Neurológico:")) saida.estado_mental = semRotulo(p, "Neurológico");
     else sobraAntecedentes.push(p);
   }
-  // A via aérea não tem campo próprio no papel: vai junto do aparelho respiratório.
-  saida.ap_respiratorio = [respiratorio, texto(d.via_aerea) && `Via aérea: ${texto(d.via_aerea)}`].filter(Boolean).join(" · ");
+  // A via aérea não tem campo próprio no papel. O exame inteiro (Mallampati,
+  // DTM, abertura oral…) fica na avaliação; na célula do aparelho respiratório
+  // só entra o que muda a conduta na sala: via aérea difícil, quando houver.
+  const dificil = /via a[ée]rea dif[ií]cil/i.test(texto(d.via_aerea));
+  saida.ap_respiratorio = [respiratorio, dificil && "Via aérea difícil"].filter(Boolean).join(" · ");
   // Jejum: "sólidos 8 horas antes; líquidos claros Jejum absoluto". O papel
   // tem "jejum > __ h" dentro do aparelho digestivo: as horas dos sólidos vão
   // para lá, e o que não for número de horas fica escrito na célula.
@@ -100,6 +103,18 @@ export function camposDoPapel(d: Dados): Record<CampoDoPapel, string> {
     if (typeof v === "string") saida[c] = v.trim();
   }
   return saida;
+}
+
+/**
+ * A classe ASA como o papel circula: "I" a "VI". A avaliação grava "ASA II";
+ * fichas antigas, "II"; à mão pode vir "2". Qualquer outra coisa: vazio.
+ */
+export function asaRomana(v: unknown): string {
+  const s = texto(v).toUpperCase().replace(/^ASA\s*/, "").replace(/\s*E$/, "").trim();
+  const romanos = ["I", "II", "III", "IV", "V", "VI"];
+  if (romanos.includes(s)) return s;
+  const n = Number(s);
+  return Number.isInteger(n) && n >= 1 && n <= 6 ? romanos[n - 1] : "";
 }
 
 /**

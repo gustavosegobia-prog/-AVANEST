@@ -7386,3 +7386,71 @@ button.evoPFAsaN:disabled{cursor:default}
   .fcSubtitulo{margin:22px 2px 0;font-size:14px;font-weight:700;color:var(--cor-tinta-forte)}
   .fcRecentes .fcAchados{margin-top:10px}
 }
+
+/* ══ Responsividade: revisão do site inteiro ═════════════════════════════
+   Varredura em 390, 768, 1180, 1366 e 1920 px. O que estava errado:
+
+   1. A barra do topo do painel. Até 1400 px a faixa das áreas encostava à
+      direita com justify-content:flex-end; quando não cabia (tablet em pé,
+      768–820 px), ela escorria para a ESQUERDA, por cima da marca. Agora o
+      alinhamento à direita vem da margem automática do primeiro botão, que
+      vira zero quando falta espaço — a faixa passa a rolar, nunca a invadir.
+   2. No celular a faixa ficava espremida entre a marca e o menu: em 390 px
+      só Recepção e Médico apareciam, e nada dizia que Escala, Financeiro e
+      Admin existiam. Agora as áreas ganham uma linha inteira embaixo, e as
+      cinco cabem lado a lado.
+   3. Alvos de toque de 20 a 30 px (links de "Ver…", Meus pacientes/Equipe,
+      Tentar de novo) e rótulos de 10,5 a 11,5 px no celular. */
+
+/* 1 — tablet e notebook */
+@media(max-width:1400px){
+  /* Sem o teto antigo de 58vw / 48vw: a faixa usa o espaço que sobrar entre a marca e o menu. */
+  .clinicalTopbar>.roleNav{justify-content:flex-start;min-width:0;max-width:none;overflow-x:auto;scrollbar-width:none;padding:2px}
+  .clinicalTopbar>.roleNav::-webkit-scrollbar{display:none}
+  .clinicalTopbar>.roleNav>:first-child{margin-left:auto}
+}
+@media(max-width:1100px){.clinicalTopbar>.clinicalBrand small{display:none}}
+/* Tablet em pé: o nome da organização já está na linha de baixo, e o Λ
+   sozinho identifica a marca — as letras davam o espaço que faltava para a
+   quinta área (Admin) aparecer inteira. */
+@media(min-width:701px) and (max-width:900px){.clinicalTopbar>.clinicalBrand strong{display:none}}
+
+/* 2 — celular: marca, local e menu em cima; as áreas numa linha só delas */
+@media(max-width:700px){
+  .clinicalTopbar:has(>.topbarFim){grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-areas:"marca local canto" "abas abas abas";gap:6px 10px;padding-bottom:6px}
+  .clinicalTopbar:has(>.topbarFim)>.orgBadge{justify-self:start;align-self:center}
+  .clinicalTopbar:has(>.topbarFim)>.roleNav{display:flex;gap:2px;margin:0 -6px;padding:2px 0 0;
+    border-top:1px solid var(--cor-borda)}
+  .clinicalTopbar:has(>.topbarFim)>.roleNav>:first-child{margin-left:0}
+  .clinicalTopbar:has(>.topbarFim)>.roleNav button{flex:1 0 auto;padding:0 5px;font-size:13px}
+}
+
+/* 3 — toque: nenhum alvo abaixo de 44 px */
+@media(pointer:coarse){
+  .medQuemVer button{min-height:44px;padding:8px 16px}
+  .medLinkToque,.pfLink,.admLinkBotao{display:inline-flex;align-items:center;min-height:44px}
+  .evalSaveRetry{min-height:40px;padding:0 14px}
+  .avnInstagram{min-height:44px;padding:0 14px}
+  .avnPerfilAlt{display:inline-flex;align-items:center;min-height:44px}
+}
+/* 3 — letra: no celular, rótulo nenhum abaixo de 12 px */
+@media(max-width:700px){
+  .pfConvenioNumeros dt,.pfEtapas dt,.pfSemDados,.pfZero,.pfContextoItem small,.pfTabela th,.pfTabela td small{font-size:12px}
+  .metricCard span{font-size:12.5px}
+  .escalaFiltros label>span{font-size:12px}
+}
+.escCartaoPara{font-size:12px}
+.legalVigencia{font-size:12.5px}
+
+/* O topo do papel impresso, mais justo. Nas colunas estreitas o rótulo e o
+   valor não cabiam juntos e o valor descia para a linha de baixo — cada
+   célula com uma linha em branco. Letra um pouco menor, folga menor, a
+   primeira coluna (Pressão Arterial, TAP/INR) um pouco mais larga, e o IMC,
+   que o papel não tem, só na tela. */
+.imprFolha .evoPFGrade{grid-template-columns:4.6mm minmax(0,130fr) minmax(0,132fr) minmax(0,138fr) minmax(0,138fr) minmax(0,125fr) minmax(0,98fr) minmax(0,128fr)}
+.imprFolha .evoPFCel{min-height:4.3mm;padding:.2mm 1mm;gap:0 .8mm}
+.imprFolha .evoPFCel .r{font-size:6.5pt}
+.imprFolha .evoPFCel .v{font-size:7.1pt}
+.imprFolha .evoPFCel.nome .v{font-size:8.2pt}
+.imprFolha .evoPFImc{display:none}

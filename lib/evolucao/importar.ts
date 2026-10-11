@@ -11,7 +11,7 @@
 // suposição.
 
 import { lerDecimal } from "../numero-clinico.ts";
-import { CAMPOS_DO_PAPEL, camposDoPapel, chaveDoCampo } from "./pre-papel.ts";
+import { CAMPOS_DO_PAPEL, asaRomana, camposDoPapel, chaveDoCampo } from "./pre-papel.ts";
 
 type Dados = Record<string, unknown>;
 const texto = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "");
@@ -121,11 +121,11 @@ export function cabecalhoInicial(
     sala: "",
     convenio: texto(paciente.convenio),
     procedimento: texto(d.cirurgia) || texto(paciente.cirurgia) || texto(paciente.procedimento),
-    diagnostico: "",
-    cirurgiao: "",
+    diagnostico: texto(d.diagnostico),
+    cirurgiao: texto(d.cirurgiao),
     peso_kg: peso !== null && peso > 0 && peso <= 400 ? peso : null,
     altura_cm: altura !== null && altura >= 40 && altura <= 250 ? altura : null,
-    asa: texto(d.asa),
+    asa: asaRomana(d.asa),
     asa_emergencia: d.asa_emergencia === true,
     alergias,
     nega_alergia: texto(d.alergias) === "Não",

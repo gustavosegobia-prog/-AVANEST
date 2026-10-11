@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
 import { Icone } from "@/components/icone";
 import { imcDaFolha } from "@/lib/evolucao/folha";
 import { dataDoDia } from "@/lib/evolucao/impressao";
-import { camposDoPapel, chaveDoCampo, type CampoDoPapel } from "@/lib/evolucao/pre-papel";
+import { asaRomana, camposDoPapel, chaveDoCampo, type CampoDoPapel } from "@/lib/evolucao/pre-papel";
 import { CampoDecimal } from "./campo-decimal";
 import { Linha, Op, Txt, type Modo } from "./papel";
 
@@ -73,7 +73,7 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
   const imcTexto = imc !== null
     ? `IMC ${imc.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}${idadeAnos !== null && idadeAnos < 18 ? " (percentil)" : ""}`
     : "";
-  const asa = t(dados.asa);
+  const asa = asaRomana(dados.asa);
   // Cirurgia de emergência: sim, não, ou sem resposta. A folha antiga só
   // guardava o "sim" (asa_emergencia); o "não" passa a ser escolha marcada.
   const emergencia = dados.emergencia === "sim" || dados.emergencia === "nao"

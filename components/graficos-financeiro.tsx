@@ -139,6 +139,8 @@ function EvolucaoFinanceira({ meses, valor }: { meses: MesDaEvolucao[]; valor: F
           </div>
           <details className="pfComoTabela">
             <summary>Ver em tabela</summary>
+            {/* Rola de lado no celular: quatro colunas de valor não cabem em 390 px. */}
+            <div className="pfTabelaRolavel">
             <table className="pfTabela">
               <thead><tr><th>Mês</th><th className="num">Faturado</th><th className="num">Recebido</th><th className="num">Saldo</th></tr></thead>
               <tbody>
@@ -152,6 +154,7 @@ function EvolucaoFinanceira({ meses, valor }: { meses: MesDaEvolucao[]; valor: F
                 ))}
               </tbody>
             </table>
+            </div>
           </details>
         </>
       )}

@@ -18,6 +18,7 @@ import { consumoSevoflurano, formatarMl, lerAjuste, type AjusteDeGas } from "@/l
 import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/infusoes";
 import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evolucao/liquidos";
 import { EVENTOS, conferirEncerramento, horarioDoMarco, imcDaFolha, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
+import { asaRomana } from "@/lib/evolucao/pre-papel";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { marcasDeEvento } from "@/lib/evolucao/impressao";
 import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
@@ -288,7 +289,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           <p>
             {[idade !== null && `${idade} anos`, paciente.sexo, pesoKg !== null && `${fmt(pesoKg, 1)} kg`,
               imc !== null && `IMC ${fmt(imc, 1)}`,
-              dados.asa && `ASA ${dados.asa}${dados.asa_emergencia ? " E" : ""}`, String(dados.procedimento ?? "")]
+              asaRomana(dados.asa) && `ASA ${asaRomana(dados.asa)}${dados.asa_emergencia ? " E" : ""}`, String(dados.procedimento ?? "")]
               .filter(Boolean).join(" · ")}
           </p>
         </div>
