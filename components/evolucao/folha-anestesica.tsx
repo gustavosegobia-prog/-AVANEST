@@ -28,7 +28,7 @@ import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses
 import type { PacienteDaFolha } from "@/lib/evolucao/importar";
 import { useFolha, type Folha } from "./use-folha";
 import { GraficoSinais, type AlvoDaFaixa, type Toque } from "./grafico-sinais";
-import { JanelaLancar, JanelaMover, JanelaPonto, JanelaSinal, MODOS, Historico, type ModoDoGrafico, type NovoSinal } from "./janelas-sinais";
+import { JanelaMover, JanelaPonto, JanelaSinais, Historico, type NovoSinal } from "./janelas-sinais";
 import { JanelaMedicamento } from "./janela-medicamento";
 import { numero } from "./campos";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
@@ -45,10 +45,9 @@ import { RodapeDaFolha } from "./rodape-da-folha";
 
 type Medico = { id: string; nome: string; crm: string };
 type Abrir =
-  | { tipo: "sinal"; modo: ModoDoGrafico; ms: number; valor: number | null }
+  | { tipo: "sinais"; ms?: number; foco?: Parametro }
   | { tipo: "ponto"; registro: Registro }
   | { tipo: "mover"; registro: Registro; t: Toque }
-  | { tipo: "lancar" }
   | { tipo: "medicamento"; planejado?: Registro; escolhido?: { item: ItemDaLista; grupo: GrupoDaLista; dose?: number } }
   | { tipo: "infusao"; acao: "iniciar" | "ajustar" | "encerrar"; infusao: Infusao | null; ms?: number; nome?: string }
   | { tipo: "infusaoAcoes"; infusao: Infusao; ms: number }
@@ -87,7 +86,6 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   const [montado, setMontado] = useState(false);
   const [agora, setAgora] = useState(0);
-  const [modo, setModo] = useState<ModoDoGrafico>("pa");
   const [zoom, setZoom] = useState(120);
   const [desloc, setDesloc] = useState<number | null>(null);
   const [abrir, setAbrir] = useState<Abrir | null>(null);
@@ -352,16 +350,6 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       <div className="evoCorpo">
         <section className="evoCentro" aria-label="Registro anestésico">
           <div className="evoFerramentas">
-            {aberta && (
-              <div className="evoModos" role="radiogroup" aria-label="O que o toque no gráfico registra">
-                {MODOS.map((m) => (
-                  <button type="button" key={m.modo} role="radio" aria-checked={modo === m.modo}
-                    className={`evoModo ${m.modo}${modo === m.modo ? " ativo" : ""}`} onClick={() => setModo(m.modo)}>
-                    {m.simbolo && <i aria-hidden="true">{m.simbolo}</i>}{m.rotulo}
-                  </button>
-                ))}
-              </div>
-            )}
             <div className="evoNavegar">
               <label className="evoSelecao"><span>Intervalo</span>
                 <select value={folha.intervalo_minutos} disabled={!aberta}
@@ -382,7 +370,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                   setDesloc(d >= janela.maxDesloc ? null : d);
                 }} disabled={desloc === null}>▶</button>
               </div>
-              {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "lancar" })}>Lançar valores</button>}
+              {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "sinais" })}>Lançar valores</button>}
             </div>
           </div>
 
@@ -391,12 +379,8 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
               atuais={atuais} idsPendentes={f.idsPendentes} cabecalho={dados} fimMs={fimMs} agoraMs={agora}
               aberta={aberta} intervalo={folha.intervalo_minutos} janelaInicio={janela.inicio} janelaMinutos={zoom}
               alturaGrade={300} somenteLeitura={!aberta}
-              onTocar={(t) => {
-                if (["spo2", "etco2", "temp"].includes(modo)) {
-                  setAbrir({ tipo: "sinal", modo, ms: t.ms, valor: null });
-                } else setAbrir({ tipo: "sinal", modo, ms: Math.min(t.ms, Date.now()), valor: t.valor });
-              }}
-              onTocarLinha={(p, ms) => setAbrir({ tipo: "sinal", modo: p, ms, valor: null })}
+              onTocar={(t) => setAbrir({ tipo: "sinais", ms: Math.min(t.ms, Date.now()) })}
+              onTocarLinha={(p, ms) => setAbrir({ tipo: "sinais", ms: Math.min(ms, Date.now()), foco: p })}
               onTocarFaixa={tocarFaixa}
               onAbrirPonto={(r) => setAbrir({ tipo: "ponto", registro: r })}
               onAbrirRegistro={(r) => setAbrir({ tipo: "registro", registro: r })}
@@ -587,12 +571,9 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
         </div>
       )}
 
-      {abrir?.tipo === "sinal" && (
-        <JanelaSinal modo={abrir.modo} ms={abrir.ms} valor={abrir.valor} temPamMedida={temPamMedida}
+      {abrir?.tipo === "sinais" && (
+        <JanelaSinais ms={abrir.ms} foco={abrir.foco} temPamMedida={temPamMedida}
           onConfirmar={registrarSinais} onFechar={() => setAbrir(null)} />
-      )}
-      {abrir?.tipo === "lancar" && (
-        <JanelaLancar temPamMedida={temPamMedida} onConfirmar={registrarSinais} onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "ponto" && (
         <JanelaPonto registro={abrir.registro} todos={todos} nomes={nomes} somenteLeitura={!aberta}

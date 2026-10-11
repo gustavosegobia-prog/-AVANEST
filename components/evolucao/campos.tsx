@@ -38,7 +38,7 @@ export function CampoNumero({ rotulo, valor, onMudar, unidade, autoFocus, aviso,
     <label className={`evoCampo${aviso ? " comAviso" : ""}`}>
       <span>{rotulo}</span>
       <span className="evoNumero">
-        <input id={id} inputMode="decimal" value={valor} autoFocus={autoFocus}
+        <input id={id} inputMode="decimal" value={valor} autoFocus={autoFocus} data-foco-inicial={autoFocus || undefined}
           onChange={(e) => onMudar(e.target.value.replace(/[^\d.,-]/g, ""))} />
         {unidade && <em>{unidade}</em>}
       </span>

@@ -6616,15 +6616,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 /* O centro: ferramentas, gráfico, eventos. */
 .evoCentro{min-width:0;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:12px;padding:10px}
 .evoFerramentas{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-bottom:8px}
-.evoModos{display:flex;flex-wrap:wrap;gap:4px;padding:3px;border-radius:12px;background:var(--cor-superficie-suave)}
-.evoModo{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:0;border-radius:9px;
-  background:transparent;color:var(--cor-tinta);font-weight:650;font-size:14px;cursor:pointer}
-.evoModo i{font-style:normal;font-weight:800}
-.evoModo.pa i,.evoModo.pas i,.evoModo.pad i{color:var(--evo-pa)}
-.evoModo.pam i{color:var(--evo-pam)}
-.evoModo.fc i{color:var(--evo-fc)}
-.evoModo.ativo{background:var(--cor-superficie);box-shadow:0 1px 3px rgba(8,25,42,.14);color:var(--cor-marca-forte)}
-@media(pointer:coarse){.evoModo{min-height:44px}}
 .evoNavegar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .evoSelecao{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--cor-tinta-fraca)}
 .evoSelecao select{min-height:36px;border:1px solid var(--cor-borda-forte);border-radius:8px;background:var(--cor-superficie);color:var(--cor-tinta);padding:0 8px;font:inherit}
@@ -6735,6 +6726,9 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoLinhaCampos>.evoUnidade{flex:0 0 112px}
 .evoLinhaCampos>.evoMarca{flex:0 1 auto}
 .evoGradeCampos{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.evoSinaisPa{grid-template-columns:repeat(3,minmax(0,1fr))}
+.evoSinaisJuntos{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:560px){.evoSinaisPa,.evoSinaisJuntos{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .evoCampoHora{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
 .evoCampoHora label{display:grid;gap:5px}
 .evoCampoHora label span{font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}

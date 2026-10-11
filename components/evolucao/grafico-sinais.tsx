@@ -253,6 +253,9 @@ export function GraficoSinais({
   function aoPressionar(ev: React.PointerEvent<SVGSVGElement>) {
     const { lx, ly } = local(ev);
     if (lx < CALHA) return;
+    // O toque abre janelas: sem isto, o mousedown que vem depois tira o foco
+    // do campo que a janela acabou de focar.
+    ev.preventDefault();
 
     // O gráfico de pressão e FC
     if (ly >= topoGrade) {
@@ -320,6 +323,9 @@ export function GraficoSinais({
         width={largura} height={altura} viewBox={`0 0 ${largura} ${altura}`}
         onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar}
         onPointerCancel={() => setArraste(null)}
+        // No toque, o navegador ainda solta um clique no mesmo lugar depois de
+        // a janela abrir — e ele caía num campo (ou botão) da janela.
+        onTouchEnd={(ev) => { if (ev.cancelable) ev.preventDefault(); }}
         role="img"
         aria-label="Registro anestésico: gases, infusões, líquidos e sinais vitais no tempo. Toque numa faixa para registrar naquele horário."
       >

@@ -8,19 +8,6 @@ import { historicoDe, type Registro } from "@/lib/evolucao/registros";
 import { momentoDeHora } from "./use-folha";
 import { CampoHora, CampoNumero, numero } from "./campos";
 
-export type ModoDoGrafico = "pa" | Parametro;
-
-export const MODOS: Array<{ modo: ModoDoGrafico; rotulo: string; simbolo: string }> = [
-  { modo: "pa", rotulo: "PA", simbolo: "V Λ" },
-  { modo: "pas", rotulo: "PAS", simbolo: "V" },
-  { modo: "pad", rotulo: "PAD", simbolo: "Λ" },
-  { modo: "pam", rotulo: "PAM", simbolo: "X" },
-  { modo: "fc", rotulo: "FC", simbolo: "•" },
-  { modo: "spo2", rotulo: "SpO₂", simbolo: "" },
-  { modo: "etco2", rotulo: "EtCO₂", simbolo: "" },
-  { modo: "temp", rotulo: "Temp.", simbolo: "" },
-];
-
 export type NovoSinal = { parametro: Parametro; valor: number; origem: "manual" | "estimado" };
 
 const aviso = (p: Parametro, t: string) => {
@@ -29,69 +16,87 @@ const aviso = (p: Parametro, t: string) => {
   return valorPlausivel(p, v) ? null : `Entre ${PARAMETROS[p].min} e ${PARAMETROS[p].max} ${PARAMETROS[p].unidade}.`;
 };
 
+const PRESSAO: Parametro[] = ["pas", "pad", "pam"];
+const DEMAIS: Parametro[] = ["fc", "spo2", "etco2", "temp"];
+const VAZIO: Record<Parametro, string> = { pas: "", pad: "", pam: "", fc: "", spo2: "", etco2: "", temp: "" };
+
 /**
- * A confirmação depois do toque. No modo PA, a sistólica vem do toque e a
- * diastólica é digitada em seguida — os dois numa janela só. A PAM estimada
- * aparece calculada e só é gravada se o médico marcar, e nunca onde já há uma
- * PAM medida no mesmo minuto.
+ * Os sinais vitais de um horário, numa janela só: o toque no gráfico (ou o
+ * "Lançar valores") abre com o horário do toque, e o médico preenche o que
+ * quiser — o que ficar em branco não é registrado. Nada vem preenchido: o
+ * toque escolhe o horário, não o valor.
+ *
+ * PA vai em par (sistólica e diastólica, a diastólica menor). A PAM digitada
+ * é a do monitor; sem ela, a estimada aparece calculada e só é gravada se o
+ * médico marcar, e nunca onde já há uma PAM medida no mesmo minuto.
  */
-export function JanelaSinal({ modo, ms, valor, temPamMedida, onConfirmar, onFechar }: {
-  modo: ModoDoGrafico; ms: number; valor: number | null;
+export function JanelaSinais({ ms, foco = "pas", temPamMedida, onConfirmar, onFechar }: {
+  /** O horário do toque; sem ele, agora. */
+  ms?: number;
+  /** O campo que recebe o cursor — a linha tocada no gráfico. */
+  foco?: Parametro;
   temPamMedida: (iso: string) => boolean;
   onConfirmar: (itens: NovoSinal[], momento: string) => void;
   onFechar: () => void;
 }) {
-  const [hora, setHora] = useState(horaLocal(new Date(ms)));
-  const [v1, setV1] = useState(valor !== null ? String(valor) : "");
-  const [v2, setV2] = useState("");
+  const base = ms !== undefined ? new Date(ms) : undefined;
+  const [hora, setHora] = useState(horaLocal(base));
+  const [v, setV] = useState<Record<Parametro, string>>(VAZIO);
   const [comPam, setComPam] = useState(false);
-  const momento = momentoDeHora(hora, new Date(ms));
-  const ehPa = modo === "pa";
-  const p1: Parametro = ehPa ? "pas" : modo;
-  const n1 = numero(v1), n2 = numero(v2);
-  const pam = ehPa && n1 !== null && n2 !== null ? pamEstimada(n1, n2) : null;
+  const momento = momentoDeHora(hora, base);
+  const preenchidos = (Object.keys(v) as Parametro[]).filter((p) => v[p].trim());
+  const pas = numero(v.pas), pad = numero(v.pad);
+  const comPa = Boolean(v.pas.trim() || v.pad.trim());
+  const paIncompleta = comPa && (!v.pas.trim() || !v.pad.trim());
+  const paInvertida = pas !== null && pad !== null && pad >= pas;
+  const estimada = !v.pam.trim() && pas !== null && pad !== null ? pamEstimada(pas, pad) : null;
   const pamBloqueada = momento ? temPamMedida(momento) : false;
-  const ok = Boolean(momento) && valorPlausivel(p1, n1) && (!ehPa || (valorPlausivel("pad", n2) && n2! < n1!));
+  const ok = Boolean(momento) && preenchidos.length > 0 && !paIncompleta && !paInvertida
+    && preenchidos.every((p) => valorPlausivel(p, numero(v[p])));
 
   function confirmar(e: React.FormEvent) {
     e.preventDefault();
     if (!ok || !momento) return;
-    const itens: NovoSinal[] = [{ parametro: p1, valor: n1!, origem: "manual" }];
-    if (ehPa) {
-      itens.push({ parametro: "pad", valor: n2!, origem: "manual" });
-      if (comPam && pam !== null && !pamBloqueada) itens.push({ parametro: "pam", valor: pam, origem: "estimado" });
-    }
+    const itens: NovoSinal[] = preenchidos.map((p) => ({ parametro: p, valor: numero(v[p])!, origem: "manual" }));
+    if (comPam && estimada !== null && !pamBloqueada) itens.push({ parametro: "pam", valor: estimada, origem: "estimado" });
     onConfirmar(itens, momento);
   }
 
+  const campo = (p: Parametro, rotulo: string, extra: string | null = null) => (
+    <CampoNumero key={p} rotulo={rotulo} valor={v[p]} unidade={PARAMETROS[p].unidade} autoFocus={p === foco}
+      onMudar={(t) => setV((x) => ({ ...x, [p]: t }))} aviso={aviso(p, v[p]) ?? extra} />
+  );
+
   return (
-    <Janela titulo={ehPa ? "Pressão arterial" : PARAMETROS[p1].nome} largura="estreita" onFechar={onFechar}
+    <Janela titulo="Sinais vitais" subtitulo="Preencha só o que quiser registrar." largura="media" onFechar={onFechar}
       rodape={<>
         <button type="button" className="evoBotao secundario" onClick={onFechar}>Cancelar</button>
-        <button type="submit" form="evoFormSinal" className="evoBotao" disabled={!ok}>Registrar</button>
+        <button type="submit" form="evoFormSinais" className="evoBotao" disabled={!ok}>
+          Registrar{preenchidos.length > 1 ? ` ${preenchidos.length}` : ""}
+        </button>
       </>}>
-      <form id="evoFormSinal" className="evoForm" onSubmit={confirmar}>
+      <form id="evoFormSinais" className="evoForm" onSubmit={confirmar}>
         <CampoHora valor={hora} onMudar={setHora} />
-        <div className="evoLinhaCampos">
-          <CampoNumero rotulo={ehPa ? "Sistólica" : PARAMETROS[p1].curto} valor={v1} onMudar={setV1}
-            unidade={PARAMETROS[p1].unidade} aviso={aviso(p1, v1)} autoFocus={!ehPa || valor === null} />
-          {ehPa && (
-            <CampoNumero rotulo="Diastólica" valor={v2} onMudar={setV2} unidade="mmHg"
-              aviso={aviso("pad", v2) ?? (n1 !== null && n2 !== null && n2 >= n1 ? "A diastólica tem de ser menor que a sistólica." : null)}
-              autoFocus={valor !== null} />
-          )}
+        <div className="evoGradeCampos evoSinaisPa">
+          {PRESSAO.map((p) => campo(p, p === "pas" ? "PA sistólica" : p === "pad" ? "PA diastólica" : "PAM (monitor)",
+            p === "pad" && paInvertida ? "A diastólica tem de ser menor que a sistólica."
+              : p === "pad" && paIncompleta && v.pas.trim() ? "Falta a diastólica."
+                : p === "pas" && paIncompleta && v.pad.trim() ? "Falta a sistólica." : null))}
         </div>
-        {ehPa && pam !== null && (
+        {estimada !== null && (
           <label className={`evoMarca${pamBloqueada ? " desligada" : ""}`}>
             <input type="checkbox" checked={comPam && !pamBloqueada} disabled={pamBloqueada}
               onChange={(e) => setComPam(e.target.checked)} />
             <span>
-              Registrar também a PAM estimada: <b>{pam} mmHg</b>
+              Registrar também a PAM estimada: <b>{estimada} mmHg</b>
               <small>{pamBloqueada ? "Já há PAM medida neste minuto — a medida prevalece."
                 : "(PAS + 2 × PAD) / 3. Aparece marcada como estimada, separada da PAM do monitor."}</small>
             </span>
           </label>
         )}
+        <div className="evoGradeCampos evoSinaisJuntos">
+          {DEMAIS.map((p) => campo(p, PARAMETROS[p].curto))}
+        </div>
       </form>
     </Janela>
   );
@@ -204,53 +209,6 @@ export function JanelaMover({ registro, momento, valor, onConfirmar, onFechar }:
         {!valido && <p className="evoErro">{valor} está fora da faixa possível para {PARAMETROS[p].curto}.</p>}
         <p className="evoNota">O valor anterior continua no histórico do ponto.</p>
       </div>
-    </Janela>
-  );
-}
-
-/** Entrada numérica: vários parâmetros no mesmo horário, sem tocar no gráfico. */
-export function JanelaLancar({ temPamMedida, onConfirmar, onFechar }: {
-  temPamMedida: (iso: string) => boolean;
-  onConfirmar: (itens: NovoSinal[], momento: string) => void;
-  onFechar: () => void;
-}) {
-  const [hora, setHora] = useState(horaLocal());
-  const [v, setV] = useState<Record<Parametro, string>>({ pas: "", pad: "", pam: "", fc: "", spo2: "", etco2: "", temp: "" });
-  const momento = momentoDeHora(hora);
-  const preenchidos = (Object.keys(v) as Parametro[]).filter((p) => v[p].trim());
-  const invalidos = preenchidos.filter((p) => !valorPlausivel(p, numero(v[p])));
-  const pasN = numero(v.pas), padN = numero(v.pad);
-  const estimada = !v.pam.trim() && pasN !== null && padN !== null ? pamEstimada(pasN, padN) : null;
-  const ok = Boolean(momento) && preenchidos.length > 0 && invalidos.length === 0;
-
-  function confirmar(e: React.FormEvent) {
-    e.preventDefault();
-    if (!ok || !momento) return;
-    const itens: NovoSinal[] = preenchidos.map((p) => ({ parametro: p, valor: numero(v[p])!, origem: "manual" }));
-    onConfirmar(itens, momento);
-  }
-
-  return (
-    <Janela titulo="Lançar valores" subtitulo="Os que ficarem em branco não são registrados." largura="media" onFechar={onFechar}
-      rodape={<>
-        <button type="button" className="evoBotao secundario" onClick={onFechar}>Cancelar</button>
-        <button type="submit" form="evoFormLancar" className="evoBotao" disabled={!ok}>Registrar {preenchidos.length || ""}</button>
-      </>}>
-      <form id="evoFormLancar" className="evoForm" onSubmit={confirmar}>
-        <CampoHora valor={hora} onMudar={setHora} />
-        <div className="evoGradeCampos">
-          {(Object.keys(PARAMETROS) as Parametro[]).map((p, i) => (
-            <CampoNumero key={p} rotulo={PARAMETROS[p].curto} valor={v[p]} unidade={PARAMETROS[p].unidade}
-              onMudar={(t) => setV((x) => ({ ...x, [p]: t }))} aviso={aviso(p, v[p])} autoFocus={i === 0} />
-          ))}
-        </div>
-        {estimada !== null && (
-          <p className="evoNota">
-            PAM estimada pela PAS e PAD: {estimada} mmHg{momento && temPamMedida(momento) ? " (já há PAM medida neste minuto)" : ""}.
-            Para registrá-la, digite no campo PAM — ela entra como medida.
-          </p>
-        )}
-      </form>
     </Janela>
   );
 }
