@@ -81,9 +81,6 @@ export function FolhaImpressa(p: DadosDaImpressao) {
         <h1>FICHA ANESTÉSICA</h1>
         <div className="imprResponsavel">{responsavel?.nome.toUpperCase() ?? ""}</div>
       </header>
-      {aberta && (
-        <p className="imprRascunho">Ficha ABERTA — rascunho sujeito a alteração. Impresso em {dataHora(agora)}.</p>
-      )}
       {/* Na primeira página a linha do paciente vem junto da pré-anestésica, como no papel. */}
       {n > 0 && (
         <div className="imprPaciente">

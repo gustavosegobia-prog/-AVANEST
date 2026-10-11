@@ -6862,7 +6862,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .imprTopo h1{margin:0;padding:1.6mm 2mm;background:#5f6670;color:#fff;font-size:15pt;letter-spacing:.05em;text-align:center}
 .imprResponsavel{display:flex;align-items:center;justify-content:center;padding:1.4mm 2mm;background:#5f6670;color:#fff;
   border-left:.35mm solid #fff;font-weight:700;font-size:8pt;text-align:center}
-.imprRascunho{padding:1mm 2mm;border:.3mm dashed #b42318;color:#b42318;font-weight:700}
 
 .imprPaciente{display:flex;border:.3mm solid #111}
 .imprPaciente span{flex:0 0 30mm;padding:.7mm 1.5mm;border-left:.15mm solid #9aa1ab;font-weight:700;font-size:8pt}
