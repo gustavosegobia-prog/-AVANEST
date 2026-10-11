@@ -270,7 +270,14 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   const pendenciasEncerrar = abrir?.tipo === "encerrar" ? conferirEncerramento(dados, atuais, folha.intervalo_minutos) : [];
   const idade = paciente.idade_anos ?? (idadeDias !== null ? Math.floor(idadeDias / 365.25) : null);
-  const responsavelNome = ((dados.equipe as Profissional[] | undefined) ?? []).find((x) => x.funcao === "responsavel")?.nome ?? "";
+  const responsavel = ((dados.equipe as Profissional[] | undefined) ?? []).find((x) => x.funcao === "responsavel");
+  const responsavelNome = responsavel?.nome ?? "";
+  // O encerramento manda a ficha para a Produção do responsável (no banco:
+  // producao_da_ficha). A janela diz antes para onde vai — ou por que não vai.
+  const producaoAoEncerrar = !responsavel?.nome.trim() ? ""
+    : responsavel.perfil_id
+      ? `Ao encerrar, a ficha entra ${responsavel.perfil_id === eu.id ? "na sua Produção" : `na Produção de ${responsavel.nome}`} (Escala → Produção): paciente, convênio, cirurgia, data e horário da anestesia. Reabrir e encerrar de novo não duplica.`
+      : `${responsavel.nome} não está ligado a uma conta do AVANEST, então a ficha não entra em nenhuma Produção. Para entrar, escolha o nome na lista do médico anestesista.`;
 
   return (
     <main className="evoFolha">
@@ -632,7 +639,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "encerrar" && (
-        <JanelaEncerrar pendencias={pendenciasEncerrar} encerrando={encerrando} erro={erroAcao}
+        <JanelaEncerrar pendencias={pendenciasEncerrar} encerrando={encerrando} erro={erroAcao} producao={producaoAoEncerrar}
           onEncerrar={() => void encerrar()} onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "reabrir" && (

@@ -280,8 +280,10 @@ export function JanelaEvento({ onConfirmar, onFechar }: {
 // ---------------------------------------------------------------------------
 // Encerrar e reabrir
 // ---------------------------------------------------------------------------
-export function JanelaEncerrar({ pendencias, encerrando, erro, onEncerrar, onFechar }: {
+export function JanelaEncerrar({ pendencias, encerrando, erro, producao, onEncerrar, onFechar }: {
   pendencias: Pendencia[]; encerrando: boolean; erro: string | null;
+  /** Para onde a ficha vai na Produção ao encerrar — ou por que não vai. */
+  producao?: string;
   onEncerrar: () => void; onFechar: () => void;
 }) {
   const bloqueiam = pendencias.filter((p) => p.tipo !== "aviso");
@@ -311,6 +313,7 @@ export function JanelaEncerrar({ pendencias, encerrando, erro, onEncerrar, onFec
         {bloqueiam.length === 0 && avisos.length > 0 && (
           <p className="evoNota">Os avisos não impedem o encerramento. Nada é preenchido por suposição.</p>
         )}
+        {producao && <p className="evoNota">{producao}</p>}
         {erro && <p className="evoErro" role="alert">{erro}</p>}
       </div>
     </Janela>
