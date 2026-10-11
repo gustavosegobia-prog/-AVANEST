@@ -2471,7 +2471,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
           <div>
             <button type="button" className="primaryClinical compact"
               disabled={aplicandoValor} onClick={() => void aplicarValorNoLocal()}>
-              {aplicandoValor ? "Repetindo..." : botaoDeRepetir(ofertaDeValor.valor)}
+              {aplicandoValor ? "Repetindo…" : botaoDeRepetir(ofertaDeValor.valor)}
             </button>
             <button type="button" className="outlineClinical compact"
               disabled={aplicandoValor} onClick={() => setOfertaDeValor(null)}>
@@ -2676,7 +2676,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 {ehAdmin && escopo !== "minha" && (
                   <button className="outlineClinical" disabled={avisando} onClick={() => void avisarEquipe()}
                     title="Manda e-mail e toca o telefone de quem tem plantão neste mês">
-                    {avisando ? "Avisando..." : "Avisar a equipe"}
+                    {avisando ? "Avisando…" : "Avisar a equipe"}
                   </button>
                 )}
                 <button className="outlineClinical" onClick={exportarAgenda}
@@ -4050,7 +4050,7 @@ function LancarPlantao({
                 pessoa via um erro causado pelo próprio acerto anterior. */}
             <button type="submit" className="primaryClinical compact"
               disabled={enviando} aria-busy={enviando}>
-              {enviando ? "Lançando..." : "Lançar"}
+              {enviando ? "Lançando…" : "Lançar"}
             </button>
           </div>
         </form>

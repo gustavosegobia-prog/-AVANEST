@@ -200,7 +200,7 @@ export function PlanosAdminClient({
               onClick={salvarCampanha}
               disabled={busy === "campanha"}
             >
-              {busy === "campanha" ? "Salvando..." : "Salvar campanha"}
+              {busy === "campanha" ? "Salvando…" : "Salvar campanha"}
             </button>
             <button
               className={`outlineClinical${campanha?.ativa ? " whatsappAction" : ""}`}
@@ -209,7 +209,7 @@ export function PlanosAdminClient({
             >
               <Icone nome={campanha?.ativa ? "pausa" : "estrela"} />
               {busy === "campanha:ativa"
-                ? "Salvando..."
+                ? "Salvando…"
                 : campanha?.ativa ? "Encerrar promoção" : "Reativar campanha"}
             </button>
           </div>
@@ -264,7 +264,7 @@ export function PlanosAdminClient({
                   onClick={() => salvarPreco(plano.codigo)}
                   disabled={busy === plano.codigo}
                 >
-                  {busy === plano.codigo ? "Salvando..." : "Salvar"}
+                  {busy === plano.codigo ? "Salvando…" : "Salvar"}
                 </button>
               </span>
             )}

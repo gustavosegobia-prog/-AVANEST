@@ -447,7 +447,7 @@ export function MeuFinanceiro({
     else { setAviso(""); await recarregar(); }
   }
 
-  if (!pronto && !erro) return <div className="emptyClinical">Carregando os seus números...</div>;
+  if (!pronto && !erro) return <div className="emptyClinical">Carregando os seus números…</div>;
 
   return (
     <>
@@ -850,7 +850,7 @@ function NovaDespesaPessoal({ mes, ocupado, onLancar }: {
         <input type="date" value={data} onChange={(e) => setData(e.target.value)} required /></label>
       <label className="despesaDescricao"><span>Do que é</span>
         <input value={descricao} onChange={(e) => setDescricao(e.target.value)}
-          placeholder="Anuidade do CRM, congresso, combustível..." required /></label>
+          placeholder="Anuidade do CRM, congresso, combustível…" required /></label>
       <label><span>Categoria</span>
         <select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
           {CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -862,7 +862,7 @@ function NovaDespesaPessoal({ mes, ocupado, onLancar }: {
         <input type="checkbox" checked={recorrente} onChange={(e) => setRecorrente(e.target.checked)} />
         <span>Repete todo mês</span></label>
       <button className="primaryClinical compact" type="submit" disabled={ocupado}>
-        {ocupado ? "Lançando..." : "Lançar"}
+        {ocupado ? "Lançando…" : "Lançar"}
       </button>
     </form>
     {erro && <p className="clinicalError">{erro}</p>}

@@ -92,7 +92,7 @@ export function DuasEtapas({ modo, obrigatorio, depois }: {
         <form className="loginForm" onSubmit={confirmar}>
           {campoDoCodigo}
           <button className="avnLoginSubmit" type="submit" disabled={busy || codigo.length !== 6}>
-            {busy ? "Confirmando..." : "Confirmar"}
+            {busy ? "Confirmando…" : "Confirmar"}
           </button>
         </form>
         <p className="duasEtapasAjuda">
@@ -120,7 +120,7 @@ export function DuasEtapas({ modo, obrigatorio, depois }: {
           </ol>
           {erro && <p className="loginError" role="alert">{erro}</p>}
           <button type="button" className="avnLoginSubmit" onClick={gerar} disabled={busy}>
-            {busy ? "Gerando..." : "Gerar QR code"}
+            {busy ? "Gerando…" : "Gerar QR code"}
           </button>
         </>
       ) : (
@@ -138,7 +138,7 @@ export function DuasEtapas({ modo, obrigatorio, depois }: {
           </div>
           {campoDoCodigo}
           <button className="avnLoginSubmit" type="submit" disabled={busy || codigo.length !== 6}>
-            {busy ? "Ativando..." : "Confirmar e ativar"}
+            {busy ? "Ativando…" : "Confirmar e ativar"}
           </button>
         </form>
       )}

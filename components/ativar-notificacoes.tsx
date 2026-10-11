@@ -290,7 +290,7 @@ export function AtivarNotificacoes({ chavePublica }: { chavePublica: string }) {
       <div className="pushBotoes">
         {estado === "desligado" && (
           <button type="button" className="primaryClinical" disabled={ocupado} onClick={() => void ligar()}>
-            {ocupado ? "Ativando..." : "Ativar notificações"}
+            {ocupado ? "Ativando…" : "Ativar notificações"}
           </button>
         )}
         <button type="button" className="pushDepois"
@@ -354,7 +354,7 @@ export function NotificacoesNoMenu({ chavePublica, aoMudar }: {
           setOcupado(false);
         }
       })()}>
-      <Icone nome="sino"/> {ocupado ? "Aguarde..."
+      <Icone nome="sino"/> {ocupado ? "Aguarde…"
         : ligado ? "Desligar notificações" : "Ativar notificações"}
     </button>
   );

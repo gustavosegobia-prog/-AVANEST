@@ -475,7 +475,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
         <p><b>Tem certeza de que deseja excluir esta avaliação?</b> Esta ação não poderá ser desfeita. O cadastro do paciente será mantido.</p>
         <div>
           <button type="button" onClick={()=>{setConfirmDelete(false);setDeleteError("")}} disabled={deleting}>Cancelar</button>
-          <button type="button" className="perigo" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo...":"Excluir avaliação"}</button>
+          <button type="button" className="perigo" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo…":"Excluir avaliação"}</button>
         </div>
       </div>}
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
@@ -493,7 +493,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
                 ["Idade",comUnidade(age,"anos")],["Sexo",sexoCurto(paciente.sexo)],
               ]),
               facts([
-                ["Peso",comUnidade(weight||"","kg")],["Altura",comUnidade(height||"","cm")],["IMC",imc?imc.toFixed(1):""],
+                ["Peso",comUnidade(weight||"","kg")],["Altura",comUnidade(height||"","cm")],["IMC",imc?imc.toFixed(1).replace(".",","):""],
                 ["Peso ideal",comUnidade(idealWeight?idealWeight.toFixed(0):"","kg")],
                 ["Peso ajustado",comUnidade(adjustedWeight?adjustedWeight.toFixed(0):"","kg")],
                 ["Convênio",paciente.convenio,"direita"],

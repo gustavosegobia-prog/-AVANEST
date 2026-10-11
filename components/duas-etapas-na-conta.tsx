@@ -52,7 +52,7 @@ export function DuasEtapasNaConta({ obrigatorio }: { obrigatorio: boolean }) {
         {ativa === false && <Link className="primaryClinical compact" href="/duas-etapas?depois=%2Fdashboard">Ativar</Link>}
         {ativa && !obrigatorio && (
           <button type="button" className="outlineClinical" onClick={desativar} disabled={busy}>
-            {busy ? "Desativando..." : "Desativar"}
+            {busy ? "Desativando…" : "Desativar"}
           </button>
         )}
       </div>

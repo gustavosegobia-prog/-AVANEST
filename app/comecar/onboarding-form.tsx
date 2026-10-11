@@ -93,7 +93,7 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
 
       {erro && <p className="loginError" role="alert">{erro}</p>}
       <button className="avnLoginSubmit" type="submit" disabled={busy}>
-        {busy ? "Criando..."
+        {busy ? "Criando…"
           : escolha === "convite" ? "Continuar"
           : plano ? "Criar organização e ir para o pagamento"
           : "Criar organização e entrar"}

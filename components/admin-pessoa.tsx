@@ -633,7 +633,7 @@ export function NovaPessoa({
         </label>
         <label className={`clinicalField ${erros.email ? "comErro" : ""}`}>
           <span>E-mail</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@exemplo.com" aria-invalid={Boolean(erros.email)} />
+          <input type="email" name="email" autoComplete="off" spellCheck={false} autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@exemplo.com" aria-invalid={Boolean(erros.email)} />
           <small className={erros.email ? "admErroCampo" : "admAjuda"}>{erros.email || "Vira o login da pessoa. Deixe em branco para cadastrar um profissional sem acesso ao sistema."}</small>
         </label>
         <label className="clinicalField">

@@ -120,7 +120,7 @@ export function AssinarButton({
             aria-label="Código do cupom"
           />
           <button type="button" onClick={conferirCupom} disabled={conferindo || !normalizarCupom(digitado)}>
-            {conferindo ? "Conferindo..." : "Aplicar"}
+            {conferindo ? "Conferindo…" : "Aplicar"}
           </button>
         </div>
       ) : (
@@ -142,7 +142,7 @@ export function AssinarButton({
         </span>
       </label>
       <button className="avnLoginSubmit" onClick={assinar} disabled={carregando || !aceite}>
-        {carregando ? "Abrindo o pagamento..." : rotulo}
+        {carregando ? "Abrindo o pagamento…" : rotulo}
       </button>
       {/* Quem aplicou cupom precisa ler o valor final ao lado do botão que
           cobra, e não só lá em cima no resumo do plano. */}

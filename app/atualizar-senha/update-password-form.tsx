@@ -145,7 +145,7 @@ export function UpdatePasswordForm() {
       {error && <p className="loginError" role="alert">{error}</p>}
       {pedeCodigo && <a className="avnLoginSubmit avnCampanhaBotao" href="/duas-etapas?depois=%2Fatualizar-senha">Confirmar o código</a>}
       <button className="avnLoginSubmit" type="submit" disabled={loading || checking || linkInvalido}>
-        {loading ? "Alterando..." : checking ? "Validando link..." : "Salvar nova senha"}
+        {loading ? "Alterando…" : checking ? "Validando link…" : "Salvar nova senha"}
       </button>
       <a className="avnLoginCancel" href="/recuperar-senha">Solicitar outro link</a>
     </form>

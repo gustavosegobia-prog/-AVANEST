@@ -26,6 +26,10 @@ import { Pca } from "./modulo-pca";
 import { Rotem } from "./modulo-rotem";
 import { Doses } from "./modulo-doses";
 
+/** Número com vírgula, como se lê no Brasil ("4,5 mm"), sempre com as casas pedidas. */
+const decimalBr = (v: number, casas: number) =>
+  v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
+
 // A interface não faz conta nenhuma: tudo vem de lib/calculos. Aqui só entra
 // o que a pessoa digitou e sai o que aquelas funções devolveram — é o que
 // permite corrigir uma fórmula sem mexer em tela, e o contrário também.
@@ -218,7 +222,7 @@ function Gaso({ dados, set }: { dados: Compartilhado; set: (c: string, v: string
 
       <div className={estilos.acoes}>
         <label className={estilos.foto}>
-          {lendo ? "Lendo a imagem..." : "Fotografar gasometria"}
+          {lendo ? "Lendo a imagem…" : "Fotografar gasometria"}
           <input type="file" accept="image/*" capture="environment" disabled={lendo}
             onChange={(e) => { lerFoto(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
@@ -429,11 +433,11 @@ function Escada({ titulo, opcao }: { titulo: string; opcao: { calculado: number;
     <div className={estilos.escada}>
       <small>{titulo}</small>
       <div>
-        {opcao.abaixo !== undefined && <span>{opcao.abaixo.toFixed(1)}</span>}
-        <b>{opcao.sugerido.toFixed(1)} mm</b>
-        {opcao.acima !== undefined && <span>{opcao.acima.toFixed(1)}</span>}
+        {opcao.abaixo !== undefined && <span>{decimalBr(opcao.abaixo, 1)}</span>}
+        <b>{decimalBr(opcao.sugerido, 1)} mm</b>
+        {opcao.acima !== undefined && <span>{decimalBr(opcao.acima, 1)}</span>}
       </div>
-      <small className={estilos.calculado}>calculado: {opcao.calculado.toFixed(2)} mm</small>
+      <small className={estilos.calculado}>calculado: {decimalBr(opcao.calculado, 2)} mm</small>
     </div>
   );
 }

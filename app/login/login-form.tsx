@@ -144,7 +144,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
           onChange={(e) => setCodigo(codigoDigitado(e.target.value))} />
         {error && <p className="loginError" role="alert">{error}</p>}
         <button className="avnLoginSubmit" type="submit" disabled={loading || codigo.length !== 6}>
-          {loading ? "Confirmando..." : "Entrar"}
+          {loading ? "Confirmando…" : "Entrar"}
         </button>
         <button type="button" className="avnLoginCancel" onClick={async () => {
           await createClient().auth.signOut();
@@ -157,8 +157,9 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
   return (
     <form className="loginForm" onSubmit={handleSubmit}>
       {passwordChanged && <p className="loginSuccess" role="status">Senha alterada com sucesso. Entre usando a nova senha.</p>}
-      <label htmlFor="email">Usuário ou e-mail</label>
-      <input id="email" name="email" type="email" autoComplete="email" placeholder="seu.usuario ou e-mail" required />
+      <label htmlFor="email">E-mail</label>
+      <input id="email" name="email" type="email" autoComplete="email" spellCheck={false} autoCapitalize="none"
+        placeholder="voce@exemplo.com.br" required />
       <label htmlFor="password">Senha</label>
       <div className="avnPasswordField">
         <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Sua senha" required />
@@ -182,7 +183,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
       {error && <p className="loginError" role="alert">{error}</p>}
       <Link className="avnForgotPassword" href="/recuperar-senha">Esqueci minha senha</Link>
       <button className="avnLoginSubmit" type="submit" disabled={loading}>
-        {loading ? "Entrando..." : "Entrar"}
+        {loading ? "Entrando…" : "Entrar"}
       </button>
     </form>
   );

@@ -133,7 +133,7 @@ export function TermoAdmin({
     return true;
   }
 
-  if (carregando) return <section className="clinicalPanel"><div className="emptyClinical compactEmpty">Carregando o termo...</div></section>;
+  if (carregando) return <section className="clinicalPanel"><div className="emptyClinical compactEmpty">Carregando o termo…</div></section>;
 
   const desativado = !podeEditar;
 
@@ -244,7 +244,7 @@ export function TermoAdmin({
       <button type="button" className="primaryClinical compact"
         disabled={desativado || !mudou || salvando || problemas.length > 0}
         onClick={() => setPrevia("rascunho")}>
-        {salvando ? "Salvando..." : `Revisar e publicar a versão ${versoes.length + 1}`}
+        {salvando ? "Salvando…" : `Revisar e publicar a versão ${versoes.length + 1}`}
       </button>
     </div>
 

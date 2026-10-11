@@ -42,7 +42,7 @@ export function AcceptInviteForm({ token, papel }: { token: string; papel: strin
       )}
       {erro && <p className="loginError" role="alert">{erro}</p>}
       <button className="avnLoginSubmit" type="submit" disabled={busy}>
-        {busy ? "Entrando..." : "Aceitar convite e entrar"}
+        {busy ? "Entrando…" : "Aceitar convite e entrar"}
       </button>
     </form>
   );

@@ -33,7 +33,7 @@ export function SairButton() {
 
   return (
     <button type="button" className="avnLoginCancel" onClick={sair} disabled={saindo}>
-      {saindo ? "Saindo..." : "Sair"}
+      {saindo ? "Saindo…" : "Sair"}
     </button>
   );
 }

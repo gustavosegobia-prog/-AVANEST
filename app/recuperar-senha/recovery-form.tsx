@@ -45,11 +45,11 @@ export function RecoveryForm({ invalidLink = false }: { invalidLink?: boolean })
   return (
     <form className="loginForm" onSubmit={handleSubmit}>
       <label htmlFor="recovery-email">E-mail cadastrado</label>
-      <input id="recovery-email" name="email" type="email" autoComplete="email" placeholder="seu e-mail" required />
+      <input id="recovery-email" name="email" type="email" autoComplete="email" spellCheck={false} autoCapitalize="none" placeholder="voce@exemplo.com.br" required />
       {captcha.widget}
       {error && <p className="loginError" role="alert">{error}</p>}
       <button className="avnLoginSubmit" type="submit" disabled={loading}>
-        {loading ? "Enviando..." : "Enviar link de recuperação"}
+        {loading ? "Enviando…" : "Enviar link de recuperação"}
       </button>
     </form>
   );

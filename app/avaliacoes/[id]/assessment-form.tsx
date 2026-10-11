@@ -410,7 +410,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       <span className={`evalSave ${saveState}`} role="status" aria-live="polite">
         <i aria-hidden="true"/>
         {saveState==="saved"?`Salvo às ${savedAt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`
-          :saveState==="saving"?"Salvando..."
+          :saveState==="saving"?"Salvando…"
           :saveState==="pending"?"Alterações não salvas"
           :"Não foi possível salvar"}
         {/* O MOTIVO, e não só o fato. `saveError` já trazia a frase útil — "o
@@ -426,7 +426,7 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       <nav className="evalRoleNav">
         <button type="button" className="evalVoltar" onClick={()=>void voltarAoPainel()} disabled={saindo}>
           <Icone nome="voltar" tamanho={16}/>
-          {saindo?"Salvando...":"Voltar ao painel"}
+          {saindo?"Salvando…":"Voltar ao painel"}
         </button>
       </nav>
     </header>
@@ -462,12 +462,12 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
           sai depois de gravar. Antes ignorava a falha do save() e navegava,
           perdendo o que fora digitado. O "Pausar", que não fazia nada e era
           o botão mais destacado da linha, saiu. */}
-      <div className="evalControls"><button type="button" onClick={()=>void voltarAoPainel()} disabled={saindo}><Icone nome="voltar"/> {saindo?"Salvando...":"Salvar e voltar"}</button>{["medico","admin","owner"].includes(perfil.role)&&!confirmDelete&&<button type="button" className="deleteAssessmentButton" onClick={()=>setConfirmDelete(true)}>Excluir avaliação</button>}</div>
+      <div className="evalControls"><button type="button" onClick={()=>void voltarAoPainel()} disabled={saindo}><Icone nome="voltar"/> {saindo?"Salvando…":"Salvar e voltar"}</button>{["medico","admin","owner"].includes(perfil.role)&&!confirmDelete&&<button type="button" className="deleteAssessmentButton" onClick={()=>setConfirmDelete(true)}>Excluir avaliação</button>}</div>
       {confirmDelete&&<div className="deleteConfirmStrip" role="alertdialog" aria-label="Confirmar exclusão da avaliação">
         <p><b>Tem certeza de que deseja excluir esta avaliação?</b> Esta ação não poderá ser desfeita. O cadastro do paciente será mantido.</p>
         <div>
           <button type="button" onClick={()=>{setConfirmDelete(false);setDeleteError("")}} disabled={deleting}>Cancelar</button>
-          <button type="button" className="perigo" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo...":"Excluir avaliação"}</button>
+          <button type="button" className="perigo" onClick={deleteAssessment} disabled={deleting}>{deleting?"Excluindo…":"Excluir avaliação"}</button>
         </div>
       </div>}
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
@@ -915,7 +915,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
       {draft.anticoagulante==="Sim"&&<input className="detailInput" value={String(draft.anticoagulante_detalhes??"")} onChange={e=>set("anticoagulante_detalhes",e.target.value)} placeholder="Observações: ponte, indicação, conduta combinada com o cardiologista"/>}
     </div>
     <p className="evalHint"><b>Base:</b> Guia Perioperatório de Medicamentos, versão 1.0, revisão 07/2026. As sugestões são apoio à decisão e devem ser revisadas e confirmadas individualmente pelo anestesiologista.</p>
-    {showMedicationForm&&<><div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina..."/><button onClick={()=>add()}>Adicionar</button></div>
+    {showMedicationForm&&<><div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina…"/><button onClick={()=>add()}>Adicionar</button></div>
     <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","Enalapril","Anlodipino","Hidroclorotiazida","Metoprolol","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Eliquis","Varfarina","Dabigatrana","Enoxaparina","Metformina","Ozempic","Dapagliflozina","Insulina NPH","Levotiroxina","Sinvastatina","Omeprazol","Sertralina"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div></>}
   </section>
   {!showMedicationForm&&medicationAnswer&&<section className="emptyClinical">Resposta registrada: <b>{medicationAnswer}</b>.</section>}
@@ -1165,7 +1165,7 @@ function ComplementaryExams({draft,set}:{draft:Draft;set:(name:string,value:stri
         fotografar o laudo mas não para escolher o PDF que o paciente recebeu —
         que é a fonte mais exata. O seletor do sistema continua oferecendo a
         câmera para quem tem o papel na mão. */}
-    <div className="attachmentRow"><label className="attachmentButton leitorDeExame">🔎 {lendo?"Lendo o laudo...":"Preencher a partir do laudo (PDF ou foto)"}<input type="file" accept=".pdf,image/jpeg,image/png" disabled={lendo} onChange={e=>{void lerLaudo(e.target.files?.[0]);e.target.value=""}}/></label><span>PDF ou foto. O arquivo é lido <b>neste aparelho</b>, preenche só o que estiver em branco, e não fica guardado.</span></div>
+    <div className="attachmentRow"><label className="attachmentButton leitorDeExame">🔎 {lendo?"Lendo o laudo…":"Preencher a partir do laudo (PDF ou foto)"}<input type="file" accept=".pdf,image/jpeg,image/png" disabled={lendo} onChange={e=>{void lerLaudo(e.target.files?.[0]);e.target.value=""}}/></label><span>PDF ou foto. O arquivo é lido <b>neste aparelho</b>, preenche só o que estiver em branco, e não fica guardado.</span></div>
     {avisoLeitura&&<p className="examLeituraAviso" role="status">{avisoLeitura}</p>}
     {erroLeitura&&<p className="clinicalError">{erroLeitura}</p>}
     <label className="medicationConfirm"><input type="checkbox" checked={draft.exames_revisados===true} onChange={e=>set("exames_revisados",e.target.checked)}/><span>Exames revisados, quando aplicável.</span></label>
@@ -1331,7 +1331,7 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   const fuma=/tabag|fum|cigarr|maço|maco|narguil|vape/i.test(String(draft.habitos_detalhes||""));
   const derivados:Record<string,{ligado:boolean;origem:string}>={
     stop_imc:{ligado:imc>35,
-      origem:imc?`IMC ${imc.toFixed(1)}`:"peso e altura no exame físico"},
+      origem:imc?`IMC ${imc.toFixed(1).replace(".",",")}`:"peso e altura no exame físico"},
     stop_idade:{ligado:age!==null&&age>50,
       origem:age!==null?`${age} anos`:"data de nascimento no cadastro"},
     stop_masculino:{ligado:sexoDito.toLowerCase()==="masculino",
@@ -1511,5 +1511,5 @@ function Conclusion({draft,set,paciente,age,idadeMeses,conclude,retrySave,saveSt
     <label className="evalField"><span>Tubo e profundidade (sai na ficha impressa)</span><input value={String(draft.tubo_traqueal??"")} onChange={e=>set("tubo_traqueal",e.target.value)} placeholder="Toque numa opção acima ou escreva"/></label>
     <p className="evalHint">{AVISO_CLINICO}</p>
   </div>}<label className="evalField"><span>Orientações finais da avaliação (preenchidas automaticamente e editáveis)</span><textarea rows={8} value={String(draft.plano_anestesico??"")} onChange={e=>{set("plano_anestesico",e.target.value);set("plano_anestesico_editado",true)}}/><small>{planManuallyEdited?"Texto editado manualmente — será impresso exatamente como está. Use “Atualizar orientações finais automaticamente” para reconstruí-lo.":"O texto acompanha as escolhas de jejum, técnica anestésica e conduta dos medicamentos. Depois de uma edição manual, ele passa a ser impresso exatamente como você escreveu."}</small></label></section>
-  <section className="evalSection"><h2>Checklist final <small className="optionalField">Somente estes campos são obrigatórios</small></h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}><Icone nome={ok?"confirmado":"alerta"} tamanho={14}/> {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" title={saveState==="error"?saveError:undefined} disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando...":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Ainda falta preencher: <strong>{missingFields.join(", ")}.</strong> Revise somente esses campos antes de concluir.</p>}{saveState==="error"&&<p className="completionWarning">{saveError||"Não foi possível sincronizar o rascunho agora."} <button type="button" className="outlineClinical" onClick={retrySave}>Tentar salvar novamente</button></p>}</section></>;
+  <section className="evalSection"><h2>Checklist final <small className="optionalField">Somente estes campos são obrigatórios</small></h2><div className="finalChecklist">{checklist.map(([label,ok])=><span className={ok?"ok":"missing"} key={String(label)}><Icone nome={ok?"confirmado":"alerta"} tamanho={14}/> {label} {ok?"completo":"incompleto"}</span>)}</div><h2>Conclusão</h2><div className="conclusionOptions">{conclusions.map(item=><button type="button" className={draft.conclusao===item?"selected":""} onClick={()=>set("conclusao",item)} key={item}>{item}</button>)}</div><div className="signatureGrid"><label className="evalField"><span>Anestesiologista</span><input value={String(draft.anestesiologista??"")} onChange={e=>set("anestesiologista",e.target.value)}/></label><label className="evalField"><span>CRM / UF</span><input value={String(draft.crm??"")} onChange={e=>set("crm",e.target.value)}/></label><label className="evalField"><span>RQE</span><input value={String(draft.rqe??"")} onChange={e=>set("rqe",e.target.value)}/></label><button type="button" className="finishAssessment" title={saveState==="error"?saveError:undefined} disabled={!allComplete||saveState==="saving"||saveState==="error"} onClick={conclude}>✓ {saveState==="saving"?"Salvando…":"Concluir avaliação"}</button></div>{!allComplete&&<p className="completionWarning">Ainda falta preencher: <strong>{missingFields.join(", ")}.</strong> Revise somente esses campos antes de concluir.</p>}{saveState==="error"&&<p className="completionWarning">{saveError||"Não foi possível sincronizar o rascunho agora."} <button type="button" className="outlineClinical" onClick={retrySave}>Tentar salvar novamente</button></p>}</section></>;
 }

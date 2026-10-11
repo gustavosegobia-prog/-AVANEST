@@ -80,7 +80,7 @@ export function PreferenciasDeAvisoPainel({
               : estado === "instalar-ios" ? "No iPhone, instale o AVANEST primeiro"
               : estado === "bloqueado" ? "Notificações bloqueadas neste aparelho"
               : estado === "indisponivel" ? "Este navegador não entrega notificações"
-              : estado === "carregando" ? "Verificando..."
+              : estado === "carregando" ? "Verificando…"
               : "Notificações desligadas neste aparelho"}
           </strong>
           <p>
@@ -96,7 +96,7 @@ export function PreferenciasDeAvisoPainel({
             configuração do navegador, e um botão aqui pareceria quebrado. */}
         {estado === "desligado" && (
           <button type="button" className="primaryClinical compact" disabled={ocupado}
-            onClick={() => void ligar()}>{ocupado ? "Permitindo..." : "Permitir"}</button>
+            onClick={() => void ligar()}>{ocupado ? "Permitindo…" : "Permitir"}</button>
         )}
         {estado === "ligado" && (
           <button type="button" className="outlineClinical compact" disabled={ocupado}
@@ -145,7 +145,7 @@ export function PreferenciasDeAvisoPainel({
         </button>
         <button type="button" className="primaryClinical compact"
           disabled={salvando || !mudou} onClick={() => void salvar()}>
-          {salvando ? "Salvando..." : "Salvar preferências"}
+          {salvando ? "Salvando…" : "Salvar preferências"}
         </button>
       </div>
     </section>

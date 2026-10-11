@@ -62,8 +62,11 @@
   --transicao:140ms ease;
 }
 
-/* Tema escuro: mesma estrutura, outros valores. */
+/* Tema escuro: mesma estrutura, outros valores. `color-scheme` leva junto o
+   que o CSS não pinta: barra de rolagem, calendário do campo de data, lista
+   aberta do <select>. */
 .clinicalDark{
+  color-scheme:dark;
   --cor-fundo:#0b1a27;
   --cor-superficie:#132638;
   --cor-superficie-suave:#1b3347;
@@ -94,6 +97,12 @@
   box-shadow:var(--foco);
   border-radius:var(--raio-1);
 }
+
+/* Títulos sem palavra sozinha na última linha. */
+h1,h2,h3{text-wrap:balance}
+
+/* Toque sem a espera do duplo toque (zoom), em tudo que se aperta. */
+a,button,input,select,textarea,label,summary,[role=button]{touch-action:manipulation}
 
 /* Quem pediu menos movimento no sistema operacional nao recebe animacao. */
 @media (prefers-reduced-motion:reduce){

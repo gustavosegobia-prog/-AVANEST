@@ -114,7 +114,7 @@ export function SignUpForm({ token, email, plano = "", origem = "" }: { token: s
     <form className="loginForm" onSubmit={enviar}>
       <label htmlFor="email">{porConvite ? "E-mail do convite" : "Seu e-mail"}</label>
       <input
-        id="email" name="email" type="email" required autoComplete="email"
+        id="email" name="email" type="email" required autoComplete="email" spellCheck={false} autoCapitalize="none"
         defaultValue={email} readOnly={porConvite} aria-readonly={porConvite || undefined}
         placeholder={porConvite ? undefined : "voce@exemplo.com.br"}
       />
@@ -146,7 +146,7 @@ export function SignUpForm({ token, email, plano = "", origem = "" }: { token: s
       </label>
       {captcha.widget}
       <button className="avnLoginSubmit" type="submit" disabled={busy || !aceite}>
-        {busy ? "Criando..." : "Criar conta e continuar"}
+        {busy ? "Criando…" : "Criar conta e continuar"}
       </button>
       <Link className="avnLoginCancel" href={porConvite
         ? `/login?convite=${encodeURIComponent(token)}`

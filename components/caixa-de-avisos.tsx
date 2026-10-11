@@ -247,7 +247,7 @@ export function CaixaDeAvisos({
                         try { await onResponderTroca(a.id, "aceitar_troca"); }
                         finally { setRespondendo(""); }
                       }}
-                    >{respondendo === a.id ? "Assumindo..." : "Assumir"}</button>
+                    >{respondendo === a.id ? "Assumindo…" : "Assumir"}</button>
                     <button
                       type="button" className="recusar" disabled={respondendo === a.id}
                       onClick={async () => {

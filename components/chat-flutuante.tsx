@@ -401,7 +401,7 @@ export function ChatFlutuante({ perfil, abrirEm = null }: {
                   name="texto"
                   rows={1}
                   maxLength={2000}
-                  placeholder="Escreva para a equipe..."
+                  placeholder="Escreva para a equipe…"
                   onKeyDown={(evento) => {
                     // Enter envia, Shift+Enter pula linha: é o que a mão já
                     // espera de uma caixa de conversa.
@@ -448,7 +448,7 @@ export function ChatFlutuante({ perfil, abrirEm = null }: {
                   name="resposta"
                   rows={1}
                   maxLength={4000}
-                  placeholder="Responder..."
+                  placeholder="Responder…"
                   onKeyDown={(evento) => {
                     if (evento.key === "Enter" && !evento.shiftKey) {
                       evento.preventDefault();
@@ -480,7 +480,7 @@ export function ChatFlutuante({ perfil, abrirEm = null }: {
               <div className="chatRelatoAcoes">
                 <button type="button" onClick={() => setNovoRelato(false)}>Cancelar</button>
                 <button type="submit" className="principal" disabled={enviando}>
-                  {enviando ? "Enviando..." : "Enviar relato"}
+                  {enviando ? "Enviando…" : "Enviar relato"}
                 </button>
               </div>
             </form>

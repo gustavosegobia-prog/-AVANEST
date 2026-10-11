@@ -154,7 +154,7 @@ export function OrganizacoesClient({ nome, organizacoes, minhaOrganizacao }: {
                   if (plano) void alterar(org, plano, meses === "null" ? null : Number(meses));
                 }}
               >
-                <option value="">{busy === org.id ? "Salvando..." : "Alterar..."}</option>
+                <option value="">{busy === org.id ? "Salvando…" : "Alterar…"}</option>
                 <option value="ativo:1">Ativar por 1 mês</option>
                 <option value="ativo:12">Ativar por 12 meses</option>
                 <option value="trial:0.5">Estender teste por 15 dias</option>
@@ -181,7 +181,8 @@ export function OrganizacoesClient({ nome, organizacoes, minhaOrganizacao }: {
           e aqui o gesto não tem volta. Copiar o nome obriga a olhar QUAL linha
           vai sumir, que é justamente o erro a evitar: excluir a de baixo. */}
       {excluindo && (
-        <div className="patientModalBackdrop" onClick={(e) => { if (e.target === e.currentTarget) setExcluindo(null); }}>
+        <div className="patientModalBackdrop" onClick={(e) => { if (e.target === e.currentTarget) setExcluindo(null); }}
+          onKeyDown={(e) => { if (e.key === "Escape") setExcluindo(null); }}>
           <div className="patientModal orgExcluirModal" role="dialog" aria-modal="true" aria-labelledby="excluir-org">
             <div className="patientModalHead">
               <div>
@@ -203,7 +204,7 @@ export function OrganizacoesClient({ nome, organizacoes, minhaOrganizacao }: {
               <button type="button" className="primaryClinical perigo"
                 disabled={busy === excluindo.id || !confirmacaoConfere(digitado, excluindo.nome)}
                 onClick={() => void excluir(excluindo)}>
-                {busy === excluindo.id ? "Excluindo..." : "Excluir para sempre"}
+                {busy === excluindo.id ? "Excluindo…" : "Excluir para sempre"}
               </button>
             </div>
           </div>

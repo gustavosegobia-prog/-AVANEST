@@ -1187,7 +1187,7 @@ export function DashboardClient({
             <div className="patientModalActions">
               <button type="button" className="outlineClinical" onClick={()=>setContaAberta(false)}>Fechar</button>
               {captchaSenha.widget}
-              <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email}>{senhaBusy?"Alterando...":"Alterar senha"}</button>
+              <button type="submit" className="primaryClinical compact" disabled={senhaBusy||!email}>{senhaBusy?"Alterando…":"Alterar senha"}</button>
             </div>
           </form>
           <DuasEtapasNaConta obrigatorio={exigeDuasEtapas(perfil)}/>
@@ -1995,7 +1995,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
                   <option>PIX</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option>
                 </select>
                 <button className="paymentButton" disabled={busy===item.id||!valorValido} onClick={()=>registerPayment(item)}>
-                  {busy===item.id?"Registrando...":"Registrar"}
+                  {busy===item.id?"Registrando…":"Registrar"}
                 </button>
               </>}
           {/* O excluir é a última coluna, depois do registrar, e só para quem
@@ -2027,7 +2027,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
               <button type="button" className="outlineClinical" onClick={()=>setLancamentoAExcluir("")}>Manter</button>
               <button type="button" className="paymentExcluirConfirma" disabled={busy===item.id}
                 onClick={()=>void excluirLancamento(item.id)}>
-                {busy===item.id?"Excluindo...":"Excluir de vez"}
+                {busy===item.id?"Excluindo…":"Excluir de vez"}
               </button>
             </div>
           </div>}
@@ -2043,7 +2043,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
                 <small>{pg.metodo}{pg.paid_at?` · ${brDate(pg.paid_at.slice(0,10))}`:""}</small>
                 <button type="button" className="paymentExcluirConfirma" disabled={busy===item.id}
                   onClick={()=>void estornarPagamento(pg.id,item)}>
-                  {busy===item.id?"Estornando...":"Estornar"}
+                  {busy===item.id?"Estornando…":"Estornar"}
                 </button>
               </span>)}
             </div>
@@ -2424,12 +2424,12 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
             <button className="outlineClinical" disabled={busy==="period"}
               onClick={()=>{setReabrindo(false);setMotivoReabertura("")}}>Cancelar</button>
             <button className="primaryClinical compact" disabled={busy==="period"||motivoReabertura.trim().length<5}
-              onClick={reabrirPeriodo}>{busy==="period"?"Reabrindo...":"Reabrir período"}</button>
+              onClick={reabrirPeriodo}>{busy==="period"?"Reabrindo…":"Reabrir período"}</button>
           </div>
         </div>}
       </> : <div className="closingFooter">
         <span><Icone nome="alerta" tamanho={15}/> Revise notas, glosas e pagamentos pendentes antes de fechar.</span>
-        <button className="primaryClinical compact" disabled={busy==="period"} onClick={confirmPeriod}>{busy==="period"?"Fechando...":"Confirmar conferência"}</button>
+        <button className="primaryClinical compact" disabled={busy==="period"} onClick={confirmPeriod}>{busy==="period"?"Fechando…":"Confirmar conferência"}</button>
       </div>}
     </PainelRecolhivel>
       </>}
@@ -2472,8 +2472,8 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       <div className="patientModalHead"><div><strong id="finance-config-title">Configurar valores das consultas</strong><span>Adicione os convênios que você atende e remova os que não usa.</span></div><button type="button" onClick={()=>setConfigOpen(false)} aria-label="Fechar">×</button></div>
       {message&&<p className={message.startsWith("Não")?"clinicalError":"financeSuccess"} role="status">{message}</p>}
       <form className="financeConfigNovo" onSubmit={e=>{e.preventDefault();void addConvenio()}}>
-        <label><span>Adicionar convênio</span><input value={novoConvenio} onChange={e=>setNovoConvenio(e.target.value)} placeholder="Ex.: Cassems, Unimed Regional..."/></label>
-        <button className="outlineClinical" type="submit" disabled={busy==="novoConvenio"||!novoConvenio.trim()}>{busy==="novoConvenio"?"Adicionando...":"Adicionar"}</button>
+        <label><span>Adicionar convênio</span><input value={novoConvenio} onChange={e=>setNovoConvenio(e.target.value)} placeholder="Ex.: Cassems, Unimed Regional…"/></label>
+        <button className="outlineClinical" type="submit" disabled={busy==="novoConvenio"||!novoConvenio.trim()}>{busy==="novoConvenio"?"Adicionando…":"Adicionar"}</button>
       </form>
       <div className="financeConfigList">{knownConvenios.map(convenio=>{
         const usos=pacientes.filter(p=>p.convenio===convenio).length;
@@ -2488,7 +2488,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           ><Icone nome="fechar" tamanho={14}/></button>
         </div>;
       })}</div>
-      <div className="patientModalActions"><button className="outlineClinical" type="button" onClick={()=>setConfigOpen(false)}>Fechar</button><button className="primaryClinical compact" type="button" disabled={busy==="prices"} onClick={savePrices}>{busy==="prices"?"Salvando...":"Salvar valores"}</button></div>
+      <div className="patientModalActions"><button className="outlineClinical" type="button" onClick={()=>setConfigOpen(false)}>Fechar</button><button className="primaryClinical compact" type="button" disabled={busy==="prices"} onClick={savePrices}>{busy==="prices"?"Salvando…":"Salvar valores"}</button></div>
     </div>
     </section></div>}
   </div>
@@ -2613,7 +2613,7 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
               não é reembolsado, e o acesso segue até o fim dele.
             </p>}
         <button className="outlineClinical" disabled={encerrando} onClick={reativar}>
-          {encerrando?"Reativando...":"Voltar atrás e continuar assinando"}
+          {encerrando?"Reativando…":"Voltar atrás e continuar assinando"}
         </button>
       </div>
     ) : (
@@ -2649,7 +2649,7 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
           className="outlineClinical red"
           disabled={encerrando||confirmacao.trim().toUpperCase()!=="CANCELAR"}
           onClick={cancelar}
-        >{encerrando?"Cancelando...":"Cancelar assinatura"}</button>
+        >{encerrando?"Cancelando…":"Cancelar assinatura"}</button>
       </div>
     )}
 
@@ -2670,7 +2670,7 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
       {testeAviso&&<p className="financeSuccess assinaturaRecado">{testeAviso}</p>}
       {testeErro&&<p className="clinicalError assinaturaRecado">{testeErro}</p>}
       <button className="outlineClinical" disabled={testando} onClick={mandarTeste}>
-        {testando?"Enviando...":"Mandar e-mail de teste para mim"}
+        {testando?"Enviando…":"Mandar e-mail de teste para mim"}
       </button>
     </div>
   </PainelRecolhivel>;
@@ -2866,7 +2866,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefres
             </div>
             <div className="orgAcoes">
               <small>{organizacao?.tipo==="individual"?"Cadastro individual":"Grupo"} · saem impressos na ficha e no termo.</small>
-              {podeAdministrar&&<button className="primaryClinical compact" disabled={busyOrg||!orgAlterada} onClick={saveOrganizacao}>{busyOrg?"Salvando...":"Salvar dados"}</button>}
+              {podeAdministrar&&<button className="primaryClinical compact" disabled={busyOrg||!orgAlterada} onClick={saveOrganizacao}>{busyOrg?"Salvando…":"Salvar dados"}</button>}
             </div>
           </div>}
           {subOrg==="locais"&&<div className="locaisAdminCaixa">
@@ -2988,7 +2988,7 @@ function ConvenioValoresPanel({perfil,convenioValores,pendentes,onRefresh}:{perf
             ajuda. `saveConvenio` é quem decide se a marca vale, conferindo o
             valor no momento de gravar. */}
         <label className="convenioGratuitoCampo"><input type="checkbox" name="gratuito"/><span>Gratuito (valor R$ 0,00 de propósito)</span></label>
-        <button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando...":"Salvar referência"}</button></form>}
+        <button className="primaryClinical compact" disabled={busy==="convenio"}>{busy==="convenio"?"Salvando…":"Salvar referência"}</button></form>}
       {/* QUATRO ESTADOS, NÃO TRÊS. "Preço pendente" (âmbar) resolveu a
           confusão entre "ninguém preencheu" e "cobra de verdade" — mas ainda
           faltava o terceiro caso real: um convênio que É gratuito por
@@ -3051,7 +3051,7 @@ function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
         <input type="date" value={data} onChange={e=>setData(e.target.value)} required/></label>
       <label className="despesaDescricao"><span>Do que é</span>
         <input value={descricao} onChange={e=>setDescricao(e.target.value)}
-          placeholder="Aluguel da sala, anuidade do CRM, contador..." required/></label>
+          placeholder="Aluguel da sala, anuidade do CRM, contador…" required/></label>
       <label><span>Categoria</span>
         <select value={categoria} onChange={e=>setCategoria(e.target.value)}>
           {CATEGORIAS.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -3066,7 +3066,7 @@ function NovaDespesa({ehGrupo,periodo,ocupado,onSalvar}:{
         <input type="checkbox" checked={recorrente} onChange={e=>setRecorrente(e.target.checked)}/>
         <span>Repete todo mês</span></label>
       <button className="primaryClinical compact" type="submit" disabled={ocupado}>
-        {ocupado?"Lançando...":"Lançar"}
+        {ocupado?"Lançando…":"Lançar"}
       </button>
     </form>
     {erro&&<p className="clinicalError">{erro}</p>}
@@ -3307,9 +3307,9 @@ function PatientModal({ busy, error, duplicado = null, onAgendarDuplicado, onCpf
         <button type="button" className="outlineClinical" onClick={onClose}>Cancelar</button>
         {duplicado && onAgendarDuplicado
           ? <button type="button" className="primaryClinical" disabled={busy} onClick={onAgendarDuplicado}>
-              {busy?"Agendando...":`Agendar para ${duplicado.nome}`}
+              {busy?"Agendando…":`Agendar para ${duplicado.nome}`}
             </button>
-          : <button type="submit" className="primaryClinical" disabled={busy}>{busy?"Salvando...":"Salvar e agendar"}</button>}
+          : <button type="submit" className="primaryClinical" disabled={busy}>{busy?"Salvando…":"Salvar e agendar"}</button>}
       </div>
     </form>
   </div>;
