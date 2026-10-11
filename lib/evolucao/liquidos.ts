@@ -13,6 +13,17 @@ export const LIQUIDOS_ENTRADA: Array<{ categoria: CategoriaDeLiquido; rotulo: st
   { categoria: "hemoderivado", rotulo: "Hemoderivado", exemplos: ["Concentrado de hemácias", "Plasma fresco congelado", "Concentrado de plaquetas", "Crioprecipitado"] },
   { categoria: "outro", rotulo: "Outro", exemplos: [] },
 ];
+/**
+ * Os toques rápidos do painel: a bolsa mais usada, no volume da bolsa. Um
+ * toque grava a entrada no minuto atual (com "Desfazer"); outro horário ou
+ * outra solução, pela janela de entrada.
+ */
+export const VOLUMES_RAPIDOS = [100, 250, 500, 1000] as const;
+export const LIQUIDOS_RAPIDOS: Array<{ nome: string; curto: string }> = [
+  { nome: "Soro fisiológico 0,9%", curto: "SF 0,9%" },
+  { nome: "Ringer lactato", curto: "Ringer lactato" },
+];
+
 export const LIQUIDOS_SAIDA: Array<{ categoria: CategoriaDeLiquido; rotulo: string }> = [
   { categoria: "diurese", rotulo: "Diurese" },
   { categoria: "sangramento", rotulo: "Sangramento" },

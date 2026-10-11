@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
@@ -13,7 +13,7 @@ import {
 } from "@/lib/evolucao/medicamentos";
 import { consumoSevoflurano, formatarMl, lerAjuste, type AjusteDeGas } from "@/lib/evolucao/sevoflurano";
 import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/infusoes";
-import { balancoHidrico, rotuloDoLiquido } from "@/lib/evolucao/liquidos";
+import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico, rotuloDoLiquido } from "@/lib/evolucao/liquidos";
 import { EVENTOS, conferirEncerramento, horarioDoMarco, imcDaFolha, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
@@ -53,6 +53,7 @@ const chaveFavoritos = (id: string) => `avanest:evo-favoritos:${id}`;
 const hora = (iso: string) => horaLocal(new Date(iso));
 /** O minuto cheio de agora — evento rápido não registra segundos. */
 const minutoAtual = () => new Date(Math.round(Date.now() / 60000) * 60000).toISOString();
+const agoraMs = () => Date.now();
 const fmt = (v: number, casas = 2) => v.toLocaleString("pt-BR", { maximumFractionDigits: casas });
 
 export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, regras, medicos, eu }: {
@@ -148,6 +149,19 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
     const momento = minutoAtual();
     f.registrar({ tipo: "evento", momento, dados: { codigo } });
     setAviso({ texto: `${rotuloDoEvento(codigo)} às ${hora(momento)}`, desfazer: true });
+  }
+
+  // Um toque, uma bolsa. A trava de 2 s é contra o toque duplo sem querer —
+  // duas bolsas de verdade seguidas continuam possíveis.
+  const ultimoRapido = useRef<{ chave: string; em: number } | null>(null);
+  function liquidoRapido(nome: string, volume: number) {
+    const chave = `${nome}|${volume}`;
+    const agora = agoraMs();
+    if (ultimoRapido.current?.chave === chave && agora - ultimoRapido.current.em < 2000) return;
+    ultimoRapido.current = { chave, em: agora };
+    const momento = minutoAtual();
+    f.registrar({ tipo: "liquido", momento, dados: { sentido: "entrada", categoria: "cristaloide", nome, volume_ml: volume } });
+    setAviso({ texto: `${nome} ${volume} mL às ${hora(momento)}`, desfazer: true });
   }
 
   function contarFavorito(nome: string) {
@@ -297,6 +311,19 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
               <button type="button" className="evoBotao pequeno" onClick={() => setAbrir({ tipo: "liquido", sentido: "entrada" })}>+ Entrada</button>
               <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "liquido", sentido: "saida" })}>+ Saída</button>
             </div>}</header>
+            {aberta && (
+              <div className="evoLiquidosRapidos">
+                {LIQUIDOS_RAPIDOS.map((l) => (
+                  <div key={l.nome} role="group" aria-label={`${l.nome}: registrar uma bolsa agora`}>
+                    <span>{l.curto}</span>
+                    {VOLUMES_RAPIDOS.map((ml) => (
+                      <button type="button" key={ml} onClick={() => liquidoRapido(l.nome, ml)}
+                        aria-label={`${l.nome} ${ml} mL agora`}>{ml}</button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
             <dl className="evoBalanco">
               <div><dt>Entradas</dt><dd>{fmt(balanco.entradas, 0)} mL</dd></div>
               <div><dt>Saídas</dt><dd>{fmt(balanco.saidas, 0)} mL</dd></div>

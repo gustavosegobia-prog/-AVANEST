@@ -6954,3 +6954,13 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoPre summary .evoPreAlergia{flex:none;max-width:45%;color:var(--cor-perigo-forte);font-weight:700}
 /* Na linha da dose a coluna é estreita: a etiqueta de alergia desce para baixo da dose. */
 .evoDose .evoAlergiaTag{grid-column:2/-1;justify-self:start;margin:-4px 0 2px}
+
+/* Líquidos em um toque: SF 0,9% e Ringer, no volume da bolsa. */
+.evoLiquidosRapidos{display:grid;gap:8px;margin:0 0 10px}
+.evoLiquidosRapidos>div{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.evoLiquidosRapidos span{grid-column:1/-1;font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
+.evoLiquidosRapidos button{min-height:44px;padding:0;border:1px solid var(--cor-borda-forte);border-radius:9px;
+  background:var(--cor-superficie);color:var(--cor-tinta);font:inherit;font-size:14px;font-weight:700;
+  font-variant-numeric:tabular-nums;cursor:pointer}
+.evoLiquidosRapidos button:hover{border-color:var(--cor-marca);color:var(--cor-marca-forte)}
+.evoLiquidosRapidos button:active{background:var(--cor-marca-suave)}

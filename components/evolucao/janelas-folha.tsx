@@ -7,7 +7,7 @@ import { horaLocal } from "@/lib/data-local";
 import { buscarNoCatalogo, type UnidadeDeConcentracao } from "@/lib/evolucao/medicamentos";
 import type { Infusao, UnidadeDeVelocidade } from "@/lib/evolucao/infusoes";
 import type { AjusteDeGas } from "@/lib/evolucao/sevoflurano";
-import { LIQUIDOS_ENTRADA, LIQUIDOS_SAIDA, type CategoriaDeLiquido } from "@/lib/evolucao/liquidos";
+import { LIQUIDOS_ENTRADA, LIQUIDOS_SAIDA, VOLUMES_RAPIDOS, type CategoriaDeLiquido } from "@/lib/evolucao/liquidos";
 import type { Pendencia } from "@/lib/evolucao/folha";
 import { momentoDeHora } from "./use-folha";
 import { CampoHora, CampoNumero, Escolha, numero } from "./campos";
@@ -228,6 +228,13 @@ export function JanelaLiquido({ sentido, onConfirmar, onFechar }: {
           <CampoHora valor={hora} onMudar={setHora} />
           <CampoNumero rotulo="Volume" valor={volume} onMudar={setVolume} unidade="mL" autoFocus={sentido === "saida"} />
         </div>
+        {sentido === "entrada" && (categoria === "cristaloide" || categoria === "coloide") && (
+          <div className="evoOpcoesMotivo" aria-label="Volume da bolsa">
+            {VOLUMES_RAPIDOS.map((ml) => (
+              <button type="button" key={ml} className={v === ml ? "ativo" : ""} onClick={() => setVolume(String(ml))}>{ml} mL</button>
+            ))}
+          </div>
+        )}
       </form>
     </Janela>
   );
