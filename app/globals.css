@@ -7378,7 +7378,7 @@ button.evoPFAsaN:disabled{cursor:default}
 @media (min-width:1100px) and (pointer:fine){
   .fcPagina{max-width:1800px;padding:12px 48px 80px}
   .fcTitulo{margin:10px 0 24px}
-  .fcColunas{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(400px,1fr);gap:32px;align-items:start}
+  .fcColunas{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(440px,1fr);gap:32px;align-items:start}
   .fcLado{position:sticky;top:20px}
   .fcLado>.fcSecao:first-child{margin-top:0}
   .fcLado .fcSecao h2{min-height:24px}
@@ -7473,3 +7473,42 @@ button.evoPFAsaN:disabled{cursor:default}
 .evoRMembro input.crm{width:8ch}
 .evoRMembro .evoRCrm{display:inline-flex;align-items:baseline;gap:2px;font-size:13.5px}
 .evoRMembro .evoRRemover{min-width:36px;justify-content:center;font-size:16px}
+
+/* Ficha aberta: excluir ao lado de continuar (só ficha nunca encerrada; a
+   regra de verdade está no banco). E o paciente sem cadastro: um cadastro
+   mínimo na própria entrada, e a ficha nasce em branco. */
+.fcAberta{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.fcExcluir{display:inline-flex;align-items:center;gap:6px;min-width:52px;padding:0 16px;border:0;
+  border-left:1px solid var(--cor-borda);background:none;color:var(--cor-perigo-forte);font:inherit;font-size:13.5px;font-weight:650;
+  cursor:pointer;transition:background .12s ease}
+.fcExcluir:hover{background:var(--cor-perigo-suave)}
+.fcExcluir:focus-visible{outline:2px solid var(--cor-marca);outline-offset:-2px}
+.fcSemCadastro{display:inline-flex;align-items:center;min-height:44px;margin:8px 0 0;padding:0 2px;border:0;background:none;
+  color:var(--cor-marca-forte);font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;text-align:left}
+.fcSemCadastro:hover{text-decoration:underline;text-underline-offset:3px}
+.fcNovoPaciente{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,.8fr) minmax(0,1.6fr);gap:12px;margin-top:14px;padding:16px;
+  border:1px solid var(--cor-borda);border-radius:12px;background:var(--cor-fundo)}
+.fcNovoTitulo{grid-column:1/-1;margin:0;font-size:14px;color:var(--cor-tinta)}
+.fcNovoCampo{display:grid;gap:4px;min-width:0}
+.fcNovoCampo.largo{grid-column:span 2}
+.fcNovoCampo>span{font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
+.fcNovoCampo input{width:100%;min-width:0;box-sizing:border-box;min-height:44px;padding:0 12px;border:1px solid var(--cor-borda-forte);border-radius:10px;background:var(--cor-superficie);
+  color:var(--cor-tinta-forte);font:inherit;font-size:15px}
+.fcNovoCampo input:focus{outline:none;border-color:var(--cor-marca);box-shadow:0 0 0 3px var(--cor-marca-suave)}
+.fcNovoSexo{display:flex;gap:6px}
+.fcNovoSexo button{flex:1;min-width:0;padding:0 8px;min-height:44px;border:1px solid var(--cor-borda-forte);border-radius:10px;background:var(--cor-superficie);
+  color:var(--cor-tinta);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.fcNovoSexo button.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.fcNovoAcoes{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}
+/* Na coluna da direita do computador, o nome ganha a linha inteira e o tempo
+   desce para junto do continuar: com o excluir ao lado, não cabe tudo numa. */
+@media (min-width:1100px) and (pointer:fine){
+  .fcLado .fcAberta .fcLinha{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"quem quem" "tempo ir";row-gap:6px}
+  .fcLado .fcTempo{font-size:17px}
+}
+@media(max-width:640px){
+  .fcNovoPaciente{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:row dense;padding:12px}
+  .fcNovoCampo.largo,.fcNovoCampo.nome,.fcNovoCampo.sexo{grid-column:1/-1}
+  .fcExcluir{padding:0 14px}
+  .fcExcluir span{display:none}
+}

@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
 import { Icone } from "@/components/icone";
 import { imcDaFolha } from "@/lib/evolucao/folha";
 import { dataDoDia } from "@/lib/evolucao/impressao";
-import { asaRomana, camposDoPapel, chaveDoCampo, type CampoDoPapel } from "@/lib/evolucao/pre-papel";
+import { asaRomana, camposDoPapel, chaveDoCampo, sexoAbreviado, type CampoDoPapel } from "@/lib/evolucao/pre-papel";
 import { CampoDecimal } from "./campo-decimal";
 import { Linha, Op, Txt, type Modo } from "./papel";
 
@@ -135,7 +135,7 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
         )}
 
         <Celula m={m} area="conv" rotulo="Convênio:" valor={c.convenio} onMudar={campo("convenio")} />
-        <div className="evoPFCel sexo"><span className="r">Sexo:</span><span className="v">{t(paciente.sexo)}</span></div>
+        <div className="evoPFCel sexo"><span className="r">Sexo:</span><span className="v">{sexoAbreviado(paciente.sexo)}</span></div>
         <Celula m={m} area="cor" rotulo="Cor:" valor={c.cor} onMudar={campo("cor")} />
         <div className="evoPFCel peso">
           <span className="r">Peso:</span>

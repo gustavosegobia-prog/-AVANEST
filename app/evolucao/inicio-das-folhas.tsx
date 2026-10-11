@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Icone } from "@/components/icone";
 import { Decorrido } from "./decorrido";
+import { ExcluirFolha } from "./excluir-folha";
 import { NovaFolha, type Achado } from "./nova-folha";
 
 export type FolhaResumo = {
@@ -66,7 +67,7 @@ export function InicioDasFolhas({
                 {abertas.length ? (
                   <ul className="fcLista">
                     {abertas.map((f) => (
-                      <li key={f.id}>
+                      <li key={f.id} className="fcAberta">
                         <Link href={`/evolucao/${f.id}`} className="fcLinha aberta">
                           <span className="fcQuem">
                             <strong>{f.paciente}</strong>
@@ -78,6 +79,7 @@ export function InicioDasFolhas({
                           </span>
                           <span className="fcIr">Continuar <Icone nome="seta" className="fcSetaDireita" /></span>
                         </Link>
+                        <ExcluirFolha id={f.id} paciente={f.paciente} />
                       </li>
                     ))}
                   </ul>

@@ -38,6 +38,10 @@ export function NovaFolha({ institutionId, recentes = [] }: {
   const [achados, setAchados] = useState<Busca | null>(null);
   const [abrindo, setAbrindo] = useState<string | null>(null);
   const [erro, setErro] = useState("");
+  // Paciente que não está no sistema (sem cadastro, logo sem avaliação): um
+  // cadastro mínimo aqui mesmo, e a ficha nasce em branco para preencher.
+  const [novo, setNovo] = useState<{ nome: string; idade: string; sexo: string; convenio: string; cirurgia: string } | null>(null);
+  const [cadastrando, setCadastrando] = useState(false);
 
   useEffect(() => {
     const termo = busca.trim();
@@ -83,6 +87,22 @@ export function NovaFolha({ institutionId, recentes = [] }: {
     return () => { vale = false; clearTimeout(t); };
   }, [busca]);
 
+  async function cadastrarEAbrir() {
+    if (!novo || !novo.nome.trim()) return;
+    setCadastrando(true); setErro("");
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const idade = Number(novo.idade);
+    const { data, error } = await supabase.from("pacientes").insert({
+      institution_id: institutionId, created_by: user?.id ?? null, nome: novo.nome.trim(),
+      idade_anos: Number.isInteger(idade) && idade >= 0 && idade <= 120 && novo.idade.trim() ? idade : null,
+      sexo: novo.sexo || null, convenio: novo.convenio.trim() || null, cirurgia: novo.cirurgia.trim() || null,
+    }).select("id, nome, data_nascimento, idade_anos, sexo, convenio, hospital, cirurgia, procedimento").single();
+    setCadastrando(false);
+    if (error || !data) { setErro("Não foi possível cadastrar o paciente. Confira a conexão e tente de novo."); return; }
+    await abrir(data as Encontrado);
+  }
+
   async function abrir(p: Encontrado) {
     setAbrindo(p.id);
     setErro("");
@@ -118,7 +138,7 @@ export function NovaFolha({ institutionId, recentes = [] }: {
   if (!curto) {
     if (buscando) situacao = "Buscando…";
     else if (achados?.falhou) situacao = "A busca não respondeu. Confira a conexão e tente de novo.";
-    else if (!lista.length) situacao = `Nenhum paciente com “${termo}”. Cadastre pela recepção ou pela área médica.`;
+    else if (!lista.length) situacao = `Nenhum paciente com “${termo}” no sistema.`;
     else situacao = lista.length === 1 ? "1 paciente" : `${lista.length} pacientes${lista.length === 12 ? " — refine o nome se não estiver aqui" : ""}`;
   }
 
@@ -172,6 +192,45 @@ export function NovaFolha({ institutionId, recentes = [] }: {
       </label>
       <p className={`fcSituacao${achados?.falhou && !buscando && !curto ? " falhou" : ""}`} aria-live="polite">{situacao}</p>
       {erro && <p className="fcErro" role="alert">{erro}</p>}
+
+      {/* Sem cadastro e sem avaliação: a ficha começa em branco. Quem está
+          cadastrado mas não foi avaliado aparece na busca, com o aviso. */}
+      {!novo ? (
+        <button type="button" className="fcSemCadastro"
+          onClick={() => setNovo({ nome: curto ? "" : termo, idade: "", sexo: "", convenio: "", cirurgia: "" })}>
+          + {!curto && !buscando && !lista.length ? `Iniciar ficha para “${termo}”` : "Paciente sem cadastro"} — ficha em branco
+        </button>
+      ) : (
+        <form className="fcNovoPaciente" onSubmit={(e) => { e.preventDefault(); void cadastrarEAbrir(); }}>
+          <p className="fcNovoTitulo">Paciente sem cadastro: um cadastro mínimo, e a ficha abre em branco para preencher.</p>
+          <label className="fcNovoCampo nome"><span>Nome do paciente</span>
+            <input value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} required autoFocus autoComplete="off" />
+          </label>
+          <label className="fcNovoCampo"><span>Idade (anos)</span>
+            <input value={novo.idade} onChange={(e) => setNovo({ ...novo, idade: e.target.value.replace(/\D/g, "").slice(0, 3) })} inputMode="numeric" />
+          </label>
+          <div className="fcNovoCampo sexo" role="group" aria-label="Sexo"><span>Sexo</span>
+            <div className="fcNovoSexo">
+              {([["Feminino", "FEM"], ["Masculino", "MASC"]] as const).map(([x, curto]) => (
+                <button type="button" key={x} aria-pressed={novo.sexo === x} aria-label={x} className={novo.sexo === x ? "ativo" : undefined}
+                  onClick={() => setNovo({ ...novo, sexo: novo.sexo === x ? "" : x })}>{curto}</button>
+              ))}
+            </div>
+          </div>
+          <label className="fcNovoCampo"><span>Convênio</span>
+            <input value={novo.convenio} onChange={(e) => setNovo({ ...novo, convenio: e.target.value })} placeholder="Particular" />
+          </label>
+          <label className="fcNovoCampo largo"><span>Cirurgia</span>
+            <input value={novo.cirurgia} onChange={(e) => setNovo({ ...novo, cirurgia: e.target.value })} />
+          </label>
+          <div className="fcNovoAcoes">
+            <button type="button" className="evoBotao secundario" onClick={() => setNovo(null)}>Cancelar</button>
+            <button type="submit" className="evoBotao" disabled={!novo.nome.trim() || cadastrando || abrindo !== null}>
+              {cadastrando || abrindo ? "Abrindo…" : "Cadastrar e abrir ficha"}
+            </button>
+          </div>
+        </form>
+      )}
 
       {lista.length > 0 && (
         <ul className={`fcAchados${buscando ? " velho" : ""}`} aria-busy={buscando}>

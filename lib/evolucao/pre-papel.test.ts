@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { asaRomana, camposDoPapel, chaveDoCampo } from "./pre-papel.ts";
+import { asaRomana, camposDoPapel, chaveDoCampo, sexoAbreviado } from "./pre-papel.ts";
 import { cabecalhoInicial } from "./importar.ts";
 
 const ANTIGA = {
@@ -100,4 +100,13 @@ test("Papel — a célula do aparelho respiratório gravada sozinha pela regra a
   // Escrita à mão, fica como está.
   const editada = camposDoPapel({ via_aerea: via, [chaveDoCampo("ap_respiratorio")]: "Asma controlada" });
   assert.equal(editada.ap_respiratorio, "Asma controlada");
+});
+
+test("sexo abreviado como no papel", () => {
+  assert.equal(sexoAbreviado("Feminino"), "FEM");
+  assert.equal(sexoAbreviado("Masculino"), "MASC");
+  assert.equal(sexoAbreviado("masculino"), "MASC");
+  assert.equal(sexoAbreviado("Outro"), "Outro");
+  assert.equal(sexoAbreviado("Não informado"), "");
+  assert.equal(sexoAbreviado(null), "");
 });

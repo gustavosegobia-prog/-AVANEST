@@ -122,6 +122,14 @@ export function asaRomana(v: unknown): string {
   return Number.isInteger(n) && n >= 1 && n <= 6 ? romanos[n - 1] : "";
 }
 
+/** O sexo como cabe na célula do papel: FEM, MASC; "Não informado" fica em branco. */
+export function sexoAbreviado(v: unknown): string {
+  const s = texto(v);
+  if (/^f(em|eminino)?\.?$/i.test(s)) return "FEM";
+  if (/^m(asc|asculino)?\.?$/i.test(s)) return "MASC";
+  return /^n[ãa]o informado$/i.test(s) ? "" : s;
+}
+
 /**
  * A chave em que cada célula do papel grava no cabeçalho. Sempre uma chave
  * própria: editar a célula nunca mexe no texto antigo agrupado, e a leitura
