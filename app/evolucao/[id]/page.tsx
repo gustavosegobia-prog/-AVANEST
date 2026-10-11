@@ -24,7 +24,7 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
     .maybeSingle();
   if (!folha) notFound();
 
-  const [{ data: paciente }, { data: registros }, { data: regras }, { data: equipe }] = await Promise.all([
+  const [{ data: paciente }, { data: registros }, { data: regras }, { data: equipe }, { data: instituicao }] = await Promise.all([
     supabase.from("pacientes")
       .select("id, nome, data_nascimento, idade_anos, sexo, convenio, hospital, cirurgia, procedimento")
       .eq("id", folha.patient_id).maybeSingle(),
@@ -33,6 +33,7 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
     supabase.from("regras_de_dose").select("*").eq("aprovada", true),
     supabase.from("perfis").select("id, nome, crm, role, permissoes, status")
       .eq("institution_id", folha.institution_id).eq("status", "ativo").order("nome"),
+    supabase.from("instituicoes").select("nome").eq("id", folha.institution_id).maybeSingle(),
   ]);
   if (!paciente) notFound();
 
@@ -48,6 +49,7 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
       regras={(regras ?? []) as RegraDeDose[]}
       medicos={medicos}
       eu={{ id: perfil.id, nome: perfil.nome, crm: perfil.crm ?? "" }}
+      instituicao={instituicao?.nome ?? ""}
     />
   );
 }

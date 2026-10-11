@@ -11,6 +11,7 @@
 // suposição.
 
 import { lerDecimal } from "../numero-clinico.ts";
+import { CAMPOS_DO_PAPEL, camposDoPapel, chaveDoCampo } from "./pre-papel.ts";
 
 type Dados = Record<string, unknown>;
 const texto = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "");
@@ -78,7 +79,7 @@ const EXAMES: Array<[string, string, string]> = [
 
 export function cabecalhoInicial(
   paciente: PacienteDaFolha, avaliacao: { id: string; dados: Dados | null } | null, agora: Date,
-): CabecalhoDaFolha {
+): CabecalhoDaFolha & Record<string, unknown> {
   const d: Dados = avaliacao?.dados ?? {};
   const peso = lerDecimal(d.peso);
   const altura = lerDecimal(d.altura);
@@ -114,7 +115,7 @@ export function cabecalhoInicial(
     sim(d.cirurgias_anteriores) && juntar([texto(d.cirurgias_anteriores_cirurgia), texto(d.cirurgias_anteriores_anestesia)], " — "),
     sim(d.reacao_anestesica) && `Reação: ${texto(d.reacao_anestesica_detalhes) || "sim"}`,
   ]);
-  return {
+  const cabecalho: CabecalhoDaFolha = {
     data_procedimento: texto(d.data_cirurgia) || agora.toISOString().slice(0, 10),
     hospital: texto(paciente.hospital),
     sala: "",
@@ -138,5 +139,12 @@ export function cabecalhoInicial(
     anestesia_anterior: anterior,
     observacoes_pre: "",
     preanestesica_origem: avaliacao ? { avaliacao_id: avaliacao.id, importado_em: agora.toISOString() } : null,
+  };
+  // As células da ficha de papel (PA, pulso, Hb, aparelhos…) já separadas,
+  // pela mesma regra que lê as folhas antigas.
+  const papel = camposDoPapel(cabecalho);
+  return {
+    ...cabecalho,
+    ...Object.fromEntries(CAMPOS_DO_PAPEL.map((c) => [chaveDoCampo(c), papel[c]])),
   };
 }

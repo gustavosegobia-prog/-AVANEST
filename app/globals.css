@@ -7123,3 +7123,65 @@ button.evoMedItem:disabled{cursor:default}
 .evoObservacoes textarea{min-height:52px;padding:6px 8px;border:1px solid var(--cor-borda-forte);border-radius:6px;font:inherit;
   font-size:14.5px;resize:vertical}
 @media(max-width:980px){.evoRBase{grid-template-columns:minmax(0,1fr)}.evoRMedico{border-left:0;border-top:1px solid var(--cor-borda-forte)}}
+
+/* ── Topo da ficha e pré-anestésica no desenho exato do papel ───────────────── */
+.evoCabecalhoPapel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr);overflow:hidden}
+.evoCabInst{display:flex;align-items:center;padding:8px 12px;font-size:14px;font-weight:800}
+.evoCabecalhoPapel h2{display:flex;align-items:center;justify-content:center;margin:0;padding:8px;background:#5f6670;color:#fff;
+  font-size:20px;font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+.evoCabResp{display:flex;align-items:center;justify-content:center;padding:8px;border-left:2px solid #fff;background:#5f6670;
+  color:#fff;font-size:13px;font-weight:800;text-align:center;text-transform:uppercase}
+.evoPacientePapel{display:grid;grid-template-columns:minmax(0,1fr) 150px 150px;margin-top:6px}
+.evoPacientePapel span{padding:5px 10px;border-left:1px solid var(--cor-borda-forte);font-size:15px;font-weight:800}
+.evoPacientePapel span.nome{border-left:0}
+.evoPacientePapel small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.evoPre.evoPapel{margin-top:6px;border-radius:4px}
+.evoPrePapel{display:grid;grid-template-columns:24px minmax(0,1fr);border-top:1px solid var(--cor-borda-forte)}
+.evoPrePapel>.evoPreOrigem{grid-column:1/-1}
+.evoPreTiraV{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--cor-borda-forte);
+  writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--cor-tinta-fraca)}
+.evoPreGradePapel{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) minmax(0,1.7fr)}
+.evoCel{display:flex;flex-direction:column;min-width:0;padding:3px 8px 4px;border-right:1px solid var(--cor-borda);
+  border-bottom:1px solid var(--cor-borda)}
+.evoCel>small{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+.evoCel>small b{letter-spacing:0;text-transform:none;color:var(--cor-tinta)}
+.evoCel input,.evoCel textarea{width:100%;min-height:28px;padding:0 2px;border:0;border-radius:3px;background:transparent;
+  font:inherit;font-size:14.5px;font-weight:600;color:var(--cor-tinta);resize:none;field-sizing:content}
+.evoCel input:focus,.evoCel textarea:focus{outline:none;background:var(--cor-marca-suave)}
+.evoCel input:disabled,.evoCel textarea:disabled{color:var(--cor-tinta);-webkit-text-fill-color:var(--cor-tinta)}
+.evoCel>span{display:flex;align-items:center;min-height:28px;font-size:14.5px;font-weight:600}
+.evoCel.direita{grid-column:6;border-right:0;background:color-mix(in srgb,var(--cor-superficie-suave) 60%,transparent)}
+.evoCel.cinco{grid-column:1/span 5}
+.evoCel.tres{grid-column:span 3}
+.evoCelAsa>div{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.evoCel.alerta textarea{color:var(--cor-perigo-forte);-webkit-text-fill-color:var(--cor-perigo-forte);font-weight:800}
+.evoCel .evoOp{align-self:flex-start;min-height:30px;font-size:13px}
+.evoPreOrigem{margin:0;padding:5px 10px;font-size:12.5px;color:var(--cor-tinta-fraca)}
+@media(max-width:980px){
+  .evoPreGradePapel{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .evoCel.direita,.evoCel.cinco,.evoCel.tres{grid-column:1/-1}
+  .evoCabecalhoPapel{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .evoCabInst{grid-column:1/-1}
+}
+@media(max-width:640px){
+  .evoPreGradePapel{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .evoPacientePapel{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .evoPacientePapel span.nome{grid-column:1/-1;border-bottom:1px solid var(--cor-borda-forte)}
+  .evoPacientePapel span:nth-child(2){border-left:0}
+}
+/* Impressão: a mesma grade do papel */
+.imprPreGrade.papel{grid-template-columns:repeat(5,minmax(0,1fr)) minmax(0,1.6fr)}
+.imprPreGrade.papel span{min-height:5.6mm}
+.imprPreGrade.papel .direita{grid-column:6;border-right:0}
+.imprPreGrade.papel .cinco{grid-column:1/span 5}
+.imprPreGrade.papel .tres{grid-column:span 3}
+/* Registro e medicação com a moldura do papel, colados como na ficha. */
+.evoFolha .evoCorpo{margin-top:6px;gap:6px}
+.evoFolha .evoCentro,.evoFolha .evoDireita>.evoPainel{border:1.5px solid var(--cor-tinta-forte);border-radius:4px;
+  background:var(--cor-superficie)}
+.evoFolha .evoDireita{border-radius:4px}
+.evoFolha .evoRodape{margin-top:6px}
+.evoPreTopo{min-height:40px;padding:4px 10px 4px 14px}
+.evoPreTopo h2{font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
+@media(max-width:640px){.evoPreTiraV{display:none}.evoPrePapel{grid-template-columns:minmax(0,1fr)}}

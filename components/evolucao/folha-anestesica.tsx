@@ -19,7 +19,7 @@ import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/inf
 import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evolucao/liquidos";
 import { EVENTOS, conferirEncerramento, horarioDoMarco, imcDaFolha, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
-import { marcasDeEvento } from "@/lib/evolucao/impressao";
+import { dataDoDia, marcasDeEvento } from "@/lib/evolucao/impressao";
 import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
 import type { PacienteDaFolha } from "@/lib/evolucao/importar";
 import { useFolha, type Folha } from "./use-folha";
@@ -28,7 +28,8 @@ import { JanelaLancar, JanelaMover, JanelaPonto, JanelaSinal, MODOS, Historico, 
 import { JanelaMedicamento } from "./janela-medicamento";
 import { numero } from "./campos";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
-import { PreAnestesicaResumo, SecaoPreAnestesica } from "./secoes";
+import { PreAnestesicaPapel } from "./secoes";
+import { camposDoPapel } from "@/lib/evolucao/pre-papel";
 import { RodapeDaFolha } from "./rodape-da-folha";
 
 // A folha de anestesia digital.
@@ -64,8 +65,10 @@ const minutoAtual = () => new Date(Math.round(Date.now() / 60000) * 60000).toISO
 const agoraMs = () => Date.now();
 const fmt = (v: number, casas = 2) => v.toLocaleString("pt-BR", { maximumFractionDigits: casas });
 
-export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, regras, medicos, eu }: {
+export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, regras, medicos, eu, instituicao = "" }: {
   folhaInicial: Folha;
+  /** O nome do serviço, como sai no alto da folha impressa. */
+  instituicao?: string;
   paciente: PacienteDaFolha & { id: string };
   registrosIniciais: Registro[];
   regras: RegraDeDose[];
@@ -91,7 +94,6 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [preAberta, setPreAberta] = useState(true);
   const [linhaAberta, setLinhaAberta] = useState<string | null>(null);
-  const [editandoPre, setEditandoPre] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- relógio e aparelho só existem depois de montar
@@ -270,6 +272,8 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   const pendenciasEncerrar = abrir?.tipo === "encerrar" ? conferirEncerramento(dados, atuais, folha.intervalo_minutos) : [];
   const idade = paciente.idade_anos ?? (idadeDias !== null ? Math.floor(idadeDias / 365.25) : null);
   const temAlergia = Boolean(dados.alergias) && dados.nega_alergia !== true;
+  const papel = camposDoPapel(dados);
+  const responsavelNome = ((dados.equipe as Profissional[] | undefined) ?? []).find((x) => x.funcao === "responsavel")?.nome ?? "";
 
   return (
     <main className="evoFolha">
@@ -314,7 +318,19 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
         </div>
       )}
 
-      <section className="evoPre" aria-labelledby="evo-pre-titulo">
+      {/* O topo da ficha de papel: instituição, título e o anestesiologista; depois o paciente */}
+      <div className="evoPapel evoCabecalhoPapel">
+        <div className="evoCabInst">{instituicao || String(dados.hospital ?? "") || "Serviço de anestesiologia"}</div>
+        <h2>Folha de anestesia</h2>
+        <div className="evoCabResp">{responsavelNome || "—"}</div>
+      </div>
+      <div className="evoPapel evoPacientePapel">
+        <span className="nome"><small>Nome do paciente</small>{paciente.nome}</span>
+        <span><small>Idade</small>{idade !== null ? `${idade} anos` : "—"}</span>
+        <span><small>Data</small>{dataDoDia(String(dados.data_procedimento ?? "")) || "—"}</span>
+      </div>
+
+      <section className="evoPapel evoPre" aria-labelledby="evo-pre-titulo">
         <header className="evoPreTopo">
           <h2 id="evo-pre-titulo">Avaliação pré-anestésica</h2>
           {!preAberta && (
@@ -322,24 +338,14 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
               {temAlergia
                 ? <span className="evoPreAlergia">Alergias: {String(dados.alergias)}</span>
                 : <span>{dados.nega_alergia ? "Nega alergias" : "Alergias não informadas"}</span>}
-              <span>{[imc !== null && `IMC ${fmt(imc, 1)}`, dados.via_aerea && `Via aérea: ${String(dados.via_aerea).slice(0, 60)}`,
-                dados.jejum && `Jejum: ${dados.jejum}`].filter(Boolean).join(" · ")}</span>
+              <span>{[imc !== null && `IMC ${fmt(imc, 1)}`, papel.ap_respiratorio, papel.ap_digestivo].filter(Boolean).join(" · ")}</span>
             </p>
           )}
-          <div className="evoAcoesLinha">
-            {aberta && (
-              <button type="button" className="evoBotao pequeno secundario" aria-expanded={editandoPre}
-                onClick={() => { setEditandoPre((v) => !v); if (!preAberta) mudarPreAberta(true); }}>
-                {editandoPre ? "Concluir edição" : "Editar"}
-              </button>
-            )}
-            <button type="button" className="evoBotao pequeno fantasma" aria-expanded={preAberta}
-              onClick={() => mudarPreAberta(!preAberta)}>{preAberta ? "Recolher" : "Mostrar"}</button>
-          </div>
+          <button type="button" className="evoBotao pequeno fantasma" aria-expanded={preAberta}
+            onClick={() => mudarPreAberta(!preAberta)}>{preAberta ? "Recolher" : "Mostrar"}</button>
         </header>
-        {preAberta && <PreAnestesicaResumo dados={dados} sexo={paciente.sexo} />}
-        {editandoPre && aberta && (
-          <SecaoPreAnestesica dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} idadeAnos={idade} />
+        {preAberta && (
+          <PreAnestesicaPapel dados={dados} sexo={paciente.sexo} onMudar={f.mudarCabecalho} leitura={!aberta} idadeAnos={idade} />
         )}
       </section>
 
