@@ -86,17 +86,17 @@ export function FolhaImpressa(p: DadosDaImpressao) {
     <>
       <header className="imprTopo">
         <div className="imprInstituicao">{p.instituicao || t(d.hospital) || "Serviço de anestesiologia"}</div>
-        <h1>FOLHA DE ANESTESIA</h1>
+        <h1>FICHA ANESTÉSICA</h1>
         <div className="imprResponsavel">{responsavel?.nome.toUpperCase() ?? ""}</div>
       </header>
       {aberta && (
-        <p className="imprRascunho">Folha ABERTA — rascunho sujeito a alteração. Impresso em {dataHora(agora)}.</p>
+        <p className="imprRascunho">Ficha ABERTA — rascunho sujeito a alteração. Impresso em {dataHora(agora)}.</p>
       )}
       <div className="imprPaciente">
         <span className="largo"><small>Nome do paciente</small>{paciente.nome}</span>
         <span><small>Idade</small>{idade}</span>
         <span><small>Data</small>{dataDoDia(t(d.data_procedimento))}</span>
-        {n > 0 && <span><small>Continuação</small>folha {n + 1}</span>}
+        {n > 0 && <span><small>Continuação</small>página {n + 1}</span>}
       </div>
     </>
   );
@@ -108,9 +108,9 @@ export function FolhaImpressa(p: DadosDaImpressao) {
         Gerado pelo AVANEST a partir dos registros da folha · impresso em {dataHora(agora)} por {p.impressoPor}
         {folha.status === "encerrada" && folha.encerrada_em
           ? ` · versão ${folha.versao}, encerrada em ${dataHora(folha.encerrada_em)}${p.encerradaPor ? ` por ${p.encerradaPor}` : ""}`
-          : " · folha aberta"}
+          : " · ficha aberta"}
       </span>
-      <span>Folha {n + 1} de {janelas.length}</span>
+      <span>Página {n + 1} de {janelas.length}</span>
     </div>
   );
 

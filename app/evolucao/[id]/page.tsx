@@ -6,7 +6,7 @@ import type { Registro } from "@/lib/evolucao/registros";
 import type { RegraDeDose } from "@/lib/evolucao/doses";
 
 export const metadata: Metadata = {
-  title: "Folha de anestesia | AVANEST",
+  title: "Ficha anestésica | AVANEST",
   robots: { index: false, follow: false },
 };
 

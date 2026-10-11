@@ -53,8 +53,8 @@ export const esperaMs = (tentativas: number) => Math.min(30000, 1000 * 2 ** Math
 export function motivoLegivel(mensagem: string): string {
   const m = mensagem.match(/REGISTRO_INVALIDO:\s*(.+)/);
   if (m) return m[1].trim();
-  if (mensagem.includes("FOLHA_ENCERRADA")) return "A folha foi encerrada; reabra para corrigir.";
-  if (/row-level security|42501/.test(mensagem)) return "Sem permissão para registrar nesta folha.";
+  if (mensagem.includes("FOLHA_ENCERRADA")) return "A ficha foi encerrada; reabra para corrigir.";
+  if (/row-level security|42501/.test(mensagem)) return "Sem permissão para registrar nesta ficha.";
   return mensagem;
 }
 
@@ -89,10 +89,10 @@ export function gravarFila(evolucaoId: string, fila: readonly Pendente[]) {
 export function motivoAoAbrirFolha(erro: { code?: string; message?: string; details?: string } | null): string {
   const texto = `${erro?.code ?? ""} ${erro?.message ?? ""} ${erro?.details ?? ""}`;
   if (/PGRST205|42P01|does not exist|Could not find the table/i.test(texto)) {
-    return "O banco da evolução anestésica ainda não está instalado: falta rodar a migração no Supabase.";
+    return "O banco da ficha anestésica ainda não está instalado: falta rodar a migração no Supabase.";
   }
-  if (/row-level security|42501/.test(texto)) return "Sem permissão para abrir folha neste serviço.";
+  if (/row-level security|42501/.test(texto)) return "Sem permissão para abrir ficha neste serviço.";
   if (texto.includes("PACIENTE_DE_OUTRA_INSTITUICAO")) return "Este paciente é de outro serviço.";
   if (texto.includes("AVALIACAO_NAO_CONFERE")) return "A avaliação pré-anestésica não confere com este paciente.";
-  return "Não foi possível abrir a folha. Confira a conexão e tente de novo.";
+  return "Não foi possível abrir a ficha. Confira a conexão e tente de novo.";
 }

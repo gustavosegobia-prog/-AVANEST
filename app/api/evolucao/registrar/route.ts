@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   if (tipo === "medicamento" && !anulado && dados.status === "administrado") {
     const { data: folha } = await supabase
       .from("evolucoes_anestesicas").select("id,dados,patient_id").eq("id", evolucaoId).maybeSingle();
-    if (!folha) return NextResponse.json({ error: "Folha não encontrada." }, { status: 404 });
+    if (!folha) return NextResponse.json({ error: "Ficha não encontrada." }, { status: 404 });
     const [{ data: paciente }, { data: regras }, { data: linhas }] = await Promise.all([
       supabase.from("pacientes").select("data_nascimento").eq("id", folha.patient_id).maybeSingle(),
       supabase.from("regras_de_dose").select("*").eq("aprovada", true),
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     if (existente) return NextResponse.json({ registro: existente });
   }
   if (resultado === "conflito") {
-    return NextResponse.json({ error: "Outra pessoa corrigiu este registro antes. A folha foi atualizada.", conflito: true },
+    return NextResponse.json({ error: "Outra pessoa corrigiu este registro antes. A ficha foi atualizada.", conflito: true },
       { status: 409 });
   }
   if (resultado === "recusado") {

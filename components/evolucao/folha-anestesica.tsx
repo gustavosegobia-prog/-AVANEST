@@ -278,7 +278,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   return (
     <main className="evoFolha">
       <header className="evoTopo">
-        <Link href="/evolucao" className="evoVoltar" aria-label="Voltar às folhas">←</Link>
+        <Link href="/evolucao" className="evoVoltar" aria-label="Voltar às fichas">←</Link>
         <div className="evoPaciente">
           <h1>{paciente.nome}</h1>
           <p>
@@ -313,7 +313,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       )}
       {f.cabecalhoSalvo === "conflito" && (
         <div className="evoFaixa atencao" role="alert">
-          <span>Outra pessoa alterou o cabeçalho desta folha. Recarregue para ver a versão atual antes de continuar.</span>
+          <span>Outra pessoa alterou o cabeçalho desta ficha. Recarregue para ver a versão atual antes de continuar.</span>
           <button type="button" className="evoBotao fantasma" onClick={() => void f.recarregarTudo()}>Recarregar</button>
         </div>
       )}
@@ -321,7 +321,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       {/* O topo da ficha de papel: instituição, título e o anestesiologista; depois o paciente */}
       <div className="evoPapel evoCabecalhoPapel">
         <div className="evoCabInst">{instituicao || String(dados.hospital ?? "") || "Serviço de anestesiologia"}</div>
-        <h2>Folha de anestesia</h2>
+        <h2>Ficha anestésica</h2>
         <div className="evoCabResp">{responsavelNome || "—"}</div>
       </div>
       <div className="evoPapel evoPacientePapel">
@@ -741,7 +741,7 @@ function LinhaDose({ a, registro, cabecalho, pendente, onAbrir }: {
       {alerta?.nivel && ["amarelo", "vermelho"].includes(alerta.nivel) && (
         <i className={`evoAlertaPonto ${alerta.nivel}`} title="Dose registrada com alerta e justificativa" />
       )}
-      {alergia && <em className="evoAlergiaTag" title="Coincide com alergia registrada na folha">Alergia</em>}
+      {alergia && <em className="evoAlergiaTag" title="Coincide com alergia registrada na ficha">Alergia</em>}
     </button>
   );
 }

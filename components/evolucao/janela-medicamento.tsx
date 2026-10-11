@@ -265,7 +265,7 @@ export function JanelaMedicamento({
             <header>
               <b>{conferencia ? NIVEL[conferencia.nivel] : "Informe a dose"}</b>
               {porKg !== null && <span>{porKg.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}/kg</span>}
-              {pesoKg === null && <span>Sem peso na folha</span>}
+              {pesoKg === null && <span>Sem peso na ficha</span>}
             </header>
             {conferencia?.motivos.map((m) => <p key={m}>{m}</p>)}
             {doseN !== null && acumuladoAntes > 0 && (

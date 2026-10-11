@@ -943,7 +943,7 @@ export function DashboardClient({
                   <Icone nome="calculadora"/> Cálculos extras
                 </Link>
                 <Link role="menuitem" href="/evolucao" onClick={()=>setUserMenu(false)}>
-                  <Icone nome="grafico"/> Evolução anestésica
+                  <Icone nome="grafico"/> Ficha anestésica
                 </Link>
                 <hr/>
               </>}

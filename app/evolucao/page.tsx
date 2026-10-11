@@ -1,67 +1,46 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { exigirAcessoAEvolucao } from "@/lib/evolucao/acesso";
-import { NovaFolha } from "./nova-folha";
+import { InicioDasFolhas, type FolhaResumo } from "./inicio-das-folhas";
 
 export const metadata: Metadata = {
-  title: "Evolução anestésica | AVANEST",
+  title: "Ficha anestésica | AVANEST",
   robots: { index: false, follow: false },
 };
 
-export default async function EvolucoesPage() {
+// Só o que a lista mostra: o cabeçalho inteiro da ficha fica no banco.
+const CAMPOS = "id, versao, inicio_em, encerrada_em, procedimento:dados->>procedimento, sala:dados->>sala, pacientes(nome)";
+
+type Linha = {
+  id: string; versao: number; inicio_em: string; encerrada_em: string | null;
+  procedimento: string | null; sala: string | null;
+  pacientes: { nome?: string } | Array<{ nome?: string }> | null;
+};
+
+const resumo = (l: Linha): FolhaResumo => {
+  const p = Array.isArray(l.pacientes) ? l.pacientes[0] : l.pacientes;
+  return {
+    id: l.id, versao: l.versao, inicio_em: l.inicio_em, encerrada_em: l.encerrada_em,
+    paciente: p?.nome || "Paciente", procedimento: l.procedimento?.trim() ?? "", sala: l.sala?.trim() ?? "",
+  };
+};
+
+const agoraMs = () => Date.now();
+
+export default async function FichasPage() {
   const { supabase, perfil } = await exigirAcessoAEvolucao();
-  const { data: folhas, error } = await supabase
-    .from("evolucoes_anestesicas")
-    .select("id, status, versao, created_at, dados, pacientes(nome)")
-    .order("created_at", { ascending: false })
-    .limit(40);
+  const tabela = () => supabase.from("evolucoes_anestesicas").select(CAMPOS);
+  const [abertas, encerradas] = await Promise.all([
+    tabela().eq("status", "aberta").order("inicio_em", { ascending: false }).limit(30),
+    tabela().eq("status", "encerrada").order("encerrada_em", { ascending: false, nullsFirst: false }).limit(20),
+  ]);
 
   return (
-    <main className="evoInicio">
-      <header className="evoInicioTopo">
-        <Link href="/dashboard" className="evoVoltar">← Painel</Link>
-        <div>
-          <h1>Evolução anestésica</h1>
-          <p>Em teste: visível só para o super-admin até ser liberada para todos.</p>
-        </div>
-      </header>
-
-      <NovaFolha institutionId={perfil.institution_id as string} />
-
-      <section className="evoInicioFolhas" aria-labelledby="evo-recentes">
-        <h2 id="evo-recentes">Folhas recentes</h2>
-        {error ? (
-          <p className="evoFaixa atencao">
-            O banco da evolução anestésica ainda não está instalado. Rode a migração
-            <code> 202610100004_evolucao_anestesica.sql</code> no Supabase.
-          </p>
-        ) : !folhas?.length ? (
-          <p className="evoVazio">Nenhuma folha ainda. Busque o paciente acima para abrir a primeira.</p>
-        ) : (
-          <ul>
-            {folhas.map((f) => {
-              const paciente = (Array.isArray(f.pacientes) ? f.pacientes[0] : f.pacientes) as { nome?: string } | null;
-              const dados = (f.dados ?? {}) as Record<string, unknown>;
-              return (
-                <li key={f.id}>
-                  <Link href={`/evolucao/${f.id}`}>
-                    <strong>{paciente?.nome ?? "Paciente"}</strong>
-                    <span>{String(dados.procedimento || "Procedimento não informado")}</span>
-                    <span className="evoInicioData">
-                      {new Date(f.created_at).toLocaleString("pt-BR", {
-                        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
-                      })}
-                    </span>
-                    <span className={`evoSituacao ${f.status}`}>
-                      {f.status === "aberta" ? "Aberta" : `Encerrada · v${f.versao}`}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </main>
+    <InicioDasFolhas
+      institutionId={perfil.institution_id as string}
+      abertas={((abertas.data ?? []) as unknown as Linha[]).map(resumo)}
+      encerradas={((encerradas.data ?? []) as unknown as Linha[]).map(resumo)}
+      semBanco={Boolean(abertas.error)}
+      agora={agoraMs()}
+    />
   );
 }

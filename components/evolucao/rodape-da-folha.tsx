@@ -302,7 +302,7 @@ export function RodapeDaFolha({ dados, onMudar, leitura, marcos, medicos }: {
               )}
             </div>
           )}
-          <small className="evoRAssinar">Assinatura à mão na folha impressa</small>
+          <small className="evoRAssinar">Assinatura à mão na ficha impressa</small>
         </div>
       </div>
     </section>

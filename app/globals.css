@@ -7185,3 +7185,98 @@ button.evoMedItem:disabled{cursor:default}
 .evoPreTopo{min-height:40px;padding:4px 10px 4px 14px}
 .evoPreTopo h2{font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
 @media(max-width:640px){.evoPreTiraV{display:none}.evoPrePapel{grid-template-columns:minmax(0,1fr)}}
+
+/* ══ Ficha anestésica: a entrada ═══════════════════════════════════════════
+   Três trabalhos, nesta ordem: abrir a ficha do próximo paciente, voltar à
+   que está em andamento, achar a encerrada para conferir ou imprimir. Tudo
+   em listas de uma superfície só, linha inteira tocável. */
+.evoInicio.fcFundo{max-width:none;margin:0;padding:0}
+.fcPagina{max-width:880px;margin:0 auto;padding:8px 20px 96px}
+.fcTopo{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px}
+.fcVoltar{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px 0 8px;margin-left:-8px;
+  border-radius:10px;color:var(--cor-tinta);font-weight:650;font-size:15px;text-decoration:none}
+.fcVoltar:hover{background:var(--cor-superficie-suave)}
+.fcTeste{padding:4px 10px;border-radius:999px;background:var(--cor-atencao-suave);color:var(--cor-atencao);
+  font-size:12.5px;font-weight:650;white-space:nowrap}
+.fcTitulo{margin:14px 0 22px}
+.fcTitulo h1{margin:0;font-size:clamp(28px,3.6vw,36px);line-height:1.1;font-weight:750;letter-spacing:-.025em;color:var(--cor-tinta-forte)}
+.fcTitulo p{margin:8px 0 0;max-width:60ch;font-size:15.5px;line-height:1.45;color:var(--cor-tinta-fraca)}
+
+/* Abrir: a busca é o maior alvo da página. */
+.fcAbrir{padding:20px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:16px}
+.fcAbrir h2,.fcSecao h2{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:16px;font-weight:700;color:var(--cor-tinta-forte)}
+.fcBusca{position:relative;display:flex;align-items:center}
+.fcBusca svg{position:absolute;left:16px;color:var(--cor-tinta-fraca);pointer-events:none}
+.fcBusca input{width:100%;min-height:60px;padding:0 16px 0 52px;border:1.5px solid var(--cor-borda-forte);border-radius:12px;
+  background:var(--cor-fundo);color:var(--cor-tinta-forte);font:inherit;font-size:19px;
+  transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.fcBusca input::placeholder{color:var(--cor-tinta-fraca);opacity:1}
+.fcBusca input:focus{outline:none;border-color:var(--cor-marca);background:var(--cor-superficie);
+  box-shadow:0 0 0 4px var(--cor-marca-suave)}
+.fcSituacao{margin:8px 2px 0;font-size:13.5px;color:var(--cor-tinta-fraca)}
+.fcSituacao.falhou,.fcErro{color:var(--cor-perigo-forte)}
+.fcErro{margin:8px 2px 0;font-size:14px;font-weight:600}
+.fcAchados{list-style:none;margin:14px -20px -20px;padding:0;border-top:1px solid var(--cor-borda);
+  border-radius:0 0 16px 16px;overflow:hidden;transition:opacity .15s ease}
+.fcAchados.velho{opacity:.55}
+.fcAchados li+li{border-top:1px solid var(--cor-borda)}
+.fcAchado{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"quem ir" "pre ir";gap:4px 16px;
+  width:100%;min-height:64px;padding:14px 20px;border:0;background:none;color:inherit;text-align:left;
+  text-decoration:none;cursor:pointer;transition:background .12s ease}
+.fcAchado:hover{background:var(--cor-marca-suave)}
+.fcAchado:disabled{cursor:progress}
+.fcAchado .fcQuem{grid-area:quem;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
+.fcPre{grid-area:pre;display:flex;align-items:center;gap:6px;font-size:13.5px;line-height:1.35;color:var(--cor-sucesso)}
+.fcPre svg{flex:none}
+.fcPre.vazia{color:var(--cor-atencao)}
+
+/* Peças comuns das linhas */
+.fcQuem{min-width:0}
+.fcQuem strong{font-size:16.5px;font-weight:700;color:var(--cor-tinta-forte);overflow-wrap:anywhere}
+.fcQuem>span{font-size:13.5px;line-height:1.4;color:var(--cor-tinta-fraca)}
+.fcIr{grid-area:ir;align-self:center;display:inline-flex;align-items:center;gap:6px;font-size:14.5px;font-weight:700;
+  color:var(--cor-marca-forte);white-space:nowrap}
+.fcSetaDireita{transform:rotate(-90deg)}
+.fcJaAberta{padding:3px 8px;margin-right:4px;border-radius:999px;background:var(--cor-sucesso-suave);color:var(--cor-sucesso);
+  font-size:12px;font-weight:700}
+
+/* Em andamento e encerradas */
+.fcSecao{margin-top:28px}
+.fcSecao h2{margin-left:2px}
+.fcConta{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;
+  background:var(--cor-marca);color:var(--cor-marca-contraste);font-size:12.5px;font-weight:750}
+.fcLista{list-style:none;margin:0;padding:0;background:var(--cor-superficie);border:1px solid var(--cor-borda);
+  border-radius:14px;overflow:hidden}
+.fcLista>li+li{border-top:1px solid var(--cor-borda)}
+.fcLinha{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"quem tempo ir";align-items:center;
+  gap:6px 20px;min-height:68px;padding:12px 18px;color:inherit;text-decoration:none;transition:background .12s ease}
+.fcLinha:hover{background:var(--cor-superficie-suave)}
+.fcLinha .fcQuem{grid-area:quem;display:grid;gap:2px}
+.fcTempo{grid-area:tempo;display:inline-flex;align-items:center;gap:8px;font-size:20px;font-weight:700;
+  color:var(--cor-tinta-forte);white-space:nowrap}
+.fcTempo::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cor-sucesso)}
+.fcQuando{grid-area:tempo;font-size:14px;color:var(--cor-tinta-fraca);white-space:nowrap}
+.fcEncerrada{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.fcEncerrada .fcLinha{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"quem tempo"}
+.fcImprimir{display:inline-flex;align-items:center;gap:6px;min-width:52px;padding:0 18px;
+  border-left:1px solid var(--cor-borda);color:var(--cor-marca-forte);font-size:14px;font-weight:650;text-decoration:none;
+  transition:background .12s ease}
+.fcImprimir:hover{background:var(--cor-superficie-suave)}
+.fcVazio{margin:0;padding:18px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:14px;
+  font-size:14.5px;color:var(--cor-tinta-fraca)}
+
+@media(max-width:640px){
+  .fcPagina{padding:4px 16px 80px}
+  .fcTitulo{margin:8px 0 18px}
+  .fcTitulo p{font-size:14.5px}
+  .fcAbrir{padding:16px}
+  .fcAchados{margin:12px -16px -16px}
+  .fcAchado{grid-template-columns:minmax(0,1fr);grid-template-areas:"quem" "pre" "ir";padding:14px 16px}
+  .fcAchado .fcIr{margin-top:4px}
+  .fcLinha{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"quem quem" "tempo ir";padding:12px 16px}
+  .fcTempo{font-size:17px}
+  .fcEncerrada .fcLinha{grid-template-columns:minmax(0,1fr);grid-template-areas:"quem" "tempo"}
+  .fcImprimir{padding:0 14px}
+  .fcImprimir span{display:none}
+}
+@media(prefers-reduced-motion:reduce){.fcBusca input,.fcAchados,.fcAchado,.fcLinha,.fcImprimir{transition:none}}

@@ -7,7 +7,7 @@ import { FolhaImpressa } from "@/components/evolucao/folha-impressa";
 import { BotaoImprimir } from "@/components/botao-imprimir";
 
 export const metadata: Metadata = {
-  title: "Imprimir folha de anestesia | AVANEST",
+  title: "Imprimir ficha anestésica | AVANEST",
   robots: { index: false, follow: false },
 };
 
@@ -41,10 +41,10 @@ export default async function ImprimirFolhaPage({ params }: { params: Promise<{ 
   return (
     <main className="imprPagina">
       <div className="imprBarra">
-        <Link href={`/evolucao/${id}`} className="evoBotao fantasma">← Voltar à folha</Link>
+        <Link href={`/evolucao/${id}`} className="evoBotao fantasma">← Voltar à ficha</Link>
         <p>
           A4 retrato. Sai o que está salvo no servidor: lançamento ainda pendente na tela não entra.
-          {folha.status === "aberta" && " A folha está aberta — a impressão sai marcada como rascunho."}
+          {folha.status === "aberta" && " A ficha está aberta — a impressão sai marcada como rascunho."}
         </p>
         <BotaoImprimir rotulo="Imprimir ou salvar PDF" className="evoBotao" />
       </div>

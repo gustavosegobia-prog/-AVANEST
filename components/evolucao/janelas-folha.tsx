@@ -126,7 +126,7 @@ export function JanelaInfusao({ infusao, acao, alergias, ms, nomeInicial, onConf
           </>}
         </div>
         {acao === "iniciar" && (
-          <p className="evoNota">Sem a concentração, a folha soma o volume (em mL/h) mas não a dose total.</p>
+          <p className="evoNota">Sem a concentração, a ficha soma o volume (em mL/h) mas não a dose total.</p>
         )}
       </form>
     </Janela>
@@ -289,9 +289,9 @@ export function JanelaEncerrar({ pendencias, encerrando, erro, onEncerrar, onFec
   return (
     <Janela titulo="Conferência antes de encerrar" largura="media" onFechar={onFechar}
       rodape={<>
-        <button type="button" className="evoBotao secundario" onClick={onFechar}>Voltar para a folha</button>
+        <button type="button" className="evoBotao secundario" onClick={onFechar}>Voltar para a ficha</button>
         <button type="button" className="evoBotao" disabled={bloqueiam.length > 0 || encerrando} onClick={onEncerrar}>
-          {encerrando ? "Encerrando…" : "Encerrar folha"}
+          {encerrando ? "Encerrando…" : "Encerrar ficha"}
         </button>
       </>}>
       <div className="evoForm">
@@ -307,7 +307,7 @@ export function JanelaEncerrar({ pendencias, encerrando, erro, onEncerrar, onFec
             <ul>{avisos.map((p) => <li key={p.texto}>{p.texto}</li>)}</ul>
           </section>
         )}
-        {!pendencias.length && <p className="evoNota">Tudo conferido. Ao encerrar, a folha fica guardada como versão para impressão.</p>}
+        {!pendencias.length && <p className="evoNota">Tudo conferido. Ao encerrar, a ficha fica guardada como versão para impressão.</p>}
         {bloqueiam.length === 0 && avisos.length > 0 && (
           <p className="evoNota">Os avisos não impedem o encerramento. Nada é preenchido por suposição.</p>
         )}
