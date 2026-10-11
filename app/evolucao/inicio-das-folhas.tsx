@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Icone } from "@/components/icone";
 import { Decorrido } from "./decorrido";
-import { NovaFolha } from "./nova-folha";
+import { NovaFolha, type Achado } from "./nova-folha";
 
 export type FolhaResumo = {
   id: string;
@@ -23,9 +23,11 @@ const dia = (iso: string) => DIA.format(new Date(iso));
 // que está em andamento, e achar a que já foi encerrada para conferir ou
 // imprimir.
 export function InicioDasFolhas({
-  institutionId, abertas, encerradas, semBanco, agora,
+  institutionId, abertas, encerradas, semBanco, agora, recentes = [],
 }: {
   institutionId: string;
+  /** Avaliados nos últimos dias, prontos para abrir — a lista aparece só no computador. */
+  recentes?: Achado[];
   abertas: FolhaResumo[];
   encerradas: FolhaResumo[];
   semBanco: boolean;
@@ -51,61 +53,65 @@ export function InicioDasFolhas({
             <code> 202610100004_evolucao_anestesica.sql</code> no Supabase.
           </p>
         ) : (
-          <>
-            <NovaFolha institutionId={institutionId} />
-
-            <section className="fcSecao" aria-labelledby="fc-andamento">
-              <h2 id="fc-andamento">
-                Em andamento {abertas.length > 0 && <span className="fcConta">{abertas.length}</span>}
-              </h2>
-              {abertas.length ? (
-                <ul className="fcLista">
-                  {abertas.map((f) => (
-                    <li key={f.id}>
-                      <Link href={`/evolucao/${f.id}`} className="fcLinha aberta">
-                        <span className="fcQuem">
-                          <strong>{f.paciente}</strong>
-                          <span>{[f.procedimento || "Procedimento não informado", f.sala && `Sala ${f.sala}`, `aberta às ${hora(f.inicio_em)}`]
-                            .filter(Boolean).join(" · ")}</span>
-                        </span>
-                        <span className="fcTempo">
-                          <Decorrido desde={f.inicio_em} agoraDoServidor={agora} />
-                        </span>
-                        <span className="fcIr">Continuar <Icone nome="seta" className="fcSetaDireita" /></span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="fcVazio">Nenhuma ficha aberta agora.</p>
-              )}
-            </section>
-
-            {encerradas.length > 0 && (
-              <section className="fcSecao" aria-labelledby="fc-encerradas">
-                <h2 id="fc-encerradas">Encerradas recentes</h2>
-                <ul className="fcLista">
-                  {encerradas.map((f) => (
-                    <li key={f.id} className="fcEncerrada">
-                      <Link href={`/evolucao/${f.id}`} className="fcLinha">
-                        <span className="fcQuem">
-                          <strong>{f.paciente}</strong>
-                          <span>{[f.procedimento || "Procedimento não informado", f.versao > 1 && `versão ${f.versao}`]
-                            .filter(Boolean).join(" · ")}</span>
-                        </span>
-                        <span className="fcQuando">
-                          {dia(f.inicio_em)} · {hora(f.inicio_em)}{f.encerrada_em && `–${hora(f.encerrada_em)}`}
-                        </span>
-                      </Link>
-                      <Link href={`/evolucao/${f.id}/imprimir`} className="fcImprimir" aria-label={`Imprimir a ficha de ${f.paciente}`}>
-                        <Icone nome="imprimir" tamanho={18} /> <span>Imprimir</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+          // No computador, duas colunas: abrir à esquerda, o que está em
+          // andamento e o encerrado à direita. No tablet e no celular, uma só,
+          // nesta mesma ordem.
+          <div className="fcColunas">
+            <NovaFolha institutionId={institutionId} recentes={recentes} />
+            <div className="fcLado">
+              <section className="fcSecao" aria-labelledby="fc-andamento">
+                <h2 id="fc-andamento">
+                  Em andamento {abertas.length > 0 && <span className="fcConta">{abertas.length}</span>}
+                </h2>
+                {abertas.length ? (
+                  <ul className="fcLista">
+                    {abertas.map((f) => (
+                      <li key={f.id}>
+                        <Link href={`/evolucao/${f.id}`} className="fcLinha aberta">
+                          <span className="fcQuem">
+                            <strong>{f.paciente}</strong>
+                            <span>{[f.procedimento || "Procedimento não informado", f.sala && `Sala ${f.sala}`, `aberta às ${hora(f.inicio_em)}`]
+                              .filter(Boolean).join(" · ")}</span>
+                          </span>
+                          <span className="fcTempo">
+                            <Decorrido desde={f.inicio_em} agoraDoServidor={agora} />
+                          </span>
+                          <span className="fcIr">Continuar <Icone nome="seta" className="fcSetaDireita" /></span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="fcVazio">Nenhuma ficha aberta agora.</p>
+                )}
               </section>
-            )}
-          </>
+
+              {encerradas.length > 0 && (
+                <section className="fcSecao" aria-labelledby="fc-encerradas">
+                  <h2 id="fc-encerradas">Encerradas recentes</h2>
+                  <ul className="fcLista">
+                    {encerradas.map((f) => (
+                      <li key={f.id} className="fcEncerrada">
+                        <Link href={`/evolucao/${f.id}`} className="fcLinha">
+                          <span className="fcQuem">
+                            <strong>{f.paciente}</strong>
+                            <span>{[f.procedimento || "Procedimento não informado", f.versao > 1 && `versão ${f.versao}`]
+                              .filter(Boolean).join(" · ")}</span>
+                          </span>
+                          <span className="fcQuando">
+                            {dia(f.inicio_em)} · {hora(f.inicio_em)}{f.encerrada_em && `–${hora(f.encerrada_em)}`}
+                          </span>
+                        </Link>
+                        <Link href={`/evolucao/${f.id}/imprimir`} className="fcImprimir" aria-label={`Imprimir a ficha de ${f.paciente}`}>
+                          <Icone nome="imprimir" tamanho={18} /> <span>Imprimir</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
+          </div>
         )}
       </main>
     </div>

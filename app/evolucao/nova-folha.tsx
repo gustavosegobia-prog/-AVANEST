@@ -9,7 +9,7 @@ import { cabecalhoInicial, type PacienteDaFolha } from "@/lib/evolucao/importar"
 import { motivoAoAbrirFolha } from "@/lib/evolucao/fila";
 
 type Encontrado = PacienteDaFolha & { id: string };
-type Achado = Encontrado & {
+export type Achado = Encontrado & {
   /** A avaliação que vai para o topo da ficha; nula quando não há; ausente quando não deu para saber. */
   avaliacao?: { em: string; rascunho: boolean; cirurgia: string } | null;
   /** A ficha que o paciente já tem aberta, se tiver. */
@@ -28,7 +28,11 @@ function quemE(p: Achado) {
 // pré-anestésica mais recente dele no topo. A busca já diz, antes do toque, se
 // essa avaliação existe — e se o paciente já tem ficha aberta, leva a ela em
 // vez de abrir uma segunda.
-export function NovaFolha({ institutionId }: { institutionId: string }) {
+export function NovaFolha({ institutionId, recentes = [] }: {
+  institutionId: string;
+  /** Avaliados nos últimos dias: no computador, a lista já aparece antes de digitar. */
+  recentes?: Achado[];
+}) {
   const router = useRouter();
   const [busca, setBusca] = useState("");
   const [achados, setAchados] = useState<Busca | null>(null);
@@ -118,6 +122,43 @@ export function NovaFolha({ institutionId }: { institutionId: string }) {
     else situacao = lista.length === 1 ? "1 paciente" : `${lista.length} pacientes${lista.length === 12 ? " — refine o nome se não estiver aqui" : ""}`;
   }
 
+  // Uma linha da lista: o paciente, a avaliação que vai para o topo da ficha e
+  // o toque — abrir, ou continuar a que ele já tem aberta.
+  const linha = (p: Achado) => {
+    const corpo = (
+      <>
+        <span className="fcQuem">
+          <strong>{p.nome}</strong>
+          {quemE(p) && <span>{quemE(p)}</span>}
+        </span>
+        {p.avaliacao !== undefined && (
+          <span className={`fcPre${p.avaliacao ? "" : " vazia"}`}>
+            <Icone nome={p.avaliacao ? "confirmado" : "nota"} tamanho={15} />
+            {p.avaliacao
+              ? [`Avaliação pré-anestésica${p.avaliacao.rascunho ? " (rascunho)" : ""} de ${DIA.format(new Date(p.avaliacao.em))}`,
+                p.avaliacao.cirurgia].filter(Boolean).join(" · ")
+              : "Sem avaliação pré-anestésica: a ficha começa em branco"}
+          </span>
+        )}
+      </>
+    );
+    return (
+      <li key={p.id}>
+        {p.aberta ? (
+          <Link href={`/evolucao/${p.aberta}`} className="fcAchado">
+            {corpo}
+            <span className="fcIr"><span className="fcJaAberta">Ficha aberta</span> Continuar <Icone nome="seta" className="fcSetaDireita" /></span>
+          </Link>
+        ) : (
+          <button type="button" className="fcAchado" onClick={() => abrir(p)} disabled={abrindo !== null}>
+            {corpo}
+            <span className="fcIr">{abrindo === p.id ? "Abrindo…" : <>Abrir ficha <Icone nome="seta" className="fcSetaDireita" /></>}</span>
+          </button>
+        )}
+      </li>
+    );
+  };
+
   return (
     <section className="fcAbrir" aria-labelledby="fc-abrir">
       <h2 id="fc-abrir">Abrir ficha</h2>
@@ -134,41 +175,16 @@ export function NovaFolha({ institutionId }: { institutionId: string }) {
 
       {lista.length > 0 && (
         <ul className={`fcAchados${buscando ? " velho" : ""}`} aria-busy={buscando}>
-          {lista.map((p) => {
-            const corpo = (
-              <>
-                <span className="fcQuem">
-                  <strong>{p.nome}</strong>
-                  {quemE(p) && <span>{quemE(p)}</span>}
-                </span>
-                {p.avaliacao !== undefined && (
-                  <span className={`fcPre${p.avaliacao ? "" : " vazia"}`}>
-                    <Icone nome={p.avaliacao ? "confirmado" : "nota"} tamanho={15} />
-                    {p.avaliacao
-                      ? [`Avaliação pré-anestésica${p.avaliacao.rascunho ? " (rascunho)" : ""} de ${DIA.format(new Date(p.avaliacao.em))}`,
-                        p.avaliacao.cirurgia].filter(Boolean).join(" · ")
-                      : "Sem avaliação pré-anestésica: a ficha começa em branco"}
-                  </span>
-                )}
-              </>
-            );
-            return (
-              <li key={p.id}>
-                {p.aberta ? (
-                  <Link href={`/evolucao/${p.aberta}`} className="fcAchado">
-                    {corpo}
-                    <span className="fcIr"><span className="fcJaAberta">Ficha aberta</span> Continuar <Icone nome="seta" className="fcSetaDireita" /></span>
-                  </Link>
-                ) : (
-                  <button type="button" className="fcAchado" onClick={() => abrir(p)} disabled={abrindo !== null}>
-                    {corpo}
-                    <span className="fcIr">{abrindo === p.id ? "Abrindo…" : <>Abrir ficha <Icone nome="seta" className="fcSetaDireita" /></>}</span>
-                  </button>
-                )}
-              </li>
-            );
-          })}
+          {lista.map((p) => linha(p))}
         </ul>
+      )}
+      {/* Só no computador (CSS): sobra tela, e o paciente da sala costuma ter
+          sido avaliado há poucos dias — um clique em vez de digitar. */}
+      {curto && recentes.length > 0 && (
+        <div className="fcRecentes">
+          <h3 className="fcSubtitulo">Avaliados nos últimos 14 dias</h3>
+          <ul className="fcAchados">{recentes.map((p) => linha(p))}</ul>
+        </div>
       )}
     </section>
   );

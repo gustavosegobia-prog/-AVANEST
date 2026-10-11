@@ -7369,3 +7369,20 @@ button.evoPFAsaN:disabled{cursor:default}
   .medAbas a.finMenuDireto{grid-column:1/-1;width:100%;min-height:44px;white-space:normal;
     border:1px solid var(--cor-borda);background:var(--cor-superficie)}
 }
+
+/* Ficha anestésica, a entrada no computador: a página ocupa a tela em duas
+   colunas — abrir à esquerda (com os avaliados dos últimos dias já listados),
+   em andamento e encerradas à direita, fixas ao rolar. Só com mouse e tela
+   larga: no tablet e no celular a entrada fica numa coluna, como está. */
+.fcRecentes{display:none}
+@media (min-width:1100px) and (pointer:fine){
+  .fcPagina{max-width:1800px;padding:12px 48px 80px}
+  .fcTitulo{margin:10px 0 24px}
+  .fcColunas{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(400px,1fr);gap:32px;align-items:start}
+  .fcLado{position:sticky;top:20px}
+  .fcLado>.fcSecao:first-child{margin-top:0}
+  .fcLado .fcSecao h2{min-height:24px}
+  .fcRecentes{display:block}
+  .fcSubtitulo{margin:22px 2px 0;font-size:14px;font-weight:700;color:var(--cor-tinta-forte)}
+  .fcRecentes .fcAchados{margin-top:10px}
+}
