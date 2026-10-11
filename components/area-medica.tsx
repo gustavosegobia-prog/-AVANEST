@@ -43,11 +43,13 @@ const ICONE_DA_ETAPA: Partial<Record<Etapa, Parameters<typeof Icone>[0]["nome"]>
 };
 
 export function AreaMedica({
-  perfilId, perfilEhMedico, pacientes, avaliacoes, agendamentos, locais, localAtivo, ocupado, erro, falhasDeCarga,
+  perfilId, perfilEhMedico, podeFichaAnestesica = false, pacientes, avaliacoes, agendamentos, locais, localAtivo, ocupado, erro, falhasDeCarga,
   onNovaAvaliacao, onAbrirAvaliacao, onRecarregar,
 }: {
   perfilId: string;
   perfilEhMedico: boolean;
+  /** A ficha anestésica está liberada (organização + acesso clínico): ganha um item no menu. */
+  podeFichaAnestesica?: boolean;
   pacientes: PacienteDaAreaMedica[];
   avaliacoes: AvaliacaoDaAreaMedica[];
   agendamentos: ConsultaDaAreaMedica[];
@@ -241,6 +243,14 @@ export function AreaMedica({
               {n ? <b className={`financeTarefaContador${id === "pendencias" ? "" : " neutro"}`}><span className="sr-only">, </span>{n}</b> : null}
             </button>
           ))}
+          {/* A ficha anestésica é uma tela inteira (o tablet da sala), não uma
+              seção daqui: o item leva até ela, com o mesmo desenho dos outros. */}
+          {podeFichaAnestesica && (
+            <Link href="/evolucao" data-secao="ficha" className="finMenuDireto">
+              <Icone nome="grafico" tamanho={18} />
+              <span>Ficha anestésica</span>
+            </Link>
+          )}
         </nav>
         <p className="sr-only" aria-live="polite">{anuncio}</p>
 

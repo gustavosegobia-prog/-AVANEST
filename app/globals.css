@@ -7222,8 +7222,6 @@ button.evoPFAsaN:disabled{cursor:default}
 .fcVoltar{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px 0 8px;margin-left:-8px;
   border-radius:10px;color:var(--cor-tinta);font-weight:650;font-size:15px;text-decoration:none}
 .fcVoltar:hover{background:var(--cor-superficie-suave)}
-.fcTeste{padding:4px 10px;border-radius:999px;background:var(--cor-atencao-suave);color:var(--cor-atencao);
-  font-size:12.5px;font-weight:650;white-space:nowrap}
 .fcTitulo{margin:14px 0 22px}
 .fcTitulo h1{margin:0;font-size:clamp(28px,3.6vw,36px);line-height:1.1;font-weight:750;letter-spacing:-.025em;color:var(--cor-tinta-forte)}
 .fcTitulo p{margin:8px 0 0;max-width:60ch;font-size:15.5px;line-height:1.45;color:var(--cor-tinta-fraca)}
@@ -7356,3 +7354,18 @@ button.evoPFAsaN:disabled{cursor:default}
 .imprFolha .evoPFImc{font-size:6.2pt;font-weight:400;letter-spacing:0;text-transform:none;color:#444}
 .imprFolha .evoPFCel.alerta{background:none}
 .imprFolha .evoPFCel.alerta .v{color:#111}
+
+/* A ficha anestésica no menu da área médica: é um link (leva a outra tela),
+   com o mesmo desenho dos botões das seções. */
+.medAbas a.finMenuDireto{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:9px;
+  font-size:14.5px;font-weight:800;color:var(--cor-tinta);text-decoration:none;transition:background var(--transicao)}
+.medAbas a.finMenuDireto span{flex:1}
+.medAbas a.finMenuDireto svg{flex:none;color:var(--cor-tinta-fraca)}
+.medAbas a.finMenuDireto:hover{background:var(--cor-superficie-suave)}
+.medAbas a.finMenuDireto:focus-visible{outline:0;box-shadow:var(--foco)}
+@media(min-width:1101px){.medAbas a.finMenuDireto{padding:10px;gap:9px;font-size:14px}}
+@media(max-width:1100px){.medAbas a.finMenuDireto{width:auto;padding:8px 12px;white-space:nowrap}}
+@media(max-width:620px){
+  .medAbas a.finMenuDireto{grid-column:1/-1;width:100%;min-height:44px;white-space:normal;
+    border:1px solid var(--cor-borda);background:var(--cor-superficie)}
+}

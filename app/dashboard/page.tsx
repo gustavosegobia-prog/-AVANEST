@@ -57,6 +57,7 @@ export default async function DashboardPage({
     { data: instituicao },
     { data: locaisData },
     { data: assinaturaData },
+    { data: podeFicha },
   ] = await Promise.all([
     supabase.from("instituicoes")
       .select("nome, tipo, telefone, email, modulos")
@@ -64,6 +65,8 @@ export default async function DashboardPage({
       .maybeSingle(),
     supabase.rpc("meus_locais"),
     supabase.rpc("minha_assinatura"),
+    // A ficha anestésica, liberada por organização: a mesma pergunta das políticas do banco.
+    supabase.rpc("pode_evolucao", { p_institution_id: perfil.institution_id }),
   ]);
 
   // Trava comercial: assinatura vencida ou suspensa impede o uso do sistema.
@@ -448,6 +451,7 @@ export default async function DashboardPage({
   return (
     <DashboardClient
       perfil={perfil}
+      podeFichaAnestesica={podeFicha === true}
       // Vem do servidor, que já tem a sessão. Buscar no navegador deixaria a
       // tela "carregando..." — e o botão de trocar senha travado — sempre que
       // a chamada demorasse ou falhasse.

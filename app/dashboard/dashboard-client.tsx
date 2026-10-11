@@ -321,6 +321,7 @@ export function DashboardClient({
   perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, conveniosDaOrganizacao = [], initialView,
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
+  podeFichaAnestesica = false,
   testeAte,
   abaDaEscala,
   plantaoEmFoco,
@@ -365,6 +366,8 @@ export function DashboardClient({
    * uma consulta a mais em toda abertura do painel.
    */
   trocasEsperando?: number;
+  /** A ficha anestésica está liberada para esta pessoa (organização + acesso clínico). */
+  podeFichaAnestesica?: boolean;
   /** ISO do fim do teste grátis. Nulo para quem já assinou ou tem cortesia. */
   testeAte?: string | null;
   /** Aba em que a Escala abre quando o endereço pede — ver app/dashboard/page.tsx. */
@@ -934,16 +937,14 @@ export function DashboardClient({
             {/* Clique fora fecha o menu sem precisar de listener global. */}
             <button className="userMenuFundo" aria-label="Fechar menu" onClick={()=>setUserMenu(false)}/>
             <div className="userMenuLista" role="menu">
-              {/* Ferramentas de apoio: nao mexem em paciente nenhum, e por isso
-                  saem da barra das areas de trabalho. Enquanto os modulos
-                  amadurecem, so o super-admin ve — a pagina tambem recusa
-                  quem nao e, porque menu escondido nao e restricao. */}
+              {/* Ferramenta de apoio: nao mexe em paciente nenhum, e por isso
+                  sai da barra das areas de trabalho. Enquanto amadurece, so o
+                  super-admin ve — a pagina tambem recusa quem nao e, porque
+                  menu escondido nao e restricao. A ficha anestesica mora na
+                  area medica. */}
               {perfil.super_admin===true&&<>
                 <Link role="menuitem" href="/calculos" onClick={()=>setUserMenu(false)}>
                   <Icone nome="calculadora"/> Cálculos extras
-                </Link>
-                <Link role="menuitem" href="/evolucao" onClick={()=>setUserMenu(false)}>
-                  <Icone nome="grafico"/> Ficha anestésica
                 </Link>
                 <hr/>
               </>}
@@ -1037,6 +1038,7 @@ export function DashboardClient({
            Avaliações, Pendências e Documentos. Abrir e iniciar avaliação
            continuam sendo `openAssessment`, e o cadastro, o PatientModal. */
         <AreaMedica perfilId={perfil.id} perfilEhMedico={perfil.atuacao_medica ?? perfil.role==="medico"}
+          podeFichaAnestesica={podeFichaAnestesica}
           pacientes={pacientes} avaliacoes={avaliacoes.map(a=>({...a,created_by:a.created_by??null,concluida_at:a.concluida_at??null,local_atendimento_id:a.local_atendimento_id??null}))}
           agendamentos={agendamentos} locais={locais} localAtivo={localAtivo}
           ocupado={busy} erro={error} falhasDeCarga={falhasDeCarga}

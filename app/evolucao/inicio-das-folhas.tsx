@@ -35,10 +35,9 @@ export function InicioDasFolhas({
     <div className="evoInicio fcFundo">
       <main className="fcPagina">
         <header className="fcTopo">
-          <Link href="/dashboard" className="fcVoltar">
-            <Icone nome="voltar" tamanho={18} /> Painel
+          <Link href="/dashboard?area=medico" className="fcVoltar">
+            <Icone nome="voltar" tamanho={18} /> Área médica
           </Link>
-          <span className="fcTeste">Em teste · só super-admin</span>
         </header>
 
         <div className="fcTitulo">
