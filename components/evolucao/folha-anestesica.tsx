@@ -13,25 +13,26 @@ import {
 } from "@/lib/evolucao/medicamentos";
 import { consumoSevoflurano, formatarMl, lerAjuste, type AjusteDeGas } from "@/lib/evolucao/sevoflurano";
 import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/infusoes";
-import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico, rotuloDoLiquido } from "@/lib/evolucao/liquidos";
+import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evolucao/liquidos";
 import { EVENTOS, conferirEncerramento, horarioDoMarco, imcDaFolha, rotuloDoEvento, type Profissional } from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
+import { marcasDeEvento } from "@/lib/evolucao/impressao";
 import { idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
 import type { PacienteDaFolha } from "@/lib/evolucao/importar";
 import { useFolha, type Folha } from "./use-folha";
-import { GraficoSinais, type Toque } from "./grafico-sinais";
+import { GraficoSinais, type AlvoDaFaixa, type Toque } from "./grafico-sinais";
 import { JanelaLancar, JanelaMover, JanelaPonto, JanelaSinal, MODOS, Historico, type ModoDoGrafico, type NovoSinal } from "./janelas-sinais";
 import { JanelaMedicamento } from "./janela-medicamento";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
-import { SecaoEquipe, SecaoPreAnestesica, SecaoSaida, SecaoTecnica } from "./secoes";
+import { PreAnestesicaResumo, SecaoCirurgia, SecaoEquipe, SecaoPreAnestesica, SecaoSaida, SecaoTecnica } from "./secoes";
 
 // A folha de anestesia digital.
 //
-// A distribuição é a da folha de papel: pré-anestésica no alto, gases,
-// infusões e líquidos à esquerda, o gráfico no centro, medicamentos à direita,
-// técnica, equipe e saída embaixo. Desenhada primeiro para o tablet deitado
-// preso ao aparelho de anestesia; no computador sobra espaço, no celular as
-// colunas empilham.
+// A distribuição é a da folha impressa: a pré-anestésica em grade no alto; o
+// registro anestésico com gases, infusões e líquidos em faixas no MESMO eixo
+// de tempo do gráfico, como no papel; a medicação à direita; posição,
+// técnica, cirurgia, saída e equipe embaixo. Desenhada primeiro para o tablet
+// deitado preso ao aparelho de anestesia; no celular as colunas empilham.
 
 type Medico = { id: string; nome: string; crm: string };
 type Abrir =
@@ -40,9 +41,10 @@ type Abrir =
   | { tipo: "mover"; registro: Registro; t: Toque }
   | { tipo: "lancar" }
   | { tipo: "medicamento"; planejado?: Registro }
-  | { tipo: "infusao"; acao: "iniciar" | "ajustar" | "encerrar"; infusao: Infusao | null }
-  | { tipo: "gas" }
-  | { tipo: "liquido"; sentido: "entrada" | "saida" }
+  | { tipo: "infusao"; acao: "iniciar" | "ajustar" | "encerrar"; infusao: Infusao | null; ms?: number }
+  | { tipo: "infusaoAcoes"; infusao: Infusao; ms: number }
+  | { tipo: "gas"; ms?: number }
+  | { tipo: "liquido"; sentido: "entrada" | "saida"; ms?: number; inicial?: { nome: string; categoria: string } }
   | { tipo: "evento" }
   | { tipo: "registro"; registro: Registro }
   | { tipo: "encerrar" }
@@ -50,6 +52,7 @@ type Abrir =
 
 const ZOOMS = [60, 120, 240];
 const chaveFavoritos = (id: string) => `avanest:evo-favoritos:${id}`;
+const CHAVE_PRE = "avanest:evo-pre";
 const hora = (iso: string) => horaLocal(new Date(iso));
 /** O minuto cheio de agora — evento rápido não registra segundos. */
 const minutoAtual = () => new Date(Math.round(Date.now() / 60000) * 60000).toISOString();
@@ -81,12 +84,17 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   const [encerrando, setEncerrando] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [favoritos, setFavoritos] = useState<string[]>([]);
+  const [preAberta, setPreAberta] = useState(true);
+  const [editandoPre, setEditandoPre] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- relógio e aparelho só existem depois de montar
     setMontado(true);
     setAgora(Date.now());
     const t = setInterval(() => setAgora(Date.now()), 30000);
+    try {
+      if (localStorage.getItem(CHAVE_PRE) === "recolhida") setPreAberta(false);
+    } catch { /* sem armazenamento */ }
     try {
       const contagem = JSON.parse(localStorage.getItem(chaveFavoritos(eu.id)) ?? "{}") as Record<string, number>;
       setFavoritos(Object.entries(contagem).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n]) => n));
@@ -164,6 +172,19 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
     setAviso({ texto: `${nome} ${volume} mL às ${hora(momento)}`, desfazer: true });
   }
 
+  function mudarPreAberta(v: boolean) {
+    setPreAberta(v);
+    try { localStorage.setItem(CHAVE_PRE, v ? "aberta" : "recolhida"); } catch { /* sem armazenamento */ }
+  }
+
+  // Tocar numa faixa do registro: a janela certa, já no horário tocado.
+  function tocarFaixa(a: AlvoDaFaixa) {
+    if (a.tipo === "gas") setAbrir({ tipo: "gas", ms: a.ms });
+    else if (a.tipo === "infusao") {
+      setAbrir(a.infusao ? { tipo: "infusaoAcoes", infusao: a.infusao, ms: a.ms } : { tipo: "infusao", acao: "iniciar", infusao: null, ms: a.ms });
+    } else setAbrir({ tipo: "liquido", sentido: a.sentido, ms: a.ms, inicial: { nome: a.nome, categoria: a.categoria } });
+  }
+
   function contarFavorito(nome: string) {
     try {
       const c = JSON.parse(localStorage.getItem(chaveFavoritos(eu.id)) ?? "{}") as Record<string, number>;
@@ -203,6 +224,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   const pendenciasEncerrar = abrir?.tipo === "encerrar" ? conferirEncerramento(dados, atuais, folha.intervalo_minutos) : [];
   const idade = paciente.idade_anos ?? (idadeDias !== null ? Math.floor(idadeDias / 365.25) : null);
+  const temAlergia = Boolean(dados.alergias) && dados.nega_alergia !== true;
 
   return (
     <main className="evoFolha">
@@ -247,104 +269,40 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
         </div>
       )}
 
-      <details className="evoPre">
-        <summary>
-          <b>Avaliação pré-anestésica</b>
-          {dados.alergias && dados.nega_alergia !== true
-            ? <span className="evoPreAlergia">Alergias: {String(dados.alergias)}</span>
-            : <span>{dados.nega_alergia ? "Nega alergias" : "Alergias não informadas"}</span>}
-          <span>{[imc !== null && `IMC ${fmt(imc, 1)}`, dados.via_aerea && `Via aérea: ${String(dados.via_aerea).slice(0, 60)}`,
-            dados.jejum && `Jejum: ${dados.jejum}`].filter(Boolean).join(" · ")}</span>
-        </summary>
-        <SecaoPreAnestesica dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} idadeAnos={idade} />
-      </details>
+      <section className="evoPre" aria-labelledby="evo-pre-titulo">
+        <header className="evoPreTopo">
+          <h2 id="evo-pre-titulo">Avaliação pré-anestésica</h2>
+          {!preAberta && (
+            <p className="evoPreLinha">
+              {temAlergia
+                ? <span className="evoPreAlergia">Alergias: {String(dados.alergias)}</span>
+                : <span>{dados.nega_alergia ? "Nega alergias" : "Alergias não informadas"}</span>}
+              <span>{[imc !== null && `IMC ${fmt(imc, 1)}`, dados.via_aerea && `Via aérea: ${String(dados.via_aerea).slice(0, 60)}`,
+                dados.jejum && `Jejum: ${dados.jejum}`].filter(Boolean).join(" · ")}</span>
+            </p>
+          )}
+          <div className="evoAcoesLinha">
+            {aberta && (
+              <button type="button" className="evoBotao pequeno secundario" aria-expanded={editandoPre}
+                onClick={() => { setEditandoPre((v) => !v); if (!preAberta) mudarPreAberta(true); }}>
+                {editandoPre ? "Concluir edição" : "Editar"}
+              </button>
+            )}
+            <button type="button" className="evoBotao pequeno fantasma" aria-expanded={preAberta}
+              onClick={() => mudarPreAberta(!preAberta)}>{preAberta ? "Recolher" : "Mostrar"}</button>
+          </div>
+        </header>
+        {preAberta && <PreAnestesicaResumo dados={dados} sexo={paciente.sexo} />}
+        {editandoPre && aberta && (
+          <SecaoPreAnestesica dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} idadeAnos={idade} />
+        )}
+      </section>
 
       <div className="evoCorpo">
-        <aside className="evoEsquerda" aria-label="Gases, infusões e líquidos">
-          <section className="evoPainel">
-            <header><h2>Gases</h2>{aberta && <button type="button" className="evoBotao pequeno" onClick={() => setAbrir({ tipo: "gas" })}>Ajustar</button>}</header>
-            {gasAtual ? (
-              <dl className="evoGases">
-                <div><dt>O₂</dt><dd>{fmt(gasAtual.o2, 1)} L/min</dd></div>
-                <div><dt>Ar</dt><dd>{fmt(gasAtual.ar, 1)} L/min</dd></div>
-                {gasAtual.n2o > 0 && <div><dt>N₂O</dt><dd>{fmt(gasAtual.n2o, 1)} L/min</dd></div>}
-                <div><dt>Sevo</dt><dd>{fmt(gasAtual.sevoPct, 1)}%</dd></div>
-              </dl>
-            ) : <p className="evoVazio">Nenhum ajuste registrado.</p>}
-            {ajustes.length > 0 && (
-              <p className="evoSevo">
-                Sevoflurano: <b>{formatarMl(sevo.totalMl)}</b>
-                <small>Estimativa pelo vaporizador{fimMs ? "" : ", até agora"}.</small>
-              </p>
-            )}
-          </section>
-
-          <section className="evoPainel">
-            <header><h2>Infusões</h2>{aberta && <button type="button" className="evoBotao pequeno" onClick={() => setAbrir({ tipo: "infusao", acao: "iniciar", infusao: null })}>+ Infusão</button>}</header>
-            {infusoes.length ? <ul className="evoLista">
-              {infusoes.map((inf) => {
-                const passo = inf.passos[inf.passos.length - 1];
-                const total = totalDaInfusao(inf, pesoKg);
-                return (
-                  <li key={inf.id}>
-                    <b>{inf.nome}{conferirAlergia(dados, inf.nome) && <em className="evoAlergiaTag">Alergia registrada</em>}</b>
-                    <span>{inf.fim ? `encerrada às ${hora(inf.fim)}` : `${fmt(passo.valor)} ${passo.unidade} desde ${hora(passo.momento)}`}</span>
-                    <small>
-                      {[total.volumeMl !== null && `${fmt(total.volumeMl, 1)} mL`, total.quantidade !== null && `${fmt(total.quantidade)} ${total.unidadeQuantidade}`]
-                        .filter(Boolean).join(" · ") || "Total depende da concentração"}
-                      {total.incompleto && " · até o último registro"}
-                    </small>
-                    {aberta && !inf.fim && (
-                      <div className="evoAcoesLinha">
-                        <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "infusao", acao: "ajustar", infusao: inf })}>Ajustar</button>
-                        <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "infusao", acao: "encerrar", infusao: inf })}>Encerrar</button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul> : <p className="evoVazio">Nenhuma infusão.</p>}
-          </section>
-
-          <section className="evoPainel">
-            <header><h2>Líquidos</h2>{aberta && <div className="evoAcoesLinha">
-              <button type="button" className="evoBotao pequeno" onClick={() => setAbrir({ tipo: "liquido", sentido: "entrada" })}>+ Entrada</button>
-              <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "liquido", sentido: "saida" })}>+ Saída</button>
-            </div>}</header>
-            {aberta && (
-              <div className="evoLiquidosRapidos">
-                {LIQUIDOS_RAPIDOS.map((l) => (
-                  <div key={l.nome} role="group" aria-label={`${l.nome}: registrar uma bolsa agora`}>
-                    <span>{l.curto}</span>
-                    {VOLUMES_RAPIDOS.map((ml) => (
-                      <button type="button" key={ml} onClick={() => liquidoRapido(l.nome, ml)}
-                        aria-label={`${l.nome} ${ml} mL agora`}>{ml}</button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-            <dl className="evoBalanco">
-              <div><dt>Entradas</dt><dd>{fmt(balanco.entradas, 0)} mL</dd></div>
-              <div><dt>Saídas</dt><dd>{fmt(balanco.saidas, 0)} mL</dd></div>
-              <div><dt>Balanço</dt><dd>{balanco.saldo > 0 ? "+" : ""}{fmt(balanco.saldo, 0)} mL</dd></div>
-            </dl>
-            <ul className="evoLista compacta">
-              {atuais.filter((r) => r.tipo === "liquido").map((r) => (
-                <li key={r.id}><button type="button" onClick={() => setAbrir({ tipo: "registro", registro: r })}>
-                  <span>{hora(r.momento)}</span><b>{rotuloDoLiquido(r.dados)}</b>
-                  <span>{r.dados.sentido === "saida" ? "−" : "+"}{fmt(Number(r.dados.volume_ml), 0)} mL</span>
-                </button></li>
-              ))}
-            </ul>
-            {balanco.avisos.length > 0 && <p className="evoNota">{balanco.avisos.join(" ")}</p>}
-          </section>
-        </aside>
-
-        <section className="evoCentro" aria-label="Monitorização">
+        <section className="evoCentro" aria-label="Registro anestésico">
           <div className="evoFerramentas">
             {aberta && (
-              <div className="evoModos" role="radiogroup" aria-label="O que o toque registra">
+              <div className="evoModos" role="radiogroup" aria-label="O que o toque no gráfico registra">
                 {MODOS.map((m) => (
                   <button type="button" key={m.modo} role="radio" aria-checked={modo === m.modo}
                     className={`evoModo ${m.modo}${modo === m.modo ? " ativo" : ""}`} onClick={() => setModo(m.modo)}>
@@ -379,25 +337,73 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
           {montado ? (
             <GraficoSinais
-              atuais={atuais} idsPendentes={f.idsPendentes} fimMs={fimMs} agoraMs={agora}
+              atuais={atuais} idsPendentes={f.idsPendentes} cabecalho={dados} fimMs={fimMs} agoraMs={agora}
               aberta={aberta} intervalo={folha.intervalo_minutos} janelaInicio={janela.inicio} janelaMinutos={zoom}
-              alturaGrade={320} somenteLeitura={!aberta}
+              alturaGrade={300} somenteLeitura={!aberta}
               onTocar={(t) => {
                 if (["spo2", "etco2", "temp"].includes(modo)) {
                   setAbrir({ tipo: "sinal", modo, ms: t.ms, valor: null });
                 } else setAbrir({ tipo: "sinal", modo, ms: Math.min(t.ms, Date.now()), valor: t.valor });
               }}
               onTocarLinha={(p, ms) => setAbrir({ tipo: "sinal", modo: p, ms, valor: null })}
+              onTocarFaixa={tocarFaixa}
               onAbrirPonto={(r) => setAbrir({ tipo: "ponto", registro: r })}
+              onAbrirRegistro={(r) => setAbrir({ tipo: "registro", registro: r })}
               onMover={(r, t) => setAbrir({ tipo: "mover", registro: r, t })}
             />
           ) : <div className="evoGraficoCarregando" aria-hidden="true" />}
 
-          <p className="evoLegenda">
-            <span className="pas">V PAS</span><span className="pad">Λ PAD</span><span className="pam">X PAM</span>
-            <span className="pamEst">X PAM estimada</span><span className="fc">• FC</span>
-            <span className="lacuna">Sem registro</span>
-          </p>
+          {/* O que o papel escreve embaixo do gráfico: sevoflurano, infusões, balanço */}
+          <div className="evoResumo">
+            {ajustes.length > 0 && (
+              <p>
+                <b>Sevoflurano:</b> {formatarMl(sevo.totalMl)}
+                <small> estimativa pelo vaporizador{fimMs ? "" : ", até agora"}</small>
+              </p>
+            )}
+            {infusoes.map((inf) => {
+              const passo = inf.passos[inf.passos.length - 1];
+              const total = totalDaInfusao(inf, pesoKg);
+              return (
+                <p key={inf.id}>
+                  <b>{inf.nome}:</b>{" "}
+                  {inf.fim ? `${hora(inf.inicio)}–${hora(inf.fim)}` : `${fmt(passo.valor)} ${passo.unidade} desde ${hora(passo.momento)}`}
+                  {" · "}
+                  {[total.volumeMl !== null && `${fmt(total.volumeMl, 1)} mL`, total.quantidade !== null && `${fmt(total.quantidade)} ${total.unidadeQuantidade}`]
+                    .filter(Boolean).join(" · ") || "total depende da concentração"}
+                  {total.incompleto && <small> até o último registro</small>}
+                  {conferirAlergia(dados, inf.nome) && <em className="evoAlergiaTag">Alergia registrada</em>}
+                </p>
+              );
+            })}
+            <p>
+              <b>Balanço:</b> entradas {fmt(balanco.entradas, 0)} mL · saídas {fmt(balanco.saidas, 0)} mL ·
+              saldo {balanco.saldo > 0 ? "+" : ""}{fmt(balanco.saldo, 0)} mL
+              {balanco.avisos.length > 0 && <small> {balanco.avisos.join(" ")}</small>}
+            </p>
+          </div>
+
+          {aberta && (
+            <div className="evoAcoesRegistro" aria-label="Registrar">
+              <div className="evoAcoesLinha">
+                <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "gas" })}>Ajustar gases</button>
+                <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "infusao", acao: "iniciar", infusao: null })}>+ Infusão</button>
+                <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "liquido", sentido: "entrada" })}>+ Entrada</button>
+                <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "liquido", sentido: "saida" })}>+ Saída</button>
+              </div>
+              <div className="evoLiquidosRapidos">
+                {LIQUIDOS_RAPIDOS.map((l) => (
+                  <div key={l.nome} role="group" aria-label={`${l.nome}: registrar uma bolsa agora`}>
+                    <span>{l.curto}</span>
+                    {VOLUMES_RAPIDOS.map((ml) => (
+                      <button type="button" key={ml} onClick={() => liquidoRapido(l.nome, ml)}
+                        aria-label={`${l.nome} ${ml} mL agora`}>{ml}</button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {aberta && (
             <div className="evoEventos" aria-label="Eventos">
@@ -415,19 +421,23 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           )}
           {eventos.length > 0 && (
             <ol className="evoLinhaDoTempo">
-              {eventos.map((r) => (
-                <li key={r.id}><button type="button" onClick={() => setAbrir({ tipo: "registro", registro: r })}>
-                  <span>{hora(r.momento)}</span>{rotuloDoEvento(String(r.dados.codigo), String(r.dados.descricao ?? ""))}
-                  {f.idsPendentes.has(r.id) && <em>enviando</em>}
-                </button></li>
-              ))}
+              {marcasDeEvento(atuais).map((m) => {
+                const r = atuais.find((x) => x.id === m.id)!;
+                return (
+                  <li key={m.id}><button type="button" onClick={() => setAbrir({ tipo: "registro", registro: r })}>
+                    <i className={m.simbolo === "X" || m.simbolo === "O" ? "marco" : ""}>{m.simbolo}</i>
+                    <span>{hora(m.momento)}</span>{m.rotulo}
+                    {f.idsPendentes.has(m.id) && <em>enviando</em>}
+                  </button></li>
+                );
+              })}
             </ol>
           )}
         </section>
 
-        <aside className="evoDireita" aria-label="Medicamentos">
+        <aside className="evoDireita" aria-label="Medicação">
           <section className="evoPainel">
-            <header><h2>Medicamentos</h2>
+            <header><h2>Medicação</h2>
               {aberta && <button type="button" className="evoBotao" onClick={() => setAbrir({ tipo: "medicamento" })}>+ Medicamento</button>}
             </header>
             {planejados.length > 0 && (
@@ -470,18 +480,26 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
         </aside>
       </div>
 
+      {/* Embaixo, na ordem do papel: posição e técnica, cirurgia, saída, equipe */}
       <div className="evoBase">
         <section className="evoPainel largo">
-          <header><h2>Técnica e posição</h2></header>
+          <header><h2>Posição e técnica</h2></header>
           <SecaoTecnica dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} />
         </section>
         <section className="evoPainel">
-          <header><h2>Equipe</h2></header>
-          <SecaoEquipe dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} />
+          <header><h2>Cirurgia</h2></header>
+          <SecaoCirurgia dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} marcos={{
+            inicioAnestesia: horarioDoMarco(atuais, "inicio_anestesia"), fimAnestesia: fimAnestesia,
+            inicioCirurgia: horarioDoMarco(atuais, "inicio_cirurgia"), fimCirurgia: horarioDoMarco(atuais, "fim_cirurgia"),
+          }} />
         </section>
         <section className="evoPainel">
           <header><h2>Saída da sala</h2></header>
           <SecaoSaida dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} />
+        </section>
+        <section className="evoPainel largo">
+          <header><h2>Equipe</h2></header>
+          <SecaoEquipe dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} />
         </section>
       </div>
 
@@ -534,17 +552,22 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "infusao" && (
-        <JanelaInfusao acao={abrir.acao} infusao={abrir.infusao} alergias={dados}
+        <JanelaInfusao acao={abrir.acao} infusao={abrir.infusao} alergias={dados} ms={abrir.ms}
           onConfirmar={(momento, d) => { f.registrar({ tipo: "infusao", momento, dados: d }); setAbrir(null); }}
           onFechar={() => setAbrir(null)} />
       )}
+      {abrir?.tipo === "infusaoAcoes" && (
+        <JanelaInfusaoAcoes infusao={abrir.infusao} pesoKg={pesoKg}
+          onAcao={(acao) => setAbrir({ tipo: "infusao", acao, infusao: abrir.infusao, ms: abrir.ms })}
+          onFechar={() => setAbrir(null)} />
+      )}
       {abrir?.tipo === "gas" && (
-        <JanelaGas atual={gasAtual}
+        <JanelaGas atual={gasAtual} ms={abrir.ms}
           onConfirmar={(momento, d) => { f.registrar({ tipo: "gas", momento, dados: d }); setAbrir(null); }}
           onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "liquido" && (
-        <JanelaLiquido sentido={abrir.sentido}
+        <JanelaLiquido sentido={abrir.sentido} ms={abrir.ms} inicial={abrir.inicial}
           onConfirmar={(momento, d) => { f.registrar({ tipo: "liquido", momento, dados: d }); setAbrir(null); }}
           onFechar={() => setAbrir(null)} />
       )}
@@ -567,6 +590,29 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           onReabrir={(m) => void reabrir(m)} onFechar={() => setAbrir(null)} />
       )}
     </main>
+  );
+}
+
+/** Tocou numa infusão em curso: ajustar a velocidade ou encerrar. */
+function JanelaInfusaoAcoes({ infusao, pesoKg, onAcao, onFechar }: {
+  infusao: Infusao; pesoKg: number | null; onAcao: (acao: "ajustar" | "encerrar") => void; onFechar: () => void;
+}) {
+  const passo = infusao.passos[infusao.passos.length - 1];
+  const total = totalDaInfusao(infusao, pesoKg);
+  return (
+    <Janela titulo={infusao.nome} subtitulo={infusao.diluicao || undefined} largura="estreita" onFechar={onFechar}
+      rodape={<>
+        <button type="button" className="evoBotao secundario" onClick={() => onAcao("encerrar")}>Encerrar infusão</button>
+        <button type="button" className="evoBotao" onClick={() => onAcao("ajustar")}>Ajustar velocidade</button>
+      </>}>
+      <div className="evoForm">
+        <p>{fmt(passo.valor)} {passo.unidade} desde {hora(passo.momento)} · iniciada às {hora(infusao.inicio)}</p>
+        <p className="evoNota">
+          {[total.volumeMl !== null && `${fmt(total.volumeMl, 1)} mL`, total.quantidade !== null && `${fmt(total.quantidade)} ${total.unidadeQuantidade}`]
+            .filter(Boolean).join(" · ") || "O total depende da concentração."} até o último registro.
+        </p>
+      </div>
+    </Janela>
   );
 }
 

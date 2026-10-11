@@ -153,14 +153,18 @@ export function pistasDeEventos(xs: readonly number[], distancia: number, pistas
 // ---------------------------------------------------------------------------
 // Gases: o ajuste vale até o próximo
 // ---------------------------------------------------------------------------
-export type LinhaDeGas = { chave: "o2" | "ar" | "n2o" | "sevo"; rotulo: string; passos: Array<{ momento: string; valor: number }> };
+export type LinhaDeGas = {
+  chave: "o2" | "ar" | "n2o" | "sevo"; rotulo: string;
+  passos: Array<{ momento: string; valor: number; id: string }>;
+};
 
 /**
  * Cada linha mostra o valor só quando ele MUDA — repetir "2" em toda coluna
  * é ruído. O₂ e sevoflurano aparecem sempre; ar e N₂O, só se usados.
  */
 export function linhasDeGas(vigentes: readonly Registro[]): LinhaDeGas[] {
-  const ajustes = vigentes.map(lerAjuste).filter((a) => a !== null)
+  const ajustes = vigentes.filter((r) => r.tipo === "gas")
+    .map((r) => ({ ...lerAjuste(r)!, id: r.id }))
     .sort((a, b) => Date.parse(a.momento) - Date.parse(b.momento));
   const linha = (chave: LinhaDeGas["chave"], rotulo: string, ler: (a: (typeof ajustes)[number]) => number): LinhaDeGas => {
     const passos: LinhaDeGas["passos"] = [];
@@ -169,7 +173,7 @@ export function linhasDeGas(vigentes: readonly Registro[]): LinhaDeGas[] {
       // Zero no começo é "ainda não ligou": não se escreve.
       if (!passos.length && v === 0) continue;
       if (passos.length && passos[passos.length - 1].valor === v) continue;
-      passos.push({ momento: a.momento, valor: v });
+      passos.push({ momento: a.momento, valor: v, id: a.id });
     }
     return { chave, rotulo, passos };
   };
@@ -187,7 +191,9 @@ export function linhasDeGas(vigentes: readonly Registro[]): LinhaDeGas[] {
 // ---------------------------------------------------------------------------
 export type LinhaDeLiquido = {
   rotulo: string; sentido: "entrada" | "saida"; total: number;
-  itens: Array<{ momento: string; volume: number }>;
+  /** A categoria do primeiro registro da linha — para o próximo da mesma solução. */
+  categoria: string;
+  itens: Array<{ momento: string; volume: number; id: string }>;
 };
 
 export function linhasDeLiquido(vigentes: readonly Registro[]): LinhaDeLiquido[] {
@@ -199,12 +205,12 @@ export function linhasDeLiquido(vigentes: readonly Registro[]): LinhaDeLiquido[]
     const sentido = r.dados.sentido === "saida" ? "saida" : "entrada";
     const rotulo = rotuloDoLiquido(r.dados);
     let l = linhas.find((x) => x.sentido === sentido && mesmoMedicamento(x.rotulo, rotulo));
-    if (!l) { l = { rotulo, sentido, total: 0, itens: [] }; linhas.push(l); }
-    l.itens.push({ momento: r.momento, volume: v });
+    if (!l) { l = { rotulo, sentido, total: 0, categoria: String(r.dados.categoria ?? ""), itens: [] }; linhas.push(l); }
+    l.itens.push({ momento: r.momento, volume: v, id: r.id });
     l.total = Math.round((l.total + v) * 10) / 10;
   }
   // Entradas primeiro; a diurese sempre tem linha, como no papel.
-  if (!linhas.some((l) => l.rotulo === "Diurese")) linhas.push({ rotulo: "Diurese", sentido: "saida", total: 0, itens: [] });
+  if (!linhas.some((l) => l.rotulo === "Diurese")) linhas.push({ rotulo: "Diurese", sentido: "saida", total: 0, categoria: "diurese", itens: [] });
   return [...linhas.filter((l) => l.sentido === "entrada"), ...linhas.filter((l) => l.sentido === "saida")];
 }
 

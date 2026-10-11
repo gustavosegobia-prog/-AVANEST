@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BLOQUEIOS, FUNCOES, POSICOES, PROTECOES, TECNICAS, imcDaFolha, type Profissional } from "@/lib/evolucao/folha";
 import { Escolha, Marcas } from "./campos";
+import { horaLocal } from "@/lib/data-local";
 
 // As partes da folha que se preenchem uma vez: pré-anestésica conferida,
 // técnica, equipe e saída da sala. Tudo grava no cabeçalho (com histórico na
@@ -23,6 +24,45 @@ function Texto({ rotulo, valor, onMudar, linhas = 1, largo = false, disabled }: 
         ? <textarea rows={linhas} value={valor} disabled={disabled} onChange={(e) => onMudar(e.target.value)} />
         : <input value={valor} disabled={disabled} onChange={(e) => onMudar(e.target.value)} />}
     </label>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pré-anestésica: a grade do papel, só leitura
+// ---------------------------------------------------------------------------
+/**
+ * O bloco da avaliação como sai na folha impressa: seis colunas, rótulo em
+ * cima, valor embaixo. É para CONFERIR de relance; editar é no formulário que
+ * abre por baixo ("Editar").
+ */
+export function PreAnestesicaResumo({ dados, sexo }: { dados: Dados; sexo: string | null }) {
+  const asa = t(dados.asa);
+  const imc = imcDaFolha(dados);
+  const num = (v: unknown) => (typeof v === "number" ? v.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "");
+  const alergiaTexto = dados.nega_alergia === true ? "Nega alergia a medicamentos" : t(dados.alergias) || "Não informado";
+  const temAlergia = dados.nega_alergia !== true && Boolean(t(dados.alergias));
+  const campo = (rotulo: string, valor: string, classe = "") => (
+    <div className={`evoPreCampo ${classe}`}><small>{rotulo}</small><span>{valor || "—"}</span></div>
+  );
+  return (
+    <div className="evoPreGradeResumo">
+      {campo("Convênio", t(dados.convenio))}
+      {campo("Sexo", t(sexo))}
+      {campo("Peso", num(dados.peso_kg) && `${num(dados.peso_kg)} kg`)}
+      {campo("Altura", num(dados.altura_cm) && `${num(dados.altura_cm)} cm`)}
+      {campo("IMC", imc !== null ? `${num(imc)} kg/m²` : "")}
+      {campo("ASA", asa ? `${asa}${dados.asa_emergencia === true ? " E (emergência)" : ""}` : "")}
+      {campo("Alergias", alergiaTexto, `dobro${temAlergia ? " alerta" : ""}`)}
+      {campo("Sinais na avaliação", t(dados.sinais_pre), "dobro")}
+      {campo("Jejum", t(dados.jejum), "dobro")}
+      {campo("Via aérea", t(dados.via_aerea), "metade")}
+      {campo("Medicação em uso", t(dados.medicacao_uso), "metade")}
+      {campo("Antecedentes", t(dados.antecedentes), "metade")}
+      {campo("Exames", t(dados.exames), "metade")}
+      {campo("Anestesia anterior", t(dados.anestesia_anterior), "metade")}
+      {campo("Diagnóstico pré-operatório", t(dados.diagnostico), "metade")}
+      {t(dados.observacoes_pre) && campo("Observações", t(dados.observacoes_pre), "todo")}
+    </div>
   );
 }
 
@@ -68,9 +108,7 @@ export function SecaoPreAnestesica({ dados, onMudar, leitura, idadeAnos }: {
             onChange={(e) => onMudar({ asa_emergencia: e.target.checked })} />
           <span>Cirurgia de emergência (E)</span>
         </label>
-        <Texto rotulo="Procedimento" valor={t(dados.procedimento)} onMudar={(v) => onMudar({ procedimento: v })} largo disabled={leitura} />
         <Texto rotulo="Diagnóstico pré-operatório" valor={t(dados.diagnostico)} onMudar={(v) => onMudar({ diagnostico: v })} largo disabled={leitura} />
-        <Texto rotulo="Cirurgião" valor={t(dados.cirurgiao)} onMudar={(v) => onMudar({ cirurgiao: v })} disabled={leitura} />
         <Texto rotulo="Hospital" valor={t(dados.hospital)} onMudar={(v) => onMudar({ hospital: v })} disabled={leitura} />
         <Texto rotulo="Sala" valor={t(dados.sala)} onMudar={(v) => onMudar({ sala: v })} disabled={leitura} />
         <Texto rotulo="Convênio" valor={t(dados.convenio)} onMudar={(v) => onMudar({ convenio: v })} disabled={leitura} />
@@ -194,6 +232,33 @@ export function SecaoTecnica({ dados, onMudar, leitura }: { dados: Dados; onMuda
         onMudar={(v) => !leitura && onMudar({ posicoes: v })} />
       <Marcas rotulo="Proteções" opcoes={PROTECOES} valores={(dados.protecoes as string[] | undefined) ?? []}
         onMudar={(v) => !leitura && onMudar({ protecoes: v })} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cirurgia e horários
+// ---------------------------------------------------------------------------
+type Marcos = { inicioAnestesia: string | null; fimAnestesia: string | null; inicioCirurgia: string | null; fimCirurgia: string | null };
+
+export function SecaoCirurgia({ dados, onMudar, leitura, marcos }: {
+  dados: Dados; onMudar: Mudar; leitura: boolean; marcos: Marcos;
+}) {
+  const h = (iso: string | null) => (iso ? horaLocal(new Date(iso)) : "—");
+  const duracao = (a: string | null, b: string | null) => {
+    if (!a || !b) return "";
+    const min = Math.round((Date.parse(b) - Date.parse(a)) / 60000);
+    return min > 0 ? ` (${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")})` : "";
+  };
+  return (
+    <div className="evoSecaoCorpo">
+      <Texto rotulo="Cirurgia" valor={t(dados.procedimento)} onMudar={(v) => onMudar({ procedimento: v })} largo disabled={leitura} />
+      <Texto rotulo="Cirurgião" valor={t(dados.cirurgiao)} onMudar={(v) => onMudar({ cirurgiao: v })} disabled={leitura} />
+      <dl className="evoHorarios">
+        <div><dt>Anestesia</dt><dd>{h(marcos.inicioAnestesia)} às {h(marcos.fimAnestesia)}{duracao(marcos.inicioAnestesia, marcos.fimAnestesia)}</dd></div>
+        <div><dt>Cirurgia</dt><dd>{h(marcos.inicioCirurgia)} às {h(marcos.fimCirurgia)}{duracao(marcos.inicioCirurgia, marcos.fimCirurgia)}</dd></div>
+      </dl>
+      <p className="evoNota">Os horários vêm dos eventos de início e fim registrados no gráfico.</p>
     </div>
   );
 }

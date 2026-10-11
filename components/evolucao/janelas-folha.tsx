@@ -27,16 +27,18 @@ function Rodape({ onFechar, form, rotulo, ok, perigo = false }: {
 // ---------------------------------------------------------------------------
 // Infusão contínua
 // ---------------------------------------------------------------------------
-export function JanelaInfusao({ infusao, acao, alergias, onConfirmar, onFechar }: {
+export function JanelaInfusao({ infusao, acao, alergias, ms, onConfirmar, onFechar }: {
   infusao: Infusao | null;
   acao: "iniciar" | "ajustar" | "encerrar";
+  /** O horário tocado na faixa do gráfico; sem ele, agora. */
+  ms?: number;
   /** O cabeçalho da folha: alergias e "nega alergia". */
   alergias: { alergias?: unknown; nega_alergia?: unknown };
   onConfirmar: (momento: string, dados: Record<string, unknown>) => void;
   onFechar: () => void;
 }) {
   const ultimo = infusao?.passos[infusao.passos.length - 1];
-  const [hora, setHora] = useState(horaLocal());
+  const [hora, setHora] = useState(horaLocal(ms ? new Date(ms) : undefined));
   const [nome, setNome] = useState(infusao?.nome ?? "");
   const [diluicao, setDiluicao] = useState("");
   const [conc, setConc] = useState("");
@@ -132,13 +134,14 @@ export function JanelaInfusao({ infusao, acao, alergias, onConfirmar, onFechar }
 // ---------------------------------------------------------------------------
 // Gases
 // ---------------------------------------------------------------------------
-export function JanelaGas({ atual, onConfirmar, onFechar }: {
+export function JanelaGas({ atual, ms, onConfirmar, onFechar }: {
   atual: AjusteDeGas | null;
+  ms?: number;
   onConfirmar: (momento: string, dados: Record<string, unknown>) => void;
   onFechar: () => void;
 }) {
   const ini = (v: number | undefined) => (v ? String(v).replace(".", ",") : "");
-  const [hora, setHora] = useState(horaLocal());
+  const [hora, setHora] = useState(horaLocal(ms ? new Date(ms) : undefined));
   const [o2, setO2] = useState(ini(atual?.o2));
   const [ar, setAr] = useState(ini(atual?.ar));
   const [n2o, setN2o] = useState(ini(atual?.n2o));
@@ -185,15 +188,19 @@ export function JanelaGas({ atual, onConfirmar, onFechar }: {
 // ---------------------------------------------------------------------------
 // Líquidos
 // ---------------------------------------------------------------------------
-export function JanelaLiquido({ sentido, onConfirmar, onFechar }: {
+export function JanelaLiquido({ sentido, ms, inicial, onConfirmar, onFechar }: {
   sentido: "entrada" | "saida";
+  ms?: number;
+  /** Tocou na linha de uma solução: a janela já vem com ela. */
+  inicial?: { nome: string; categoria: string };
   onConfirmar: (momento: string, dados: Record<string, unknown>) => void;
   onFechar: () => void;
 }) {
   const opcoes = sentido === "entrada" ? LIQUIDOS_ENTRADA : LIQUIDOS_SAIDA;
-  const [hora, setHora] = useState(horaLocal());
-  const [categoria, setCategoria] = useState<CategoriaDeLiquido>(opcoes[0].categoria);
-  const [nome, setNome] = useState(sentido === "saida" ? opcoes[0].rotulo : "");
+  const [hora, setHora] = useState(horaLocal(ms ? new Date(ms) : undefined));
+  const [categoria, setCategoria] = useState<CategoriaDeLiquido>(
+    (opcoes.find((o) => o.categoria === inicial?.categoria)?.categoria ?? opcoes[0].categoria));
+  const [nome, setNome] = useState(inicial?.nome ?? (sentido === "saida" ? opcoes[0].rotulo : ""));
   const [volume, setVolume] = useState("");
   const momento = momentoDeHora(hora);
   const v = numero(volume);
@@ -226,7 +233,7 @@ export function JanelaLiquido({ sentido, onConfirmar, onFechar }: {
         </>}
         <div className="evoLinhaCampos">
           <CampoHora valor={hora} onMudar={setHora} />
-          <CampoNumero rotulo="Volume" valor={volume} onMudar={setVolume} unidade="mL" autoFocus={sentido === "saida"} />
+          <CampoNumero rotulo="Volume" valor={volume} onMudar={setVolume} unidade="mL" autoFocus={sentido === "saida" || Boolean(inicial)} />
         </div>
         {sentido === "entrada" && (categoria === "cristaloide" || categoria === "coloide") && (
           <div className="evoOpcoesMotivo" aria-label="Volume da bolsa">

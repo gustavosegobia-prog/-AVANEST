@@ -16,9 +16,11 @@ export type Infusao = {
   nome: string;
   diluicao: string;
   concentracao: { valor: number; unidade: UnidadeDeConcentracao } | null;
-  passos: Array<{ momento: string; valor: number; unidade: UnidadeDeVelocidade }>;
+  /** `id` é o registro de cada passo — é o que a tela abre ao tocar no valor. */
+  passos: Array<{ momento: string; valor: number; unidade: UnidadeDeVelocidade; id?: string }>;
   inicio: string;
   fim: string | null;
+  fimId?: string | null;
   ultimoRegistro: string;
 };
 
@@ -36,7 +38,7 @@ export function montarInfusoes(vigentes: readonly Registro[]): Infusao[] {
         nome: String(r.dados.nome ?? ""),
         diluicao: String(r.dados.diluicao ?? ""),
         concentracao: c && num(c.valor) ? { valor: num(c.valor)!, unidade: c.unidade as UnidadeDeConcentracao } : null,
-        passos: [{ momento: r.momento, valor: num(vel.valor) ?? 0, unidade: vel.unidade as UnidadeDeVelocidade }],
+        passos: [{ momento: r.momento, valor: num(vel.valor) ?? 0, unidade: vel.unidade as UnidadeDeVelocidade, id: r.id }],
         inicio: r.momento,
         fim: null,
         ultimoRegistro: r.momento,
@@ -47,9 +49,10 @@ export function montarInfusoes(vigentes: readonly Registro[]): Infusao[] {
     if (!inf) continue;
     inf.ultimoRegistro = r.momento;
     if (acao === "ajustar") {
-      inf.passos.push({ momento: r.momento, valor: num(vel.valor) ?? 0, unidade: vel.unidade as UnidadeDeVelocidade });
+      inf.passos.push({ momento: r.momento, valor: num(vel.valor) ?? 0, unidade: vel.unidade as UnidadeDeVelocidade, id: r.id });
     } else if (acao === "encerrar") {
       inf.fim = r.momento;
+      inf.fimId = r.id;
     }
   }
   return [...mapa.values()];
