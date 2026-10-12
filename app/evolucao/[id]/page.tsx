@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { exigirAcessoAEvolucao } from "@/lib/evolucao/acesso";
+import { exigirAcessoAEvolucao, nomeDoLocalDaSessao } from "@/lib/evolucao/acesso";
 import { FolhaAnestesica } from "@/components/evolucao/folha-anestesica";
 import type { Registro } from "@/lib/evolucao/registros";
 import type { RegraDeDose } from "@/lib/evolucao/doses";
@@ -24,7 +24,7 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
     .maybeSingle();
   if (!folha) notFound();
 
-  const [{ data: paciente }, { data: registros }, { data: regras }, { data: equipe }, { data: instituicao }] = await Promise.all([
+  const [{ data: paciente }, { data: registros }, { data: regras }, { data: equipe }, { data: instituicao }, localDaSessao] = await Promise.all([
     supabase.from("pacientes")
       .select("id, nome, data_nascimento, idade_anos, sexo, convenio, hospital, cirurgia, procedimento")
       .eq("id", folha.patient_id).maybeSingle(),
@@ -34,6 +34,7 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
     supabase.from("perfis").select("id, nome, crm, role, permissoes, status")
       .eq("institution_id", folha.institution_id).eq("status", "ativo").order("nome"),
     supabase.from("instituicoes").select("nome").eq("id", folha.institution_id).maybeSingle(),
+    nomeDoLocalDaSessao(supabase),
   ]);
   if (!paciente) notFound();
 
@@ -50,6 +51,7 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
       medicos={medicos}
       eu={{ id: perfil.id, nome: perfil.nome, crm: perfil.crm ?? "" }}
       instituicao={instituicao?.nome ?? ""}
+      localDaSessao={localDaSessao}
     />
   );
 }

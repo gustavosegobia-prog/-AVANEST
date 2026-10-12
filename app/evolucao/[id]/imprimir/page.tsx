@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigirAcessoAEvolucao } from "@/lib/evolucao/acesso";
+import { exigirAcessoAEvolucao, nomeDoLocalDaSessao } from "@/lib/evolucao/acesso";
 import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { FolhaImpressa } from "@/components/evolucao/folha-impressa";
 import { BotaoImprimir } from "@/components/botao-imprimir";
@@ -28,15 +28,19 @@ export default async function ImprimirFolhaPage({ params }: { params: Promise<{ 
     .maybeSingle();
   if (!folha) notFound();
 
-  const [{ data: paciente }, { data: registros }, { data: instituicao }, { data: quemEncerrou }] = await Promise.all([
+  const [{ data: paciente }, { data: registros }, { data: instituicao }, { data: quemEncerrou }, localDaSessao] = await Promise.all([
     supabase.from("pacientes").select("nome, data_nascimento, idade_anos, sexo").eq("id", folha.patient_id).maybeSingle(),
     supabase.from("evolucao_registros").select("*").eq("evolucao_id", id).order("momento").limit(5000),
     supabase.from("instituicoes").select("nome").eq("id", folha.institution_id).maybeSingle(),
     folha.encerrada_por
       ? supabase.from("perfis").select("nome").eq("id", folha.encerrada_por).maybeSingle()
       : Promise.resolve({ data: null }),
+    nomeDoLocalDaSessao(supabase),
   ]);
   if (!paciente) notFound();
+  // O cabeçalho: o hospital em que a ficha foi feita; sem ele, o local desta
+  // sessão; sem local, o nome do grupo.
+  const localDaFicha = String((folha.dados as Record<string, unknown> | null)?.local_atendimento ?? "").trim();
 
   return (
     <main className="imprPagina">
@@ -44,7 +48,7 @@ export default async function ImprimirFolhaPage({ params }: { params: Promise<{ 
         <Link href={`/evolucao/${id}`} className="evoBotao fantasma">← Voltar à ficha</Link>
         <p>
           A4 retrato. Sai o que está salvo no servidor: lançamento ainda pendente na tela não entra.
-          {folha.status === "aberta" && " A ficha está aberta — a impressão sai marcada como rascunho."}
+          {folha.status === "aberta" && " A ficha ainda está aberta: o rodapé de cada página diz isso."}
         </p>
         <BotaoImprimir rotulo="Imprimir ou salvar PDF" className="evoBotao" />
       </div>
@@ -52,7 +56,7 @@ export default async function ImprimirFolhaPage({ params }: { params: Promise<{ 
         folha={folha}
         paciente={paciente}
         vigentes={vigentes((registros ?? []) as Registro[])}
-        instituicao={instituicao?.nome ?? ""}
+        instituicao={localDaFicha || localDaSessao || instituicao?.nome || ""}
         impressoPor={perfil.nome ?? ""}
         encerradaPor={(quemEncerrou as { nome?: string } | null)?.nome ?? null}
         agora={new Date().toISOString()}
