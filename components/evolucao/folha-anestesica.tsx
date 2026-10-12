@@ -68,12 +68,12 @@ const minutoAtual = () => new Date(Math.round(Date.now() / 60000) * 60000).toISO
 const agoraMs = () => Date.now();
 const fmt = (v: number, casas = 2) => v.toLocaleString("pt-BR", { maximumFractionDigits: casas });
 
-export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, regras, medicos, eu, instituicao = "", localDaSessao = "" }: {
+export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, regras, medicos, eu, instituicao = "", localDaSessao = null }: {
   folhaInicial: Folha;
   /** O nome do serviço, como sai no alto da folha impressa. */
   instituicao?: string;
   /** O hospital do alfinete no topo do painel (lib/evolucao/acesso.ts). */
-  localDaSessao?: string;
+  localDaSessao?: { id: string; nome: string } | null;
   paciente: PacienteDaFolha & { id: string };
   registrosIniciais: Registro[];
   regras: RegraDeDose[];
@@ -119,9 +119,14 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   // A folha nasce com o médico que a abriu como responsável.
   const { mudarCabecalho } = f;
+  // Ficha anterior à separação por hospital: fica com o hospital em que for
+  // aberta agora — e daí em diante só aparece na lista dele.
+  const localIdDaFicha = String(dados.local_atendimento_id ?? "");
   useEffect(() => {
-    if (aberta && !localDaFicha && localDaSessao) mudarCabecalho({ local_atendimento: localDaSessao });
-  }, [aberta, localDaFicha, localDaSessao, mudarCabecalho]);
+    if (aberta && !localIdDaFicha && localDaSessao) {
+      mudarCabecalho({ local_atendimento_id: localDaSessao.id, local_atendimento: localDaFicha || localDaSessao.nome });
+    }
+  }, [aberta, localIdDaFicha, localDaFicha, localDaSessao, mudarCabecalho]);
   useEffect(() => {
     if (aberta && !Array.isArray(dados.equipe)) {
       mudarCabecalho({ equipe: [{ perfil_id: eu.id, nome: eu.nome, crm: eu.crm.replace(/\D/g, "") || eu.crm, uf: "PR", funcao: "responsavel" }] satisfies Profissional[] });
@@ -377,7 +382,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
       {/* O topo da ficha de papel: instituição, título e o anestesiologista; depois o paciente */}
       <div className="evoPapel evoCabecalhoPapel">
-        <div className="evoCabInst">{localDaFicha || localDaSessao || instituicao || String(dados.hospital ?? "") || "Serviço de anestesiologia"}</div>
+        <div className="evoCabInst">{localDaFicha || localDaSessao?.nome || instituicao || String(dados.hospital ?? "") || "Serviço de anestesiologia"}</div>
         <h2>Ficha anestésica</h2>
         <div className="evoCabResp">{responsavelNome || "—"}</div>
       </div>

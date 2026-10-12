@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
 import { cabecalhoInicial, type PacienteDaFolha } from "@/lib/evolucao/importar";
 import { motivoAoAbrirFolha } from "@/lib/evolucao/fila";
+import { fichasDoLocal } from "@/lib/evolucao/local";
 
 type Encontrado = PacienteDaFolha & { id: string };
 export type Achado = Encontrado & {
@@ -28,8 +29,10 @@ function quemE(p: Achado) {
 // pré-anestésica mais recente dele no topo. A busca já diz, antes do toque, se
 // essa avaliação existe — e se o paciente já tem ficha aberta, leva a ela em
 // vez de abrir uma segunda.
-export function NovaFolha({ institutionId, recentes = [] }: {
+export function NovaFolha({ institutionId, recentes = [], local = null }: {
   institutionId: string;
+  /** O hospital da sessão: a ficha nova nasce nele (e só aparece na lista dele). */
+  local?: { id: string; nome: string } | null;
   /** Avaliados nos últimos dias: no computador, a lista já aparece antes de digitar. */
   recentes?: Achado[];
 }) {
@@ -63,7 +66,11 @@ export function NovaFolha({ institutionId, recentes = [] }: {
         ? await Promise.all([
           supabase.from("avaliacoes").select("patient_id, created_at, concluida_at, cirurgia:dados->>cirurgia")
             .in("patient_id", ids).eq("versao_vigente", true).order("created_at", { ascending: false }),
-          supabase.from("evolucoes_anestesicas").select("id, patient_id").in("patient_id", ids).eq("status", "aberta"),
+          // "Continuar" só para a ficha aberta NESTE hospital.
+          (local
+            ? supabase.from("evolucoes_anestesicas").select("id, patient_id").or(fichasDoLocal(local.id))
+            : supabase.from("evolucoes_anestesicas").select("id, patient_id"))
+            .in("patient_id", ids).eq("status", "aberta"),
         ])
         : [null, null];
       if (!vale) return;
@@ -85,7 +92,7 @@ export function NovaFolha({ institutionId, recentes = [] }: {
       });
     }, 250);
     return () => { vale = false; clearTimeout(t); };
-  }, [busca]);
+  }, [busca, local]);
 
   async function cadastrarEAbrir() {
     if (!novo || !novo.nome.trim()) return;
@@ -115,7 +122,10 @@ export function NovaFolha({ institutionId, recentes = [] }: {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    const dados = cabecalhoInicial(p, avaliacao ? { id: avaliacao.id, dados: avaliacao.dados } : null, new Date());
+    const dados = {
+      ...cabecalhoInicial(p, avaliacao ? { id: avaliacao.id, dados: avaliacao.dados } : null, new Date()),
+      ...(local ? { local_atendimento_id: local.id, local_atendimento: local.nome } : {}),
+    };
     const { data, error } = await supabase
       .from("evolucoes_anestesicas")
       .insert({ institution_id: institutionId, patient_id: p.id, avaliacao_id: avaliacao?.id ?? null, dados })

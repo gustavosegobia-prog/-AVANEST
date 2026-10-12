@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { exigirAcessoAEvolucao } from "@/lib/evolucao/acesso";
+import { avaliacoesDoLocal, exigirAcessoAEvolucao, fichasDoLocal, localDaSessao } from "@/lib/evolucao/acesso";
 import { fimDaAnestesia } from "@/lib/evolucao/folha";
 import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { InicioDasFolhas, type FolhaResumo } from "./inicio-das-folhas";
@@ -41,11 +41,17 @@ const agoraMs = () => Date.now();
 export default async function FichasPage() {
   const { supabase, perfil } = await exigirAcessoAEvolucao();
   const agora = agoraMs();
-  const tabela = () => supabase.from("evolucoes_anestesicas").select(CAMPOS);
+  // O hospital escolhido em "Onde você vai atender hoje?": as fichas e os
+  // avaliados de um hospital não aparecem no outro.
+  const local = await localDaSessao(supabase);
+  const tabela = () => {
+    const q = supabase.from("evolucoes_anestesicas").select(CAMPOS);
+    return local ? q.or(fichasDoLocal(local.id)) : q;
+  };
   const [abertas, encerradas, avaliados] = await Promise.all([
     tabela().eq("status", "aberta").order("inicio_em", { ascending: false }).limit(30),
     tabela().eq("status", "encerrada").order("encerrada_em", { ascending: false, nullsFirst: false }).limit(20),
-    supabase.from("avaliacoes").select(RECENTES)
+    (local ? supabase.from("avaliacoes").select(RECENTES).or(avaliacoesDoLocal(local.id)) : supabase.from("avaliacoes").select(RECENTES))
       .eq("versao_vigente", true).not("concluida_at", "is", null)
       .gte("concluida_at", new Date(agora - DIAS_RECENTES * 86_400_000).toISOString())
       .order("concluida_at", { ascending: false }).limit(40),
@@ -87,6 +93,7 @@ export default async function FichasPage() {
       semBanco={Boolean(abertas.error)}
       agora={agora}
       recentes={recentes}
+      local={local}
     />
   );
 }

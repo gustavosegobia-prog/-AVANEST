@@ -26,15 +26,19 @@ export async function exigirAcessoAEvolucao() {
   return { supabase, perfil };
 }
 
+export type LocalDaSessao = { id: string; nome: string };
+
 /**
- * O hospital em que a pessoa está atendendo nesta sessão — o do alfinete no
- * topo do painel —, para o cabeçalho da ficha. A mesma decisão do painel
- * (lib/local-ativo.ts), sem perguntar: aqui só se lê. Sem local cadastrado,
- * volta vazio e o cabeçalho fica com o nome do grupo.
+ * O hospital em que a pessoa está atendendo nesta sessão — o escolhido em
+ * "Onde você vai atender hoje?", o do alfinete no topo do painel. A mesma
+ * decisão do painel (lib/local-ativo.ts), sem perguntar: aqui só se lê. Sem
+ * local cadastrado, null: as telas ficam com o grupo inteiro e o nome dele.
  */
-export async function nomeDoLocalDaSessao(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
+export async function localDaSessao(supabase: Awaited<ReturnType<typeof createClient>>): Promise<LocalDaSessao | null> {
   const { data } = await supabase.rpc("meus_locais");
   const ativos = ((data ?? []) as LocalDisponivel[]).filter((l) => l.ativo);
   const { local } = decidirLocalDaSessao((await cookies()).get(COOKIE_LOCAL)?.value, ativos, { pergunta: false });
-  return local ? nomeDoLocal(local) : "";
+  return local ? { id: local.id, nome: nomeDoLocal(local) } : null;
 }
+
+export { avaliacoesDoLocal, fichasDoLocal } from "./local";

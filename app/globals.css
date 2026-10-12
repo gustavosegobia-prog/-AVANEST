@@ -7620,3 +7620,7 @@ html[data-tema=escuro]:has(.temaApp),html[data-tema=escuro]:has(.temaApp) body{b
    relógio para, em âmbar, e o caminho é encerrar. */
 .fcTempo.parado{font-size:15px;color:var(--cor-atencao)}
 .fcTempo.parado::before{background:var(--cor-atencao)}
+
+/* O hospital da lista de fichas: as de outros hospitais não aparecem aqui. */
+.fcLocal{display:inline-flex;align-items:center;gap:6px;margin:6px 0 0;padding:4px 10px;border-radius:999px;
+  background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-size:13.5px;font-weight:750}

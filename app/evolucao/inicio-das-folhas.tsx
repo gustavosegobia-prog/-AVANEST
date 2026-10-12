@@ -26,9 +26,11 @@ const dia = (iso: string) => DIA.format(new Date(iso));
 // que está em andamento, e achar a que já foi encerrada para conferir ou
 // imprimir.
 export function InicioDasFolhas({
-  institutionId, abertas, encerradas, semBanco, agora, recentes = [],
+  institutionId, abertas, encerradas, semBanco, agora, recentes = [], local = null,
 }: {
   institutionId: string;
+  /** O hospital da sessão: a lista é só dele, e a ficha nova nasce nele. */
+  local?: { id: string; nome: string } | null;
   /** Avaliados nos últimos dias, prontos para abrir — a lista aparece só no computador. */
   recentes?: Achado[];
   abertas: FolhaResumo[];
@@ -47,6 +49,7 @@ export function InicioDasFolhas({
 
         <div className="fcTitulo">
           <h1>Ficha anestésica</h1>
+          {local && <p className="fcLocal"><Icone nome="predio" tamanho={16} /> {local.nome}</p>}
           <p>Busque o paciente: a ficha abre com a avaliação pré-anestésica dele já no topo, para conferir.</p>
         </div>
 
@@ -60,7 +63,7 @@ export function InicioDasFolhas({
           // andamento e o encerrado à direita. No tablet e no celular, uma só,
           // nesta mesma ordem.
           <div className="fcColunas">
-            <NovaFolha institutionId={institutionId} recentes={recentes} />
+            <NovaFolha institutionId={institutionId} recentes={recentes} local={local} />
             <div className="fcLado">
               <section className="fcSecao" aria-labelledby="fc-andamento">
                 <h2 id="fc-andamento">

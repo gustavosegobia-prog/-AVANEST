@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigirAcessoAEvolucao, nomeDoLocalDaSessao } from "@/lib/evolucao/acesso";
+import { exigirAcessoAEvolucao, localDaSessao } from "@/lib/evolucao/acesso";
 import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { FolhaImpressa } from "@/components/evolucao/folha-impressa";
 import { BotaoImprimir } from "@/components/botao-imprimir";
@@ -28,14 +28,14 @@ export default async function ImprimirFolhaPage({ params }: { params: Promise<{ 
     .maybeSingle();
   if (!folha) notFound();
 
-  const [{ data: paciente }, { data: registros }, { data: instituicao }, { data: quemEncerrou }, localDaSessao] = await Promise.all([
+  const [{ data: paciente }, { data: registros }, { data: instituicao }, { data: quemEncerrou }, local] = await Promise.all([
     supabase.from("pacientes").select("nome, data_nascimento, idade_anos, sexo").eq("id", folha.patient_id).maybeSingle(),
     supabase.from("evolucao_registros").select("*").eq("evolucao_id", id).order("momento").limit(5000),
     supabase.from("instituicoes").select("nome").eq("id", folha.institution_id).maybeSingle(),
     folha.encerrada_por
       ? supabase.from("perfis").select("nome").eq("id", folha.encerrada_por).maybeSingle()
       : Promise.resolve({ data: null }),
-    nomeDoLocalDaSessao(supabase),
+    localDaSessao(supabase),
   ]);
   if (!paciente) notFound();
   // O cabeçalho: o hospital em que a ficha foi feita; sem ele, o local desta
@@ -56,7 +56,7 @@ export default async function ImprimirFolhaPage({ params }: { params: Promise<{ 
         folha={folha}
         paciente={paciente}
         vigentes={vigentes((registros ?? []) as Registro[])}
-        instituicao={localDaFicha || localDaSessao || instituicao?.nome || ""}
+        instituicao={localDaFicha || local?.nome || instituicao?.nome || ""}
         impressoPor={perfil.nome ?? ""}
         encerradaPor={(quemEncerrou as { nome?: string } | null)?.nome ?? null}
         agora={new Date().toISOString()}
