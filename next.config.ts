@@ -51,9 +51,26 @@ const CABECALHOS = [
   },
 ];
 
+// A FOLHA DE IMPRESSÃO DA FICHA é a exceção, e só para o próprio site: o
+// "Imprimir" da ficha a carrega escondida num iframe e abre a janela de
+// imprimir ali mesmo (components/evolucao/imprimir-ficha.tsx), sem aba nova.
+// Ela é só leitura — não tem botão que exclua ou altere nada —, e o
+// `'self'` continua impedindo qualquer outro site de embuti-la. No Next, a
+// regra que vem depois vence a de cima para o mesmo cabeçalho.
+const IMPRESSAO_EMBUTIVEL = [
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  {
+    key: "Content-Security-Policy",
+    value: "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'",
+  },
+];
+
 const nextConfig: NextConfig = {
   async headers() {
-    return [{ source: "/:path*", headers: CABECALHOS }];
+    return [
+      { source: "/:path*", headers: CABECALHOS },
+      { source: "/evolucao/:id/imprimir", headers: IMPRESSAO_EMBUTIVEL },
+    ];
   },
 };
 

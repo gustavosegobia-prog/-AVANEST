@@ -35,6 +35,7 @@ import { numero } from "./campos";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
 import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { RodapeDaFolha } from "./rodape-da-folha";
+import { ImprimirFicha } from "./imprimir-ficha";
 
 // A folha de anestesia digital.
 //
@@ -357,7 +358,8 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
             <button type="button" className="evoBotao icone" onClick={f.desfazerUltimo} disabled={!f.podeDesfazer} title="Desfazer">↶</button>
             <button type="button" className="evoBotao icone" onClick={f.refazerUltimo} disabled={!f.podeRefazer} title="Refazer">↷</button>
           </>}
-          <a className="evoBotao secundario" href={`/evolucao/${folha.id}/imprimir`} target="_blank" rel="noreferrer">Imprimir</a>
+          <ImprimirFicha id={folha.id} className="evoBotao secundario"
+            aguardar={f.pendentes.some((p) => !p.recusado)}>Imprimir</ImprimirFicha>
           {aberta
             ? <button type="button" className="evoBotao" onClick={() => { setErroAcao(null); setAbrir({ tipo: "encerrar" }); }}>Encerrar</button>
             : <button type="button" className="evoBotao secundario" onClick={() => { setErroAcao(null); setAbrir({ tipo: "reabrir" }); }}>Reabrir</button>}

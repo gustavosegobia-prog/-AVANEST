@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Icone } from "@/components/icone";
 import { Decorrido } from "./decorrido";
 import { ExcluirFolha } from "./excluir-folha";
+import { ImprimirFicha } from "@/components/evolucao/imprimir-ficha";
 import { NovaFolha, type Achado } from "./nova-folha";
 
 export type FolhaResumo = {
@@ -114,9 +115,9 @@ export function InicioDasFolhas({
                             {dia(f.inicio_em)} · {hora(f.inicio_em)}{f.encerrada_em && `–${hora(f.encerrada_em)}`}
                           </span>
                         </Link>
-                        <Link href={`/evolucao/${f.id}/imprimir`} className="fcImprimir" aria-label={`Imprimir a ficha de ${f.paciente}`}>
+                        <ImprimirFicha id={f.id} className="fcImprimir" rotulo={`Imprimir a ficha de ${f.paciente}`}>
                           <Icone nome="imprimir" tamanho={18} /> <span>Imprimir</span>
-                        </Link>
+                        </ImprimirFicha>
                       </li>
                     ))}
                   </ul>

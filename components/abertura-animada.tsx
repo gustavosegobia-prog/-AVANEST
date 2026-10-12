@@ -66,13 +66,15 @@
 // segundos volta para a busca e clica no seguinte — e é exatamente essa volta
 // que o buscador aprende a ler como "o resultado não servia". A abertura é do
 // aplicativo: ele abre no /login (app/manifest.ts), e ali ela continua.
+// E A FOLHA DE IMPRESSÃO (…/imprimir) também não: ela abre para imprimir, e a
+// marca por dois segundos era só espera — a janela de imprimir já está vindo.
 const PAGINAS_SEM_ABERTURA = [
   "planos", "2meses", "recursos", "privacidade", "termos", "escores", "app", "criar-conta",
   "avaliacao-pre-anestesica", "avaliacao-pre-anestesica-digital", "ficha-anestesica",
   "escala-medica",
 ];
 const ROTEIRO_DA_ABERTURA = `try{
-if(location.pathname==='/'||/^\\/(${PAGINAS_SEM_ABERTURA.join("|")})(\\/|$)/.test(location.pathname)){document.documentElement.className+=' semAbertura'}
+if(location.pathname==='/'||/\\/imprimir$/.test(location.pathname)||/^\\/(${PAGINAS_SEM_ABERTURA.join("|")})(\\/|$)/.test(location.pathname)){document.documentElement.className+=' semAbertura'}
 else if(sessionStorage.getItem('avanest:abertura')){document.documentElement.className+=' semAbertura'}
 else{sessionStorage.setItem('avanest:abertura','1')}
 }catch(e){}`;

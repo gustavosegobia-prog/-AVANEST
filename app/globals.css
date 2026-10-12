@@ -7624,3 +7624,10 @@ html[data-tema=escuro]:has(.temaApp),html[data-tema=escuro]:has(.temaApp) body{b
 /* O hospital da lista de fichas: as de outros hospitais não aparecem aqui. */
 .fcLocal{display:inline-flex;align-items:center;gap:6px;margin:6px 0 0;padding:4px 10px;border-radius:999px;
   background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-size:13.5px;font-weight:750}
+
+/* O botão de imprimir da lista das fichas é <button> (imprime sem abrir aba):
+   sem o fundo e a borda de botão, igual ao link que era. */
+button.fcImprimir{border:0;border-left:1px solid var(--cor-borda);background:none;font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+button.fcImprimir:disabled{cursor:progress;opacity:.7}
+/* A abertura da marca nunca vai para o papel. */
+@media print{.abertura{display:none!important}}

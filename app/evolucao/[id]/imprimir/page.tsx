@@ -5,6 +5,7 @@ import { exigirAcessoAEvolucao, localDaSessao } from "@/lib/evolucao/acesso";
 import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { FolhaImpressa } from "@/components/evolucao/folha-impressa";
 import { BotaoImprimir } from "@/components/botao-imprimir";
+import { ImprimirAoAbrir } from "@/components/evolucao/imprimir-ao-abrir";
 
 export const metadata: Metadata = {
   title: "Imprimir ficha anestésica | AVANEST",
@@ -16,8 +17,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // A folha impressa sai do servidor, dos registros VIGENTES no banco — não do
 // que está na tela de quem clicou. Lançamento que ainda não sincronizou não
 // aparece no papel, e a barra de cima diz isso.
-export default async function ImprimirFolhaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ImprimirFolhaPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ auto?: string }>;
+}) {
   const { id } = await params;
+  const { auto } = await searchParams;
   if (!UUID.test(id)) notFound();
   const { supabase, perfil } = await exigirAcessoAEvolucao();
 
@@ -44,6 +49,7 @@ export default async function ImprimirFolhaPage({ params }: { params: Promise<{ 
 
   return (
     <main className="imprPagina">
+      {auto === "1" && <ImprimirAoAbrir />}
       <div className="imprBarra">
         <Link href={`/evolucao/${id}`} className="evoBotao fantasma">← Voltar à ficha</Link>
         <p>
