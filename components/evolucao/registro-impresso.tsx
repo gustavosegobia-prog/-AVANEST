@@ -55,12 +55,15 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
   const todosLiquidos = linhasDeLiquido(vigentes);
   const diurese = todosLiquidos.find((l) => l.rotulo === "Diurese")!;
   const liquidos = todosLiquidos.filter((l) => l !== diurese);
-  const linhasDeLiq = Math.max(1, liquidos.length);
-  const linhasDeInfusao = Math.max(2, infusoes.length);
+  // Cada faixa leva uma linha a mais, em branco: o espaço para escrever à mão
+  // o que entrar depois da impressão, como no papel.
+  const linhasDeGases = gases.length + 1;
+  const linhasDeLiq = Math.max(1, liquidos.length) + 1;
+  const linhasDeInfusao = Math.max(2, infusoes.length) + 1;
 
   // As faixas, de cima para baixo.
   const yGases = CAB;
-  const yInf = yGases + gases.length * LINHA;
+  const yInf = yGases + linhasDeGases * LINHA;
   const yLiq = yInf + linhasDeInfusao * LINHA;
   const ySinais = yLiq + linhasDeLiq * LINHA;
   const yEventos = ySinais + 4 * LINHA;
@@ -138,7 +141,7 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
       ))}
 
       {/* Gases */}
-      {tira(yGases, gases.length, "Gases", "Gás")}
+      {tira(yGases, linhasDeGases, "Gases", "Gás")}
       {gases.map((g, i) => (
         <text key={g.chave} x={FAIXA + 1} y={yGases + i * LINHA + 2.75} fontSize={2}>{g.rotulo}</text>
       ))}
