@@ -847,10 +847,9 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
       escrito.nome,String(draft.data_cirurgia||""),escrito.dose,escrito.frequencia,
     );
     save([...medications,novo]);
-    // Nasce ABERTO: quem acabou de adicionar quer preencher a dose agora. Só o
-    // que entra pela importação da anamnese fica fechado — ali chegam vários de
-    // uma vez, e abrir todos devolveria a parede de texto que isto resolve.
-    setAbertos(atuais=>new Set(atuais).add(novo.id));
+    // Nasce com a orientação do guia RECOLHIDA, como os outros: dose,
+    // frequência e conduta já ficam à vista para preencher; o guia é consulta
+    // e abre com um toque em "Orientação do guia".
     setName("");
   };
   const update=<K extends keyof Medication>(id:string,key:K,value:Medication[K])=>save(medications.map(item=>{
