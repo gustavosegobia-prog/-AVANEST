@@ -6,6 +6,7 @@ import { AberturaAnimada, RoteiroDaAbertura } from "@/components/abertura-animad
 import { MedicaoDeAnuncios } from "@/components/medicao-de-anuncios";
 import { comoJson, organizacao } from "@/lib/schema";
 import { IMAGEM_DE_COMPARTILHAMENTO } from "@/lib/metadados";
+import { ROTEIRO_DO_TEMA } from "@/lib/tema";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -55,8 +56,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   // estilo inteiro e o sistema aparece cru. Como <link> ela baixa em paralelo,
   // e a pilha de reserva do CSS assume enquanto isso.
   return (
-    <html lang="pt-BR">
+    // `suppressHydrationWarning`: o roteiro do tema põe `data-tema` no <html>
+    // antes de o React hidratar, de propósito (lib/tema.ts).
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: ROTEIRO_DO_TEMA }} />
         {/* O rótulo que fica embaixo do ícone na tela de início do iPhone. Sem
             ele o iOS usa o <title> inteiro e corta no meio, virando
             "AvaNEST|Avaliaç...". O ícone em si vem de app/apple-icon.png. */}

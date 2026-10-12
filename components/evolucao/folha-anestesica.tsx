@@ -296,7 +296,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       : `${responsavel.nome} não está ligado a uma conta do AVANEST, então a ficha não entra em nenhuma Produção. Para entrar, escolha o nome na lista do médico anestesista.`;
 
   return (
-    <main className="evoFolha">
+    <main className="evoFolha temaApp">
       <header className="evoTopo">
         <Link href="/evolucao" className="evoVoltar" aria-label="Voltar às fichas">←</Link>
         <div className="evoPaciente">

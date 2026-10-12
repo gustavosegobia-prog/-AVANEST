@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, Fragment, useCallback, useEffect, useMemo, useR
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { guardarTemaEscuro, temaEscuroGuardado } from "@/lib/tema";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { useCaptcha } from "@/components/turnstile";
@@ -420,7 +421,10 @@ export function DashboardClient({
   const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
   const [isAreaPending, startAreaTransition] = useTransition();
   const [open, setOpen] = useState(initialNewPatient);
+  // O tema escuro vem do aparelho (lib/tema.ts) e volta para ele a cada troca.
   const [dark, setDark] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- o localStorage só existe depois de montar
+  useEffect(() => { setDark(temaEscuroGuardado()); }, []);
   const [userMenu, setUserMenu] = useState(false);
   // O pedido de abrir o chat, vindo da caixa de avisos. O token cresce a cada
   // clique: sem ele, clicar duas vezes no mesmo aviso não reabriria a janela.
@@ -771,7 +775,7 @@ export function DashboardClient({
     : null;
 
   return (
-    <main className={`clinicalShell ${dark?"clinicalDark":""}`}>
+    <main className={`clinicalShell temaApp ${dark?"clinicalDark":""}`}>
       <header className="clinicalTopbar">
         <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Gestão em anestesiologia</small></span></Link>
         {/* Com local escolhido, é ele que aparece: quem atende em três
@@ -958,7 +962,7 @@ export function DashboardClient({
               {/* Liga E desliga: é aqui que se religa quem desligou. */}
               <NotificacoesNoMenu chavePublica={chavePush} aoMudar={()=>setUserMenu(false)}/>
               <hr/>
-              <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{setDark(value=>!value);setUserMenu(false)}}>
+              <button role="menuitemcheckbox" aria-checked={dark} onClick={()=>{const escuro=!dark;setDark(escuro);guardarTemaEscuro(escuro);setUserMenu(false)}}>
                 <Icone nome="tema"/> {dark?"Tema claro":"Tema escuro"}
               </button>
               <button role="menuitem" onClick={()=>{

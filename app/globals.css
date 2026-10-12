@@ -65,7 +65,7 @@
 /* Tema escuro: mesma estrutura, outros valores. `color-scheme` leva junto o
    que o CSS não pinta: barra de rolagem, calendário do campo de data, lista
    aberta do <select>. */
-.clinicalDark{
+.clinicalDark,html[data-tema=escuro]:has(.temaApp){
   color-scheme:dark;
   --cor-fundo:#0b1a27;
   --cor-superficie:#132638;
@@ -7605,3 +7605,9 @@ button.evoPFAsaN:disabled{cursor:default}
 @media(max-width:980px){
   .evoRCel.caixa .evoRCalcPainel{left:auto;right:0;transform:none}
 }
+
+/* O tema escuro guardado no aparelho (lib/tema.ts) vale para toda página do
+   sistema com `.temaApp` — o painel e as telas da ficha anestésica. Os
+   valores são os mesmos de `.clinicalDark`, lá em cima; aqui só o fundo da
+   página inteira, para não sobrar faixa clara embaixo de tela curta. */
+html[data-tema=escuro]:has(.temaApp),html[data-tema=escuro]:has(.temaApp) body{background:var(--cor-fundo);color:var(--cor-tinta)}

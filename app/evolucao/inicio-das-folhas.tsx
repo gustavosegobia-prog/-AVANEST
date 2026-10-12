@@ -35,7 +35,7 @@ export function InicioDasFolhas({
   agora: number;
 }) {
   return (
-    <div className="evoInicio fcFundo">
+    <div className="evoInicio fcFundo temaApp">
       <main className="fcPagina">
         <header className="fcTopo">
           <Link href="/dashboard?area=medico" className="fcVoltar">
