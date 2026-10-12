@@ -78,7 +78,7 @@ export default function HomePage() {
     "https://wa.me/5541997870810?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20conversa%20de%2015%20minutos%20sobre%20o%20AVANEST.";
 
   return (
-    <main className="avnLanding">
+    <main className="avnLanding avnCapa">
       {/* Aberto pelo atalho da tela de início, vai direto para o login. */}
       <AbrirNoLogin />
       <script

@@ -7523,3 +7523,85 @@ button.evoPFAsaN:disabled{cursor:default}
   .fcExcluir{padding:0 14px}
   .fcExcluir span{display:none}
 }
+
+/* ══ Responsividade, segunda passada ══════════════════════════════════════
+   O que a varredura com capturas (celular, tablet em pé e deitado,
+   notebook e monitor de 1920) mostrou — não estouro, que já estava zerado,
+   mas o que fica torto ou desperdiça tela. */
+
+/* Capa no computador: uma moldura só para a barra, o destaque, as seções e
+   o rodapé. Antes a barra e o destaque iam até 24px da borda e o resto da
+   página ficava numa caixa de 1180px no meio: no monitor de 1920 o título
+   nascia 350px à esquerda das seções de baixo. Agora todos param na mesma
+   linha, numa caixa de até 1400px — menos borda do que os 1180 de antes. */
+@media(min-width:1101px){
+  .avnCapa{--avn-moldura:max(32px,calc((100vw - 1400px)/2))}
+  .avnCapa .avnPerfis,.avnCapa .avnInfo,.avnCapa .avnPerguntasCapa,.avnCapa .rodapePublico{
+    padding-left:var(--avn-moldura);padding-right:var(--avn-moldura)}
+}
+/* Tablet e celular: menos vão entre as seções, e o terceiro cartão de "Três
+   frentes" ocupa a linha inteira em vez de ficar ao lado de um buraco. */
+.avnCapa .avnInfo{padding-bottom:32px}
+.avnCapa .avnPerguntasCapa{padding-top:16px}
+@media(max-width:800px){
+  .avnInfo{padding-top:56px}
+}
+@media(min-width:521px) and (max-width:800px){
+  .avnGrid>article:last-child:nth-child(odd){grid-column:1/-1}
+}
+/* No celular o selo do Instagram descia para baixo do rodapé, solto numa
+   faixa clara. O rodapé já tem o link do Instagram: o selo sai. */
+@media(max-width:700px){
+  .avnInstagram{display:none}
+}
+
+/* Rodapé público no tablet: três colunas de largura fixa com 72px de vão
+   passavam da margem direita entre 700 e 900px. Agora podem encolher. */
+.rodapeColunas{grid-template-columns:repeat(3,minmax(0,max-content));column-gap:clamp(28px,6vw,72px)}
+@media(max-width:700px){
+  .rodapeColunas{grid-template-columns:1fr 1fr;column-gap:18px}
+}
+
+/* Financeiro: as ações do topo (competência, exportar, configurar, olho)
+   quebram linha quando não cabem — no tablet o olho passava da margem. */
+.financeHeadingActions{flex-wrap:wrap;flex:0 1 auto;justify-content:flex-end}
+/* No celular, os quatro números em 2×2: metade da altura, e o resto do
+   financeiro aparece antes. Só abaixo de 340px voltam a um por linha. */
+@media(max-width:600px){
+  .pfKpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pfKpi{padding:var(--esp-3)}
+  .pfKpi strong{font-size:clamp(16px,4.6vw,22px)}
+}
+@media(max-width:340px){
+  .pfKpis{grid-template-columns:1fr}
+}
+
+/* Recepção: o botão do topo não quebra no meio ("pré- / anestésica"). */
+.recAgendar{white-space:nowrap}
+
+/* Ficha anestésica no tablet em pé: a lista de medicamentos desce para
+   baixo do gráfico e virava uma coluna de 2 telas de altura, com metade da
+   largura vazia. Em duas colunas ela cabe na metade; cada medicamento
+   (com a linha da dose aberta) fica inteiro numa coluna. */
+@media(min-width:641px) and (max-width:980px){
+  .evoGruposMed{columns:2;column-gap:28px}
+  .evoGruposMed .evoGrupoMed{margin-top:0;padding-top:10px}
+  .evoGruposMed .evoGrupoMed h3{break-after:avoid}
+  .evoGruposMed .evoGrupoMed li{break-inside:avoid}
+}
+
+/* Avaliação: com erro de salvamento, o motivo e o "Tentar de novo" ganham
+   uma linha própria no topo, em vez de espremer o "Voltar ao painel" em
+   três linhas no tablet. */
+.evalVoltar{white-space:nowrap}
+.evalRoleNav{flex:none}
+.evalTopbar:has(.evalSave.error){flex-wrap:wrap;height:auto;min-height:60px;padding-top:8px;padding-bottom:8px;row-gap:6px}
+.evalTopbar:has(.evalSave.error) .evalRoleNav{margin-left:auto}
+.evalTopbar .evalSave.error{order:3;flex:1 1 100%;flex-wrap:wrap;white-space:normal;max-width:none;overflow:visible}
+
+/* A soma do Aldrete abre centrada na caixa; no celular e no tablet em pé a
+   caixa fica na beira direita, e metade do painel saía da tela. Ali ele
+   abre alinhado à direita da caixa. */
+@media(max-width:980px){
+  .evoRCel.caixa .evoRCalcPainel{left:auto;right:0;transform:none}
+}

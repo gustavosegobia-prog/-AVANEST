@@ -501,6 +501,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                 </ul>
               </div>
             )}
+            <div className="evoGruposMed">
             {LISTA_DA_FOLHA.map((g, gi) => {
               const doGrupo = administradosPorGrupo.get(g.codigo) ?? [];
               const foraDaLista = doGrupo.filter((a) => !g.itens.some((it) => mesmoFarmaco(it.nome, a.nome)));
@@ -547,6 +548,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                 </section>
               );
             })}
+            </div>
             {exposicao.length > 0 && (
               <p className="evoNota">
                 Anestésico local: {exposicao.map((e) => `${e.nome} ${e.mg !== null ? `${fmt(e.mg)} mg` : "—"}${e.mgPorKg !== null ? ` (${fmt(e.mgPorKg)} mg/kg)` : ""}`).join(" · ")}.
