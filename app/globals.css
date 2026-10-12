@@ -7204,17 +7204,20 @@ button.evoPFAsaN:disabled{cursor:default}
 .evoPFResumo{color:var(--cor-tinta-fraca)}
 .evoPFCel.resumo .evoBotao{margin-left:auto}
 .evoPreOrigem{margin:0;padding:4px 10px;border-top:1px solid var(--cor-borda);font-size:12.5px;color:var(--cor-tinta-fraca)}
-/* Tela estreita: a grade vira duas ou três colunas. Só na tela — a impressão é A4 e fica no desenho do papel. */
+/* Tela estreita: a grade vira duas ou três colunas. Só na ficha da TELA
+   (.evoFolha): a folha impressa (.imprFolha) usa o mesmo bloco e fica sempre
+   no desenho do papel, qualquer que seja a largura da janela em que ela é
+   montada — é dessa medida que sai a altura do gráfico (registro-que-enche). */
 @media screen and (max-width:980px){
-  .evoCabecalhoPapel{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .evoCabInst{grid-column:1/-1}
-  .evoPFGrade,.evoPFGrade.recolhida{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:none;grid-auto-flow:row dense}
-  .evoPFGrade .evoPFCel{grid-area:auto;border-right:1px solid var(--cor-borda-forte);border-bottom:1px solid var(--cor-borda-forte)}
-  .evoPFGrade .evoPFTira{display:none}
-  .evoPFGrade .evoPFCel:is(.nome,.resp,.dig,.circ,.endo,.med,.mental,.obs,.anterior,.diag,.alerg,.asa,.outros,.resumo){grid-column:1/-1}
+  .evoFolha .evoCabecalhoPapel{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .evoFolha .evoCabInst{grid-column:1/-1}
+  .evoFolha .evoPFGrade,.evoFolha .evoPFGrade.recolhida{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:none;grid-auto-flow:row dense}
+  .evoFolha .evoPFGrade .evoPFCel{grid-area:auto;border-right:1px solid var(--cor-borda-forte);border-bottom:1px solid var(--cor-borda-forte)}
+  .evoFolha .evoPFGrade .evoPFTira{display:none}
+  .evoFolha .evoPFGrade .evoPFCel:is(.nome,.resp,.dig,.circ,.endo,.med,.mental,.obs,.anterior,.diag,.alerg,.asa,.outros,.resumo){grid-column:1/-1}
 }
 @media screen and (max-width:640px){
-  .evoPFGrade,.evoPFGrade.recolhida{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .evoFolha .evoPFGrade,.evoFolha .evoPFGrade.recolhida{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 /* Registro e medicação com a moldura do papel, colados como na ficha. */
 .evoFolha .evoCorpo{margin-top:6px;gap:6px}

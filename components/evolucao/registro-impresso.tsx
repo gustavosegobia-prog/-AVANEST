@@ -81,8 +81,11 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
 
   const clip = `impr-area-${chave}`, hachura = `impr-hachura-${chave}`;
 
-  function tira(y0: number, linhas: number, nome: string) {
+  function tira(y0: number, linhas: number, nomeInteiro: string, curto: string) {
     const h = linhas * LINHA;
+    // Faixa de uma ou duas linhas não cabe a palavra inteira de pé: abrevia,
+    // em vez de um rótulo escrever por cima do outro.
+    const nome = nomeInteiro.length * 1.05 > h - 0.6 ? curto : nomeInteiro;
     return (
       <g>
         <line x1={FAIXA} x2={FAIXA} y1={y0} y2={y0 + h} stroke={COR.gradeForte} strokeWidth={0.2} />
@@ -135,13 +138,13 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
       ))}
 
       {/* Gases */}
-      {tira(yGases, gases.length, "Gases")}
+      {tira(yGases, gases.length, "Gases", "Gás")}
       {gases.map((g, i) => (
         <text key={g.chave} x={FAIXA + 1} y={yGases + i * LINHA + 2.75} fontSize={2}>{g.rotulo}</text>
       ))}
 
       {/* Infusões */}
-      {tira(yInf, linhasDeInfusao, "Infusões")}
+      {tira(yInf, linhasDeInfusao, "Infusões", "Inf.")}
       {infusoes.map((inf, i) => (
         <text key={inf.id} x={FAIXA + 1} y={yInf + i * LINHA + 2.75} fontSize={2}>
           {inf.nome.slice(0, 18)}<tspan fontSize={1.6} fill="#4a5563"> {inf.passos[0]?.unidade ?? ""}</tspan>
@@ -149,7 +152,7 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
       ))}
 
       {/* Líquidos */}
-      {tira(yLiq, linhasDeLiq, "Líquidos")}
+      {tira(yLiq, linhasDeLiq, "Líquidos", "Líq.")}
       {liquidos.map((l, i) => (
         <g key={`${l.sentido}${l.rotulo}`}>
           <text x={FAIXA + 1} y={yLiq + i * LINHA + 2.75} fontSize={2}>{l.rotulo.slice(0, 20)}</text>

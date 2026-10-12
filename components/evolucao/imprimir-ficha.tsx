@@ -42,7 +42,10 @@ export function ImprimirFicha({ id, className, rotulo, children, aguardar = fals
     f.setAttribute("aria-hidden", "true");
     f.tabIndex = -1;
     f.title = "Ficha para imprimir";
-    f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+    // Fora da vista, mas com a largura da área útil do A4 (196 mm): a folha
+    // se monta como na impressora, e é ali que ela mede quanto o gráfico
+    // pode crescer. Uma janela de tamanho zero caía nas regras de celular.
+    f.style.cssText = "position:fixed;left:-10000px;top:0;width:196mm;height:1200px;border:0;pointer-events:none";
     f.onload = async () => {
       const janela = f.contentWindow;
       // A fonte e as imagens precisam estar prontas, ou o papel sai na fonte
