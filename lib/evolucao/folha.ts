@@ -86,6 +86,24 @@ export function duracaoEmMinutos(min: number): string {
 export const rotuloDoEvento = (codigo: string, descricao?: string) =>
   EVENTOS.find((e) => e.codigo === codigo)?.rotulo ?? (descricao || codigo);
 
+/** Quando o paciente saiu da sala: a primeira transferência, à RPA ou à UTI. */
+export function horarioDaSaida(vigentes: readonly Registro[]): string | null {
+  const lista = vigentes
+    .filter((r) => r.tipo === "evento" && (r.dados.codigo === "transferencia_rpa" || r.dados.codigo === "transferencia_uti"))
+    .map((r) => r.momento).sort((a, b) => Date.parse(a) - Date.parse(b));
+  return lista[0] ?? null;
+}
+
+/**
+ * O FIM QUE PARA O TEMPO DA FICHA: o "Fim da anestesia" marcado; sem ele, a
+ * saída da sala (RPA ou UTI). Encaminhado o paciente, o gráfico, a impressão
+ * e o relógio da lista param ali — antes seguiam até o último lançamento ou
+ * até agora, e uma dose lançada horas depois abria uma segunda folha vazia.
+ */
+export function fimDaAnestesia(vigentes: readonly Registro[]): string | null {
+  return horarioDoMarco(vigentes, "fim_anestesia") ?? horarioDaSaida(vigentes);
+}
+
 /** O horário de um marco (o primeiro "início", o último "fim"). */
 export function horarioDoMarco(vigentes: readonly Registro[], codigo: string): string | null {
   const lista = vigentes.filter((r) => r.tipo === "evento" && r.dados.codigo === codigo).map((r) => r.momento)
@@ -162,7 +180,7 @@ export function conferirEncerramento(
     p.push({ tipo: "falta", texto: "Técnica anestésica." });
   }
   const inicio = horarioDoMarco(vigentes, "inicio_anestesia");
-  const fim = horarioDoMarco(vigentes, "fim_anestesia");
+  const fim = fimDaAnestesia(vigentes);
   if (!inicio) p.push({ tipo: "falta", texto: "Horário de início da anestesia." });
   if (!fim) p.push({ tipo: "falta", texto: "Horário de fim da anestesia." });
   if (inicio && fim && Date.parse(fim) <= Date.parse(inicio)) {

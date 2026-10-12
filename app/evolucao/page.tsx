@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { exigirAcessoAEvolucao } from "@/lib/evolucao/acesso";
+import { fimDaAnestesia } from "@/lib/evolucao/folha";
+import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { InicioDasFolhas, type FolhaResumo } from "./inicio-das-folhas";
 import type { Achado } from "./nova-folha";
 
@@ -21,11 +23,11 @@ type Linha = {
   pacientes: { nome?: string } | Array<{ nome?: string }> | null;
 };
 
-const resumo = (l: Linha): FolhaResumo => {
+const resumo = (l: Linha, fim: string | null = null): FolhaResumo => {
   const p = Array.isArray(l.pacientes) ? l.pacientes[0] : l.pacientes;
   return {
     id: l.id, versao: l.versao, inicio_em: l.inicio_em, encerrada_em: l.encerrada_em,
-    paciente: p?.nome || "Paciente", procedimento: l.procedimento?.trim() ?? "", sala: l.sala?.trim() ?? "",
+    paciente: p?.nome || "Paciente", procedimento: l.procedimento?.trim() ?? "", sala: l.sala?.trim() ?? "", fim,
   };
 };
 
@@ -49,6 +51,18 @@ export default async function FichasPage() {
       .order("concluida_at", { ascending: false }).limit(40),
   ]);
   const linhasAbertas = (abertas.data ?? []) as unknown as Linha[];
+  // Os eventos das fichas abertas, para saber quais já terminaram (fim da
+  // anestesia ou saída da sala): nessas o relógio para e a linha pede o
+  // encerramento. Correções e exclusões vêm junto — `vigentes` resolve.
+  const eventosAbertas = linhasAbertas.length
+    ? await supabase.from("evolucao_registros")
+      .select("id, evolucao_id, tipo, momento, dados, origem, substitui_id, anulado, motivo, created_by, created_at")
+      .in("evolucao_id", linhasAbertas.map((l) => l.id)).eq("tipo", "evento")
+    : { data: [] };
+  const eventosDa = new Map<string, Registro[]>();
+  for (const r of (eventosAbertas.data ?? []) as unknown as Registro[]) {
+    eventosDa.set(r.evolucao_id, [...(eventosDa.get(r.evolucao_id) ?? []), r]);
+  }
   // A ficha aberta de cada paciente: quem já tem uma continua nela.
   const abertaDo = new Map(linhasAbertas.map((l) => [l.patient_id, l.id]));
   // Um paciente por linha (a avaliação mais recente), até doze.
@@ -68,8 +82,8 @@ export default async function FichasPage() {
   return (
     <InicioDasFolhas
       institutionId={perfil.institution_id as string}
-      abertas={linhasAbertas.map(resumo)}
-      encerradas={((encerradas.data ?? []) as unknown as Linha[]).map(resumo)}
+      abertas={linhasAbertas.map((l) => resumo(l, fimDaAnestesia(vigentes(eventosDa.get(l.id) ?? []))))}
+      encerradas={((encerradas.data ?? []) as unknown as Linha[]).map((l) => resumo(l))}
       semBanco={Boolean(abertas.error)}
       agora={agora}
       recentes={recentes}

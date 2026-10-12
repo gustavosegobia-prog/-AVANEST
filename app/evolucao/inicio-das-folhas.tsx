@@ -12,6 +12,8 @@ export type FolhaResumo = {
   paciente: string;
   procedimento: string;
   sala: string;
+  /** Fim da anestesia ou saída da sala, já registrados: o relógio para aqui. */
+  fim?: string | null;
 };
 
 const HORA = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -74,10 +76,15 @@ export function InicioDasFolhas({
                             <span>{[f.procedimento || "Procedimento não informado", f.sala && `Sala ${f.sala}`, `aberta às ${hora(f.inicio_em)}`]
                               .filter(Boolean).join(" · ")}</span>
                           </span>
-                          <span className="fcTempo">
-                            <Decorrido desde={f.inicio_em} agoraDoServidor={agora} />
-                          </span>
-                          <span className="fcIr">Continuar <Icone nome="seta" className="fcSetaDireita" /></span>
+                          {f.fim ? (
+                            // Terminou: o tempo para no fim, e o que falta é encerrar.
+                            <span className="fcTempo parado">Terminou às {hora(f.fim)}</span>
+                          ) : (
+                            <span className="fcTempo">
+                              <Decorrido desde={f.inicio_em} agoraDoServidor={agora} />
+                            </span>
+                          )}
+                          <span className="fcIr">{f.fim ? "Encerrar ficha" : "Continuar"} <Icone nome="seta" className="fcSetaDireita" /></span>
                         </Link>
                         <ExcluirFolha id={f.id} paciente={f.paciente} />
                       </li>

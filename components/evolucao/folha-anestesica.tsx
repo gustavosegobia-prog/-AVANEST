@@ -18,7 +18,8 @@ import { consumoSevoflurano, formatarMl, lerAjuste, type AjusteDeGas } from "@/l
 import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/infusoes";
 import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evolucao/liquidos";
 import {
-  EVENTOS_DA_TELA, conferirEncerramento, duracaoEmMinutos, horarioDoMarco, imcDaFolha, minutosDeTorniquete, periodosDeTorniquete,
+  EVENTOS_DA_TELA, conferirEncerramento, duracaoEmMinutos, fimDaAnestesia, horarioDoMarco, imcDaFolha, minutosDeTorniquete,
+  periodosDeTorniquete,
   rotuloDoEvento, type Profissional,
 } from "@/lib/evolucao/folha";
 import { asaRomana, sexoAbreviado } from "@/lib/evolucao/pre-papel";
@@ -127,12 +128,18 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   const nomes = useMemo(() => new Map(medicos.map((m) => [m.id, m.nome])), [medicos]);
   const idadeDias = idadeEmDias(paciente.data_nascimento);
-  const fimAnestesia = horarioDoMarco(atuais, "fim_anestesia");
+  // Fim da anestesia, ou a saída da sala quando o fim não foi marcado.
+  const fimAnestesia = fimDaAnestesia(atuais);
   const fimMs = !aberta ? Date.parse(fimAnestesia ?? folha.encerrada_em ?? folha.created_at) : fimAnestesia ? Date.parse(fimAnestesia) : null;
   const primeiro = atuais[0]?.momento;
   const inicioMs = Math.min(Date.parse(folha.inicio_em), primeiro ? Date.parse(primeiro) : Infinity);
   const ultimoMs = Math.max(agora || inicioMs, ...atuais.map((r) => Date.parse(r.momento)));
-  const janela = janelaVisivel(inicioMs, aberta ? ultimoMs : (fimMs ?? ultimoMs), zoom, desloc);
+  // A anestesia terminou há mais de um minuto (fim marcado ou paciente fora da sala).
+  const terminou = () => aberta && fimMs !== null && agoraMs() > fimMs + 60_000;
+  const terminouNaTela = aberta && fimMs !== null && agora > fimMs + 60_000;
+  // Aberta e sem fim, o gráfico acompanha agora; com o fim (ou a saída da
+  // sala), para nele, mesmo que algo seja lançado depois.
+  const janela = janelaVisivel(inicioMs, fimMs ?? ultimoMs, zoom, desloc);
 
   // ---- Derivados ---------------------------------------------------------
   const dadas = useMemo(() => administrados(atuais), [atuais]);
@@ -189,7 +196,22 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
     }
     const momento = minutoAtual();
     f.registrar({ tipo: "evento", momento, dados: { codigo } });
-    setAviso({ texto: `${rotuloDoEvento(codigo)} às ${hora(momento)}`, desfazer: true });
+    // A transferência encerra o tempo da sala: sem "Fim da anestesia" marcado,
+    // ele entra no mesmo minuto, e o destino da saída se preenche sozinho.
+    const saiu = codigo === "transferencia_rpa" || codigo === "transferencia_uti";
+    if (saiu && !horarioDoMarco(atuais, "fim_anestesia")) {
+      f.registrar({ tipo: "evento", momento, dados: { codigo: "fim_anestesia" } });
+    }
+    const saida = (dados.saida as Record<string, unknown> | undefined) ?? {};
+    if (saiu && !String(saida.destino ?? "").trim()) {
+      f.mudarCabecalho({ saida: { ...saida, destino: codigo === "transferencia_rpa" ? "RPA" : "UTI" } });
+    }
+    setAviso({
+      texto: saiu && !horarioDoMarco(atuais, "fim_anestesia")
+        ? `${rotuloDoEvento(codigo)} às ${hora(momento)} — fim da anestesia marcado no mesmo horário`
+        : `${rotuloDoEvento(codigo)} às ${hora(momento)}`,
+      desfazer: !saiu,
+    });
   }
 
   // Um toque, uma bolsa. A trava de 2 s é contra o toque duplo sem querer —
@@ -222,6 +244,13 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   // conferir; com alergia registrada, alerta de dose ou dado inválido, abre a
   // janela completa — a justificativa não se pula, e o servidor confere de novo.
   function doseRapida(item: ItemDaLista, grupo: GrupoDaLista, dose: number) {
+    // Terminada a anestesia, a dose não é lançada com o horário de agora: abre
+    // a janela completa, que pede o horário em que foi dada.
+    if (terminou()) {
+      setLinhaAberta(null);
+      setAbrir({ tipo: "medicamento", escolhido: { item, grupo, dose } });
+      return;
+    }
     const via = item.via ?? grupo.via;
     const momento = minutoAtual();
     const anteriores = dadas.filter((a) => mesmoFarmaco(a.nome, item.nome)).map((a) => a.momento)
@@ -600,6 +629,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       {abrir?.tipo === "medicamento" && (
         <JanelaMedicamento pesoKg={pesoKg} idadeDias={idadeDias} regras={regras} dadas={dadas}
           favoritos={favoritos} inicial={abrir.planejado?.dados ?? null} escolhido={abrir.escolhido ?? null} alergias={dados}
+          fimDaAnestesia={terminouNaTela ? fimAnestesia : null}
           onConfirmar={({ momento, dados: d }) => {
             if (abrir.planejado) f.corrigir(abrir.planejado, { momento, dados: d });
             else f.registrar({ tipo: "medicamento", momento, dados: d });

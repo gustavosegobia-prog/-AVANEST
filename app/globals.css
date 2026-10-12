@@ -7611,3 +7611,12 @@ button.evoPFAsaN:disabled{cursor:default}
    valores são os mesmos de `.clinicalDark`, lá em cima; aqui só o fundo da
    página inteira, para não sobrar faixa clara embaixo de tela curta. */
 html[data-tema=escuro]:has(.temaApp),html[data-tema=escuro]:has(.temaApp) body{background:var(--cor-fundo);color:var(--cor-tinta)}
+
+/* Aviso dentro de uma janela da ficha: a anestesia já terminou, o horário é
+   escolhido (components/evolucao/janela-medicamento.tsx). */
+.evoNota.atencao{margin:0;padding:8px 10px;border-radius:8px;background:var(--cor-atencao-suave);color:var(--cor-atencao);font-weight:650}
+
+/* Ficha aberta que já terminou (fim da anestesia ou saída da sala): o
+   relógio para, em âmbar, e o caminho é encerrar. */
+.fcTempo.parado{font-size:15px;color:var(--cor-atencao)}
+.fcTempo.parado::before{background:var(--cor-atencao)}

@@ -54,8 +54,10 @@ const NIVEL: Record<string, string> = {
 };
 
 export function JanelaMedicamento({
-  pesoKg, idadeDias, regras, dadas, favoritos, inicial: planejado, escolhido, alergias, onConfirmar, onFechar,
+  pesoKg, idadeDias, regras, dadas, favoritos, inicial: planejado, escolhido, alergias, fimDaAnestesia = null, onConfirmar, onFechar,
 }: {
+  /** A anestesia já terminou (ou o paciente saiu da sala): o horário não vem como "agora", é escolhido. */
+  fimDaAnestesia?: string | null;
   pesoKg: number | null;
   /** O cabeçalho da folha: alergias e "nega alergia". */
   alergias: { alergias?: unknown; nega_alergia?: unknown };
@@ -79,7 +81,9 @@ export function JanelaMedicamento({
   const [busca, setBusca] = useState("");
   const [item, setItem] = useState<ItemDoCatalogo | { nome: string; unidade: UnidadeDeDose } | null>(
     inicial ? { nome: String(inicial.nome), unidade: (inicial.unidade as UnidadeDeDose) ?? "mg" } : null);
-  const [hora, setHora] = useState(horaLocal());
+  // Depois do fim, "agora" é quase sempre o horário errado — é a dose dada na
+  // sala e lançada mais tarde. O campo vem vazio e pede o horário.
+  const [hora, setHora] = useState(fimDaAnestesia ? "" : horaLocal());
   const [apresentacao, setApresentacao] = useState(String(inicial?.apresentacao ?? ""));
   const [conc, setConc] = useState(inicial?.concentracao ? String((inicial.concentracao as { valor: number }).valor) : "");
   const [uConc, setUConc] = useState<UnidadeDeConcentracao>(
@@ -224,6 +228,11 @@ export function JanelaMedicamento({
           </section>
         ) : <p className="evoAlergiaSituacao">{situacaoDaAlergia(alergias)}</p>}
         <Escolha rotulo="Situação" valor={situacao as "administrado"} opcoes={[...SITUACOES]} onMudar={setSituacao} />
+        {fimDaAnestesia && (
+          <p className="evoNota atencao">
+            A anestesia terminou às {horaLocal(new Date(fimDaAnestesia))}. Informe o horário em que o medicamento foi dado.
+          </p>
+        )}
         <div className="evoLinhaCampos">
           <CampoHora valor={hora} onMudar={setHora} />
           <label className="evoCampo"><span>Apresentação (opcional)</span>

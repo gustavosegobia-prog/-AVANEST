@@ -13,7 +13,8 @@ import { montarInfusoes, totalDaInfusao } from "./infusoes.ts";
 import { balancoHidrico } from "./liquidos.ts";
 import { SEM_REFERENCIA, avaliarDose, idadeEmDias, type RegraDeDose } from "./doses.ts";
 import {
-  conferirEncerramento, duracaoEmMinutos, equipeParaImpressao, horarioDoMarco, minutosDeTorniquete, periodosDeTorniquete,
+  conferirEncerramento, duracaoEmMinutos, equipeParaImpressao, fimDaAnestesia, horarioDaSaida, horarioDoMarco,
+  minutosDeTorniquete, periodosDeTorniquete,
 } from "./folha.ts";
 import { classificarErro, motivoLegivel } from "./fila.ts";
 
@@ -372,4 +373,23 @@ test("torniquete: insuflações somadas, a aberta conta até agora", () => {
   assert.equal(duracaoEmMinutos(45), "45 min");
   assert.equal(duracaoEmMinutos(60), "1 h");
   assert.equal(duracaoEmMinutos(75), "1 h 15 min");
+});
+
+test("a saída da sala encerra o tempo quando o fim da anestesia não foi marcado", () => {
+  const ev = (min: number, codigo: string, extra: Partial<Registro> = {}) => reg("evento", min, { codigo }, extra);
+  const base = [ev(0, "inicio_anestesia"), ev(45, "transferencia_rpa"), reg("medicamento", 200, { nome: "Dipirona", status: "administrado" })];
+  // Sem "Fim da anestesia": vale a transferência — não o último lançamento.
+  assert.equal(horarioDaSaida(base), em(45));
+  assert.equal(fimDaAnestesia(vigentes(base)), em(45));
+  // Com o fim marcado, ele vence a saída.
+  assert.equal(fimDaAnestesia(vigentes([...base, ev(50, "fim_anestesia")])), em(50));
+  // UTI conta igual; e a primeira saída é a que vale.
+  assert.equal(horarioDaSaida([ev(60, "transferencia_uti"), ev(70, "transferencia_rpa")]), em(60));
+  // Transferência excluída não encerra nada.
+  const t = ev(45, "transferencia_rpa", { id: "t1" });
+  assert.equal(fimDaAnestesia(vigentes([ev(0, "inicio_anestesia"), t, ev(46, "transferencia_rpa", { substitui_id: "t1", anulado: true })])), null);
+  // A conferência de encerramento aceita a saída como fim.
+  const textos = conferirEncerramento({}, vigentes(base), 5).map((x) => x.texto);
+  assert.ok(!textos.includes("Horário de fim da anestesia."));
+  assert.ok(conferirEncerramento({}, vigentes([ev(0, "inicio_anestesia")]), 5).some((x) => x.texto === "Horário de fim da anestesia."));
 });

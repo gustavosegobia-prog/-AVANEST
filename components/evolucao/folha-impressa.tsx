@@ -3,7 +3,8 @@ import { RodapeDaFolha } from "./rodape-da-folha";
 import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { administrados, dosePorKg, exposicaoAnestesicoLocal, type Administracao } from "@/lib/evolucao/medicamentos";
 import {
-  duracaoEmMinutos, equipeParaImpressao, horarioDoMarco, minutosDeTorniquete, periodosDeTorniquete, type PeriodoDeTorniquete,
+  duracaoEmMinutos, equipeParaImpressao, fimDaAnestesia, horarioDoMarco, minutosDeTorniquete, periodosDeTorniquete,
+  type PeriodoDeTorniquete,
   type Profissional,
 } from "@/lib/evolucao/folha";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
@@ -53,13 +54,16 @@ export function FolhaImpressa(p: DadosDaImpressao) {
   const aberta = folha.status === "aberta";
 
   const inicioAnestesia = horarioDoMarco(vigentes, "inicio_anestesia");
-  const fimAnestesia = horarioDoMarco(vigentes, "fim_anestesia");
+  const fimAnestesia = fimDaAnestesia(vigentes);
   const ultimo = vigentes.reduce((m, r) => Math.max(m, Date.parse(r.momento)), 0);
   const primeiro = vigentes.reduce((m, r) => Math.min(m, Date.parse(r.momento)), Number.POSITIVE_INFINITY);
-  // O fim do papel: o fim da anestesia, ou o último registro. Folha aberta
-  // impressa no dia seguinte não ganha horas que ninguém registrou — a mesma
-  // regra das infusões sem término.
-  const fimMs = Math.max(fimAnestesia ? Date.parse(fimAnestesia) : ultimo, ultimo);
+  // O fim do papel: o fim da anestesia (ou a saída da sala); sem nenhum dos
+  // dois, o último registro. Folha aberta impressa no dia seguinte não ganha
+  // horas que ninguém registrou — a mesma regra das infusões sem término. E o
+  // que foi lançado DEPOIS do fim não abre outra folha: a medicação sai na
+  // lista da primeira página com o horário dela, e os eventos, na legenda da
+  // última.
+  const fimMs = fimAnestesia ? Date.parse(fimAnestesia) : ultimo;
   const inicioMs = Math.min(Number.isFinite(primeiro) ? primeiro : Date.parse(folha.inicio_em), Date.parse(folha.inicio_em));
   const janelas = janelasDaImpressao(inicioMs, fimMs);
 
@@ -122,7 +126,8 @@ export function FolhaImpressa(p: DadosDaImpressao) {
             <div className="imprTempo">
               <RegistroImpresso vigentes={vigentes} janela={janela} fimMs={fimMs} intervalo={folha.intervalo_minutos} chave={String(n)} />
               <Legendas
-                eventos={eventos.filter((e) => Date.parse(e.momento) >= janela.inicio && Date.parse(e.momento) < janela.fim)}
+                eventos={eventos.filter((e) => Date.parse(e.momento) >= janela.inicio
+                  && (Date.parse(e.momento) < janela.fim || n === janelas.length - 1))}
                 sevo={n === janelas.length - 1 ? sevo.totalMl : null}
                 aberta={aberta}
                 infusoes={n === janelas.length - 1 ? infusoes.map((inf) => ({
