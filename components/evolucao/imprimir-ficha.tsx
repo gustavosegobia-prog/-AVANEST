@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { folhasProntas } from "./registro-que-enche";
 
 // IMPRIMIR SEM SAIR DA FICHA.
 //
@@ -47,6 +48,8 @@ export function ImprimirFicha({ id, className, rotulo, children, aguardar = fals
       // A fonte e as imagens precisam estar prontas, ou o papel sai na fonte
       // de reserva.
       try { await janela?.document.fonts?.ready; } catch { /* imprime assim mesmo */ }
+      // E cada folha esticar o gráfico até o rodapé (registro-que-enche.tsx).
+      try { if (janela) await folhasProntas(janela.document); } catch { /* imprime assim mesmo */ }
       setPreparando(false);
       try {
         janela!.focus();

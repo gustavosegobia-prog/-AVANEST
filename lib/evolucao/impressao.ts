@@ -70,21 +70,33 @@ export function idadeParaImpressao(nascimento: string | null | undefined, em: Da
 /** Uma coluna da folha de papel é 15 minutos; doze colunas, três horas. */
 export const COLUNA_MIN = 15;
 export const COLUNAS_POR_FOLHA = 12;
+/** Quanto uma coluna pode valer, do papel (15 min) ao plantão longo. */
+const COLUNAS_POSSIVEIS = [15, 20, 30, 45, 60, 90, 120, 180, 240];
 
-export type Janela = { inicio: number; fim: number };
+export type Janela = { inicio: number; fim: number; /** minutos por coluna */ colunaMin: number };
 
 /**
- * As folhas do procedimento. A primeira começa na coluna cheia antes do
- * primeiro registro; cada uma cobre três horas; a última vai até o fim da
- * anestesia (ou até a impressão, com a folha aberta). Sempre ao menos uma.
+ * A FICHA IMPRESSA É SEMPRE UMA FOLHA SÓ. Até três horas, cada coluna vale 15
+ * minutos, como no papel. Passou disso, em vez de abrir uma segunda folha, a
+ * coluna passa a valer mais — 20, 30, 45 minutos, uma hora… —, a menor que
+ * faça o procedimento inteiro caber nas doze colunas. A folha começa na
+ * coluna cheia antes do primeiro registro e vai até o fim da anestesia (ou
+ * até a impressão, com a folha aberta). Devolve uma lista para quem a
+ * percorre, mas ela tem sempre um item.
  */
 export function janelasDaImpressao(inicioMs: number, fimMs: number): Janela[] {
-  const passo = COLUNA_MIN * 60000;
-  const largura = passo * COLUNAS_POR_FOLHA;
-  const comeco = Math.floor(inicioMs / passo) * passo;
-  const saida: Janela[] = [];
-  for (let i = comeco; saida.length === 0 || i < fimMs; i += largura) saida.push({ inicio: i, fim: i + largura });
-  return saida;
+  const cabe = (min: number) => {
+    const passo = min * 60000;
+    const comeco = Math.floor(inicioMs / passo) * passo;
+    return { inicio: comeco, fim: comeco + passo * COLUNAS_POR_FOLHA, colunaMin: min };
+  };
+  for (const min of COLUNAS_POSSIVEIS) {
+    const j = cabe(min);
+    if (j.fim > fimMs) return [j];
+  }
+  // Mais de dois dias: colunas de horas inteiras, o que for preciso.
+  const horas = Math.ceil((fimMs - inicioMs) / (COLUNAS_POR_FOLHA * 3600000)) + 1;
+  return [cabe(horas * 60)];
 }
 
 /**
@@ -112,7 +124,7 @@ export function colunasDeValores(
     const v = num(r.dados.valor);
     const ms = Date.parse(r.momento);
     if (v === null || ms < janela.inicio || ms >= janela.fim) continue;
-    colunas[Math.floor((ms - janela.inicio) / (COLUNA_MIN * 60000))].push(v);
+    colunas[Math.floor((ms - janela.inicio) / (janela.colunaMin * 60000))].push(v);
   }
   return colunas;
 }

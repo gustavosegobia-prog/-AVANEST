@@ -31,10 +31,15 @@ test("Impressão — procedimento de duas horas cabe numa folha, começando na c
   assert.equal(j[0].fim - j[0].inicio, 180 * 60000);
 });
 
-test("Impressão — três horas e dez minutos continuam numa segunda folha", () => {
+test("Impressão — sempre uma folha: passou de três horas, a coluna vale mais", () => {
   const j = janelasDaImpressao(T0, T0 + 190 * 60000);
-  assert.equal(j.length, 2);
-  assert.equal(j[1].inicio, j[0].fim);
+  assert.equal(j.length, 1);
+  assert.equal(j[0].colunaMin, 20);
+  assert.ok(j[0].fim > T0 + 190 * 60000);
+  const longa = janelasDaImpressao(T0, T0 + 7 * 60 * 60000)[0];
+  assert.equal(longa.colunaMin, 45);
+  assert.equal(janelasDaImpressao(T0 + 7 * 60000, T0 + 127 * 60000)[0].colunaMin, 15);
+  assert.equal(janelasDaImpressao(T0, T0 + 60 * 60 * 60000).length, 1);
 });
 
 test("Impressão — folha sem nenhum registro ainda imprime uma folha", () => {

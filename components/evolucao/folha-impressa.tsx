@@ -1,4 +1,4 @@
-import { RegistroImpresso } from "./registro-impresso";
+import { RegistroQueEnche } from "./registro-que-enche";
 import { RodapeDaFolha } from "./rodape-da-folha";
 import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { administrados, dosePorKg, exposicaoAnestesicoLocal, type Administracao } from "@/lib/evolucao/medicamentos";
@@ -124,7 +124,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
 
           <div className="imprCorpo">
             <div className="imprTempo">
-              <RegistroImpresso vigentes={vigentes} janela={janela} fimMs={fimMs} intervalo={folha.intervalo_minutos} chave={String(n)} />
+              <RegistroQueEnche vigentes={vigentes} janela={janela} fimMs={fimMs} intervalo={folha.intervalo_minutos} chave={String(n)} />
               <Legendas
                 eventos={eventos.filter((e) => Date.parse(e.momento) >= janela.inicio
                   && (Date.parse(e.momento) < janela.fim || n === janelas.length - 1))}

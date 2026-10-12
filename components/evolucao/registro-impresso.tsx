@@ -4,7 +4,7 @@ import {
 } from "@/lib/evolucao/sinais";
 import { montarInfusoes } from "@/lib/evolucao/infusoes";
 import {
-  COLUNAS_POR_FOLHA, COLUNA_MIN, colunasDeValores, hora, linhasDeGas, linhasDeLiquido, marcasDeEvento, numero,
+  COLUNAS_POR_FOLHA, colunasDeValores, hora, linhasDeGas, linhasDeLiquido, marcasDeEvento, numero,
   pistasDeEventos, textoDaColuna, type Janela,
 } from "@/lib/evolucao/impressao";
 import type { Registro } from "@/lib/evolucao/registros";
@@ -14,7 +14,8 @@ import type { Registro } from "@/lib/evolucao/registros";
 // MILÍMETROS. Vetor puro: sai nítido em qualquer impressora e no PDF, e cada
 // ponto cai no cruzamento exato de horário e valor, pela mesma régua da tela.
 //
-// Componente de servidor: nada aqui roda no navegador.
+// Sem estado e sem efeito: desenha igual no servidor e no navegador. Quem
+// decide a altura do gráfico para encher a folha é registro-que-enche.tsx.
 
 const W = 146;           // largura do bloco
 const ROT = 34;          // coluna dos rótulos
@@ -24,11 +25,16 @@ const COL = AREA / COLUNAS_POR_FOLHA;
 const LINHA = 3.9;
 const CAB = 5;
 const EVENTOS = 7;          // duas pistas
-const GRAFICO = 70;      // 0,29 mm por mmHg
+/** A altura do gráfico de 0 a 240 quando nada sobra na folha: 0,29 mm por mmHg. */
+export const GRAFICO_PADRAO = 70;
+/** O máximo que ele cresce numa folha de continuação, quase vazia. */
+export const GRAFICO_MAXIMO = 160;
+/** O mínimo, quando o resto da folha é longo: ainda se lê a 0,21 mm por mmHg. */
+export const GRAFICO_MINIMO = 50;
 
 const COR = { pa: "#1d4f91", pam: "#1f2933", fc: "#b42318", estimada: "#8a94a0", grade: "#c9ced6", gradeForte: "#7d8794", texto: "#111" };
 
-export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: {
+export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, grafico: GRAFICO = GRAFICO_PADRAO }: {
   vigentes: readonly Registro[];
   janela: Janela;
   /** Fim da anestesia, ou o horário da impressão com a folha aberta. */
@@ -36,8 +42,11 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
   intervalo: number;
   /** Distingue os ids internos do SVG quando há mais de uma folha na página. */
   chave: string;
+  /** Altura do gráfico de 0 a 240, em mm: cresce para ocupar a folha (registro-que-enche.tsx). */
+  grafico?: number;
 }) {
-  const x = (ms: number) => ROT + ((ms - janela.inicio) / 60000) * (AREA / (COLUNAS_POR_FOLHA * COLUNA_MIN));
+  const colunaMin = janela.colunaMin;
+  const x = (ms: number) => ROT + ((ms - janela.inicio) / 60000) * (AREA / (COLUNAS_POR_FOLHA * colunaMin));
   const dentro = (ms: number) => ms >= janela.inicio && ms < janela.fim;
 
   const gases = linhasDeGas(vigentes);
@@ -59,8 +68,9 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
   const H = yGrafico + GRAFICO;
   const y = (v: number) => yGrafico + GRAFICO - ((v - EIXO_Y.min) / (EIXO_Y.max - EIXO_Y.min)) * GRAFICO;
 
-  const colunas = Array.from({ length: COLUNAS_POR_FOLHA + 1 }, (_, i) => janela.inicio + i * COLUNA_MIN * 60000);
-  const cincoMin = Array.from({ length: COLUNAS_POR_FOLHA * 3 + 1 }, (_, i) => janela.inicio + i * 5 * 60000);
+  const colunas = Array.from({ length: COLUNAS_POR_FOLHA + 1 }, (_, i) => janela.inicio + i * colunaMin * 60000);
+  // A grade fina divide cada coluna em três (5 min na coluna de 15).
+  const cincoMin = Array.from({ length: COLUNAS_POR_FOLHA * 3 + 1 }, (_, i) => janela.inicio + i * (colunaMin / 3) * 60000);
   const eventos = marcasDeEvento(vigentes).filter((e) => dentro(Date.parse(e.momento)));
   const pistas = pistasDeEventos(eventos.map((e) => x(Date.parse(e.momento))), 3.4);
 
@@ -185,6 +195,12 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
         <text x={1} y={yGrafico + 35}>Operação <tspan fontWeight={700}>O</tspan></text>
         <rect x={1} y={yGrafico + 38} width={4} height={2.6} fill={`url(#${hachura})`} stroke={COR.grade} strokeWidth={0.1} />
         <text x={6} y={yGrafico + 40.2} fontSize={1.7}>sem registro</text>
+        {/* Procedimento longo: a folha continua uma só, e a coluna vale mais. */}
+        {colunaMin !== 15 && (
+          <text x={1} y={yGrafico + 44.6} fontSize={1.8} fontWeight={700}>
+            1 coluna = {colunaMin < 60 ? `${colunaMin} min` : `${colunaMin / 60} h`}
+          </text>
+        )}
       </g>
 
       <g clipPath={`url(#${clip})`}>
@@ -193,7 +209,7 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
             height={GRAFICO} fill={`url(#${hachura})`} />
         ))}
 
-        {/* Grade do tempo: 5 em 5 no gráfico, coluna de 15 em tudo, hora cheia mais forte */}
+        {/* Grade do tempo: um terço de coluna no gráfico, a coluna em tudo, hora cheia mais forte */}
         {cincoMin.map((ms) => (
           <line key={`m${ms}`} x1={x(ms)} x2={x(ms)} y1={yGrafico} y2={H} stroke={COR.grade} strokeWidth={0.08} />
         ))}
@@ -233,7 +249,7 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave }: 
           for (const it of l.itens) {
             const ms = Date.parse(it.momento);
             if (!dentro(ms)) continue;
-            const c = Math.floor((ms - janela.inicio) / (COLUNA_MIN * 60000));
+            const c = Math.floor((ms - janela.inicio) / (colunaMin * 60000));
             porColuna.set(c, (porColuna.get(c) ?? 0) + it.volume);
           }
           return [...porColuna].map(([c, v]) => (

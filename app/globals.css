@@ -7631,3 +7631,11 @@ button.fcImprimir{border:0;border-left:1px solid var(--cor-borda);background:non
 button.fcImprimir:disabled{cursor:progress;opacity:.7}
 /* A abertura da marca nunca vai para o papel. */
 @media print{.abertura{display:none!important}}
+
+/* A ficha impressa é uma folha só. Quando nem o gráfico no mínimo faz caber
+   (lista de medicação muito longa), as listas ficam com a letra um pouco
+   menor (components/evolucao/registro-que-enche.tsx). */
+.imprCompacta .imprMedicacao{font-size:6pt}
+.imprCompacta .imprMedicacao li{margin-bottom:.3mm}
+.imprCompacta .imprDose,.imprCompacta .imprTotal{font-size:5.8pt}
+.imprCompacta .imprLegendas{font-size:5.8pt}
