@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { RodapePublico } from "@/components/rodape-publico";
 
-// Moldura compartilhada de /termos e /privacidade. Os dois documentos têm a
+// Moldura compartilhada de /termos, /privacidade e /cookies. Os dois documentos têm a
 // mesma estrutura de leitura — cabeçalho, data de vigência, corpo em seções
 // numeradas e rodapé com a identificação da empresa —, então a moldura mora
 // aqui e cada página cuida só do próprio texto.
@@ -36,6 +36,7 @@ export function PaginaLegal({
         <nav className="legalOutros">
           <Link href="/termos">Termos de Uso</Link>
           <Link href="/privacidade">Política de Privacidade</Link>
+          <Link href="/cookies">Política de Cookies</Link>
           <Link href="/planos">Planos e preços</Link>
         </nav>
       </article>

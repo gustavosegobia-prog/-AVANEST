@@ -40,7 +40,7 @@ export function idValido(id: string): boolean {
 const PUBLICAS = [
   "/recursos", "/planos", "/2meses", "/escores", "/avaliacao-pre-anestesica",
   "/avaliacao-pre-anestesica-digital", "/ficha-anestesica", "/escala-medica", "/app",
-  "/criar-conta", "/termos", "/privacidade",
+  "/criar-conta", "/termos", "/privacidade", "/cookies",
 ];
 
 export function rotaAceitaAnuncios(caminho: string): boolean {

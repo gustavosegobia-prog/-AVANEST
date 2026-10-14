@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* A FONTE DO SITE MORA AQUI, e não no Google Fonts.
+   Carregada de fonts.googleapis.com, cada página aberta — inclusive dentro do
+   sistema, com a ficha do paciente na tela — avisava o Google do IP de quem
+   abriu. Servida do próprio domínio, nenhum terceiro fica sabendo, e ainda
+   poupa a ida a outro servidor antes de o texto aparecer. São os mesmos dois
+   arquivos que o Google servia (Outfit, licença SIL OFL 1.1): uma fonte
+   variável que cobre todos os pesos, dividida em latim e latim estendido.
+   O nome leva a versão: arquivo novo, nome novo (cache longo em next.config.ts). */
+@font-face{font-family:"Outfit";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url(/fontes/outfit-latin-ext-v15.woff2) format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Outfit";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url(/fontes/outfit-latin-v15.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
 /* ============================================================================
    Design system do AVANEST
    ----------------------------------------------------------------------------
@@ -6517,15 +6532,70 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .avisoCookies p{margin:0;font-size:13.5px;line-height:1.55;color:var(--avn-muted)}
 .avisoCookies a{color:#0f7f74;font-weight:650}
 .avisoCookies>div{display:flex;gap:8px;flex:none}
-.avisoCookies button{min-height:40px;padding:0 16px;border-radius:10px;font-weight:700;cursor:pointer;
-  border:1px solid var(--avn-line);background:#fff;color:var(--avn-navy)}
-.avisoCookies .avisoCookiesAceitar{border-color:var(--avn-navy);background:var(--avn-navy);color:#fff}
+/* Os dois botões são IGUAIS, de propósito: o guia de cookies da ANPD pede que
+   recusar seja tão fácil e tão visível quanto aceitar. Um "Aceitar" cheio ao
+   lado de um "Recusar" apagado empurra a resposta. */
+.avisoCookies button{min-height:40px;padding:0 18px;border-radius:10px;font-weight:700;cursor:pointer;
+  border:1.5px solid var(--avn-navy);background:#fff;color:var(--avn-navy);transition:background-color .12s ease,color .12s ease}
+.avisoCookies button:hover{background:var(--avn-navy);color:#fff}
+.avisoCookies button:focus-visible{outline:2px solid #0f7f74;outline-offset:2px}
 @media(max-width:640px){
   .avisoCookies{flex-direction:column;align-items:stretch;left:12px;right:12px;bottom:12px}
   .avisoCookies>div button{flex:1;min-height:44px}
 }
 @media print{.avisoCookies{display:none}}
-.mudarCookies{margin-top:4px;border-color:var(--avn-line);color:var(--avn-navy);background:#fff}
+
+/* ── Política de cookies e de privacidade (app/cookies, app/privacidade) ──── */
+.legalEmResumo{margin:0 0 var(--esp-5);padding:var(--esp-4) var(--esp-5);border:1px solid var(--cor-borda);
+  border-radius:var(--raio-2,12px);background:var(--cor-superficie)}
+.legalEmResumo p{margin:0 0 var(--esp-2)}
+.legalEmResumo ul{margin:0}
+.legalSumario{margin:0 0 var(--esp-5);padding:0;columns:2 240px;column-gap:var(--esp-6);font-size:13px}
+.legalSumario li{break-inside:avoid;margin:0 0 4px;list-style:none}
+.legalCorpo .legalSumario a{display:inline-block;padding:4px 0;font-weight:600;text-decoration:none}
+.legalCorpo .legalSumario a:hover{text-decoration:underline}
+.legalCorpo h2[id]{scroll-margin-top:16px}
+.legalCorpo h3{margin:var(--esp-4) 0 var(--esp-2);font-size:13.5px}
+.legalCorpo code{font:600 12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.legalTabelaCaixa{margin:0 0 var(--esp-4);border:1px solid var(--cor-borda);border-radius:var(--raio-2,12px);overflow:hidden;background:var(--cor-superficie)}
+.legalTabela{width:100%;border-collapse:collapse;font-size:12.5px;line-height:1.5}
+.legalTabela th,.legalTabela td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--cor-borda)}
+.legalTabela tbody tr:last-child>*{border-bottom:0}
+.legalTabela thead th{font-size:11px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca);background:var(--cor-superficie-suave)}
+.legalTabela tbody th{width:28%;font-weight:600}
+.legalTabela td:last-child{width:20%;color:var(--cor-tinta-fraca)}
+@media(max-width:640px){
+  /* No telefone a tabela vira uma ficha por linha: quatro colunas de texto
+     corrido não cabem em 360 px sem rolar de lado. */
+  .legalTabela thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  .legalTabela tr{display:block;padding:12px 14px;border-bottom:1px solid var(--cor-borda)}
+  .legalTabela tbody tr:last-child{border-bottom:0}
+  .legalTabela th,.legalTabela td{display:block;width:auto!important;padding:0;border:0}
+  .legalTabela tbody th{margin-bottom:6px}
+  .legalTabela td{margin-top:4px}
+  .legalTabela td::before{content:attr(data-rotulo) ": ";font-weight:700;color:var(--cor-tinta)}
+}
+
+.prefCookies{display:grid;gap:0;margin:var(--esp-3) 0 var(--esp-4);border:1px solid var(--cor-borda);
+  border-radius:var(--raio-2,12px);background:var(--cor-superficie);overflow:hidden}
+.prefCookiesItem{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--esp-4);padding:14px 16px;border-top:1px solid var(--cor-borda)}
+.prefCookiesItem:first-child{border-top:0}
+.prefCookiesItem h3{margin:0 0 4px;font-size:14px}
+.prefCookiesItem p{margin:0;font-size:13px;color:var(--cor-tinta-fraca)}
+.prefCookiesItem .prefCookiesSituacao{margin-top:6px;color:var(--cor-tinta)}
+.prefCookiesFixo{flex:none;padding:4px 10px;border-radius:99px;background:var(--cor-superficie-suave);
+  font-size:12px;font-weight:700;color:var(--cor-tinta-fraca);white-space:nowrap}
+.prefCookiesChave{flex:none;display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 4px;border:0;background:none;
+  font:inherit;font-size:13px;font-weight:700;color:var(--cor-tinta);cursor:pointer;touch-action:manipulation;white-space:nowrap}
+.prefCookiesChave span{position:relative;width:42px;height:24px;border-radius:99px;background:var(--cor-borda-forte);transition:background-color .15s ease}
+.prefCookiesChave span::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s ease}
+.prefCookiesChave[aria-checked="true"] span{background:var(--cor-marca)}
+.prefCookiesChave[aria-checked="true"] span::after{transform:translateX(18px)}
+.prefCookiesChave:focus-visible{outline:2px solid var(--cor-marca);outline-offset:2px;border-radius:8px}
+.prefCookiesChave:disabled{opacity:.5;cursor:default}
+@media(max-width:520px){.prefCookiesItem{flex-direction:column;gap:var(--esp-2)}}
+@media(prefers-reduced-motion:reduce){.prefCookiesChave span,.prefCookiesChave span::after,.avisoCookies button{transition:none}}
 
 /* ══ Evolução anestésica digital ══════════════════════════════════════════
    A folha de anestesia como ferramenta de sala. Tablet deitado preso ao

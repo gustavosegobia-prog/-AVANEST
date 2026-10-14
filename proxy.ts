@@ -15,5 +15,5 @@ export function proxy(request: NextRequest) {
 // worker venha de um redirecionamento, e o erro que o navegador dá não diz
 // isso. Melhor a exceção existir antes do problema.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2)$).*)"],
 };

@@ -131,7 +131,7 @@ test("as páginas legais têm descrição de tamanho aproveitável", () => {
   // Abaixo de ~100 caracteres o Google descarta a descrição e escreve a dele
   // com um pedaço qualquer do texto — num documento jurídico, o primeiro
   // parágrafo, que não convida ninguém a clicar. Acima de 160 ele corta.
-  for (const arquivo of ["../app/termos/page.tsx", "../app/privacidade/page.tsx"]) {
+  for (const arquivo of ["../app/termos/page.tsx", "../app/privacidade/page.tsx", "../app/cookies/page.tsx"]) {
     const texto = fs.readFileSync(new URL(arquivo, import.meta.url), "utf8");
     const achado = texto.match(/^\s*descri(?:ption|cao): "(.+)",$/m);
     assert.ok(achado, `${arquivo} sem description`);

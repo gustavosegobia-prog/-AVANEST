@@ -16,7 +16,7 @@ test("a tag do Google Ads nunca entra no sistema", () => {
 
 test("as páginas públicas e o caminho do cadastro aceitam a tag", () => {
   for (const c of ["/", "/planos", "/2meses", "/criar-conta", "/escores/stop-bang",
-    "/avaliacao-pre-anestesica-digital", "/escala-medica", "/ficha-anestesica", "/privacidade"])
+    "/avaliacao-pre-anestesica-digital", "/escala-medica", "/ficha-anestesica", "/privacidade", "/cookies"])
     assert.equal(rotaAceitaAnuncios(c), true, c);
 });
 
@@ -36,10 +36,10 @@ test("o cadastro por convite não conta como conversão de anúncio", () => {
   assert.match(form, /if \(!porConvite\) await registrarConversao\("cadastro"\)/);
 });
 
-test("a política de privacidade descreve o cookie e permite mudar a escolha", () => {
+test("a política de privacidade descreve o cookie e leva à escolha", () => {
   const politica = ler("app/privacidade/page.tsx");
   assert.match(politica, /<h2 id="cookies">/);
-  assert.match(politica, /<MudarEscolhaDeCookies \/>/);
+  assert.match(politica, /href="\/cookies#preferencias"/);
   assert.match(politica, /Google<\/b> — medição dos anúncios/);
   assert.doesNotMatch(politica, /Não há cookies de publicidade nem rastreamento de terceiros\./);
 });

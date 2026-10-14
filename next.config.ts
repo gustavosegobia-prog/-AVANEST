@@ -70,6 +70,9 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: CABECALHOS },
       { source: "/evolucao/:id/imprimir", headers: IMPRESSAO_EMBUTIVEL },
+      // A fonte do site: o nome do arquivo leva a versão, então pode ficar
+      // um ano no aparelho sem perguntar de novo.
+      { source: "/fontes/:arquivo", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
     ];
   },
 };

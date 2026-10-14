@@ -40,7 +40,7 @@ test("cada página pública declara o próprio endereço na prévia do link", ()
     "app/escores/indice-de-lee/page.tsx", "app/escores/classificacao-asa/page.tsx",
     "app/avaliacao-pre-anestesica/page.tsx", "app/ficha-anestesica/page.tsx",
     "app/escala-medica/page.tsx", "app/avaliacao-pre-anestesica-digital/page.tsx",
-    "app/termos/page.tsx", "app/privacidade/page.tsx",
+    "app/termos/page.tsx", "app/privacidade/page.tsx", "app/cookies/page.tsx",
     "app/app/page.tsx", "app/login/page.tsx", "app/criar-conta/page.tsx",
   ];
   for (const p of paginas)

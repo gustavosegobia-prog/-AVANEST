@@ -54,6 +54,7 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   { caminho: "/login", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/termos", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/privacidade", prioridade: 0.3, frequencia: "yearly" },
+  { caminho: "/cookies", prioridade: 0.2, frequencia: "yearly" },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
