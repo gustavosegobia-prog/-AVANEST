@@ -84,8 +84,18 @@ export function trechos(pontos: readonly Ponto[], lacunaMin: number): Ponto[][] 
   return saida;
 }
 
-/** A lacuna padrão: três intervalos da folha (15 min na folha de 5 em 5). */
-export const lacunaPadrao = (intervaloMin: number) => intervaloMin * 3;
+/**
+ * A lacuna padrão: três intervalos da folha (15 min na folha de 5 em 5),
+ * nunca menos de 15 min — na folha de 3 em 3, uma PA a cada 5 min ainda é
+ * monitorização contínua.
+ */
+export const lacunaPadrao = (intervaloMin: number) => Math.max(15, intervaloMin * 3);
+
+/** Os intervalos que a folha aceita (o banco confere o mesmo). */
+export const INTERVALOS = [3, 5, 10, 15] as const;
+
+/** A grade forte do gráfico, com a hora escrita: de 15 em 15 nas folhas de 3 e 5 min. */
+export const marcaForte = (intervaloMin: number) => (intervaloMin <= 5 ? 15 : intervaloMin * 3);
 
 /**
  * Os períodos sem nenhum registro de PA nem FC maiores que a lacuna — para o
@@ -111,14 +121,16 @@ export function periodosSemMonitorizacao(
 // A linha pronta do gráfico
 // ---------------------------------------------------------------------------
 /**
- * O que o gráfico já deixa lançado na coluna de agora, para o anestesiologista
- * só arrastar para cima ou para baixo: PAS, PAD e FC com o último valor de
- * cada um — ou, no começo da anestesia, com a PA e o pulso da avaliação
- * pré-anestésica; sem nenhum dos dois, no ponto neutro (PONTO_NEUTRO). Some o parâmetro que já tem ponto nesta coluna (dentro do
- * intervalo da folha). Nada disso grava sozinho: vira registro quando o médico
- * solta o ponto ou confirma.
+ * O gráfico já deixa a linha lançada, como no papel: em cada coluna do
+ * intervalo da folha (3, 5, 10 ou 15 min), do começo até agora — ou até o fim
+ * da anestesia —, PAS, PAD e FC que ainda não têm ponto ali aparecem
+ * tracejadas, com o último valor conhecido antes da coluna; sem nenhum, a PA e
+ * o pulso da avaliação pré-anestésica; sem esses, o ponto neutro. O médico
+ * arrasta cada ponto até o valor do monitor e solta: vira registro no horário
+ * da coluna. Nada grava sozinho.
  */
 export type Rascunho = { parametro: Parametro; valor: number; origem: "anterior" | "pre" | "padrao" };
+export type ColunaPronta = { ms: number; itens: Rascunho[] };
 
 /**
  * Sem valor anterior nem pré-anestésica (ficha em branco), a linha pronta
@@ -128,24 +140,32 @@ export type Rascunho = { parametro: Parametro; valor: number; origem: "anterior"
  */
 export const PONTO_NEUTRO: Partial<Record<Parametro, number>> = { pas: 120, pad: 70, pam: 85, fc: 100 };
 
-export function rascunhoDaColuna(vigentes: readonly Registro[], pre: { pa?: string; pulso?: string },
-  agoraIso: string, intervaloMin: number): Rascunho[] {
-  const agora = Date.parse(agoraIso);
+export function colunasProntas(vigentes: readonly Registro[], pre: { pa?: string; pulso?: string },
+  o: { inicioMs: number; ateMs: number; intervaloMin: number }): ColunaPronta[] {
+  const passo = o.intervaloMin * 60000;
   const [, preS, preD] = (pre.pa ?? "").match(/(\d{2,3})\s*[/xX×]\s*(\d{2,3})/) ?? [];
   const preFc = (pre.pulso ?? "").match(/\d{2,3}/)?.[0];
   const doPre: Partial<Record<Parametro, number>> = { pas: Number(preS), pad: Number(preD), fc: Number(preFc) };
   // Quem só registra a PAM (monitor invasivo, por exemplo) recebe a PAM pronta.
   const soPam = !pontosDe(vigentes, "pas").length && pontosDe(vigentes, "pam").length > 0;
   const parametros: Parametro[] = soPam ? ["pam", "fc"] : ["pas", "pad", "fc"];
-  const saida: Rascunho[] = [];
-  for (const p of parametros) {
-    // O lançamento vai para o minuto cheio mais próximo, que pode estar até 30 s
-    // à frente do relógio: conta como já feito.
-    const ultimo = pontosDe(vigentes, p).filter((pt) => Date.parse(pt.momento) <= agora + 60000).pop();
-    if (ultimo && agora - Date.parse(ultimo.momento) < intervaloMin * 60000) continue;
-    if (ultimo) saida.push({ parametro: p, valor: ultimo.valor, origem: "anterior" });
-    else if (valorPlausivel(p, doPre[p])) saida.push({ parametro: p, valor: doPre[p]!, origem: "pre" });
-    else if (PONTO_NEUTRO[p] !== undefined) saida.push({ parametro: p, valor: PONTO_NEUTRO[p]!, origem: "padrao" });
+  const series = new Map(parametros.map((p) => [p, pontosDe(vigentes, p).map((pt) => ({ t: Date.parse(pt.momento), v: pt.valor }))]));
+  // A primeira coluna é a do começo; a última, a que já chegou (nunca no futuro).
+  const primeira = Math.ceil(o.inicioMs / passo) * passo;
+  const ultima = Math.floor((o.ateMs + 30000) / passo) * passo;
+  const saida: ColunaPronta[] = [];
+  for (let t = primeira; t <= ultima; t += passo) {
+    const itens: Rascunho[] = [];
+    for (const p of parametros) {
+      const pts = series.get(p)!;
+      // Já tem ponto nesta coluna (meio intervalo para cada lado): nada a lançar.
+      if (pts.some((x) => Math.abs(x.t - t) < passo / 2)) continue;
+      const antes = pts.filter((x) => x.t < t).pop();
+      if (antes) itens.push({ parametro: p, valor: antes.v, origem: "anterior" });
+      else if (valorPlausivel(p, doPre[p])) itens.push({ parametro: p, valor: doPre[p]!, origem: "pre" });
+      else if (PONTO_NEUTRO[p] !== undefined) itens.push({ parametro: p, valor: PONTO_NEUTRO[p]!, origem: "padrao" });
+    }
+    if (itens.length) saida.push({ ms: t, itens });
   }
   return saida;
 }

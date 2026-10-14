@@ -5,8 +5,8 @@ import {
   EIXO_Y, marcasDeTempo, pontoDoToque, tempoParaX, valorParaY, yParaValor, type Escala,
 } from "@/lib/evolucao/grafico";
 import {
-  EM_LINHA, NO_GRAFICO, PARAMETROS, lacunaPadrao, periodosSemMonitorizacao, pontosDe, trechos,
-  type Parametro, type Rascunho,
+  EM_LINHA, NO_GRAFICO, PARAMETROS, lacunaPadrao, marcaForte, periodosSemMonitorizacao, pontosDe, trechos,
+  type ColunaPronta, type Parametro, type Rascunho,
 } from "@/lib/evolucao/sinais";
 import { linhasDeGas, linhasDeLiquido, marcasDeEvento, pistasDeEventos } from "@/lib/evolucao/impressao";
 import { INFUSOES_DA_FOLHA, LIQUIDOS_DA_FOLHA } from "@/lib/evolucao/lista-da-folha";
@@ -31,11 +31,12 @@ import type { Registro } from "@/lib/evolucao/registros";
 // tocar num valor já lançado abre o registro dele, para ver o histórico,
 // corrigir a hora ou excluir.
 //
-// A LINHA PRONTA. Na coluna de agora, PAS, PAD e FC já aparecem lançadas,
-// tracejadas, com o último valor de cada uma (lib/evolucao/sinais.ts,
-// `rascunhoDaColuna`). O médico arrasta o ponto para cima ou para baixo até o
-// valor do monitor e solta: vira registro naquela hora. Tocar sem arrastar
-// lança o mesmo valor. Nada grava antes de soltar.
+// A LINHA PRONTA. Em cada coluna do intervalo da folha (3, 5, 10 ou 15 min)
+// que ainda não tem PAS, PAD ou FC, o ponto já aparece tracejado, com o último
+// valor de cada uma (lib/evolucao/sinais.ts, `colunasProntas`). O médico
+// arrasta o ponto para cima ou para baixo até o valor do monitor e solta: vira
+// registro no horário daquela coluna — e a coluna seguinte continua lá para o
+// próximo. Tocar sem arrastar lança o mesmo valor. Nada grava antes de soltar.
 
 const FAIXA_HORAS = 22;
 const LINHA = 24;          // cada faixa: gases, infusões, líquidos, SpO₂, EtCO₂, temperatura
@@ -77,7 +78,7 @@ const ROTULO_GAS: Record<string, string> = { o2: "O₂ L/min", ar: "Ar L/min", n
 
 export function GraficoSinais({
   atuais, idsPendentes, cabecalho, fimMs, agoraMs, aberta, intervalo, janelaInicio, janelaMinutos,
-  alturaGrade, somenteLeitura, rascunho = [], onTocar, onTocarLinha, onTocarFaixa, onAbrirPonto, onAbrirRegistro, onMover,
+  alturaGrade, somenteLeitura, colunas = [], onTocar, onTocarLinha, onTocarFaixa, onAbrirPonto, onAbrirRegistro, onMover,
   onLancar,
 }: {
   atuais: Registro[];
@@ -98,16 +99,16 @@ export function GraficoSinais({
   onAbrirPonto: (r: Registro) => void;
   onAbrirRegistro: (r: Registro) => void;
   onMover: (r: Registro, t: Toque) => void;
-  /** A linha pronta da coluna de agora (vazia: nada a arrastar). */
-  rascunho?: Rascunho[];
-  /** Soltou (ou tocou) um ponto da linha pronta: registra agora. */
-  onLancar?: (p: Parametro, valor: number) => void;
+  /** A linha pronta, coluna a coluna do intervalo (vazia: nada a arrastar). */
+  colunas?: ColunaPronta[];
+  /** Soltou (ou tocou) um ponto da linha pronta: registra no horário da coluna. */
+  onLancar?: (p: Parametro, valor: number, ms: number) => void;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
   const [largura, setLargura] = useState(800);
   const [arraste, setArraste] = useState<{ registro: Registro; x: number; y: number; ativo: boolean; x0: number; y0: number } | null>(null);
-  const [puxando, setPuxando] = useState<{ p: Parametro; y: number; y0: number; ativo: boolean } | null>(null);
+  const [puxando, setPuxando] = useState<{ p: Parametro; ms: number; y: number; y0: number; ativo: boolean } | null>(null);
 
   useEffect(() => {
     const el = caixa.current;
@@ -220,7 +221,7 @@ export function GraficoSinais({
   const y = (v: number) => topoGrade + valorParaY(v, e);
 
   const marcasFinas = useMemo(() => marcasDeTempo(janelaInicio, fimJanela, intervalo), [janelaInicio, fimJanela, intervalo]);
-  const marcasFortes = useMemo(() => marcasDeTempo(janelaInicio, fimJanela, intervalo * 3), [janelaInicio, fimJanela, intervalo]);
+  const marcasFortes = useMemo(() => marcasDeTempo(janelaInicio, fimJanela, marcaForte(intervalo)), [janelaInicio, fimJanela, intervalo]);
   const series = useMemo(() => NO_GRAFICO.map((p) => ({ p, pontos: pontosDe(atuais, p) })), [atuais]);
 
   const lacunas = useMemo(() => {
@@ -250,6 +251,9 @@ export function GraficoSinais({
   const minutoDoX = (lx: number) => Math.min(Math.round(tempoDoX(lx) / 60000) * 60000, agoraMs);
 
   function pontoNoToque(lx: number, ly: number): Registro | null {
+    return pontoMaisPerto(lx, ly)?.r ?? null;
+  }
+  function pontoMaisPerto(lx: number, ly: number): { r: Registro; d: number } | null {
     let melhor: { r: Registro; d: number } | null = null;
     for (const s of series) {
       for (const pt of s.pontos) {
@@ -259,7 +263,7 @@ export function GraficoSinais({
         if (d <= TOQUE && (!melhor || d < melhor.d)) melhor = { r: porId.get(pt.id)!, d };
       }
     }
-    return melhor?.r ?? null;
+    return melhor;
   }
 
   // O QUE O DEDO TOCOU. Toque de verdade é o que desce e sobe no mesmo lugar:
@@ -287,17 +291,18 @@ export function GraficoSinais({
     if (ev.pointerType === "mouse") ev.preventDefault();
 
     // O gráfico de pressão e FC: os pontos se arrastam desde o primeiro contato.
+    // Ponto pronto e ponto lançado lado a lado: vale o mais perto do dedo.
     if (ly >= topoGrade) {
       const pronto = prontoNoToque(lx, ly);
-      if (pronto) {
+      const lancado = somenteLeitura ? null : pontoMaisPerto(lx, ly);
+      if (pronto && (!lancado || pronto.d <= lancado.d)) {
         prender(ev);
-        setPuxando({ p: pronto.parametro, y: y(pronto.valor), y0: ly, ativo: false });
+        setPuxando({ p: pronto.r.parametro, ms: pronto.ms, y: y(pronto.r.valor), y0: ly, ativo: false });
         return;
       }
-      const alvo = pontoNoToque(lx, ly);
-      if (alvo && !somenteLeitura) {
+      if (lancado) {
         prender(ev);
-        setArraste({ registro: alvo, x: lx, y: ly, x0: lx, y0: ly, ativo: false });
+        setArraste({ registro: lancado.r, x: lx, y: ly, x0: lx, y0: ly, ativo: false });
         return;
       }
     }
@@ -346,11 +351,15 @@ export function GraficoSinais({
     if (f.alvo) onTocarFaixa(f.alvo(minutoDoX(lx)));
   }
 
-  // A linha pronta: no x de agora, um ponto por parâmetro.
-  const xPronto = Math.min(Math.max(x(agoraMs), CALHA + 8), largura - 8);
-  // Perto da borda direita o número vai para o lado de dentro.
-  const rotuloAEsquerda = xPronto > largura - 70;
-  const prontos = !somenteLeitura && aberta && visivel(agoraMs) ? rascunho : [];
+  // A linha pronta: em cada coluna do intervalo à vista, um ponto por
+  // parâmetro. A última coluna é a de agora — só ela leva os números ao lado.
+  const xColuna = (ms: number) => Math.min(Math.max(x(ms), CALHA + 8), largura - 8);
+  const prontas = !somenteLeitura && aberta ? colunas.filter((c) => visivel(c.ms)) : [];
+  const ultimaPronta = prontas.length && prontas[prontas.length - 1].ms === colunas[colunas.length - 1]?.ms
+    ? prontas[prontas.length - 1] : null;
+  // O alvo de cada ponto não invade a coluna vizinha (zoom de 4 h, folha de 3 min).
+  const passoPx = (intervalo / janelaMinutos) * e.largura;
+  const raioAlvo = Math.max(6, Math.min(TOQUE - 4, passoPx / 2 - 1));
 
   // No celular o gráfico é mais largo que a tela e rola de lado. A coluna de
   // agora — onde está a linha pronta — tem de estar à vista sem o médico
@@ -366,11 +375,17 @@ export function GraficoSinais({
     const v = Math.round(yParaValor(py - topoGrade, e));
     return Math.min(Math.min(PARAMETROS[p].max, EIXO_Y.max), Math.max(Math.max(PARAMETROS[p].min, EIXO_Y.min), v));
   };
-  function prontoNoToque(lx: number, ly: number): Rascunho | null {
-    if (Math.abs(lx - xPronto) > TOQUE + 6) return null;
-    const perto = prontos.map((r) => ({ r, d: Math.abs(y(r.valor) - ly) })).filter((o) => o.d <= TOQUE + 4)
-      .sort((a, b) => a.d - b.d)[0];
-    return perto?.r ?? null;
+  function prontoNoToque(lx: number, ly: number): { r: Rascunho; ms: number; d: number } | null {
+    let melhor: { r: Rascunho; ms: number; d: number } | null = null;
+    for (const c of prontas) {
+      const cx = xColuna(c.ms);
+      if (Math.abs(cx - lx) > TOQUE + 6) continue;
+      for (const r of c.itens) {
+        const d = Math.hypot(cx - lx, y(r.valor) - ly);
+        if (d <= TOQUE + 4 && (!melhor || d < melhor.d)) melhor = { r, ms: c.ms, d };
+      }
+    }
+    return melhor;
   }
 
   /** Este ponto do gráfico se arrasta? (linha pronta ou ponto já lançado) */
@@ -425,10 +440,10 @@ export function GraficoSinais({
     toqueSimples.current = null;
     if (t) { tocar(t.lx, t.ly); return; }
     if (puxando) {
-      const r = prontos.find((x) => x.parametro === puxando.p);
+      const r = prontas.find((c) => c.ms === puxando.ms)?.itens.find((x) => x.parametro === puxando.p);
       // O ponto neutro só vale arrastado; um toque nele abre a janela de sinais.
-      if (r && !puxando.ativo && r.origem === "padrao") onTocar({ ms: agoraMs, valor: r.valor });
-      else if (r) onLancar?.(r.parametro, puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor);
+      if (r && !puxando.ativo && r.origem === "padrao") onTocar({ ms: puxando.ms, valor: r.valor });
+      else if (r) onLancar?.(r.parametro, puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor, puxando.ms);
       setPuxando(null);
       return;
     }
@@ -624,35 +639,54 @@ export function GraficoSinais({
               <Simbolo p={arraste.registro.dados.parametro as Parametro} cx={arraste.x} cy={arraste.y} pendente={false} estimado={false} />
             </g>
           )}
-          {prontos.length > 0 && (() => {
+          {prontas.length > 0 && (() => {
+            const puxado = (ms: number, p: Parametro) => puxando?.ms === ms && puxando.p === p;
+            const cyDe = (ms: number, r: Rascunho) => (puxado(ms, r.parametro) ? puxando!.y : y(r.valor));
             // Os números ao lado não se encostam: PAD e FC costumam ficar a
             // poucos pixels um do outro, e os rótulos se empurram para longe.
-            const alturas = prontos.map((r) => ({ p: r.parametro, cy: puxando?.p === r.parametro ? puxando.y : y(r.valor) }))
-              .sort((a, b) => a.cy - b.cy);
-            const yRotulo = new Map<Parametro, number>();
-            let anterior = -Infinity;
-            for (const a of alturas) { const ry = Math.max(a.cy + 4, anterior + 13); yRotulo.set(a.p, ry); anterior = ry; }
+            const yRotulo = new Map<string, number>();
+            for (const c of prontas) {
+              const alturas = c.itens.map((r) => ({ p: r.parametro, cy: cyDe(c.ms, r) })).sort((a, b) => a.cy - b.cy);
+              let acima = -Infinity;
+              for (const a of alturas) { const ry = Math.max(a.cy + 4, acima + 13); yRotulo.set(`${c.ms}${a.p}`, ry); acima = ry; }
+            }
+            // De onde sai o tracejado de cada ponto: o lançado ou o pronto logo antes.
+            const antes = (p: Parametro, ms: number): { x: number; y: number } | null => {
+              const lancado = series.find((s) => s.p === p)?.pontos.filter((pt) => Date.parse(pt.momento) < ms).pop();
+              const tLancado = lancado ? Date.parse(lancado.momento) : -Infinity;
+              const pronto = [...prontas].reverse().find((c) => c.ms < ms && c.ms > tLancado && c.itens.some((r) => r.parametro === p));
+              if (pronto) return { x: xColuna(pronto.ms), y: cyDe(pronto.ms, pronto.itens.find((r) => r.parametro === p)!) };
+              return lancado ? { x: x(tLancado), y: y(lancado.valor) } : null;
+            };
             return (
             <g className="evoProntos">
-              <line className="evoProntoGuia" x1={xPronto} x2={xPronto} y1={topoGrade} y2={topoGrade + alturaGrade} />
-              {prontos.map((r) => {
-                const cy = puxando?.p === r.parametro ? puxando.y : y(r.valor);
-                const valor = puxando?.p === r.parametro && puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor;
-                const anterior = series.find((s) => s.p === r.parametro)?.pontos.filter((pt) => Date.parse(pt.momento) <= agoraMs + 60000).pop();
-                const arrastando = puxando?.p === r.parametro && puxando.ativo;
-                return (
-                  <g key={r.parametro} className={`evoSerie ${r.parametro} pronto${r.origem === "padrao" ? " neutro" : ""}${arrastando ? " puxando" : ""}`}>
-                    {anterior && visivel(Date.parse(anterior.momento)) && (
-                      <line className="evoProntoLigacao" x1={x(Date.parse(anterior.momento))} y1={y(anterior.valor)} x2={xPronto} y2={cy} />
-                    )}
-                    <circle className="evoProntoAlvo" cx={xPronto} cy={cy} r={TOQUE - 4} />
-                    <Simbolo p={r.parametro} cx={xPronto} cy={cy} pendente={false} estimado={false} />
-                    <text className="evoProntoValor" x={rotuloAEsquerda ? xPronto - 16 : xPronto + 16} y={yRotulo.get(r.parametro) ?? cy + 4}
-                      textAnchor={rotuloAEsquerda ? "end" : "start"}>
-                      {arrastando ? `${PARAMETROS[r.parametro].curto} ${valor}` : r.origem === "padrao" ? `${PARAMETROS[r.parametro].curto} ?` : valor}
-                    </text>
-                  </g>
-                );
+              {ultimaPronta && <line className="evoProntoGuia" x1={xColuna(ultimaPronta.ms)} x2={xColuna(ultimaPronta.ms)} y1={topoGrade} y2={topoGrade + alturaGrade} />}
+              {prontas.map((c) => {
+                const cx = xColuna(c.ms);
+                const ultima = c === ultimaPronta;
+                return c.itens.map((r) => {
+                  const cy = cyDe(c.ms, r);
+                  const arrastando = puxado(c.ms, r.parametro) && puxando!.ativo;
+                  // Perto da borda direita o número vai para o lado de dentro
+                  // (arrastando, ele leva o nome e fica mais largo).
+                  const aEsquerda = cx > largura - (arrastando ? 72 : 44);
+                  const valor = arrastando ? valorDoY(r.parametro, cy) : r.valor;
+                  const de = antes(r.parametro, c.ms);
+                  return (
+                    <g key={`${c.ms}${r.parametro}`}
+                      className={`evoSerie ${r.parametro} pronto${r.origem === "padrao" ? " neutro" : ""}${ultima ? "" : " antiga"}${arrastando ? " puxando" : ""}`}>
+                      {de && <line className="evoProntoLigacao" x1={de.x} y1={de.y} x2={cx} y2={cy} />}
+                      <circle className="evoProntoAlvo" cx={cx} cy={cy} r={ultima || arrastando ? TOQUE - 4 : raioAlvo} />
+                      <Simbolo p={r.parametro} cx={cx} cy={cy} pendente={false} estimado={false} />
+                      {(ultima || arrastando) && (
+                        <text className="evoProntoValor" x={aEsquerda ? cx - 16 : cx + 16} y={yRotulo.get(`${c.ms}${r.parametro}`) ?? cy + 4}
+                          textAnchor={aEsquerda ? "end" : "start"}>
+                          {arrastando ? `${PARAMETROS[r.parametro].curto} ${valor}` : r.origem === "padrao" ? `${PARAMETROS[r.parametro].curto} ?` : valor}
+                        </text>
+                      )}
+                    </g>
+                  );
+                });
               })}
             </g>
             );

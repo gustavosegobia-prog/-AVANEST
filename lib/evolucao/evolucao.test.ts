@@ -394,31 +394,35 @@ test("a saída da sala encerra o tempo quando o fim da anestesia não foi marcad
   assert.ok(conferirEncerramento({}, vigentes([ev(0, "inicio_anestesia")]), 5).some((x) => x.texto === "Horário de fim da anestesia."));
 });
 
-test("linha pronta: último valor de cada parâmetro, ou a PA e o pulso da pré-anestésica", async () => {
-  const { rascunhoDaColuna } = await import("./sinais.ts");
+test("linha pronta em cada coluna do intervalo: o último valor antes dela, a pré-anestésica ou o neutro", async () => {
+  const { colunasProntas } = await import("./sinais.ts");
   const reg = (id: string, p: string, valor: number, momento: string) =>
     ({ id, evolucao_id: "e", tipo: "sinal", momento, dados: { parametro: p, valor }, origem: "manual",
       substitui_id: null, anulado: false, motivo: null, created_by: "u", created_at: momento }) as Registro;
-  // Começo: nada lançado, vem da pré-anestésica.
-  assert.deepEqual(rascunhoDaColuna([], { pa: "100/60", pulso: "98" }, "2026-10-14T10:00:00Z", 5)
-    .map((r) => [r.parametro, r.valor, r.origem]), [["pas", 100, "pre"], ["pad", 60, "pre"], ["fc", 98, "pre"]]);
-  const vig = [reg("1", "pas", 120, "2026-10-14T10:00:00Z"), reg("2", "pad", 70, "2026-10-14T10:00:00Z"),
-    reg("3", "fc", 80, "2026-10-14T10:03:00Z")];
-  // Às 10:05 a PA já pede ponto novo (5 min); a FC, de 10:03, ainda não.
-  assert.deepEqual(rascunhoDaColuna(vig, {}, "2026-10-14T10:05:00Z", 5).map((r) => [r.parametro, r.valor]),
-    [["pas", 120], ["pad", 70]]);
+  const ms = (hhmm: string) => Date.parse(`2026-10-14T${hhmm}:00Z`);
+  const hora = (t: number) => new Date(t).toISOString().slice(11, 16);
+  // Começo às 10:00, agora 10:12, intervalo 5: colunas 10:00, 10:05, 10:10.
+  const vazia = colunasProntas([], { pa: "100/60", pulso: "98" }, { inicioMs: ms("10:00"), ateMs: ms("10:12"), intervaloMin: 5 });
+  assert.deepEqual(vazia.map((c) => hora(c.ms)), ["10:00", "10:05", "10:10"]);
+  assert.deepEqual(vazia[0].itens.map((r) => [r.parametro, r.valor, r.origem]), [["pas", 100, "pre"], ["pad", 60, "pre"], ["fc", 98, "pre"]]);
+  // A PA lançada às 10:05 some daquela coluna e passa a ser o valor das seguintes.
+  const vig = [reg("1", "pas", 130, "2026-10-14T10:05:00Z"), reg("2", "pad", 80, "2026-10-14T10:06:00Z")];
+  const cols = colunasProntas(vig, {}, { inicioMs: ms("10:00"), ateMs: ms("10:12"), intervaloMin: 5 });
+  assert.deepEqual(cols.find((c) => hora(c.ms) === "10:05")!.itens.map((r) => r.parametro), ["fc"]);
+  assert.deepEqual(cols.find((c) => hora(c.ms) === "10:10")!.itens.map((r) => [r.parametro, r.valor, r.origem]),
+    [["pas", 130, "anterior"], ["pad", 80, "anterior"], ["fc", 100, "padrao"]]);
+  // Intervalo de 3 min: colunas 10:00, 10:03, 10:06, 10:09, 10:12.
+  assert.equal(colunasProntas([], {}, { inicioMs: ms("10:00"), ateMs: ms("10:12"), intervaloMin: 3 }).length, 5);
+  // Nunca no futuro: às 10:12 a coluna de 10:15 ainda não existe.
+  assert.ok(cols.every((c) => c.ms <= ms("10:12")));
   // Só PAM registrada: a linha pronta é de PAM.
   const pam = [reg("4", "pam", 85, "2026-10-14T10:00:00Z")];
-  assert.deepEqual(rascunhoDaColuna(pam, { pa: "120x80" }, "2026-10-14T10:10:00Z", 5).map((r) => [r.parametro, r.origem]),
-    [["pam", "anterior"], ["fc", "padrao"]]);
-  // Ficha em branco, sem pré-anestésica: a linha aparece no ponto neutro, marcada como tal.
-  assert.deepEqual(rascunhoDaColuna([], {}, "2026-10-14T10:00:00Z", 5).map((r) => [r.parametro, r.valor, r.origem]),
-    [["pas", 120, "padrao"], ["pad", 70, "padrao"], ["fc", 100, "padrao"]]);
+  assert.deepEqual(colunasProntas(pam, {}, { inicioMs: ms("10:00"), ateMs: ms("10:05"), intervaloMin: 5 })[1].itens.map((r) => r.parametro), ["pam", "fc"]);
 });
 
-test("linha pronta: o lançamento no minuto cheio logo à frente conta como feito", async () => {
-  const { rascunhoDaColuna } = await import("./sinais.ts");
-  const fc = { id: "9", evolucao_id: "e", tipo: "sinal", momento: "2026-10-14T10:06:00Z", dados: { parametro: "fc", valor: 90 },
-    origem: "manual", substitui_id: null, anulado: false, motivo: null, created_by: "u", created_at: null } as Registro;
-  assert.deepEqual(rascunhoDaColuna([fc], { pa: "120/80" }, "2026-10-14T10:05:40Z", 5).map((r) => r.parametro), ["pas", "pad"]);
+test("folha de 3 em 3 min: a grade forte e a lacuna seguem de 15 min", async () => {
+  const { INTERVALOS, lacunaPadrao: lacuna, marcaForte } = await import("./sinais.ts");
+  assert.deepEqual([...INTERVALOS], [3, 5, 10, 15]);
+  assert.deepEqual(INTERVALOS.map(marcaForte), [15, 15, 30, 45]);
+  assert.deepEqual(INTERVALOS.map(lacuna), [15, 15, 30, 45]);
 });

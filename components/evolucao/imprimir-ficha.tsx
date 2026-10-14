@@ -22,10 +22,8 @@ import { compartilharPdf, ehIOS, pdfDaFicha } from "./pdf-da-ficha";
 
 type Estado = "pronto" | "preparando" | "pdf";
 
-export function ImprimirFicha({ id, className, rotulo, children, aguardar = false, verso = false }: {
+export function ImprimirFicha({ id, className, rotulo, children, aguardar = false }: {
   id: string;
-  /** O verso (consumo) em vez da frente: é outra folha, impressa só quando pedida. */
-  verso?: boolean;
   className?: string;
   /** Para leitor de tela, quando o botão só mostra um ícone. */
   rotulo?: string;
@@ -39,8 +37,8 @@ export function ImprimirFicha({ id, className, rotulo, children, aguardar = fals
   const arquivo = useRef<File | null>(null);
   const botao = useRef<HTMLButtonElement>(null);
   useEffect(() => () => quadro.current?.remove(), []);
-  const endereco = `/evolucao/${id}/imprimir${verso ? "?verso=1" : ""}`;
-  const comAuto = `${endereco}${verso ? "&" : "?"}auto=1`;
+  const endereco = `/evolucao/${id}/imprimir`;
+  const comAuto = `${endereco}?auto=1`;
 
   // A página de impressão, carregada fora da vista, com as folhas já
   // ajustadas. Recusa se ela não carregou aqui dentro (sessão expirada, erro).

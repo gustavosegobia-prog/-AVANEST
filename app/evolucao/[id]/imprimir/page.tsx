@@ -6,7 +6,6 @@ import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { FolhaImpressa } from "@/components/evolucao/folha-impressa";
 import { BotaoImprimirFolha } from "@/components/evolucao/botao-imprimir-folha";
 import { ImprimirAoAbrir } from "@/components/evolucao/imprimir-ao-abrir";
-import { VersoImpresso } from "@/components/evolucao/verso-impresso";
 
 export const metadata: Metadata = {
   title: "Imprimir ficha anestésica | AVANEST",
@@ -20,10 +19,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // aparece no papel, e a barra de cima diz isso.
 export default async function ImprimirFolhaPage({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ auto?: string; verso?: string }>;
+  searchParams: Promise<{ auto?: string }>;
 }) {
   const { id } = await params;
-  const { auto, verso } = await searchParams;
+  const { auto } = await searchParams;
   if (!UUID.test(id)) notFound();
   const { supabase, perfil } = await exigirAcessoAEvolucao();
 
@@ -57,16 +56,9 @@ export default async function ImprimirFolhaPage({ params, searchParams }: {
           A4 retrato. Sai o que está salvo no servidor: lançamento ainda pendente na tela não entra.
           {folha.status === "aberta" && " A ficha ainda está aberta: o rodapé de cada página diz isso."}
         </p>
-        <Link href={verso === "1" ? `/evolucao/${id}/imprimir` : `/evolucao/${id}/imprimir?verso=1`} className="evoBotao fantasma">
-          {verso === "1" ? "Ver a frente" : "Ver o verso (consumo)"}
-        </Link>
         <BotaoImprimirFolha className="evoBotao" />
       </div>
-      {verso === "1" ? (
-        <VersoImpresso folha={folha} paciente={paciente}
-          instituicao={localDaFicha || local?.nome || instituicao?.nome || ""}
-          impressoPor={perfil.nome ?? ""} agora={new Date().toISOString()} />
-      ) : <FolhaImpressa
+      <FolhaImpressa
         folha={folha}
         paciente={paciente}
         vigentes={vigentes((registros ?? []) as Registro[])}
@@ -74,7 +66,7 @@ export default async function ImprimirFolhaPage({ params, searchParams }: {
         impressoPor={perfil.nome ?? ""}
         encerradaPor={(quemEncerrou as { nome?: string } | null)?.nome ?? null}
         agora={new Date().toISOString()}
-      />}
+      />
     </main>
   );
 }

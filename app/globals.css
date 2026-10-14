@@ -6757,6 +6757,13 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoSerie.pronto.neutro .evoSimbolo{opacity:.4}
 .evoSerie.pronto.neutro .evoProntoAlvo{fill-opacity:.05;stroke-opacity:.35}
 .evoSerie.pronto.neutro .evoProntoValor{opacity:.7}
+/* As colunas de antes da de agora: o mesmo alvo, mais apagado, para o
+   gráfico não virar uma fileira de bolhas quando há buracos no meio. */
+.evoSerie.pronto.antiga .evoProntoAlvo{fill-opacity:.05;stroke-opacity:.28}
+.evoSerie.pronto.antiga .evoSimbolo{opacity:.45}
+.evoSerie.pronto.antiga .evoProntoLigacao{opacity:.35}
+.evoSerie.pronto.antiga.puxando .evoProntoAlvo{fill-opacity:.2;stroke-opacity:.9}
+.evoSerie.pronto.antiga.puxando .evoSimbolo{opacity:1}
 .evoDicaGrafico{margin:4px 0 6px;font-size:12.5px;color:var(--cor-tinta-fraca)}
 
 /* ── Foto do monitor (components/evolucao/janela-monitor.tsx) ─────────────── */
@@ -7838,40 +7845,3 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 /* A troca de área do painel: a barra corre enquanto a área nova chega. */
 .clinicalShell .barraCarregando{top:0}
 
-/* ── Consumo, o verso da ficha (consumo-da-folha.tsx, verso-impresso.tsx) ── */
-.evoConsumo{display:grid;gap:12px;margin-top:16px;padding:16px}
-.evoConsumoTopo{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px}
-.evoConsumoTopo h3{margin:0;font-size:16px}
-.evoConsumoTopo p{margin:2px 0 0;font-size:13px;color:var(--cor-tinta-fraca)}
-.evoConsumoAcoes{display:flex;flex-wrap:wrap;gap:8px}
-.evoConsumoBusca{position:relative;max-width:520px}
-.evoConsumoAchados{margin:4px 0 0;padding:4px;list-style:none;border:1px solid var(--cor-borda);border-radius:10px;background:var(--cor-superficie);
-  box-shadow:0 8px 20px rgba(8,25,42,.08)}
-.evoConsumoAchados button{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 10px;
-  border:0;border-radius:8px;background:none;color:var(--cor-tinta);font:inherit;text-align:left;cursor:pointer}
-.evoConsumoAchados button:hover,.evoConsumoAchados button:focus-visible{background:var(--cor-superficie-suave)}
-.evoConsumoAchados small{flex:none;font-size:12px;color:var(--cor-tinta-fraca)}
-.evoConsumoGrupo h4{margin:4px 0 6px;font-size:12px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca)}
-.evoConsumoGrupo ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
-.evoConsumoGrupo li{display:flex;align-items:center;gap:10px;min-height:44px;padding:2px 0;border-bottom:1px solid color-mix(in srgb,var(--cor-borda) 60%,transparent)}
-.evoConsumoNome{flex:1;min-width:0;font-size:14px;overflow-wrap:anywhere}
-.evoConsumoNumero{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--cor-tinta-fraca)}
-.evoConsumoNumero input{width:64px;min-height:36px;padding:0 6px;border:1px solid var(--cor-borda-forte);border-radius:8px;
-  background:var(--cor-superficie);color:var(--cor-tinta);font:inherit;font-size:15px;text-align:right}
-.evoConsumoQtd{display:inline-flex;align-items:center;gap:4px;flex:none}
-.evoConsumoQtd b{min-width:28px;text-align:center;font-size:16px;font-variant-numeric:tabular-nums}
-.evoConsumoQtd button{width:40px;height:40px;border:1px solid var(--cor-borda-forte);border-radius:10px;background:var(--cor-superficie);
-  color:var(--cor-marca-forte);font:inherit;font-size:20px;font-weight:700;line-height:1;cursor:pointer;touch-action:manipulation}
-.evoConsumoQtd button:hover{background:var(--cor-marca-suave)}
-.evoConsumoQtd button:focus-visible,.evoConsumoNumero input:focus-visible{outline:2px solid var(--cor-marca);outline-offset:2px}
-@media(pointer:coarse){.evoConsumoQtd button{width:44px;height:44px}}
-@media(min-width:900px){.evoConsumo>.evoConsumoGrupo{max-width:none}}
-
-.imprVerso .imprConsumo{columns:2;column-gap:6mm;font-size:7.6pt}
-.imprConsumoGrupo{break-inside:avoid;margin:0 0 3mm}
-.imprConsumoGrupo h2{margin:0 0 1mm;padding:.6mm 1.4mm;background:#5f6670;color:#fff;font-size:7.4pt;letter-spacing:.04em}
-.imprConsumoGrupo table{width:100%;border-collapse:collapse}
-.imprConsumoGrupo td{padding:.7mm 1.4mm;border-bottom:.15mm solid #9aa1ab;vertical-align:top}
-.imprConsumoGrupo td.qtd{width:12mm;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
-.imprVerso .imprConsumoObs{flex:none;min-height:28mm;border-top:.3mm solid #111}
-.imprVerso .imprConsumoObs p{white-space:pre-wrap}

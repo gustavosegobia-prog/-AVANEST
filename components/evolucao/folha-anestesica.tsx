@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
 import { janelaVisivel } from "@/lib/evolucao/grafico";
-import { pamEstimadaCabe, PARAMETROS, rascunhoDaColuna, type Parametro } from "@/lib/evolucao/sinais";
+import { colunasProntas, INTERVALOS, pamEstimadaCabe, PARAMETROS, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
   administrados, agruparPorMedicamento, doseAcumulada, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
@@ -38,8 +38,6 @@ import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { RodapeDaFolha } from "./rodape-da-folha";
 import { ImprimirFicha } from "./imprimir-ficha";
 import { SugestoesDeDose } from "./sugestoes-de-dose";
-import { ConsumoDaFolha } from "./consumo-da-folha";
-import { lerConsumo, trazerDaFicha } from "@/lib/evolucao/consumo";
 import { idadeEmMesesDaFicha, sugerirDoses, tuboDaFicha, type PacienteDaFicha } from "@/lib/evolucao/sugestoes";
 
 // A folha de anestesia digital.
@@ -160,14 +158,19 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   // A anestesia terminou há mais de um minuto (fim marcado ou paciente fora da sala).
   const terminou = () => aberta && fimMs !== null && agoraMs() > fimMs + 60_000;
   const terminouNaTela = aberta && fimMs !== null && agora > fimMs + 60_000;
-  // A linha pronta do gráfico: PAS, PAD e FC da coluna de agora, para arrastar.
-  // Só com a anestesia correndo — terminada, não há "agora" a lançar.
+  // A linha pronta do gráfico: PAS, PAD e FC em cada coluna do intervalo,
+  // do começo até agora (ou até o fim da anestesia), para arrastar. Com a
+  // anestesia terminada e a ficha aberta, ainda serve para completar depois.
   const preDaFicha = camposDoPapel(dados);
-  const rascunho = useMemo(() => (aberta && agora > 0 && fimMs === null
-    ? rascunhoDaColuna(atuais, { pa: preDaFicha.pa, pulso: preDaFicha.pulso }, new Date(agora).toISOString(), folha.intervalo_minutos)
-    : []), [aberta, agora, fimMs, atuais, preDaFicha.pa, preDaFicha.pulso, folha.intervalo_minutos]);
-  // "✓ Igual" só com valor de verdade: o ponto neutro não entra.
-  const rascunhoReal = rascunho.filter((r) => r.origem !== "padrao");
+  const passoMs = folha.intervalo_minutos * 60000;
+  const colunas = useMemo(() => (aberta && agora > 0
+    ? colunasProntas(atuais, { pa: preDaFicha.pa, pulso: preDaFicha.pulso },
+      { inicioMs, ateMs: fimMs ?? agora, intervaloMin: folha.intervalo_minutos })
+    : []), [aberta, agora, fimMs, inicioMs, atuais, preDaFicha.pa, preDaFicha.pulso, folha.intervalo_minutos]);
+  // "✓ Igual" é da coluna de agora, e só com valor de verdade: o ponto neutro não entra.
+  const colunaDeAgora = colunas.length && fimMs === null
+    && colunas[colunas.length - 1].ms === Math.floor((agora + 30000) / passoMs) * passoMs ? colunas[colunas.length - 1] : null;
+  const rascunhoReal = (colunaDeAgora?.itens ?? []).filter((r) => r.origem !== "padrao");
   const textoDoRascunho = (() => {
     const v = (p: Parametro) => rascunhoReal.find((r) => r.parametro === p)?.valor;
     const partes = [
@@ -326,7 +329,13 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   async function mudarIntervalo(min: number) {
     const { error } = await createClient().rpc("definir_intervalo_evolucao", { p_id: folha.id, p_minutos: min });
-    if (!error) f.setFolha((x) => ({ ...x, intervalo_minutos: min }));
+    if (!error) { f.setFolha((x) => ({ ...x, intervalo_minutos: min })); return; }
+    setAviso({
+      texto: /INTERVALO_INVALIDO/.test(error.message)
+        ? `O intervalo de ${min} min ainda não está liberado. A ficha segue de ${folha.intervalo_minutos} em ${folha.intervalo_minutos} min.`
+        : "Não deu para mudar o intervalo agora. Confira a conexão e tente de novo.",
+      desfazer: false,
+    });
   }
 
   async function encerrar() {
@@ -424,7 +433,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
               <label className="evoSelecao"><span>Intervalo</span>
                 <select value={folha.intervalo_minutos} disabled={!aberta}
                   onChange={(e) => void mudarIntervalo(Number(e.target.value))}>
-                  <option value={5}>5 min</option><option value={10}>10 min</option><option value={15}>15 min</option>
+                  {INTERVALOS.map((m) => <option key={m} value={m}>{m} min</option>)}
                 </select>
               </label>
               <div className="evoSegmento" role="group" aria-label="Janela de tempo">
@@ -445,23 +454,24 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
               {rascunhoReal.length > 0 && (
                 <button type="button" className="evoBotao pequeno evoIgual"
                   title={rascunhoReal[0].origem === "pre" ? "Valores da avaliação pré-anestésica" : "Os mesmos valores da última coluna"}
-                  onClick={() => registrarSinais(rascunhoReal.map((r) => ({ parametro: r.parametro, valor: r.valor, origem: "manual" })), minutoAtual())}>
+                  onClick={() => registrarSinais(rascunhoReal.map((r) => ({ parametro: r.parametro, valor: r.valor, origem: "manual" })),
+                    new Date(colunaDeAgora!.ms).toISOString())}>
                   ✓ {rascunhoReal[0].origem === "pre" ? "Da pré" : "Igual"}: {textoDoRascunho}
                 </button>
               )}
             </div>
           </div>
 
-          {rascunho.length > 0 && (
-            <p className="evoDicaGrafico">Arraste os pontos tracejados da coluna de agora até o valor do monitor e solte para lançar.</p>
+          {colunas.length > 0 && (
+            <p className="evoDicaGrafico">Arraste os pontos tracejados de cada coluna até o valor do monitor e solte: lança naquele horário.</p>
           )}
           {montado ? (
             <GraficoSinais
               atuais={atuais} idsPendentes={f.idsPendentes} cabecalho={dados} fimMs={fimMs} agoraMs={agora}
               aberta={aberta} intervalo={folha.intervalo_minutos} janelaInicio={janela.inicio} janelaMinutos={zoom}
-              alturaGrade={300} somenteLeitura={!aberta} rascunho={rascunho}
-              onLancar={(p, valor) => {
-                const momento = minutoAtual();
+              alturaGrade={300} somenteLeitura={!aberta} colunas={colunas}
+              onLancar={(p, valor, ms) => {
+                const momento = new Date(ms).toISOString();
                 f.registrar({ tipo: "sinal", momento, dados: { parametro: p, valor }, origem: "manual" });
                 setAviso({ texto: `${PARAMETROS[p].curto} ${fmt(valor, 1)} às ${hora(momento)}`, desfazer: true });
               }}
@@ -661,18 +671,6 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
         inicioAnestesia: horarioDoMarco(atuais, "inicio_anestesia"), fimAnestesia: fimAnestesia,
       }} />
 
-      {/* O verso do papel: o consumo da sala, para o faturamento. */}
-      <ConsumoDaFolha consumo={lerConsumo(dados)} leitura={!aberta}
-        onMudar={(c) => f.mudarCabecalho({ consumo: c })}
-        onTrazer={() => {
-          const antes = lerConsumo(dados);
-          const depois = trazerDaFicha(antes, dadas, atuais, dados);
-          f.mudarCabecalho({ consumo: depois });
-          const novos = depois.itens.length - antes.itens.length;
-          setAviso({ texto: novos > 0 ? `${novos} ${novos === 1 ? "item trazido" : "itens trazidos"} da ficha — confira as quantidades` : "O consumo já tinha tudo o que a ficha mostra", desfazer: false });
-        }}
-        imprimir={<ImprimirFicha id={folha.id} verso className="evoBotao pequeno secundario"
-          aguardar={f.pendentes.some((p) => !p.recusado)}>Imprimir o verso</ImprimirFicha>} />
 
       {aviso && (
         <div className="evoAviso" role="status">
