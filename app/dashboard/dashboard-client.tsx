@@ -319,7 +319,7 @@ const nextAutomaticAppointmentTime = (date: string, appointments: Pick<Agendamen
 };
 
 export function DashboardClient({
-  perfil, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, conveniosDaOrganizacao = [], initialView,
+  perfil, geradoEm, email = "", organizacao = null, pacientes, avaliacoes, agendamentos, financeiro, pagamentos, perfis, auditoria, periodos, convenioValores, conveniosDaOrganizacao = [], initialView,
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
   podeFichaAnestesica = false,
@@ -357,6 +357,8 @@ export function DashboardClient({
   /** Onde a pessoa está atendendo agora. Null quando a organização ainda não cadastrou nenhum local. */
   localAtivo?:LocalDisponivel|null; totalDeLocais?:number; locais?:LocalDisponivel[];
   initialView?: DashboardView;
+  /** Hora do servidor em que estes dados foram montados (Date.now()). */
+  geradoEm?: number;
   initialNewPatient?: boolean;
   autoStartAssessment?: boolean;
   /**
@@ -756,6 +758,29 @@ export function DashboardClient({
   }
 
   const naBarra = isAreaPending && areaPedida ? areaPedida : view;
+
+  // TROCA DE ÁREA NA HORA. As outras áreas do painel são pré-carregadas em
+  // segundo plano assim que ele abre (e de novo quando o dedo encosta no
+  // botão): o toque mostra a área sem esperar o servidor. Pré-carga pode ter
+  // alguns minutos — então, ao chegar numa área que veio dela, o painel pede
+  // a versão atual em seguida e troca sozinho se algo mudou. O relógio do
+  // aparelho e o do servidor nunca batem: a primeira carga mede a diferença.
+  const prefetchar = useCallback((area: DashboardView) => {
+    if (area !== view) router.prefetch(`/dashboard?area=${area}`);
+  }, [router, view]);
+  useEffect(() => {
+    const outras = allowedViews.filter((a) => a !== view);
+    if (!outras.length) return;
+    const id = setTimeout(() => outras.forEach(prefetchar), 1500);
+    return () => clearTimeout(id);
+  }, [allowedViews, view, prefetchar]);
+  const desvioDoRelogio = useRef<number | null>(null);
+  useEffect(() => {
+    if (!geradoEm) return;
+    const agora = Date.now();
+    if (desvioDoRelogio.current === null) { desvioDoRelogio.current = agora - geradoEm; return; }
+    if (agora - desvioDoRelogio.current - geradoEm > 2500) router.refresh();
+  }, [geradoEm, router]);
   const changeView=(nextView:DashboardView)=>{
     if(nextView===view)return;
     setAreaPedida(nextView);
@@ -823,19 +848,19 @@ export function DashboardClient({
               continua na frente de propósito: um anestesiologista que também
               tem Recepção quer abrir na fila dele, não no balcão. As duas
               ordens respondem perguntas diferentes e por isso são duas. */}
-          {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={naBarra === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
-          {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={naBarra === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
+          {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={naBarra === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")} onPointerEnter={() => prefetchar("recepcao")} onFocus={() => prefetchar("recepcao")}>Recepção</button>}
+          {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={naBarra === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")} onPointerEnter={() => prefetchar("medico")} onFocus={() => prefetchar("medico")}>Médico</button>}
           {/* O contador de trocas fica AQUI, no topo, e não só dentro da
               Escala. Um plantão oferecido que ninguém vê é o buraco chegando
               no dia da cirurgia — e quem está na Recepção ou no Financeiro
               precisa saber que tem alguém esperando resposta sem ter de abrir
               a Escala para descobrir. */}
-          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={naBarra === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>
+          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={naBarra === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")} onPointerEnter={() => prefetchar("plantoes")} onFocus={() => prefetchar("plantoes")}>
             Escala
             {trocasEsperando>0&&<b className="navAviso" title={`${trocasEsperando===1?"Um plantão oferecido espera":"Plantões oferecidos esperam"} a sua resposta`}>{trocasEsperando}</b>}
           </button>}
-          {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={naBarra === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
-          {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={naBarra === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
+          {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={naBarra === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")} onPointerEnter={() => prefetchar("financeiro")} onFocus={() => prefetchar("financeiro")}>Financeiro</button>}
+          {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={naBarra === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")} onPointerEnter={() => prefetchar("admin")} onFocus={() => prefetchar("admin")}>Admin</button>}
         </nav>
         {/* Sino e menu do usuário viajam JUNTOS, num item só.
             A barra é um grid de quatro colunas, e não um flex: acrescentar o

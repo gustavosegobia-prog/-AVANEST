@@ -451,6 +451,9 @@ export default async function DashboardPage({
   return (
     <DashboardClient
       perfil={perfil}
+      // Quando este pacote foi montado: o painel sabe se o que mostra veio
+      // da pré-carga (e confere com o servidor) ou acabou de chegar.
+      geradoEm={new Date().getTime()}
       podeFichaAnestesica={podeFicha === true}
       // Vem do servidor, que já tem a sessão. Buscar no navegador deixaria a
       // tela "carregando..." — e o botão de trocar senha travado — sempre que
