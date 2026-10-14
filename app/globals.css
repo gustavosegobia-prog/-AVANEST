@@ -6710,7 +6710,9 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
    enquanto o dedo está nele — o toque é registro. */
 .evoGraficoCaixa{width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 .evoGraficoCarregando{height:560px;border-radius:8px;background:var(--cor-superficie-suave)}
-.evoGrafico{display:block;touch-action:none;user-select:none;-webkit-user-select:none;cursor:crosshair}
+/* O dedo rola a página por cima do gráfico; só o ponto arrastável segura o
+   dedo (grafico-sinais.tsx, ouvinte de touchmove). */
+.evoGrafico{display:block;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
 .evoGrafico.leitura{cursor:default}
 .evoGrafico text{font-family:inherit;fill:var(--cor-tinta-fraca)}
 .evoGradeFina{stroke:var(--evo-grade);stroke-width:1}

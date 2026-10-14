@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
   EIXO_Y, marcasDeTempo, pontoDoToque, tempoParaX, valorParaY, yParaValor, type Escala,
 } from "@/lib/evolucao/grafico";
@@ -262,16 +262,25 @@ export function GraficoSinais({
     return melhor?.r ?? null;
   }
 
+  // O QUE O DEDO TOCOU. Toque de verdade é o que desce e sobe no mesmo lugar:
+  // quem desliza o dedo sobre o gráfico está rolando a página, e antes a janela
+  // abria já no primeiro contato — no meio da rolagem, uma "Iniciar infusão"
+  // que ninguém pediu. Agora o toque só vale quando o dedo sobe sem ter
+  // andado; só um ponto (da linha pronta ou já lançado) segura o dedo para
+  // arrastar, e o resto da área rola a página normalmente.
+  const toqueSimples = useRef<{ lx: number; ly: number; x0: number; y0: number } | null>(null);
+  const segurarDedo = useRef(false);
+  const ANDOU = 10;
+
   function aoPressionar(ev: React.PointerEvent<SVGSVGElement>) {
     const { lx, ly } = local(ev);
     if (lx < CALHA) return;
-    // O toque abre janelas: sem isto, o mousedown que vem depois tira o foco
-    // do campo que a janela acabou de focar.
-    ev.preventDefault();
+    // No mouse, o toque abre janelas: sem isto, o mousedown tira o foco do campo
+    // que a janela acabou de focar. No dedo isso fica com o onTouchEnd.
+    if (ev.pointerType === "mouse") ev.preventDefault();
 
-    // O gráfico de pressão e FC
+    // O gráfico de pressão e FC: os pontos se arrastam desde o primeiro contato.
     if (ly >= topoGrade) {
-      // A linha pronta vem antes: é o que se toca a cada coluna.
       const pronto = prontoNoToque(lx, ly);
       if (pronto) {
         (ev.target as Element).setPointerCapture?.(ev.pointerId);
@@ -279,12 +288,22 @@ export function GraficoSinais({
         return;
       }
       const alvo = pontoNoToque(lx, ly);
-      if (alvo) {
-        if (somenteLeitura) { onAbrirPonto(alvo); return; }
+      if (alvo && !somenteLeitura) {
         (ev.target as Element).setPointerCapture?.(ev.pointerId);
         setArraste({ registro: alvo, x: lx, y: ly, x0: lx, y0: ly, ativo: false });
         return;
       }
+    }
+    // O resto espera o dedo subir.
+    toqueSimples.current = { lx, ly, x0: ev.clientX, y0: ev.clientY };
+  }
+
+  /** O toque que desceu e subiu no mesmo lugar: abre o que estava ali. */
+  function tocar(lx: number, ly: number) {
+    // O gráfico de pressão e FC
+    if (ly >= topoGrade) {
+      const alvo = pontoNoToque(lx, ly);
+      if (alvo) { onAbrirPonto(alvo); return; }
       if (!somenteLeitura) onTocar(pontoDoToque(lx - CALHA, ly - topoGrade, e));
       return;
     }
@@ -347,7 +366,40 @@ export function GraficoSinais({
     return perto?.r ?? null;
   }
 
+  /** Este ponto do gráfico se arrasta? (linha pronta ou ponto já lançado) */
+  function arrastavel(lx: number, ly: number): boolean {
+    if (somenteLeitura || lx < CALHA || ly < topoGrade) return false;
+    return Boolean(prontoNoToque(lx, ly) || pontoNoToque(lx, ly));
+  }
+
+  // O dedo que começa num ponto arrastável não rola a página; os outros rolam.
+  // Precisa ser ouvinte nativo e não passivo: é o único jeito de o
+  // preventDefault segurar a rolagem no iPhone e no Android.
+  const ehArrastavel = useEffectEvent((lx: number, ly: number) => arrastavel(lx, ly));
+  useEffect(() => {
+    const el = svg.current;
+    if (!el) return;
+    const inicio = (ev: TouchEvent) => {
+      const t = ev.touches[0];
+      const r = el.getBoundingClientRect();
+      segurarDedo.current = ev.touches.length === 1 && Boolean(t) && ehArrastavel(t.clientX - r.left, t.clientY - r.top);
+    };
+    const mover = (ev: TouchEvent) => { if (segurarDedo.current && ev.cancelable) ev.preventDefault(); };
+    const fim = () => { segurarDedo.current = false; };
+    el.addEventListener("touchstart", inicio, { passive: true });
+    el.addEventListener("touchmove", mover, { passive: false });
+    el.addEventListener("touchend", fim);
+    el.addEventListener("touchcancel", fim);
+    return () => {
+      el.removeEventListener("touchstart", inicio);
+      el.removeEventListener("touchmove", mover);
+      el.removeEventListener("touchend", fim);
+      el.removeEventListener("touchcancel", fim);
+    };
+  }, []);
   function aoMover(ev: React.PointerEvent<SVGSVGElement>) {
+    const t = toqueSimples.current;
+    if (t && Math.hypot(ev.clientX - t.x0, ev.clientY - t.y0) > ANDOU) toqueSimples.current = null;
     if (puxando) {
       const { ly } = local(ev);
       const yLimitado = Math.min(topoGrade + alturaGrade, Math.max(topoGrade, ly));
@@ -362,6 +414,9 @@ export function GraficoSinais({
   }
 
   function aoSoltar() {
+    const t = toqueSimples.current;
+    toqueSimples.current = null;
+    if (t) { tocar(t.lx, t.ly); return; }
     if (puxando) {
       const r = prontos.find((x) => x.parametro === puxando.p);
       if (r) onLancar?.(r.parametro, puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor);
@@ -381,7 +436,8 @@ export function GraficoSinais({
         className={`evoGrafico${somenteLeitura ? " leitura" : ""}`}
         width={largura} height={altura} viewBox={`0 0 ${largura} ${altura}`}
         onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar}
-        onPointerCancel={() => { setArraste(null); setPuxando(null); }}
+        // O navegador assumiu o gesto (rolagem): não era toque nem arraste.
+        onPointerCancel={() => { toqueSimples.current = null; setArraste(null); setPuxando(null); }}
         // No toque, o navegador ainda solta um clique no mesmo lugar depois de
         // a janela abrir — e ele caía num campo (ou botão) da janela.
         onTouchEnd={(ev) => { if (ev.cancelable) ev.preventDefault(); }}
