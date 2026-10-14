@@ -7621,7 +7621,10 @@ html[data-tema=escuro]:has(.temaApp),html[data-tema=escuro]:has(.temaApp) body{b
 
 /* Ficha aberta que já terminou (fim da anestesia ou saída da sala): o
    relógio para, em âmbar, e o caminho é encerrar. */
-.fcTempo.parado{font-size:15px;color:var(--cor-atencao)}
+.fcTempo.parado{min-width:0;font-size:15px;line-height:1.25;white-space:normal;color:var(--cor-atencao)}
+.fcTempo.parado::before{flex:none}
+/* No celular o aviso não cabe ao lado do "Encerrar ficha": desce uma linha. */
+@media(max-width:640px){.fcLinha:has(.fcTempo.parado){grid-template-areas:"quem quem" "tempo tempo" ". ir"}}
 .fcTempo.parado::before{background:var(--cor-atencao)}
 
 /* O hospital da lista de fichas: as de outros hospitais não aparecem aqui. */

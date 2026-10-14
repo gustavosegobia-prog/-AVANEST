@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { exigirAcessoAEvolucao, localDaSessao } from "@/lib/evolucao/acesso";
 import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { FolhaImpressa } from "@/components/evolucao/folha-impressa";
-import { BotaoImprimir } from "@/components/botao-imprimir";
+import { BotaoImprimirFolha } from "@/components/evolucao/botao-imprimir-folha";
 import { ImprimirAoAbrir } from "@/components/evolucao/imprimir-ao-abrir";
 
 export const metadata: Metadata = {
@@ -56,7 +56,7 @@ export default async function ImprimirFolhaPage({ params, searchParams }: {
           A4 retrato. Sai o que está salvo no servidor: lançamento ainda pendente na tela não entra.
           {folha.status === "aberta" && " A ficha ainda está aberta: o rodapé de cada página diz isso."}
         </p>
-        <BotaoImprimir rotulo="Imprimir ou salvar PDF" className="evoBotao" />
+        <BotaoImprimirFolha className="evoBotao" />
       </div>
       <FolhaImpressa
         folha={folha}

@@ -115,7 +115,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
   );
 
   return (
-    <div className="imprFolhas">
+    <div className="imprFolhas" data-paciente={paciente.nome}>
       {janelas.map((janela, n) => (
         <article className="imprFolha" key={janela.inicio}>
           {cabecalho(n)}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { folhasProntas } from "./registro-que-enche";
+import { compartilharPdf, ehIOS, pdfDaFicha } from "./pdf-da-ficha";
 
 // IMPRIMIR SEM SAIR DA FICHA.
 //
@@ -12,11 +13,14 @@ import { folhasProntas } from "./registro-que-enche";
 // impressão carrega escondida aqui mesmo e o navegador já abre a janela de
 // imprimir / salvar PDF por cima da ficha.
 //
-// No iPhone e no iPad o Safari imprime a página de cima, e não a escondida:
-// ali a impressão abre na mesma aba e a janela de imprimir sobe sozinha
-// (`?auto=1`, components/evolucao/imprimir-ao-abrir.tsx).
-const ehIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
-  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+// No iPhone e no iPad a janela de imprimir não serve: o Safari imprime a
+// página de cima, e o aplicativo instalado na tela de início nem abre a
+// janela. Ali a folha escondida vira um PDF no próprio aparelho e sobe o menu
+// de compartilhar do iOS — Imprimir, Salvar em Arquivos, WhatsApp
+// (pdf-da-ficha.ts). O menu só abre logo depois de um toque: se o PDF demorou
+// e o iOS recusar, o botão vira "Abrir PDF" e o próximo toque abre na hora.
+
+type Estado = "pronto" | "preparando" | "pdf";
 
 export function ImprimirFicha({ id, className, rotulo, children, aguardar = false }: {
   id: string;
@@ -28,15 +32,16 @@ export function ImprimirFicha({ id, className, rotulo, children, aguardar = fals
   aguardar?: boolean;
 }) {
   const router = useRouter();
-  const [preparando, setPreparando] = useState(false);
+  const [estado, setEstado] = useState<Estado>("pronto");
   const quadro = useRef<HTMLIFrameElement | null>(null);
+  const arquivo = useRef<File | null>(null);
+  const botao = useRef<HTMLButtonElement>(null);
   useEffect(() => () => quadro.current?.remove(), []);
+  const endereco = `/evolucao/${id}/imprimir`;
 
-  function imprimir() {
-    const endereco = `/evolucao/${id}/imprimir`;
-    if (ehIOS()) { router.push(`${endereco}?auto=1`); return; }
-    if (preparando) return;
-    setPreparando(true);
+  // A página de impressão, carregada fora da vista, com as folhas já
+  // ajustadas. Recusa se ela não carregou aqui dentro (sessão expirada, erro).
+  function folhaEscondida() {
     quadro.current?.remove();
     const f = document.createElement("iframe");
     f.setAttribute("aria-hidden", "true");
@@ -46,33 +51,86 @@ export function ImprimirFicha({ id, className, rotulo, children, aguardar = fals
     // se monta como na impressora, e é ali que ela mede quanto o gráfico
     // pode crescer. Uma janela de tamanho zero caía nas regras de celular.
     f.style.cssText = "position:fixed;left:-10000px;top:0;width:196mm;height:1200px;border:0;pointer-events:none";
-    f.onload = async () => {
-      const janela = f.contentWindow;
-      // A fonte e as imagens precisam estar prontas, ou o papel sai na fonte
-      // de reserva.
-      try { await janela?.document.fonts?.ready; } catch { /* imprime assim mesmo */ }
-      // E cada folha esticar o gráfico até o rodapé (registro-que-enche.tsx).
-      try { if (janela) await folhasProntas(janela.document); } catch { /* imprime assim mesmo */ }
-      setPreparando(false);
-      try {
-        janela!.focus();
-        janela!.print();
-      } catch {
-        // A página não carregou aqui dentro (sessão expirada, erro): abre ela
-        // mesma, que já sobe a janela de imprimir.
-        router.push(`${endereco}?auto=1`);
-      }
-    };
-    f.src = endereco;
-    document.body.appendChild(f);
     quadro.current = f;
+    return new Promise<Window>((resolver, recusar) => {
+      f.onload = async () => {
+        const janela = f.contentWindow;
+        try {
+          if (!janela?.document.querySelector(".imprFolha")) throw new Error("sem folha");
+        } catch (erro) { recusar(erro); return; }
+        // A fonte e as imagens precisam estar prontas, ou o papel sai na
+        // fonte de reserva. E cada folha esticar o gráfico até o rodapé
+        // (registro-que-enche.tsx).
+        try { await janela.document.fonts?.ready; } catch { /* segue assim mesmo */ }
+        try { await folhasProntas(janela.document); } catch { /* segue assim mesmo */ }
+        resolver(janela);
+      };
+      f.onerror = () => recusar(new Error("não carregou"));
+      f.src = endereco;
+      document.body.appendChild(f);
+    });
+  }
+
+  async function abrirPdf(pdf: File) {
+    if (await compartilharPdf(pdf) === "precisa-de-toque") {
+      arquivo.current = pdf;
+      setEstado("pdf");
+      botao.current?.focus();
+      return;
+    }
+    arquivo.current = null;
+    setEstado("pronto");
+  }
+
+  async function imprimir() {
+    if (estado === "pdf" && arquivo.current) { void abrirPdf(arquivo.current); return; }
+    if (estado !== "pronto") return;
+    setEstado("preparando");
+    const ios = ehIOS();
+    let janela: Window;
+    try {
+      janela = await folhaEscondida();
+    } catch {
+      // Abre a própria página de impressão, que tem o botão de imprimir.
+      setEstado("pronto");
+      router.push(ios ? endereco : `${endereco}?auto=1`);
+      return;
+    }
+
+    if (ios) {
+      let pdf: File;
+      try {
+        pdf = await pdfDaFicha(janela.document);
+      } catch {
+        setEstado("pronto");
+        router.push(endereco);
+        return;
+      } finally {
+        quadro.current?.remove();
+        quadro.current = null;
+      }
+      await abrirPdf(pdf);
+      return;
+    }
+
+    setEstado("pronto");
+    try {
+      janela.focus();
+      janela.print();
+    } catch {
+      router.push(`${endereco}?auto=1`);
+    }
   }
 
   return (
-    <button type="button" className={className} onClick={imprimir} disabled={preparando || aguardar}
-      aria-busy={preparando} aria-label={rotulo}
-      title={aguardar ? "Espere os lançamentos salvarem: o papel sai do que está no servidor." : undefined}>
-      {preparando ? "Preparando…" : children}
-    </button>
+    <>
+      <button ref={botao} type="button" className={className} onClick={imprimir}
+        disabled={estado === "preparando" || aguardar} aria-busy={estado === "preparando"}
+        aria-label={estado === "pronto" ? rotulo : undefined}
+        title={aguardar ? "Espere os lançamentos salvarem: o papel sai do que está no servidor." : undefined}>
+        {estado === "preparando" ? "Preparando…" : estado === "pdf" ? "Abrir PDF" : children}
+      </button>
+      <span className="sr-only" role="status">{estado === "pdf" ? "PDF da ficha pronto. Toque em Abrir PDF para imprimir ou salvar." : ""}</span>
+    </>
   );
 }
