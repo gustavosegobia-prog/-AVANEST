@@ -29,12 +29,19 @@ const VAZIO: Record<Parametro, string> = { pas: "", pad: "", pam: "", fc: "", sp
  * PA vai em par (sistólica e diastólica, a diastólica menor). A PAM digitada
  * é a do monitor; sem ela, a estimada aparece calculada e só é gravada se o
  * médico marcar, e nunca onde já há uma PAM medida no mesmo minuto.
+ *
+ * O toque numa linha (SpO₂, EtCO₂, temperatura) abre SÓ aquele campo, com o
+ * último valor num botão para repetir — "Mostrar todos os sinais" abre o resto.
  */
-export function JanelaSinais({ ms, foco = "pas", temPamMedida, onConfirmar, onFechar }: {
+export function JanelaSinais({ ms, foco = "pas", so, ultimo, temPamMedida, onConfirmar, onFechar }: {
   /** O horário do toque; sem ele, agora. */
   ms?: number;
   /** O campo que recebe o cursor — a linha tocada no gráfico. */
   foco?: Parametro;
+  /** Só este campo (a linha tocada). */
+  so?: Parametro;
+  /** O último valor registrado do campo `so`, para repetir com um toque. */
+  ultimo?: number;
   temPamMedida: (iso: string) => boolean;
   onConfirmar: (itens: NovoSinal[], momento: string) => void;
   onFechar: () => void;
@@ -43,6 +50,7 @@ export function JanelaSinais({ ms, foco = "pas", temPamMedida, onConfirmar, onFe
   const [hora, setHora] = useState(horaLocal(base));
   const [v, setV] = useState<Record<Parametro, string>>(VAZIO);
   const [comPam, setComPam] = useState(false);
+  const [todos, setTodos] = useState(!so);
   const momento = momentoDeHora(hora, base);
   const preenchidos = (Object.keys(v) as Parametro[]).filter((p) => v[p].trim());
   const pas = numero(v.pas), pad = numero(v.pad);
@@ -66,6 +74,31 @@ export function JanelaSinais({ ms, foco = "pas", temPamMedida, onConfirmar, onFe
     <CampoNumero key={p} rotulo={rotulo} valor={v[p]} unidade={PARAMETROS[p].unidade} autoFocus={p === foco}
       onMudar={(t) => setV((x) => ({ ...x, [p]: t }))} aviso={aviso(p, v[p]) ?? extra} />
   );
+
+  if (so && !todos) {
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+    return (
+      <Janela titulo={PARAMETROS[so].nome} largura="estreita" onFechar={onFechar}
+        rodape={<>
+          <button type="button" className="evoBotao secundario" onClick={onFechar}>Cancelar</button>
+          <button type="submit" form="evoFormSinais" className="evoBotao" disabled={!ok}>Registrar</button>
+        </>}>
+        <form id="evoFormSinais" className="evoForm" onSubmit={confirmar}>
+          <CampoHora valor={hora} onMudar={setHora} />
+          {campo(so, PARAMETROS[so].curto)}
+          {ultimo !== undefined && valorPlausivel(so, ultimo) && (
+            <div className="evoRTubo evoUltimoValor">
+              <button type="button" aria-pressed={numero(v[so]) === ultimo}
+                onClick={() => setV((x) => ({ ...x, [so]: fmt(ultimo) }))}>
+                <b>{fmt(ultimo)} {PARAMETROS[so].unidade}</b><small>igual ao último</small>
+              </button>
+            </div>
+          )}
+          <button type="button" className="evoLinkTodos" onClick={() => setTodos(true)}>Mostrar todos os sinais</button>
+        </form>
+      </Janela>
+    );
+  }
 
   return (
     <Janela titulo="Sinais vitais" subtitulo="Preencha só o que quiser registrar." largura="media" onFechar={onFechar}

@@ -7207,6 +7207,11 @@ button.evoMedItem:disabled{cursor:default}
 .evoRTubo button[aria-pressed="true"]{background:var(--cor-marca);color:#fff}
 .evoRTubo button[aria-pressed="true"] small{color:#ffffffd9}
 .evoRTubo button:focus-visible{outline:2px solid var(--cor-marca);outline-offset:2px}
+/* Janela de um sinal só (toque na linha de SpO₂, EtCO₂ ou temperatura) */
+.evoUltimoValor{padding:0;border:0;background:none}
+.evoLinkTodos{justify-self:start;min-height:44px;padding:0;border:0;background:none;font:inherit;font-size:14px;font-weight:650;
+  color:var(--cor-marca);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.evoLinkTodos:focus-visible{outline:2px solid var(--cor-marca);outline-offset:2px;border-radius:4px}
 .evoRTuboAviso{flex-basis:100%;font-size:11.5px;color:var(--cor-tinta-fraca)}
 
 /* ── O rodapé da ficha de papel, clicável (components/evolucao/rodape-da-folha.tsx) ──

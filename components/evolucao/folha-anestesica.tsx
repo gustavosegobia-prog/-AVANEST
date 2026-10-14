@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
 import { janelaVisivel } from "@/lib/evolucao/grafico";
-import { colunasProntas, INTERVALOS, pamEstimadaCabe, PARAMETROS, type Parametro } from "@/lib/evolucao/sinais";
+import { colunasProntas, INTERVALOS, pamEstimadaCabe, PARAMETROS, pontosDe, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
   administrados, agruparPorMedicamento, doseAcumulada, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
@@ -50,7 +50,7 @@ import { idadeEmMesesDaFicha, sugerirDoses, tuboDaFicha, type PacienteDaFicha } 
 
 type Medico = { id: string; nome: string; crm: string };
 type Abrir =
-  | { tipo: "sinais"; ms?: number; foco?: Parametro }
+  | { tipo: "sinais"; ms?: number; foco?: Parametro; so?: Parametro }
   | { tipo: "ponto"; registro: Registro }
   | { tipo: "mover"; registro: Registro; t: Toque }
   | { tipo: "medicamento"; planejado?: Registro; escolhido?: { item: ItemDaLista; grupo: GrupoDaLista; dose?: number } }
@@ -476,7 +476,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                 setAviso({ texto: `${PARAMETROS[p].curto}${estimada ? " estimada" : ""} ${fmt(valor, 1)} às ${hora(momento)}`, desfazer: true });
               }}
               onTocar={(t) => setAbrir({ tipo: "sinais", ms: Math.min(t.ms, Date.now()) })}
-              onTocarLinha={(p, ms) => setAbrir({ tipo: "sinais", ms: Math.min(ms, Date.now()), foco: p })}
+              onTocarLinha={(p, ms) => setAbrir({ tipo: "sinais", ms: Math.min(ms, Date.now()), foco: p, so: p })}
               onTocarFaixa={tocarFaixa}
               onAbrirPonto={(r) => setAbrir({ tipo: "ponto", registro: r })}
               onAbrirRegistro={(r) => setAbrir({ tipo: "registro", registro: r })}
@@ -682,7 +682,8 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       )}
 
       {abrir?.tipo === "sinais" && (
-        <JanelaSinais ms={abrir.ms} foco={abrir.foco} temPamMedida={temPamMedida}
+        <JanelaSinais ms={abrir.ms} foco={abrir.foco} so={abrir.so} temPamMedida={temPamMedida}
+          ultimo={abrir.so ? pontosDe(atuais, abrir.so).filter((pt) => abrir.ms === undefined || Date.parse(pt.momento) <= abrir.ms + 60000).pop()?.valor : undefined}
           onConfirmar={registrarSinais} onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "ponto" && (
