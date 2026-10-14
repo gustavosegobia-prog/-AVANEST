@@ -34,6 +34,11 @@ import type { NextConfig } from "next";
 // que é um estrago maior do que o buraco que fecharia. Fica anotado como
 // próximo passo, com nonce, e medido antes de subir.
 
+// A REGIÃO das funções fica em vercel.json: gru1, São Paulo — a mesma do
+// banco (Supabase sa-east-1) e de quem usa. No padrão da Vercel (Washington)
+// cada consulta ao banco cruzava o continente, e uma troca de página faz
+// várias delas em sequência.
+
 const CABECALHOS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },

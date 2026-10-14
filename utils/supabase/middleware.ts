@@ -18,19 +18,27 @@ export async function updateSession(request: NextRequest) {
       },
     },
   );
-  const { data: { user } } = await supabase.auth.getUser();
+  // A SESSÃO É CONFERIDA AQUI MESMO, SEM IR AO SUPABASE. Este proxy roda em
+  // toda troca de página e em toda pré-carga de link; com getUser() cada uma
+  // esperava uma ida e volta ao servidor de login antes de a página começar.
+  // As chaves do projeto são assimétricas (ES256): getClaims() confere a
+  // assinatura do token com a chave pública, guardada em memória, e só vai à
+  // rede para renovar um token vencido — que é a outra função deste proxy.
+  const { data } = await supabase.auth.getClaims();
+  const logado = Boolean(data?.claims?.sub);
 
   // VERIFICAÇÃO EM DUAS ETAPAS PENDENTE. Quem ativou o código e entrou só com
   // a senha tem a API inteira recusada pelo banco (lib/duas-etapas.ts). Sem
   // este desvio a pessoa veria o painel quebrado — ou, pior, seria mandada
   // para /comecar, porque a consulta do próprio perfil volta vazia.
   //
-  // Os fatores vêm do getUser(), que acabou de ir ao servidor: um código
-  // ativado em outro aparelho já conta aqui, sem esperar a sessão renovar.
-  const temCodigo = user?.factors?.some((f) => f.status === "verified") ?? false;
-  if (temCodigo && rotaPedeDuasEtapas(request.nextUrl.pathname)) {
+  // O nível sai da própria sessão: o atual vem do token, e os fatores
+  // ativados, do usuário guardado com ela. Um código ativado agora em OUTRO
+  // aparelho só aparece aqui quando esta sessão renovar (até uma hora) — até
+  // lá quem tranca é o banco, como antes.
+  if (logado && rotaPedeDuasEtapas(request.nextUrl.pathname)) {
     const { data: nivel } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (nivel?.currentLevel !== "aal2") {
+    if (nivel?.nextLevel === "aal2" && nivel.currentLevel !== "aal2") {
       const desvio = request.nextUrl.pathname.startsWith("/api/")
         ? NextResponse.json({ error: "Confirme o código da verificação em duas etapas para continuar." }, { status: 401 })
         : NextResponse.redirect(new URL(

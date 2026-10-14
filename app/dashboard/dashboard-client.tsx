@@ -420,6 +420,8 @@ export function DashboardClient({
   }, [perfil.role, perfil.permissoes, organizacao?.modulos]);
   const view = initialView && allowedViews.includes(initialView) ? initialView : allowedViews[0];
   const [isAreaPending, startAreaTransition] = useTransition();
+  // A área tocada fica marcada NA HORA; a página dela chega em seguida.
+  const [areaPedida, setAreaPedida] = useState<DashboardView | null>(null);
   const [open, setOpen] = useState(initialNewPatient);
   // O tema escuro vem do aparelho (lib/tema.ts) e volta para ele a cada troca.
   const [dark, setDark] = useState(false);
@@ -753,8 +755,10 @@ export function DashboardClient({
     router.replace("/login");
   }
 
+  const naBarra = isAreaPending && areaPedida ? areaPedida : view;
   const changeView=(nextView:DashboardView)=>{
     if(nextView===view)return;
+    setAreaPedida(nextView);
     startAreaTransition(()=>router.push(`/dashboard?area=${nextView}`,{scroll:false}));
   };
 
@@ -775,7 +779,8 @@ export function DashboardClient({
     : null;
 
   return (
-    <main className={`clinicalShell temaApp ${dark?"clinicalDark":""}`}>
+    <main className={`clinicalShell temaApp ${dark?"clinicalDark":""}`} aria-busy={isAreaPending || undefined}>
+      {isAreaPending && <div className="barraCarregando" aria-hidden="true" />}
       <header className="clinicalTopbar">
         <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Gestão em anestesiologia</small></span></Link>
         {/* Com local escolhido, é ele que aparece: quem atende em três
@@ -818,19 +823,19 @@ export function DashboardClient({
               continua na frente de propósito: um anestesiologista que também
               tem Recepção quer abrir na fila dele, não no balcão. As duas
               ordens respondem perguntas diferentes e por isso são duas. */}
-          {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={view === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
-          {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={view === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
+          {allowedViews.includes("recepcao")&&<button data-area="recepcao" disabled={isAreaPending} className={naBarra === "recepcao" ? "active" : ""} aria-current={view==="recepcao"?"page":undefined} onClick={() => changeView("recepcao")}>Recepção</button>}
+          {allowedViews.includes("medico")&&<button data-area="medico" disabled={isAreaPending} className={naBarra === "medico" ? "active" : ""} aria-current={view==="medico"?"page":undefined} onClick={() => changeView("medico")}>Médico</button>}
           {/* O contador de trocas fica AQUI, no topo, e não só dentro da
               Escala. Um plantão oferecido que ninguém vê é o buraco chegando
               no dia da cirurgia — e quem está na Recepção ou no Financeiro
               precisa saber que tem alguém esperando resposta sem ter de abrir
               a Escala para descobrir. */}
-          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={view === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>
+          {allowedViews.includes("plantoes")&&<button data-area="plantoes" disabled={isAreaPending} className={naBarra === "plantoes" ? "active" : ""} aria-current={view==="plantoes"?"page":undefined} onClick={() => changeView("plantoes")}>
             Escala
             {trocasEsperando>0&&<b className="navAviso" title={`${trocasEsperando===1?"Um plantão oferecido espera":"Plantões oferecidos esperam"} a sua resposta`}>{trocasEsperando}</b>}
           </button>}
-          {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={view === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
-          {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={view === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
+          {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={naBarra === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")}>Financeiro</button>}
+          {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={naBarra === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")}>Admin</button>}
         </nav>
         {/* Sino e menu do usuário viajam JUNTOS, num item só.
             A barra é um grid de quatro colunas, e não um flex: acrescentar o
