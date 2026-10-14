@@ -129,7 +129,16 @@ export function periodosSemMonitorizacao(
  * arrasta cada ponto até o valor do monitor e solta: vira registro no horário
  * da coluna. Nada grava sozinho.
  */
-export type Rascunho = { parametro: Parametro; valor: number; origem: "anterior" | "pre" | "padrao" };
+/**
+ * De onde vem o valor do ponto pronto: o último lançado antes da coluna, a
+ * avaliação pré-anestésica, o primeiro lançado depois (para completar uma
+ * coluna para trás) ou o ponto neutro.
+ */
+export type Rascunho = {
+  parametro: Parametro; valor: number; origem: "anterior" | "pre" | "seguinte" | "padrao";
+  /** PAM calculada da PAS e da PAD: lançada sem arrastar, grava como estimada. */
+  estimada?: true;
+};
 export type ColunaPronta = { ms: number; itens: Rascunho[] };
 
 /**
@@ -145,10 +154,13 @@ export function colunasProntas(vigentes: readonly Registro[], pre: { pa?: string
   const passo = o.intervaloMin * 60000;
   const [, preS, preD] = (pre.pa ?? "").match(/(\d{2,3})\s*[/xX×]\s*(\d{2,3})/) ?? [];
   const preFc = (pre.pulso ?? "").match(/\d{2,3}/)?.[0];
-  const doPre: Partial<Record<Parametro, number>> = { pas: Number(preS), pad: Number(preD), fc: Number(preFc) };
-  // Quem só registra a PAM (monitor invasivo, por exemplo) recebe a PAM pronta.
+  const doPre: Partial<Record<Parametro, number>> = {
+    pas: Number(preS), pad: Number(preD), fc: Number(preFc), pam: pamEstimada(Number(preS), Number(preD)) ?? undefined,
+  };
+  // Quem só registra a PAM (monitor invasivo, por exemplo) recebe só a PAM;
+  // os outros, PAS, PAD, PAM e FC.
   const soPam = !pontosDe(vigentes, "pas").length && pontosDe(vigentes, "pam").length > 0;
-  const parametros: Parametro[] = soPam ? ["pam", "fc"] : ["pas", "pad", "fc"];
+  const parametros: Parametro[] = soPam ? ["pam", "fc"] : ["pas", "pad", "pam", "fc"];
   const series = new Map(parametros.map((p) => [p, pontosDe(vigentes, p).map((pt) => ({ t: Date.parse(pt.momento), v: pt.valor }))]));
   // A primeira coluna é a do começo; a última, a que já chegou (nunca no futuro).
   const primeira = Math.ceil(o.inicioMs / passo) * passo;
@@ -156,14 +168,31 @@ export function colunasProntas(vigentes: readonly Registro[], pre: { pa?: string
   const saida: ColunaPronta[] = [];
   for (let t = primeira; t <= ultima; t += passo) {
     const itens: Rascunho[] = [];
+    // O valor de cada parâmetro nesta coluna: o lançado nela, ou o do ponto pronto.
+    const naColuna = new Map<Parametro, { v: number; lancado: boolean; origem: Rascunho["origem"] | null }>();
     for (const p of parametros) {
       const pts = series.get(p)!;
       // Já tem ponto nesta coluna (meio intervalo para cada lado): nada a lançar.
-      if (pts.some((x) => Math.abs(x.t - t) < passo / 2)) continue;
+      const lancado = pts.find((x) => Math.abs(x.t - t) < passo / 2);
+      if (lancado) { naColuna.set(p, { v: lancado.v, lancado: true, origem: null }); continue; }
       const antes = pts.filter((x) => x.t < t).pop();
-      if (antes) itens.push({ parametro: p, valor: antes.v, origem: "anterior" });
-      else if (valorPlausivel(p, doPre[p])) itens.push({ parametro: p, valor: doPre[p]!, origem: "pre" });
-      else if (PONTO_NEUTRO[p] !== undefined) itens.push({ parametro: p, valor: PONTO_NEUTRO[p]!, origem: "padrao" });
+      const depois = pts.find((x) => x.t > t);
+      const pas = naColuna.get("pas"), pad = naColuna.get("pad");
+      const estimada = pas && pad ? pamEstimada(pas.v, pad.v) : null;
+      let item: Rascunho | null = null;
+      // A PAM pronta: com PAS e PAD lançadas na coluna, a estimada delas
+      // (o médico arrasta até a do monitor); senão a última PAM; senão a
+      // estimada da PAS e da PAD prontas.
+      if (p === "pam" && estimada !== null && pas!.lancado && pad!.lancado) item = { parametro: p, valor: estimada, origem: "anterior", estimada: true };
+      else if (antes) item = { parametro: p, valor: antes.v, origem: "anterior" };
+      else if (p === "pam" && estimada !== null && pas!.origem !== "padrao" && pad!.origem !== "padrao") {
+        item = { parametro: p, valor: estimada, origem: pas!.origem === "pre" || pad!.origem === "pre" ? "pre" : pas!.origem ?? "anterior", estimada: true };
+      } else if (valorPlausivel(p, doPre[p])) item = { parametro: p, valor: doPre[p]!, origem: "pre", ...(p === "pam" ? { estimada: true as const } : {}) };
+      else if (depois) item = { parametro: p, valor: depois.v, origem: "seguinte" };
+      else if (PONTO_NEUTRO[p] !== undefined) item = { parametro: p, valor: PONTO_NEUTRO[p]!, origem: "padrao" };
+      if (!item) continue;
+      itens.push(item);
+      naColuna.set(p, { v: item.valor, lancado: false, origem: item.origem });
     }
     if (itens.length) saida.push({ ms: t, itens });
   }

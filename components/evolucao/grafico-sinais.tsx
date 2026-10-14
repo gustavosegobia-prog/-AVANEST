@@ -32,8 +32,8 @@ import type { Registro } from "@/lib/evolucao/registros";
 // corrigir a hora ou excluir.
 //
 // A LINHA PRONTA. Em cada coluna do intervalo da folha (3, 5, 10 ou 15 min)
-// que ainda não tem PAS, PAD ou FC, o ponto já aparece tracejado, com o último
-// valor de cada uma (lib/evolucao/sinais.ts, `colunasProntas`). O médico
+// que ainda não tem PAS, PAD, PAM ou FC, o ponto já aparece tracejado, com o último
+// valor de cada uma (a PAM, com PAS e PAD na coluna, a estimada delas) (lib/evolucao/sinais.ts, `colunasProntas`). O médico
 // arrasta o ponto para cima ou para baixo até o valor do monitor e solta: vira
 // registro no horário daquela coluna — e a coluna seguinte continua lá para o
 // próximo. Tocar sem arrastar lança o mesmo valor. Nada grava antes de soltar.
@@ -101,8 +101,11 @@ export function GraficoSinais({
   onMover: (r: Registro, t: Toque) => void;
   /** A linha pronta, coluna a coluna do intervalo (vazia: nada a arrastar). */
   colunas?: ColunaPronta[];
-  /** Soltou (ou tocou) um ponto da linha pronta: registra no horário da coluna. */
-  onLancar?: (p: Parametro, valor: number, ms: number) => void;
+  /**
+   * Soltou (ou tocou) um ponto da linha pronta: registra no horário da coluna.
+   * `estimada`: a PAM calculada, lançada sem arrastar — grava como estimada.
+   */
+  onLancar?: (p: Parametro, valor: number, ms: number, estimada: boolean) => void;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
@@ -443,7 +446,7 @@ export function GraficoSinais({
       const r = prontas.find((c) => c.ms === puxando.ms)?.itens.find((x) => x.parametro === puxando.p);
       // O ponto neutro só vale arrastado; um toque nele abre a janela de sinais.
       if (r && !puxando.ativo && r.origem === "padrao") onTocar({ ms: puxando.ms, valor: r.valor });
-      else if (r) onLancar?.(r.parametro, puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor, puxando.ms);
+      else if (r) onLancar?.(r.parametro, puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor, puxando.ms, !puxando.ativo && Boolean(r.estimada));
       setPuxando(null);
       return;
     }

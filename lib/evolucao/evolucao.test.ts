@@ -394,7 +394,7 @@ test("a saída da sala encerra o tempo quando o fim da anestesia não foi marcad
   assert.ok(conferirEncerramento({}, vigentes([ev(0, "inicio_anestesia")]), 5).some((x) => x.texto === "Horário de fim da anestesia."));
 });
 
-test("linha pronta em cada coluna do intervalo: o último valor antes dela, a pré-anestésica ou o neutro", async () => {
+test("linha pronta em cada coluna do intervalo: o último valor antes dela, a pré-anestésica, o seguinte ou o neutro", async () => {
   const { colunasProntas } = await import("./sinais.ts");
   const reg = (id: string, p: string, valor: number, momento: string) =>
     ({ id, evolucao_id: "e", tipo: "sinal", momento, dados: { parametro: p, valor }, origem: "manual",
@@ -404,13 +404,19 @@ test("linha pronta em cada coluna do intervalo: o último valor antes dela, a pr
   // Começo às 10:00, agora 10:12, intervalo 5: colunas 10:00, 10:05, 10:10.
   const vazia = colunasProntas([], { pa: "100/60", pulso: "98" }, { inicioMs: ms("10:00"), ateMs: ms("10:12"), intervaloMin: 5 });
   assert.deepEqual(vazia.map((c) => hora(c.ms)), ["10:00", "10:05", "10:10"]);
-  assert.deepEqual(vazia[0].itens.map((r) => [r.parametro, r.valor, r.origem]), [["pas", 100, "pre"], ["pad", 60, "pre"], ["fc", 98, "pre"]]);
+  // A PAM pronta da pré é a estimada da PA dela: (100 + 2 × 60) / 3.
+  assert.deepEqual(vazia[0].itens.map((r) => [r.parametro, r.valor, r.origem]),
+    [["pas", 100, "pre"], ["pad", 60, "pre"], ["pam", 73, "pre"], ["fc", 98, "pre"]]);
   // A PA lançada às 10:05 some daquela coluna e passa a ser o valor das seguintes.
   const vig = [reg("1", "pas", 130, "2026-10-14T10:05:00Z"), reg("2", "pad", 80, "2026-10-14T10:06:00Z")];
   const cols = colunasProntas(vig, {}, { inicioMs: ms("10:00"), ateMs: ms("10:12"), intervaloMin: 5 });
-  assert.deepEqual(cols.find((c) => hora(c.ms) === "10:05")!.itens.map((r) => r.parametro), ["fc"]);
+  // Na coluna das 10:05, com PAS e PAD lançadas, a PAM pronta é a estimada delas.
+  assert.deepEqual(cols.find((c) => hora(c.ms) === "10:05")!.itens.map((r) => [r.parametro, r.valor]), [["pam", 97], ["fc", 100]]);
   assert.deepEqual(cols.find((c) => hora(c.ms) === "10:10")!.itens.map((r) => [r.parametro, r.valor, r.origem]),
-    [["pas", 130, "anterior"], ["pad", 80, "anterior"], ["fc", 100, "padrao"]]);
+    [["pas", 130, "anterior"], ["pad", 80, "anterior"], ["pam", 97, "anterior"], ["fc", 100, "padrao"]]);
+  // Antes do primeiro lançado, sem pré: o valor seguinte, para completar para trás.
+  assert.deepEqual(cols.find((c) => hora(c.ms) === "10:00")!.itens.map((r) => [r.parametro, r.valor, r.origem]),
+    [["pas", 130, "seguinte"], ["pad", 80, "seguinte"], ["pam", 97, "seguinte"], ["fc", 100, "padrao"]]);
   // Intervalo de 3 min: colunas 10:00, 10:03, 10:06, 10:09, 10:12.
   assert.equal(colunasProntas([], {}, { inicioMs: ms("10:00"), ateMs: ms("10:12"), intervaloMin: 3 }).length, 5);
   // Nunca no futuro: às 10:12 a coluna de 10:15 ainda não existe.

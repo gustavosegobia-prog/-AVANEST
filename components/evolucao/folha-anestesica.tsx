@@ -454,7 +454,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
               {rascunhoReal.length > 0 && (
                 <button type="button" className="evoBotao pequeno evoIgual"
                   title={rascunhoReal[0].origem === "pre" ? "Valores da avaliação pré-anestésica" : "Os mesmos valores da última coluna"}
-                  onClick={() => registrarSinais(rascunhoReal.map((r) => ({ parametro: r.parametro, valor: r.valor, origem: "manual" })),
+                  onClick={() => registrarSinais(rascunhoReal.map((r) => ({ parametro: r.parametro, valor: r.valor, origem: r.estimada ? "estimado" : "manual" })),
                     new Date(colunaDeAgora!.ms).toISOString())}>
                   ✓ {rascunhoReal[0].origem === "pre" ? "Da pré" : "Igual"}: {textoDoRascunho}
                 </button>
@@ -470,10 +470,10 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
               atuais={atuais} idsPendentes={f.idsPendentes} cabecalho={dados} fimMs={fimMs} agoraMs={agora}
               aberta={aberta} intervalo={folha.intervalo_minutos} janelaInicio={janela.inicio} janelaMinutos={zoom}
               alturaGrade={300} somenteLeitura={!aberta} colunas={colunas}
-              onLancar={(p, valor, ms) => {
+              onLancar={(p, valor, ms, estimada) => {
                 const momento = new Date(ms).toISOString();
-                f.registrar({ tipo: "sinal", momento, dados: { parametro: p, valor }, origem: "manual" });
-                setAviso({ texto: `${PARAMETROS[p].curto} ${fmt(valor, 1)} às ${hora(momento)}`, desfazer: true });
+                f.registrar({ tipo: "sinal", momento, dados: { parametro: p, valor }, origem: estimada ? "estimado" : "manual" });
+                setAviso({ texto: `${PARAMETROS[p].curto}${estimada ? " estimada" : ""} ${fmt(valor, 1)} às ${hora(momento)}`, desfazer: true });
               }}
               onTocar={(t) => setAbrir({ tipo: "sinais", ms: Math.min(t.ms, Date.now()) })}
               onTocarLinha={(p, ms) => setAbrir({ tipo: "sinais", ms: Math.min(ms, Date.now()), foco: p })}
