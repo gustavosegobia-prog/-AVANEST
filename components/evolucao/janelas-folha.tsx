@@ -10,6 +10,7 @@ import type { AjusteDeGas } from "@/lib/evolucao/sevoflurano";
 import { LIQUIDOS_ENTRADA, LIQUIDOS_SAIDA, VOLUMES_RAPIDOS, type CategoriaDeLiquido } from "@/lib/evolucao/liquidos";
 import type { Pendencia } from "@/lib/evolucao/folha";
 import { momentoDeHora } from "./use-folha";
+import { sugerirVelocidades, type PacienteDaFicha, type VelocidadeSugerida } from "@/lib/evolucao/sugestoes";
 import { CampoHora, CampoNumero, Escolha, numero } from "./campos";
 
 const VELOCIDADES: UnidadeDeVelocidade[] = ["mL/h", "mcg/kg/min", "mcg/kg/h", "mg/kg/h", "mcg/min", "mg/h", "UI/h", "UI/min"];
@@ -27,8 +28,10 @@ function Rodape({ onFechar, form, rotulo, ok, perigo = false }: {
 // ---------------------------------------------------------------------------
 // Infusão contínua
 // ---------------------------------------------------------------------------
-export function JanelaInfusao({ infusao, acao, alergias, ms, nomeInicial, onConfirmar, onFechar }: {
+export function JanelaInfusao({ infusao, acao, alergias, ms, nomeInicial, paciente, onConfirmar, onFechar }: {
   infusao: Infusao | null;
+  /** Idade e peso, para a velocidade sugerida da bomba. */
+  paciente?: PacienteDaFicha;
   acao: "iniciar" | "ajustar" | "encerrar";
   /** O horário tocado na faixa do gráfico; sem ele, agora. */
   ms?: number;
@@ -53,6 +56,22 @@ export function JanelaInfusao({ infusao, acao, alergias, ms, nomeInicial, onConf
     ? buscarNoCatalogo(nome).slice(0, 5) : [];
   const [justificaAlergia, setJustificaAlergia] = useState("");
   const alergia = acao === "iniciar" && nome.trim() ? conferirAlergia(alergias, nome.trim()) : null;
+  // A velocidade da tabela para este fármaco (lib/evolucao/sugestoes.ts). Com
+  // a velocidade em mL/h e a concentração escrita, o toque preenche em mL/h;
+  // senão, na unidade da tabela.
+  const concN = numero(conc);
+  const concentracaoDaSeringa = acao === "iniciar"
+    ? (concN && concN > 0 ? { valor: concN, unidade: uConc } : null)
+    : infusao?.concentracao ?? null;
+  const nomeDaBomba = (acao === "iniciar" ? nome : infusao?.nome ?? "").trim();
+  const bomba = paciente && acao !== "encerrar" && nomeDaBomba
+    ? sugerirVelocidades(nomeDaBomba, paciente, concentracaoDaSeringa) : null;
+  const emMlH = (o: VelocidadeSugerida) => uVel === "mL/h" && o.mlPorHora !== null;
+  function escolherVelocidade(o: VelocidadeSugerida) {
+    if (emMlH(o)) setVel(String(o.mlPorHora).replace(".", ","));
+    else { setVel(String(o.valor).replace(".", ",")); setUVel(o.unidade); }
+  }
+  const fmtV = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
   const ok = Boolean(momento) && (acao === "encerrar" || (velN !== null && velN >= 0))
     && (acao !== "iniciar" || nome.trim().length > 0)
     && (!alergia || justificaAlergia.trim().length >= 5);
@@ -125,6 +144,30 @@ export function JanelaInfusao({ infusao, acao, alergias, ms, nomeInicial, onConf
             </label>
           </>}
         </div>
+        {bomba && bomba.cartoes.length > 0 && (
+          <div className="evoSugestoes">
+            <p className="evoSugTopo">
+              Velocidade sugerida{bomba.rotulo ? ` · ${bomba.rotulo}` : ""}{paciente?.pesoKg ? ` · ${fmtV(paciente.pesoKg)} kg` : ""}
+            </p>
+            {bomba.cartoes.map((c) => (
+              <div key={c.titulo} className="evoSugCartao">
+                <p className="evoSugTitulo"><b>{c.titulo}</b><small>{c.base}</small></p>
+                <div className="evoSugDoses">
+                  {c.opcoes.map((o) => (
+                    <button key={o.chave} type="button" onClick={() => escolherVelocidade(o)}
+                      aria-pressed={velN !== null && (emMlH(o) ? velN === o.mlPorHora : velN === o.valor && uVel === o.unidade)}>
+                      <b>{emMlH(o) ? `${fmtV(o.mlPorHora!)} mL/h` : `${fmtV(o.valor)} ${o.unidade}`}</b>
+                      <small>{o.nivel}{o.mlPorHora !== null ? (emMlH(o) ? ` · ${fmtV(o.valor)} ${o.unidade}` : ` · ${fmtV(o.mlPorHora)} mL/h`) : ""}</small>
+                    </button>
+                  ))}
+                </div>
+                {c.observacao && <p className="evoSugObs">{c.observacao}</p>}
+              </div>
+            ))}
+            {bomba.aviso && <p className="evoSugAviso">{bomba.aviso}</p>}
+            <p className="evoSugFonte">{[...new Set(bomba.cartoes.map((c) => c.fonte))].join(" · ")}. Confira contra a seringa e o protocolo do serviço.</p>
+          </div>
+        )}
         {acao === "iniciar" && (
           <p className="evoNota">Sem a concentração, a ficha soma o volume (em mL/h) mas não a dose total.</p>
         )}

@@ -94,3 +94,21 @@ test("TOT na criança: fórmula da idade acima de 1 ano, tabela por peso abaixo;
   assert.equal(tuboDaFicha({ idadeMeses: 30 * 12, pesoKg: 70 }), null);
   assert.equal(tuboDaFicha({ idadeMeses: null, pesoKg: 20 }), null);
 });
+
+test("bomba: a faixa da tabela e, com peso e concentração, a mesma faixa em mL/h", async () => {
+  const { sugerirVelocidades } = await import("./sugestoes.ts");
+  // Remifentanil pediátrico 0,1–0,5 mcg/kg/min, 20 kg, seringa a 20 mcg/mL:
+  // 0,1 × 20 × 60 = 120 mcg/h ÷ 20 = 6 mL/h; 0,5 → 30 mL/h.
+  const r = sugerirVelocidades("Remifentanil", { idadeMeses: 60, pesoKg: 20 }, { valor: 20, unidade: "mcg/mL" });
+  assert.equal(r.cartoes[0].base, "0,1–0,5 mcg/kg/min");
+  assert.deepEqual(r.cartoes[0].opcoes.map((o) => [o.valor, o.unidade, o.mlPorHora]), [[0.1, "mcg/kg/min", 6], [0.5, "mcg/kg/min", 30]]);
+  // Dexmedetomidina no adulto, mcg/kg/h, seringa a 4 mcg/mL, 70 kg: 0,3 × 70 ÷ 4 = 5,3 mL/h.
+  const dex = sugerirVelocidades("Precedex", adulto, { valor: 4, unidade: "mcg/mL" });
+  assert.deepEqual(dex.cartoes[0].opcoes.map((o) => o.mlPorHora), [5.3, 15.8]);
+  // Sem concentração: a faixa aparece, o mL/h não, e o aviso diz o que falta.
+  const sem = sugerirVelocidades("Remifentanil", { idadeMeses: 60, pesoKg: 20 }, null);
+  assert.equal(sem.cartoes[0].opcoes[0].mlPorHora, null);
+  assert.match(sem.aviso!, /concentração/);
+  // Noradrenalina não está na tabela: nada é inventado.
+  assert.equal(sugerirVelocidades("Noradrenalina", adulto, null).cartoes.length, 0);
+});

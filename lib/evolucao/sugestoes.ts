@@ -18,7 +18,7 @@ import {
   doseCefazolina, doseCetorolaco, faixaEtaria, virgula,
   type DosePorKg, type Medicamento, type Populacao, type Unidade,
 } from "../calculos/doses.ts";
-import { converterMassa, mesmoFarmaco, type UnidadeDeDose } from "./medicamentos.ts";
+import { concentracaoNaUnidade, converterMassa, mesmoFarmaco, type UnidadeDeConcentracao, type UnidadeDeDose } from "./medicamentos.ts";
 import { ehPediatrico, profundidadeOral, sugerirTubo } from "../calculos/via-aerea-pediatrica.ts";
 
 export type Sugestao = {
@@ -259,4 +259,55 @@ export function tuboDaFicha(p: PacienteDaFicha): TuboSugerido | null {
     });
   }
   return { origem: s.origem, opcoes };
+}
+
+// ---------------------------------------------------------------------------
+// Velocidade da bomba
+// ---------------------------------------------------------------------------
+// Os cartões de infusão contínua da mesma tabela (remifentanil, dexmedetomidina,
+// propofol em sedação, cetamina, clonidina): a faixa em mcg/kg/min ou mg/kg/h
+// e, quando a concentração da seringa está escrita, a mesma faixa em mL/h pelo
+// peso. Um toque preenche a velocidade; o médico confirma.
+
+export type VelocidadeSugerida = {
+  chave: string;
+  nivel: string;
+  /** Na unidade da tabela: 0,1 (mcg/kg/min). */
+  valor: number;
+  unidade: "mcg/kg/min" | "mcg/kg/h" | "mg/kg/h";
+  /** A mesma velocidade em mL/h, quando há peso e concentração. */
+  mlPorHora: number | null;
+};
+
+export type CartaoDeBomba = { titulo: string; base: string; fonte: string; observacao?: string; opcoes: VelocidadeSugerida[] };
+
+export function sugerirVelocidades(nome: string, paciente: PacienteDaFicha,
+  concentracao: { valor: number; unidade: UnidadeDeConcentracao } | null): { rotulo: string | null; cartoes: CartaoDeBomba[]; aviso: string | null } {
+  const populacao = paciente.idadeMeses !== null ? faixaEtaria(paciente.idadeMeses) ?? null : null;
+  if (!populacao) return { rotulo: null, cartoes: [], aviso: "Sem idade na ficha: a tabela depende da faixa etária." };
+  const peso = ok(paciente.pesoKg) ? paciente.pesoKg : null;
+  const cartoes: CartaoDeBomba[] = [];
+  for (const m of TABELA) {
+    const d = m.dose;
+    if (m.situacao !== "validado" || !d || (d.por !== "kg/min" && d.por !== "kg/h")) continue;
+    if (!m.populacoes.includes(populacao) || !farmacosDoCartao(m).some((f) => mesmoFarmaco(f, nome))) continue;
+    const unidade = `${d.unidade}/${d.por}` as VelocidadeSugerida["unidade"];
+    if (!["mcg/kg/min", "mcg/kg/h", "mg/kg/h"].includes(unidade)) continue;
+    // Concentração na unidade da dose (mcg/mL para mcg/kg/min), para o mL/h.
+    const porMl = concentracao ? concentracaoNaUnidade(concentracao, d.unidade as UnidadeDeDose) : null;
+    const niveis: Array<[string, number | undefined]> = [["Mínima", d.min], ["Usual", d.usual], ["Máxima", d.max]];
+    const opcoes: VelocidadeSugerida[] = niveis.filter(([, v]) => v !== undefined).map(([nivel, v]) => {
+      const porHora = peso !== null ? v! * peso * (d.por === "kg/min" ? 60 : 1) : null;
+      const mlPorHora = porHora !== null && porMl ? Math.round((porHora / porMl) * 10) / 10 : null;
+      return { chave: `${m.id}-${nivel}`, nivel, valor: v!, unidade, mlPorHora };
+    });
+    if (opcoes.length) {
+      const faixa = [d.min, d.usual, d.max].filter((v): v is number => v !== undefined).map(virgula).join("–");
+      cartoes.push({ titulo: m.nome, base: `${faixa} ${unidade}`,
+        fonte: m.fonte ? citar(m.fonte) : "", observacao: m.alerta ?? m.observacao, opcoes });
+    }
+  }
+  const aviso = cartoes.length && (peso === null || !concentracao)
+    ? "Com o peso e a concentração da seringa, a velocidade aparece também em mL/h." : null;
+  return { rotulo: ROTULO_POPULACAO[populacao], cartoes, aviso };
 }

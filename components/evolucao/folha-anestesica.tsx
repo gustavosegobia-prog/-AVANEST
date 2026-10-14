@@ -38,6 +38,8 @@ import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { RodapeDaFolha } from "./rodape-da-folha";
 import { ImprimirFicha } from "./imprimir-ficha";
 import { SugestoesDeDose } from "./sugestoes-de-dose";
+import { ConsumoDaFolha } from "./consumo-da-folha";
+import { lerConsumo, trazerDaFicha } from "@/lib/evolucao/consumo";
 import { idadeEmMesesDaFicha, sugerirDoses, tuboDaFicha, type PacienteDaFicha } from "@/lib/evolucao/sugestoes";
 
 // A folha de anestesia digital.
@@ -593,15 +595,26 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                       const vezes = doGrupo.filter((a) => itemDaAdministracao(g, a, porId.get(a.id)) === ii);
                       const total = vezes.length > 1 ? agruparPorMedicamento(vezes)[0]?.total ?? null : null;
                       const chave = `${g.codigo}-${ii}`;
+                      // A última dose deste item, para repetir com um toque (mesma via e unidade da linha).
+                      const ultimaDose = [...vezes].sort((a, b) => Date.parse(b.momento) - Date.parse(a.momento))[0];
+                      const repetir = aberta && ultimaDose && ultimaDose.unidade === it.unidade && linhaAberta !== chave ? ultimaDose : null;
                       return (
                         <li key={`${it.nome}${ii}`} className={vezes.length ? "feito" : ""}>
-                          <button type="button" className="evoMedItem" disabled={!aberta} aria-expanded={linhaAberta === chave}
-                            onClick={() => setLinhaAberta(linhaAberta === chave ? null : chave)}>
-                            <i aria-hidden="true">{vezes.length ? "✓" : "○"}</i>
-                            <span>{it.rotulo ?? it.nome}</span>
-                            {total !== null && <small>Total {fmt(total)} {vezes[0].unidade}</small>}
-                            {conferirAlergia(dados, it.nome) && <em className="evoAlergiaTag">Alergia</em>}
-                          </button>
+                          <div className="evoMedLinha">
+                            <button type="button" className="evoMedItem" disabled={!aberta} aria-expanded={linhaAberta === chave}
+                              onClick={() => setLinhaAberta(linhaAberta === chave ? null : chave)}>
+                              <i aria-hidden="true">{vezes.length ? "✓" : "○"}</i>
+                              <span>{it.rotulo ?? it.nome}</span>
+                              {total !== null && <small>Total {fmt(total)} {vezes[0].unidade}</small>}
+                              {conferirAlergia(dados, it.nome) && <em className="evoAlergiaTag">Alergia</em>}
+                            </button>
+                            {repetir && (
+                              <button type="button" className="evoRepetir" onClick={() => doseRapida(it, g, repetir.dose)}
+                                title="Repetir a última dose agora" aria-label={`Repetir ${it.nome} ${fmt(repetir.dose, 3)} ${repetir.unidade} agora`}>
+                                ↻ {fmt(repetir.dose, 3)} {repetir.unidade}
+                              </button>
+                            )}
+                          </div>
                           {aberta && linhaAberta === chave && (
                             <DoseNaLinha item={it} grupo={g} paciente={pacienteDaDose}
                               onRegistrar={(dose) => doseRapida(it, g, dose)}
@@ -642,6 +655,19 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       <RodapeDaFolha dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} tubo={tuboDaFicha(pacienteDaDose)} marcos={{
         inicioAnestesia: horarioDoMarco(atuais, "inicio_anestesia"), fimAnestesia: fimAnestesia,
       }} />
+
+      {/* O verso do papel: o consumo da sala, para o faturamento. */}
+      <ConsumoDaFolha consumo={lerConsumo(dados)} leitura={!aberta}
+        onMudar={(c) => f.mudarCabecalho({ consumo: c })}
+        onTrazer={() => {
+          const antes = lerConsumo(dados);
+          const depois = trazerDaFicha(antes, dadas, atuais, dados);
+          f.mudarCabecalho({ consumo: depois });
+          const novos = depois.itens.length - antes.itens.length;
+          setAviso({ texto: novos > 0 ? `${novos} ${novos === 1 ? "item trazido" : "itens trazidos"} da ficha — confira as quantidades` : "O consumo já tinha tudo o que a ficha mostra", desfazer: false });
+        }}
+        imprimir={<ImprimirFicha id={folha.id} verso className="evoBotao pequeno secundario"
+          aguardar={f.pendentes.some((p) => !p.recusado)}>Imprimir o verso</ImprimirFicha>} />
 
       {aviso && (
         <div className="evoAviso" role="status">
@@ -703,6 +729,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       )}
       {abrir?.tipo === "infusao" && (
         <JanelaInfusao acao={abrir.acao} infusao={abrir.infusao} alergias={dados} ms={abrir.ms} nomeInicial={abrir.nome}
+          paciente={pacienteDaDose}
           onConfirmar={(momento, d) => { f.registrar({ tipo: "infusao", momento, dados: d }); setAbrir(null); }}
           onFechar={() => setAbrir(null)} />
       )}
