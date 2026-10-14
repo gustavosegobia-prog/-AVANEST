@@ -13,13 +13,19 @@ import type { GrupoDaLista, ItemDaLista } from "@/lib/evolucao/lista-da-folha";
 import { minutosEntre } from "@/lib/evolucao/registros";
 import { momentoDeHora } from "./use-folha";
 import { CampoHora, CampoNumero, Escolha, numero } from "./campos";
+import { SugestoesDeDose } from "./sugestoes-de-dose";
+import { sugerirDoses, type PacienteDaFicha } from "@/lib/evolucao/sugestoes";
 
 // Registrar um medicamento.
 //
-// NADA AQUI SUGERE DOSE. O médico escolhe o fármaco, digita a concentração da
-// ampola que tem na mão e a dose; o volume sai da conta (ou a dose sai do
-// volume). A conferência de dose só julga contra regra APROVADA — sem ela,
-// aparece "Referência de dose indisponível" e a conta em mg/kg, sem veredito.
+// A DOSE É SEMPRE A QUE O MÉDICO CONFIRMA. Abaixo do campo aparecem as doses
+// da tabela revisada da calculadora para a idade e o peso do paciente
+// (lib/evolucao/sugestoes.ts) — no adulto as padrão, na criança as calculadas
+// pelo peso —, e um toque só PREENCHE o campo, que continua editável. O
+// médico digita a concentração da ampola que tem na mão; o volume sai da conta
+// (ou a dose sai do volume). A conferência de dose só julga contra regra
+// APROVADA — sem ela, aparece "Referência de dose indisponível" e a conta em
+// mg/kg, sem veredito.
 // E nenhum registro nasce "administrado" sem o médico marcar: o padrão é o que
 // ele escolher, e a escolha fica visível no botão de confirmar.
 
@@ -54,11 +60,13 @@ const NIVEL: Record<string, string> = {
 };
 
 export function JanelaMedicamento({
-  pesoKg, idadeDias, regras, dadas, favoritos, inicial: planejado, escolhido, alergias, fimDaAnestesia = null, onConfirmar, onFechar,
+  pesoKg, idadeDias, paciente, regras, dadas, favoritos, inicial: planejado, escolhido, alergias, fimDaAnestesia = null, onConfirmar, onFechar,
 }: {
   /** A anestesia já terminou (ou o paciente saiu da sala): o horário não vem como "agora", é escolhido. */
   fimDaAnestesia?: string | null;
   pesoKg: number | null;
+  /** Idade em meses e peso, para a dose sugerida. */
+  paciente?: PacienteDaFicha;
   /** O cabeçalho da folha: alergias e "nega alergia". */
   alergias: { alergias?: unknown; nega_alergia?: unknown };
   idadeDias: number | null;
@@ -121,6 +129,12 @@ export function JanelaMedicamento({
   }) : null, [regras, nome, via, indicacao, doseN, unidade, pesoKg, idadeDias, acumuladoAntes, ultima, momento]);
 
   const porKg = doseN && unidade !== "mL" ? dosePorKg(doseN, pesoKg) : null;
+  // As doses da tabela para este fármaco: as da via escolhida primeiro.
+  const sugestoes = useMemo(() => {
+    if (!nome || !paciente) return null;
+    const r = sugerirDoses(nome, paciente, { unidade, contexto: grupo === "sedacao" ? "sedacao" : undefined });
+    return { ...r, cartoes: [...r.cartoes].sort((a, b) => Number(b.via === via) - Number(a.via === via)) };
+  }, [nome, paciente, unidade, grupo, via]);
   const administrando = situacao === "administrado";
   const precisaJustificar = administrando && conferencia?.exigeJustificativa === true;
   // Alergia: avisa sempre; para ADMINISTRAR, pede justificativa (o servidor confere de novo).
@@ -257,6 +271,15 @@ export function JanelaMedicamento({
             valor={editouVolume ? volume : volumeCalc !== null ? String(volumeCalc).replace(".", ",") : volume}
             onMudar={(t) => { setVolume(t); setEditouVolume(true); }} />
         </div>
+        {sugestoes && (
+          <SugestoesDeDose sugestoes={sugestoes} pesoKg={pesoKg} escolhida={doseN} mostrarVia
+            onEscolher={(s) => {
+              setDose(String(s.dose).replace(".", ","));
+              setEditouVolume(false);
+              setVia(s.via);
+              if (s.indicacao && !indicacao && INDICACOES.includes(s.indicacao)) setIndicacao(s.indicacao);
+            }} />
+        )}
         {unidadesIncompativeis && (
           <p className="evoErro" role="alert">A dose em {unidade} não se converte com a concentração em {uConc}.</p>
         )}

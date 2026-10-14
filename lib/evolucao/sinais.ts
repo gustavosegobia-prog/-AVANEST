@@ -106,3 +106,37 @@ export function periodosSemMonitorizacao(
   }
   return saida;
 }
+
+// ---------------------------------------------------------------------------
+// A linha pronta do gráfico
+// ---------------------------------------------------------------------------
+/**
+ * O que o gráfico já deixa lançado na coluna de agora, para o anestesiologista
+ * só arrastar para cima ou para baixo: PAS, PAD e FC com o último valor de
+ * cada um — ou, no começo da anestesia, com a PA e o pulso da avaliação
+ * pré-anestésica. Some o parâmetro que já tem ponto nesta coluna (dentro do
+ * intervalo da folha). Nada disso grava sozinho: vira registro quando o médico
+ * solta o ponto ou confirma.
+ */
+export type Rascunho = { parametro: Parametro; valor: number; origem: "anterior" | "pre" };
+
+export function rascunhoDaColuna(vigentes: readonly Registro[], pre: { pa?: string; pulso?: string },
+  agoraIso: string, intervaloMin: number): Rascunho[] {
+  const agora = Date.parse(agoraIso);
+  const [, preS, preD] = (pre.pa ?? "").match(/(\d{2,3})\s*[/xX×]\s*(\d{2,3})/) ?? [];
+  const preFc = (pre.pulso ?? "").match(/\d{2,3}/)?.[0];
+  const doPre: Partial<Record<Parametro, number>> = { pas: Number(preS), pad: Number(preD), fc: Number(preFc) };
+  // Quem só registra a PAM (monitor invasivo, por exemplo) recebe a PAM pronta.
+  const soPam = !pontosDe(vigentes, "pas").length && pontosDe(vigentes, "pam").length > 0;
+  const parametros: Parametro[] = soPam ? ["pam", "fc"] : ["pas", "pad", "fc"];
+  const saida: Rascunho[] = [];
+  for (const p of parametros) {
+    // O lançamento vai para o minuto cheio mais próximo, que pode estar até 30 s
+    // à frente do relógio: conta como já feito.
+    const ultimo = pontosDe(vigentes, p).filter((pt) => Date.parse(pt.momento) <= agora + 60000).pop();
+    if (ultimo && agora - Date.parse(ultimo.momento) < intervaloMin * 60000) continue;
+    if (ultimo) saida.push({ parametro: p, valor: ultimo.valor, origem: "anterior" });
+    else if (valorPlausivel(p, doPre[p])) saida.push({ parametro: p, valor: doPre[p]!, origem: "pre" });
+  }
+  return saida;
+}

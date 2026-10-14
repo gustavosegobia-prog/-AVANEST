@@ -393,3 +393,28 @@ test("a saída da sala encerra o tempo quando o fim da anestesia não foi marcad
   assert.ok(!textos.includes("Horário de fim da anestesia."));
   assert.ok(conferirEncerramento({}, vigentes([ev(0, "inicio_anestesia")]), 5).some((x) => x.texto === "Horário de fim da anestesia."));
 });
+
+test("linha pronta: último valor de cada parâmetro, ou a PA e o pulso da pré-anestésica", async () => {
+  const { rascunhoDaColuna } = await import("./sinais.ts");
+  const reg = (id: string, p: string, valor: number, momento: string) =>
+    ({ id, evolucao_id: "e", tipo: "sinal", momento, dados: { parametro: p, valor }, origem: "manual",
+      substitui_id: null, anulado: false, motivo: null, created_by: "u", created_at: momento }) as Registro;
+  // Começo: nada lançado, vem da pré-anestésica.
+  assert.deepEqual(rascunhoDaColuna([], { pa: "100/60", pulso: "98" }, "2026-10-14T10:00:00Z", 5)
+    .map((r) => [r.parametro, r.valor, r.origem]), [["pas", 100, "pre"], ["pad", 60, "pre"], ["fc", 98, "pre"]]);
+  const vig = [reg("1", "pas", 120, "2026-10-14T10:00:00Z"), reg("2", "pad", 70, "2026-10-14T10:00:00Z"),
+    reg("3", "fc", 80, "2026-10-14T10:03:00Z")];
+  // Às 10:05 a PA já pede ponto novo (5 min); a FC, de 10:03, ainda não.
+  assert.deepEqual(rascunhoDaColuna(vig, {}, "2026-10-14T10:05:00Z", 5).map((r) => [r.parametro, r.valor]),
+    [["pas", 120], ["pad", 70]]);
+  // Só PAM registrada: a linha pronta é de PAM.
+  const pam = [reg("4", "pam", 85, "2026-10-14T10:00:00Z")];
+  assert.deepEqual(rascunhoDaColuna(pam, { pa: "120x80" }, "2026-10-14T10:10:00Z", 5).map((r) => r.parametro), ["pam"]);
+});
+
+test("linha pronta: o lançamento no minuto cheio logo à frente conta como feito", async () => {
+  const { rascunhoDaColuna } = await import("./sinais.ts");
+  const fc = { id: "9", evolucao_id: "e", tipo: "sinal", momento: "2026-10-14T10:06:00Z", dados: { parametro: "fc", valor: 90 },
+    origem: "manual", substitui_id: null, anulado: false, motivo: null, created_by: "u", created_at: null } as Registro;
+  assert.deepEqual(rascunhoDaColuna([fc], { pa: "120/80" }, "2026-10-14T10:05:40Z", 5).map((r) => r.parametro), ["pas", "pad"]);
+});

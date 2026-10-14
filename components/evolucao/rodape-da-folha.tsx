@@ -20,6 +20,7 @@ import { BLOQUEIOS, FUNCOES, type Profissional } from "@/lib/evolucao/folha";
 import { ALDRETE, somaAldrete } from "@/lib/evolucao/lista-da-folha";
 import { hora } from "@/lib/evolucao/impressao";
 import { Linha, Op, Txt, type Modo } from "./papel";
+import type { TuboSugerido } from "@/lib/evolucao/sugestoes";
 
 type Dados = Record<string, unknown>;
 type Mudar = (m: Dados) => void;
@@ -50,8 +51,10 @@ const OUTROS_BLOQUEIOS = BLOQUEIOS.filter((x) => !BLOQUEIOS_DO_PAPEL.some(([v]) 
 /** "29156" → "29.156", como no carimbo. Número com letra fica como veio. */
 const crmEscrito = (crm: string) => (/^\d{4,}$/.test(crm) ? crm.replace(/\B(?=(\d{3})+$)/g, ".") : crm);
 
-export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos = [] }: {
+export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos = [], tubo = null }: {
   dados: Dados;
+  /** Criança: o TOT calculado pela idade (ou pelo peso), para escrever com um toque. Só na tela. */
+  tubo?: TuboSugerido | null;
   /** Sem ele, a folha só para ler: é a impressão. */
   onMudar?: Mudar;
   leitura?: boolean;
@@ -200,7 +203,8 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
               <Op key={c} m={m} rotulo={rot} marcado={tem(c)} onClick={() => alternarTipoDeGeral(c)} />
             ))}
             <Txt>TOT</Txt>
-            <Linha m={m} rotulo="Número do tubo" valor={!dispositivo || dispositivo === "TOT" ? t(g.numero) : ""} largura={5} sufixo=","
+            <Linha m={m} rotulo="Número do tubo" valor={!dispositivo || dispositivo === "TOT" ? t(g.numero) : ""}
+              largura={Math.max(5, t(g.numero).length)} sufixo=","
               onMudar={(v) => geral({ numero: v, dispositivo: v ? "TOT" : "" })} />
             {dispositivo && dispositivo !== "TOT" && (
               <Op m={m} rotulo={`${dispositivo}${t(g.numero) ? ` ${t(g.numero)}` : ""}`} marcado
@@ -219,6 +223,20 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
             <Txt>FR</Txt>
             <Linha m={m} rotulo="Frequência respiratória" valor={t(g.fr)} largura={3} sufixo="." numerico onMudar={(v) => geral({ fr: v })} />
           </div>
+          {tubo && !m.impresso && !m.leitura && (
+            <div className="evoRTubo">
+              <span className="evoRTuboTitulo">TOT calculado <small>({tubo.origem})</small></span>
+              {tubo.opcoes.map((o) => (
+                <button key={o.numero} type="button" aria-pressed={t(g.numero) === o.numero}
+                  aria-label={`Escrever TOT ${o.rotulo}${o.profundidade ? `, fixar em ${o.profundidade}` : ""}`}
+                  onClick={() => geral({ numero: t(g.numero) === o.numero ? "" : o.numero, dispositivo: "TOT" })}>
+                  <b>{o.rotulo}</b>{o.profundidade && <small>fixar em {o.profundidade}</small>}
+                </button>
+              ))}
+              {tubo.aviso && <small className="evoRTuboAviso">{tubo.aviso}</small>}
+              <small className="evoRTuboAviso">Estimativa: confirme por capnografia e ausculta.</small>
+            </div>
+          )}
 
           <div className="evoRLinha">
             <Op m={m} rotulo="Sedação, com ventilação:" marcado={tem("sedacao")} onClick={() => alternarTecnica("sedacao")} />

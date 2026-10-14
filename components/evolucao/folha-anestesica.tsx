@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
 import { janelaVisivel } from "@/lib/evolucao/grafico";
-import { pamEstimadaCabe, PARAMETROS, type Parametro } from "@/lib/evolucao/sinais";
+import { pamEstimadaCabe, PARAMETROS, rascunhoDaColuna, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
   administrados, agruparPorMedicamento, doseAcumulada, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
@@ -22,7 +22,7 @@ import {
   periodosDeTorniquete,
   rotuloDoEvento, type Profissional,
 } from "@/lib/evolucao/folha";
-import { asaRomana, sexoAbreviado } from "@/lib/evolucao/pre-papel";
+import { asaRomana, camposDoPapel, sexoAbreviado } from "@/lib/evolucao/pre-papel";
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { marcasDeEvento } from "@/lib/evolucao/impressao";
 import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
@@ -31,11 +31,14 @@ import { useFolha, type Folha } from "./use-folha";
 import { GraficoSinais, type AlvoDaFaixa, type Toque } from "./grafico-sinais";
 import { JanelaMover, JanelaPonto, JanelaSinais, Historico, type NovoSinal } from "./janelas-sinais";
 import { JanelaMedicamento } from "./janela-medicamento";
+import { JanelaMonitor } from "./janela-monitor";
 import { numero } from "./campos";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
 import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { RodapeDaFolha } from "./rodape-da-folha";
 import { ImprimirFicha } from "./imprimir-ficha";
+import { SugestoesDeDose } from "./sugestoes-de-dose";
+import { idadeEmMesesDaFicha, sugerirDoses, tuboDaFicha, type PacienteDaFicha } from "@/lib/evolucao/sugestoes";
 
 // A folha de anestesia digital.
 //
@@ -56,6 +59,7 @@ type Abrir =
   | { tipo: "gas"; ms?: number }
   | { tipo: "liquido"; sentido: "entrada" | "saida"; ms?: number; inicial?: { nome: string; categoria: string } }
   | { tipo: "evento" }
+  | { tipo: "monitor" }
   | { tipo: "registro"; registro: Registro }
   | { tipo: "encerrar" }
   | { tipo: "reabrir" };
@@ -142,6 +146,9 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 
   const nomes = useMemo(() => new Map(medicos.map((m) => [m.id, m.nome])), [medicos]);
   const idadeDias = idadeEmDias(paciente.data_nascimento);
+  // Para a dose sugerida: faixa etária e peso (lib/evolucao/sugestoes.ts).
+  const idadeMeses = idadeEmMesesDaFicha(idadeDias, paciente.idade_anos);
+  const pacienteDaDose: PacienteDaFicha = { idadeMeses, pesoKg };
   // Fim da anestesia, ou a saída da sala quando o fim não foi marcado.
   const fimAnestesia = fimDaAnestesia(atuais);
   const fimMs = !aberta ? Date.parse(fimAnestesia ?? folha.encerrada_em ?? folha.created_at) : fimAnestesia ? Date.parse(fimAnestesia) : null;
@@ -151,6 +158,21 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   // A anestesia terminou há mais de um minuto (fim marcado ou paciente fora da sala).
   const terminou = () => aberta && fimMs !== null && agoraMs() > fimMs + 60_000;
   const terminouNaTela = aberta && fimMs !== null && agora > fimMs + 60_000;
+  // A linha pronta do gráfico: PAS, PAD e FC da coluna de agora, para arrastar.
+  // Só com a anestesia correndo — terminada, não há "agora" a lançar.
+  const preDaFicha = camposDoPapel(dados);
+  const rascunho = useMemo(() => (aberta && agora > 0 && fimMs === null
+    ? rascunhoDaColuna(atuais, { pa: preDaFicha.pa, pulso: preDaFicha.pulso }, new Date(agora).toISOString(), folha.intervalo_minutos)
+    : []), [aberta, agora, fimMs, atuais, preDaFicha.pa, preDaFicha.pulso, folha.intervalo_minutos]);
+  const textoDoRascunho = (() => {
+    const v = (p: Parametro) => rascunho.find((r) => r.parametro === p)?.valor;
+    const partes = [
+      v("pas") !== undefined || v("pad") !== undefined ? `PA ${v("pas") ?? "—"}/${v("pad") ?? "—"}` : null,
+      v("pam") !== undefined ? `PAM ${v("pam")}` : null,
+      v("fc") !== undefined ? `FC ${v("fc")}` : null,
+    ].filter(Boolean);
+    return partes.join(" · ");
+  })();
   // Aberta e sem fim, o gráfico acompanha agora; com o fim (ou a saída da
   // sala), para nele, mesmo que algo seja lançado depois.
   const janela = janelaVisivel(inicioMs, fimMs ?? ultimoMs, zoom, desloc);
@@ -415,6 +437,14 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                 }} disabled={desloc === null}>▶</button>
               </div>
               {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "sinais" })}>Lançar valores</button>}
+              {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "monitor" })}>Foto do monitor</button>}
+              {rascunho.length > 0 && (
+                <button type="button" className="evoBotao pequeno evoIgual"
+                  title={rascunho[0].origem === "pre" ? "Valores da avaliação pré-anestésica" : "Os mesmos valores da última coluna"}
+                  onClick={() => registrarSinais(rascunho.map((r) => ({ parametro: r.parametro, valor: r.valor, origem: "manual" })), minutoAtual())}>
+                  ✓ {rascunho[0].origem === "pre" ? "Da pré" : "Igual"}: {textoDoRascunho}
+                </button>
+              )}
             </div>
           </div>
 
@@ -422,7 +452,12 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
             <GraficoSinais
               atuais={atuais} idsPendentes={f.idsPendentes} cabecalho={dados} fimMs={fimMs} agoraMs={agora}
               aberta={aberta} intervalo={folha.intervalo_minutos} janelaInicio={janela.inicio} janelaMinutos={zoom}
-              alturaGrade={300} somenteLeitura={!aberta}
+              alturaGrade={300} somenteLeitura={!aberta} rascunho={rascunho}
+              onLancar={(p, valor) => {
+                const momento = minutoAtual();
+                f.registrar({ tipo: "sinal", momento, dados: { parametro: p, valor }, origem: "manual" });
+                setAviso({ texto: `${PARAMETROS[p].curto} ${fmt(valor, 1)} às ${hora(momento)}`, desfazer: true });
+              }}
               onTocar={(t) => setAbrir({ tipo: "sinais", ms: Math.min(t.ms, Date.now()) })}
               onTocarLinha={(p, ms) => setAbrir({ tipo: "sinais", ms: Math.min(ms, Date.now()), foco: p })}
               onTocarFaixa={tocarFaixa}
@@ -568,7 +603,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
                             {conferirAlergia(dados, it.nome) && <em className="evoAlergiaTag">Alergia</em>}
                           </button>
                           {aberta && linhaAberta === chave && (
-                            <DoseNaLinha item={it} grupo={g}
+                            <DoseNaLinha item={it} grupo={g} paciente={pacienteDaDose}
                               onRegistrar={(dose) => doseRapida(it, g, dose)}
                               onDetalhes={(dose) => { setLinhaAberta(null); setAbrir({ tipo: "medicamento", escolhido: { item: it, grupo: g, dose: dose ?? undefined } }); }}
                               onFechar={() => setLinhaAberta(null)} />
@@ -604,7 +639,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
       </div>
 
       {/* O rodapé do papel: posições, técnica, cirurgia, alta e o médico — tudo de um toque */}
-      <RodapeDaFolha dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} marcos={{
+      <RodapeDaFolha dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} tubo={tuboDaFicha(pacienteDaDose)} marcos={{
         inicioAnestesia: horarioDoMarco(atuais, "inicio_anestesia"), fimAnestesia: fimAnestesia,
       }} />
 
@@ -641,8 +676,20 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
           }}
           onFechar={() => setAbrir(null)} />
       )}
+      {abrir?.tipo === "monitor" && (
+        <JanelaMonitor atuais={atuais} onFechar={() => setAbrir(null)}
+          onLancar={(medidas) => {
+            for (const m of medidas) {
+              for (const i of m.itens) {
+                f.registrar({ tipo: "sinal", momento: m.momento, dados: { parametro: i.parametro, valor: i.valor }, origem: "importado" });
+              }
+            }
+            setAbrir(null);
+            setAviso({ texto: `${medidas.length} ${medidas.length === 1 ? "horário lançado" : "horários lançados"} do monitor`, desfazer: false });
+          }} />
+      )}
       {abrir?.tipo === "medicamento" && (
-        <JanelaMedicamento pesoKg={pesoKg} idadeDias={idadeDias} regras={regras} dadas={dadas}
+        <JanelaMedicamento pesoKg={pesoKg} idadeDias={idadeDias} paciente={pacienteDaDose} regras={regras} dadas={dadas}
           favoritos={favoritos} inicial={abrir.planejado?.dados ?? null} escolhido={abrir.escolhido ?? null} alergias={dados}
           fimDaAnestesia={terminouNaTela ? fimAnestesia : null}
           onConfirmar={({ momento, dados: d }) => {
@@ -699,27 +746,45 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
 /**
  * A linha do papel "○ Fentanil ____ mcg EV", só que a dose se escreve na
  * própria linha. Enter (ou ✓) grava; "⋯" abre a janela completa com a dose
- * já escrita — para mudar o horário, pôr concentração ou outra via.
+ * já escrita — para mudar o horário, pôr concentração ou outra via. Embaixo,
+ * as doses da tabela para a idade e o peso do paciente: um toque escreve.
  */
-function DoseNaLinha({ item, grupo, onRegistrar, onDetalhes, onFechar }: {
-  item: ItemDaLista; grupo: GrupoDaLista;
+function DoseNaLinha({ item, grupo, paciente, onRegistrar, onDetalhes, onFechar }: {
+  item: ItemDaLista; grupo: GrupoDaLista; paciente: PacienteDaFicha;
   onRegistrar: (dose: number) => void; onDetalhes: (dose: number | null) => void; onFechar: () => void;
 }) {
   const [texto, setTexto] = useState("");
   const dose = numero(texto);
   const valida = dose !== null && dose > 0;
+  const via = item.via ?? grupo.via;
+  const registrar = useRef<HTMLButtonElement>(null);
+  // As doses da tabela para este fármaco, nesta via e nesta faixa etária: um
+  // toque escreve a dose no campo, e o ✓ grava.
+  const sugestoes = useMemo(() => sugerirDoses(item.nome, paciente, {
+    unidade: item.unidade, via, contexto: CONTEXTO_DO_GRUPO[grupo.codigo],
+  }), [item.nome, item.unidade, via, grupo.codigo, paciente]);
   return (
-    <form className="evoDoseLinha" onSubmit={(e) => { e.preventDefault(); if (valida) onRegistrar(dose!); }}
-      onKeyDown={(e) => { if (e.key === "Escape") onFechar(); }}>
-      <input inputMode="decimal" autoFocus value={texto} onChange={(e) => setTexto(e.target.value)}
-        aria-label={`Dose de ${item.nome} em ${item.unidade}`} placeholder="dose" />
-      <span className="evoDoseUnidade"><b>{item.unidade}</b><small>{item.via ?? grupo.via}</small></span>
-      <button type="submit" className="evoBotao pequeno" disabled={!valida} aria-label={`Registrar ${item.nome} agora`}>✓ Registrar</button>
-      <button type="button" className="evoBotao pequeno secundario" onClick={() => onDetalhes(valida ? dose : null)}
-        aria-label="Mais detalhes: horário, concentração, via">⋯</button>
-    </form>
+    <div className="evoDoseCaixa">
+      <form className="evoDoseLinha" onSubmit={(e) => { e.preventDefault(); if (valida) onRegistrar(dose!); }}
+        onKeyDown={(e) => { if (e.key === "Escape") onFechar(); }}>
+        <input inputMode="decimal" autoFocus={!sugestoes.cartoes.length} value={texto} onChange={(e) => setTexto(e.target.value)}
+          aria-label={`Dose de ${item.nome} em ${item.unidade}`} placeholder="dose" />
+        <span className="evoDoseUnidade"><b>{item.unidade}</b><small>{via}</small></span>
+        <button ref={registrar} type="submit" className="evoBotao pequeno" disabled={!valida} aria-label={`Registrar ${item.nome} agora`}>
+          ✓ Registrar{valida ? ` ${fmt(dose!, 3)} ${item.unidade}` : ""}
+        </button>
+        <button type="button" className="evoBotao pequeno secundario" onClick={() => onDetalhes(valida ? dose : null)}
+          aria-label="Mais detalhes: horário, concentração, via">⋯</button>
+      </form>
+      <SugestoesDeDose sugestoes={sugestoes} pesoKg={paciente.pesoKg} escolhida={dose}
+        onEscolher={(s) => { setTexto(fmt(s.dose, 3)); requestAnimationFrame(() => registrar.current?.focus()); }} />
+    </div>
   );
 }
+
+const CONTEXTO_DO_GRUPO: Record<CodigoDoGrupo, "sedacao" | "geral" | "neuroeixo" | "bloqueio" | "outro"> = {
+  antibiotico: "outro", sedacao: "sedacao", neuroeixo: "neuroeixo", geral: "geral", bloqueio: "bloqueio", outras: "outro",
+};
 
 /** Tocou numa infusão em curso: ajustar a velocidade ou encerrar. */
 function JanelaInfusaoAcoes({ infusao, pesoKg, onAcao, onFechar }: {

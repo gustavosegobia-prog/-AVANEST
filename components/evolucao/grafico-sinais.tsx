@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  EIXO_Y, marcasDeTempo, pontoDoToque, tempoParaX, valorParaY, type Escala,
+  EIXO_Y, marcasDeTempo, pontoDoToque, tempoParaX, valorParaY, yParaValor, type Escala,
 } from "@/lib/evolucao/grafico";
 import {
   EM_LINHA, NO_GRAFICO, PARAMETROS, lacunaPadrao, periodosSemMonitorizacao, pontosDe, trechos,
-  type Parametro,
+  type Parametro, type Rascunho,
 } from "@/lib/evolucao/sinais";
 import { linhasDeGas, linhasDeLiquido, marcasDeEvento, pistasDeEventos } from "@/lib/evolucao/impressao";
 import { INFUSOES_DA_FOLHA, LIQUIDOS_DA_FOLHA } from "@/lib/evolucao/lista-da-folha";
@@ -30,6 +30,12 @@ import type { Registro } from "@/lib/evolucao/registros";
 // Tocar numa faixa registra NAQUELE horário (abre a janela já com a hora);
 // tocar num valor já lançado abre o registro dele, para ver o histórico,
 // corrigir a hora ou excluir.
+//
+// A LINHA PRONTA. Na coluna de agora, PAS, PAD e FC já aparecem lançadas,
+// tracejadas, com o último valor de cada uma (lib/evolucao/sinais.ts,
+// `rascunhoDaColuna`). O médico arrasta o ponto para cima ou para baixo até o
+// valor do monitor e solta: vira registro naquela hora. Tocar sem arrastar
+// lança o mesmo valor. Nada grava antes de soltar.
 
 const FAIXA_HORAS = 22;
 const LINHA = 24;          // cada faixa: gases, infusões, líquidos, SpO₂, EtCO₂, temperatura
@@ -71,7 +77,8 @@ const ROTULO_GAS: Record<string, string> = { o2: "O₂ L/min", ar: "Ar L/min", n
 
 export function GraficoSinais({
   atuais, idsPendentes, cabecalho, fimMs, agoraMs, aberta, intervalo, janelaInicio, janelaMinutos,
-  alturaGrade, somenteLeitura, onTocar, onTocarLinha, onTocarFaixa, onAbrirPonto, onAbrirRegistro, onMover,
+  alturaGrade, somenteLeitura, rascunho = [], onTocar, onTocarLinha, onTocarFaixa, onAbrirPonto, onAbrirRegistro, onMover,
+  onLancar,
 }: {
   atuais: Registro[];
   idsPendentes: Set<string>;
@@ -91,11 +98,16 @@ export function GraficoSinais({
   onAbrirPonto: (r: Registro) => void;
   onAbrirRegistro: (r: Registro) => void;
   onMover: (r: Registro, t: Toque) => void;
+  /** A linha pronta da coluna de agora (vazia: nada a arrastar). */
+  rascunho?: Rascunho[];
+  /** Soltou (ou tocou) um ponto da linha pronta: registra agora. */
+  onLancar?: (p: Parametro, valor: number) => void;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
   const [largura, setLargura] = useState(800);
   const [arraste, setArraste] = useState<{ registro: Registro; x: number; y: number; ativo: boolean; x0: number; y0: number } | null>(null);
+  const [puxando, setPuxando] = useState<{ p: Parametro; y: number; y0: number; ativo: boolean } | null>(null);
 
   useEffect(() => {
     const el = caixa.current;
@@ -259,6 +271,13 @@ export function GraficoSinais({
 
     // O gráfico de pressão e FC
     if (ly >= topoGrade) {
+      // A linha pronta vem antes: é o que se toca a cada coluna.
+      const pronto = prontoNoToque(lx, ly);
+      if (pronto) {
+        (ev.target as Element).setPointerCapture?.(ev.pointerId);
+        setPuxando({ p: pronto.parametro, y: y(pronto.valor), y0: ly, ativo: false });
+        return;
+      }
       const alvo = pontoNoToque(lx, ly);
       if (alvo) {
         if (somenteLeitura) { onAbrirPonto(alvo); return; }
@@ -301,7 +320,41 @@ export function GraficoSinais({
     if (f.alvo) onTocarFaixa(f.alvo(minutoDoX(lx)));
   }
 
+  // A linha pronta: no x de agora, um ponto por parâmetro.
+  const xPronto = Math.min(Math.max(x(agoraMs), CALHA + 8), largura - 8);
+  // Perto da borda direita o número vai para o lado de dentro.
+  const rotuloAEsquerda = xPronto > largura - 70;
+  const prontos = !somenteLeitura && aberta && visivel(agoraMs) ? rascunho : [];
+
+  // No celular o gráfico é mais largo que a tela e rola de lado. A coluna de
+  // agora — onde está a linha pronta — tem de estar à vista sem o médico
+  // procurar: a caixa rola até ela quando a janela muda.
+  const xAgora = aberta && visivel(agoraMs) ? Math.round(x(agoraMs)) : null;
+  useEffect(() => {
+    const el = caixa.current;
+    if (!el || xAgora === null || el.scrollWidth <= el.clientWidth + 1) return;
+    const alvo = Math.max(0, xAgora - el.clientWidth + 72);
+    if (xAgora < el.scrollLeft + CALHA || xAgora > el.scrollLeft + el.clientWidth - 40) el.scrollLeft = alvo;
+  }, [xAgora, janelaInicio, janelaMinutos, CALHA]);
+  const valorDoY = (p: Parametro, py: number) => {
+    const v = Math.round(yParaValor(py - topoGrade, e));
+    return Math.min(Math.min(PARAMETROS[p].max, EIXO_Y.max), Math.max(Math.max(PARAMETROS[p].min, EIXO_Y.min), v));
+  };
+  function prontoNoToque(lx: number, ly: number): Rascunho | null {
+    if (Math.abs(lx - xPronto) > TOQUE + 6) return null;
+    const perto = prontos.map((r) => ({ r, d: Math.abs(y(r.valor) - ly) })).filter((o) => o.d <= TOQUE + 4)
+      .sort((a, b) => a.d - b.d)[0];
+    return perto?.r ?? null;
+  }
+
   function aoMover(ev: React.PointerEvent<SVGSVGElement>) {
+    if (puxando) {
+      const { ly } = local(ev);
+      const yLimitado = Math.min(topoGrade + alturaGrade, Math.max(topoGrade, ly));
+      setPuxando({ ...puxando, y: puxando.ativo ? yLimitado : Math.abs(ly - puxando.y0) > 4 ? yLimitado : puxando.y,
+        ativo: puxando.ativo || Math.abs(ly - puxando.y0) > 4 });
+      return;
+    }
     if (!arraste) return;
     const { lx, ly } = local(ev);
     const ativo = arraste.ativo || Math.hypot(lx - arraste.x0, ly - arraste.y0) > 6;
@@ -309,6 +362,12 @@ export function GraficoSinais({
   }
 
   function aoSoltar() {
+    if (puxando) {
+      const r = prontos.find((x) => x.parametro === puxando.p);
+      if (r) onLancar?.(r.parametro, puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor);
+      setPuxando(null);
+      return;
+    }
     if (!arraste) return;
     if (arraste.ativo) onMover(arraste.registro, pontoDoToque(arraste.x - CALHA, arraste.y - topoGrade, e));
     else onAbrirPonto(arraste.registro);
@@ -322,7 +381,7 @@ export function GraficoSinais({
         className={`evoGrafico${somenteLeitura ? " leitura" : ""}`}
         width={largura} height={altura} viewBox={`0 0 ${largura} ${altura}`}
         onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar}
-        onPointerCancel={() => setArraste(null)}
+        onPointerCancel={() => { setArraste(null); setPuxando(null); }}
         // No toque, o navegador ainda solta um clique no mesmo lugar depois de
         // a janela abrir — e ele caía num campo (ou botão) da janela.
         onTouchEnd={(ev) => { if (ev.cancelable) ev.preventDefault(); }}
@@ -498,6 +557,30 @@ export function GraficoSinais({
           {arraste?.ativo && (
             <g className={`evoSerie ${arraste.registro.dados.parametro as string} fantasma`}>
               <Simbolo p={arraste.registro.dados.parametro as Parametro} cx={arraste.x} cy={arraste.y} pendente={false} estimado={false} />
+            </g>
+          )}
+          {prontos.length > 0 && (
+            <g className="evoProntos">
+              <line className="evoProntoGuia" x1={xPronto} x2={xPronto} y1={topoGrade} y2={topoGrade + alturaGrade} />
+              {prontos.map((r) => {
+                const cy = puxando?.p === r.parametro ? puxando.y : y(r.valor);
+                const valor = puxando?.p === r.parametro && puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor;
+                const anterior = series.find((s) => s.p === r.parametro)?.pontos.filter((pt) => Date.parse(pt.momento) <= agoraMs + 60000).pop();
+                const arrastando = puxando?.p === r.parametro && puxando.ativo;
+                return (
+                  <g key={r.parametro} className={`evoSerie ${r.parametro} pronto${arrastando ? " puxando" : ""}`}>
+                    {anterior && visivel(Date.parse(anterior.momento)) && (
+                      <line className="evoProntoLigacao" x1={x(Date.parse(anterior.momento))} y1={y(anterior.valor)} x2={xPronto} y2={cy} />
+                    )}
+                    <circle className="evoProntoAlvo" cx={xPronto} cy={cy} r={TOQUE - 4} />
+                    <Simbolo p={r.parametro} cx={xPronto} cy={cy} pendente={false} estimado={false} />
+                    <text className="evoProntoValor" x={rotuloAEsquerda ? xPronto - 16 : xPronto + 16} y={cy + 4}
+                      textAnchor={rotuloAEsquerda ? "end" : "start"}>
+                      {arrastando ? `${PARAMETROS[r.parametro].curto} ${valor}` : valor}
+                    </text>
+                  </g>
+                );
+              })}
             </g>
           )}
         </g>
