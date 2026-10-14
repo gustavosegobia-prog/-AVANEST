@@ -272,6 +272,13 @@ export function GraficoSinais({
   const segurarDedo = useRef(false);
   const ANDOU = 10;
 
+  // Prende o dedo no próprio gráfico (e não no traço desenhado embaixo dele):
+  // o Safari recusa a captura em alguns elementos internos do SVG, e uma
+  // recusa aqui não pode derrubar o toque inteiro.
+  function prender(ev: React.PointerEvent<SVGSVGElement>) {
+    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch { /* segue sem captura */ }
+  }
+
   function aoPressionar(ev: React.PointerEvent<SVGSVGElement>) {
     const { lx, ly } = local(ev);
     if (lx < CALHA) return;
@@ -283,13 +290,13 @@ export function GraficoSinais({
     if (ly >= topoGrade) {
       const pronto = prontoNoToque(lx, ly);
       if (pronto) {
-        (ev.target as Element).setPointerCapture?.(ev.pointerId);
+        prender(ev);
         setPuxando({ p: pronto.parametro, y: y(pronto.valor), y0: ly, ativo: false });
         return;
       }
       const alvo = pontoNoToque(lx, ly);
       if (alvo && !somenteLeitura) {
-        (ev.target as Element).setPointerCapture?.(ev.pointerId);
+        prender(ev);
         setArraste({ registro: alvo, x: lx, y: ly, x0: lx, y0: ly, ativo: false });
         return;
       }
