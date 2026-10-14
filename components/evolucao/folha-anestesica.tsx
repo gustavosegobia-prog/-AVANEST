@@ -166,8 +166,10 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   const rascunho = useMemo(() => (aberta && agora > 0 && fimMs === null
     ? rascunhoDaColuna(atuais, { pa: preDaFicha.pa, pulso: preDaFicha.pulso }, new Date(agora).toISOString(), folha.intervalo_minutos)
     : []), [aberta, agora, fimMs, atuais, preDaFicha.pa, preDaFicha.pulso, folha.intervalo_minutos]);
+  // "✓ Igual" só com valor de verdade: o ponto neutro não entra.
+  const rascunhoReal = rascunho.filter((r) => r.origem !== "padrao");
   const textoDoRascunho = (() => {
-    const v = (p: Parametro) => rascunho.find((r) => r.parametro === p)?.valor;
+    const v = (p: Parametro) => rascunhoReal.find((r) => r.parametro === p)?.valor;
     const partes = [
       v("pas") !== undefined || v("pad") !== undefined ? `PA ${v("pas") ?? "—"}/${v("pad") ?? "—"}` : null,
       v("pam") !== undefined ? `PAM ${v("pam")}` : null,
@@ -440,16 +442,19 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
               </div>
               {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "sinais" })}>Lançar valores</button>}
               {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "monitor" })}>Foto do monitor</button>}
-              {rascunho.length > 0 && (
+              {rascunhoReal.length > 0 && (
                 <button type="button" className="evoBotao pequeno evoIgual"
-                  title={rascunho[0].origem === "pre" ? "Valores da avaliação pré-anestésica" : "Os mesmos valores da última coluna"}
-                  onClick={() => registrarSinais(rascunho.map((r) => ({ parametro: r.parametro, valor: r.valor, origem: "manual" })), minutoAtual())}>
-                  ✓ {rascunho[0].origem === "pre" ? "Da pré" : "Igual"}: {textoDoRascunho}
+                  title={rascunhoReal[0].origem === "pre" ? "Valores da avaliação pré-anestésica" : "Os mesmos valores da última coluna"}
+                  onClick={() => registrarSinais(rascunhoReal.map((r) => ({ parametro: r.parametro, valor: r.valor, origem: "manual" })), minutoAtual())}>
+                  ✓ {rascunhoReal[0].origem === "pre" ? "Da pré" : "Igual"}: {textoDoRascunho}
                 </button>
               )}
             </div>
           </div>
 
+          {rascunho.length > 0 && (
+            <p className="evoDicaGrafico">Arraste os pontos tracejados da coluna de agora até o valor do monitor e solte para lançar.</p>
+          )}
           {montado ? (
             <GraficoSinais
               atuais={atuais} idsPendentes={f.idsPendentes} cabecalho={dados} fimMs={fimMs} agoraMs={agora}

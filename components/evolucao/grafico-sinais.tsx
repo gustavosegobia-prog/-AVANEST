@@ -426,7 +426,9 @@ export function GraficoSinais({
     if (t) { tocar(t.lx, t.ly); return; }
     if (puxando) {
       const r = prontos.find((x) => x.parametro === puxando.p);
-      if (r) onLancar?.(r.parametro, puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor);
+      // O ponto neutro só vale arrastado; um toque nele abre a janela de sinais.
+      if (r && !puxando.ativo && r.origem === "padrao") onTocar({ ms: agoraMs, valor: r.valor });
+      else if (r) onLancar?.(r.parametro, puxando.ativo ? valorDoY(r.parametro, puxando.y) : r.valor);
       setPuxando(null);
       return;
     }
@@ -622,7 +624,15 @@ export function GraficoSinais({
               <Simbolo p={arraste.registro.dados.parametro as Parametro} cx={arraste.x} cy={arraste.y} pendente={false} estimado={false} />
             </g>
           )}
-          {prontos.length > 0 && (
+          {prontos.length > 0 && (() => {
+            // Os números ao lado não se encostam: PAD e FC costumam ficar a
+            // poucos pixels um do outro, e os rótulos se empurram para longe.
+            const alturas = prontos.map((r) => ({ p: r.parametro, cy: puxando?.p === r.parametro ? puxando.y : y(r.valor) }))
+              .sort((a, b) => a.cy - b.cy);
+            const yRotulo = new Map<Parametro, number>();
+            let anterior = -Infinity;
+            for (const a of alturas) { const ry = Math.max(a.cy + 4, anterior + 13); yRotulo.set(a.p, ry); anterior = ry; }
+            return (
             <g className="evoProntos">
               <line className="evoProntoGuia" x1={xPronto} x2={xPronto} y1={topoGrade} y2={topoGrade + alturaGrade} />
               {prontos.map((r) => {
@@ -631,21 +641,22 @@ export function GraficoSinais({
                 const anterior = series.find((s) => s.p === r.parametro)?.pontos.filter((pt) => Date.parse(pt.momento) <= agoraMs + 60000).pop();
                 const arrastando = puxando?.p === r.parametro && puxando.ativo;
                 return (
-                  <g key={r.parametro} className={`evoSerie ${r.parametro} pronto${arrastando ? " puxando" : ""}`}>
+                  <g key={r.parametro} className={`evoSerie ${r.parametro} pronto${r.origem === "padrao" ? " neutro" : ""}${arrastando ? " puxando" : ""}`}>
                     {anterior && visivel(Date.parse(anterior.momento)) && (
                       <line className="evoProntoLigacao" x1={x(Date.parse(anterior.momento))} y1={y(anterior.valor)} x2={xPronto} y2={cy} />
                     )}
                     <circle className="evoProntoAlvo" cx={xPronto} cy={cy} r={TOQUE - 4} />
                     <Simbolo p={r.parametro} cx={xPronto} cy={cy} pendente={false} estimado={false} />
-                    <text className="evoProntoValor" x={rotuloAEsquerda ? xPronto - 16 : xPronto + 16} y={cy + 4}
+                    <text className="evoProntoValor" x={rotuloAEsquerda ? xPronto - 16 : xPronto + 16} y={yRotulo.get(r.parametro) ?? cy + 4}
                       textAnchor={rotuloAEsquerda ? "end" : "start"}>
-                      {arrastando ? `${PARAMETROS[r.parametro].curto} ${valor}` : valor}
+                      {arrastando ? `${PARAMETROS[r.parametro].curto} ${valor}` : r.origem === "padrao" ? `${PARAMETROS[r.parametro].curto} ?` : valor}
                     </text>
                   </g>
                 );
               })}
             </g>
-          )}
+            );
+          })()}
         </g>
         <line className="evoBorda" x1={CALHA} x2={CALHA} y1={0} y2={topoGrade + alturaGrade} />
       </svg>

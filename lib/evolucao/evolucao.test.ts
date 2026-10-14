@@ -409,7 +409,11 @@ test("linha pronta: último valor de cada parâmetro, ou a PA e o pulso da pré-
     [["pas", 120], ["pad", 70]]);
   // Só PAM registrada: a linha pronta é de PAM.
   const pam = [reg("4", "pam", 85, "2026-10-14T10:00:00Z")];
-  assert.deepEqual(rascunhoDaColuna(pam, { pa: "120x80" }, "2026-10-14T10:10:00Z", 5).map((r) => r.parametro), ["pam"]);
+  assert.deepEqual(rascunhoDaColuna(pam, { pa: "120x80" }, "2026-10-14T10:10:00Z", 5).map((r) => [r.parametro, r.origem]),
+    [["pam", "anterior"], ["fc", "padrao"]]);
+  // Ficha em branco, sem pré-anestésica: a linha aparece no ponto neutro, marcada como tal.
+  assert.deepEqual(rascunhoDaColuna([], {}, "2026-10-14T10:00:00Z", 5).map((r) => [r.parametro, r.valor, r.origem]),
+    [["pas", 120, "padrao"], ["pad", 70, "padrao"], ["fc", 100, "padrao"]]);
 });
 
 test("linha pronta: o lançamento no minuto cheio logo à frente conta como feito", async () => {

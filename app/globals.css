@@ -6754,6 +6754,10 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   stroke:var(--cor-superficie);stroke-width:3px}
 .evoSerie.pronto.puxando .evoProntoValor{font-size:13px}
 .evoIgual{white-space:nowrap}
+.evoSerie.pronto.neutro .evoSimbolo{opacity:.4}
+.evoSerie.pronto.neutro .evoProntoAlvo{fill-opacity:.05;stroke-opacity:.35}
+.evoSerie.pronto.neutro .evoProntoValor{opacity:.7}
+.evoDicaGrafico{margin:4px 0 6px;font-size:12.5px;color:var(--cor-tinta-fraca)}
 
 /* ── Foto do monitor (components/evolucao/janela-monitor.tsx) ─────────────── */
 .evoFotoMonitor{position:relative;display:grid;gap:4px;padding:16px;border:1.5px dashed var(--cor-marca);border-radius:12px;

@@ -114,11 +114,19 @@ export function periodosSemMonitorizacao(
  * O que o gráfico já deixa lançado na coluna de agora, para o anestesiologista
  * só arrastar para cima ou para baixo: PAS, PAD e FC com o último valor de
  * cada um — ou, no começo da anestesia, com a PA e o pulso da avaliação
- * pré-anestésica. Some o parâmetro que já tem ponto nesta coluna (dentro do
+ * pré-anestésica; sem nenhum dos dois, no ponto neutro (PONTO_NEUTRO). Some o parâmetro que já tem ponto nesta coluna (dentro do
  * intervalo da folha). Nada disso grava sozinho: vira registro quando o médico
  * solta o ponto ou confirma.
  */
-export type Rascunho = { parametro: Parametro; valor: number; origem: "anterior" | "pre" };
+export type Rascunho = { parametro: Parametro; valor: number; origem: "anterior" | "pre" | "padrao" };
+
+/**
+ * Sem valor anterior nem pré-anestésica (ficha em branco), a linha pronta
+ * começa num ponto neutro do gráfico — só para ter o que arrastar. Esse ponto
+ * NUNCA vira registro sem ser arrastado: um toque nele abre a janela de
+ * sinais, e o "✓ Igual" não o inclui.
+ */
+export const PONTO_NEUTRO: Partial<Record<Parametro, number>> = { pas: 120, pad: 70, pam: 85, fc: 100 };
 
 export function rascunhoDaColuna(vigentes: readonly Registro[], pre: { pa?: string; pulso?: string },
   agoraIso: string, intervaloMin: number): Rascunho[] {
@@ -137,6 +145,7 @@ export function rascunhoDaColuna(vigentes: readonly Registro[], pre: { pa?: stri
     if (ultimo && agora - Date.parse(ultimo.momento) < intervaloMin * 60000) continue;
     if (ultimo) saida.push({ parametro: p, valor: ultimo.valor, origem: "anterior" });
     else if (valorPlausivel(p, doPre[p])) saida.push({ parametro: p, valor: doPre[p]!, origem: "pre" });
+    else if (PONTO_NEUTRO[p] !== undefined) saida.push({ parametro: p, valor: PONTO_NEUTRO[p]!, origem: "padrao" });
   }
   return saida;
 }
