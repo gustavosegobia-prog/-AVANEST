@@ -10,8 +10,11 @@
 // conferir, corrigir e escolher o que entra. Nada é lançado sem ele confirmar,
 // e o que entra fica marcado como "importado".
 //
-// O texto vem de lib/texto-do-laudo.ts: a foto é lida no próprio aparelho e
-// descartada — não fica guardada em lugar nenhum.
+// Aqui se lê o TEXTO corrido — o do relatório em PDF (lib/texto-do-laudo.ts),
+// ou o da foto quando nela não se acha a tabela. A foto da tela vai antes por
+// foto-do-monitor.ts, que acha a tabela pela posição das palavras
+// (grade-do-monitor.ts). A foto é lida no próprio aparelho e descartada — não
+// fica guardada em lugar nenhum.
 
 import { PARAMETROS, valorPlausivel, type Parametro } from "./sinais.ts";
 
