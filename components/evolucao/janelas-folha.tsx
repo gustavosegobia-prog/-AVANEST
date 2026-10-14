@@ -13,7 +13,7 @@ import { momentoDeHora } from "./use-folha";
 import { sugerirVelocidades, type PacienteDaFicha, type VelocidadeSugerida } from "@/lib/evolucao/sugestoes";
 import { CampoHora, CampoNumero, Escolha, numero } from "./campos";
 
-const VELOCIDADES: UnidadeDeVelocidade[] = ["mL/h", "mcg/kg/min", "mcg/kg/h", "mg/kg/h", "mcg/min", "mg/h", "UI/h", "UI/min"];
+const VELOCIDADES: UnidadeDeVelocidade[] = ["mL/h", "mcg/kg/min", "mcg/kg/h", "mg/kg/h", "mcg/min", "mcg/h", "mg/min", "mg/h", "UI/h", "UI/min"];
 const CONCENTRACOES: UnidadeDeConcentracao[] = ["mcg/mL", "mg/mL", "UI/mL", "%"];
 
 function Rodape({ onFechar, form, rotulo, ok, perigo = false }: {
@@ -72,6 +72,12 @@ export function JanelaInfusao({ infusao, acao, alergias, ms, nomeInicial, pacien
     else { setVel(String(o.valor).replace(".", ",")); setUVel(o.unidade); }
   }
   const fmtV = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+  // As diluições padrão do fármaco (lib/calculos/doses.ts): um toque escreve a
+  // diluição e a concentração — e a velocidade sugerida passa a sair em mL/h.
+  const diluicoes = acao === "iniciar" && bomba
+    ? bomba.cartoes.flatMap((c) => c.diluicoes).filter((d, i, todas) => todas.findIndex((x) => x.rotulo === d.rotulo) === i)
+    : [];
+  const diluicaoEscolhida = (d: (typeof diluicoes)[number]) => diluicao === d.rotulo && numero(conc) === d.valor && uConc === d.unidade;
   const ok = Boolean(momento) && (acao === "encerrar" || (velN !== null && velN >= 0))
     && (acao !== "iniciar" || nome.trim().length > 0)
     && (!alergia || justificaAlergia.trim().length >= 5);
@@ -121,6 +127,17 @@ export function JanelaInfusao({ infusao, acao, alergias, ms, nomeInicial, pacien
               </label>
             </section>
           ) : <p className="evoAlergiaSituacao">{situacaoDaAlergia(alergias)}</p>}
+          {diluicoes.length > 0 && (
+            <div className="evoRTubo">
+              <span className="evoRTuboTitulo">Diluição padrão <small>confira com a seringa</small></span>
+              {diluicoes.map((d) => (
+                <button key={d.rotulo} type="button" aria-pressed={diluicaoEscolhida(d)}
+                  onClick={() => { setDiluicao(d.rotulo); setConc(fmtV(d.valor)); setUConc(d.unidade); }}>
+                  <b>{d.rotulo.split(" — ")[0]}</b><small>{d.rotulo.split(" — ")[1] ?? `${fmtV(d.valor)} ${d.unidade}`}</small>
+                </button>
+              ))}
+            </div>
+          )}
           <label className="evoCampo"><span>Diluição</span>
             <input value={diluicao} onChange={(e) => setDiluicao(e.target.value)} placeholder="Ex.: 4 mg em 250 mL de SG 5%" />
           </label>

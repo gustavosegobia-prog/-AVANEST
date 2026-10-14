@@ -19,6 +19,8 @@
  * diferentes porque são doses diferentes.
  */
 
+import type { BaseDePeso } from "./peso.ts";
+
 export type Fonte = { obra: string; local: string };
 export const citar = (f: Fonte) => `${f.obra} — ${f.local}`;
 
@@ -39,6 +41,27 @@ const SERVICO: Fonte = {
   obra: "Tabela de doses do adulto do serviço",
   local: "revisada pelo responsável técnico do AVANEST",
 };
+
+/**
+ * A lista de doses do adulto que o responsável técnico mandou (43 fármacos),
+ * conferida com Miller, Morgan & Mikhail e as bulas. Onde a lista divergia da
+ * literatura (remifentanil, morfina, fenitoína, cisatracúrio, midazolam), vale
+ * o número conferido, e o cartão diz o contexto.
+ */
+const LISTA: Fonte = {
+  obra: "Lista de doses do adulto do serviço",
+  local: "conferida com Miller, Morgan & Mikhail e as bulas",
+};
+const AES: Fonte = { obra: "American Epilepsy Society — estado de mal epiléptico", local: "Glauser et al., Epilepsy Currents, 2016" };
+const AHA: Fonte = { obra: "American Heart Association — RCP e emergências cardiovasculares", local: "suporte avançado de vida, 2020" };
+const NVPO: Fonte = { obra: "Quarto consenso de náusea e vômito pós-operatórios", local: "Gan et al., Anesthesia & Analgesia, 2020" };
+const BULA: Fonte = { obra: "Bula do medicamento (ANVISA)", local: "posologia do adulto" };
+/**
+ * As diluições das bombas de vasoativo são as de uso corrente com as ampolas
+ * brasileiras — sugestão do AVANEST, a conferir com o protocolo do serviço.
+ */
+const DILUICAO: Fonte = { obra: "Diluição padrão com as ampolas brasileiras", local: "sugestão do AVANEST, a conferir com o protocolo do serviço" };
+const REVISAO_LISTA = "14/10/2026";
 
 /* ------------------------------------------------------------------ *
  * Unidades
@@ -129,11 +152,15 @@ export function conferirClonidina(nome: string, unidade: Unidade): string | unde
 export type Nivel = "minima" | "usual" | "maxima";
 export const ROTULO_NIVEL: Record<Nivel, string> = { minima: "Mínima", usual: "Usual", maxima: "Máxima" };
 
-/** Como a dose é expressa: bolo, por hora, ou por minuto (bomba). */
-export type Por = "kg" | "kg/h" | "kg/min" | "fixa";
+/**
+ * Como a dose é expressa: bolo por quilo, bomba por quilo (hora ou minuto),
+ * dose fixa, ou bomba sem peso por minuto (vasopressina em UI/min,
+ * nitroglicerina em mcg/min, amiodarona em mg/min).
+ */
+export type Por = "kg" | "kg/h" | "kg/min" | "fixa" | "min";
 
 export const ESCREVER_POR: Record<Por, string> = {
-  kg: "/kg", "kg/h": "/kg/h", "kg/min": "/kg/min", fixa: " (dose fixa)",
+  kg: "/kg", "kg/h": "/kg/h", "kg/min": "/kg/min", fixa: " (dose fixa)", min: "/min",
 };
 
 export type DosePorKg = { min?: number; usual?: number; max?: number; unidade: Unidade; por: Por };
@@ -176,7 +203,8 @@ export function calcularNivel(
 
   // Dose fixa não vê o peso. Multiplicar 4 mg de ondansetrona por 70 kg
   // daria 280 mg, e é o tipo de erro que uma calculadora não pode oferecer.
-  const bruta = dose.por === "fixa" ? dosePorKg : dosePorKg * pesoKg;
+  // A bomba sem peso (UI/min, mcg/min) também não.
+  const bruta = dose.por === "fixa" || dose.por === "min" ? dosePorKg : dosePorKg * pesoKg;
   let doseTotal = bruta;
   let limitada = false;
 
@@ -188,7 +216,7 @@ export function calcularNivel(
     }
   }
 
-  const porHora = dose.por === "kg/min" ? doseTotal * 60 : dose.por === "kg/h" ? doseTotal : undefined;
+  const porHora = dose.por === "kg/min" || dose.por === "min" ? doseTotal * 60 : dose.por === "kg/h" ? doseTotal : undefined;
 
   const base: Calculo = {
     nivel, dosePorKg, unidadeDose: dose.unidade, por: dose.por,
@@ -271,7 +299,8 @@ export const emMeses = (anos?: number, meses?: number): number | undefined => {
 
 export type GrupoId =
   | "inducao" | "opioides" | "bloqueadores" | "reversao" | "analgesia"
-  | "antiemeticos" | "antibioticos" | "locais" | "bic" | "raqui" | "adjuvantes";
+  | "antiemeticos" | "antibioticos" | "locais" | "bic" | "raqui" | "adjuvantes"
+  | "cardiovascular" | "arritmias" | "anticonvulsivantes";
 
 export const GRUPOS: Array<{ id: GrupoId; nome: string; icone: string }> = [
   { id: "inducao", nome: "Indução e hipnóticos", icone: "💉" },
@@ -282,6 +311,9 @@ export const GRUPOS: Array<{ id: GrupoId; nome: string; icone: string }> = [
   { id: "analgesia", nome: "Analgesia", icone: "💊" },
   { id: "adjuvantes", nome: "Adjuvantes e sedação", icone: "🌿" },
   { id: "locais", nome: "Anestésicos locais", icone: "🎯" },
+  { id: "cardiovascular", nome: "Cardiovascular: vasopressores e bombas", icone: "❤️" },
+  { id: "arritmias", nome: "Arritmias e PCR", icone: "💓" },
+  { id: "anticonvulsivantes", nome: "Anticonvulsivantes", icone: "⚡" },
   { id: "raqui", nome: "Raquianestesia pediátrica", icone: "🩺" },
   { id: "antiemeticos", nome: "Antieméticos e profilaxia", icone: "🤢" },
   { id: "antibioticos", nome: "Antibióticos", icone: "🧫" },
@@ -312,6 +344,11 @@ export type Medicamento = {
   regra?: "cefazolina" | "cetorolaco" | "neostigmina";
   /** Sai da lista principal: aparece dentro do cartão de outro. */
   oculto?: boolean;
+  /**
+   * No adulto, o peso da conta (lib/calculos/peso.ts): ideal, ajustado ou
+   * magro no obeso. Sem ele, o peso atual.
+   */
+  pesoBase?: BaseDePeso;
   situacao: SituacaoDose;
   revisao?: string;
 };
@@ -485,6 +522,7 @@ export const CATALOGO: Medicamento[] = [
     populacoes: ["adulto"], via: "IV", indicacao: "Sequência rápida",
     dose: { min: 1.0, max: 1.2, unidade: "mg", por: "kg" }, apresentacoes: [mgml(10)],
     fonte: SAESP("conteúdo adulto"), situacao: "validado", revisao: REVISAO,
+    pesoBase: "ideal",
   },
 
   /* ---------------- Reversão ---------------- */
@@ -640,6 +678,7 @@ export const CATALOGO: Medicamento[] = [
     id: "atracurio-adulto", nome: "Atracúrio", grupo: "bloqueadores", populacoes: ["adulto"], via: "IV",
     dose: { usual: 0.5, unidade: "mg", por: "kg" }, apresentacoes: [mgml(10)],
     fonte: SAESP("conteúdo adulto"), situacao: "validado", revisao: REVISAO,
+    pesoBase: "ideal",
   },
   {
     id: "rocuronio-adulto-tecnica", nome: "Rocurônio — técnica específica", grupo: "bloqueadores",
@@ -649,6 +688,7 @@ export const CATALOGO: Medicamento[] = [
     contextoFonte: "Valor descrito dentro de uma técnica específica",
     situacao: "validado", revisao: REVISAO,
     alerta: "Não substitui a dose padrão geral sem validação do protocolo do serviço.",
+    pesoBase: "ideal",
   },
   {
     id: "propofol-adulto-tecnica", nome: "Propofol — técnica específica", grupo: "inducao",
@@ -658,12 +698,14 @@ export const CATALOGO: Medicamento[] = [
     contextoFonte: "Valor descrito em técnica específica",
     situacao: "validado", revisao: REVISAO,
     alerta: "Não é dose universal de indução do adulto. É o valor descrito dentro de uma técnica específica.",
+    pesoBase: "magro",
   },
   {
     id: "propofol-sedacao-bic", nome: "Propofol — sedação em bomba", grupo: "bic", populacoes: ["adulto"],
     via: "IV, infusão contínua",
     dose: { min: 25, max: 75, unidade: "mcg", por: "kg/min" }, apresentacoes: [mgml(10)],
     fonte: SAESP("conteúdo adulto"), situacao: "validado", revisao: REVISAO,
+    pesoBase: "atual",
   },
   {
     id: "fentanil-sedacao-adulto", nome: "Fentanil — sedação e titulação", grupo: "opioides",
@@ -671,30 +713,35 @@ export const CATALOGO: Medicamento[] = [
     dose: { min: 0.5, max: 1, unidade: "mcg", por: "kg" }, apresentacoes: [mcgml(50)],
     fonte: SAESP("conteúdo adulto"), situacao: "validado", revisao: REVISAO,
     observacao: "Pode ser repetido conforme avaliação clínica.",
+    pesoBase: "magro",
   },
   {
     id: "alfentanil-adulto", nome: "Alfentanil — sedação", grupo: "opioides", populacoes: ["adulto"], via: "IV",
     dose: { min: 5, max: 10, unidade: "mcg", por: "kg" }, apresentacoes: [mcgml(500)],
     fonte: SAESP("conteúdo adulto"), contextoFonte: "No contexto de sedação descrito",
     situacao: "validado", revisao: REVISAO,
+    pesoBase: "magro",
   },
   {
     id: "cetamina-analgesia-bolus", nome: "Cetamina — analgesia multimodal", grupo: "analgesia",
     populacoes: ["adulto"], via: "IV", indicacao: "Analgesia multimodal",
     dose: { min: 0.1, max: 0.2, unidade: "mg", por: "kg" }, apresentacoes: [mgml(50), mgml(10)],
     fonte: SAESP("conteúdo adulto"), situacao: "validado", revisao: REVISAO,
+    pesoBase: "ideal",
   },
   {
     id: "cetamina-analgesia-bic", nome: "Cetamina — analgesia em bomba", grupo: "bic", populacoes: ["adulto"],
     via: "IV, infusão contínua",
     dose: { usual: 0.1, unidade: "mg", por: "kg/h" }, apresentacoes: [mgml(50), mgml(10)],
     fonte: SAESP("conteúdo adulto"), situacao: "validado", revisao: REVISAO,
+    pesoBase: "ideal",
   },
   {
     id: "lidocaina-iv-adulto", nome: "Lidocaína IV — poupadora de opioide", grupo: "analgesia",
     populacoes: ["adulto"], via: "IV", indicacao: "Estratégia poupadora de opioide",
     dose: { min: 1, max: 2, unidade: "mg", por: "kg" }, apresentacoes: [dePercentual(2)!, dePercentual(1)!],
     fonte: SAESP("conteúdo adulto"), situacao: "validado", revisao: REVISAO,
+    pesoBase: "ideal",
   },
   {
     id: "clonidina-adulto", nome: "Clonidina", grupo: "adjuvantes", populacoes: ["adulto"], via: "IV",
@@ -706,6 +753,7 @@ export const CATALOGO: Medicamento[] = [
     via: "IV, infusão contínua",
     dose: { min: 0.3, max: 0.9, unidade: "mcg", por: "kg/h" }, apresentacoes: [mcgml(4, "4 mcg/mL")],
     fonte: SAESP("conteúdo adulto"), situacao: "validado", revisao: REVISAO,
+    pesoBase: "ajustado",
   },
   {
     id: "dipirona-paracetamol-adulto", nome: "Dipirona ou paracetamol", grupo: "analgesia",
@@ -721,6 +769,7 @@ export const CATALOGO: Medicamento[] = [
     indicacao: "Adulto hígido",
     dose: { min: 2, max: 2.5, unidade: "mg", por: "kg" }, apresentacoes: [mgml(10)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    pesoBase: "magro",
   },
   {
     id: "propofol-adulto-reduzido", nome: "Propofol — indução com dose reduzida", grupo: "inducao",
@@ -728,18 +777,21 @@ export const CATALOGO: Medicamento[] = [
     dose: { min: 1, max: 1.5, unidade: "mg", por: "kg" }, apresentacoes: [mgml(10)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
     alerta: "Faixa reduzida por condição do paciente, não por peso. Titular contra a resposta clínica.",
+    pesoBase: "magro",
   },
   {
     id: "etomidato-adulto", nome: "Etomidato", grupo: "inducao", populacoes: ["adulto"], via: "IV",
     dose: { min: 0.2, usual: 0.3, max: 0.6, unidade: "mg", por: "kg" }, apresentacoes: [mgml(2)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
     observacao: "Dose habitual de 0,3 mg/kg dentro da faixa de 0,2 a 0,6 mg/kg.",
+    pesoBase: "magro",
   },
   {
     id: "cetamina-adulto-inducao", nome: "Cetamina — indução", grupo: "inducao", populacoes: ["adulto"], via: "IV",
     dose: { min: 1, max: 2, unidade: "mg", por: "kg" }, apresentacoes: [mgml(50), mgml(10)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
     observacao: "Dose de indução. As doses de analgesia multimodal são muito menores e estão em cartão próprio.",
+    pesoBase: "ideal",
   },
 
   /* ---------------- Adulto — opioides ---------------- */
@@ -747,12 +799,14 @@ export const CATALOGO: Medicamento[] = [
     id: "fentanil-adulto", nome: "Fentanil — indução", grupo: "opioides", populacoes: ["adulto"], via: "IV",
     dose: { min: 2, max: 5, unidade: "mcg", por: "kg" }, apresentacoes: [mcgml(50)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    pesoBase: "magro",
   },
   {
     id: "sufentanil-adulto", nome: "Sufentanil — indução", grupo: "opioides", populacoes: ["adulto"], via: "IV",
     dose: { min: 1, max: 2, unidade: "mcg", por: "kg" }, apresentacoes: [mcgml(5)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO, titulavel: true,
     alerta: "Dose total do procedimento, não um bolus único. Fracionar e titular contra a resposta.",
+    pesoBase: "magro",
   },
 
   /* ---------------- Adulto — bloqueadores ---------------- */
@@ -762,17 +816,20 @@ export const CATALOGO: Medicamento[] = [
     dose: { min: 0.3, usual: 0.6, max: 1.1, unidade: "mg", por: "kg" }, apresentacoes: [mgml(50)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
     observacao: "Dose habitual de 0,6 mg/kg dentro da faixa de 0,3 a 1,1 mg/kg. A dose de sequência rápida é outra e está em cartão próprio.",
+    pesoBase: "atual",
   },
   {
     id: "succinilcolina-adulto-rsi", nome: "Succinilcolina — sequência rápida", grupo: "bloqueadores",
     populacoes: ["adulto"], via: "IV", indicacao: "Sequência rápida",
     dose: { min: 1, max: 1.5, unidade: "mg", por: "kg" }, apresentacoes: [mgml(50)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    pesoBase: "atual",
   },
   {
     id: "cisatracurio-adulto", nome: "Cisatracúrio", grupo: "bloqueadores", populacoes: ["adulto"], via: "IV",
     dose: { min: 0.15, max: 0.2, unidade: "mg", por: "kg" }, apresentacoes: [mgml(2)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    pesoBase: "ideal",
   },
   {
     id: "vecuronio-adulto", nome: "Vecurônio", grupo: "bloqueadores", populacoes: ["adulto"], via: "IV",
@@ -780,11 +837,13 @@ export const CATALOGO: Medicamento[] = [
     apresentacoes: [mgml(2, "4 mg em 2 mL (2 mg/mL)"), mgml(1, "10 mg em 10 mL (1 mg/mL)")],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
     observacao: "Pó liofilizado: a concentração depende do volume de reconstituição. Toque na apresentação para trocar.",
+    pesoBase: "ideal",
   },
   {
     id: "pancuronio-adulto", nome: "Pancurônio", grupo: "bloqueadores", populacoes: ["adulto"], via: "IV",
     dose: { min: 0.06, max: 0.1, unidade: "mg", por: "kg" }, apresentacoes: [mgml(2)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO,
+    pesoBase: "ideal",
   },
 
   /* ---------------- Adulto — reversão ---------------- */
@@ -795,6 +854,7 @@ export const CATALOGO: Medicamento[] = [
     fonte: SERVICO, situacao: "validado", revisao: REVISAO, regra: "neostigmina",
     alerta: "A reversão se guia por monitorização neuromuscular. Peso e idade não escolhem a dose sozinhos — informe a profundidade do bloqueio.",
     observacao: "Máximo absoluto de 5 mg, independente do peso. A atropina de reversão é calculada junto, dentro deste cartão.",
+    pesoBase: "atual",
   },
   {
     id: "atropina-reversao-adulto", nome: "Atropina — associada à neostigmina", grupo: "reversao",
@@ -802,6 +862,7 @@ export const CATALOGO: Medicamento[] = [
     dose: { usual: 0.015, unidade: "mg", por: "kg" }, apresentacoes: [mgml(0.25)],
     fonte: SERVICO, situacao: "validado", revisao: REVISAO, oculto: true,
     observacao: "Calculada junto à neostigmina. Não é um reversor independente.",
+    pesoBase: "atual",
   },
 
   /* ---------------- Adulto — antieméticos e profilaxia ---------------- */
@@ -865,6 +926,413 @@ export const CATALOGO: Medicamento[] = [
     observacao: "200 mg em 24 h por bomba. Alternativa descrita: 50 mg IV a cada 6 horas.",
     alerta: "Não é profilaxia de rotina. Só entra em cobertura de estresse ou corticoterapia crônica.",
   },
+  /* ================================================================ *
+   * Adulto — a lista do serviço (14/10/2026)
+   * ================================================================ */
+
+  /* ---------------- Indução e sedação ---------------- */
+  {
+    id: "midazolam-adulto-inducao", nome: "Midazolam — indução", grupo: "inducao", populacoes: ["adulto"], via: "IV",
+    indicacao: "Indução",
+    dose: { min: 0.1, max: 0.3, unidade: "mg", por: "kg" }, apresentacoes: [mgml(5), mgml(1, "1 mg/mL (5 mg em 5 mL)")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    alerta: "Dose de indução. Para sedação a dose é cinco vezes menor, em cartão próprio.",
+  },
+  {
+    id: "midazolam-adulto-sedacao", nome: "Midazolam — sedação", grupo: "adjuvantes", populacoes: ["adulto"], via: "IV",
+    indicacao: "Sedação",
+    dose: { min: 0.02, max: 0.05, unidade: "mg", por: "kg" }, apresentacoes: [mgml(1, "1 mg/mL (5 mg em 5 mL)"), mgml(5)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal", titulavel: true,
+    observacao: "Titular de 0,5 a 1 mg. Idoso, apneia do sono e associação com opioide pedem menos.",
+  },
+  {
+    id: "dexmedetomidina-ataque-adulto", nome: "Dexmedetomidina — ataque", grupo: "adjuvantes", populacoes: ["adulto"],
+    via: "IV", indicacao: "Dose de ataque",
+    dose: { min: 0.5, max: 1, unidade: "mcg", por: "kg" }, apresentacoes: [mcgml(4, "4 mcg/mL (200 mcg em 50 mL)")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ajustado",
+    observacao: "Infundir em 10 minutos — em bolus dá hipertensão e bradicardia. Pode ser omitido; a manutenção está no cartão da bomba.",
+  },
+
+  /* ---------------- Opioides e analgesia ---------------- */
+  {
+    id: "remifentanil-adulto-bolus", nome: "Remifentanil — bolus", grupo: "opioides", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.5, max: 1, unidade: "mcg", por: "kg" },
+    apresentacoes: [mcgml(50, "2 mg em 40 mL — 50 mcg/mL"), mcgml(20, "1 mg em 50 mL — 20 mcg/mL")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "magro",
+    observacao: "Em 30 a 60 segundos. Rápido demais dá rigidez torácica e bradicardia.",
+  },
+  {
+    id: "remifentanil-adulto-bic", nome: "Remifentanil — bomba", grupo: "bic", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 0.05, max: 0.5, unidade: "mcg", por: "kg/min" },
+    apresentacoes: [mcgml(50, "2 mg em 40 mL — 50 mcg/mL"), mcgml(20, "1 mg em 50 mL — 20 mcg/mL")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "magro",
+    observacao: "Manutenção de 0,05 a 0,5 mcg/kg/min. Até 1 mcg/kg/min só em estímulo intenso e por pouco tempo — 0,5 a 1 mcg/kg é dose de bolus, não de bomba.",
+  },
+  {
+    id: "morfina-adulto", nome: "Morfina", grupo: "opioides", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.05, max: 0.1, unidade: "mg", por: "kg" },
+    apresentacoes: [mgml(1, "1 mg/mL (10 mg em 10 mL)"), mgml(10)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal", titulavel: true,
+    observacao: "Titular de 2 a 3 mg. Idoso, insuficiência renal e apneia do sono pedem menos.",
+  },
+  {
+    id: "metadona-adulto", nome: "Metadona", grupo: "opioides", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.1, max: 0.2, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 20, unidade: "mg" },
+    apresentacoes: [mgml(10)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    observacao: "Dose única intraoperatória, até 20 mg. Meia-vida longa: não repetir sem reavaliar.",
+  },
+  {
+    id: "dipirona-adulto", nome: "Dipirona", grupo: "analgesia", populacoes: ["adulto"], via: "IV",
+    dose: { min: 1, max: 2, unidade: "g", por: "fixa" },
+    apresentacoes: [{ rotulo: "500 mg/mL (1 g em 2 mL)", quantidade: 500, unidade: "mg", mL: 1 }],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Dose fixa no adulto, até 2 g por dose. A conta por quilo passava disso no obeso.",
+  },
+  {
+    id: "paracetamol-adulto", nome: "Paracetamol", grupo: "analgesia", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 1, unidade: "g" },
+    apresentacoes: [mgml(10)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "A partir de 50 kg, 1 g por dose; no máximo 4 g por dia.",
+  },
+
+  /* ---------------- Bloqueadores ---------------- */
+  {
+    id: "rocuronio-adulto-intubacao", nome: "Rocurônio — intubação", grupo: "bloqueadores", populacoes: ["adulto"],
+    via: "IV", indicacao: "Intubação",
+    dose: { usual: 0.6, unidade: "mg", por: "kg" }, apresentacoes: [mgml(10)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    observacao: "A dose de sequência rápida (1 a 1,2 mg/kg) está em cartão próprio.",
+  },
+
+  /* ---------------- Reversão e antagonistas ---------------- */
+  {
+    id: "sugamadex-adulto-moderado", nome: "Sugamadex — bloqueio moderado", grupo: "reversao", populacoes: ["adulto"],
+    via: "IV", indicacao: "TOF com 2 respostas ou mais",
+    dose: { usual: 2, unidade: "mg", por: "kg" }, apresentacoes: [mgml(100)],
+    fonte: BULA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+    alerta: "A dose sai da profundidade do bloqueio, medida com monitorização neuromuscular.",
+  },
+  {
+    id: "sugamadex-adulto-profundo", nome: "Sugamadex — bloqueio profundo", grupo: "reversao", populacoes: ["adulto"],
+    via: "IV", indicacao: "PTC com 1 a 2 respostas",
+    dose: { usual: 4, unidade: "mg", por: "kg" }, apresentacoes: [mgml(100)],
+    fonte: BULA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+    alerta: "A dose sai da profundidade do bloqueio, medida com monitorização neuromuscular.",
+  },
+  {
+    id: "sugamadex-adulto-imediata", nome: "Sugamadex — reversão imediata", grupo: "reversao", populacoes: ["adulto"],
+    via: "IV", indicacao: "Reversão imediata",
+    dose: { usual: 16, unidade: "mg", por: "kg" }, apresentacoes: [mgml(100)],
+    fonte: BULA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+    alerta: "Não é dose de rotina: reversão imediata após 1,2 mg/kg de rocurônio (não intubo, não ventilo).",
+  },
+  {
+    id: "atropina-bradicardia-adulto", nome: "Atropina — bradicardia", grupo: "reversao", populacoes: ["adulto"],
+    via: "IV", indicacao: "Bradicardia",
+    dose: { min: 0.5, max: 1, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(0.25), mgml(0.5)],
+    fonte: AHA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Repetir a cada 3 a 5 minutos, até 3 mg. Com neostigmina a dose é outra, calculada junto dela.",
+  },
+  {
+    id: "flumazenil-adulto", nome: "Flumazenil", grupo: "reversao", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 0.2, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(0.1)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, titulavel: true,
+    observacao: "Repetir 0,1 a 0,2 mg a cada minuto, até 1 mg. Dura menos que o benzodiazepínico: observar a ressedação.",
+  },
+  {
+    id: "naloxona-adulto", nome: "Naloxona", grupo: "reversao", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.04, usual: 0.1, max: 0.2, unidade: "mg", por: "fixa" },
+    apresentacoes: [mgml(0.04, "0,04 mg/mL (0,4 mg em 10 mL)"), mgml(0.4)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, titulavel: true,
+    observacao: "No pós-operatório, titular 0,04 mg a cada 2 minutos: reverter tudo de uma vez traz dor, hipertensão e edema pulmonar.",
+  },
+
+  /* ---------------- Anestésicos locais — dose máxima do adulto ---------------- */
+  {
+    id: "bupivacaina-sem-adulto", nome: "Bupivacaína — sem adrenalina", grupo: "locais", populacoes: ["adulto"],
+    via: "Infiltração e bloqueios", indicacao: "Dose máxima",
+    dose: { max: 2, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 175, unidade: "mg" },
+    apresentacoes: [dePercentual(0.25)!, dePercentual(0.5)!, dePercentual(0.75)!],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    observacao: "É o máximo, não a dose a fazer. Até 175 mg.",
+  },
+  {
+    id: "bupivacaina-com-adulto", nome: "Bupivacaína — com adrenalina", grupo: "locais", populacoes: ["adulto"],
+    via: "Infiltração e bloqueios", indicacao: "Dose máxima",
+    dose: { max: 3, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 225, unidade: "mg" },
+    apresentacoes: [dePercentual(0.25)!, dePercentual(0.5)!],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    observacao: "É o máximo, não a dose a fazer. Até 225 mg.",
+  },
+  {
+    id: "levobupivacaina-adulto", nome: "Levobupivacaína", grupo: "locais", populacoes: ["adulto"],
+    via: "Infiltração e bloqueios", indicacao: "Dose máxima",
+    dose: { max: 3, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 150, unidade: "mg" },
+    apresentacoes: [dePercentual(0.25)!, dePercentual(0.5)!, dePercentual(0.75)!],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    observacao: "É o máximo, não a dose a fazer. Até 150 mg em dose única.",
+  },
+  {
+    id: "lidocaina-sem-adulto", nome: "Lidocaína — sem adrenalina", grupo: "locais", populacoes: ["adulto"],
+    via: "Infiltração e bloqueios", indicacao: "Dose máxima",
+    dose: { max: 5, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 300, unidade: "mg" },
+    apresentacoes: [dePercentual(1)!, dePercentual(2)!],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    observacao: "É o máximo, não a dose a fazer. Até 300 mg.",
+  },
+  {
+    id: "lidocaina-com-adulto", nome: "Lidocaína — com adrenalina", grupo: "locais", populacoes: ["adulto"],
+    via: "Infiltração e bloqueios", indicacao: "Dose máxima",
+    dose: { max: 7, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 500, unidade: "mg" },
+    apresentacoes: [dePercentual(1)!, dePercentual(2)!],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    observacao: "É o máximo, não a dose a fazer. Até 500 mg.",
+  },
+  {
+    id: "ropivacaina-adulto", nome: "Ropivacaína", grupo: "locais", populacoes: ["adulto"],
+    via: "Infiltração e bloqueios", indicacao: "Dose máxima",
+    dose: { max: 3, unidade: "mg", por: "kg" },
+    apresentacoes: [dePercentual(0.2)!, dePercentual(0.5)!, dePercentual(0.75)!, dePercentual(1)!],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ideal",
+    observacao: "É o máximo, não a dose a fazer. Com peso alto, confira o teto absoluto do protocolo do serviço.",
+  },
+
+  /* ---------------- Cardiovascular — bolus ---------------- */
+  {
+    id: "efedrina-adulto", nome: "Efedrina", grupo: "cardiovascular", populacoes: ["adulto"], via: "IV",
+    dose: { min: 5, max: 10, unidade: "mg", por: "fixa" },
+    apresentacoes: [mgml(5, "50 mg (1 ampola) em 10 mL — 5 mg/mL"), mgml(50)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, titulavel: true,
+    observacao: "Repetir conforme a pressão. Perde efeito com doses repetidas (taquifilaxia).",
+  },
+  {
+    id: "fenilefrina-bolus-adulto", nome: "Fenilefrina — bolus", grupo: "cardiovascular", populacoes: ["adulto"], via: "IV",
+    dose: { min: 50, max: 100, unidade: "mcg", por: "fixa" },
+    apresentacoes: [mcgml(100, "10 mg (1 ampola) em 100 mL — 100 mcg/mL")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, titulavel: true,
+    observacao: "Pode baixar a frequência cardíaca (reflexo).",
+  },
+  {
+    id: "metaraminol-adulto", nome: "Metaraminol", grupo: "cardiovascular", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.5, max: 1, unidade: "mg", por: "fixa" },
+    apresentacoes: [mgml(0.5, "10 mg (1 ampola) em 20 mL — 0,5 mg/mL")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, titulavel: true,
+  },
+  {
+    id: "adrenalina-bolus-adulto", nome: "Adrenalina — bolus", grupo: "cardiovascular", populacoes: ["adulto"], via: "IV",
+    indicacao: "Hipotensão grave, anafilaxia",
+    dose: { min: 10, max: 100, unidade: "mcg", por: "fixa" },
+    apresentacoes: [mcgml(10, "1 mg (1 ampola) em 100 mL — 10 mcg/mL")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, titulavel: true,
+    alerta: "Na PCR a dose é 1 mg, no cartão de Arritmias e PCR.",
+  },
+  {
+    id: "vasopressina-bolus-adulto", nome: "Vasopressina — bolus", grupo: "cardiovascular", populacoes: ["adulto"], via: "IV",
+    indicacao: "Hipotensão refratária (vasoplegia, IECA/BRA)",
+    dose: { min: 0.5, max: 1, unidade: "UI", por: "fixa" },
+    apresentacoes: [{ rotulo: "20 UI (1 ampola) em 20 mL — 1 UI/mL", quantidade: 1, unidade: "UI", mL: 1 }],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA, titulavel: true,
+  },
+  {
+    id: "esmolol-ataque-adulto", nome: "Esmolol — ataque", grupo: "cardiovascular", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 500, unidade: "mcg", por: "kg" }, apresentacoes: [mgml(10, "10 mg/mL (100 mg em 10 mL)")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Em 1 minuto. A manutenção está no cartão da bomba.",
+  },
+  {
+    id: "milrinona-ataque-adulto", nome: "Milrinona — ataque", grupo: "cardiovascular", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 50, unidade: "mcg", por: "kg" }, apresentacoes: [mgml(1, "1 mg/mL (20 mg em 20 mL)")],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Em 10 minutos. Costuma ser omitido pela hipotensão.",
+  },
+
+  /* ---------------- Cardiovascular — bombas e diluições ---------------- */
+  {
+    id: "noradrenalina-bic-adulto", nome: "Noradrenalina — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 0.02, max: 0.5, unidade: "mcg", por: "kg/min" },
+    apresentacoes: [
+      mcgml(16, "4 mg (1 ampola) em 250 mL — 16 mcg/mL"),
+      mcgml(32, "8 mg (2 ampolas) em 250 mL — 32 mcg/mL"),
+      mcgml(64, "16 mg (4 ampolas) em 250 mL — 64 mcg/mL"),
+    ],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+    alerta: "A ampola brasileira traz 8 mg de hemitartarato em 4 mL — 4 mg de noradrenalina base (1 mg/mL). As diluições estão em noradrenalina base.",
+    observacao: "Titular pela PAM. Acesso central quando a dose sobe ou a infusão se prolonga.",
+  },
+  {
+    id: "adrenalina-bic-adulto", nome: "Adrenalina — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 0.01, max: 0.5, unidade: "mcg", por: "kg/min" },
+    apresentacoes: [mcgml(4, "1 mg (1 ampola) em 250 mL — 4 mcg/mL"), mcgml(16, "4 mg (4 ampolas) em 250 mL — 16 mcg/mL")],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+    observacao: "Titular pelo efeito. Ampola de 1 mg/mL.",
+  },
+  {
+    id: "vasopressina-bic-adulto", nome: "Vasopressina — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 0.01, max: 0.04, unidade: "UI", por: "min" },
+    apresentacoes: [{ rotulo: "20 UI (1 ampola) em 100 mL — 0,2 UI/mL", quantidade: 0.2, unidade: "UI", mL: 1 }],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Dose fixa por minuto, sem peso. 0,03 UI/min é a dose usual no choque vasoplégico.",
+  },
+  {
+    id: "dobutamina-bic-adulto", nome: "Dobutamina — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 2.5, max: 20, unidade: "mcg", por: "kg/min" },
+    apresentacoes: [
+      mcgml(1000, "250 mg (1 ampola) em 250 mL — 1.000 mcg/mL"),
+      mcgml(2000, "500 mg (2 ampolas) em 250 mL — 2.000 mcg/mL"),
+    ],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+    observacao: "Ampola de 250 mg em 20 mL (12,5 mg/mL).",
+  },
+  {
+    id: "milrinona-bic-adulto", nome: "Milrinona — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 0.375, max: 0.75, unidade: "mcg", por: "kg/min" },
+    apresentacoes: [mcgml(200, "20 mg (1 ampola) em 100 mL — 200 mcg/mL")],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+    observacao: "Reduzir na insuficiência renal.",
+  },
+  {
+    id: "nitroprussiato-bic-adulto", nome: "Nitroprussiato — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 0.3, max: 2, unidade: "mcg", por: "kg/min" },
+    apresentacoes: [mcgml(200, "50 mg (1 ampola) em 250 mL de SG 5% — 200 mcg/mL")],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+    alerta: "Proteger da luz. Acima de 2 mcg/kg/min, ou por muitas horas, risco de intoxicação por cianeto; até 10 mcg/kg/min só por no máximo 10 minutos.",
+  },
+  {
+    id: "nitroglicerina-bic-adulto", nome: "Nitroglicerina — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 5, max: 200, unidade: "mcg", por: "min" },
+    apresentacoes: [
+      mcgml(200, "50 mg (ampola de 5 mg/mL, 10 mL) em 250 mL — 200 mcg/mL"),
+      mcgml(100, "25 mg em 250 mL — 100 mcg/mL"),
+    ],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Dose por minuto, sem peso. Começar com 5 a 10 mcg/min e subir de 5 em 5. Frasco de vidro e equipo próprio (o PVC adsorve).",
+  },
+  {
+    id: "fenilefrina-bic-adulto", nome: "Fenilefrina — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 10, max: 100, unidade: "mcg", por: "min" },
+    apresentacoes: [mcgml(40, "10 mg (1 ampola) em 250 mL — 40 mcg/mL"), mcgml(100, "10 mg (1 ampola) em 100 mL — 100 mcg/mL")],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Dose por minuto, sem peso. Titular pela PAM.",
+  },
+  {
+    id: "esmolol-bic-adulto", nome: "Esmolol — bomba", grupo: "cardiovascular", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 50, max: 300, unidade: "mcg", por: "kg/min" },
+    apresentacoes: [mgml(10, "10 mg/mL (frasco pronto, ou 2,5 g em 250 mL)")],
+    fonte: DILUICAO, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "atual",
+  },
+
+  /* ---------------- Arritmias e PCR ---------------- */
+  {
+    id: "adrenalina-pcr-adulto", nome: "Adrenalina — PCR", grupo: "arritmias", populacoes: ["adulto"], via: "IV",
+    indicacao: "Parada cardiorrespiratória",
+    dose: { usual: 1, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(1)],
+    fonte: AHA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "A cada 3 a 5 minutos, seguida de 20 mL de SF.",
+  },
+  {
+    id: "amiodarona-pcr-adulto", nome: "Amiodarona — PCR", grupo: "arritmias", populacoes: ["adulto"], via: "IV",
+    indicacao: "FV ou TV sem pulso",
+    dose: { usual: 300, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(50)],
+    fonte: AHA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Em bolus. Segunda dose: 150 mg.",
+  },
+  {
+    id: "amiodarona-pulso-adulto", nome: "Amiodarona — arritmia com pulso", grupo: "arritmias", populacoes: ["adulto"],
+    via: "IV", indicacao: "FA ou TV com pulso",
+    dose: { usual: 150, unidade: "mg", por: "fixa" },
+    apresentacoes: [mgml(1.5, "150 mg em 100 mL de SG 5% — 1,5 mg/mL"), mgml(50)],
+    fonte: AHA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Em 10 minutos, diluída. Depois, a manutenção em bomba.",
+  },
+  {
+    id: "amiodarona-bic-adulto", nome: "Amiodarona — manutenção", grupo: "arritmias", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 0.5, max: 1, unidade: "mg", por: "min" },
+    apresentacoes: [mgml(1.8, "900 mg em 500 mL de SG 5% — 1,8 mg/mL")],
+    fonte: AHA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "1 mg/min por 6 horas, depois 0,5 mg/min por 18 horas. Só em SG 5%.",
+  },
+  {
+    id: "adenosina-adulto", nome: "Adenosina", grupo: "arritmias", populacoes: ["adulto"], via: "IV",
+    indicacao: "Taquicardia supraventricular",
+    dose: { min: 6, max: 12, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(3)],
+    fonte: AHA, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Bolus rápido em veia calibrosa, seguido de 20 mL de SF. 6 mg; sem reversão, 12 mg.",
+  },
+
+  /* ---------------- Anticonvulsivantes ---------------- */
+  {
+    id: "diazepam-crise-adulto", nome: "Diazepam — crise convulsiva", grupo: "anticonvulsivantes", populacoes: ["adulto"],
+    via: "IV",
+    dose: { min: 0.15, max: 0.2, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 10, unidade: "mg" },
+    apresentacoes: [mgml(5)],
+    fonte: AES, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Até 10 mg por dose; pode repetir uma vez. Não diluir em soro.",
+  },
+  {
+    id: "midazolam-crise-adulto", nome: "Midazolam — crise convulsiva", grupo: "anticonvulsivantes", populacoes: ["adulto"],
+    via: "IM",
+    dose: { usual: 10, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(5)],
+    fonte: AES, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Sem acesso venoso. 10 mg acima de 40 kg; 5 mg entre 13 e 40 kg. Lorazepam IV, da lista, não tem apresentação injetável no Brasil.",
+  },
+  {
+    id: "fenitoina-adulto", nome: "Fenitoína — ataque", grupo: "anticonvulsivantes", populacoes: ["adulto"], via: "IV",
+    dose: { min: 15, max: 20, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 1500, unidade: "mg" },
+    apresentacoes: [mgml(50)],
+    fonte: AES, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ajustado",
+    alerta: "No máximo 50 mg/min, só em SF (precipita em SG). Monitorar ECG e pressão.",
+  },
+  {
+    id: "fenobarbital-adulto", nome: "Fenobarbital — ataque", grupo: "anticonvulsivantes", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 15, unidade: "mg", por: "kg" }, apresentacoes: [mgml(100, "100 mg/mL (200 mg em 2 mL)")],
+    fonte: AES, situacao: "validado", revisao: REVISAO_LISTA, pesoBase: "ajustado",
+    observacao: "De 50 a 100 mg/min. Depressão respiratória e hipotensão, principalmente depois de benzodiazepínico.",
+  },
+  {
+    id: "levetiracetam-adulto", nome: "Levetiracetam — ataque", grupo: "anticonvulsivantes", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 60, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 4500, unidade: "mg" },
+    apresentacoes: [mgml(100, "100 mg/mL (500 mg em 5 mL)")],
+    fonte: AES, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Até 4.500 mg, em 10 a 15 minutos.",
+  },
+
+  /* ---------------- Antieméticos ---------------- */
+  {
+    id: "bromoprida-adulto", nome: "Bromoprida", grupo: "antiemeticos", populacoes: ["adulto"], via: "IV",
+    dose: { min: 10, max: 20, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(5)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA,
+  },
+  {
+    id: "dimenidrinato-adulto", nome: "Dimenidrinato", grupo: "antiemeticos", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 1, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 50, unidade: "mg" },
+    apresentacoes: [mgml(3, "3 mg/mL (30 mg em 10 mL, com piridoxina)")],
+    fonte: NVPO, situacao: "validado", revisao: REVISAO_LISTA,
+  },
+  {
+    id: "droperidol-adulto", nome: "Droperidol", grupo: "antiemeticos", populacoes: ["adulto"], via: "IV",
+    dose: { min: 0.625, max: 1.25, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(2.5)],
+    fonte: NVPO, situacao: "validado", revisao: REVISAO_LISTA,
+    observacao: "Pode prolongar o QT.",
+  },
+  {
+    id: "metoclopramida-adulto", nome: "Metoclopramida", grupo: "antiemeticos", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 10, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(5)],
+    fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA,
+  },
+
 ];
 
 /* ------------------------------------------------------------------ *

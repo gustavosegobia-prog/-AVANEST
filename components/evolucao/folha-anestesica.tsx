@@ -148,7 +148,11 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
   const idadeDias = idadeEmDias(paciente.data_nascimento);
   // Para a dose sugerida: faixa etária e peso (lib/evolucao/sugestoes.ts).
   const idadeMeses = idadeEmMesesDaFicha(idadeDias, paciente.idade_anos);
-  const pacienteDaDose: PacienteDaFicha = { idadeMeses, pesoKg };
+  // Altura (da avaliação) e sexo (do cadastro): no obeso, os fármacos que vão
+  // pelo peso ideal, ajustado ou magro saem por ele (lib/calculos/peso.ts).
+  const pacienteDaDose: PacienteDaFicha = {
+    idadeMeses, pesoKg, alturaCm: typeof dados.altura_cm === "number" ? dados.altura_cm : null, sexo: paciente.sexo ?? null,
+  };
   // Fim da anestesia, ou a saída da sala quando o fim não foi marcado.
   const fimAnestesia = fimDaAnestesia(atuais);
   const fimMs = !aberta ? Date.parse(fimAnestesia ?? folha.encerrada_em ?? folha.created_at) : fimAnestesia ? Date.parse(fimAnestesia) : null;

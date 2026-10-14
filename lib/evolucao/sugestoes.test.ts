@@ -109,6 +109,51 @@ test("bomba: a faixa da tabela e, com peso e concentração, a mesma faixa em mL
   const sem = sugerirVelocidades("Remifentanil", { idadeMeses: 60, pesoKg: 20 }, null);
   assert.equal(sem.cartoes[0].opcoes[0].mlPorHora, null);
   assert.match(sem.aviso!, /concentração/);
-  // Noradrenalina não está na tabela: nada é inventado.
-  assert.equal(sugerirVelocidades("Noradrenalina", adulto, null).cartoes.length, 0);
+  // Noradrenalina, 70 kg, 4 mg em 250 mL (16 mcg/mL): 0,02 × 70 × 60 ÷ 16 = 5,3 mL/h; 0,5 → 131,3 mL/h.
+  const nora = sugerirVelocidades("Noradrenalina", adulto, { valor: 16, unidade: "mcg/mL" });
+  assert.deepEqual(nora.cartoes[0].opcoes.map((o) => o.mlPorHora), [5.3, 131.3]);
+  assert.deepEqual(nora.cartoes[0].diluicoes.map((d) => [d.valor, d.unidade]), [[16, "mcg/mL"], [32, "mcg/mL"], [64, "mcg/mL"]]);
+  assert.match(nora.cartoes[0].observacao!, /hemitartarato/);
+});
+
+test("bomba por minuto sem peso: vasopressina em UI/min, nitroglicerina em mcg/min", async () => {
+  const { sugerirVelocidades } = await import("./sugestoes.ts");
+  // 20 UI em 100 mL (0,2 UI/mL): 0,03 UI/min × 60 ÷ 0,2 = 9 mL/h — sem peso nenhum.
+  const vaso = sugerirVelocidades("Vasopressina", { idadeMeses: 600, pesoKg: null }, { valor: 0.2, unidade: "UI/mL" });
+  assert.deepEqual(vaso.cartoes[0].opcoes.map((o) => [o.valor, o.unidade, o.mlPorHora]), [[0.01, "UI/min", 3], [0.04, "UI/min", 12]]);
+  const ntg = sugerirVelocidades("Nitroglicerina", { idadeMeses: 600, pesoKg: null }, { valor: 200, unidade: "mcg/mL" });
+  assert.deepEqual(ntg.cartoes[0].opcoes.map((o) => o.mlPorHora), [1.5, 60]);
+});
+
+test("obeso: o fármaco do peso magro sai multiplicado por ele, em mcg/min", async () => {
+  const { sugerirVelocidades } = await import("./sugestoes.ts");
+  const { pesoMagro } = await import("../calculos/peso.ts");
+  // Homem, 170 cm, 130 kg (IMC 45): peso magro de Janmahasatian 73,5 kg.
+  const obeso = { idadeMeses: 480, pesoKg: 130, alturaCm: 170, sexo: "Masculino" };
+  const magro = pesoMagro({ pesoKg: 130, alturaCm: 170, sexo: "Masculino", idadeAnos: 40 })!;
+  assert.equal(magro, 73.5);
+  const remi = sugerirVelocidades("Remifentanil", obeso, { valor: 50, unidade: "mcg/mL" });
+  const c = remi.cartoes.find((x) => /bomba/.test(x.titulo))!;
+  assert.match(c.base, /peso magro 73,5 kg/);
+  // 0,05 × 73,5 = 3,68 mcg/min (pelo peso da balança seriam 6,5); × 60 ÷ 50 = 4,4 mL/h.
+  assert.deepEqual(c.opcoes.map((o) => [o.unidade, o.mlPorHora]), [["mcg/min", 4.4], ["mcg/min", 44.1]]);
+  assert.ok(Math.abs(c.opcoes[0].valor - 0.05 * magro) < 0.01);
+  // A noradrenalina vai pelo peso atual: continua em mcg/kg/min.
+  const nora = sugerirVelocidades("Noradrenalina", obeso, null);
+  assert.equal(nora.cartoes[0].opcoes[0].unidade, "mcg/kg/min");
+});
+
+test("obeso: o rocurônio da ficha sai pelo peso ideal, e a succinilcolina pelo atual", async () => {
+  const { sugerirDoses } = await import("./sugestoes.ts");
+  const obeso = { idadeMeses: 480, pesoKg: 130, alturaCm: 170, sexo: "Masculino" };
+  const roc = sugerirDoses("Rocurônio", obeso, { unidade: "mg", via: "EV" });
+  const intub = roc.cartoes.find((c) => c.titulo === "Rocurônio — intubação")!;
+  // Peso ideal (Devine) 65,9 kg × 0,6 = 39,5 mg — e não 78 mg pelo peso da balança.
+  assert.match(intub.base, /peso ideal 65,9 kg/);
+  assert.deepEqual(intub.doses.map((d) => d.dose), [39.5]);
+  const sux = sugerirDoses("Succinilcolina", obeso, { unidade: "mg", via: "EV" });
+  assert.ok(sux.cartoes.every((c) => !/peso ideal|peso magro/.test(c.base)));
+  // Sem altura: a conta usa o peso atual e diz por quê.
+  const semAltura = sugerirDoses("Rocurônio", { idadeMeses: 480, pesoKg: 130 }, { unidade: "mg", via: "EV" });
+  assert.match(semAltura.cartoes.find((c) => c.titulo === "Rocurônio — intubação")!.observacao!, /Sem altura e sexo/);
 });

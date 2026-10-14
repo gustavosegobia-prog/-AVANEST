@@ -9,7 +9,7 @@ import { minutosEntre, num, type Registro } from "./registros.ts";
 import { concentracaoNaUnidade, converterMassa, type UnidadeDeConcentracao } from "./medicamentos.ts";
 
 export type UnidadeDeVelocidade =
-  | "mL/h" | "mcg/kg/min" | "mcg/kg/h" | "mg/kg/h" | "mcg/min" | "mg/h" | "UI/h" | "UI/min";
+  | "mL/h" | "mcg/kg/min" | "mcg/kg/h" | "mg/kg/h" | "mcg/min" | "mcg/h" | "mg/min" | "mg/h" | "UI/h" | "UI/min";
 
 export type Infusao = {
   id: string;

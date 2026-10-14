@@ -37,6 +37,7 @@ import {
   type Medicamento,
   type Unidade
 } from "@/lib/calculos/doses";
+import { pesoAjustado, pesoDaDose, pesoIdeal, pesoMagro, ROTULO_BASE, type Antropometria } from "@/lib/calculos/peso";
 
 /**
  * Calculadora de doses. O caminho inteiro é idade, peso, calcular.
@@ -94,6 +95,14 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
   const meses = emMeses(numero(dados.idade ?? ""), numero(dados.idadeMeses ?? ""));
   const peso = numero(dados.peso ?? "");
   const populacao = faixaEtaria(meses);
+  // Altura e sexo: o peso ideal, o ajustado e o magro, para os fármacos que
+  // no obeso vão por eles (lib/calculos/peso.ts — a mesma conta da avaliação).
+  const corpo: Antropometria = {
+    pesoKg: peso, alturaCm: numero(dados.altura ?? ""), sexo: dados.sexo ?? null,
+    idadeAnos: meses !== undefined ? meses / 12 : null,
+  };
+  const pesos = populacao === "adulto"
+    ? { ideal: pesoIdeal(corpo), ajustado: pesoAjustado(corpo), magro: pesoMagro(corpo) } : null;
   const pronto = populacao !== undefined && peso !== undefined && peso > 0;
 
   const lista = useMemo(
@@ -105,7 +114,7 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
   const apresentacaoDe = (m: Medicamento) => m.apresentacoes[apresentacaoEscolhida[m.id] ?? 0];
 
   const cartao = (m: Medicamento) => (
-    <Cartao key={m.id} m={m} peso={peso!} idadeAnos={meses !== undefined ? meses / 12 : undefined}
+    <Cartao key={m.id} m={m} peso={peso!} corpo={corpo} idadeAnos={meses !== undefined ? meses / 12 : undefined}
       apresentacao={apresentacaoDe(m)}
       aoTrocarApresentacao={(i) => setApresentacaoEscolhida((v) => ({ ...v, [m.id]: i }))}
       favorito={favoritos.includes(m.id)} aoFavoritar={() => alternarFavorito(m.id)} />
@@ -125,7 +134,24 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
           <Campo chave="idade" rotulo="Idade (anos)" valor={dados.idade ?? ""} aoMudar={set} />
           <Campo chave="idadeMeses" rotulo="Meses" valor={dados.idadeMeses ?? ""} aoMudar={set} />
           <Campo chave="peso" rotulo="Peso (kg)" passo="0.1" valor={dados.peso ?? ""} aoMudar={set} />
+          <Campo chave="altura" rotulo="Altura (cm)" valor={dados.altura ?? ""} aoMudar={set} />
+          <label className={estilos.campo}>
+            <span>Sexo</span>
+            <select className={estilos.seletor} value={dados.sexo ?? ""} onChange={(e) => set("sexo", e.target.value)}>
+              <option value="">—</option>
+              <option value="Feminino">Feminino</option>
+              <option value="Masculino">Masculino</option>
+            </select>
+          </label>
         </div>
+        {pesos && (pesos.ideal !== null ? (
+          <p className={estilos.dica}>
+            Peso ideal {virgula(pesos.ideal)} kg · ajustado {virgula(pesos.ajustado ?? pesos.ideal)} kg
+            {pesos.magro !== null ? ` · magro ${virgula(pesos.magro)} kg` : ""}. No obeso, cada fármaco usa o peso que o cartão indica.
+          </p>
+        ) : (
+          <p className={estilos.dica}>Com altura e sexo, os fármacos que no obeso vão pelo peso ideal, ajustado ou magro saem por ele.</p>
+        ))}
         <div className={estilos.acoes}>
           <button type="button" className={estilos.primario} disabled={!pronto}
             onClick={() => setCalculado(true)}>Calcular doses</button>
@@ -197,14 +223,17 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
  * antes de a recuperação ser confirmada.
  */
 function Cartao({
-  m, peso, idadeAnos, apresentacao, aoTrocarApresentacao, favorito, aoFavoritar,
+  m, peso: pesoAtual, corpo, idadeAnos, apresentacao, aoTrocarApresentacao, favorito, aoFavoritar,
 }: {
-  m: Medicamento; peso: number; idadeAnos?: number;
+  m: Medicamento; peso: number; corpo: Antropometria; idadeAnos?: number;
   apresentacao?: Apresentacao; aoTrocarApresentacao: (i: number) => void;
   favorito: boolean; aoFavoritar: () => void;
 }) {
   const [renal, setRenal] = useState(false);
   const [recuperado, setRecuperado] = useState(false);
+  // O peso deste fármaco: o atual, ou o ideal/ajustado/magro no obeso.
+  const pesoDoCartao = pesoDaDose(m.pesoBase, { ...corpo, pesoKg: pesoAtual });
+  const peso = pesoDoCartao.kg ?? pesoAtual;
 
   // A regra escolhe qual dose entra no motor; a conta continua sendo a mesma.
   let dose: DosePorKg = m.dose!;
@@ -252,6 +281,10 @@ function Cartao({
         </>
       )}
 
+      {pesoDoCartao.base !== "atual" && (
+        <p className={estilos.veredito}>Calculado pelo {ROTULO_BASE[pesoDoCartao.base]}: {virgula(peso)} kg.</p>
+      )}
+      {pesoDoCartao.aviso && <p className={estilos.aviso}>{pesoDoCartao.aviso}</p>}
       {motivo && <p className={estilos.veredito}>{motivo}</p>}
       {m.titulavel && <p className={estilos.aviso}>{AVISO_TITULAVEL}</p>}
 
@@ -288,7 +321,7 @@ function Cartao({
 }
 
 function Dose({ c, unico }: { c: Calculo; unico: boolean }) {
-  const periodo = c.por === "kg/min" ? "/min" : c.por === "kg/h" ? "/h" : "";
+  const periodo = c.por === "kg/min" || c.por === "min" ? "/min" : c.por === "kg/h" ? "/h" : "";
   return (
     <div className={c.limitada ? `${estilos.dose} ${estilos.blocoAtencao}` : estilos.dose}>
       {!unico && <small className={estilos.doseNivel}>{ROTULO_NIVEL[c.nivel]}</small>}
@@ -297,8 +330,8 @@ function Dose({ c, unico }: { c: Calculo; unico: boolean }) {
         : <b className={estilos.volume}>{virgula(c.doseTotal)} {c.unidadeDose}{periodo}</b>}
       <small>
         {virgula(c.doseTotal)} {c.unidadeDose}{periodo}
-        {c.dosePorHora !== undefined && c.por === "kg/min" ? ` · ${virgula(c.dosePorHora)} ${c.unidadeDose}/h` : ""}
-        {" · "}{virgula(c.dosePorKg)} {c.unidadeDose}{ESCREVER_POR[c.por]}
+        {c.dosePorHora !== undefined && (c.por === "kg/min" || c.por === "min") ? ` · ${virgula(c.dosePorHora)} ${c.unidadeDose}/h` : ""}
+        {c.por !== "min" && <>{" · "}{virgula(c.dosePorKg)} {c.unidadeDose}{ESCREVER_POR[c.por]}</>}
       </small>
       {c.limitada && (
         <small className={estilos.limitada}>
