@@ -183,12 +183,13 @@ const LISTA: Referencia[] = [
   /* ---------------- Bibliografia geral do módulo ---------------- */
   {
     id: "manual-de-crises",
-    titulo: "Manual de Crises em Anestesia (The Anaesthetic Crisis Manual)",
-    autoria: "Borshoff DC",
-    publicacao: "Edição internacional V2, versão brasileira produzida pela SAESP",
-    ano: null,
+    titulo: "O manual de crises em anestesia (The Anaesthetic Crisis Manual)",
+    autoria: "Borshoff DC; revisão da tradução: Vane MF",
+    publicacao: "1ª ed. Rio de Janeiro: Atheneu; 2022. 78 p. Produzido pela SAESP com a Leeuwin Press. ISBN 978-65-5586-360-4",
+    ano: 2022, edicao: "edição internacional v. 2",
+    link: "https://cdnv2.moovin.com.br/atheneu/imagens/files/manuais/1243_o-manual-de-crises-em-anestesia.pdf",
     localizacao: null, conferida: false,
-    observacao: "Inspiração para a organização da consulta rápida; o conteúdo do AVANEST é próprio e não reproduz os algoritmos do manual. Ano e páginas a preencher pelo revisor.",
+    observacao: "Dados da edição conferidos na amostra da editora (créditos e índice): anafilaxia é o protocolo 06 e laringoespasmo, o 12. O conteúdo desses protocolos ainda não foi lido. Inspira a organização da consulta rápida; o texto do AVANEST é próprio e não reproduz os algoritmos do manual, que é protegido por direito autoral.",
   },
   {
     id: "saesp-tratado",
