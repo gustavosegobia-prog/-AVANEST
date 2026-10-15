@@ -9,9 +9,12 @@ const painel = ler("app/dashboard/dashboard-client.tsx");
 const recepcao = ler("components/recepcao.tsx");
 const form = ler("app/avaliacoes/[id]/assessment-form.tsx");
 
-test("entrada: Área médica, local e data, Nova avaliação e as quatro seções", () => {
+test("entrada: Área médica, local e data, Nova avaliação e as três seções", () => {
   assert.match(tela, /<h1>Área médica<\/h1>/);
-  assert.match(tela, /\["agenda", "Agenda do dia"[\s\S]*\["avaliacoes", "Avaliações"[\s\S]*\["pendencias", "Pendências"[\s\S]*\["documentos", "Documentos"/);
+  assert.match(tela, /\["agenda", "Agenda do dia"[\s\S]*\["avaliacoes", "Avaliações"[\s\S]*\["pendencias", "Pendências"/);
+  // Documentos saem de cada avaliação concluída ("Ver documentos"): sem seção repetida no menu.
+  assert.doesNotMatch(tela, /\["documentos", "Documentos"/);
+  assert.match(tela, /Ver documentos/);
   assert.doesNotMatch(painel, /Consultas pré-anestésicas agendadas/);
   assert.doesNotMatch(painel, /Documentos mais recentes/, "o atalho desabilitado sem explicação voltou");
 });

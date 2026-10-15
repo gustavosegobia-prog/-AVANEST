@@ -228,16 +228,6 @@ export const INFORMACOES_INDISPONIVEIS = [
   { titulo: "Assinatura", texto: "A assinatura é feita no papel impresso; o sistema não registra documento assinado." },
 ];
 
-// ── Documentos ─────────────────────────────────────────────────────────────
-
-/** Os documentos que uma avaliação concluída gera (ver documentos/print-documents.tsx). */
-export const TIPOS_DE_DOCUMENTO = [
-  ["assessment", "Avaliação pré-anestésica"],
-  ["consent", "Termo de consentimento"],
-  ["guidance", "Orientações ao paciente"],
-] as const;
-export type TipoDeDocumento = (typeof TIPOS_DE_DOCUMENTO)[number][0];
-
 // ── Identificação ──────────────────────────────────────────────────────────
 
 /** "***.456.789-**" — o suficiente para distinguir homônimos sem expor o CPF inteiro. */

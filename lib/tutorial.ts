@@ -141,8 +141,8 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
     etapas.push({
       area: "medico",
       alvo: '[data-secao="pendencias"]',
-      titulo: "Pendências, avaliações e documentos",
-      texto: "Na coluna ao lado: Pendências mostra só o que os registros comprovam — avaliação começada e não concluída, paciente que chegou sem avaliação —, separado dos lembretes gerais. Avaliações guarda tudo o que já foi feito, com busca, e Documentos reúne o que as avaliações concluídas geraram.",
+      titulo: "Pendências e avaliações",
+      texto: "Na coluna ao lado: Pendências mostra só o que os registros comprovam — avaliação começada e não concluída, paciente que chegou sem avaliação —, separado dos lembretes gerais. Avaliações guarda tudo o que já foi feito, com busca; nas concluídas, \"Ver documentos\" abre a ficha, o termo e as orientações para imprimir.",
     });
     etapas.push({
       area: "medico",

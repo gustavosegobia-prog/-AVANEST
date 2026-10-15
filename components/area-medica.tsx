@@ -9,13 +9,14 @@ import { dataLocal } from "@/lib/data-local";
 import {
   andamentoPelasAvaliacoes, avaliacaoNoEscopo, consultaNoEscopo, cpfMascarado, destaqueDoDia, etapaMedica, semMedico,
   INFORMACOES_INDISPONIVEIS, intervaloDoPeriodo, LEMBRETES_GERAIS, momentoRelativo, ORIGEM_DOS_LEMBRETES, paraRetomar,
-  pendenciasVerificadas, resumoDoDia, TIPOS_DE_DOCUMENTO,
+  pendenciasVerificadas, resumoDoDia,
   type AvaliacaoResumo, type Escopo, type Periodo, type Pendencia,
 } from "@/lib/area-medica";
 import { dataPorExtenso, horaCurta, NOME_DA_ETAPA, proximaDataComConsultas, FORA_DO_FLUXO, type Etapa } from "@/lib/recepcao";
 import { AvisoFlutuante } from "@/components/aviso-flutuante";
 
-// A área médica: o dia, as avaliações, as pendências e os documentos.
+// A área médica: o dia, as avaliações e as pendências. Os documentos saem de
+// cada avaliação concluída ("Ver documentos"), sem seção própria.
 //
 // Quem abre precisa saber, sem procurar: quem é o próximo, quem está
 // esperando, o que ficou pela metade e o que exige revisão. Por isso "Agenda do dia"
@@ -34,7 +35,7 @@ export type ConsultaDaAreaMedica = {
   medico_id?: string | null; status_at?: string | null; status_by?: string | null;
 };
 
-type Secao = "agenda" | "avaliacoes" | "pendencias" | "documentos";
+type Secao = "agenda" | "avaliacoes" | "pendencias";
 type FiltroDoDia = "todas" | Etapa;
 
 const ICONE_DA_ETAPA: Partial<Record<Etapa, Parameters<typeof Icone>[0]["nome"]>> = {
@@ -192,13 +193,12 @@ export function AreaMedica({
   const irParaSecao = (id: Secao, rotulo: string) => { setSecao(id); setAnuncio(`Seção ${rotulo}`); };
   // O mesmo desenho dos menus do Financeiro, da Escala e da Administração.
   const ICONE_DA_SECAO: Record<Secao, NomeDoIcone> = {
-    agenda: "calendario", avaliacoes: "nota", pendencias: "alerta", documentos: "imprimir",
+    agenda: "calendario", avaliacoes: "nota", pendencias: "alerta",
   };
   const secoes: [Secao, string, number | null][] = [
     ["agenda", "Agenda do dia", resumo.agendados + resumo.aguardando + resumo.emAtendimento || null],
     ["avaliacoes", "Avaliações", retomar.length || null],
     ["pendencias", "Pendências", pendencias.length || null],
-    ["documentos", "Documentos", null],
   ];
 
   return (
@@ -511,10 +511,6 @@ export function AreaMedica({
             </>
           )}
 
-          {secao === "documentos" && (
-            <Documentos avaliacoes={avaliacoesNoEscopo} pacientePorId={pacientePorId} identificacao={identificacao}
-              localPorId={localPorId} quem={quem} quando={quando} haAlguma={avaliacoes.length > 0} />
-          )}
         </div>
       </div>
     </div>
@@ -659,76 +655,6 @@ function Avaliacoes({
           </div>
         ))}
       {lista.length > 50 && <div className="historyLimit">Mostrando as 50 mais recentes de {lista.length}. Refine os filtros para ver uma lista menor.</div>}
-    </section>
-  );
-}
-
-// ── Documentos ─────────────────────────────────────────────────────────────
-
-function Documentos({
-  avaliacoes, pacientePorId, identificacao, localPorId, quem, quando, haAlguma,
-}: {
-  avaliacoes: AvaliacaoDaAreaMedica[]; pacientePorId: Map<string, PacienteDaAreaMedica>; identificacao: (id: string) => string;
-  localPorId: Map<string, string>; quem: (id: string | null | undefined) => string | null; quando: (iso: string) => string;
-  haAlguma: boolean;
-}) {
-  const [q, setQ] = useState("");
-  const [de, setDe] = useState("");
-  const [ate, setAte] = useState("");
-  const termo = q.trim().toLowerCase();
-  const concluidas = avaliacoes.filter((a) => a.status === "concluida");
-  const rascunhos = avaliacoes.filter((a) => a.status === "rascunho").length;
-  const lista = concluidas.filter((a) => {
-    const p = pacientePorId.get(a.patient_id);
-    const dia = dataLocal(new Date(a.concluida_at || a.updated_at));
-    const digitos = termo.replace(/\D/g, "");
-    return (!termo || (p?.nome ?? "").toLowerCase().includes(termo) || (digitos.length >= 3 && String(p?.cpf ?? "").includes(digitos)))
-      && (!de || dia >= de) && (!ate || dia <= ate);
-  }).sort((a, b) => (b.concluida_at || b.updated_at).localeCompare(a.concluida_at || a.updated_at));
-  // Os três documentos saem juntos da conclusão, e a página deles troca entre
-  // um e outro. Escolher o tipo ANTES, num filtro solto no alto da lista, era
-  // uma coisa a mais para lembrar — e o selo "Gerado" em toda linha não
-  // diferenciava nada.
-  const osTres = TIPOS_DE_DOCUMENTO.map(([, r]) => r).join(", ").replace(/, ([^,]*)$/, " e $1");
-
-  return (
-    <section className="clinicalPanel medDocumentos">
-      <div className="panelTitle"><strong>Documentos</strong><span>gerados a partir de avaliações concluídas</span></div>
-      <p className="medRecorte">
-        Os documentos existem a partir da conclusão da avaliação e são impressos a partir dela. O sistema registra que foram
-        <b> gerados</b>; envio, leitura e assinatura não são registrados.
-        {rascunhos > 0 && ` ${rascunhos === 1 ? "1 avaliação em andamento ainda não gerou" : `${rascunhos} avaliações em andamento ainda não geraram`} documentos.`}
-      </p>
-      <div className="historyFilters medDocFiltros">
-        <label className="historyBusca">Paciente<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome ou CPF" /></label>
-        <label>De<input type="date" value={de} onChange={(e) => setDe(e.target.value)} /></label>
-        <label>Até<input type="date" value={ate} onChange={(e) => setAte(e.target.value)} /></label>
-      </div>
-      {lista.slice(0, 50).map((a) => (
-        <div className="medLinha medHistorico" key={a.id}>
-          <span className="medQuem">
-            <strong>{pacientePorId.get(a.patient_id)?.nome ?? "Paciente não localizado"}</strong>
-            <small>{identificacao(a.patient_id)}</small>
-            <small>
-              {osTres} · concluída {quando(a.concluida_at || a.updated_at)}
-              {a.local_atendimento_id ? ` · ${localPorId.get(a.local_atendimento_id) ?? "Local"}` : ""}
-              {quem(a.created_by) ? ` · ${quem(a.created_by)}` : ""}
-            </small>
-          </span>
-          <Link className="outlineClinical medAcao" href={`/avaliacoes/${a.id}/documentos`}
-            aria-label={`Abrir os documentos de ${pacientePorId.get(a.patient_id)?.nome ?? "paciente"}`}>Abrir documentos</Link>
-        </div>
-      ))}
-      {lista.length === 0 && (
-        <div className="emptyClinical compactEmpty">
-          {concluidas.length === 0
-            ? (haAlguma
-                ? "Nenhuma avaliação concluída neste escopo — os documentos aparecem aqui quando uma avaliação é concluída."
-                : "Ainda não há documentos: eles são gerados quando a primeira avaliação é concluída.")
-            : "Nenhum documento com estes filtros."}
-        </div>
-      )}
-      {lista.length > 50 && <div className="historyLimit">Mostrando os 50 mais recentes de {lista.length}.</div>}
     </section>
   );
 }
