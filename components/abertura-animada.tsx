@@ -101,6 +101,16 @@ else{sessionStorage.setItem('avanest:abertura','1')}
  *
  * A FONTE É DECLARADA AQUI, com pilha de reserva. Sem isso a marca herdaria a
  * fonte do body — que vem do globals.css, o arquivo que ainda não chegou.
+ *
+ * O SLOGAN TERMINA ONDE TERMINA O NOME, em qualquer largura de tela. Os dois
+ * tamanhos são `clamp` com limites diferentes, então um espaçamento fixo em
+ * `em` só acertaria numa faixa. O espaçamento sai da conta das larguras,
+ * medidas com a Outfit: o nome tem 6,04 × o seu tamanho; o slogan, 14,24 × o
+ * seu, mais 23 espaços entre as 24 letras. Igualando, cada espaço é
+ * (6,04 × nome − 14,24 × slogan) ÷ 23. O tamanho das letras do slogan não muda
+ * — a imagem do iOS guarda o lugar dele, e a altura tem de ser a mesma.
+ * O `text-indent` do slogan, igual ao espaçamento, devolve à esquerda o espaço
+ * que sobra depois da última letra: sem ele, a linha sai 1 ou 2 px do centro.
  */
 const ESTILO_DA_ABERTURA = `.abertura{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
   background:#fff;
@@ -122,8 +132,8 @@ const ESTILO_DA_ABERTURA = `.abertura{position:fixed;inset:0;z-index:9999;displa
 .marcaNome span:nth-child(-n+4){color:#0879c9}
 .marcaNome span:nth-child(n+5){color:#2bc5a8}
 .marcaSlogan{margin:8.4px 0 0;font-size:clamp(7.5px,2.28vw,9.5px);font-weight:600;
-  line-height:1;letter-spacing:.317em;text-transform:uppercase;color:#7c95a8;
-  text-indent:.317em}
+  line-height:1;letter-spacing:calc((6.04 * clamp(23px,7.551vw,32px) - 14.24 * clamp(7.5px,2.28vw,9.5px)) / 23);text-transform:uppercase;color:#7c95a8;
+  text-indent:calc((6.04 * clamp(23px,7.551vw,32px) - 14.24 * clamp(7.5px,2.28vw,9.5px)) / 23)}
 .marcaAvanest.animada .marcaNome span{opacity:0;transform:translateY(10px);
   animation:aberturaLetra .36s cubic-bezier(.2,.7,.3,1) forwards}
 .marcaAvanest.animada .marcaNome span:nth-child(1){animation-delay:.54s}
@@ -137,7 +147,7 @@ const ESTILO_DA_ABERTURA = `.abertura{position:fixed;inset:0;z-index:9999;displa
 .marcaAvanest.animada .marcaSlogan{opacity:0;
   animation:aberturaSlogan .36s ease-out 1.14s forwards}
 @keyframes aberturaSlogan{from{opacity:0;letter-spacing:.45em}
-  to{opacity:1;letter-spacing:.317em}}
+  to{opacity:1;letter-spacing:calc((6.04 * clamp(23px,7.551vw,32px) - 14.24 * clamp(7.5px,2.28vw,9.5px)) / 23)}}
 .marcaTrilho{stroke:url(#marcaAvn);opacity:.22}
 .marcaAvanest.animada .marcaSimbolo path:not(.marcaTrilho){stroke-dasharray:226;stroke-dashoffset:226;
   animation:aberturaTraco .64s cubic-bezier(.4,0,.25,1) 0s forwards}

@@ -6319,6 +6319,22 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .avnNav nav a{min-height:44px}
 }
 
+/* --- A marca: "GESTÃO EM ANESTESIOLOGIA" na largura exata de AVANEST -------
+   Antes a frase passava 46px da largura do nome (152px contra 106px), e
+   apertá-la até caber a deixaria ilegível. Aqui o tamanho do nome manda
+   (--marca) e a frase sai na proporção medida com a fonte do site: 9px para
+   26px, com o espaçamento que faz as duas linhas terminarem juntas. A frase
+   nunca fica menor que hoje. Este bloco vem depois de todas as medidas
+   antigas da marca (capa, barra, telefone) e vale por cima delas. */
+.avnBrand,.avnNav .avnBrand{--marca:26px;gap:calc(var(--marca) * .42)}
+@media(max-width:800px){.avnBrand,.avnNav .avnBrand{--marca:23px}}
+@media(max-width:389px){.avnBrand,.avnNav .avnBrand{--marca:20px}}
+.avnBrand strong,.avnNav .avnBrand strong{font-size:var(--marca);letter-spacing:.16em;line-height:1.15}
+.avnBrand small,.avnNav .avnBrand small{font-size:calc(var(--marca) * 9 / 26);letter-spacing:.116em;
+  margin-top:calc(var(--marca) * .16);line-height:1.2;white-space:nowrap}
+.avnMark,.avnNav .avnMark{width:calc(var(--marca) * 1.85);height:calc(var(--marca) * 1.85)}
+.avnMark svg,.avnNav .avnMark svg{width:100%;height:100%}
+
 /* --- Menu lateral (Financeiro, Administração e Escala) ----------------------
    Antes: títulos de grupo em caixa alta cinza, que pareciam rótulo e não
    botão, e grupos de um item só que pediam dois cliques para chegar ao mesmo
@@ -7561,10 +7577,9 @@ button.evoPFAsaN:disabled{cursor:default}
 }
 
 /* Ficha anestésica, a entrada no computador: a página ocupa a tela em duas
-   colunas — abrir à esquerda (com os avaliados dos últimos dias já listados),
-   em andamento e encerradas à direita, fixas ao rolar. Só com mouse e tela
+   colunas — abrir (só a busca) à esquerda, em andamento e encerradas à
+   direita, fixas ao rolar. Só com mouse e tela
    larga: no tablet e no celular a entrada fica numa coluna, como está. */
-.fcRecentes{display:none}
 @media (min-width:1100px) and (pointer:fine){
   .fcPagina{max-width:1800px;padding:12px 48px 80px}
   .fcTitulo{margin:10px 0 24px}
@@ -7572,9 +7587,6 @@ button.evoPFAsaN:disabled{cursor:default}
   .fcLado{position:sticky;top:20px}
   .fcLado>.fcSecao:first-child{margin-top:0}
   .fcLado .fcSecao h2{min-height:24px}
-  .fcRecentes{display:block}
-  .fcSubtitulo{margin:22px 2px 0;font-size:14px;font-weight:700;color:var(--cor-tinta-forte)}
-  .fcRecentes .fcAchados{margin-top:10px}
 }
 
 /* ══ Responsividade: revisão do site inteiro ═════════════════════════════
