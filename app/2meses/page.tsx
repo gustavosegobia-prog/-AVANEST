@@ -20,14 +20,15 @@ import { CAMINHO_DA_CAMPANHA, origemDoLink } from "@/lib/link-da-campanha";
 // com ele. O preço está a um clique dali para frente, na hora em que ele
 // importa — que é quando os dois meses acabam.
 //
-// O QUE ELA NÃO ESCONDE: que o teste abre a ficha e a escala, e não o sistema
-// inteiro. Vender "dois meses grátis" e entregar metade sem avisar é a forma
-// mais rápida de transformar um teste em reclamação — e uma reclamação vinda
-// do Instagram volta pelo mesmo caminho, em público.
+// O QUE ELA NÃO ESCONDE: que o cartão é cadastrado no início. Desde 15/10/2026
+// os 2 meses começam com o cartão, e a primeira cobrança vence no fim deles.
+// Dizer isso antes do botão — com a data — é o que evita a surpresa no
+// cadastro e a contestação no fim; uma reclamação vinda do Instagram volta
+// pelo mesmo caminho, em público.
 
 export const metadata: Metadata = paginaPublica({
   titulo: "2 meses grátis no AVANEST",
-  descricao: "Crie sua conta e use o AVANEST por 2 meses grátis: avaliação pré-anestésica completa e escala do serviço. Sem cartão de crédito para começar.",
+  descricao: "Crie sua conta e use o AVANEST por 2 meses grátis, com o sistema completo. O cartão é cadastrado no início e a primeira cobrança só vence depois dos 2 meses.",
   caminho: CAMINHO_DA_CAMPANHA,
 });
 
@@ -61,10 +62,10 @@ export default async function DoisMesesPage({
         </div>
         <div className="avnLoginContent avnCampanha">
           <p className="avnCampanhaSelo">Teste grátis</p>
-          <h1>Use por {MESES_DE_TESTE} meses grátis.<br/>Se gostar, assine.</h1>
+          <h1>Use por {MESES_DE_TESTE} meses grátis.<br/>Só paga se continuar.</h1>
           <p className="avnCampanhaLead">
-            Sem cartão de crédito para começar, sem cobrança automática e sem fidelidade.
-            Criando sua conta hoje, o teste vale até <b>{ate}</b>.
+            Você cadastra o cartão no início, e a primeira cobrança só vence em <b>{ate}</b>,
+            criando a conta hoje. Cancele antes e não paga nada. Sem fidelidade.
           </p>
 
           <ul className="avnCampanhaLista">
@@ -77,20 +78,19 @@ export default async function DoisMesesPage({
               é transferido a um colega, com autor, data e resposta registrados.</span></li>
           </ul>
 
-          {/* O ESCOPO, dito ANTES do botão e não descoberto lá dentro. Uma
-              linha discreta, mas presente: quem descobre depois sente que
-              faltou combinar, e tem razão. */}
+          {/* O ESCOPO, dito ANTES do botão. Com o cartão cadastrado, os 2 meses
+              já são da assinatura: o sistema inteiro, e não só uma parte. */}
           <p className="avnCampanhaEscopo">
-            No teste você usa a ficha anestésica e a escala. Recepção e Financeiro abrem ao assinar.
+            Nos {MESES_DE_TESTE} meses você usa o sistema completo, com Recepção e Financeiro.
           </p>
 
           <Link className="avnLoginSubmit avnCampanhaBotao" href={`/criar-conta?origem=${origem}`}>
-            Criar minha conta grátis
+            Começar meus {MESES_DE_TESTE} meses grátis
           </Link>
           <p className="avnCampanhaRodape">
-            No fim dos {MESES_DE_TESTE} meses você decide. <b>Nada é apagado</b> se você não
-            assinar — seus pacientes e documentos continuam aqui e voltam a ser editáveis
-            quando quiser.
+            Para não ser cobrado, cancele antes de {ate} em Admin › Assinatura, sem falar com
+            ninguém. <b>Nada é apagado</b> se você cancelar — seus pacientes e documentos
+            continuam guardados.
           </p>
           <Link className="avnLoginCancel" href="/login">Já tenho conta — entrar</Link>
         </div>

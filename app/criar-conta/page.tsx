@@ -64,8 +64,8 @@ export default async function CriarContaPage({
                 {planoData.preco_por_profissional != null
                   ? <>por <b>{reais(Number(planoData.preco_por_profissional))} por anestesiologista/mês</b></>
                   : <>por <b>{reais(Number(planoData.preco_mensal))}/mês</b></>}
-                {" "}— com <b>{MESES_DE_TESTE} meses grátis</b>: a primeira cobrança só vence quando o teste acabar.
-                {" "}Depois de criar a conta você escolhe individual ou grupo e conclui a assinatura.
+                {" "}— com <b>{MESES_DE_TESTE} meses grátis</b>: a primeira cobrança só vence quando eles acabarem.
+                {" "}Depois de criar a conta você escolhe individual ou grupo e cadastra o cartão.
               </p>
             ) : (
               <p>Crie sua conta para escolher o plano e concluir a assinatura.</p>
@@ -77,10 +77,11 @@ export default async function CriarContaPage({
     );
   }
 
-  // A CAMPANHA DOS DOIS MESES. Sem plano nenhum e sem cartão: a pessoa cria a
-  // conta, usa, e decide no fim. Este ramo é a porta que faltava — sem ele o
-  // caminho terminava no muro do "cadastro por convite" logo abaixo, e a
-  // promessa da capa não levava a lugar nenhum.
+  // A CAMPANHA DOS DOIS MESES. A pessoa cria a conta, escolhe individual ou
+  // grupo e cadastra o cartão; a primeira cobrança só vence no fim dos 2 meses.
+  // Este ramo é a porta que faltava — sem ele o caminho terminava no muro do
+  // "cadastro por convite" logo abaixo, e a promessa da capa não levava a
+  // lugar nenhum.
   if (!token && origem) {
     const ate = dataPorExtenso(fimDoTeste(new Date()));
     return (
@@ -93,8 +94,8 @@ export default async function CriarContaPage({
           <div className="avnLoginContent">
             <h1>Criar sua conta grátis</h1>
             <p>
-              <b>{MESES_DE_TESTE} meses grátis</b>, até <b>{ate}</b>. Sem cartão de crédito e sem
-              cobrança automática — no fim do período você decide se assina.
+              <b>{MESES_DE_TESTE} meses grátis</b>, até <b>{ate}</b>. Depois de criar a conta você
+              cadastra o cartão, e a primeira cobrança só vence nesse dia. Cancele antes e não paga nada.
             </p>
             <SignUpForm token="" email="" origem={origem} />
           </div>

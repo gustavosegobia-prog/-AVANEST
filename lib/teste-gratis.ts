@@ -1,7 +1,13 @@
 // ===========================================================================
-// Dois meses grátis, sem cartão
+// Dois meses grátis — desde 15/10/2026, com o cartão cadastrado no início
 // ===========================================================================
-// "Use por 2 meses grátis e após, se gostar, assine."
+// A campanha começou como "use por 2 meses grátis e após, se gostar, assine",
+// sem cartão. Em 15/10/2026 mudou: os 2 meses continuam grátis, mas quem
+// cria uma organização cadastra o cartão antes de entrar, e a primeira
+// cobrança só vence no fim dos 2 meses. Quem começou o teste antes, sem
+// cartão, segue com o combinado naquele cadastro — ver `faltaCartao`.
+//
+// O que segue é a história do teste sem cartão, e continua valendo para ele.
 //
 // A campanha é essa frase, e ela obriga o sistema a três coisas que ele não
 // fazia:
@@ -94,6 +100,33 @@ export function estadoDoTeste(ate: Date, agora: Date): EstadoDoTeste {
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
                "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
+/**
+ * O instante a partir do qual organização nova cadastra o cartão para começar.
+ *
+ * Quem criou a organização antes disso entrou com a promessa de "sem cartão",
+ * e a promessa é cumprida: o teste dela corre como sempre correu. Quem cria
+ * depois passa pela assinatura antes de entrar — o Stripe guarda o cartão, e a
+ * primeira cobrança vence no fim do teste (`trial_end` = `assinatura_ate`).
+ */
+export const CARTAO_NO_CADASTRO_DESDE = new Date("2026-10-15T17:35:00Z");
+
+/**
+ * Esta organização ainda precisa cadastrar o cartão para começar os 2 meses?
+ *
+ * Só o teste nascido depois do corte. Cadastrado o cartão, o Stripe confirma o
+ * checkout, o banco grava a assinatura como 'ativo' com a validade no fim do
+ * período grátis, e a organização sai daqui. Cortesia, plano pago e o teste
+ * antigo nunca entram.
+ *
+ * É a mesma pergunta no login, no painel, na tela da assinatura e na volta do
+ * pagamento: uma regra só, para a porta e o painel não discordarem.
+ */
+export function faltaCartao(org: { plano?: string | null; criadaEm?: string | Date | null } | null | undefined): boolean {
+  if (!org || org.plano !== "trial" || !org.criadaEm) return false;
+  const criada = new Date(org.criadaEm);
+  return Number.isFinite(criada.getTime()) && criada.getTime() >= CARTAO_NO_CADASTRO_DESDE.getTime();
+}
+
 export const dataPorExtenso = (quando: Date) =>
   `${quando.getUTCDate()} de ${MESES[quando.getUTCMonth()]} de ${quando.getUTCFullYear()}`;
 
@@ -115,5 +148,7 @@ export function fraseDoTeste(estado: EstadoDoTeste, ate: Date): string {
     return `${quanto} de teste grátis — até ${dataPorExtenso(ate)}. `
       + "Assine para continuar lançando.";
   }
+  // Só o teste antigo chega aqui (o novo já entra com a assinatura), e para ele
+  // a frase continua verdadeira: não há cartão nem cobrança automática.
   return `Teste grátis até ${dataPorExtenso(ate)}. Sem cartão, sem cobrança automática.`;
 }

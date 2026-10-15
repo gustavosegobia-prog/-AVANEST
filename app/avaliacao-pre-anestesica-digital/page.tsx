@@ -96,9 +96,9 @@ export default function AvaliacaoDigitalPage() {
         atual={CAMINHO}
         fim={{
           titulo: "Faça a próxima avaliação pré-anestésica no AVANEST.",
-          texto: "Os dois primeiros meses são grátis, sem cartão de crédito, sem cobrança "
-            + "automática e sem fidelidade. A ficha anestésica e a escala ficam liberadas desde o "
-            + "primeiro dia.",
+          texto: "Os dois primeiros meses são grátis, com o sistema completo desde o primeiro dia. "
+            + "O cartão é cadastrado no início e a primeira cobrança só vence depois dos dois "
+            + "meses; cancele antes e não paga nada. Sem fidelidade.",
           link: { href: "/avaliacao-pre-anestesica", rotulo: "Ler o guia da avaliação" },
         }}
       >
@@ -145,9 +145,9 @@ export default function AvaliacaoDigitalPage() {
           <div className="conteudoPerguntas">
             <article>
               <h3>Quanto custa?</h3>
-              <p>Os dois primeiros meses são grátis e sem cartão de crédito. Depois disso, os
-                valores estão em <Link href="/planos">planos e preços</Link>, do anestesiologista
-                que trabalha sozinho ao grupo inteiro.</p>
+              <p>Os dois primeiros meses são grátis: o cartão é cadastrado no início e a primeira
+                cobrança só vence depois deles. Os valores estão em <Link href="/planos">planos e
+                preços</Link>, do anestesiologista que trabalha sozinho ao grupo inteiro.</p>
             </article>
             <article>
               <h3>Funciona no celular?</h3>

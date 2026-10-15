@@ -138,14 +138,14 @@ export default function HomePage() {
           </ul>
           {/* O TESTE GRÁTIS É A AÇÃO PRINCIPAL, e o próprio botão diz a oferta —
               sem título nem descrição repetindo "2 meses grátis" acima dele.
-              "Sem cartão de crédito" responde à objeção que nasce justamente
-              ao olhar o botão. */}
+              A linha de baixo diz a condição antes do clique: o cartão é
+              cadastrado no início, e a primeira cobrança só vem depois. */}
           <div className="avnOferta">
             <div className="avnActions">
               <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=site`}>Começar 2 meses grátis</a>
               <a className="avnSecondary" href="/planos">Conhecer os planos</a>
             </div>
-            <p className="avnOfertaApoio">Sem cartão de crédito e sem compromisso.</p>
+            <p className="avnOfertaApoio">Primeira cobrança só depois dos 2 meses. Cancele antes e não paga nada.</p>
             <p className="avnAjuda">
               Precisa de ajuda? <a href={whatsappUrl} target="_blank" rel="noreferrer">Fale com nossa equipe pelo WhatsApp</a>.
             </p>
@@ -282,8 +282,8 @@ export default function HomePage() {
           </article>
           <article>
             <h3>Quanto custa?</h3>
-            <p>Os dois primeiros meses são grátis e sem cartão de crédito. Os valores depois disso
-              estão em <a href="/planos">planos e preços</a>.</p>
+            <p>Os dois primeiros meses são grátis: você cadastra o cartão no início e a primeira
+              cobrança só vence depois deles. Os valores estão em <a href="/planos">planos e preços</a>.</p>
           </article>
           <article>
             <h3>Os dados dos pacientes ficam seguros?</h3>

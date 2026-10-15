@@ -82,16 +82,15 @@ test("a página promete o que o sistema cumpre, e com a mesma conta", () => {
   const pagina = ler("app/2meses/page.tsx");
   assert.match(pagina, /fimDoTeste\(new Date\(\)\)/);
   assert.match(pagina, /MESES_DE_TESTE/);
-  // Sem cartão, dito com essa palavra: é a objeção concreta, e "grátis"
-  // sozinho não a responde.
-  assert.match(pagina, /Sem cartão de crédito/);
-  // O ESCOPO, antes do botão. Vender dois meses e entregar metade do sistema
-  // sem avisar transforma um teste em reclamação — e uma reclamação vinda do
-  // Instagram volta pelo mesmo caminho, em público.
-  const escopo = pagina.indexOf("Recepção e Financeiro abrem ao assinar");
-  const botao = pagina.indexOf("Criar minha conta grátis");
-  assert.ok(escopo > 0 && escopo < botao, "o escopo do teste precisa vir antes do botão");
-  // E a promessa que segura quem não assinar no fim.
+  // O CARTÃO, dito antes do botão e com a data: desde 15/10/2026 os 2 meses
+  // começam com o cartão cadastrado. Descobrir isso só no cadastro é sentir
+  // que faltou combinar — e a data é o que evita a contestação no fim.
+  const cartao = pagina.indexOf("Você cadastra o cartão no início");
+  const botao = pagina.indexOf("Começar meus {MESES_DE_TESTE} meses grátis");
+  assert.ok(cartao > 0 && cartao < botao, "a condição do cartão precisa vir antes do botão");
+  assert.doesNotMatch(pagina, /Sem cartão de crédito/, "a promessa antiga voltou");
+  // E a saída: cancelar antes não custa nada, e nada é apagado.
+  assert.match(pagina, /cancele antes/i);
   assert.match(pagina, /Nada é apagado/);
 });
 

@@ -28,7 +28,7 @@ export default async function ComecarPage({
         </div>
         <div className="avnLoginContent">
           <h1>Como você vai usar o AVANEST?</h1>
-          <p>Escolha uma opção para concluir seu cadastro.</p>
+          <p>Escolha uma opção para concluir seu cadastro. Em seguida você cadastra o cartão: os 2 primeiros meses são grátis.</p>
           <OnboardingForm email={user.email ?? ""} plano={plano ?? ""} />
         </div>
       </section>

@@ -23,7 +23,7 @@ const TRILHA = [{ nome: "Início", caminho: "/" }, { nome: "Planos e preços", c
 export const metadata: Metadata = paginaPublica({
   titulo: "Planos e preços | AVANEST",
   descricao:
-    "Escala, avaliação pré-anestésica, produção e fluxo de caixa — do anestesiologista sozinho ao grupo inteiro. 2 meses grátis, sem cartão para começar.",
+    "Escala, avaliação pré-anestésica, produção e fluxo de caixa — do anestesiologista sozinho ao grupo inteiro. 2 meses grátis: a primeira cobrança só vence depois deles.",
   caminho: "/planos",
 });
 
@@ -62,10 +62,10 @@ const perguntas = () => [
   {
     p: `Como funcionam os ${MESES_DE_TESTE} meses grátis?`,
     r:
-      `Você cria a conta e usa o AVANEST por ${MESES_DE_TESTE} meses sem pagar nada e sem cadastrar cartão. ` +
-      `No teste ficam abertas a ficha anestésica e a escala; Recepção e Financeiro abrem ao assinar. ` +
-      `Se assinar durante o teste, a primeira cobrança só vence quando ele acaba — os dias que faltam não se perdem. ` +
-      `Não é desconto: depois do teste, o preço mensal é o do seu plano. Se não assinar, nada é apagado: os dados ficam guardados e voltam a ser editáveis quando você assinar.`,
+      `Você cria a conta, escolhe o plano e cadastra o cartão. Os ${MESES_DE_TESTE} primeiros meses são grátis, com o sistema completo, ` +
+      `e a primeira cobrança só vence quando eles acabam — a data aparece antes de você confirmar e no e-mail de boas-vindas. ` +
+      `Para não ser cobrado, cancele antes em Admin › Assinatura, sem falar com ninguém. ` +
+      `Não é desconto: depois dos ${MESES_DE_TESTE} meses, o preço mensal é o do seu plano. Se cancelar, nada é apagado: os dados ficam guardados.`,
   },
   {
     p: "Como escolho o plano certo?",
@@ -174,22 +174,21 @@ export default async function PlanosPage() {
             mesmo tempo — a faixa da campanha, "use por 2 meses", um selo em
             cada cartão e uma nota embaixo de cada preço — e a pessoa não sabia
             se eram dois meses ou quatro, nem se precisava de cartão. São dois,
-            sem cartão, e quem assina durante o teste só paga quando ele acaba.
+            com o cartão cadastrado no início e a primeira cobrança no fim deles.
             Quem chega direto no /planos por um link nunca viu a capa, então a
             oferta está aqui também. */}
         <p className="planosCampanha">
           <Icone nome="estrela" tamanho={18} />
           <span>
-            <b>{MESES_DE_TESTE} meses grátis</b>, sem cartão para começar. Se assinar durante o
-            teste, a primeira cobrança só vence quando ele acaba.
+            <b>{MESES_DE_TESTE} meses grátis</b> com o sistema completo. O cartão é cadastrado no
+            início e a primeira cobrança só vence depois dos {MESES_DE_TESTE} meses.
           </span>
         </p>
-        {/* O ESCOPO DO TESTE dito aqui, e não só descoberto lá dentro.
-            Vender "dois meses grátis" e entregar metade do sistema sem avisar
-            é a forma mais rápida de transformar um teste em reclamação. */}
+        {/* A SAÍDA dita aqui, ao lado da oferta: quem cadastra o cartão quer
+            saber, antes, que pode cancelar sem ser cobrado. */}
         <p className="planosTeste">
-          No teste você usa a ficha anestésica e a escala; Recepção e Financeiro abrem ao assinar.{" "}
-          <Link href="/2meses?de=planos">Começar o teste grátis</Link>
+          Cancele antes do fim dos {MESES_DE_TESTE} meses e nada é cobrado.{" "}
+          <Link href="/2meses?de=planos">Começar os {MESES_DE_TESTE} meses grátis</Link>
         </p>
         <p className="planosLead">
           Do anestesiologista que trabalha sozinho ao grupo de anestesia com recepção,

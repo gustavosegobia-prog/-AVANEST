@@ -45,10 +45,10 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
       p_rqe: texto("rqe") || null,
     });
     if (error) { setErro(error.message); setBusy(false); return; }
-    // Quem chegou da vitrine com um plano segue direto para o pagamento; os
-    // demais entram no trial e decidem depois. Sem isso, quem acabou de
-    // escolher um plano cairia no painel e teria de procurar onde pagar.
-    router.replace(plano ? `/assinatura?plano=${encodeURIComponent(plano)}` : "/dashboard");
+    // Toda organização nova passa pela assinatura antes de entrar: os 2 meses
+    // grátis começam com o cartão cadastrado, e a primeira cobrança só vence
+    // no fim deles. Quem veio da vitrine com um plano já chega com ele marcado.
+    router.replace(plano ? `/assinatura?plano=${encodeURIComponent(plano)}` : "/assinatura");
     router.refresh();
   }
 
@@ -95,8 +95,7 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
       <button className="avnLoginSubmit" type="submit" disabled={busy}>
         {busy ? "Criando…"
           : escolha === "convite" ? "Continuar"
-          : plano ? "Criar organização e ir para o pagamento"
-          : "Criar organização e entrar"}
+          : "Criar organização e cadastrar o cartão"}
       </button>
     </form>
   );

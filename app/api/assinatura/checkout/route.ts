@@ -9,7 +9,7 @@ import { normalizarCupom } from "@/lib/pagamentos/cupom";
 // grava o aceite para não sair de sincronia com o texto: mudou /termos ou
 // /privacidade, muda aqui, e os aceites novos passam a apontar para a versão
 // nova sem mexer nos antigos.
-const VERSAO_DOCUMENTOS = "2026-10-10";
+const VERSAO_DOCUMENTOS = "2026-10-15";
 
 // Abre o checkout da assinatura mensal.
 //
@@ -166,7 +166,9 @@ export async function POST(request: NextRequest) {
       gratisAte,
       cupom,
       retornoSucesso: `${site}/assinatura/retorno`,
-      retornoCancelado: `${site}/dashboard`,
+      // Desistiu no meio: volta para a assinatura, e não para o painel. Quem
+      // está cadastrando o cartão para começar não tem painel para onde voltar.
+      retornoCancelado: `${site}/assinatura`,
     });
   } catch (erro) {
     // O motivo real vai para o log do servidor; o cliente recebe algo útil.

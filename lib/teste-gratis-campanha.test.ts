@@ -4,6 +4,7 @@ import fs from "node:fs";
 import {
   AREAS_DO_TESTE, AREAS_QUE_A_ASSINATURA_ABRE, areasNoTeste,
 } from "./modulos.ts";
+import { CARTAO_NO_CADASTRO_DESDE, faltaCartao } from "./teste-gratis.ts";
 
 const ler = (caminho: string) =>
   fs.readFileSync(new URL(`../${caminho}`, import.meta.url), "utf8");
@@ -56,14 +57,49 @@ test("a organização nasce com data de fim do teste", () => {
   assert.match(migracao, /interval '3 months' - interval '1 microsecond'/);
 });
 
-test("a promessa aparece na capa e na página de planos", () => {
+test("a promessa aparece na capa e na página de planos, com a condição do cartão", () => {
   // Quem chega direto no /planos por um link nunca viu a capa, e é ali que
-  // está olhando número — é onde a objeção do cartão nasce.
-  for (const tela of ["app/page.tsx", "app/planos/page.tsx"]) {
+  // está olhando número. Desde 15/10/2026 a oferta é "2 meses grátis, com o
+  // cartão cadastrado e a primeira cobrança no fim deles" — e "sem cartão"
+  // não pode sobrar em tela nenhuma de quem ainda vai se cadastrar.
+  for (const tela of ["app/page.tsx", "app/planos/page.tsx", "app/2meses/page.tsx", "app/criar-conta/page.tsx",
+    "app/escala-medica/page.tsx", "app/avaliacao-pre-anestesica-digital/page.tsx", "components/pagina-de-conteudo.tsx"]) {
     const codigo = ler(tela);
-    assert.match(codigo, /2 meses grátis|\{MESES_DE_TESTE\} meses grátis/, `a promessa sumiu de ${tela}`);
-    assert.match(codigo, /sem cartão/i, `${tela} não responde à objeção do cartão`);
+    assert.match(codigo, /2 meses|dois primeiros meses|\{MESES_DE_TESTE\} meses/, `a promessa sumiu de ${tela}`);
+    assert.match(codigo, /primeira cobrança/i, `${tela} não diz quando vem a primeira cobrança`);
+    assert.doesNotMatch(codigo, /sem cartão|sem cadastrar cartão/i, `${tela} ainda promete "sem cartão"`);
   }
+});
+
+test("organização nova entra com o cartão cadastrado; o teste antigo segue como foi combinado", () => {
+  const depois = new Date(CARTAO_NO_CADASTRO_DESDE.getTime() + 60_000);
+  const antes = new Date(CARTAO_NO_CADASTRO_DESDE.getTime() - 60_000);
+  assert.equal(faltaCartao({ plano: "trial", criadaEm: depois }), true);
+  assert.equal(faltaCartao({ plano: "trial", criadaEm: depois.toISOString() }), true);
+  // Quem começou antes do corte entrou com a promessa de "sem cartão".
+  assert.equal(faltaCartao({ plano: "trial", criadaEm: antes }), false);
+  // Cadastrado o cartão, o webhook grava 'ativo': a organização sai da trava.
+  for (const plano of ["ativo", "cortesia", "suspenso", "cancelado"]) {
+    assert.equal(faltaCartao({ plano, criadaEm: depois }), false, plano);
+  }
+  assert.equal(faltaCartao(null), false);
+  assert.equal(faltaCartao({ plano: "trial", criadaEm: null }), false);
+  assert.equal(faltaCartao({ plano: "trial", criadaEm: "data ruim" }), false);
+});
+
+test("a mesma regra do cartão na porta, no painel, na assinatura e na volta do pagamento", () => {
+  for (const tela of ["app/dashboard/page.tsx", "app/login/page.tsx", "app/login/login-form.tsx",
+    "app/assinatura/page.tsx", "app/assinatura/retorno/page.tsx"]) {
+    assert.match(ler(tela), /faltaCartao\(\{ plano: org(?:anizacao|\?)?\??\.?plano|faltaCartao\(\{ plano: instituicao\?\.plano/, `${tela} não pergunta pelo cartão`);
+  }
+  // A organização recém-criada vai para o cartão, e não para o painel.
+  const cadastro = ler("app/comecar/onboarding-form.tsx");
+  assert.match(cadastro, /router\.replace\(plano \? `\/assinatura\?plano=\$\{encodeURIComponent\(plano\)\}` : "\/assinatura"\)/);
+  assert.doesNotMatch(cadastro, /: "\/dashboard"\)/);
+  // O checkout pede o cartão mesmo com o período grátis, e o grátis vai até o fim do teste.
+  const stripe = ler("lib/pagamentos/stripe.ts");
+  assert.match(stripe, /payment_method_collection: "always"/);
+  assert.match(ler("app/api/assinatura/checkout/route.ts"), /const gratisAte = emTeste \? new Date\(String\(atual!\.assinatura_ate\)\) : null;/);
 });
 
 test("uma oferta só: sem preço de fundador e sem selo de campanha nos cartões", () => {
@@ -126,11 +162,10 @@ test("a tela diz o que a assinatura abre", () => {
   assert.doesNotMatch(cliente, /Recepção e Financeiro abrem/);
 });
 
-test("a página de planos avisa o escopo antes de a pessoa entrar", () => {
-  // Vender "dois meses grátis" e entregar metade do sistema sem avisar é a
-  // forma mais rápida de transformar um teste em reclamação.
+test("a página de planos diz a saída ao lado da oferta", () => {
+  // Quem cadastra o cartão quer saber, antes, que pode cancelar sem ser cobrado.
   const planos = ler("app/planos/page.tsx");
-  assert.match(planos, /No teste você usa a ficha anestésica e a escala/);
+  assert.match(planos, /Cancele antes do fim dos \{MESES_DE_TESTE\} meses e nada é cobrado/);
 });
 
 test("a tela de assinatura recebe quem veio do fim do teste", () => {

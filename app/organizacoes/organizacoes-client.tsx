@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { bloqueioParaExcluir, confirmacaoConfere } from "@/lib/exclusao-de-organizacao";
+import { faltaCartao } from "@/lib/teste-gratis";
 
 type Organizacao = {
   id: string; nome: string; tipo: string; plano: string; assinatura_ate: string | null;
@@ -65,7 +66,9 @@ export function OrganizacoesClient({ nome, organizacoes, minhaOrganizacao }: {
   const receita = organizacoes
     .filter((o) => o.plano === "ativo" && !vencida(o))
     .reduce((soma, o) => soma + Number(o.valor_mensal), 0);
-  const emTeste = organizacoes.filter((o) => o.plano === "trial" && !vencida(o)).length;
+  // Quem criou a conta e não cadastrou o cartão ainda não começou o teste: conta à parte.
+  const semCartao = (o: Organizacao) => faltaCartao({ plano: o.plano, criadaEm: o.criada_em });
+  const emTeste = organizacoes.filter((o) => o.plano === "trial" && !vencida(o) && !semCartao(o)).length;
   const inadimplentes = organizacoes.filter(vencida).length;
 
   return <main className="clinicalShell">
@@ -132,8 +135,11 @@ export function OrganizacoesClient({ nome, organizacoes, minhaOrganizacao }: {
                 </small>
               </span>
               <span className="orgRowPlano">
-                <b>{PLANOS.find(([v]) => v === org.plano)?.[1] ?? org.plano}</b>
-                <small>{vencida(org) ? "venceu em" : "até"} {data(org.assinatura_ate)}</small>
+                <b>{semCartao(org) ? "Aguardando cartão" : PLANOS.find(([v]) => v === org.plano)?.[1] ?? org.plano}</b>
+                <small>
+                  {semCartao(org) ? "criou a conta, não cadastrou o cartão"
+                    : <>{vencida(org) ? "venceu em" : "até"} {data(org.assinatura_ate)}</>}
+                </small>
               </span>
               <span className="orgRowValor">
                 <b>{dinheiro(org.valor_mensal)}</b>

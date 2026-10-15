@@ -19,6 +19,7 @@ import Link from "next/link";
 import { LoginForm } from "./login-form";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
+import { faltaCartao } from "@/lib/teste-gratis";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ senha?: string; convite?: string; plano?: string; conta?: string }> }) {
   const query = await searchParams;
@@ -33,10 +34,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     // de assinatura; cortesia e plano pago seguem para o painel.
     const { data } = await supabase.rpc("minha_assinatura");
     const assinatura = Array.isArray(data) ? data[0] : data;
-    const precisaContratar = assinatura ? assinatura.liberada === false : false;
     // Mesmo destino do formulário: a escolha do local vem antes do painel,
     // menos para a recepção, que atende sempre no mesmo lugar.
-    const { data: quem } = await supabase.from("perfis").select("role").eq("id", user.id).maybeSingle();
+    const { data: quem } = await supabase.from("perfis").select("role, institution_id").eq("id", user.id).maybeSingle();
+    // E organização nova sem o cartão cadastrado também vai para a assinatura.
+    const { data: org } = quem?.institution_id
+      ? await supabase.from("instituicoes").select("plano, created_at").eq("id", quem.institution_id).maybeSingle()
+      : { data: null };
+    const precisaContratar = (assinatura ? assinatura.liberada === false : false)
+      || faltaCartao({ plano: org?.plano, criadaEm: org?.created_at });
     const escolheLocal = quem?.role !== "recepcao";
     redirect(precisaContratar ? "/assinatura" : escolheLocal ? "/locais" : "/dashboard");
   }

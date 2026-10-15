@@ -17,7 +17,7 @@ export default function TermosPage() {
     <PaginaLegal
       titulo="Termos de Uso"
       resumo="Estas condições regem o uso do AVANEST. Ao criar uma conta ou usar o sistema, você concorda com elas."
-      vigencia="10 de outubro de 2026"
+      vigencia="15 de outubro de 2026"
     >
       <h2>1. Quem somos</h2>
       <p>
@@ -90,16 +90,24 @@ export default function TermosPage() {
         <a href="mailto:financeiro@avanest.com.br">financeiro@avanest.com.br</a>.
       </p>
 
-      <h2>6. Período de teste</h2>
+      <h2>6. Período grátis</h2>
       <p>
-        Novas organizações usam o AVANEST por <b>2 meses grátis</b>, sem cadastrar cartão: o teste
-        vai até o último dia do segundo mês seguinte ao cadastro. No teste ficam disponíveis a
-        avaliação pré-anestésica e a escala; Recepção e Financeiro são liberados com a assinatura.
+        Novas organizações têm <b>2 meses grátis</b>, que vão até o último dia do segundo mês
+        seguinte ao cadastro. Para começar, o responsável pela organização escolhe o plano e
+        cadastra o cartão na página do provedor de pagamento. Nada é cobrado durante o período
+        grátis; a primeira cobrança vence ao fim dele, no valor do plano escolhido, e a data
+        aparece antes da confirmação e no e-mail de boas-vindas. No período grátis o sistema fica
+        completo, como na assinatura.
       </p>
       <p>
-        Encerrado o teste sem contratação, o lançamento de novos dados fica bloqueado até que um
-        plano seja contratado. Nada é apagado: os dados continuam guardados e voltam a ser
-        editáveis com a assinatura, observado o item 8.
+        Cancelando antes do fim do período grátis, em Admin › Assinatura, nada é cobrado. Sem a
+        assinatura, o lançamento de novos dados fica bloqueado. Nada é apagado: os dados continuam
+        guardados e voltam a ser editáveis com a assinatura, observado o item 8.
+      </p>
+      <p>
+        Organizações que começaram o teste antes de 15 de outubro de 2026, sem cadastrar cartão,
+        seguem com as condições daquele cadastro: o teste corre até a data informada, sem cobrança
+        automática, e o acesso continua com a contratação de um plano.
       </p>
 
       <h2>7. Seus dados são seus</h2>

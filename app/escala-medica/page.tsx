@@ -105,9 +105,9 @@ export default function EscalaMedicaPage() {
         atual={CAMINHO}
         fim={{
           titulo: "Monte a escala do próximo mês no AVANEST.",
-          texto: "Os dois primeiros meses são grátis, sem cartão de crédito, com a escala e a "
-            + "ficha anestésica liberadas. Cadastre o grupo, os hospitais e os colegas, monte o mês "
-            + "e avise a equipe: cada médico recebe os próprios plantões por e-mail.",
+          texto: "Os dois primeiros meses são grátis, e a primeira cobrança só vence depois deles. "
+            + "Cadastre o grupo, os hospitais e os colegas, monte o mês e avise a equipe: cada "
+            + "médico recebe os próprios plantões por e-mail.",
         }}
       >
         <section className="recBloco">
@@ -166,7 +166,8 @@ export default function EscalaMedicaPage() {
             <article>
               <h3>Quanto custa a escala médica do AVANEST?</h3>
               <p>Os valores estão em <Link href="/planos">planos e preços</Link>. Os dois primeiros
-                meses são grátis e sem cartão de crédito, com a escala liberada.</p>
+                meses são grátis: o cartão é cadastrado no início e a primeira cobrança só vence
+                depois deles.</p>
             </article>
             <article>
               <h3>Todos os médicos do grupo precisam de login?</h3>

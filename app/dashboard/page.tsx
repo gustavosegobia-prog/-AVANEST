@@ -8,6 +8,7 @@ import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvis
 import { nomeCurto } from "@/lib/escala";
 import { hoje as hojeNoBrasil, mesAtual, somarMeses } from "@/lib/data-local";
 import { areasLiberadas, areasNoTeste, modulosDaOrganizacao } from "@/lib/modulos";
+import { faltaCartao } from "@/lib/teste-gratis";
 
 export default async function DashboardPage({
   searchParams,
@@ -60,7 +61,7 @@ export default async function DashboardPage({
     { data: podeFicha },
   ] = await Promise.all([
     supabase.from("instituicoes")
-      .select("nome, tipo, telefone, email, modulos")
+      .select("nome, tipo, telefone, email, modulos, plano, created_at")
       .eq("id", perfil.institution_id)
       .maybeSingle(),
     supabase.rpc("meus_locais"),
@@ -106,6 +107,8 @@ export default async function DashboardPage({
 
   const assinatura = Array.isArray(assinaturaData) ? assinaturaData[0] : assinaturaData;
   if (assinatura && assinatura.liberada === false) redirect("/assinatura");
+  // Organização nova entra com o cartão cadastrado: sem ele, a porta é a assinatura.
+  if (faltaCartao({ plano: instituicao?.plano, criadaEm: instituicao?.created_at })) redirect("/assinatura");
   // A FAIXA DO TESTE só existe para quem está testando. Cortesia e plano pago
   // não levam contagem nenhuma no topo da tela: contar dias para quem já pagou
   // é lembrar de um prazo que não é problema dele.

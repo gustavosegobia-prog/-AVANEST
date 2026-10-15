@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 import { AssinarButton } from "./assinar-button";
 import { SairButton } from "./sair-button";
+import { faltaCartao } from "@/lib/teste-gratis";
 
 const WHATSAPP = "https://wa.me/5541997870810";
 
@@ -53,7 +54,7 @@ export default async function AssinaturaPage({
   if (!assinatura) redirect("/comecar");
 
   const [{ data: perfil }, { data: planosData }, { data: vagasData }] = await Promise.all([
-    supabase.from("perfis").select("role").eq("id", user.id).maybeSingle(),
+    supabase.from("perfis").select("role, institution_id").eq("id", user.id).maybeSingle(),
     supabase.from("planos").select("*").eq("ativo", true).order("ordem"),
     supabase.rpc("vagas_fundador"),
   ]);
@@ -62,12 +63,18 @@ export default async function AssinaturaPage({
   const planos = (planosData ?? []) as Plano[];
   const vagas = (Array.isArray(vagasData) ? vagasData[0] : vagasData) as Vagas | null;
 
-  const liberada = assinatura.liberada === true;
+  // A organização nova começa aqui: os 2 meses grátis abrem com o cartão
+  // cadastrado. Até lá ela não está "liberada", mesmo com a data no futuro.
+  const { data: org } = perfil?.institution_id
+    ? await supabase.from("instituicoes").select("plano, created_at").eq("id", perfil.institution_id).maybeSingle()
+    : { data: null };
+  const semCartao = faltaCartao({ plano: org?.plano, criadaEm: org?.created_at });
+  const liberada = assinatura.liberada === true && !semCartao;
   const profissionais = Number(assinatura.profissionais ?? 0);
   const ate = data(assinatura.assinatura_ate ?? null);
   const situacao = String(assinatura.plano ?? "");
   const jaEFundador = assinatura.preco_fundador === true;
-  const emTeste = liberada && situacao === "trial";
+  const emTeste = (liberada || semCartao) && situacao === "trial";
 
   // O plano em foco é o que veio da vitrine; sem isso, o que a organização já
   // contratou; sem isso, a sugestão do banco pelo tamanho da equipe.
@@ -99,21 +106,28 @@ export default async function AssinaturaPage({
         <div className="avnLoginIllustration">
           <AppLogo />
           <p>
-            {liberada
-              ? "Sua organização está em dia. Você pode contratar a assinatura mensal a qualquer momento — os dias que ainda restam são somados, não perdidos."
-              : "Seus dados continuam guardados e intactos. Nada é apagado enquanto a assinatura estiver parada."}
+            {semCartao
+              ? "O cartão fica guardado com a Stripe, que processa o pagamento — ele nunca passa pelo AVANEST. Nada é cobrado nos 2 primeiros meses."
+              : liberada
+                ? "Sua organização está em dia. Você pode contratar a assinatura mensal a qualquer momento — os dias que ainda restam são somados, não perdidos."
+                : "Seus dados continuam guardados e intactos. Nada é apagado enquanto a assinatura estiver parada."}
           </p>
         </div>
         <div className="avnLoginContent">
           <h1>
-            {liberada
-              ? situacao === "trial" ? "Você está no teste grátis." : "Sua assinatura está ativa."
-              : MOTIVOS[situacao] ?? "Assinatura inativa."}
+            {semCartao
+              ? "Cadastre o cartão para começar seus 2 meses grátis."
+              : liberada
+                ? situacao === "trial" ? "Você está no teste grátis." : "Sua assinatura está ativa."
+                : MOTIVOS[situacao] ?? "Assinatura inativa."}
           </h1>
           <p>
-            {liberada
-              ? <>Acesso liberado em <b>{assinatura.organizacao}</b>{ate ? <> até <b>{ate}</b></> : null}.</>
-              : <>Para continuar usando o AVANEST em <b>{assinatura.organizacao}</b>, regularize a assinatura.</>}
+            {semCartao
+              ? <>A primeira cobrança de <b>{assinatura.organizacao}</b> só vence em <b>{ate}</b>. Cancele antes,
+                  em Admin › Assinatura, e nada é cobrado.</>
+              : liberada
+                ? <>Acesso liberado em <b>{assinatura.organizacao}</b>{ate ? <> até <b>{ate}</b></> : null}.</>
+                : <>Para continuar usando o AVANEST em <b>{assinatura.organizacao}</b>, regularize a assinatura.</>}
           </p>
 
           {alvo ? (
@@ -132,7 +146,9 @@ export default async function AssinaturaPage({
                     limite técnico da campanha, um número de dez dígitos. */}
                 {emTeste && ate ? (
                   <p className="avnPlanoNota sucesso">
-                    Você está no teste grátis: assinando agora, a primeira cobrança só vence em {ate}.
+                    {semCartao
+                      ? `Grátis até ${ate}: a primeira cobrança só vence nesse dia.`
+                      : `Você está no teste grátis: assinando agora, a primeira cobrança só vence em ${ate}.`}
                   </p>
                 ) : null}
               </div>
@@ -162,12 +178,15 @@ export default async function AssinaturaPage({
               {podeContratar && cabe
                 ? <AssinarButton
                     plano={alvo.codigo}
-                    rotulo={liberada ? `Contratar o plano ${alvo.nome}` : `Assinar o plano ${alvo.nome}`}
+                    rotulo={semCartao ? "Cadastrar o cartão e começar"
+                      : liberada ? `Contratar o plano ${alvo.nome}` : `Assinar o plano ${alvo.nome}`}
                     valorMensal={mensal}
                   />
                 : !podeContratar
                   ? <p className="avnOnboardingEmail">
-                      Só o responsável pela organização pode contratar a assinatura.
+                      {semCartao
+                        ? "Só o responsável pela organização pode cadastrar o cartão. Assim que ele cadastrar, o acesso abre para toda a equipe."
+                        : "Só o responsável pela organização pode contratar a assinatura."}
                     </p>
                   : null}
             </>

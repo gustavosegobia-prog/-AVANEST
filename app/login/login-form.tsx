@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useCaptcha } from "@/components/turnstile";
 import Link from "next/link";
 import { codigoDigitado, exigeDuasEtapas } from "@/lib/duas-etapas";
+import { faltaCartao } from "@/lib/teste-gratis";
 
 export function LoginForm({ passwordChanged = false, convite = "", plano = "" }: { passwordChanged?: boolean; convite?: string; plano?: string }) {
   const router = useRouter();
@@ -110,7 +111,7 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
     // quem está vencido.
     const { data } = await supabase.rpc("minha_assinatura");
     const assinatura = Array.isArray(data) ? data[0] : data;
-    const precisaContratar = assinatura ? assinatura.liberada === false : false;
+    let precisaContratar = assinatura ? assinatura.liberada === false : false;
     // Depois de entrar, a pergunta é "onde você vai atender hoje?". Quem
     // trabalha em três hospitais começa cada manhã numa instituição
     // diferente, e o local ativo decide o cabeçalho de todo documento
@@ -119,8 +120,14 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
     // A recepção entra direto: ela atende sempre no mesmo lugar, e a pergunta
     // "onde você vai atender hoje?" é do anestesiologista que roda hospitais.
     const { data: quem } = userId
-      ? await supabase.from("perfis").select("role, super_admin, permissoes").eq("id", userId).maybeSingle()
+      ? await supabase.from("perfis").select("role, super_admin, permissoes, institution_id").eq("id", userId).maybeSingle()
       : { data: null };
+    // Organização nova entra com o cartão cadastrado: sem ele, a assinatura vem primeiro.
+    if (!precisaContratar && quem?.institution_id) {
+      const { data: org } = await supabase.from("instituicoes")
+        .select("plano, created_at").eq("id", quem.institution_id).maybeSingle();
+      precisaContratar = faltaCartao({ plano: org?.plano, criadaEm: org?.created_at });
+    }
     const escolheLocal = quem?.role !== "recepcao";
     const destino = precisaContratar ? "/assinatura" : escolheLocal ? "/locais" : "/dashboard";
     // Proprietário e administrador sem o código ativo cadastram agora, antes

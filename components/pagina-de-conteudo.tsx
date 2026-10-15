@@ -68,7 +68,7 @@ export function PaginaDeConteudo({
               <a className="avnPrimary" href={teste}>Começar 2 meses grátis</a>
               <a className="avnSecondary" href="/planos">Ver planos</a>
             </div>
-            <p>Sem cartão de crédito e sem compromisso.</p>
+            <p>Primeira cobrança só depois dos 2 meses. Cancele antes e não paga nada.</p>
           </div>
         )}
         {indice && (

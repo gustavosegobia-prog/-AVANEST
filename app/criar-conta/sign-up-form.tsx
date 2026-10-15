@@ -11,8 +11,8 @@ import { registrarConversao } from "@/lib/anuncios";
 // Três modos. Com token, o e-mail vem do convite e não pode ser trocado — a
 // conta precisa nascer no endereço convidado. Com plano, o visitante digita o
 // próprio e-mail e segue para escolher individual ou grupo antes de pagar. Com
-// origem, veio da campanha dos dois meses: cria a conta e entra, sem plano e
-// sem cartão — o preço só aparece quando o teste acabar.
+// origem, veio da campanha dos dois meses: cria a conta, escolhe individual ou
+// grupo e cadastra o cartão — a primeira cobrança só vence no fim dos 2 meses.
 export function SignUpForm({ token, email, plano = "", origem = "" }: { token: string; email: string; plano?: string; origem?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -97,9 +97,9 @@ export function SignUpForm({ token, email, plano = "", origem = "" }: { token: s
     return (
       <div className="loginForm">
         <p className="loginSuccess" role="status">
-          {/* Quem veio da campanha não tem assinatura nenhuma a concluir, e
-              esta era a última tela antes de a pessoa sair da aba: prometer
-              pagamento aqui é desmentir o "sem cartão" que a trouxe. */}
+          {/* Esta é a última tela antes de a pessoa sair da aba para o e-mail.
+              Para quem veio da campanha, ela fala dos 2 meses, que é o que a
+              trouxe; o cartão vem depois, já com a data da primeira cobrança. */}
           Conta criada. Enviamos um e-mail de confirmação. Abra a mensagem e clique no link para
           {porConvite ? " concluir e aceitar o convite."
             : origem ? " começar seus 2 meses grátis."
