@@ -8,7 +8,7 @@ import type { Ritmo, RitmoDoProtocolo } from "@/lib/intercorrencias/tipos";
  * servidor e no aparelho, pesa nada e funciona sem rede. Quatro segundos de
  * derivação II, como na tela do monitor (fundo escuro, traço verde, a
  * frequência ao lado). É ilustração para reconhecer o padrão — o diagnóstico
- * é sempre no paciente.
+ * é sempre no paciente. Entra dentro de "Reconhecer", sob o próprio título.
  */
 
 const SEGUNDOS = 4;
@@ -55,8 +55,7 @@ const FREQUENCIA: Record<Ritmo, string> = { fv: "---", tv: "180", aesp: "60", as
 
 export function RitmosNoMonitor({ ritmos }: { ritmos: RitmoDoProtocolo[] }) {
   return (
-    <section id="ritmos" className={estilos.secao} aria-labelledby="t-ritmos">
-      <h3 id="t-ritmos">Ritmo no monitor</h3>
+    <>
       <div className={estilos.ritmos}>
         {ritmos.map((r) => (
           <figure key={r.ritmo} className={estilos.ritmo}>
@@ -85,6 +84,6 @@ export function RitmosNoMonitor({ ritmos }: { ritmos: RitmoDoProtocolo[] }) {
       <p className={estilos.miuda}>
         Traçados ilustrativos, desenhados pelo AVANEST: o diagnóstico é no paciente, com o pulso e as curvas de pressão e EtCO2.
       </p>
-    </section>
+    </>
   );
 }

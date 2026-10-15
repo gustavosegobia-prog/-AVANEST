@@ -5,7 +5,8 @@ import estilos from "./intercorrencias.module.css";
 import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS } from "@/lib/intercorrencias/catalogo";
 import { resolverEstado, ROTULO_SITUACAO, type Estado } from "@/lib/intercorrencias/situacao";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
-import { COR_DA_CATEGORIA, CamposDoPaciente, type DadosDoPaciente } from "./paciente";
+import { Icone } from "@/components/icone";
+import { CamposDoPaciente, type DadosDoPaciente } from "./paciente";
 import { ProtocoloTela } from "./protocolo";
 import { EquipeCientifica } from "./revisao";
 import { useRevisoes } from "./use-revisoes";
@@ -14,8 +15,8 @@ import { useRevisoes } from "./use-revisoes";
  * INTERCORRÊNCIAS ANESTÉSICAS — a consulta da crise.
  *
  * A busca fica sempre no topo e acha pelo nome, pelo sinônimo ou pelo que se
- * vê no monitor ("estridor", "PA caindo"). Embaixo, as seis categorias. Um
- * toque abre o protocolo com "Agir agora" logo depois do título.
+ * vê no monitor ("estridor", "PA caindo"). Embaixo, as categorias. Um toque
+ * abre o protocolo na ordem da crise: reconhecer, agir agora, doses.
  *
  * Quem vê o quê: o médico vê só o que um revisor aprovou (o instantâneo
  * aprovado, mesmo que o código já tenha uma versão nova); a equipe científica
@@ -108,9 +109,7 @@ export function Intercorrencias({
       </header>
 
       <label className={estilos.busca}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-        </svg>
+        <Icone nome="busca" tamanho={22} />
         <input type="search" value={termo} onChange={(e) => setTermo(e.target.value)} autoFocus={focarBusca}
           placeholder="Buscar: anafilaxia, estridor, PA caindo…" aria-label="Buscar intercorrência por nome, sinal ou sinônimo"
           autoComplete="off" spellCheck={false} enterKeyHint="search" />
@@ -123,7 +122,7 @@ export function Intercorrencias({
           {achados.length === 0 && <p className={estilos.vazio}>Nada com “{termo.trim()}”. Tente o sinal que você está vendo, como “hipotensão”.</p>}
           {achados.map((a) => a.tipo === "protocolo" ? (
             <button key={a.protocolo.id} type="button" className={estilos.resultado} disabled={!disponivel(a.protocolo)}
-              style={{ ["--cat" as string]: COR_DA_CATEGORIA[a.protocolo.categoria] }} onClick={() => abrir(a.protocolo)}>
+              onClick={() => abrir(a.protocolo)}>
               <span className={estilos.itemTexto}>
                 <b>{a.protocolo.titulo}</b>
                 <small>{CATEGORIAS.find((c) => c.id === a.protocolo.categoria)!.nome} · achado por {a.porque}</small>
@@ -131,8 +130,7 @@ export function Intercorrencias({
               {selo(a.protocolo)}
             </button>
           ) : (
-            <button key={a.previsto.titulo} type="button" className={estilos.resultado} disabled
-              style={{ ["--cat" as string]: COR_DA_CATEGORIA[a.previsto.categoria] }}>
+            <button key={a.previsto.titulo} type="button" className={estilos.resultado} disabled>
               <span className={estilos.itemTexto}>
                 <b>{a.previsto.titulo}</b>
                 <small>{CATEGORIAS.find((c) => c.id === a.previsto.categoria)!.nome}</small>
@@ -146,7 +144,9 @@ export function Intercorrencias({
           {favoritados.length > 0 && (
             <section aria-label="Favoritos" className={estilos.favoritos}>
               {favoritados.map((p) => (
-                <button key={p.id} type="button" className={estilos.chip} disabled={!disponivel(p)} onClick={() => abrir(p)}>★ {p.titulo}</button>
+                <button key={p.id} type="button" className={estilos.chip} disabled={!disponivel(p)} onClick={() => abrir(p)}>
+                  <Icone nome="estrela" tamanho={16} />{p.titulo}
+                </button>
               ))}
             </section>
           )}
@@ -156,7 +156,7 @@ export function Intercorrencias({
               const { prontos, previstos } = itensDaCategoria(c.id);
               const aberta = categorias.includes(c.id);
               return (
-                <section key={c.id} className={estilos.categoria} style={{ ["--cat" as string]: COR_DA_CATEGORIA[c.id] }}>
+                <section key={c.id} className={estilos.categoria}>
                   <button type="button" className={estilos.categoriaTopo} aria-expanded={aberta}
                     onClick={() => setCategorias((v) => (v.includes(c.id) ? v.filter((x) => x !== c.id) : [...v, c.id]))}>
                     <span className={estilos.letra} aria-hidden="true">{c.letra}</span>
@@ -164,7 +164,7 @@ export function Intercorrencias({
                       <strong>{c.nome}</strong>
                       <small>{prontos.length} pronto{prontos.length === 1 ? "" : "s"} · {previstos.length} em preparação</small>
                     </span>
-                    <span className={estilos.seta} aria-hidden="true">{aberta ? "▲" : "▼"}</span>
+                    <span className={estilos.seta} aria-hidden="true"><Icone nome="seta" tamanho={20} /></span>
                   </button>
                   {aberta && (
                     <ul className={estilos.itens}>

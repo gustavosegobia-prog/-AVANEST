@@ -11,7 +11,8 @@ import { acharReferencia, BIBLIOGRAFIA_GERAL, citarReferencia } from "@/lib/inte
 import { ROTULO_NIVEL, type Calculo } from "@/lib/calculos/doses";
 import { ROTULO_SITUACAO, type Estado } from "@/lib/intercorrencias/situacao";
 import type { DoseDoProtocolo, Protocolo, Situacao, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
-import { COR_DA_CATEGORIA, CamposDoPaciente, pacienteDe, resumoDoPaciente, type DadosDoPaciente } from "./paciente";
+import { Icone } from "@/components/icone";
+import { CamposDoPaciente, pacienteDe, resumoDoPaciente, type DadosDoPaciente } from "./paciente";
 import { PainelDeRevisao } from "./revisao";
 import { RitmosNoMonitor } from "./ritmos";
 import type { Revisoes } from "./use-revisoes";
@@ -35,7 +36,8 @@ function Avisos({ lista }: { lista: Alerta[] }) {
     <ul className={estilos.avisos}>
       {lista.map((a, i) => (
         <li key={i} className={estilos[a.nivel]}>
-          {a.nivel === "perigo" ? "⚠️ " : a.nivel === "atencao" ? "! " : ""}{a.texto}
+          {a.nivel !== "info" && <Icone nome="alerta" tamanho={17} />}
+          <span>{a.texto}</span>
         </li>
       ))}
     </ul>
@@ -217,30 +219,44 @@ export function ProtocoloTela({
   const relacionados = (p.relacionados ?? []).filter((r) => acharProtocolo(r.protocolo));
 
   return (
-    <div ref={topo} className={`${estilos.modulo} ${estilos.impressao}`}
-      style={{ ["--cat" as string]: COR_DA_CATEGORIA[p.categoria], scrollMarginTop: 80 }}>
+    <div ref={topo} className={`${estilos.modulo} ${estilos.impressao}`} style={{ scrollMarginTop: 80 }}>
       <p className={estilos.soImpressao}>
         AVANEST · Intercorrências anestésicas · impresso em {dataBr(new Date().toISOString())} · versão {p.versao} · {ROTULO_SITUACAO[situacao]}
         <br />Paciente: {resumoDoPaciente(paciente)}{paciente.gestante ? " · gestante" : ""}
       </p>
 
       <div className={`${estilos.barraAcoes} ${estilos.naoImprimir}`}>
-        <button type="button" className={estilos.botao} onClick={aoVoltar} aria-label={`Voltar para ${categoria.nome}`}>← Voltar</button>
-        <button type="button" className={estilos.botao} onClick={aoBuscar}>Buscar outra</button>
-        <button type="button" className={estilos.botao} aria-pressed={favorito} onClick={aoFavoritar}
-          aria-label={favorito ? "Tirar dos favoritos" : "Favoritar"}>
-          {favorito ? "★" : "☆"}<span className={estilos.someNoCelular}>{favorito ? " Favorito" : " Favoritar"}</span>
+        <button type="button" className={estilos.botao} onClick={aoVoltar} aria-label={`Voltar para ${categoria.nome}`}>
+          <Icone nome="voltar" tamanho={18} />Voltar
         </button>
-        {aoAbrirCalculadora && <button type="button" className={estilos.botao} onClick={aoAbrirCalculadora}>Calculadora</button>}
+        <button type="button" className={estilos.botao} onClick={aoBuscar}>
+          <Icone nome="busca" tamanho={18} />Buscar outra
+        </button>
+        <button type="button" className={`${estilos.botao} ${estilos.empurra}`} aria-pressed={favorito} onClick={aoFavoritar}
+          aria-label={favorito ? "Tirar dos favoritos" : "Favoritar"}>
+          <Icone nome="estrela" tamanho={18} /><span className={estilos.someNoCelular}>{favorito ? "Favorito" : "Favoritar"}</span>
+        </button>
+        {aoAbrirCalculadora && (
+          <button type="button" className={estilos.botao} onClick={aoAbrirCalculadora} aria-label="Calculadora de doses">
+            <Icone nome="calculadora" tamanho={18} /><span className={estilos.someNoCelular}>Calculadora</span>
+          </button>
+        )}
         <button type="button" className={estilos.botao} onClick={() => window.print()} aria-label="Imprimir ou salvar em PDF">
-          PDF<span className={estilos.someNoCelular}> / imprimir</span>
+          <Icone nome="imprimir" tamanho={18} />PDF
         </button>
       </div>
 
       <header className={estilos.protoTitulo}>
-        <span className={estilos.tagCategoria}>{categoria.letra} · {categoria.nome}</span>
         <h2>{p.titulo}</h2>
         <p>{p.resumo}</p>
+        <div className={estilos.linhaSelos}>
+          <span className={estilos.tagCategoria}>
+            <span className={estilos.letra} aria-hidden="true">{categoria.letra}</span>{categoria.nome}
+          </span>
+          {p.populacoes.map((x) => (
+            <span key={x} className={`${estilos.faixa} ${x === populacao ? estilos.faixaAtiva : ""}`}>{ROTULO_POPULACAO[x]}</span>
+          ))}
+        </div>
         <div className={estilos.linhaSelos}>
           <span className={`${estilos.selo} ${estilos[`selo_${situacao}`]}`}>{ROTULO_SITUACAO[situacao]}</span>
           <span>Versão {p.versao} · conteúdo de {dataBr(p.atualizadoEm)}</span>
@@ -248,21 +264,18 @@ export function ProtocoloTela({
             <span>Aprovado por {estado.aprovacao.autorNome}{estado.aprovacao.autorCrm ? ` (${estado.aprovacao.autorCrm})` : ""} em {dataBr(estado.aprovacao.criadoEm)}</span>
           )}
         </div>
-        <div className={estilos.linhaSelos}>
-          {p.populacoes.map((x) => (
-            <span key={x} className={`${estilos.faixa} ${x === populacao ? estilos.faixaAtiva : ""}`}>{ROTULO_POPULACAO[x]}</span>
-          ))}
-        </div>
       </header>
 
       {previa && (
         <p className={estilos.revisaoAviso} role="note">
-          Prévia para revisão: ainda não aprovado pelo revisor médico. Não usar como referência clínica.
+          <Icone nome="alerta" tamanho={17} />
+          <span>Prévia para revisão: ainda não aprovado pelo revisor médico. Não usar como referência clínica.</span>
         </p>
       )}
       {mostrandoAprovado && estado.precisaAtualizar && (
         <p className={estilos.revisaoAviso} role="note">
-          O revisor marcou esta versão para atualização. Ela continua valendo até a nova ser aprovada.
+          <Icone nome="alerta" tamanho={17} />
+          <span>O revisor marcou esta versão para atualização. Ela continua valendo até a nova ser aprovada.</span>
         </p>
       )}
       {equipe && estado.versaoNovaEsperando && (
@@ -293,14 +306,29 @@ export function ProtocoloTela({
         </div>
       ))}
 
+      {/* A ordem da crise: reconhecer, agir, as doses deste paciente; o resto depois. */}
       <nav className={`${estilos.atalhos} ${estilos.naoImprimir}`} aria-label="Partes do protocolo">
-        <a href="#agir">Agir agora</a>{p.ritmos?.length ? <a href="#ritmos">Ritmos</a> : null}
-        {temDoses && <a href="#doses">Doses</a>}<a href="#reconhecer">Reconhecer</a>
-        <a href="#pensar">Pensar em</a><a href="#depois">Depois</a><a href="#referencias">Referências</a>
+        <a href="#reconhecer">Reconhecer</a>
+        <a href="#agir" className={estilos.atalhoAgir}>Agir agora</a>
+        {temDoses && <a href="#doses">Doses</a>}
+        <a href="#pensar">Pensar em</a>
+        <a href="#depois">Depois</a>
+        <a href="#referencias">Referências</a>
       </nav>
 
+      <section id="reconhecer" className={`${estilos.secao} ${estilos.reconhecer}`} aria-labelledby="t-rec">
+        <h3 id="t-rec">Reconhecer</h3>
+        <ul>{p.reconhecer.map((x) => <li key={x}>{x}</li>)}</ul>
+        {p.ritmos && p.ritmos.length > 0 && (
+          <>
+            <h4 id="ritmos">Ritmo no monitor</h4>
+            <RitmosNoMonitor ritmos={p.ritmos} />
+          </>
+        )}
+      </section>
+
       <section id="agir" className={`${estilos.secao} ${estilos.agir}`} aria-labelledby="t-agir">
-        <h3 id="t-agir">Agir agora</h3>
+        <h3 id="t-agir"><Icone nome="alerta" tamanho={21} />Agir agora</h3>
         <ol className={estilos.passos}>
           {passosDe(p, populacao).map((x) => (
             <li key={x.texto}>
@@ -314,20 +342,7 @@ export function ProtocoloTela({
         </ol>
       </section>
 
-      {aoAbrirProtocolo && relacionados.length > 0 && (
-        <nav className={`${estilos.relacionados} ${estilos.naoImprimir}`} aria-label="Protocolos que costumam vir em seguida">
-          <span>Ir para</span>
-          {relacionados.map((r) => (
-            <button key={r.protocolo} type="button" className={estilos.botao} onClick={() => aoAbrirProtocolo(r.protocolo)}>
-              {r.texto} →
-            </button>
-          ))}
-        </nav>
-      )}
-
-      {p.ritmos && p.ritmos.length > 0 && <RitmosNoMonitor ritmos={p.ritmos} />}
-
-      {temDoses && <section id="doses" className={estilos.secao} aria-labelledby="t-doses">
+      {temDoses && <section id="doses" className={estilos.secaoAberta} aria-labelledby="t-doses">
         <h3 id="t-doses">Medicamentos e doses{populacao ? ` · ${ROTULO_POPULACAO[populacao]}` : ""}</h3>
         <div className={estilos.doses}>
           {populacao && doses.length === 0 && volumes.length === 0 && (
@@ -375,14 +390,19 @@ export function ProtocoloTela({
         </div>
       </section>}
 
-      <section id="reconhecer" className={`${estilos.secao} ${estilos.reconhecer}`} aria-labelledby="t-rec">
-        <h3 id="t-rec">Reconhecer</h3>
-        <ul>{p.reconhecer.map((x) => <li key={x}>{x}</li>)}</ul>
-      </section>
-
       <section id="pensar" className={estilos.secao} aria-labelledby="t-pensar">
         <h3 id="t-pensar">Pensar em</h3>
         <ul>{p.pensarEm.map((x) => <li key={x}>{x}</li>)}</ul>
+        {aoAbrirProtocolo && relacionados.length > 0 && (
+          <nav className={`${estilos.relacionados} ${estilos.naoImprimir}`} aria-label="Protocolos que costumam vir junto">
+            <span>Abrir também</span>
+            {relacionados.map((r) => (
+              <button key={r.protocolo} type="button" className={estilos.botao} onClick={() => aoAbrirProtocolo(r.protocolo)}>
+                {r.texto}<Icone nome="seta" tamanho={16} />
+              </button>
+            ))}
+          </nav>
+        )}
       </section>
 
       <section id="depois" className={estilos.secao} aria-labelledby="t-depois">
@@ -393,7 +413,7 @@ export function ProtocoloTela({
       {p.divergencias.length > 0 && (
         <section className={estilos.secao}>
           <details open={equipe}>
-            <summary>Diferenças entre as fontes ({p.divergencias.length})</summary>
+            <summary>Diferenças entre as fontes ({p.divergencias.length})<Icone nome="seta" tamanho={18} /></summary>
             <div style={{ marginTop: 12 }}>
               {p.divergencias.map((d) => (
                 <div key={d.tema} className={estilos.divergencia}>

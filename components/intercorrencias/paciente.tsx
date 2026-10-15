@@ -3,7 +3,7 @@
 import { useState } from "react";
 import estilos from "./intercorrencias.module.css";
 import { numero, populacaoDe, ROTULO_POPULACAO, type PacienteDaConsulta } from "@/lib/intercorrencias/calculo";
-import type { Categoria } from "@/lib/intercorrencias/tipos";
+import { Icone } from "@/components/icone";
 
 /**
  * Os dados do paciente que entram na conta: idade, peso, altura, sexo e
@@ -13,17 +13,6 @@ import type { Categoria } from "@/lib/intercorrencias/tipos";
  * conferir é parte do uso.
  */
 export type DadosDoPaciente = Record<string, string>;
-
-/** Cor de cada categoria. Nunca sozinha: a letra (A–F) e o nome vão junto. */
-export const COR_DA_CATEGORIA: Record<Categoria, string> = {
-  cardiovascular: "#b42318",
-  respiratorio: "#1b6ca8",
-  medicamentos: "#6941c6",
-  obstetricia: "#c11574",
-  pediatria: "#0e7c66",
-  outras: "#b54708",
-  apoio: "#475467",
-};
 
 export function pacienteDe(d: DadosDoPaciente): PacienteDaConsulta {
   const num = (t?: string) => {
@@ -97,7 +86,7 @@ export function CamposDoPaciente({ dados, set, daFicha, compacto = false }: {
           <div>
             <button type="button" className={estilos.chip} aria-pressed={dados.gestante === "sim"}
               onClick={() => set("gestante", dados.gestante === "sim" ? "" : "sim")}>
-              {dados.gestante === "sim" ? "✓ Gestante" : "Gestante"}
+              {dados.gestante === "sim" && <Icone nome="confirmado" tamanho={16} />}Gestante
             </button>
           </div>
         </>
