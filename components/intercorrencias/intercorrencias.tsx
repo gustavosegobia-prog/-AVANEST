@@ -15,10 +15,12 @@ import { useRevisoes } from "./use-revisoes";
 /**
  * INTERCORRÊNCIAS ANESTÉSICAS — a consulta da crise.
  *
- * No computador, duas colunas: à esquerda, fixas ao rolar, a busca, os dados
- * do paciente e o índice por categoria (as abas do manual); à direita, o
- * índice completo ou o protocolo aberto. No celular, uma coluna só, e o
- * protocolo aberto ocupa a tela inteira. A busca acha pelo nome, pelo
+ * Os dados do paciente numa faixa no alto. No computador, embaixo dela, duas
+ * colunas: à esquerda, fixas ao rolar, a busca e as categorias (as abas do
+ * manual), com os protocolos da categoria escolhida; à direita, o protocolo
+ * aberto — ou, antes de abrir um, a lista da categoria com o resumo de cada
+ * um. No celular, uma coluna só, as categorias numa faixa de abas, e o
+ * protocolo aberto ocupa a tela. A busca acha pelo nome, pelo
  * sinônimo ou pelo que se vê no monitor ("estridor", "PA caindo").
  *
  * Quem vê o quê: o médico vê só o que um revisor aprovou (o instantâneo
@@ -60,6 +62,8 @@ export function Intercorrencias({
   const revisoes = useRevisoes();
   const id = useId();
   const busca = useRef<HTMLInputElement>(null);
+  const principal = useRef<HTMLDivElement>(null);
+  const [categoria, setCategoria] = useState<Categoria>(CATEGORIAS[0].id);
   const [aberto, setAberto] = useState<string | null>(null);
   const [termo, setTermo] = useState("");
   const [favoritos, setFavoritos] = useState<string[]>(lerFavoritos);
@@ -70,7 +74,13 @@ export function Intercorrencias({
     [revisoes.registros],
   );
   const disponivel = (p: Protocolo) => equipe || Boolean(estados[p.id].emUso);
-  const abrir = (p: Protocolo) => { if (disponivel(p)) { setTermo(""); setAberto(p.id); } };
+  const abrir = (p: Protocolo) => {
+    if (!disponivel(p)) return;
+    // Aberto pela busca ou por "Abrir também": a aba passa a ser a do protocolo.
+    if (!itensDaCategoria(categoria).prontos.includes(p)) setCategoria(p.categoria);
+    setTermo("");
+    setAberto(p.id);
+  };
 
   const alternarFavorito = (x: string) => setFavoritos((v) => {
     const novo = v.includes(x) ? v.filter((y) => y !== x) : [...v, x];
@@ -78,10 +88,11 @@ export function Intercorrencias({
     return novo;
   });
 
-  /** O índice leva ao grupo da categoria, saindo do protocolo ou da busca. */
-  const irPara = (categoria: Categoria) => {
-    flushSync(() => { setAberto(null); setTermo(""); });
-    document.getElementById(`${id}-${categoria}`)?.scrollIntoView({ block: "start" });
+  /** A aba mostra os protocolos da categoria, saindo do protocolo ou da busca. */
+  const irPara = (c: Categoria) => {
+    flushSync(() => { setCategoria(c); setAberto(null); setTermo(""); });
+    // Se a página estava rolada (no meio de um protocolo), volta para o começo da lista.
+    if ((principal.current?.getBoundingClientRect().top ?? 0) < 0) principal.current?.scrollIntoView({ block: "start" });
   };
   const buscarOutra = () => {
     flushSync(() => { setAberto(null); setTermo(""); });
@@ -108,6 +119,17 @@ export function Intercorrencias({
     </li>
   );
 
+  const previsto = (tituloDoPrevisto: string, detalhe: string) => (
+    <li key={tituloDoPrevisto}>
+      <button type="button" className={estilos.linha} disabled>
+        <span className={estilos.linhaTexto}><b>{tituloDoPrevisto}</b><small>{detalhe}</small></span>
+        <span className={`${estilos.selo} ${estilos.selo_preparo}`}>Em preparação</span>
+      </button>
+    </li>
+  );
+
+  const aba = CATEGORIAS.find((c) => c.id === categoria)!;
+  const daAba = itensDaCategoria(categoria);
   const achados = buscar(termo);
   const favoritados = favoritos.map((x) => PROTOCOLOS.find((p) => p.id === x)).filter((p): p is Protocolo => Boolean(p));
 
@@ -118,8 +140,12 @@ export function Intercorrencias({
         <p>Reconhecer, agir agora e as doses para este paciente. Auxílio cognitivo: não substitui o julgamento médico.</p>
       </header>
 
+      <div className={`${estilos.barraPaciente} ${estilos.naoImprimir}`}>
+        <CamposDoPaciente dados={dados} set={set} daFicha={daFicha} compacto={daFicha} />
+      </div>
+
       <div className={estilos.grade}>
-        <aside className={`${estilos.lateral} ${estilos.naoImprimir}`} aria-label="Busca, paciente e índice">
+        <aside className={`${estilos.lateral} ${estilos.naoImprimir}`} aria-label="Busca e protocolos">
           <label className={estilos.busca}>
             <Icone nome="busca" tamanho={20} />
             <input ref={busca} type="search" value={termo}
@@ -128,9 +154,7 @@ export function Intercorrencias({
               autoComplete="off" spellCheck={false} enterKeyHint="search" />
           </label>
 
-          <CamposDoPaciente dados={dados} set={set} daFicha={daFicha} compacto={daFicha} />
-
-          <nav className={estilos.indice} aria-label="Índice">
+          <nav className={estilos.indice} aria-label="Protocolos por categoria">
             {favoritados.length > 0 && (
               <>
                 <h3 className={estilos.indiceTitulo}>Favoritos</h3>
@@ -150,7 +174,7 @@ export function Intercorrencias({
             <ul className={estilos.indiceLista}>
               {CATEGORIAS.map((c) => {
                 const { prontos } = itensDaCategoria(c.id);
-                const ativa = protocolo?.categoria === c.id;
+                const ativa = !termo.trim() && categoria === c.id;
                 return (
                   <li key={c.id}>
                     <button type="button" className={estilos.indiceItem} aria-current={ativa ? "true" : undefined} onClick={() => irPara(c.id)}>
@@ -163,7 +187,7 @@ export function Intercorrencias({
                         {prontos.map((p) => (
                           <li key={p.id}>
                             <button type="button" className={estilos.indiceSub} disabled={!disponivel(p)}
-                              aria-current={p.id === protocolo.id ? "page" : undefined} onClick={() => abrir(p)}>
+                              aria-current={p.id === protocolo?.id ? "page" : undefined} onClick={() => abrir(p)}>
                               {p.titulo}
                             </button>
                           </li>
@@ -177,12 +201,12 @@ export function Intercorrencias({
           </nav>
         </aside>
 
-        <div className={estilos.principal}>
+        <div ref={principal} className={estilos.principal}>
           {protocolo ? (
             <ProtocoloTela key={protocolo.id}
               doCodigo={protocolo} estado={estados[protocolo.id]} equipe={equipe} superAdmin={superAdmin} dados={dados} set={set} daFicha={daFicha}
               favorito={favoritos.includes(protocolo.id)} aoFavoritar={() => alternarFavorito(protocolo.id)}
-              aoVoltar={() => irPara(protocolo.categoria)} aoBuscar={buscarOutra}
+              aoVoltar={() => irPara(categoria)} aoBuscar={buscarOutra}
               aoAbrirCalculadora={aoAbrirCalculadora} revisoes={revisoes}
               aoAbrirProtocolo={(x) => { const alvo = PROTOCOLOS.find((p) => p.id === x); if (alvo) abrir(alvo); }}
             />
@@ -197,39 +221,22 @@ export function Intercorrencias({
                 <ul className={estilos.linhas}>
                   {achados.map((a) => a.tipo === "protocolo"
                     ? linha(a.protocolo, `${CATEGORIAS.find((c) => c.id === a.protocolo.categoria)!.nome} · achado por ${a.porque}`)
-                    : (
-                      <li key={a.previsto.titulo}>
-                        <button type="button" className={estilos.linha} disabled>
-                          <span className={estilos.linhaTexto}>
-                            <b>{a.previsto.titulo}</b>
-                            <small>{CATEGORIAS.find((c) => c.id === a.previsto.categoria)!.nome}</small>
-                          </span>
-                          <span className={`${estilos.selo} ${estilos.selo_preparo}`}>Em preparação</span>
-                        </button>
-                      </li>
-                    ))}
+                    : previsto(a.previsto.titulo, CATEGORIAS.find((c) => c.id === a.previsto.categoria)!.nome))}
                 </ul>
               )}
             </section>
           ) : (
-            <div className={estilos.folha}>
-              {CATEGORIAS.map((c) => {
-                const { prontos, previstos } = itensDaCategoria(c.id);
-                return (
-                  <section key={c.id} id={`${id}-${c.id}`} className={estilos.grupo} aria-labelledby={`${id}-${c.id}-t`}>
-                    <h3 id={`${id}-${c.id}-t`} className={estilos.grupoTitulo}>
-                      <span className={estilos.indiceLetra} aria-hidden="true">{c.letra}</span>
-                      {c.nome}
-                      <small>{prontos.length} protocolo{prontos.length === 1 ? "" : "s"}</small>
-                    </h3>
-                    {prontos.length > 0 && <ul className={estilos.linhas}>{prontos.map((p) => linha(p, p.resumo))}</ul>}
-                    {previstos.length > 0 && (
-                      <p className={estilos.emPreparo}><b>Em preparação:</b> {previstos.map((p) => p.titulo).join(" · ")}</p>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
+            <section className={estilos.folha} aria-labelledby={`${id}-aba`}>
+              <h3 id={`${id}-aba`} className={estilos.grupoTitulo}>
+                <span className={estilos.indiceLetra} aria-hidden="true">{aba.letra}</span>
+                {aba.nome}
+                <small>{daAba.prontos.length} protocolo{daAba.prontos.length === 1 ? "" : "s"}</small>
+              </h3>
+              <ul className={estilos.linhas}>
+                {daAba.prontos.map((p) => linha(p, p.resumo))}
+                {daAba.previstos.map((p) => previsto(p.titulo, "Ainda não disponível"))}
+              </ul>
+            </section>
           )}
 
           {!protocolo && revisoes.papel?.admin && !revisoes.semBanco && <EquipeCientifica />}

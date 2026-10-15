@@ -78,6 +78,7 @@
 .lateral { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; min-width: 0; }
 .principal { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
 .rodapes { display: grid; gap: 6px; padding-top: 4px; }
+.barraPaciente { min-width: 0; }
 
 /* Índice: no celular, uma faixa de abas que rola de lado; no computador, a lista da coluna. */
 .indice { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px; }
@@ -90,6 +91,7 @@
   font: inherit; font-size: 14px; font-weight: 650; color: var(--cor-tinta); cursor: pointer; white-space: nowrap; text-align: left;
 }
 .indiceItem:hover { border-color: var(--cor-marca); }
+.indiceItem[aria-current] { background: var(--cor-marca-suave); border-color: var(--cor-marca); color: var(--cor-marca-forte); }
 .indiceItem:focus-visible, .indiceSub:focus-visible { outline: 2px solid var(--cor-marca); outline-offset: 1px; }
 .indiceItem:disabled, .indiceSub:disabled { cursor: default; color: var(--cor-tinta-fraca); }
 .indiceLetra { font-weight: 800; color: var(--cor-marca); font-variant-numeric: tabular-nums; }
@@ -97,13 +99,11 @@
 .indiceConta, .indiceSubs { display: none; }
 
 /* A folha do índice: um documento, não uma grade de cartões. */
-.folha { background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--ic-raio); padding: 4px 20px; }
-.folhaTitulo { margin: 18px 0 10px; font-size: 17px; color: var(--cor-tinta-forte); }
+.folha { background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--ic-raio); padding: 18px 20px 12px; }
+.folhaTitulo { margin: 0 0 10px; font-size: 17px; color: var(--cor-tinta-forte); }
 .folha > .vazio { margin: 0 0 20px; }
-.grupo { padding: 20px 0 16px; scroll-margin-top: 16px; }
-.grupo + .grupo { border-top: 1px solid var(--cor-borda); }
 .grupoTitulo {
-  margin: 0 0 8px; display: flex; align-items: baseline; gap: 10px;
+  margin: 0 0 10px; display: flex; align-items: baseline; gap: 10px;
   font-size: 18px; letter-spacing: -.01em; color: var(--cor-tinta-forte);
 }
 .grupoTitulo .indiceLetra { width: 16px; }
@@ -127,8 +127,6 @@
   font-size: 13.5px; line-height: 1.45; color: var(--cor-tinta-fraca);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.emPreparo { margin: 10px 8px 0; font-size: 13px; line-height: 1.5; color: var(--cor-tinta-fraca); max-width: 110ch; }
-.emPreparo b { font-weight: 650; color: var(--cor-tinta); }
 .vazio { margin: 0; color: var(--cor-tinta-fraca); font-size: 15px; }
 
 .letra {
@@ -411,7 +409,11 @@
   }
   .busca input { height: 48px; font-size: 16px; padding-left: 44px; }
   .busca svg { left: 14px; }
-  .paciente { padding: 6px 14px 14px; }
+  /* A faixa do paciente: o resumo à esquerda, os campos numa linha só. */
+  .barraPaciente .paciente { grid-template-columns: 230px minmax(0, 1fr); align-items: end; column-gap: 20px; padding: 12px 18px 14px; }
+  .barraPaciente .pacienteTopo { flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 2px; min-height: 0; padding-bottom: 6px; }
+  .barraPaciente .pacienteTopo button { margin-left: 0; }
+  .barraPaciente .origem { grid-column: 1 / -1; }
   .indice { display: block; overflow: visible; padding: 0; }
   .indiceTitulo { display: block; margin: 16px 10px 6px; font-size: 13px; font-weight: 650; color: var(--cor-tinta-fraca); }
   .indiceLista { display: grid; gap: 1px; }
@@ -429,7 +431,7 @@
   }
   .indiceSub:hover { background: var(--cor-superficie-suave); }
   .indiceSub[aria-current="page"] { background: var(--cor-superficie); color: var(--cor-marca-forte); font-weight: 700; box-shadow: inset 0 0 0 1px var(--cor-borda); }
-  .folha { padding: 4px 28px; }
+  .folha { padding: 22px 28px 16px; }
   .soNoEstreito { display: none !important; }
 }
 /* Tela larga: dois cartões de dose lado a lado. */
@@ -439,7 +441,7 @@
 }
 /* Celular e janela estreita: o protocolo aberto ocupa tudo. */
 @container crises (max-width: 939.98px) {
-  .comProtocolo .lateral, .comProtocolo .cabeca { display: none; }
+  .comProtocolo .lateral, .comProtocolo .cabeca, .comProtocolo .barraPaciente { display: none; }
 }
 
 /* ---------------- Impressão / PDF ---------------- */
