@@ -62,6 +62,12 @@ const BULA: Fonte = { obra: "Bula do medicamento (ANVISA)", local: "posologia do
  */
 const DILUICAO: Fonte = { obra: "Diluição padrão com as ampolas brasileiras", local: "sugestão do AVANEST, a conferir com o protocolo do serviço" };
 const REVISAO_LISTA = "14/10/2026";
+const MHAUS: Fonte = { obra: "MHAUS — protocolo de tratamento da hipertermia maligna", local: "Malignant Hyperthermia Association of the United States" };
+const ASRA: Fonte = { obra: "ASRA — checklist da toxicidade sistêmica por anestésico local", local: "Neal et al., Reg Anesth Pain Med, 2018, revisão de 2020" };
+const HEMORRAGIA: Fonte = { obra: "CRASH-2 (Lancet, 2010) e WOMAN (Lancet, 2017)", local: "recomendação da OMS para o ácido tranexâmico" };
+const UTEROTONICOS: Fonte = { obra: "Consenso internacional de uterotônicos na cesariana", local: "Heesen et al., Anaesthesia, 2019" };
+/** Os sete que faltavam na lista do serviço: crises, obstetrícia e analgesia. */
+const REVISAO_INCLUIDOS = "15/10/2026";
 
 /* ------------------------------------------------------------------ *
  * Unidades
@@ -155,13 +161,17 @@ export const ROTULO_NIVEL: Record<Nivel, string> = { minima: "Mínima", usual: "
 /**
  * Como a dose é expressa: bolo por quilo, bomba por quilo (hora ou minuto),
  * dose fixa, ou bomba sem peso por minuto (vasopressina em UI/min,
- * nitroglicerina em mcg/min, amiodarona em mg/min).
+ * nitroglicerina em mcg/min, amiodarona em mg/min) ou por hora (ocitocina em
+ * UI/h).
  */
-export type Por = "kg" | "kg/h" | "kg/min" | "fixa" | "min";
+export type Por = "kg" | "kg/h" | "kg/min" | "fixa" | "min" | "h";
 
 export const ESCREVER_POR: Record<Por, string> = {
-  kg: "/kg", "kg/h": "/kg/h", "kg/min": "/kg/min", fixa: " (dose fixa)", min: "/min",
+  kg: "/kg", "kg/h": "/kg/h", "kg/min": "/kg/min", fixa: " (dose fixa)", min: "/min", h: "/h",
 };
+
+/** Bomba sem peso: a dose é a mesma em qualquer paciente. */
+export const semPeso = (por: Por) => por === "fixa" || por === "min" || por === "h";
 
 export type DosePorKg = { min?: number; usual?: number; max?: number; unidade: Unidade; por: Por };
 
@@ -203,8 +213,8 @@ export function calcularNivel(
 
   // Dose fixa não vê o peso. Multiplicar 4 mg de ondansetrona por 70 kg
   // daria 280 mg, e é o tipo de erro que uma calculadora não pode oferecer.
-  // A bomba sem peso (UI/min, mcg/min) também não.
-  const bruta = dose.por === "fixa" || dose.por === "min" ? dosePorKg : dosePorKg * pesoKg;
+  // A bomba sem peso (UI/min, mcg/min, UI/h) também não.
+  const bruta = semPeso(dose.por) ? dosePorKg : dosePorKg * pesoKg;
   let doseTotal = bruta;
   let limitada = false;
 
@@ -216,7 +226,8 @@ export function calcularNivel(
     }
   }
 
-  const porHora = dose.por === "kg/min" || dose.por === "min" ? doseTotal * 60 : dose.por === "kg/h" ? doseTotal : undefined;
+  const porHora = dose.por === "kg/min" || dose.por === "min" ? doseTotal * 60
+    : dose.por === "kg/h" || dose.por === "h" ? doseTotal : undefined;
 
   const base: Calculo = {
     nivel, dosePorKg, unidadeDose: dose.unidade, por: dose.por,
@@ -300,7 +311,7 @@ export const emMeses = (anos?: number, meses?: number): number | undefined => {
 export type GrupoId =
   | "inducao" | "opioides" | "bloqueadores" | "reversao" | "analgesia"
   | "antiemeticos" | "antibioticos" | "locais" | "bic" | "raqui" | "adjuvantes"
-  | "cardiovascular" | "arritmias" | "anticonvulsivantes";
+  | "cardiovascular" | "arritmias" | "anticonvulsivantes" | "crises" | "obstetricia";
 
 export const GRUPOS: Array<{ id: GrupoId; nome: string; icone: string }> = [
   { id: "inducao", nome: "Indução e hipnóticos", icone: "💉" },
@@ -313,7 +324,9 @@ export const GRUPOS: Array<{ id: GrupoId; nome: string; icone: string }> = [
   { id: "locais", nome: "Anestésicos locais", icone: "🎯" },
   { id: "cardiovascular", nome: "Cardiovascular: vasopressores e bombas", icone: "❤️" },
   { id: "arritmias", nome: "Arritmias e PCR", icone: "💓" },
+  { id: "crises", nome: "Crises: hipertermia maligna e toxicidade por anestésico local", icone: "🚨" },
   { id: "anticonvulsivantes", nome: "Anticonvulsivantes", icone: "⚡" },
+  { id: "obstetricia", nome: "Obstetrícia e sangramento", icone: "🤰" },
   { id: "raqui", nome: "Raquianestesia pediátrica", icone: "🩺" },
   { id: "antiemeticos", nome: "Antieméticos e profilaxia", icone: "🤢" },
   { id: "antibioticos", nome: "Antibióticos", icone: "🧫" },
@@ -360,6 +373,11 @@ const mcgml = (q: number, rotulo?: string): Apresentacao =>
   ({ rotulo: rotulo ?? `${virgula(q)} mcg/mL`, quantidade: q, unidade: "mcg", mL: 1 });
 
 const PED: Populacao[] = ["neonato", "lactente", "crianca"];
+/** Dose por quilo igual em qualquer idade (dantroleno, emulsão lipídica). */
+const TODAS: Populacao[] = [...PED, "adulto"];
+
+/** Emulsão lipídica a 20%: 20 g em 100 mL, ou seja 0,2 g/mL. */
+const LIPIDICA_20: Apresentacao = { rotulo: "Frasco a 20% (20 g em 100 mL)", quantidade: 0.2, unidade: "g", mL: 1 };
 
 export const CATALOGO: Medicamento[] = [
   /* ---------------- Indução e hipnóticos — pediatria ---------------- */
@@ -1333,6 +1351,96 @@ export const CATALOGO: Medicamento[] = [
     fonte: LISTA, situacao: "validado", revisao: REVISAO_LISTA,
   },
 
+  /* ---------------- Crises: hipertermia maligna e toxicidade por anestésico local ---------------- */
+  {
+    id: "dantroleno", nome: "Dantroleno — hipertermia maligna", grupo: "crises", populacoes: TODAS, via: "IV",
+    indicacao: "Crise de hipertermia maligna",
+    dose: { usual: 2.5, unidade: "mg", por: "kg" },
+    apresentacoes: [{ rotulo: "Frasco de 20 mg em 60 mL de água destilada", quantidade: 20, unidade: "mg", mL: 60 }],
+    fonte: MHAUS, situacao: "validado", revisao: REVISAO_INCLUIDOS, pesoBase: "atual",
+    alerta: "Cada frasco: 20 mg, reconstituído só com 60 mL de água destilada sem conservante, agitando até clarear. A dose em mg dividida por 20 dá o número de frascos.",
+    observacao: "Repetir 2,5 mg/kg a cada 5 minutos até controlar a crise. O total costuma ficar em até 10 mg/kg, mas pode passar. Depois, 1 mg/kg a cada 4 a 6 horas por 24 horas. Peso da balança, também no obeso.",
+  },
+  {
+    id: "lipidica-bolus", nome: "Emulsão lipídica 20% — bolus", grupo: "crises", populacoes: TODAS, via: "IV",
+    indicacao: "Toxicidade sistêmica por anestésico local",
+    dose: { usual: 0.3, unidade: "g", por: "kg" }, tetoAbsoluto: { valor: 20, unidade: "g" },
+    apresentacoes: [LIPIDICA_20],
+    fonte: ASRA, situacao: "validado", revisao: REVISAO_INCLUIDOS, pesoBase: "ideal",
+    alerta: "Parar o anestésico local, chamar ajuda, oxigenar e tratar a convulsão com benzodiazepínico. Na PCR, adrenalina em doses pequenas (até 1 mcg/kg); evitar vasopressina, bloqueador de canal de cálcio, betabloqueador e outro anestésico local.",
+    observacao: "1,5 mL/kg em 2 a 3 minutos (0,3 g/kg de lipídio); acima de 70 kg, 100 mL. Se continuar instável, repetir o bolus uma ou duas vezes. Teto de cerca de 12 mL/kg nos primeiros 30 minutos.",
+  },
+  {
+    id: "lipidica-infusao", nome: "Emulsão lipídica 20% — infusão", grupo: "crises", populacoes: TODAS,
+    via: "IV, infusão contínua", indicacao: "Toxicidade sistêmica por anestésico local",
+    dose: { usual: 0.05, max: 0.1, unidade: "g", por: "kg/min" },
+    apresentacoes: [LIPIDICA_20],
+    fonte: ASRA, situacao: "validado", revisao: REVISAO_INCLUIDOS, pesoBase: "ideal",
+    observacao: "0,25 mL/kg/min (0,05 g/kg/min) logo depois do bolus; se continuar instável, dobrar para 0,5 mL/kg/min. Manter até 10 minutos depois da estabilidade. Acima de 70 kg: 200 a 250 mL em 15 a 20 minutos. Teto de cerca de 12 mL/kg nos primeiros 30 minutos.",
+  },
+
+  /* ---------------- Obstetrícia e sangramento ---------------- */
+  {
+    id: "tranexamico-adulto", nome: "Ácido tranexâmico", grupo: "obstetricia", populacoes: ["adulto"], via: "IV",
+    indicacao: "Sangramento: trauma, hemorragia pós-parto, cirurgia de grande porte",
+    dose: { usual: 1, unidade: "g", por: "fixa" },
+    apresentacoes: [mgml(50, "Ampola de 250 mg em 5 mL")],
+    fonte: HEMORRAGIA, situacao: "validado", revisao: REVISAO_INCLUIDOS,
+    alerta: "Reduzir na insuficiência renal. Em dose alta pode causar convulsão.",
+    observacao: "Em 10 minutos: rápido derruba a pressão. Trauma: começar até 3 horas e seguir com mais 1 g em 8 horas. Hemorragia pós-parto: mais 1 g se o sangramento continuar depois de 30 minutos. Na cirurgia ortopédica também se usa 10 a 20 mg/kg na indução.",
+  },
+  {
+    id: "ocitocina-bolus-adulto", nome: "Ocitocina — bolus na cesariana", grupo: "obstetricia", populacoes: ["adulto"], via: "IV",
+    indicacao: "Depois do nascimento",
+    dose: { min: 1, max: 3, unidade: "UI", por: "fixa" },
+    apresentacoes: [
+      { rotulo: "5 UI em 10 mL — 0,5 UI/mL", quantidade: 0.5, unidade: "UI", mL: 1 },
+      { rotulo: "5 UI/mL (ampola de 1 mL)", quantidade: 5, unidade: "UI", mL: 1 },
+    ],
+    fonte: UTEROTONICOS, situacao: "validado", revisao: REVISAO_INCLUIDOS,
+    alerta: "Bolus rápido derruba a pressão e acelera o coração, com isquemia no ECG. Fazer lento, em pelo menos 30 segundos.",
+    observacao: "Cesariana eletiva: 1 UI. Em trabalho de parto: 3 UI. Sem tônus em 2 minutos, mais 3 UI; depois de duas doses de resgate, outro uterotônico. Junto, a infusão.",
+  },
+  {
+    id: "ocitocina-bic-adulto", nome: "Ocitocina — infusão", grupo: "obstetricia", populacoes: ["adulto"],
+    via: "IV, infusão contínua",
+    dose: { min: 2.5, usual: 7.5, max: 15, unidade: "UI", por: "h" },
+    apresentacoes: [
+      { rotulo: "20 UI em 500 mL — 0,04 UI/mL", quantidade: 0.04, unidade: "UI", mL: 1 },
+      { rotulo: "10 UI em 500 mL — 0,02 UI/mL", quantidade: 0.02, unidade: "UI", mL: 1 },
+    ],
+    fonte: UTEROTONICOS, situacao: "validado", revisao: REVISAO_INCLUIDOS,
+    observacao: "Cesariana eletiva: 2,5 a 7,5 UI/h. Em trabalho de parto: 7,5 a 15 UI/h.",
+  },
+  {
+    id: "metilergometrina-adulto", nome: "Metilergometrina", grupo: "obstetricia", populacoes: ["adulto"], via: "IM",
+    indicacao: "Atonia uterina",
+    dose: { usual: 0.2, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(0.2, "Ampola de 0,2 mg em 1 mL")],
+    fonte: BULA, situacao: "validado", revisao: REVISAO_INCLUIDOS,
+    alerta: "Contraindicada na hipertensão, na pré-eclâmpsia e na doença coronariana. IV só em exceção, diluída e lenta (pelo menos 1 minuto): crise hipertensiva e espasmo coronariano.",
+    observacao: "Pode repetir a cada 2 a 4 horas, até 5 doses (1 mg).",
+  },
+
+  /* ---------------- Analgesia: antiespasmódico e AINE ---------------- */
+  {
+    id: "escopolamina-adulto", nome: "Escopolamina — antiespasmódico", grupo: "analgesia", populacoes: ["adulto"], via: "IV",
+    indicacao: "Cólica e espasmo de víscera (butilbrometo de escopolamina)",
+    dose: { min: 20, max: 40, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(20, "Ampola de 20 mg em 1 mL")],
+    fonte: BULA, situacao: "validado", revisao: REVISAO_INCLUIDOS,
+    alerta: "Taquicardia. Evitar no glaucoma de ângulo fechado, na taquiarritmia e na retenção urinária.",
+    observacao: "IV lento ou IM. Pode repetir; até 100 mg por dia. A ampola composta traz também 2,5 g de dipirona, que entra na conta da dipirona.",
+  },
+  {
+    id: "tenoxicam-adulto", nome: "Tenoxicam", grupo: "analgesia", populacoes: ["adulto"], via: "IV",
+    dose: { min: 20, max: 40, unidade: "mg", por: "fixa" },
+    apresentacoes: [
+      { rotulo: "20 mg em 2 mL de diluente — 10 mg/mL", quantidade: 20, unidade: "mg", mL: 2 },
+      { rotulo: "40 mg em 2 mL de diluente — 20 mg/mL", quantidade: 40, unidade: "mg", mL: 2 },
+    ],
+    fonte: BULA, situacao: "validado", revisao: REVISAO_INCLUIDOS,
+    alerta: "Anti-inflamatório: evitar na insuficiência renal, no sangramento, na úlcera, na asma sensível a AINE e no 3º trimestre da gravidez. Não somar a outro AINE.",
+    observacao: "Uma vez ao dia: 20 mg; no quadro agudo, 40 mg por dia nos 2 primeiros dias.",
+  },
 ];
 
 /* ------------------------------------------------------------------ *

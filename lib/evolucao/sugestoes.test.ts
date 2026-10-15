@@ -157,3 +157,20 @@ test("obeso: o rocurônio da ficha sai pelo peso ideal, e a succinilcolina pelo 
   const semAltura = sugerirDoses("Rocurônio", { idadeMeses: 480, pesoKg: 130 }, { unidade: "mg", via: "EV" });
   assert.match(semAltura.cartoes.find((c) => c.titulo === "Rocurônio — intubação")!.observacao!, /Sem altura e sexo/);
 });
+
+test("emulsão lipídica na ficha em mL, dantroleno pelo peso da balança, ocitocina na bomba em UI/h", async () => {
+  const { sugerirVelocidades } = await import("./sugestoes.ts");
+  // A ficha escreve a emulsão em mL: 1,5 mL/kg, 60 kg → 90 mL; com 90 kg, o teto de 100 mL.
+  const lip = sugerirDoses("Emulsão lipídica 20%", { idadeMeses: 480, pesoKg: 60 }, { unidade: "mL", via: "EV" });
+  assert.deepEqual(lip.cartoes.map((c) => [c.titulo, c.doses.map((d) => [d.dose, d.unidade])]),
+    [["Emulsão lipídica 20% — bolus", [[90, "mL"]]]]);
+  const grande = sugerirDoses("Intralipid", { idadeMeses: 480, pesoKg: 90 }, { unidade: "mL", via: "EV" });
+  assert.equal(grande.cartoes[0].doses[0].dose, 100);
+  // Dantroleno: 2,5 × 80 = 200 mg.
+  const dan = sugerirDoses("Dantrolen", { idadeMeses: 480, pesoKg: 80 }, { unidade: "mg", via: "EV" });
+  assert.equal(dan.cartoes[0].doses[0].dose, 200);
+  // Ocitocina: bomba sem peso, 20 UI em 500 mL (0,04 UI/mL): 2,5 UI/h = 62,5 mL/h.
+  const oci = sugerirVelocidades("Ocitocina", { idadeMeses: 360, pesoKg: null }, { valor: 0.04, unidade: "UI/mL" });
+  assert.deepEqual(oci.cartoes[0].opcoes.map((o) => [o.valor, o.unidade, o.mlPorHora]),
+    [[2.5, "UI/h", 62.5], [7.5, "UI/h", 187.5], [15, "UI/h", 375]]);
+});

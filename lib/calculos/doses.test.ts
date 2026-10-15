@@ -480,3 +480,40 @@ test("cefazolina em grama converte certo para volume", () => {
   assert.equal(c.doseTotal, 2);        // 2 g
   assert.equal(c.volume, 20);          // 2 g ÷ 0,1 g/mL
 });
+
+test("os sete incluídos: crises, obstetrícia e analgesia calculam certo", () => {
+  // Dantroleno 2,5 mg/kg, 70 kg: 175 mg; o frasco de 20 mg vai em 60 mL → 525 mL (8,75 frascos).
+  const dan = acharMedicamento("dantroleno")!;
+  const [d] = calcular(dan.dose!, 70, dan.apresentacoes[0]);
+  assert.equal(d.doseTotal, 175);
+  assert.equal(d.volume, 525);
+  assert.ok(dan.populacoes.includes("lactente"), "a dose por quilo é a mesma na criança");
+  // Emulsão lipídica: 1,5 mL/kg (0,3 g/kg); 60 kg → 90 mL; com peso alto, o teto de 100 mL.
+  const bolus = acharMedicamento("lipidica-bolus")!;
+  assert.equal(calcular(bolus.dose!, 60, bolus.apresentacoes[0], bolus.tetoAbsoluto)[0].volume, 90);
+  const grande = calcular(bolus.dose!, 90, bolus.apresentacoes[0], bolus.tetoAbsoluto)[0];
+  assert.equal(grande.volume, 100);
+  assert.equal(grande.limitada, true);
+  // Infusão 0,25 mL/kg/min, 60 kg: 15 mL/min = 900 mL/h; a máxima (0,5) dobra.
+  const inf = acharMedicamento("lipidica-infusao")!;
+  assert.deepEqual(calcular(inf.dose!, 60, inf.apresentacoes[0]).map((c) => c.volume), [900, 1800]);
+  // Tranexâmico 1 g na ampola de 50 mg/mL: 20 mL (4 ampolas), em qualquer peso.
+  const txa = acharMedicamento("tranexamico-adulto")!;
+  const [t] = calcular(txa.dose!, 120, txa.apresentacoes[0]);
+  assert.equal(t.doseTotal, 1);
+  assert.equal(t.volume, 20);
+  // Ocitocina na bomba em UI/h, sem peso: 7,5 UI/h em 20 UI/500 mL (0,04 UI/mL) = 187,5 mL/h.
+  const oci = acharMedicamento("ocitocina-bic-adulto")!;
+  assert.deepEqual(calcular(oci.dose!, 50, oci.apresentacoes[0]).map((c) => [c.doseTotal, c.dosePorHora, c.volume, c.unidadeVolume]),
+    [[2.5, 2.5, 62.5, "mL/h"], [7.5, 7.5, 187.5, "mL/h"], [15, 15, 375, "mL/h"]]);
+  assert.deepEqual(calcular(oci.dose!, 100, oci.apresentacoes[0]).map((c) => c.volume), [62.5, 187.5, 375]);
+  // Metilergometrina é IM e traz a contraindicação na pré-eclâmpsia.
+  const met = acharMedicamento("metilergometrina-adulto")!;
+  assert.equal(met.via, "IM");
+  assert.match(met.alerta!, /pré-eclâmpsia/);
+  for (const id of ["escopolamina-adulto", "tenoxicam-adulto", "ocitocina-bolus-adulto"]) {
+    assert.equal(acharMedicamento(id)!.situacao, "validado", id);
+  }
+  assert.ok(disponiveis("adulto").some((m) => m.grupo === "obstetricia"));
+  assert.ok(disponiveis("crianca").some((m) => m.grupo === "crises"));
+});

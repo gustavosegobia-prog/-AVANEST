@@ -15,7 +15,7 @@
 
 import {
   AVISO_TITULAVEL, CATALOGO as TABELA, ROTULO_NIVEL, ROTULO_POPULACAO, bupivacainaIntratecal, calcular, citar,
-  doseCefazolina, doseCetorolaco, faixaEtaria, porMl, virgula,
+  converter, doseCefazolina, doseCetorolaco, faixaEtaria, porMl, virgula,
   type DosePorKg, type Medicamento, type Populacao, type Unidade,
 } from "../calculos/doses.ts";
 import { concentracaoNaUnidade, converterMassa, mesmoFarmaco, type UnidadeDeConcentracao, type UnidadeDeDose } from "./medicamentos.ts";
@@ -151,10 +151,15 @@ export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
   const tetos: TetoSugerido[] = [];
   let faltouPeso = false;
 
-  const naUnidade = (valor: number, de: Unidade): { dose: number; unidade: UnidadeDeDose } | null => {
+  const naUnidade = (valor: number, de: Unidade, m?: Medicamento): { dose: number; unidade: UnidadeDeDose } | null => {
     if (de === opcoes.unidade) return { dose: valor, unidade: opcoes.unidade };
     const v = converterMassa(valor, de, opcoes.unidade);
-    return v === null ? null : { dose: v, unidade: opcoes.unidade };
+    if (v !== null) return { dose: v, unidade: opcoes.unidade };
+    // A ficha escreve em mL (emulsão lipídica, em g na tabela): o volume sai
+    // da apresentação, quando o cartão tem uma só — com duas, não há como saber.
+    const a = opcoes.unidade === "mL" && m?.apresentacoes.length === 1 ? m.apresentacoes[0] : null;
+    const naApresentacao = a ? converter(valor, de, a.unidade) : undefined;
+    return a && naApresentacao !== undefined ? { dose: naApresentacao / porMl(a), unidade: "mL" } : null;
   };
 
   // Raquianestesia pediátrica: a bupivacaína intratecal tem regra por peso,
@@ -215,7 +220,7 @@ export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
     if (dose.max !== undefined && dose.min === undefined && dose.usual === undefined) {
       if (peso === null && dose.por !== "fixa") { faltouPeso = true; continue; }
       const [conta] = calcular(dose, peso ?? 1, undefined, m.tetoAbsoluto);
-      const v = conta && naUnidade(conta.doseTotal, conta.unidadeDose);
+      const v = conta && naUnidade(conta.doseTotal, conta.unidadeDose, m);
       if (v) tetos.push({ titulo: m.nome, dose: arredondarDose(v.dose), unidade: v.unidade, base: `máximo ${escreverBase(dose)}${doPeso}`, fonte });
       continue;
     }
@@ -223,7 +228,7 @@ export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
     const contas = calcular(dose, peso ?? 1, undefined, m.tetoAbsoluto);
     const doses: Sugestao[] = [];
     for (const c of contas) {
-      const v = naUnidade(c.doseTotal, c.unidadeDose);
+      const v = naUnidade(c.doseTotal, c.unidadeDose, m);
       if (!v) continue;
       const valor = arredondarDose(v.dose);
       // Duas doses iguais depois do arredondamento (ou do teto) viram uma só.
@@ -290,7 +295,8 @@ export function tuboDaFicha(p: PacienteDaFicha): TuboSugerido | null {
 // peso. Um toque preenche a velocidade; o médico confirma.
 
 /** As unidades em que a ficha registra a bomba. */
-export type UnidadeSugerida = "mcg/kg/min" | "mcg/kg/h" | "mg/kg/h" | "mcg/min" | "mg/min" | "UI/min" | "mcg/h" | "mg/h";
+export type UnidadeSugerida = "mcg/kg/min" | "mcg/kg/h" | "mg/kg/h" | "mcg/min" | "mg/min" | "UI/min" | "mcg/h" | "mg/h" | "UI/h";
+const NA_FICHA: string[] = ["mcg/kg/min", "mcg/kg/h", "mg/kg/h", "mcg/min", "mg/min", "UI/min", "mcg/h", "mg/h", "UI/h"];
 
 export type VelocidadeSugerida = {
   chave: string;
@@ -313,7 +319,7 @@ export type CartaoDeBomba = {
 
 /**
  * A bomba do fármaco: a faixa da tabela e, com a concentração da seringa, a
- * mesma faixa em mL/h. Por minuto sem peso (vasopressina, nitroglicerina,
+ * mesma faixa em mL/h. Por minuto ou por hora sem peso (vasopressina, nitroglicerina,
  * amiodarona) não pede peso. No obeso, quando o fármaco vai pelo peso ideal,
  * ajustado ou magro, a velocidade sai já multiplicada por ele (mcg/min, mg/h):
  * registrada em mcg/kg/min, a ficha somaria a dose pelo peso da balança.
@@ -326,12 +332,12 @@ export function sugerirVelocidades(nome: string, paciente: PacienteDaFicha,
   let faltouPeso = false;
   for (const m of TABELA) {
     const d = m.dose;
-    if (m.situacao !== "validado" || !d || (d.por !== "kg/min" && d.por !== "kg/h" && d.por !== "min")) continue;
+    if (m.situacao !== "validado" || !d || !["kg/min", "kg/h", "min", "h"].includes(d.por)) continue;
     if (!m.populacoes.includes(populacao) || !farmacosDoCartao(m).some((f) => mesmoFarmaco(f, nome))) continue;
-    const porKg = d.por !== "min";
-    const tempo = d.por === "kg/h" ? "h" : "min";
-    const naTabela = (porKg ? `${d.unidade}/kg/${tempo}` : `${d.unidade}/min`) as UnidadeSugerida;
-    if (!["mcg/kg/min", "mcg/kg/h", "mg/kg/h", "mcg/min", "mg/min", "UI/min"].includes(naTabela)) continue;
+    const porKg = d.por === "kg/min" || d.por === "kg/h";
+    const tempo = d.por === "kg/h" || d.por === "h" ? "h" : "min";
+    const naTabela = (porKg ? `${d.unidade}/kg/${tempo}` : `${d.unidade}/${tempo}`) as UnidadeSugerida;
+    if (!NA_FICHA.includes(naTabela)) continue;
     const pc = pesoDoCartao(m, paciente);
     const peso = porKg ? pc.kg : 1;
     if (porKg && peso === null) faltouPeso = true;

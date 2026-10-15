@@ -34,7 +34,8 @@ export type ItemDoCatalogo = {
   categoria: Categoria;
   /** Nomes comerciais e grafias comuns, para a busca. */
   sinonimos: string[];
-  unidade: "mg" | "mcg" | "g" | "UI";
+  /** mL só para o que se escreve em volume (emulsão lipídica). */
+  unidade: "mg" | "mcg" | "g" | "UI" | "mL";
   /** Entra na soma de exposição a anestésico local. */
   anestesicoLocal?: boolean;
 };
@@ -86,6 +87,8 @@ export const CATALOGO: ItemDoCatalogo[] = [
   { id: "metilergometrina", nome: "Metilergometrina", categoria: "outros", sinonimos: ["Methergin"], unidade: "mg" },
   { id: "escopolamina", nome: "Escopolamina", categoria: "outros", sinonimos: ["Buscopan"], unidade: "mg" },
   { id: "hidrocortisona", nome: "Hidrocortisona", categoria: "outros", sinonimos: ["Solu-Cortef"], unidade: "mg" },
+  { id: "dantroleno", nome: "Dantroleno", categoria: "outros", sinonimos: ["Dantrolen", "Dantrolene"], unidade: "mg" },
+  { id: "emulsao_lipidica", nome: "Emulsão lipídica 20%", categoria: "outros", sinonimos: ["Emulsão lipídica", "Intralipid", "Lipovenos", "Lipofundin"], unidade: "mL" },
 ];
 
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();

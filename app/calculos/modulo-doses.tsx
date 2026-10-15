@@ -321,7 +321,7 @@ function Cartao({
 }
 
 function Dose({ c, unico }: { c: Calculo; unico: boolean }) {
-  const periodo = c.por === "kg/min" || c.por === "min" ? "/min" : c.por === "kg/h" ? "/h" : "";
+  const periodo = c.por === "kg/min" || c.por === "min" ? "/min" : c.por === "kg/h" || c.por === "h" ? "/h" : "";
   return (
     <div className={c.limitada ? `${estilos.dose} ${estilos.blocoAtencao}` : estilos.dose}>
       {!unico && <small className={estilos.doseNivel}>{ROTULO_NIVEL[c.nivel]}</small>}
@@ -331,7 +331,7 @@ function Dose({ c, unico }: { c: Calculo; unico: boolean }) {
       <small>
         {virgula(c.doseTotal)} {c.unidadeDose}{periodo}
         {c.dosePorHora !== undefined && (c.por === "kg/min" || c.por === "min") ? ` · ${virgula(c.dosePorHora)} ${c.unidadeDose}/h` : ""}
-        {c.por !== "min" && <>{" · "}{virgula(c.dosePorKg)} {c.unidadeDose}{ESCREVER_POR[c.por]}</>}
+        {c.por !== "min" && c.por !== "h" && <>{" · "}{virgula(c.dosePorKg)} {c.unidadeDose}{ESCREVER_POR[c.por]}</>}
       </small>
       {c.limitada && (
         <small className={estilos.limitada}>
