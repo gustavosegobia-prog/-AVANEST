@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { guardarTemaEscuro, temaEscuroGuardado } from "@/lib/tema";
 import { createClient } from "@/utils/supabase/client";
-import { BrandMark } from "@/components/brand-mark";
+import { BrandMark, NomeDaMarca } from "@/components/brand-mark";
 import { useCaptcha } from "@/components/turnstile";
 import { Icone, type NomeDoIcone } from "@/components/icone";
 import { estadoDoTeste, fraseDoTeste } from "@/lib/teste-gratis";
@@ -807,7 +807,7 @@ export function DashboardClient({
     <main className={`clinicalShell temaApp ${dark?"clinicalDark":""}`} aria-busy={isAreaPending || undefined}>
       {isAreaPending && <div className="barraCarregando" aria-hidden="true" />}
       <header className="clinicalTopbar">
-        <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><span><strong>AVANEST</strong><small>Gestão em anestesiologia</small></span></Link>
+        <Link className="clinicalBrand" href="/"><BrandMark className="clinicalBrandMark" /><NomeDaMarca /></Link>
         {/* Com local escolhido, é ele que aparece: quem atende em três
             hospitais precisa saber em qual está antes de imprimir a primeira
             ficha, e o nome da organização é o mesmo nos três. Sem local

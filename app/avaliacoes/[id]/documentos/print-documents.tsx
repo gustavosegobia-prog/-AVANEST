@@ -6,7 +6,7 @@ import {createClient} from "@/utils/supabase/client";
 import {ehAntitrombotico,exigeOrientacao} from "@/lib/medication-guide";
 import {suspensionSummary} from "@/lib/medication-summary";
 import {frasePreditores,preditoresMarcados,resumoViaAerea,riscoNoMasculino} from "@/lib/via-aerea";
-import {BrandMark} from "@/components/brand-mark";
+import {BrandMark, NomeDaMarca} from "@/components/brand-mark";
 import {aplicarDados,termoVigenteEm,type VersaoDoTermo} from "@/lib/termo-consentimento";
 import { antropometriaPlausivel } from "@/lib/numero-clinico";
 
@@ -466,7 +466,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
   // no papel (globals.css, .printPaper.rascunho).
   const rascunho=avaliacao.status!=="concluida";
   return <main className="documentsShell">
-    <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark"/><span><strong>AVANEST</strong><small>Gestão em anestesiologia</small></span></a>{avaliacao.status==="concluida"?<span className="docSaved">● Avaliação concluída</span>:<span className="docSaved rascunho">● Rascunho — avaliação não concluída</span>}<nav className="roleNav" aria-label="Áreas do sistema">{canReception&&<a href="/dashboard?area=recepcao">Recepção</a>}{canMedical&&<a href="/dashboard?area=medico">Médico</a>}{canFinance&&<a href="/dashboard?area=financeiro">Financeiro</a>}{canManage&&<a href="/dashboard?area=admin">Admin</a>}</nav></header>
+    <header className="clinicalTopbar documentsTopbar"><a className="clinicalBrand" href="/dashboard"><BrandMark className="clinicalBrandMark"/><NomeDaMarca /></a>{avaliacao.status==="concluida"?<span className="docSaved">● Avaliação concluída</span>:<span className="docSaved rascunho">● Rascunho — avaliação não concluída</span>}<nav className="roleNav" aria-label="Áreas do sistema">{canReception&&<a href="/dashboard?area=recepcao">Recepção</a>}{canMedical&&<a href="/dashboard?area=medico">Médico</a>}{canFinance&&<a href="/dashboard?area=financeiro">Financeiro</a>}{canManage&&<a href="/dashboard?area=admin">Admin</a>}</nav></header>
     <div className="documentsMain">
       <div className="documentsHeading"><h1>Documentos para impressão</h1><div><a className="outlineClinical" href={`/avaliacoes/${avaliacao.id}?editar=1`}>← Voltar e corrigir avaliação</a>{/* A concluída só abre nesta tela, então excluir precisa existir aqui —
         era por isso que a opção "sumia" depois da conclusão. */}

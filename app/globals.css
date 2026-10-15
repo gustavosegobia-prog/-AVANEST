@@ -6322,18 +6322,39 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 /* --- A marca: "GESTÃO EM ANESTESIOLOGIA" na largura exata de AVANEST -------
    Antes a frase passava 46px da largura do nome (152px contra 106px), e
    apertá-la até caber a deixaria ilegível. Aqui o tamanho do nome manda
-   (--marca) e a frase sai na proporção medida com a fonte do site: 9px para
-   26px, com o espaçamento que faz as duas linhas terminarem juntas. A frase
-   nunca fica menor que hoje. Este bloco vem depois de todas as medidas
-   antigas da marca (capa, barra, telefone) e vale por cima delas. */
-.avnBrand,.avnNav .avnBrand{--marca:26px;gap:calc(var(--marca) * .42)}
+   (--marca) e a frase sai na proporção: 9px para 26px, com o espaçamento que
+   faz as duas linhas terminarem juntas. A conta é da Outfit (a fonte da
+   marca, servida pelo site): com a fonte de cada computador ela só fechava
+   num deles. Medidas da Outfit: AVANEST a 600 tem 4,4236 em e mais 6
+   espaços de .16em; a frase em maiúsculas a 500 tem 13,9991 em e 23
+   espaços. Igualando, o espaço da frase é .0676em. Este bloco vem depois de
+   todas as medidas antigas da marca (capa, barra, telefone) e vale por cima. */
+.avnBrand,.avnNav .avnBrand{--marca:26px;gap:calc(var(--marca) * .42);font-family:"Outfit",ui-sans-serif,system-ui,sans-serif}
 @media(max-width:800px){.avnBrand,.avnNav .avnBrand{--marca:23px}}
 @media(max-width:389px){.avnBrand,.avnNav .avnBrand{--marca:20px}}
-.avnBrand strong,.avnNav .avnBrand strong{font-size:var(--marca);letter-spacing:.16em;line-height:1.15}
-.avnBrand small,.avnNav .avnBrand small{font-size:calc(var(--marca) * 9 / 26);letter-spacing:.116em;
+.avnBrand strong,.avnNav .avnBrand strong{font-size:var(--marca);font-weight:600;letter-spacing:.16em;line-height:1.15}
+.avnBrand small,.avnNav .avnBrand small{font-size:calc(var(--marca) * 9 / 26);font-weight:500;letter-spacing:.0676em;
   margin-top:calc(var(--marca) * .16);line-height:1.2;white-space:nowrap}
 .avnMark,.avnNav .avnMark{width:calc(var(--marca) * 1.85);height:calc(var(--marca) * 1.85)}
 .avnMark svg,.avnNav .avnMark svg{width:100%;height:100%}
+
+/* --- A marca dentro do sistema: a mesma da capa ----------------------------
+   O cabeçalho de dentro (painel, avaliação, documentos) tinha o nome liso e a
+   frase em letra comum, mais larga que o nome. Agora é o desenho da capa: AV
+   azul, o segundo A em degradê, NEST verde, e "GESTÃO EM ANESTESIOLOGIA"
+   terminando junto com o nome, nas mesmas proporções do bloco acima. Com o
+   nome a 24px a frase fica legível e o conjunto cabe na barra de 60px. Abaixo
+   de 1100px a frase some (regra mais abaixo) e o nome volta a 20px. */
+.clinicalBrand{--marca:24px;gap:10px;font-family:"Outfit",ui-sans-serif,system-ui,sans-serif}
+.clinicalBrand strong{font-size:var(--marca);font-weight:600;letter-spacing:.16em;line-height:1.15}
+.clinicalBrand small{font-size:calc(var(--marca) * 9 / 26);font-weight:500;letter-spacing:.0676em;text-transform:uppercase;
+  margin-top:calc(var(--marca) * .16);line-height:1.2;white-space:nowrap;color:var(--cor-tinta-fraca)}
+.clinicalBrand .brandBlue{color:var(--cor-marca-clara)}
+.clinicalBrand .brandMidA{background:linear-gradient(90deg,var(--cor-marca-clara) 0%,var(--cor-marca-clara) 48%,#2bc5a8 52%,#2bc5a8 100%);
+  background-clip:text;-webkit-background-clip:text;color:transparent}
+.clinicalBrand .brandTeal{color:#2bc5a8}
+.clinicalBrandMark{width:38px;height:38px}
+@media(max-width:1100px){.clinicalBrand{--marca:20px}}
 
 /* --- Menu lateral (Financeiro, Administração e Escala) ----------------------
    Antes: títulos de grupo em caixa alta cinza, que pareciam rótulo e não

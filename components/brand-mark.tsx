@@ -33,3 +33,17 @@ export function BrandMark({ className = "", gradiente = "" }: BrandMarkProps) {
     </svg>
   );
 }
+
+/**
+ * O nome ao lado do Λ no cabeçalho de dentro do sistema: o mesmo da capa —
+ * AV azul, o segundo A em degradê, NEST verde — e a frase embaixo, na largura
+ * exata do nome (as medidas estão no globals.css, em "A marca dentro do sistema").
+ */
+export function NomeDaMarca() {
+  return (
+    <span>
+      <strong><span className="brandBlue">AV</span><span className="brandMidA">A</span><span className="brandTeal">NEST</span></strong>
+      <small>Gestão em anestesiologia</small>
+    </span>
+  );
+}
