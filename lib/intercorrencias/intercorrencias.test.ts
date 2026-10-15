@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { acharProtocolo, buscar, CATEGORIAS, itensDaCategoria, PREVISTOS, PROTOCOLOS } from "./catalogo.ts";
+import { acharProtocolo, buscar, itensDaCategoria, PREVISTOS, PROTOCOLOS } from "./catalogo.ts";
 import {
-  calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, volumeServe, type PacienteDaConsulta,
+  calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, type PacienteDaConsulta,
 } from "./calculo.ts";
 import { acharReferencia, REFERENCIAS } from "./referencias.ts";
 
@@ -13,8 +13,6 @@ const aesp = acharProtocolo("pcr-aesp-assistolia")!;
 const sav = acharProtocolo("sav-pediatrico")!;
 const isquemia = acharProtocolo("isquemia-miocardica")!;
 const hemorragia = acharProtocolo("hemorragia-macica")!;
-const transfusional = acharProtocolo("reacao-hemolitica-transfusional")!;
-const embolia = acharProtocolo("embolia-gasosa-venosa")!;
 const bronco = acharProtocolo("broncoespasmo-grave")!;
 const dose = (p: typeof anafilaxia, id: string) => p.medicamentos.find((m) => m.id === id)!;
 const adulto: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
@@ -81,68 +79,6 @@ test("a faixa sai da idade: recém-nascido, criança até 12 anos, adulto ou ges
   assert.equal(doseServe(dose(anafilaxia, "adrenalina-im-adulto"), "gestante", 30), true);
 });
 
-test("adrenalina no adulto: mcg na seringa diluída, e a ampola pura só no IM", () => {
-  // 50–100 mcg na solução de 100 mcg/mL: 0,5 a 1 mL.
-  const grave = calcularDose(dose(anafilaxia, "adrenalina-iv-grave-adulto"), anafilaxia, adulto, 0);
-  assert.deepEqual(grave.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume, c.unidadeVolume]), [[50, "mcg", 0.5, "mL"], [100, "mcg", 1, "mL"]]);
-  // A mesma dose na de 10 mcg/mL: 5 a 10 mL.
-  assert.deepEqual(calcularDose(dose(anafilaxia, "adrenalina-iv-grave-adulto"), anafilaxia, adulto, 1).contas.map((c) => c.volume), [5, 10]);
-  // IM: 500 mcg da ampola de 1 mg/mL = 0,5 mL (mcg convertido para mg uma vez só).
-  const im = calcularDose(dose(anafilaxia, "adrenalina-im-adulto"), anafilaxia, adulto);
-  assert.deepEqual(im.contas.map((c) => [c.doseTotal, c.volume]), [[500, 0.5]]);
-  assert.ok(!im.alertas.some((a) => a.nivel === "perigo"));
-  // Infusão: 3 a 40 mcg/min em 3 mg/50 mL (60 mcg/mL) = 3 a 40 mL/h, sem peso.
-  const inf = calcularDose(dose(anafilaxia, "adrenalina-infusao-adulto"), anafilaxia, { idadeAnos: 40, pesoKg: null });
-  assert.equal(inf.bloqueio, null);
-  assert.deepEqual(inf.contas.map((c) => [c.volume, c.unidadeVolume]), [[3, "mL/h"], [40, "mL/h"]]);
-});
-
-test("criança: bolus por kg, infusão em mL/kg/h, PCR com teto de 1 mg", () => {
-  // 2 mcg/kg × 16 kg = 32 mcg na solução de 20 mcg/mL = 1,6 mL.
-  const mod = calcularDose(dose(anafilaxia, "adrenalina-iv-moderada-ped"), anafilaxia, crianca);
-  assert.deepEqual(mod.contas.map((c) => [c.doseTotal, c.volume]), [[32, 1.6]]);
-  // Infusão 0,1 mcg/kg/min = 0,3 mL/kg/h na de 20 mcg/mL: 4,8 mL/h para 16 kg.
-  const inf = calcularDose(dose(anafilaxia, "adrenalina-infusao-ped"), anafilaxia, crianca);
-  assert.deepEqual(inf.contas.map((c) => c.volume), [4.8, 96]);
-  // PCR 10 mcg/kg na de 100 mcg/mL = 0,1 mL/kg; com 120 kg informado, o teto de 1 mg segura e avisa.
-  const pcr = calcularDose(dose(anafilaxia, "adrenalina-pcr-ped"), anafilaxia, crianca);
-  assert.deepEqual(pcr.contas.map((c) => [c.doseTotal, c.volume]), [[160, 1.6]]);
-  const pesoErrado = calcularDose(dose(anafilaxia, "adrenalina-pcr-ped"), anafilaxia, { idadeAnos: 8, pesoKg: 120 });
-  assert.deepEqual(pesoErrado.contas.map((c) => [c.doseTotal, c.unidadeDose, c.limitada]), [[1000, "mcg", true]]);
-  assert.ok(pesoErrado.alertas.some((a) => a.nivel === "perigo" && /Limitada ao máximo de 1 mg/.test(a.texto)));
-});
-
-test("diluição por peso: noradrenalina 0,15 mg/kg em 50 mL dá 2 a 40 mL/h; vasopressina 1 UI/kg em 50 mL", () => {
-  const nora = calcularDose(dose(anafilaxia, "noradrenalina-ped"), anafilaxia, crianca);
-  assert.match(nora.apresentacao!.rotulo, /para 16 kg: 2,4 mg em 50 mL/);
-  assert.deepEqual(nora.contas.map((c) => c.volume), [2, 40]);
-  const vaso = calcularDose(dose(anafilaxia, "vasopressina-infusao-ped"), anafilaxia, crianca);
-  assert.deepEqual(vaso.contas.map((c) => c.volume), [1, 3]);
-  const bolus = calcularDose(dose(anafilaxia, "vasopressina-bolus-ped"), anafilaxia, crianca);
-  assert.deepEqual(bolus.contas.map((c) => c.volume), [2]);
-});
-
-test("sem peso, sem conta: a dose por kg diz o que falta, a fixa calcula", () => {
-  const sem: PacienteDaConsulta = { idadeAnos: 5, pesoKg: null };
-  assert.equal(calcularDose(dose(anafilaxia, "adrenalina-iv-moderada-ped"), anafilaxia, sem).bloqueio, "Informe o peso para calcular.");
-  assert.equal(calcularDose(dose(anafilaxia, "noradrenalina-ped"), anafilaxia, sem).contas.length, 0);
-  assert.equal(calcularDose(dose(anafilaxia, "adrenalina-im-ped-menor-6"), anafilaxia, sem).contas[0].volume, 0.15);
-  assert.equal(calcularVolume(anafilaxia.volumes.find((v) => v.id === "cristaloide-ped")!, sem).bloqueio, "Informe o peso para calcular.");
-  assert.equal(calcularVolume(anafilaxia.volumes.find((v) => v.id === "cristaloide-ped")!, crianca).texto, "320 mL");
-  assert.equal(calcularVolume(anafilaxia.volumes.find((v) => v.id === "cristaloide-refrataria-ped")!, crianca).texto, "320 a 640 mL");
-});
-
-test("unidade: magnésio em g convertido para a ampola em mg/mL; glucagon em mcg/kg com teto em mg", () => {
-  const mg = calcularDose(dose(anafilaxia, "magnesio-adulto"), anafilaxia, adulto);
-  assert.deepEqual(mg.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[2, "g", 4]]);
-  // 50 mg/kg × 50 kg = 2,5 g → teto de 2 g (4 mL).
-  const mgPed = calcularDose(dose(anafilaxia, "magnesio-ped"), anafilaxia, { idadeAnos: 11, pesoKg: 50 });
-  assert.deepEqual(mgPed.contas.map((c) => [c.doseTotal, c.limitada, c.volume]), [[2000, true, 4]]);
-  // Glucagon 40 mcg/kg × 30 kg = 1.200 mcg → teto de 1 mg.
-  const glu = calcularDose(dose(anafilaxia, "glucagon-ped"), anafilaxia, { idadeAnos: 9, pesoKg: 30 });
-  assert.deepEqual(glu.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1000, "mcg", 1]]);
-});
-
 test("alertas: apresentação errada para a via, peso estranho para a idade, dose da criança acima da do adulto", () => {
   // Trocar a apresentação do IM por uma IV diluída de propósito: a tela avisa.
   const im = { ...dose(anafilaxia, "adrenalina-iv-grave-adulto"), apresentacoes: [dose(anafilaxia, "adrenalina-im-adulto").apresentacoes[0]] };
@@ -165,33 +101,6 @@ test("alertas: apresentação errada para a via, peso estranho para a idade, dos
   assert.ok(grande.alertas.some((a) => /noradrenalina/.test(a.texto)));
 });
 
-test("laringoespasmo: propofol e succinilcolina por kg, IM 4 mg/kg, atropina da criança com teto", () => {
-  const prop = calcularDose(dose(laringo, "propofol-laringoespasmo"), laringo, crianca);
-  assert.deepEqual(prop.contas.map((c) => [c.doseTotal, c.volume]), [[4, 0.4], [8, 0.8]]);
-  const sux = calcularDose(dose(laringo, "succinilcolina-iv-laringoespasmo"), laringo, crianca);
-  assert.deepEqual(sux.contas.map((c) => [c.doseTotal, c.volume]), [[4, 0.4], [8, 0.8]]);
-  assert.ok(sux.dose.cuidados?.some((c) => /hipercalemia/.test(c)));
-  const im = calcularDose(dose(laringo, "succinilcolina-im-laringoespasmo"), laringo, crianca);
-  assert.deepEqual(im.contas.map((c) => [c.doseTotal, c.volume]), [[64, 1.28]]);
-  // Atropina 0,02 mg/kg × 16 = 0,32 mg; com 40 kg, o teto de 0,5 mg.
-  const atr = calcularDose(dose(laringo, "atropina-laringoespasmo-ped"), laringo, crianca);
-  assert.deepEqual(atr.contas.map((c) => [c.doseTotal, c.volume]), [[0.32, 1.28]]);
-  const atrGrande = calcularDose(dose(laringo, "atropina-laringoespasmo-ped"), laringo, { idadeAnos: 11, pesoKg: 40 });
-  assert.equal(atrGrande.contas[0].doseTotal, 0.5);
-  // Recém-nascido de 3 kg: a atropina dá 0,06 mg = 0,24 mL — mede; propofol 0,75 mg = 0,075 mL, avisa.
-  const rn: PacienteDaConsulta = { idadeAnos: 0.02, pesoKg: 3 };
-  const propRn = calcularDose(dose(laringo, "propofol-laringoespasmo"), laringo, rn);
-  assert.ok(propRn.alertas.some((a) => /menor que 0,1 mL/.test(a.texto)));
-});
-
-test("passos da gestante só aparecem para ela; sem faixa, todos aparecem", () => {
-  const gestante = passosDe(anafilaxia, "gestante").map((x) => x.texto).join(" ");
-  assert.match(gestante, /deslocar o útero/);
-  assert.doesNotMatch(passosDe(anafilaxia, "adulto").map((x) => x.texto).join(" "), /deslocar o útero/);
-  assert.equal(passosDe(anafilaxia, null).length, anafilaxia.agirAgora.length);
-  assert.match(passosDe(laringo, "pediatrico").map((x) => x.texto).join(" "), /Criança com bradicardia/);
-});
-
 test("busca pelo nome, pelo sinônimo e pelo sinal, sem acento; previstos aparecem como em preparação", () => {
   assert.equal((buscar("anafilaxia")[0] as { protocolo: { id: string } }).protocolo.id, "anafilaxia");
   assert.equal((buscar("choque anafilatico")[0] as { protocolo: { id: string } }).protocolo.id, "anafilaxia");
@@ -209,256 +118,271 @@ test("busca pelo nome, pelo sinônimo e pelo sinal, sem acento; previstos aparec
   assert.equal(PREVISTOS.filter((p) => p.categoria === "cardiovascular").length, 10);
 });
 
-test("PCR do adulto: 1 mg de adrenalina, amiodarona 300 mg, choque fixo; a criança vai para o SAV pediátrico", () => {
-  const adr = dose(fvtv, "adrenalina-pcr");
-  assert.deepEqual(calcularDose(adr, fvtv, adulto, 0).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1, "mg", 1]]);
-  assert.deepEqual(calcularDose(adr, fvtv, adulto, 1).contas.map((c) => c.volume), [10]);
-  assert.deepEqual(calcularDose(dose(fvtv, "amiodarona-pcr-300"), fvtv, adulto).contas.map((c) => c.volume), [6]);
-  assert.deepEqual(calcularDose(dose(fvtv, "lidocaina-pcr"), fvtv, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[70, 3.5]]);
-  assert.deepEqual(calcularDose(dose(fvtv, "bicarbonato-pcr"), fvtv, adulto).contas.map((c) => c.volume), [70, 140]);
-  assert.deepEqual(calcularDose(dose(fvtv, "magnesio-pcr"), fvtv, adulto).contas.map((c) => c.volume), [2, 4]);
-  const choques = fvtv.volumes.map((v) => calcularVolume(v, { idadeAnos: 40, pesoKg: null }).texto);
-  assert.deepEqual(choques, ["120 a 200 J", "360 J"]);
-  // Criança no protocolo do adulto: nenhuma dose serve, e o atalho aponta o pediátrico.
+const acha = (id: string) => acharProtocolo(id)!;
+const contas = (p: ReturnType<typeof acha>, id: string, pac: PacienteDaConsulta, i = 0) =>
+  calcularDose(dose(p, id), p, pac, i).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume, c.unidadeVolume]);
+const vol = (p: ReturnType<typeof acha>, id: string, pac: PacienteDaConsulta) => calcularVolume(p.volumes.find((v) => v.id === id)!, pac);
+
+test("minuta de 15/10/2026: os 34 protocolos na versão 2, e toda seção de doses tem número ou nota", () => {
+  assert.equal(PROTOCOLOS.length, 34);
+  for (const p of PROTOCOLOS) {
+    assert.equal(p.versao, 2, p.id);
+    assert.equal(p.atualizadoEm, "2026-10-15", p.id);
+    assert.ok(p.medicamentos.length + p.volumes.length + (p.notasDeDose?.length ?? 0) > 0 || p.id === "bloqueio-neuroaxial-alto", `${p.id}: seção de doses vazia`);
+  }
+  // A bibliografia geral é a da minuta: o Manual e o Tratado SAESP.
+  assert.equal(acharReferencia("saesp-tratado")!.ano, 2025);
+  assert.match(acharReferencia("qrh-3-4")!.edicao ?? "", /versão 3/);
+});
+
+test("anafilaxia: bolus IV nas seringas de 10 e 20 mcg/mL, IM na ampola pura, infusão de referência", () => {
+  // 10–20 mcg a 10 mcg/mL: 1 a 2 mL; a 20 mcg/mL: 0,5 a 1 mL.
+  assert.deepEqual(contas(anafilaxia, "adrenalina-iv-moderada-adulto", adulto), [[10, "mcg", 1, "mL"], [20, "mcg", 2, "mL"]]);
+  assert.deepEqual(contas(anafilaxia, "adrenalina-iv-moderada-adulto", adulto, 1).map((c) => c[2]), [0.5, 1]);
+  assert.deepEqual(contas(anafilaxia, "adrenalina-iv-grave-adulto", adulto).map((c) => c[2]), [5, 10]);
+  // Nenhum bolus IV oferece a ampola de 1 mg/mL.
+  for (const m of anafilaxia.medicamentos.filter((x) => x.via === "IV")) {
+    assert.ok(m.apresentacoes.every((a) => !(a.unidade === "mg" && a.quantidade === 1 && a.mL === 1)), m.id);
+  }
+  const im = calcularDose(dose(anafilaxia, "adrenalina-im-adulto"), anafilaxia, adulto);
+  assert.deepEqual(im.contas.map((c) => [c.doseTotal, c.volume]), [[500, 0.5]]);
+  assert.ok(!im.alertas.some((a) => a.nivel === "perigo"));
+  // Infusão de referência: 3 mcg/min na de 60 mcg/mL = 3 mL/h, sem peso.
+  assert.deepEqual(contas(anafilaxia, "adrenalina-infusao-adulto", { idadeAnos: 40, pesoKg: null }), [[3, "mcg", 3, "mL/h"]]);
+  // Criança de 16 kg: 2 mcg/kg = 32 mcg (3,2 mL a 10 mcg/mL); risco de vida 4 a 10 mcg/kg; infusão 0,1 mcg/kg/min a 20 mcg/mL = 4,8 mL/h.
+  assert.deepEqual(contas(anafilaxia, "adrenalina-iv-moderada-ped", crianca), [[32, "mcg", 3.2, "mL"]]);
+  assert.deepEqual(contas(anafilaxia, "adrenalina-iv-grave-ped", crianca).map((c) => c[0]), [64, 160]);
+  assert.deepEqual(contas(anafilaxia, "adrenalina-infusao-ped", crianca).map((c) => c[2]), [4.8]);
+  assert.equal(calcularDose(dose(anafilaxia, "adrenalina-im-ped-menor-6"), anafilaxia, { idadeAnos: 3, pesoKg: null }).contas[0].volume, 0.15);
+  assert.equal(calcularDose(dose(anafilaxia, "adrenalina-im-ped-6-12"), anafilaxia, { idadeAnos: 8, pesoKg: null }).contas[0].volume, 0.3);
+  assert.equal(vol(anafilaxia, "cristaloide-ped", crianca).texto, "320 mL");
+  assert.equal(vol(anafilaxia, "cristaloide-ped", { idadeAnos: 5, pesoKg: null }).bloqueio, "Informe o peso para calcular.");
+  // A gestante tem o passo dela; o adulto não.
+  assert.match(passosDe(anafilaxia, "gestante").map((x) => x.texto).join(" "), /colapso materno/);
+  assert.doesNotMatch(passosDe(anafilaxia, "adulto").map((x) => x.texto).join(" "), /colapso materno/);
+  assert.equal(passosDe(anafilaxia, null).length, anafilaxia.agirAgora.length);
+});
+
+test("PCR do adulto: adrenalina depois do 2º choque, amiodarona ou lidocaína depois do 3º, cálcio e bicarbonato fora da rotina", () => {
+  assert.deepEqual(contas(fvtv, "adrenalina-pcr", adulto), [[1, "mg", 10, "mL"]]);
+  assert.deepEqual(contas(fvtv, "adrenalina-pcr", adulto, 1).map((c) => c[2]), [1]);
+  assert.deepEqual(contas(fvtv, "amiodarona-pcr-300", adulto).map((c) => c[2]), [6]);
+  assert.deepEqual(contas(fvtv, "amiodarona-pcr-150", adulto).map((c) => c[2]), [3]);
+  assert.deepEqual(contas(fvtv, "lidocaina-pcr", adulto).map((c) => [c[0], c[2]]), [[70, 3.5], [105, 5.25]]);
+  assert.deepEqual(contas(fvtv, "lidocaina-pcr-2", adulto).map((c) => c[0]), [35, 52.5]);
+  assert.deepEqual(fvtv.volumes.map((v) => calcularVolume(v, { idadeAnos: 40, pesoKg: null }).texto), ["120 a 200 J", "360 J"]);
+  assert.ok(!fvtv.medicamentos.some((m) => /cálcio|bicarbonato|magnésio/i.test(m.farmaco)));
+  assert.match(fvtv.notasDeDose!.join(" "), /não são rotina/);
+  // Criança: nenhuma dose do adulto serve, e o atalho aponta o SAV pediátrico.
   assert.equal(fvtv.medicamentos.filter((d) => doseServe(d, "pediatrico", 4)).length, 0);
-  assert.ok(fvtv.veja?.some((v) => v.protocolo === "sav-pediatrico" && v.quando.includes("pediatrico")));
-  assert.equal(calcularDose(dose(aesp, "atropina-pcr-vagal"), aesp, adulto).contas.length, 2);
-  // Os ritmos: chocáveis na FV/TV, não chocáveis na AESP/assistolia; o pediátrico mostra os quatro.
+  assert.ok(fvtv.veja?.some((v) => v.protocolo === "sav-pediatrico" && /2 J\/kg/.test(v.texto)));
+  assert.match(passosDe(fvtv, "gestante").map((x) => x.texto).join(" "), /parto ressuscitativo/);
+  // AESP/assistolia: só adrenalina; atropina e marca-passo não são rotina.
+  assert.deepEqual(aesp.medicamentos.map((m) => m.id), ["adrenalina-pcr-aesp"]);
+  assert.match(aesp.notasDeDose!.join(" "), /Não indicar atropina nem marca-passo/);
   assert.deepEqual(fvtv.ritmos?.map((r) => [r.ritmo, r.chocavel]), [["fv", true], ["tv", true]]);
   assert.deepEqual(aesp.ritmos?.map((r) => [r.ritmo, r.chocavel]), [["aesp", false], ["assistolia", false]]);
   assert.equal(sav.ritmos?.length, 4);
 });
 
-test("SAV pediátrico: 10 mcg/kg, 4 J/kg, amiodarona com o teto do adulto, tubo dez vezes a dose da veia", () => {
-  const adr = calcularDose(dose(sav, "adrenalina-sav-ped"), sav, crianca);
-  assert.deepEqual(adr.contas.map((c) => [c.doseTotal, c.volume]), [[160, 1.6]]);
-  const tubo = calcularDose(dose(sav, "adrenalina-tubo-ped"), sav, crianca);
-  assert.deepEqual(tubo.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1600, "mcg", 1.6]]);
-  assert.ok(!tubo.alertas.some((a) => a.nivel === "perigo"), "a ampola pura é a do tubo");
-  assert.deepEqual(calcularDose(dose(sav, "amiodarona-sav-ped"), sav, crianca).contas.map((c) => [c.doseTotal, c.volume]), [[80, 1.6]]);
-  const grande = calcularDose(dose(sav, "amiodarona-sav-ped"), sav, { idadeAnos: 11, pesoKg: 70 });
-  assert.deepEqual(grande.contas.map((c) => [c.doseTotal, c.limitada]), [[300, true]]);
-  // Lidocaína 20 a 50 mcg/kg/min × 16 kg na de 20 mg/mL: 0,96 a 2,4 mL/h.
-  assert.deepEqual(calcularDose(dose(sav, "lidocaina-infusao-sav-ped"), sav, crianca).contas.map((c) => [c.volume, c.unidadeVolume]), [[0.96, "mL/h"], [2.4, "mL/h"]]);
-  assert.deepEqual(calcularDose(dose(sav, "cloreto-de-calcio-sav-ped"), sav, crianca).contas.map((c) => c.volume), [3.2]);
-  assert.equal(calcularDose(dose(sav, "atropina-sav-ped"), sav, { idadeAnos: 11, pesoKg: 40 }).contas[0].doseTotal, 0.5);
-  const choque = sav.volumes.find((v) => v.id === "choque-ped")!;
-  assert.equal(calcularVolume(choque, crianca).texto, "64 J");
-  assert.equal(calcularVolume(choque, crianca).base, "4 J/kg");
-  assert.ok(sav.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "qrh-2-1") && /atropina/i.test(d.tema)));
+test("SAV pediátrico (AHA 2025): choque 2 J/kg, depois 4 J/kg; adrenalina 10 mcg/kg até 1 mg; amiodarona 5 mg/kg até 300 e depois 150", () => {
+  assert.deepEqual(contas(sav, "adrenalina-sav-ped", crianca), [[160, "mcg", 1.6, "mL"]]);
+  const pesoErrado = calcularDose(dose(sav, "adrenalina-sav-ped"), sav, { idadeAnos: 8, pesoKg: 120 });
+  assert.deepEqual(pesoErrado.contas.map((c) => [c.doseTotal, c.unidadeDose, c.limitada]), [[1000, "mcg", true]]);
+  assert.ok(pesoErrado.alertas.some((a) => a.nivel === "perigo" && /Limitada ao máximo de 1 mg/.test(a.texto)));
+  assert.deepEqual(contas(sav, "amiodarona-sav-ped", crianca).map((c) => [c[0], c[2]]), [[80, 1.6]]);
+  assert.equal(calcularDose(dose(sav, "amiodarona-sav-ped"), sav, { idadeAnos: 11, pesoKg: 70 }).contas[0].doseTotal, 300);
+  assert.equal(calcularDose(dose(sav, "amiodarona-sav-ped-2"), sav, { idadeAnos: 11, pesoKg: 70 }).contas[0].doseTotal, 150);
+  assert.deepEqual(contas(sav, "lidocaina-sav-ped", crianca).map((c) => [c[0], c[2]]), [[16, 0.8]]);
+  assert.equal(vol(sav, "choque-ped-1", crianca).texto, "32 J");
+  assert.equal(vol(sav, "choque-ped-2", crianca).texto, "64 J");
+  assert.equal(vol(sav, "choque-ped-seguintes", crianca).texto, "64 a 160 J");
+  assert.equal(vol(sav, "choque-ped-seguintes", { idadeAnos: 11, pesoKg: 40 }).texto, "160 a 200 J");
+  assert.ok(sav.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "manual-03") && /choque/i.test(d.tema)));
+  assert.ok(!sav.medicamentos.some((m) => /Atropina|cálcio|Bicarbonato/i.test(m.farmaco)));
 });
 
-test("isquemia: nitroglicerina 3 a 5 mL/h sem peso, esmolol por kg, só adulto", () => {
+test("reanimação neonatal (SBP 2026): adrenalina 20 mcg/kg na veia e 100 mcg/kg no tubo, SF 10 mL/kg", () => {
+  const rnP: PacienteDaConsulta = { idadeAnos: 0, pesoKg: 3 };
+  const rn = acha("reanimacao-neonatal");
+  assert.deepEqual(contas(rn, "adrenalina-rn-iv", rnP).map((c) => [c[0], c[2]]), [[60, 0.6]]);
+  const tubo = calcularDose(dose(rn, "adrenalina-rn-traqueal"), rn, rnP);
+  assert.deepEqual(tubo.contas.map((c) => [c.doseTotal, c.volume]), [[300, 3]]);
+  assert.ok(!tubo.alertas.some((a) => a.nivel === "perigo"), "a seringa de 0,1 mg/mL serve ao tubo");
+  assert.equal(vol(rn, "sf-rn", rnP).texto, "30 mL");
+  assert.ok(rn.referencias.includes("sbp-2026-rn"));
+});
+
+test("isquemia e crise hipertensiva: metoprolol 2,5 mg, nitroglicerina 5 mcg/min a 200 mcg/mL, esmolol e hidralazina", () => {
+  assert.deepEqual(contas(isquemia, "metoprolol-isquemia", adulto), [[2.5, "mg", 2.5, "mL"]]);
   const ntg = calcularDose(dose(isquemia, "nitroglicerina-isquemia"), isquemia, { idadeAnos: 60, pesoKg: null });
   assert.equal(ntg.bloqueio, null);
-  assert.deepEqual(ntg.contas.map((c) => [c.volume, c.unidadeVolume]), [[3, "mL/h"], [5, "mL/h"]]);
-  assert.deepEqual(calcularDose(dose(isquemia, "esmolol-bolus-isquemia"), isquemia, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[35, 3.5]]);
-  assert.deepEqual(calcularDose(dose(isquemia, "esmolol-infusao-isquemia"), isquemia, adulto).contas.map((c) => c.volume), [21, 84]);
-  assert.deepEqual(calcularDose(dose(isquemia, "fenilefrina-isquemia"), isquemia, adulto).contas.map((c) => c.volume), [0.25, 0.5]);
+  assert.deepEqual(ntg.contas.map((c) => [c.volume, c.unidadeVolume]), [[1.5, "mL/h"]]);
   assert.equal(isquemia.medicamentos.filter((d) => doseServe(d, "pediatrico", 6)).length, 0);
-  assert.ok(isquemia.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "qrh-3-12")));
+  assert.ok(isquemia.divergencias.some((d) => /Metas/.test(d.tema)));
+  const has = acha("hipertensao");
+  assert.deepEqual(contas(has, "esmolol-bolus-hipertensao", adulto), [[35, "mg", 3.5, "mL"]]);
+  // 50 mcg/kg/min = 0,3 mL/kg/h na de 10 mg/mL: 21 mL/h para 70 kg.
+  assert.deepEqual(contas(has, "esmolol-infusao-hipertensao", adulto).map((c) => [c[2], c[3]]), [[21, "mL/h"]]);
+  assert.deepEqual(contas(has, "hidralazina-hipertensao", adulto).map((c) => c[2]), [5]);
+  assert.match(has.notasDeDose!.join(" "), /formulário específico do serviço/);
 });
 
-test("hemorragia: ácido tranexâmico 1 g (o “1 mg” do Manual fica registrado), cálcio, hemocomponentes e fibrinogênio sem frasco", () => {
-  assert.deepEqual(calcularDose(dose(hemorragia, "tranexamico-hemorragia-adulto"), hemorragia, adulto).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1, "g", 20]]);
-  const txa = hemorragia.divergencias.find((d) => /tranexâmico/.test(d.tema))!;
-  assert.ok(txa.posicoes.some((x) => x.referencia === "manual-05" && /1 mg/.test(x.texto)));
-  assert.deepEqual(calcularDose(dose(hemorragia, "tranexamico-hemorragia-ped"), hemorragia, crianca).contas.map((c) => [c.doseTotal, c.volume]), [[240, 4.8]]);
-  assert.deepEqual(calcularDose(dose(hemorragia, "tranexamico-infusao-ped"), hemorragia, crianca).contas.map((c) => [c.volume, c.unidadeVolume]), [[0.64, "mL/h"]]);
-  // Gluconato 50 mg/kg × 50 kg = 2.500 mg passa dos 2 g do adulto: compara mesmo em unidades diferentes.
-  const glu = calcularDose(dose(hemorragia, "gluconato-hemorragia-ped"), hemorragia, { idadeAnos: 11, pesoKg: 50 });
-  assert.ok(glu.alertas.some((a) => /passa da dose do adulto \(2 g\)/.test(a.texto)));
-  // Fibrinogênio: dose total, sem volume (o frasco varia); sem peso, pede o peso.
-  const fib = calcularDose(dose(hemorragia, "fibrinogenio-hemorragia"), hemorragia, adulto);
-  assert.equal(fib.bloqueio, null);
-  assert.equal(fib.apresentacao, null);
-  assert.deepEqual(fib.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1750, "mg", undefined], [3500, "mg", undefined]]);
-  assert.equal(calcularDose(dose(hemorragia, "fibrinogenio-hemorragia"), hemorragia, { idadeAnos: 40, pesoKg: null }).bloqueio, "Informe o peso para calcular.");
-  const vol = (id: string) => calcularVolume(hemorragia.volumes.find((v) => v.id === id)!, crianca).texto;
-  assert.equal(vol("pfc"), "240 mL");
-  assert.equal(vol("crio"), "2 a 3 unidades");
-  assert.equal(vol("plaquetas"), "240 a 320 mL");
-  assert.ok(hemorragia.volumes.every((v) => volumeServe(v, "gestante") && volumeServe(v, "pediatrico")));
+test("hipotensão: efedrina, fenilefrina, noradrenalina em base e adrenalina de resgate; criança vai à bradicardia", () => {
+  const hipo = acha("hipotensao");
+  assert.deepEqual(contas(hipo, "efedrina-hipotensao", adulto).map((c) => c[2]), [0.6, 1.2]);
+  assert.deepEqual(contas(hipo, "fenilefrina-hipotensao", adulto).map((c) => c[2]), [0.5, 1]);
+  // 0,05 mcg/kg/min a 80 mcg/mL = 0,0375 mL/kg/h: 2,63 mL/h para 70 kg.
+  assert.deepEqual(contas(hipo, "noradrenalina-hipotensao", adulto).map((c) => [c[2], c[3]]), [[2.63, "mL/h"]]);
+  assert.match(dose(hipo, "noradrenalina-hipotensao").apresentacoes[0].rotulo, /base/);
+  assert.deepEqual(contas(hipo, "adrenalina-bolus-hipotensao", adulto).map((c) => c[2]), [1, 2]);
+  assert.ok(hipo.veja?.some((v) => v.protocolo === "bradicardia" && v.quando.includes("pediatrico")));
 });
 
-test("reação hemolítica: manitol por kg nas duas concentrações, furosemida, infusões a 5 mL/h no adulto e por kg na criança", () => {
-  // 0,5 a 1 g/kg × 70 kg = 35 a 70 g: 175 a 350 mL do 20%, 140 a 280 mL do 25%.
-  const man = dose(transfusional, "manitol-rht");
-  assert.deepEqual(calcularDose(man, transfusional, adulto, 0).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[35, "g", 175], [70, "g", 350]]);
-  assert.deepEqual(calcularDose(man, transfusional, adulto, 1).contas.map((c) => c.volume), [140, 280]);
-  assert.deepEqual(calcularDose(dose(transfusional, "furosemida-rht-05"), transfusional, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[35, 3.5]]);
-  assert.deepEqual(calcularDose(dose(transfusional, "furosemida-rht-1-3"), transfusional, crianca).contas.map((c) => c.doseTotal), [16, 48]);
-  // Adulto: as três soluções do Manual começam em 5 mL/h, sem peso.
-  const semPeso: PacienteDaConsulta = { idadeAnos: 50, pesoKg: null };
-  for (const id of ["adrenalina-infusao-rht-adulto", "noradrenalina-infusao-rht-adulto", "dobutamina-infusao-rht-adulto"]) {
-    assert.deepEqual(calcularDose(dose(transfusional, id), transfusional, semPeso).contas.map((c) => [c.volume, c.unidadeVolume]), [[5, "mL/h"]], id);
-  }
-  // Criança de 16 kg na mesma solução: adrenalina 0,05 a 0,5 mcg/kg/min = 0,8 a 8 mL/h; dobutamina 2 a 20 = 0,38 a 3,84 mL/h.
-  assert.deepEqual(calcularDose(dose(transfusional, "adrenalina-infusao-rht-ped"), transfusional, crianca).contas.map((c) => c.volume), [0.8, 8]);
-  assert.deepEqual(calcularDose(dose(transfusional, "dobutamina-infusao-rht-ped"), transfusional, crianca).contas.map((c) => c.volume), [0.38, 3.84]);
-  assert.deepEqual(calcularDose(dose(transfusional, "noradrenalina-infusao-rht-ped"), transfusional, crianca).contas.map((c) => c.volume), [0.24, 12]);
-  // As divergências com o MSD Manual ficam registradas, e a busca acha pela transfusão.
-  assert.ok(["furosemida", "vasopressor", "diurese"].every((t) => transfusional.divergencias.some((d) => d.tema.toLowerCase().includes(t))));
-  assert.ok(buscar("transfusao").some((a) => a.tipo === "protocolo" && a.protocolo.id === "reacao-hemolitica-transfusional"));
-  assert.ok(!itensDaCategoria("medicamentos").previstos.some((p) => p.titulo === "Reação hemolítica transfusional"));
+test("taquiarritmia: adenosina 6 e 12 mg (criança por kg com teto), magnésio, cardioversão pela energia da AHA", () => {
+  const taqui = acha("taquiarritmia");
+  assert.deepEqual(contas(taqui, "adenosina-6", adulto).map((c) => c[2]), [2]);
+  assert.deepEqual(contas(taqui, "adenosina-12", adulto).map((c) => c[2]), [4]);
+  assert.deepEqual(contas(taqui, "adenosina-ped-1", crianca).map((c) => [c[0], c[2]]), [[1.6, 0.53]]);
+  assert.equal(calcularDose(dose(taqui, "adenosina-ped-1"), taqui, { idadeAnos: 11, pesoKg: 70 }).contas[0].doseTotal, 6);
+  assert.equal(calcularDose(dose(taqui, "adenosina-ped-2"), taqui, { idadeAnos: 11, pesoKg: 70 }).contas[0].doseTotal, 12);
+  assert.deepEqual(contas(taqui, "magnesio-torsades", adulto).map((c) => c[2]), [10, 20]);
+  assert.deepEqual(contas(taqui, "magnesio-torsades-ped", crianca).map((c) => [c[0], c[2]]), [[800, 8]]);
+  assert.equal(vol(taqui, "cardioversao-fa", adulto).texto, "200 J");
+  assert.equal(vol(taqui, "cardioversao-estreita", adulto).texto, "100 J");
+  assert.equal(vol(taqui, "cardioversao-ped", crianca).texto, "8 a 16 J");
+  assert.equal(vol(taqui, "cardioversao-ped-2", crianca).texto, "32 J");
+  assert.match(taqui.agirAgora.map((x) => `${x.texto} ${x.detalhe ?? ""}`).join(" "), /pré-excitada: não administrar amiodarona/);
 });
 
-test("embolia gasosa: cristaloide do QRH (fixo no adulto, por kg na criança) e a adrenalina da tabela do Manual, dita como emprestada", () => {
-  const vol = (id: string, p: PacienteDaConsulta) => calcularVolume(embolia.volumes.find((v) => v.id === id)!, p).texto;
-  assert.equal(vol("cristaloide-embolia-adulto", adulto), "500 a 1000 mL");
-  assert.equal(vol("cristaloide-embolia-ped", crianca), "320 mL");
-  assert.deepEqual(calcularDose(dose(embolia, "adrenalina-infusao-embolia-adulto"), embolia, { idadeAnos: 50, pesoKg: null }).contas.map((c) => c.volume), [5]);
-  assert.deepEqual(calcularDose(dose(embolia, "adrenalina-infusao-embolia-ped"), embolia, crianca).contas.map((c) => c.volume), [0.8, 8]);
-  // A dose não está no protocolo 08: o cartão diz de onde veio, e a divergência mostra as três fontes.
-  for (const m of embolia.medicamentos) assert.match(m.velocidade ?? "", /protocolo 08 do Manual não dá dose/);
-  assert.equal(embolia.divergencias.find((d) => /adrenalina/i.test(d.tema))?.posicoes.length, 3);
-  assert.equal(buscar("embolia gasosa")[0].tipo === "protocolo" && (buscar("embolia gasosa")[0] as { protocolo: { id: string } }).protocolo.id, "embolia-gasosa-venosa");
-  assert.ok(!itensDaCategoria("cardiovascular").previstos.some((p) => p.titulo === "Embolia gasosa venosa"));
-  assert.ok(passosDe(embolia, "adulto").some((x) => /óxido nitroso/.test(x.texto)));
+test("bradicardia: atropina 1 mg no adulto; na criança 0,02 mg/kg com mínimo de 0,1 e máximo de 0,5 mg; adrenalina 10 mcg/kg", () => {
+  const bradi = acha("bradicardia");
+  assert.deepEqual(contas(bradi, "atropina-bradicardia-adulto", adulto), [[1, "mg", 2, "mL"]]);
+  assert.deepEqual(contas(bradi, "adrenalina-infusao-bradicardia", { idadeAnos: 50, pesoKg: null }).map((c) => c[2]), [2, 10]);
+  const dopa = calcularDose(dose(bradi, "dopamina-bradicardia"), bradi, adulto);
+  assert.deepEqual(dopa.contas.map((c) => [c.doseTotal, c.volume]), [[350, undefined], [1400, undefined]]);
+  assert.deepEqual(contas(bradi, "adrenalina-bradicardia-ped", crianca).map((c) => [c[0], c[2]]), [[160, 1.6]]);
+  assert.deepEqual(contas(bradi, "atropina-bradicardia-ped", crianca).map((c) => [c[0], c[2]]), [[0.32, 1.28]]);
+  // Lactente de 3 kg: 0,06 mg pelo peso sobe ao mínimo de 0,1 mg (0,4 mL), com aviso.
+  const pequeno = calcularDose(dose(bradi, "atropina-bradicardia-ped"), bradi, { idadeAnos: 0.3, pesoKg: 3 });
+  assert.deepEqual(pequeno.contas.map((c) => [c.doseTotal, c.volume]), [[0.1, 0.4]]);
+  assert.ok(pequeno.alertas.some((a) => /Elevada ao mínimo de 0,1 mg/.test(a.texto)));
+  assert.equal(calcularDose(dose(bradi, "atropina-bradicardia-ped"), bradi, { idadeAnos: 11, pesoKg: 40 }).contas[0].doseTotal, 0.5);
+  // O passo do adulto é do adulto; o da criança, da criança.
+  assert.doesNotMatch(passosDe(bradi, "pediatrico").map((x) => x.texto).join(" "), /Adulto com pulso/);
+  assert.match(passosDe(bradi, "pediatrico").map((x) => x.texto).join(" "), /Criança com FC abaixo de 60/);
+  assert.match(bradi.notasDeDose!.join(" "), /Não usar 1 mcg\/kg/);
 });
 
-test("via aérea difícil: a sequência máscara → intubação → não ventilo, não intubo, com sugamadex 16 mg/kg e a divergência da punção", () => {
-  const mascara = acharProtocolo("ventilacao-mascara-dificil")!;
-  const tubo = acharProtocolo("intubacao-dificil")!;
-  const cico = acharProtocolo("nao-ventilo-nao-intubo")!;
-  const sug = calcularDose(dose(tubo, "sugamadex-intubacao-dificil"), tubo, adulto);
-  assert.deepEqual(sug.contas.map((c) => [c.doseTotal, c.volume]), [[1120, 11.2]]);
-  assert.ok(sug.dose.cuidados?.some((c) => /não garante via aérea/.test(c)));
-  assert.equal(cico.medicamentos.length, 0);
-  assert.ok(mascara.relacionados?.some((r) => r.protocolo === "nao-ventilo-nao-intubo"));
-  assert.ok(tubo.relacionados?.some((r) => r.protocolo === "nao-ventilo-nao-intubo"));
-  assert.ok(cico.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "das-2015") && /bisturi/.test(d.escolha)));
-  assert.ok(cico.agirAgora.some((x) => /14 G/.test(x.texto) && /1 bar/.test(x.detalhe ?? "")));
-  const ids = (q: string) => buscar(q).flatMap((a) => (a.tipo === "protocolo" ? [a.protocolo.id] : []));
-  assert.equal(ids("CICO")[0], "nao-ventilo-nao-intubo");
-  assert.equal(ids("nao intubo nao oxigeno")[0], "nao-ventilo-nao-intubo");
-  const resp = itensDaCategoria("respiratorio");
-  for (const t of ["Dificuldade de ventilação com máscara", "Intubação difícil não prevista", "Não ventilo, não intubo", "Pressão elevada das vias aéreas", "Broncoespasmo grave", "Broncoaspiração"]) {
-    assert.ok(!resp.previstos.some((p) => p.titulo === t), t);
-  }
-  assert.equal(acharProtocolo("broncoaspiracao")!.medicamentos.length, 0);
-  assert.equal(acharProtocolo("pressao-vias-aereas")!.medicamentos.length, 0);
+test("laringoespasmo e broncoespasmo: doses por kg, IM sem IO, salbutamol IV do QRH 2023 com tetos", () => {
+  assert.deepEqual(contas(laringo, "propofol-laringoespasmo", crianca).map((c) => [c[0], c[2]]), [[4, 0.4], [8, 0.8]]);
+  assert.deepEqual(contas(laringo, "succinilcolina-iv-laringoespasmo", crianca).map((c) => [c[0], c[2]]), [[4, 0.4], [8, 0.8]]);
+  assert.deepEqual(contas(laringo, "succinilcolina-im-laringoespasmo", crianca).map((c) => [c[0], c[2]]), [[64, 1.28]]);
+  assert.ok(dose(laringo, "succinilcolina-im-laringoespasmo").cuidados?.some((c) => /via IO/.test(c)));
+  assert.ok(!laringo.medicamentos.some((m) => m.farmaco === "Atropina"));
+  assert.ok(laringo.relacionados?.some((r) => r.protocolo === "bradicardia"));
+  const rn: PacienteDaConsulta = { idadeAnos: 0.02, pesoKg: 3 };
+  assert.ok(calcularDose(dose(laringo, "propofol-laringoespasmo"), laringo, rn).alertas.some((a) => /menor que 0,1 mL/.test(a.texto)));
+
+  assert.deepEqual(contas(bronco, "salbutamol-neb-adulto", adulto).map((c) => c[2]), [1]);
+  assert.equal(doseServe(dose(bronco, "salbutamol-neb-ped"), "pediatrico", 4), true);
+  assert.equal(doseServe(dose(bronco, "salbutamol-neb-ped"), "pediatrico", 6), false);
+  assert.equal(doseServe(dose(bronco, "ipratropio-ped"), "pediatrico", 1), false);
+  assert.deepEqual(contas(bronco, "salbutamol-iv-adulto", adulto).map((c) => c[2]), [5]);
+  assert.deepEqual(contas(bronco, "salbutamol-iv-lactente", { idadeAnos: 1, pesoKg: 10 }).map((c) => [c[0], c[2]]), [[50, 1]]);
+  assert.deepEqual(contas(bronco, "salbutamol-iv-crianca", crianca).map((c) => [c[0], c[2]]), [[240, 4.8]]);
+  assert.equal(calcularDose(dose(bronco, "salbutamol-iv-crianca"), bronco, { idadeAnos: 11, pesoKg: 30 }).contas[0].doseTotal, 250);
+  assert.deepEqual(contas(bronco, "salbutamol-infusao-adulto", { idadeAnos: 40, pesoKg: null }).map((c) => [c[2], c[3]]), [[6, "mL/h"], [24, "mL/h"]]);
+  // 0,5 a 1 mcg/kg/min: 30 kg daria 15 a 30 mcg/min; o máximo de 20 mcg/min segura (24 mL/h).
+  assert.deepEqual(contas(bronco, "salbutamol-infusao-ped", { idadeAnos: 11, pesoKg: 30 }).map((c) => [c[0], c[2]]), [[15, 18], [20, 24]]);
+  assert.deepEqual(contas(bronco, "magnesio-broncoespasmo-adulto", adulto).map((c) => c[2]), [20]);
+  assert.deepEqual(contas(bronco, "magnesio-broncoespasmo-ped", { idadeAnos: 11, pesoKg: 50 }).map((c) => [c[0], c[2]]), [[2000, 20]]);
+  const hc = calcularDose(dose(bronco, "hidrocortisona-ped"), bronco, crianca);
+  assert.deepEqual(hc.contas.map((c) => [c.doseTotal, c.volume]), [[64, undefined]]);
+  assert.ok(bronco.divergencias.some((d) => /criança/.test(d.tema) && d.posicoes.some((x) => x.referencia === "qrh-3-4")));
 });
 
-test("broncoespasmo: adrenalina por kg, salbutamol IV com teto por minuto na criança, nebulização pela idade", () => {
-  assert.deepEqual(calcularDose(dose(bronco, "adrenalina-bolus-bronco"), bronco, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[7, 0.7], [70, 7]]);
-  assert.deepEqual(calcularDose(dose(bronco, "adrenalina-infusao-bronco"), bronco, adulto).contas.map((c) => c.volume), [7]);
-  assert.deepEqual(calcularDose(dose(bronco, "adrenalina-infusao-bronco"), bronco, crianca).contas.map((c) => c.volume), [1.6]);
-  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-bolus-bronco-adulto"), bronco, adulto).contas.map((c) => c.volume), [5]);
-  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-infusao-bronco-adulto"), bronco, { idadeAnos: 40, pesoKg: null }).contas.map((c) => c.volume), [3, 15]);
-  // Criança de 16 kg: carga de 80 mcg/min = 48 mL/h na de 100 mcg/mL; com 50 kg, o teto de 200 mcg/min segura.
-  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-carga-bronco-ped"), bronco, crianca).contas.map((c) => [c.doseTotal, c.volume]), [[80, 48]]);
-  const grande = calcularDose(dose(bronco, "salbutamol-carga-bronco-ped"), bronco, { idadeAnos: 11, pesoKg: 50 });
-  assert.deepEqual(grande.contas.map((c) => [c.doseTotal, c.limitada]), [[200, true]]);
-  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-manutencao-bronco-ped"), bronco, { idadeAnos: 11, pesoKg: 50 }).contas.map((c) => c.doseTotal), [50, 80]);
-  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-bolus-bronco-ped"), bronco, { idadeAnos: 6, pesoKg: 20 }).contas.map((c) => c.doseTotal), [250]);
-  // Nebulização: 2,5 mg abaixo de 5 anos, 5 mg a partir dos 5.
-  assert.equal(doseServe(dose(bronco, "salbutamol-nebulizacao-bronco-menor-5"), "pediatrico", 4), true);
-  assert.equal(doseServe(dose(bronco, "salbutamol-nebulizacao-bronco"), "pediatrico", 4), false);
-  assert.equal(doseServe(dose(bronco, "salbutamol-nebulizacao-bronco"), "pediatrico", 8), true);
-  assert.equal(doseServe(dose(bronco, "ipratropio-bronco-ped"), "pediatrico", 1), false);
-  assert.ok(!calcularDose(dose(bronco, "salbutamol-nebulizacao-bronco"), bronco, adulto).alertas.some((a) => a.nivel === "perigo"));
-  assert.ok(bronco.divergencias.some((d) => /criança/.test(d.tema) && d.posicoes.length === 2));
+test("hemorragia maciça: cálcio, tranexâmico do trauma, plasma por kg; plaquetas e fibrinogênio nas notas", () => {
+  assert.deepEqual(contas(hemorragia, "cloreto-de-calcio-hemorragia-adulto", adulto).map((c) => c[2]), [10]);
+  assert.deepEqual(contas(hemorragia, "cloreto-de-calcio-hemorragia-ped", crianca).map((c) => [c[0], c[2]]), [[320, 3.2]]);
+  assert.deepEqual(contas(hemorragia, "tranexamico-trauma-bolus", adulto).map((c) => [c[0], c[1], c[2]]), [[1, "g", 20]]);
+  assert.equal(vol(hemorragia, "plasma", crianca).texto, "240 mL");
+  assert.match(hemorragia.notasDeDose!.join(" "), /não usar 15 a 20 mL\/kg como padrão adulto/);
+  assert.ok(hemorragia.divergencias.some((d) => /tranexâmico/.test(d.tema) && /1 mg/.test(d.posicoes[0].texto)));
+  assert.ok(hemorragia.veja?.some((v) => v.protocolo === "hemorragia-pos-parto"));
 });
 
-test("laringoespasmo conferido com o Manual (12): vias da succinilcolina e as faixas do Manual como divergência", () => {
-  const im = dose(laringo, "succinilcolina-im-laringoespasmo");
-  assert.match(im.via, /IO/);
-  assert.ok(!calcularDose(im, laringo, crianca).alertas.some((a) => a.nivel === "perigo"));
-  for (const tema of ["Dose IV de succinilcolina", "Succinilcolina sem acesso venoso", "Atropina na bradicardia"]) {
-    assert.ok(laringo.divergencias.find((d) => d.tema === tema)?.posicoes.some((x) => x.referencia === "manual-12"), tema);
-  }
-  assert.ok(passosDe(laringo, "pediatrico").some((x) => /intubar já, mesmo sem relaxante/.test(x.texto)));
-  assert.ok(!passosDe(laringo, "adulto").some((x) => /intubar já, mesmo sem relaxante/.test(x.texto)));
+test("anestésico local, hipercalemia e hipertermia maligna: lipídio em mL/kg com tetos, cálcio e insulina, dantroleno em frascos", () => {
+  const last = acha("toxicidade-anestesico-local");
+  assert.equal(vol(last, "lipidio-bolus", crianca).texto, "24 mL");
+  assert.equal(vol(last, "lipidio-bolus", { idadeAnos: 40, pesoKg: 80 }).texto, "100 mL");
+  assert.equal(vol(last, "lipidio-infusao", crianca).texto, "240 mL/h");
+  assert.equal(vol(last, "lipidio-infusao", crianca).base, "15 mL/kg/h");
+  assert.equal(vol(last, "lipidio-teto-ped", crianca).texto, "160 mL");
+  assert.equal(vol(last, "lipidio-teto-adulto", adulto).texto, "840 mL");
+  assert.deepEqual(contas(last, "adrenalina-last", adulto).map((c) => [c[0], c[2]]), [[70, 7]]);
+  assert.deepEqual(contas(last, "midazolam-last", crianca).map((c) => [c[0], c[2]]), [[0.8, 0.8]]);
+  assert.ok(last.divergencias.some((d) => /lipídica/.test(d.tema) && d.posicoes.some((x) => x.referencia === "saesp-tratado")));
+
+  const hk = acha("hipercalemia");
+  assert.deepEqual(contas(hk, "cloreto-de-calcio-hipercalemia", adulto).map((c) => c[2]), [10]);
+  assert.deepEqual(contas(hk, "gluconato-hipercalemia", adulto).map((c) => c[2]), [30]);
+  assert.deepEqual(contas(hk, "cloreto-de-calcio-hipercalemia-ped", crianca).map((c) => [c[0], c[2]]), [[320, 3.2]]);
+  assert.equal(calcularDose(dose(hk, "cloreto-de-calcio-hipercalemia-ped"), hk, { idadeAnos: 11, pesoKg: 60 }).contas[0].doseTotal, 1000);
+  assert.deepEqual(contas(hk, "gluconato-hipercalemia-ped", crianca).map((c) => c[2]), [16]);
+  assert.deepEqual(contas(hk, "insulina-hipercalemia", adulto), [[10, "UI", 10, "mL"]]);
+  assert.deepEqual(contas(hk, "insulina-hipercalemia-ped", crianca).map((c) => [c[0], c[2]]), [[1.6, 1.6]]);
+  assert.deepEqual(contas(hk, "glicose-hipercalemia", adulto), [[25, "g", 50, "mL"]]);
+  // Criança: 0,5 g/kg a 10% = 5 mL/kg; com 60 kg, o teto de 25 g.
+  assert.deepEqual(contas(hk, "glicose-hipercalemia-ped", crianca).map((c) => [c[0], c[2]]), [[8, 80]]);
+  assert.equal(calcularDose(dose(hk, "glicose-hipercalemia-ped"), hk, { idadeAnos: 11, pesoKg: 60 }).contas[0].doseTotal, 25);
+  assert.deepEqual(contas(hk, "salbutamol-hipercalemia", adulto).map((c) => c[2]), [2, 4]);
+
+  const hm = acha("hipertermia-maligna");
+  const p72: PacienteDaConsulta = { idadeAnos: 45, pesoKg: 72 };
+  assert.deepEqual(contas(hm, "dantroleno-inicial", p72).map((c) => [c[0], c[2]]), [[180, 540]]);
+  assert.deepEqual(contas(hm, "dantroleno-inicial", p72, 1).map((c) => c[2]), [3.6]);
+  assert.deepEqual(contas(hm, "dantroleno-manutencao", p72).map((c) => [c[0], c[2]]), [[72, 216]]);
 });
 
-test("obstetrícia: raqui alta, HPP com uterotônicos, magnésio do Ministério da Saúde e reanimação neonatal da SBP", () => {
-  const raqui = acharProtocolo("bloqueio-neuroaxial-alto")!;
-  const hpp = acharProtocolo("hemorragia-pos-parto")!;
-  const colapso = acharProtocolo("colapso-materno")!;
-  const rn = acharProtocolo("reanimacao-neonatal")!;
+test("obstetrícia: raqui alta, HPP sem bolus universal de ocitocina, magnésio da eclâmpsia em bomba", () => {
+  const raqui = acha("bloqueio-neuroaxial-alto");
+  assert.deepEqual(contas(raqui, "atropina-raqui", adulto).map((c) => c[2]), [2]);
+  assert.deepEqual(contas(raqui, "efedrina-raqui", adulto).map((c) => c[2]), [1.2]);
+  assert.deepEqual(contas(raqui, "adrenalina-raqui", adulto).map((c) => c[2]), [1, 2]);
+  assert.match(passosDe(raqui, "gestante").map((x) => x.texto).join(" "), /compressão aortocava/);
+  assert.doesNotMatch(passosDe(raqui, "adulto").map((x) => x.texto).join(" "), /compressão aortocava/);
+
+  const hpp = acha("hemorragia-pos-parto");
   const gestante: PacienteDaConsulta = { idadeAnos: 30, pesoKg: 70, gestante: true };
-  assert.deepEqual(calcularDose(dose(raqui, "efedrina-raqui"), raqui, gestante).contas.map((c) => c.volume), [1.2, 2.4]);
-  assert.deepEqual(calcularDose(dose(raqui, "atropina-raqui"), raqui, gestante).contas.map((c) => c.doseTotal), [0.6, 1.2]);
-  assert.ok(passosDe(raqui, "gestante").some((x) => /4º minuto/.test(x.texto)));
-  // Ocitocina 10 UI/h: 250 mL/h na de 20 UI/500 mL, 125 mL/h na de 40 UI.
-  assert.deepEqual(calcularDose(dose(hpp, "ocitocina-infusao-hpp"), hpp, gestante, 0).contas.map((c) => c.volume), [250]);
-  assert.deepEqual(calcularDose(dose(hpp, "ocitocina-infusao-hpp"), hpp, gestante, 1).contas.map((c) => c.volume), [125]);
-  assert.deepEqual(calcularDose(dose(hpp, "metilergometrina-hpp"), hpp, gestante).contas.map((c) => c.volume), [1]);
-  const miso = calcularDose(dose(hpp, "misoprostol-hpp"), hpp, gestante);
-  assert.equal(miso.bloqueio, null);
-  assert.deepEqual(miso.contas.map((c) => [c.doseTotal, c.volume]), [[800, undefined]]);
-  assert.ok(hpp.divergencias.some((d) => /ergot/i.test(d.tema)));
-  assert.equal(calcularVolume(hpp.volumes.find((v) => v.id === "pfc-hpp")!, gestante).texto, "1050 mL");
-  // Magnésio: 4 g = 20 mL da diluição do MS; 1 a 2 g/h = 50 a 100 mL/h.
-  assert.deepEqual(calcularDose(dose(colapso, "magnesio-ataque-eclampsia"), colapso, gestante).contas.map((c) => c.volume), [20]);
-  assert.deepEqual(calcularDose(dose(colapso, "magnesio-manutencao-eclampsia"), colapso, gestante).contas.map((c) => c.volume), [50, 100]);
-  // RN de 3 kg: 20 mcg/kg = 0,6 mL; tubo 100 mcg/kg = 3 mL; SF 30 mL.
-  const recem: PacienteDaConsulta = { idadeAnos: 0, pesoKg: 3 };
-  assert.deepEqual(calcularDose(dose(rn, "adrenalina-rn-iv"), rn, recem).contas.map((c) => c.volume), [0.3, 0.6, 0.9]);
-  const tubo = calcularDose(dose(rn, "adrenalina-rn-tubo"), rn, recem);
-  assert.deepEqual(tubo.contas.map((c) => c.volume), [3]);
-  assert.ok(!tubo.alertas.some((a) => a.nivel === "perigo"));
-  assert.equal(calcularVolume(rn.volumes[0], recem).texto, "30 mL");
-  // Reanimação neonatal só em Pediatria: cada protocolo numa categoria.
-  assert.ok(!itensDaCategoria("obstetricia").prontos.some((p) => p.id === "reanimacao-neonatal"));
-  const listados = CATEGORIAS.flatMap((c) => itensDaCategoria(c.id).prontos.map((p) => p.id));
-  assert.deepEqual([...listados].sort(), PROTOCOLOS.map((p) => p.id).sort());
-  for (const t of ["Bloqueio raquidiano alto ou total", "Hemorragia pós-parto", "Colapso materno e PCR na gestante"]) {
-    assert.ok(!itensDaCategoria("obstetricia").previstos.some((p) => p.titulo === t), t);
-  }
+  assert.deepEqual(contas(hpp, "metilergometrina-hpp", gestante).map((c) => c[2]), [1]);
+  assert.deepEqual(contas(hpp, "tranexamico-hpp", gestante).map((c) => c[2]), [20]);
+  assert.equal(dose(hpp, "misoprostol-hpp").semVolume, "Em comprimidos de 200 mcg: 4 comprimidos");
+  assert.ok(!hpp.medicamentos.some((m) => m.farmaco === "Ocitocina"), "o regime de tratamento é do serviço");
+  assert.match(hpp.notasDeDose!.join(" "), /homologar com a obstetrícia/);
+
+  const colapso = acha("colapso-materno");
+  assert.deepEqual(contas(colapso, "magnesio-ataque", gestante).map((c) => c[2]), [8]);
+  // 1 a 2 g/h na de 20 mg/mL: 50 a 100 mL/h.
+  assert.deepEqual(contas(colapso, "magnesio-manutencao", gestante).map((c) => [c[2], c[3]]), [[50, "mL/h"], [100, "mL/h"]]);
+  assert.deepEqual(contas(colapso, "gluconato-intoxicacao-magnesio", gestante).map((c) => c[2]), [10]);
+  assert.ok(colapso.divergencias.some((d) => /magnésio/.test(d.tema)));
 });
 
-test("anestésico local, hipercalemia e hipertermia maligna: emulsão em mL/kg, doses máximas pelo peso, dantroleno em frascos", () => {
-  const last = acharProtocolo("toxicidade-anestesico-local")!;
-  const hiperk = acharProtocolo("hipercalemia")!;
-  const hm = acharProtocolo("hipertermia-maligna")!;
-  // 0,3 g/kg na de 200 mg/mL = 1,5 mL/kg: 105 mL com 70 kg, segurado em 100 mL.
-  const bolus = calcularDose(dose(last, "lipidica-bolus-last"), last, adulto);
-  assert.deepEqual(bolus.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume, c.limitada]), [[20, "g", 100, true]]);
-  assert.deepEqual(calcularDose(dose(last, "lipidica-bolus-last"), last, crianca).contas.map((c) => c.volume), [24]);
-  // Infusão 15 a 30 mL/kg/h.
-  assert.deepEqual(calcularDose(dose(last, "lipidica-infusao-last"), last, crianca).contas.map((c) => [c.volume, c.unidadeVolume]), [[240, "mL/h"], [480, "mL/h"]]);
-  const maximos = last.volumes.filter((v) => v.unidade === "mg").map((v) => calcularVolume(v, adulto).texto);
-  assert.deepEqual(maximos, ["210 mg", "490 mg", "140 mg", "210 mg", "490 mg"]);
-  assert.equal(calcularVolume(last.volumes.find((v) => v.id === "lipidica-maximo")!, adulto).texto, "840 mL");
-  // Hipercalemia: insulina diluída 1 UI/mL; criança 16 kg = 1,6 UI = 1,6 mL; glicose 0,5 g/kg a 25% = 2 mL/kg.
-  assert.deepEqual(calcularDose(dose(hiperk, "insulina-hiperk-ped"), hiperk, crianca).contas.map((c) => c.volume), [1.6]);
-  assert.ok(calcularDose(dose(hiperk, "insulina-hiperk-ped"), hiperk, crianca, 1).alertas.some((a) => /menor que 0,1 mL/.test(a.texto)));
-  assert.deepEqual(calcularDose(dose(hiperk, "glicose-hiperk-ped"), hiperk, crianca).contas.map((c) => c.volume), [32]);
-  assert.deepEqual(calcularDose(dose(hiperk, "gluconato-hiperk-ped"), hiperk, crianca).contas.map((c) => c.volume), [16]);
-  assert.deepEqual(calcularDose(dose(hiperk, "glicose-hiperk-adulto"), hiperk, adulto).contas.map((c) => c.volume), [25, 50]);
-  // Dantroleno 2,5 mg/kg × 70 = 175 mg = 525 mL (quase 9 frascos de 20 mg).
-  assert.deepEqual(calcularDose(dose(hm, "dantroleno-hm"), hm, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[175, 525]]);
-  assert.deepEqual(calcularDose(dose(hm, "dantroleno-hm"), hm, adulto, 1).contas.map((c) => c.volume), [3.5]);
-  assert.ok(hm.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "qrh-3-8")));
-  assert.equal((buscar("dantroleno")[0] as { protocolo: { id: string } }).protocolo.id, "hipertermia-maligna");
-});
-
-test("vias de diagnóstico e listas: doses da aba 34 conferidas, amiodarona em mg/h, listas sem dose na categoria G", () => {
-  const taqui = acharProtocolo("taquiarritmia")!;
-  const bradi = acharProtocolo("bradicardia")!;
-  const has = acharProtocolo("hipertensao")!;
-  const hipo = acharProtocolo("hipotensao")!;
-  assert.deepEqual(calcularDose(dose(taqui, "adenosina-taqui"), taqui, adulto).contas.map((c) => c.volume), [2]);
-  // 60 e 30 mg/h na de 1,8 mg/mL: 16,67 e 33,33 mL/h (900 mg em 24 h).
-  assert.deepEqual(calcularDose(dose(taqui, "amiodarona-infusao-taqui"), taqui, adulto).contas.map((c) => c.volume), [16.67, 33.33]);
-  assert.ok(taqui.divergencias.some((d) => /Infusão de amiodarona/.test(d.tema)));
-  assert.equal(calcularVolume(taqui.volumes.find((v) => v.id === "cardioversao-ped")!, crianca).texto, "16 J");
-  // Atropina: criança 20 mcg/kg com teto; adulto 0,5 a 1 mg.
-  assert.deepEqual(calcularDose(dose(bradi, "atropina-bradi-ped"), bradi, crianca).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[320, "mcg", 1.28]]);
-  assert.deepEqual(calcularDose(dose(bradi, "atropina-bradi"), bradi, adulto).contas.map((c) => c.doseTotal), [0.5, 1]);
-  assert.deepEqual(calcularDose(dose(bradi, "dopamina-bradi"), bradi, adulto).contas.map((c) => c.volume), [8.4, 84]);
-  assert.deepEqual(calcularDose(dose(has, "esmolol-has"), has, adulto).contas.map((c) => c.volume), [3.5]);
-  assert.deepEqual(calcularDose(dose(hipo, "noradrenalina-infusao-hipo"), hipo, adulto).contas.map((c) => c.volume), [5.25, 105]);
-  for (const id of ["dessaturacao", "aumento-etco2", "diminuicao-etco2", "evento-sem-diagnostico", "depois-da-crise", "colega-afetado", "verificacao-aparelho", "verificacao-pre-inducao"]) {
-    assert.equal(acharProtocolo(id)!.medicamentos.length, 0, id);
+test("listas e cartões sem fármaco: a seção de doses traz a nota, e os 10 Ts estão inteiros", () => {
+  for (const id of ["dessaturacao", "aumento-etco2", "diminuicao-etco2", "evento-sem-diagnostico", "depois-da-crise", "colega-afetado",
+    "verificacao-aparelho", "verificacao-pre-inducao", "intubacao-dificil", "nao-ventilo-nao-intubo", "pressao-vias-aereas",
+    "broncoaspiracao", "embolia-gasosa-venosa", "reacao-hemolitica-transfusional"]) {
+    const p = acha(id);
+    assert.equal(p.medicamentos.length, 0, id);
+    assert.ok((p.notasDeDose?.length ?? 0) > 0, `${id}: sem nota de dose`);
   }
   assert.equal(itensDaCategoria("apoio").prontos.length, 5);
-  assert.equal(acharProtocolo("evento-sem-diagnostico")!.agirAgora.length, 10);
+  assert.equal(acha("evento-sem-diagnostico").agirAgora.length, 11);
   const ids = (q: string) => buscar(q).flatMap((a) => (a.tipo === "protocolo" ? [a.protocolo.id] : []));
   assert.equal(ids("10 Ts")[0], "evento-sem-diagnostico");
   assert.ok(ids("EtCO2 caindo").includes("diminuicao-etco2"));
+  assert.ok(acha("verificacao-aparelho").divergencias.some((d) => /kPa/.test(d.posicoes[0].texto)));
   for (const t of ["Bradicardia grave", "Taquiarritmia instável", "Hipotensão grave", "Crise hipertensiva"]) {
     assert.ok(!itensDaCategoria("cardiovascular").previstos.some((p) => p.titulo === t), t);
   }

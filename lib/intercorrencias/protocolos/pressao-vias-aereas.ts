@@ -1,10 +1,10 @@
 /**
- * PRESSÃO ELEVADA DAS VIAS AÉREAS — qualquer idade.
+ * PRESSÃO ELEVADA DAS VIAS AÉREAS — cartão 14 da minuta de validação de
+ * 15/10/2026.
  *
- * Sequência do Manual de Crises (protocolo 13, lido no livro) e do QRH 2-3 da
- * Association of Anaesthetists (aberto e lido): isolar o aparelho, depois a
- * via aérea, depois o paciente. Não tem dose: as causas levam aos protocolos
- * próprios. O texto é do AVANEST.
+ * Base: Manual de Crises (abas 13 e 33). Complemento operacional: QRH 2-3 da
+ * Association of Anaesthetists. Não há dose universal: broncoespasmo,
+ * laringoespasmo e anafilaxia têm protocolos próprios. O texto é do AVANEST.
  */
 
 import type { Protocolo } from "../tipos.ts";
@@ -14,53 +14,43 @@ export const PRESSAO_VIAS_AEREAS: Protocolo = {
   titulo: "Pressão elevada das vias aéreas",
   categoria: "respiratorio",
   populacoes: ["adulto", "gestante", "pediatrico", "neonatal"],
-  versao: 1,
+  versao: 2,
   atualizadoEm: "2026-10-15",
   sinonimos: ["pressão de pico alta", "pressão alta na via aérea", "alarme de pressão", "complacência baixa"],
   sinais: ["pressão de pico alta", "alarme de pressão", "bolsa dura", "volume corrente caindo", "capnografia obstrutiva", "dessaturação"],
-  resumo: "Ventilar à mão, olhar a capnografia e isolar o problema: primeiro o aparelho (ressuscitador direto no tubo), depois a via aérea (aspirar, broncoscópio, trocar), depois o paciente.",
+  resumo: "Ventilar à mão e separar paciente de equipamento: tubo, circuito, filtro e ventilador primeiro; hiperinsuflação com colapso pede expiração, tensão instável pede descompressão.",
   reconhecer: [
-    "Alarme de pressão alta ou bolsa dura na ventilação manual; volume corrente caindo.",
-    "A curva de capnografia aponta a causa: fenda de relaxamento muscular, subida inclinada do broncoespasmo.",
-    "No paciente não intubado, a causa mais comum é o laringoespasmo.",
-    "Trocou o circuito pelo ressuscitador autoinflável e a pressão continua alta: o problema está na via aérea ou no paciente.",
+    "Aumento de pressão ou resistência, redução de volume, dificuldade à ventilação manual ou expiração incompleta.",
+    "Pico elevado com platô preservado sugere resistência; os dois elevados sugerem baixa complacência, com interpretação clínica.",
   ],
   agirAgora: [
-    { texto: "Ventilar à mão para confirmar a pressão alta; olhar a curva de EtCO2 e a via aérea.",
-      detalhe: "Conferir tubos, válvulas, conexões e filtros; ver se o aparelho não está dobrando o tubo." },
-    { texto: "Afastar plano superficial e relaxamento muscular insuficiente." },
-    { texto: "Inspecionar o circuito, a válvula e o ventilador." },
-    { texto: "Suspeita de auto-PEEP: pressão alveolar alta no fim da expiração, ou fluxo expiratório que não termina antes da próxima inspiração." },
-    { texto: "Trocar o circuito por ressuscitador autoinflável ligado direto à via aérea.",
-      detalhe: "Sem filtro e sem conector angulado. Se a pressão cair, o problema era o aparelho ou o circuito." },
-    { texto: "Conferir posição e permeabilidade da via aérea: aspirar todo o comprimento do tubo e confirmar com broncoscópio." },
-    { texto: "Pressão ainda alta: examinar o tórax e considerar pedir ajuda." },
-    { texto: "Na dúvida, trocar o dispositivo; ventilando com máscara laríngea, considerar trocá-la por tubo traqueal." },
-    { texto: "Laparoscopia: desinsuflar o pneumoperitônio e nivelar a mesa." },
-    { texto: "Rever as causas do paciente (em “Pensar em”)." },
+    { texto: "Pedir ajuda se grave; O2, ventilação manual e avaliação hemodinâmica." },
+    { texto: "Revisar tubo, circuito, filtro, conexões, válvulas e ventilador.", detalhe: "Se houver dúvida, ressuscitador direto na via aérea." },
+    { texto: "Conferir a profundidade e a permeabilidade do tubo; aspirar.", detalhe: "Broncoscopia quando necessária, sem atrasar o resgate." },
+    { texto: "Suspeita de hiperinsuflação com colapso: permitir a expiração, inclusive com desconexão breve, e ajustar frequência e tempo expiratório." },
+    { texto: "Examinar o tórax; tratar broncoespasmo ou anafilaxia.",
+      detalhe: "Tensão com instabilidade exige descompressão por equipe habilitada, sem aguardar radiografia." },
+    { texto: "Corrigir posição, pneumoperitônio, plano e tônus, quando contribuem." },
   ],
   medicamentos: [],
   volumes: [],
+  notasDeDose: [
+    "Não há dose universal. Broncoespasmo, laringoespasmo e anafilaxia: protocolos próprios.",
+    "Não administrar bloqueador antes de avaliar rapidamente uma causa mecânica corrigível, salvo necessidade do plano de resgate.",
+  ],
   pensarEm: [
-    "Circuito: troca da bolsa pelo ventilador, chave manual-mecânica, válvula do circuito, válvula APL fechada ou travada, flush de O2 travado, circuito dobrado ou obstruído, ventilador mal ajustado.",
-    "Via aérea: laringoespasmo; tubo fora do lugar, pequeno ou obstruído.",
-    "Paciente: broncoespasmo, auto-PEEP, doença ou tumor da traqueia, corpo estranho, distensão abdominal, Trendelenburg, obesidade, compressão do tórax; alvéolo (edema, fibrose, contusão, infecção, SDRA).",
-    "As causas mais comuns: relaxamento insuficiente, posição do dispositivo, laringoespasmo, bolsa ou ventilador.",
-    "Pneumotórax, hemotórax, rigidez da parede torácica.",
-    "Anafilaxia, embolia, broncoaspiração, edema pulmonar, intubação seletiva, corpo estranho.",
-    "O momento do evento: punção venosa central, fármaco recém-dado, ajuste do tubo, mudança de posição, pneumoperitônio, manobra cirúrgica.",
+    "Tubo dobrado, mordido, obstruído ou seletivo; filtro; válvula APL ou ventilador; auto-PEEP; tensão; aspiração; edema; compressão e rigidez torácica.",
   ],
   depois: [
-    "Sem resolver: gasometria arterial, ECG de 12 derivações e radiografia de tórax.",
-    "Registrar na ficha a causa encontrada e as condutas.",
+    "Gasometria e imagem conforme a gravidade e a causa.",
+    "Registrar pressões, volumes e a intervenção eficaz.",
   ],
   divergencias: [],
   referencias: ["manual-13", "manual-33", "qrh-2-3"],
   relacionados: [
-    { protocolo: "laringoespasmo", texto: "Laringoespasmo" },
     { protocolo: "broncoespasmo-grave", texto: "Broncoespasmo grave" },
+    { protocolo: "laringoespasmo", texto: "Laringoespasmo" },
     { protocolo: "anafilaxia", texto: "Anafilaxia" },
     { protocolo: "broncoaspiracao", texto: "Broncoaspiração" },
-    { protocolo: "embolia-gasosa-venosa", texto: "Embolia gasosa venosa" },
   ],
 };

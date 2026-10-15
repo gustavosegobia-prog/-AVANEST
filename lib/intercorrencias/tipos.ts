@@ -74,7 +74,8 @@ export type VolumeDoProtocolo = {
   rotulo?: string;
   indicacao: string;
   populacao: "adulto" | "pediatrico" | "todas";
-  unidade?: "mL" | "J" | "unidades" | "mg";
+  /** "mL/h" é ritmo de bomba: por kg, a conta sai em mL/h ("15 mL/kg/h" da emulsão lipídica). */
+  unidade?: "mL" | "mL/h" | "J" | "unidades" | "mg";
   porKg?: { min?: number; max?: number };
   fixo?: { min?: number; max?: number };
   maximo?: number;
@@ -104,6 +105,8 @@ export type DoseDoProtocolo = {
   via: string;
   dose: DosePorKg;
   tetoAbsoluto?: Teto;
+  /** Piso por dose: a conta pelo peso que fica abaixo dele sobe até ele (atropina da criança, mínimo de 0,1 mg). */
+  doseMinima?: Teto;
   apresentacoes: ApresentacaoDoProtocolo[];
   pesoBase?: BaseDePeso;
   /** Pede confirmação da concentração e da via antes de mostrar o volume. */
@@ -124,7 +127,7 @@ export type DoseDoProtocolo = {
   referencias: string[];
 };
 
-/** Duas fontes dizem coisas diferentes: as duas ficam, lado a lado, para o revisor. */
+/** Duas fontes dizem coisas diferentes: as duas ficam, lado a lado, com a escolha do protocolo. */
 export type Divergencia = {
   tema: string;
   posicoes: Array<{ texto: string; referencia: string }>;
@@ -149,6 +152,12 @@ export type Protocolo = {
   agirAgora: Passo[];
   medicamentos: DoseDoProtocolo[];
   volumes: VolumeDoProtocolo[];
+  /**
+   * O que a seção de doses diz além dos números: o que não é rotina, o que
+   * depende do serviço, o cuidado que vale para todas. Num cartão sem fármaco
+   * (via aérea, listas), é tudo o que a seção mostra.
+   */
+  notasDeDose?: string[];
   pensarEm: string[];
   depois: string[];
   divergencias: Divergencia[];

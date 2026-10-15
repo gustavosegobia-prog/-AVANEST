@@ -216,6 +216,23 @@ export function calcularDose(
     return { ...base, apresentacao, contas: [], peso, bloqueio: incompativel.incompatibilidade! };
   }
 
+  // Piso por dose: a criança pequena cuja conta fica abaixo do mínimo recebe o mínimo.
+  if (d.doseMinima) {
+    const piso = converter(d.doseMinima.valor, d.doseMinima.unidade, d.dose.unidade);
+    if (piso !== undefined) {
+      contas.forEach((c, i) => {
+        if (c.doseTotal >= piso) return;
+        const [elevada] = calcular({ usual: piso, unidade: d.dose.unidade, por: "fixa" }, 1, apresentacao ?? undefined);
+        if (!elevada) return;
+        alertas.unshift({
+          nivel: "atencao",
+          texto: `Elevada ao mínimo de ${numero(d.doseMinima!.valor)} ${d.doseMinima!.unidade}: pelo peso seria ${numero(c.doseTotal, 3)} ${c.unidadeDose}.`,
+        });
+        contas[i] = { ...c, doseTotal: elevada.doseTotal, volume: elevada.volume, unidadeVolume: elevada.unidadeVolume };
+      });
+    }
+  }
+
   const limitada = contas.find((c) => c.limitada);
   if (limitada && d.tetoAbsoluto) {
     alertas.unshift({
@@ -267,7 +284,9 @@ export function calcularVolume(v: VolumeDoProtocolo, p: PacienteDaConsulta): Vol
     return { volume: v, texto: `${t} ${u}`, base: "fixo", bloqueio: null };
   }
   const porKgV = faixa(v.porKg ?? {});
-  const base = `${porKgV.map((x) => numero(x, 2)).join(" a ")} ${u}/kg${v.maximo ? `, máximo de ${numero(v.maximo, 0)} ${u}` : ""}`;
+  // Ritmo de bomba por kg escreve-se "mL/kg/h", e não "mL/h/kg".
+  const porKgU = u === "mL/h" ? "mL/kg/h" : `${u}/kg`;
+  const base = `${porKgV.map((x) => numero(x, 2)).join(" a ")} ${porKgU}${v.maximo ? `, máximo de ${numero(v.maximo, 0)} ${u}` : ""}`;
   if (!ok(p.pesoKg)) return { volume: v, texto: "", base, bloqueio: "Informe o peso para calcular." };
   const conta = porKgV.map((x) => Math.min(x * p.pesoKg!, v.maximo ?? Infinity));
   return { volume: v, texto: `${[...new Set(conta.map((x) => numero(x, 0)))].join(" a ")} ${u}`, base, bloqueio: null };

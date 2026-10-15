@@ -209,8 +209,10 @@ export function ProtocoloTela({
     .filter((v) => populacao === null || v.quando.includes(populacao))
     .map((v) => ({ ...v, alvo: acharProtocolo(v.protocolo) }))
     .filter((v) => v.alvo);
-  // Protocolo só de condutas (via aérea, broncoaspiração): sem a seção de doses.
-  const temDoses = p.medicamentos.length > 0 || p.volumes.length > 0;
+  // Protocolo só de condutas (via aérea, listas): a seção de doses traz só as notas — e, sem notas, não aparece.
+  const temCalculo = p.medicamentos.length > 0 || p.volumes.length > 0;
+  const notas = p.notasDeDose ?? [];
+  const temDoses = temCalculo || notas.length > 0;
   const relacionados = (p.relacionados ?? []).filter((r) => acharProtocolo(r.protocolo));
 
   return (
@@ -311,14 +313,14 @@ export function ProtocoloTela({
         </ol>
       </section>
 
-      {temDoses && <section id="doses" className={estilos.secaoAberta} aria-labelledby="t-doses">
-        <h3 id="t-doses">Medicamentos e doses{populacao ? ` · ${ROTULO_POPULACAO[populacao]}` : ""}</h3>
+      {temDoses && <section id="doses" className={temCalculo ? estilos.secaoAberta : estilos.secao} aria-labelledby="t-doses">
+        <h3 id="t-doses">{temCalculo ? "Medicamentos e doses" : "Medicamentos"}{temCalculo && populacao ? ` · ${ROTULO_POPULACAO[populacao]}` : ""}</h3>
         <div className={estilos.doses}>
-          {populacao && doses.length === 0 && volumes.length === 0 && (
+          {temCalculo && populacao && doses.length === 0 && volumes.length === 0 && (
             <div className={`${estilos.bloqueio} ${estilos.semDoses}`}>
               <span>
                 Este protocolo não traz doses para {ROTULO_POPULACAO[populacao].toLowerCase()}
-                {veja.length ? "." : ". Confira a idade informada."}
+                {veja.length || notas.length ? "." : ". Confira a idade informada."}
               </span>
               {aoAbrirProtocolo && veja.map((v) => (
                 <button key={v.protocolo} type="button" className={`${estilos.botao} ${estilos.botaoForte} ${estilos.naoImprimir}`}
@@ -356,6 +358,9 @@ export function ProtocoloTela({
               </div>
             </div>
           ))}
+          {notas.length > 0 && (
+            <ul className={estilos.notasDose}>{notas.map((x) => <li key={x}>{x}</li>)}</ul>
+          )}
         </div>
       </section>}
 

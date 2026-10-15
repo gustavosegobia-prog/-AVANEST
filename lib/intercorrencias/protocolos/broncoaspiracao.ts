@@ -1,9 +1,8 @@
 /**
- * BRONCOASPIRAÇÃO — qualquer idade.
+ * BRONCOASPIRAÇÃO — cartão 16 da minuta de validação de 15/10/2026.
  *
- * Sequência do Manual de Crises (protocolo 15, lido no livro) e quadro A do
- * QRH 3-4 da Association of Anaesthetists (aberto e lido). Não tem dose:
- * corticoide e antibiótico não entram no tratamento imediato. O texto é do
+ * Base: Manual de Crises (aba 15). Antibiótico, corticoide e alta são
+ * decisões individualizadas: sem regra automática de 2 horas. O texto é do
  * AVANEST.
  */
 
@@ -14,50 +13,49 @@ export const BRONCOASPIRACAO: Protocolo = {
   titulo: "Broncoaspiração",
   categoria: "respiratorio",
   populacoes: ["adulto", "gestante", "pediatrico", "neonatal"],
-  versao: 1,
+  versao: 2,
   atualizadoEm: "2026-10-15",
   sinonimos: ["aspiração", "aspiração pulmonar", "regurgitação", "vômito", "Mendelson"],
   sinais: ["vômito", "regurgitação", "conteúdo gástrico na faringe", "secreção no tubo", "dessaturação", "broncoespasmo", "pressão alta"],
-  resumo: "Cabeça para baixo e de lado, aspirar a faringe, intubar e aspirar a árvore brônquica antes de ventilar com pressão, se a SpO2 permitir; esvaziar o estômago antes de despertar.",
+  resumo: "Evitar mais aspiração, aspirar sob visão e proteger a via aérea sem tirar o tubo bem posicionado; corticoide e antibiótico não são rotina.",
   reconhecer: [
-    "Conteúdo gástrico na faringe, na máscara ou no tubo.",
-    "Depois: dessaturação, broncoespasmo, pressão alta na via aérea, estertores.",
-    "No NAP4, mais da metade das mortes por via aérea na anestesia foram por broncoaspiração.",
+    "Regurgitação ou material na via aérea, hipoxemia, broncoespasmo, secreção e pressão alta.",
+    "A apresentação pode ser tardia ou inicialmente discreta.",
   ],
   agirAgora: [
-    { texto: "Pedir ajuda, avisar o cirurgião e dividir as funções.",
-      detalhe: "Agir rápido (virar o paciente, por exemplo) limita o quanto é aspirado." },
-    { texto: "Cabeça para baixo e considerar o decúbito lateral esquerdo.",
-      detalhe: "A posição depende da cirurgia e do que é possível na mesa." },
-    { texto: "Retirar os dispositivos e aspirar a faringe." },
-    { texto: "Intubar e aspirar a árvore brônquica.",
-      detalhe: "Pressão cricoide pode ser usada durante a intubação, mas não durante vômito ativo." },
-    { texto: "Ventilar com O2 a 100% e depois titular para SpO2 normal.",
-      detalhe: "Fazer os passos anteriores antes de ventilar com pressão, se a SpO2 permitir." },
-    { texto: "Aspiração grave: só seguir com a cirurgia se for de emergência." },
-    { texto: "Sonda gástrica e esvaziar o estômago antes de despertar." },
-    { texto: "Avaliar a necessidade de UTI." },
+    { texto: "Pedir ajuda e avisar a cirurgia. Evitar aspiração adicional.", detalhe: "Posição lateral ou cabeça baixa, se viável e segura." },
+    { texto: "Aspirar a orofaringe sob visão e proteger a via aérea.", detalhe: "Não retirar por rotina o tubo bem posicionado e com cuff." },
+    { texto: "O2 e ventilação conforme a necessidade.", detalhe: "Na hipóxia grave, não adiar a oxigenação para completar a aspiração." },
+    { texto: "Aspirar o tubo e a árvore brônquica quando indicado.",
+      detalhe: "Material particulado ou obstrução: considerar broncoscopia; não lavar os pulmões indiscriminadamente." },
+    { texto: "Avaliar a continuidade da cirurgia, o suporte pulmonar e o destino.",
+      detalhe: "Descomprimir o estômago depois de proteger a via aérea, se indicado." },
   ],
   medicamentos: [],
   volumes: [],
+  notasDeDose: [
+    "Broncodilatador se houver broncoespasmo.",
+    "Corticoide e antibiótico não são rotina da pneumonite química imediata; tratar infecção ou contaminação específica conforme a evolução e a avaliação clínica.",
+  ],
   pensarEm: [
-    "Do paciente: jejum inadequado, esvaziamento gástrico lento, esfíncter esofágico inferior incompetente (emergência, gestação, diabetes, obesidade, hérnia de hiato, refluxo).",
-    "Da cirurgia: trato digestivo alto, posição de litotomia ou cabeça baixa, laparoscopia, colecistectomia.",
-    "Da anestesia: plano superficial, supraglótico, ventilação com pressão positiva, via aérea difícil, cirurgia longa.",
-    "Bloqueio neuromuscular residual reduz o tônus do esfíncter esofágico superior: risco também na recuperação.",
+    "Edema pulmonar, laringoespasmo, anafilaxia, intubação seletiva, pneumotórax e obstrução do tubo.",
   ],
   depois: [
-    "Aspiração leve, paciente sem sintomas em 2 horas, com radiografia de tórax e SpO2 normais: pode dispensar a UTI.",
-    "Material particulado indica aspiração mais grave: UTI no pós-operatório.",
-    "Corticoide e antibiótico não estão indicados no tratamento imediato; antibiótico só se aparecer pneumonia.",
-    "Radiografia de tórax e o nível de cuidado pós-operatório conforme a evolução.",
-    "Registrar na ficha o episódio, o material aspirado e as condutas.",
+    "Observação e reavaliação respiratória seriada.",
+    "Radiografia inicial normal ou 2 horas sem sintomas não garantem a alta.",
+    "Escalonar para a UTI conforme a oxigenação, a ventilação e a evolução; registrar o evento e comunicar o paciente.",
   ],
-  divergencias: [],
-  referencias: ["manual-15", "qrh-3-4"],
+  divergencias: [
+    {
+      tema: "Alta depois de aspiração leve",
+      posicoes: [{ texto: "Sem sintomas em 2 horas, com radiografia e SpO2 normais, pode dispensar a UTI.", referencia: "manual-15" }],
+      escolha: "O protocolo não usa regra automática de 2 horas: a alta e o antibiótico são decisões individualizadas.",
+    },
+  ],
+  referencias: ["manual-15"],
   relacionados: [
-    { protocolo: "pressao-vias-aereas", texto: "Pressão elevada das vias aéreas" },
     { protocolo: "broncoespasmo-grave", texto: "Broncoespasmo grave" },
+    { protocolo: "pressao-vias-aereas", texto: "Pressão elevada das vias aéreas" },
     { protocolo: "intubacao-dificil", texto: "Intubação difícil não prevista" },
   ],
 };

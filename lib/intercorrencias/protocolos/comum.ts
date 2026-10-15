@@ -1,93 +1,144 @@
 /**
- * Apresentações que mais de um protocolo usa. Cada uma com o rótulo inteiro
- * (o que está escrito na ampola e como se dilui): nenhuma concentração é
- * presumida.
+ * Apresentações que os protocolos usam. Cada uma com o rótulo inteiro (o que
+ * está escrito na ampola e como se dilui): nenhuma concentração é presumida.
+ *
+ * Todo preparo indica o VOLUME FINAL, e não o volume de diluente a acrescentar
+ * (convenção da minuta de validação de 15/10/2026). Noradrenalina é escrita em
+ * base. Conferir massa, apresentação, compatibilidade, acesso e rótulo antes
+ * de administrar.
  */
 
 import type { ApresentacaoDoProtocolo } from "../tipos.ts";
 
-export const ADRENALINA_PURA_PCR: ApresentacaoDoProtocolo = {
-  rotulo: "Ampola pura 1 mg/mL — na PCR", quantidade: 1, unidade: "mg", mL: 1, vias: ["IV"],
-};
+/* ---------------- Adrenalina ---------------- */
 export const ADRENALINA_100: ApresentacaoDoProtocolo = {
-  rotulo: "1 mg em 10 mL — 100 mcg/mL (1:10.000)", quantidade: 100, unidade: "mcg", mL: 1, vias: ["IV"],
-  preparo: "1 ampola (1 mg) + 9 mL de SF 0,9%",
+  rotulo: "1 mg em 10 mL — 100 mcg/mL (0,1 mg/mL)", quantidade: 100, unidade: "mcg", mL: 1, vias: ["IV", "IO", "Traqueal"],
+  preparo: "1 ampola (1 mg) completada para 10 mL de SF 0,9%",
+};
+export const ADRENALINA_PURA_PCR: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola pura 1 mg/mL — só na PCR", quantidade: 1, unidade: "mg", mL: 1, vias: ["IV", "IO"],
+};
+export const ADRENALINA_PURA_IM: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola pura 1 mg/mL (1:1.000) — IM", quantidade: 1, unidade: "mg", mL: 1, vias: ["IM"],
+};
+export const ADRENALINA_20: ApresentacaoDoProtocolo = {
+  rotulo: "1 mg em 50 mL — 20 mcg/mL", quantidade: 20, unidade: "mcg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (1 mg) completada para 50 mL de SF 0,9%",
 };
 export const ADRENALINA_10: ApresentacaoDoProtocolo = {
-  rotulo: "1 mg em 100 mL — 10 mcg/mL (1:100.000)", quantidade: 10, unidade: "mcg", mL: 1, vias: ["IV"],
-  preparo: "1 ampola (1 mg) em 100 mL de SF 0,9%",
+  rotulo: "1 mg em 100 mL — 10 mcg/mL", quantidade: 10, unidade: "mcg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (1 mg) completada para 100 mL de SF 0,9%",
 };
-/** Seringa de 50 mL para infusão (Manual de Crises, protocolo 07). */
+/** Seringa de 50 mL para infusão. */
 export const ADRENALINA_60: ApresentacaoDoProtocolo = {
   rotulo: "3 mg em 50 mL — 60 mcg/mL", quantidade: 60, unidade: "mcg", mL: 1, vias: ["IV"],
-  preparo: "3 ampolas (3 mg) em 50 mL de SF 0,9%",
+  preparo: "3 ampolas (3 mg) completadas para 50 mL de SF 0,9%",
 };
+
+/* ---------------- Antiarrítmicos e cardiovasculares ---------------- */
 export const AMIODARONA_50: ApresentacaoDoProtocolo = {
-  rotulo: "Ampola de 150 mg em 3 mL — 50 mg/mL", quantidade: 50, unidade: "mg", mL: 1, vias: ["IV"],
+  rotulo: "Ampola de 150 mg em 3 mL — 50 mg/mL", quantidade: 50, unidade: "mg", mL: 1, vias: ["IV", "IO"],
 };
 export const LIDOCAINA_20: ApresentacaoDoProtocolo = {
-  rotulo: "Lidocaína 2% sem vasoconstritor — 20 mg/mL", quantidade: 20, unidade: "mg", mL: 1, vias: ["IV"],
+  rotulo: "Lidocaína 2% sem vasoconstritor — 20 mg/mL", quantidade: 20, unidade: "mg", mL: 1, vias: ["IV", "IO"],
 };
+export const ADENOSINA_3: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 6 mg em 2 mL — 3 mg/mL", quantidade: 3, unidade: "mg", mL: 1, vias: ["IV", "IO"],
+};
+export const ATROPINA_05: ApresentacaoDoProtocolo = { rotulo: "0,5 mg/mL", quantidade: 0.5, unidade: "mg", mL: 1, vias: ["IV", "IO", "IM"] };
+export const ATROPINA_025: ApresentacaoDoProtocolo = { rotulo: "0,25 mg/mL", quantidade: 0.25, unidade: "mg", mL: 1, vias: ["IV", "IO", "IM"] };
+export const METOPROLOL_1: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 5 mg em 5 mL — 1 mg/mL", quantidade: 1, unidade: "mg", mL: 1, vias: ["IV"],
+};
+export const ESMOLOL_10: ApresentacaoDoProtocolo = {
+  rotulo: "10 mg/mL (100 mg em 10 mL)", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"],
+};
+export const NITROGLICERINA_200: ApresentacaoDoProtocolo = {
+  rotulo: "50 mg em 250 mL — 200 mcg/mL", quantidade: 200, unidade: "mcg", mL: 1, vias: ["IV"],
+  preparo: "50 mg completados para 250 mL (volume final); conferir diluente e equipo com a farmácia",
+};
+export const HIDRALAZINA_1: ApresentacaoDoProtocolo = {
+  rotulo: "20 mg em 20 mL — 1 mg/mL", quantidade: 1, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (20 mg) completada para 20 mL de SF 0,9%",
+};
+
+/* ---------------- Vasopressores ---------------- */
+export const EFEDRINA_5: ApresentacaoDoProtocolo = {
+  rotulo: "50 mg em 10 mL — 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (50 mg) completada para 10 mL de SF 0,9%; conferir a ampola original",
+};
+export const FENILEFRINA_100: ApresentacaoDoProtocolo = {
+  rotulo: "10 mg em 100 mL — 100 mcg/mL", quantidade: 100, unidade: "mcg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (10 mg) completada para 100 mL de SF 0,9%",
+};
+export const NORADRENALINA_80: ApresentacaoDoProtocolo = {
+  rotulo: "4 mg de base em 50 mL — 80 mcg/mL", quantidade: 80, unidade: "mcg", mL: 1, vias: ["IV"],
+  preparo: "4 mg de noradrenalina BASE completados para 50 mL; a ampola pode trazer a massa do sal (hemitartarato): conferir a quantidade de base",
+};
+
+/* ---------------- Eletrólitos, glicose e insulina ---------------- */
 export const MAGNESIO_50: ApresentacaoDoProtocolo = {
   rotulo: "Sulfato de magnésio 50% — 500 mg/mL", quantidade: 500, unidade: "mg", mL: 1, vias: ["IV"],
 };
 export const MAGNESIO_10: ApresentacaoDoProtocolo = {
   rotulo: "Sulfato de magnésio 10% — 100 mg/mL", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV"],
 };
+/** Manutenção da eclâmpsia: 5 g em 250 mL finais. */
+export const MAGNESIO_20MG: ApresentacaoDoProtocolo = {
+  rotulo: "5 g em 250 mL — 20 mg/mL", quantidade: 20, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "10 mL de sulfato de magnésio 50% (5 g) completados para 250 mL",
+};
 export const CLORETO_DE_CALCIO_10: ApresentacaoDoProtocolo = {
-  rotulo: "Cloreto de cálcio 10% — 100 mg/mL (ampola de 10 mL)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV"],
+  rotulo: "Cloreto de cálcio 10% — 100 mg/mL (ampola de 10 mL)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV", "IO"],
 };
 export const GLUCONATO_DE_CALCIO_10: ApresentacaoDoProtocolo = {
-  rotulo: "Gluconato de cálcio 10% — 100 mg/mL (ampola de 10 mL)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV"],
+  rotulo: "Gluconato de cálcio 10% — 100 mg/mL (ampola de 10 mL)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV", "IO"],
 };
-export const BICARBONATO_84: ApresentacaoDoProtocolo = {
-  rotulo: "Bicarbonato de sódio 8,4% — 1 mEq/mL", quantidade: 1, unidade: "mEq", mL: 1, vias: ["IV"],
-};
-export const ATROPINA_05: ApresentacaoDoProtocolo = { rotulo: "0,5 mg/mL", quantidade: 0.5, unidade: "mg", mL: 1, vias: ["IV", "IM"] };
-export const ATROPINA_025: ApresentacaoDoProtocolo = { rotulo: "0,25 mg/mL", quantidade: 0.25, unidade: "mg", mL: 1, vias: ["IV", "IM"] };
-export const TRANEXAMICO_50: ApresentacaoDoProtocolo = {
-  rotulo: "Ampola de 250 mg em 5 mL — 50 mg/mL", quantidade: 50, unidade: "mg", mL: 1, vias: ["IV"],
+export const GLICOSE_50: ApresentacaoDoProtocolo = { rotulo: "Glicose 50% — 0,5 g/mL", quantidade: 0.5, unidade: "g", mL: 1, vias: ["IV"] };
+export const GLICOSE_10: ApresentacaoDoProtocolo = { rotulo: "Glicose 10% — 0,1 g/mL", quantidade: 0.1, unidade: "g", mL: 1, vias: ["IV", "IO"] };
+export const INSULINA_1: ApresentacaoDoProtocolo = {
+  rotulo: "Insulina regular diluída a 1 UI/mL", quantidade: 1, unidade: "UI", mL: 1, vias: ["IV"],
+  preparo: "Preparo do serviço, com dupla checagem: a 1 UI/mL, a dose em UI é o volume em mL",
 };
 
-/* Vasopressores em bolus: as diluições da calculadora do AVANEST. */
-export const EFEDRINA_5: ApresentacaoDoProtocolo = {
-  rotulo: "50 mg em 10 mL — 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["IV"],
-  preparo: "1 ampola (50 mg) + 9 mL de SF 0,9%",
+/* ---------------- Via aérea e respiratório ---------------- */
+export const PROPOFOL_10: ApresentacaoDoProtocolo = { rotulo: "10 mg/mL (1%)", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"] };
+export const SUCCINILCOLINA_10: ApresentacaoDoProtocolo = {
+  rotulo: "100 mg em 10 mL — 10 mg/mL", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "Frasco de 100 mg reconstituído para 10 mL",
 };
-export const FENILEFRINA_100: ApresentacaoDoProtocolo = {
-  rotulo: "10 mg em 100 mL — 100 mcg/mL", quantidade: 100, unidade: "mcg", mL: 1, vias: ["IV"],
-  preparo: "1 ampola (10 mg) em 100 mL de SF 0,9%",
-};
-export const METARAMINOL_05: ApresentacaoDoProtocolo = {
-  rotulo: "10 mg em 20 mL — 0,5 mg/mL", quantidade: 0.5, unidade: "mg", mL: 1, vias: ["IV"],
-  preparo: "1 ampola (10 mg) em 20 mL de SF 0,9%",
-};
-export const VASOPRESSINA_1: ApresentacaoDoProtocolo = {
-  rotulo: "20 UI em 20 mL — 1 UI/mL", quantidade: 1, unidade: "UI", mL: 1, vias: ["IV"],
-  preparo: "1 ampola (20 UI) em 20 mL de SF 0,9%",
-};
-
-export const FUROSEMIDA_10: ApresentacaoDoProtocolo = {
-  rotulo: "Ampola de 20 mg em 2 mL — 10 mg/mL", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"],
+export const SUCCINILCOLINA_50: ApresentacaoDoProtocolo = {
+  rotulo: "100 mg em 2 mL — 50 mg/mL (IM)", quantidade: 50, unidade: "mg", mL: 1, vias: ["IM"],
+  preparo: "Frasco de 100 mg reconstituído para 2 mL",
 };
 export const SALBUTAMOL_NEBULIZACAO: ApresentacaoDoProtocolo = {
   rotulo: "Solução para nebulização 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["Inalatória"],
 };
+export const IPRATROPIO_NEBULIZACAO: ApresentacaoDoProtocolo = {
+  rotulo: "Solução para nebulização 0,25 mg/mL", quantidade: 0.25, unidade: "mg", mL: 1, vias: ["Inalatória"],
+};
+/** Só a apresentação injetável. */
+export const SALBUTAMOL_IV_50: ApresentacaoDoProtocolo = {
+  rotulo: "Salbutamol injetável 0,5 mg em 10 mL — 50 mcg/mL", quantidade: 50, unidade: "mcg", mL: 1, vias: ["IV"],
+  preparo: "0,5 mg da apresentação injetável completados para 10 mL de SF 0,9%",
+};
+
+/* ---------------- Outros ---------------- */
 export const MIDAZOLAM_1: ApresentacaoDoProtocolo = {
   rotulo: "5 mg em 5 mL — 1 mg/mL", quantidade: 1, unidade: "mg", mL: 1, vias: ["IV"],
-  preparo: "1 mL da ampola de 5 mg/mL + 4 mL de SF 0,9%",
+  preparo: "1 mL da ampola de 5 mg/mL completado para 5 mL de SF 0,9%",
 };
-export const MIDAZOLAM_5: ApresentacaoDoProtocolo = { rotulo: "Ampola de 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["IV", "IM"] };
-export const PROPOFOL_10: ApresentacaoDoProtocolo = { rotulo: "10 mg/mL (1%)", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"] };
-
-/** As causas reversíveis, na ordem em que se lembram. */
-export const QUATRO_H_QUATRO_T = [
-  "4 H: hipóxia, hipovolemia, hipotermia, hipo ou hipercalemia (e outros distúrbios metabólicos).",
-  "4 T: pneumotórax hipertensivo, tamponamento, trombose (coronária ou pulmonar), tóxicos.",
-];
-
-/** O que é próprio da sala cirúrgica (QRH 2-1, quadro A). */
-export const CAUSAS_DA_SALA = [
-  "Da anestesia: reflexo vagal (pneumoperitônio, tração, olho), erro de fármaco, toxicidade por anestésico local, raqui alta.",
-  "Anafilaxia; embolia gasosa, gordurosa ou amniótica; sangramento oculto (principalmente na laparoscopia).",
-];
+export const TRANEXAMICO_50: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 250 mg em 5 mL — 50 mg/mL", quantidade: 50, unidade: "mg", mL: 1, vias: ["IV"],
+};
+export const DANTROLENO_20: ApresentacaoDoProtocolo = {
+  rotulo: "Frasco de 20 mg + 60 mL de água estéril sem conservante — 0,333 mg/mL", quantidade: 20, unidade: "mg", mL: 60, vias: ["IV"],
+  preparo: "60 mL de água estéril sem conservante por frasco; agitar até clarear",
+};
+export const DANTROLENO_250: ApresentacaoDoProtocolo = {
+  rotulo: "Formulação de 250 mg em 5 mL — 50 mg/mL (só se disponível)", quantidade: 50, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "Preparo do próprio fabricante: não usar diluente nem preparo de outro produto",
+};
+export const METILERGOMETRINA_02: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 0,2 mg/mL", quantidade: 0.2, unidade: "mg", mL: 1, vias: ["IM"],
+};

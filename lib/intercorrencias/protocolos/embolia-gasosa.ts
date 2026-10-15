@@ -1,108 +1,65 @@
 /**
- * EMBOLIA GASOSA VENOSA — adulto, gestante e criança.
+ * EMBOLIA GASOSA VENOSA — cartão 05 da minuta de validação de 15/10/2026.
  *
- * Condutas do Manual de Crises (protocolo 08, lido no livro) e do QRH 3-5 da
- * Association of Anaesthetists (aberto e lido), que dá o volume de
- * cristaloide. O protocolo 08 manda usar adrenalina, mas não dá dose: a
- * solução e o início vêm da tabela do próprio Manual (protocolo 07), e isso
- * está dito no cartão. O texto é do AVANEST.
+ * Base: Manual de Crises (aba 08). Avaliação hiperbárica: 10ª Conferência
+ * Europeia de Consenso em Medicina Hiperbárica, sem janela rígida de 6 h. Não
+ * há fármaco que elimine o gás: o suporte segue os protocolos de hipotensão e
+ * de PCR. O texto é do AVANEST.
  */
 
 import type { Protocolo } from "../tipos.ts";
-import { ADRENALINA_60 } from "./comum.ts";
-
-const SEM_DOSE_NO_08 = "O protocolo 08 do Manual não dá dose: solução e início da tabela do protocolo 07.";
 
 export const EMBOLIA_GASOSA: Protocolo = {
   id: "embolia-gasosa-venosa",
   titulo: "Embolia gasosa venosa",
   categoria: "cardiovascular",
   populacoes: ["adulto", "gestante", "pediatrico"],
-  versao: 1,
+  versao: 2,
   atualizadoEm: "2026-10-15",
   sinonimos: ["embolia aérea", "embolia gasosa", "embolia por CO2", "embolia gasosa paradoxal"],
   sinais: ["EtCO2 caindo", "queda súbita do EtCO2", "SpO2 caindo", "hipotensão súbita", "PVC subindo", "sopro em roda de moinho",
     "craniotomia sentada", "fossa posterior", "laparoscopia", "colapso"],
-  resumo: "Parar a entrada de gás, O2 a 100% sem óxido nitroso, Trendelenburg e decúbito lateral esquerdo, aspirar o cateter central, volume e adrenalina; RCP se parar.",
+  resumo: "Parar a entrada de gás, O2 a 100% sem óxido nitroso, suporte de ventilação e circulação e RCP se parar; hiperbárica cedo se arterial ou neurológica.",
   reconhecer: [
-    "Queda súbita do EtCO2 e da SpO2, com hipotensão e taquicardia, durante procedimento de risco.",
-    "Também: pressão venosa central e da artéria pulmonar subindo, broncoespasmo, edema pulmonar, colapso cardiovascular.",
-    "Ar no ecocardiograma transtorácico ou transesofágico; às vezes, sopro “em roda de moinho”.",
-    "Embolia paradoxal: o forame oval patente existe em 10 a 30% das pessoas, e o gás pode chegar às coronárias e ao cérebro — meio mililitro de ar na coronária basta para fibrilação ventricular.",
+    "Queda abrupta do EtCO2, dessaturação e hipotensão em contexto de risco.",
+    "Gás ao eco ou ao Doppler, aumento da pressão pulmonar ou colapso podem ocorrer.",
   ],
   agirAgora: [
-    { texto: "Pedir ajuda, avisar a equipe e anotar a hora." },
-    { texto: "O2 a 100%; desligar o óxido nitroso." },
-    { texto: "Parar a entrada de gás.",
-      detalhe: "Inundar o campo com soro e cobrir com compressas úmidas; ocluir o vaso; parar a insuflação; despressurizar as infusões; cera no osso; campo cirúrgico abaixo do coração." },
-    { texto: "Trendelenburg e decúbito lateral esquerdo, se possível." },
-    { texto: "Cateter venoso central já no lugar: aspirar o ar.",
-      detalhe: "Passar um cateter central na emergência só para isso não tem base em evidência." },
-    { texto: "Comprometimento hemodinâmico importante: intubar, se ainda não intubado, e ventilar com O2 a 100%.",
-      detalhe: "PEEP só para sustentar a oxigenação: ela pode favorecer a embolia paradoxal e piorar o retorno venoso, e retirá-la de repente aumenta a entrada de gás." },
-    { texto: "Volume rápido e paciente bem hidratado." },
-    { texto: "Adrenalina para o suporte hemodinâmico." },
-    { texto: "Sem pulso: RCP já, e o protocolo de PCR.",
-      detalhe: "A massagem cardíaca ajuda a fragmentar e dispersar o gás nas câmaras." },
-    { texto: "Depois da reanimação: UTI, e considerar oxigênio hiperbárico." },
+    { texto: "Avisar a cirurgia, pedir ajuda, suspender o N2O e administrar O2 a 100%." },
+    { texto: "Interromper a entrada: parar a insuflação, ocluir ou inundar o campo, cobrir os vasos e revisar infusões e conexões pressurizadas." },
+    { texto: "Suportar ventilação e circulação.",
+      detalhe: "A posição deve permitir a ressuscitação; Durant ou Trendelenburg apenas se apropriados, sem prejudicar compressões ou perfusão." },
+    { texto: "Aspirar pelo cateter venoso central já adequadamente posicionado, se possível.",
+      detalhe: "Não atrasar o suporte para inserir um cateter central só com essa finalidade." },
+    { texto: "Sem pulso: RCP. Avaliar o eco e as causas concorrentes." },
+    { texto: "Acometimento arterial ou neurológico: contato precoce com o centro hiperbárico.",
+      detalhe: "O atraso não é exclusão automática da avaliação." },
   ],
-  medicamentos: [
-    {
-      id: "adrenalina-infusao-embolia-adulto", farmaco: "Adrenalina", indicacao: "Suporte hemodinâmico — infusão",
-      populacao: "adulto", via: "IV, infusão contínua",
-      dose: { usual: 300, unidade: "mcg", por: "h" }, apresentacoes: [ADRENALINA_60], altoRisco: true,
-      velocidade: `Começar com 5 mL/h (adulto de 70 kg; 5 mcg/min) e titular pela resposta. ${SEM_DOSE_NO_08}`,
-      par: "adrenalina-infusao-embolia-ped", referencias: ["manual-08", "manual-07"],
-    },
-    {
-      id: "adrenalina-infusao-embolia-ped", farmaco: "Adrenalina", indicacao: "Suporte hemodinâmico — infusão",
-      populacao: "pediatrico", via: "IV, infusão contínua",
-      dose: { min: 0.05, max: 0.5, unidade: "mcg", por: "kg/min" }, apresentacoes: [ADRENALINA_60], altoRisco: true,
-      velocidade: SEM_DOSE_NO_08,
-      par: "adrenalina-infusao-embolia-adulto", referencias: ["manual-08", "manual-07"],
-    },
-  ],
-  volumes: [
-    { id: "cristaloide-embolia-adulto", indicacao: "Em alta velocidade", populacao: "adulto", fixo: { min: 500, max: 1000 },
-      referencias: ["qrh-3-5", "manual-08"] },
-    { id: "cristaloide-embolia-ped", indicacao: "Em alta velocidade", populacao: "pediatrico", porKg: { min: 20 },
-      referencias: ["qrh-3-5", "manual-08"] },
+  medicamentos: [],
+  volumes: [],
+  notasDeDose: [
+    "Cristaloide em bolus titulado à perfusão, com reavaliação e atenção à falência do VD.",
+    "Vasoativo conforme o protocolo de hipotensão grave; na PCR, a dose do algoritmo de PCR.",
+    "Não há fármaco específico que elimine o gás.",
   ],
   pensarEm: [
-    "Onde acontece: craniotomia sentada e fossa posterior, coluna, ombro, laparoscopia (embolia por CO2), cesariana, prolapso uterino.",
-    "Do lado da anestesia: cateter venoso central, infusão pressurizada, equipo mal preenchido, punção de veia peridural não percebida.",
-    "Do paciente: trauma (contuso ou penetrante) e hipovolemia.",
-    "Outras embolias: trombo, gordura, líquido amniótico.",
-    "Pneumotórax hipertensivo, anafilaxia, broncoespasmo, edema pulmonar, sangramento, choque cardiogênico.",
-    "Desconexão do circuito ou falha do capnógrafo também derrubam o EtCO2.",
+    "Tromboembolismo, embolia por CO2, tensão, anafilaxia, hemorragia, falha do circuito ou do capnógrafo.",
+    "PEEP pode piorar o retorno venoso e a embolização paradoxal; individualizar.",
   ],
   depois: [
-    "UTI depois de reanimado.",
-    "Oxigênio hiperbárico até 6 horas depois do evento (talvez mais), sobretudo na embolia paradoxal grande.",
-    "Exame neurológico ao despertar: a embolia paradoxal pode atingir o cérebro.",
-    "Registrar na ficha a hora, o procedimento em curso, as condutas e a evolução.",
-    "Prevenção na próxima: posicionar para reduzir o gradiente de pressão, manter hidratado, evitar óxido nitroso e combinar com a equipe as manobras de risco; nos procedimentos de alto risco, capnografia, cateter central, Doppler precordial ou ecocardiograma transesofágico.",
+    "Monitorização ou UTI e avaliação neurológica.",
+    "Registrar a provável porta de entrada e prevenir a recorrência.",
   ],
   divergencias: [
     {
-      tema: "Dose de adrenalina",
-      posicoes: [
-        { texto: "“Use adrenalina para suporte hemodinâmico”, sem dose.", referencia: "manual-08" },
-        { texto: "Adrenalina 3 mg em 50 mL, começando em 5 mL/h no adulto de 70 kg; 0,05 a 0,5 mcg/kg/min na criança (tabela da reação transfusional).", referencia: "manual-07" },
-        { texto: "Inotrópico “pode ser necessário”, sem fármaco nem dose.", referencia: "qrh-3-5" },
-      ],
-      escolha: "O protocolo usa a tabela de adrenalina do próprio Manual (protocolo 07).",
-    },
-    {
-      tema: "“PA elevada” entre os sinais",
-      posicoes: [
-        { texto: "Lista “PVC elevada” e “PA elevada” entre os sinais durante a anestesia.", referencia: "manual-08" },
-      ],
-      escolha: "Lido como pressão da artéria pulmonar elevada: a pressão arterial sistêmica costuma cair (hipotensão também está na lista).",
+      tema: "Janela para o oxigênio hiperbárico",
+      posicoes: [{ texto: "Avaliação especializada da embolia gasosa, sem restringir a uma janela rígida de 6 horas.", referencia: "echm-2017-hiperbarica" }],
+      escolha: "O protocolo não restringe a avaliação hiperbárica a 6 horas: o atraso não exclui automaticamente.",
     },
   ],
-  referencias: ["manual-08", "qrh-3-5", "manual-07"],
+  referencias: ["manual-08", "echm-2017-hiperbarica"],
   relacionados: [
+    { protocolo: "hipotensao", texto: "Hipotensão grave" },
     { protocolo: "pcr-aesp-assistolia", texto: "PCR — AESP/assistolia" },
     { protocolo: "pcr-fv-tv", texto: "PCR — FV/TV sem pulso" },
   ],
