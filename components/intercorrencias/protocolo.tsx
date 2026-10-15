@@ -89,7 +89,7 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
             <div className={`${estilos.caixa} ${estilos.caixaVolume}`}>
               <small>Volume</small>
               {!original ? (
-                <span className={estilos.confirmado}>Pela bula: o frasco e a reconstituição variam com o fabricante.</span>
+                <span className={estilos.confirmado}>{d.semVolume ?? "Pela bula: o frasco e a reconstituição variam com o fabricante."}</span>
               ) : precisaConfirmar ? (
                 <>
                   <button type="button" className={estilos.confirmar}
@@ -152,6 +152,7 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
 
 /** "Desfibrilação", "Cristaloide", "Hemocomponentes": o nome do grupo pelo que há nele. */
 function tituloDosVolumes(lista: VolumeDoProtocolo[]): string {
+  if (lista[0].grupo) return lista[0].grupo;
   if (lista.every((v) => v.unidade === "J")) return "Desfibrilação";
   if (lista.every((v) => !v.rotulo)) return "Cristaloide";
   if (lista.every((v) => v.rotulo)) return "Hemocomponentes";
@@ -199,7 +200,13 @@ export function ProtocoloTela({
     ? [["Adulto", doses.filter((d) => d.populacao !== "pediatrico")], ["Criança", doses.filter((d) => d.populacao === "pediatrico")]] as const
     : [[null, doses]] as const;
   const volumes = p.volumes.filter((v) => populacao === null || volumeServe(v, populacao));
-  const gruposDeVolumes = [volumes.filter((v) => v.unidade === "J"), volumes.filter((v) => v.unidade !== "J")].filter((g) => g.length);
+  // Choque, cristaloide e hemocomponentes, e os grupos com nome próprio (doses máximas de anestésico local).
+  const nomeados = [...new Set(volumes.flatMap((v) => (v.grupo ? [v.grupo] : [])))];
+  const gruposDeVolumes = [
+    volumes.filter((v) => !v.grupo && v.unidade === "J"),
+    volumes.filter((v) => !v.grupo && v.unidade !== "J"),
+    ...nomeados.map((g) => volumes.filter((v) => v.grupo === g)),
+  ].filter((g) => g.length);
   const refsDasDoses = new Set(p.medicamentos.flatMap((d) => d.referencias));
   // O protocolo certo para a faixa do paciente: forte quando a faixa bate; sem idade, só a lembrança.
   const veja = (p.veja ?? [])

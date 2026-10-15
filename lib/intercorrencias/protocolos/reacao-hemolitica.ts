@@ -12,16 +12,13 @@
  */
 
 import type { ApresentacaoDoProtocolo, Protocolo } from "../tipos.ts";
-import { ADRENALINA_60 } from "./comum.ts";
+import { ADRENALINA_60, FUROSEMIDA_10 } from "./comum.ts";
 
 const MANITOL_20: ApresentacaoDoProtocolo = {
   rotulo: "Manitol 20% — 200 mg/mL (frasco de 250 mL)", quantidade: 200, unidade: "mg", mL: 1, vias: ["IV"],
 };
 const MANITOL_25: ApresentacaoDoProtocolo = {
   rotulo: "Manitol 25% — 250 mg/mL (a do Manual)", quantidade: 250, unidade: "mg", mL: 1, vias: ["IV"],
-};
-const FUROSEMIDA_10: ApresentacaoDoProtocolo = {
-  rotulo: "Ampola de 20 mg em 2 mL — 10 mg/mL", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"],
 };
 const NORADRENALINA_80: ApresentacaoDoProtocolo = {
   rotulo: "4 mg em 50 mL — 80 mcg/mL", quantidade: 80, unidade: "mcg", mL: 1, vias: ["IV"],

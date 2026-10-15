@@ -152,4 +152,5 @@ export const SAV_PEDIATRICO: Protocolo = {
     { protocolo: "pcr-aesp-assistolia", quando: ["adulto", "gestante"], texto: "Adulto com ritmo não chocável: PCR — AESP/assistolia." },
   ],
   ritmos: RITMOS_DE_PCR,
+  relacionados: [{ protocolo: "reanimacao-neonatal", texto: "Reanimação neonatal (sala de parto)" }],
 };

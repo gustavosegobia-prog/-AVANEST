@@ -49,6 +49,37 @@ export const TRANEXAMICO_50: ApresentacaoDoProtocolo = {
   rotulo: "Ampola de 250 mg em 5 mL — 50 mg/mL", quantidade: 50, unidade: "mg", mL: 1, vias: ["IV"],
 };
 
+/* Vasopressores em bolus: as diluições da calculadora do AVANEST. */
+export const EFEDRINA_5: ApresentacaoDoProtocolo = {
+  rotulo: "50 mg em 10 mL — 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (50 mg) + 9 mL de SF 0,9%",
+};
+export const FENILEFRINA_100: ApresentacaoDoProtocolo = {
+  rotulo: "10 mg em 100 mL — 100 mcg/mL", quantidade: 100, unidade: "mcg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (10 mg) em 100 mL de SF 0,9%",
+};
+export const METARAMINOL_05: ApresentacaoDoProtocolo = {
+  rotulo: "10 mg em 20 mL — 0,5 mg/mL", quantidade: 0.5, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (10 mg) em 20 mL de SF 0,9%",
+};
+export const VASOPRESSINA_1: ApresentacaoDoProtocolo = {
+  rotulo: "20 UI em 20 mL — 1 UI/mL", quantidade: 1, unidade: "UI", mL: 1, vias: ["IV"],
+  preparo: "1 ampola (20 UI) em 20 mL de SF 0,9%",
+};
+
+export const FUROSEMIDA_10: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 20 mg em 2 mL — 10 mg/mL", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"],
+};
+export const SALBUTAMOL_NEBULIZACAO: ApresentacaoDoProtocolo = {
+  rotulo: "Solução para nebulização 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["Inalatória"],
+};
+export const MIDAZOLAM_1: ApresentacaoDoProtocolo = {
+  rotulo: "5 mg em 5 mL — 1 mg/mL", quantidade: 1, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "1 mL da ampola de 5 mg/mL + 4 mL de SF 0,9%",
+};
+export const MIDAZOLAM_5: ApresentacaoDoProtocolo = { rotulo: "Ampola de 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["IV", "IM"] };
+export const PROPOFOL_10: ApresentacaoDoProtocolo = { rotulo: "10 mg/mL (1%)", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"] };
+
 /** As causas reversíveis, na ordem em que se lembram. */
 export const QUATRO_H_QUATRO_T = [
   "4 H: hipóxia, hipovolemia, hipotermia, hipo ou hipercalemia (e outros distúrbios metabólicos).",

@@ -10,7 +10,7 @@
  */
 
 import type { ApresentacaoDoProtocolo, Protocolo } from "../tipos.ts";
-import { ADRENALINA_10, ADRENALINA_100, ADRENALINA_60, MAGNESIO_10, MAGNESIO_50 } from "./comum.ts";
+import { ADRENALINA_10, ADRENALINA_100, ADRENALINA_60, MAGNESIO_10, MAGNESIO_50, SALBUTAMOL_NEBULIZACAO } from "./comum.ts";
 
 const SALBUTAMOL_500: ApresentacaoDoProtocolo = {
   rotulo: "Ampola de 0,5 mg em 1 mL — 500 mcg/mL", quantidade: 500, unidade: "mcg", mL: 1, vias: ["IV"],
@@ -22,9 +22,6 @@ const SALBUTAMOL_50: ApresentacaoDoProtocolo = {
 const SALBUTAMOL_100: ApresentacaoDoProtocolo = {
   rotulo: "5 mg em 50 mL — 100 mcg/mL", quantidade: 100, unidade: "mcg", mL: 1, vias: ["IV"],
   preparo: "10 ampolas (5 mg) completando 50 mL com SF 0,9%",
-};
-const SALBUTAMOL_NEBULIZACAO: ApresentacaoDoProtocolo = {
-  rotulo: "Solução para nebulização 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["Inalatória"],
 };
 const IPRATROPIO_NEBULIZACAO: ApresentacaoDoProtocolo = {
   rotulo: "Solução para nebulização 0,25 mg/mL", quantidade: 0.25, unidade: "mg", mL: 1, vias: ["Inalatória"],

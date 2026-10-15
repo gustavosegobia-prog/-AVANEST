@@ -74,11 +74,13 @@ export type ApresentacaoDoProtocolo = Apresentacao & {
  */
 export type VolumeDoProtocolo = {
   id: string;
+  /** O título do grupo na tela, quando não é o automático (cristaloide, hemocomponentes, desfibrilação). */
+  grupo?: string;
   /** O nome no cartão: "Cristaloide", "Choque", "Plasma fresco congelado". Sem ele, cristaloide. */
   rotulo?: string;
   indicacao: string;
   populacao: "adulto" | "pediatrico" | "todas";
-  unidade?: "mL" | "J" | "unidades";
+  unidade?: "mL" | "J" | "unidades" | "mg";
   porKg?: { min?: number; max?: number };
   fixo?: { min?: number; max?: number };
   maximo?: number;
@@ -119,6 +121,11 @@ export type DoseDoProtocolo = {
   cuidados?: string[];
   /** O id da dose equivalente na outra faixa etária, para mostrar a diferença. */
   par?: string;
+  /**
+   * Sem apresentação cadastrada, o que a caixa do volume diz no lugar do
+   * número: "Comprimidos de 200 mcg", "Pela bula do fabricante".
+   */
+  semVolume?: string;
   /** Ao menos uma: toda dose tem de onde veio. */
   referencias: string[];
 };

@@ -200,8 +200,8 @@ test("busca pelo nome, pelo sinônimo e pelo sinal, sem acento; previstos aparec
   assert.equal(estridor[0].tipo === "protocolo" && estridor[0].protocolo.id, "laringoespasmo");
   assert.match(estridor[0].tipo === "protocolo" ? estridor[0].porque : "", /sinal|sinônimo/);
   assert.ok(buscar("urticaria").some((a) => a.tipo === "protocolo" && a.protocolo.id === "anafilaxia"));
-  const hm = buscar("hipertermia");
-  assert.ok(hm.some((a) => a.tipo === "previsto" && a.previsto.titulo === "Hipertermia maligna"));
+  const fogo = buscar("incendio");
+  assert.ok(fogo.some((a) => a.tipo === "previsto" && a.previsto.titulo === "Incêndio na sala cirúrgica"));
   assert.deepEqual(buscar("  "), []);
   // O laringoespasmo pediátrico previsto é coberto pelo protocolo único.
   assert.ok(itensDaCategoria("pediatria").prontos.some((p) => p.id === "laringoespasmo"));
@@ -371,6 +371,66 @@ test("laringoespasmo conferido com o Manual (12): vias da succinilcolina e as fa
   }
   assert.ok(passosDe(laringo, "pediatrico").some((x) => /intubar já, mesmo sem relaxante/.test(x.texto)));
   assert.ok(!passosDe(laringo, "adulto").some((x) => /intubar já, mesmo sem relaxante/.test(x.texto)));
+});
+
+test("obstetrícia: raqui alta, HPP com uterotônicos, magnésio do Ministério da Saúde e reanimação neonatal da SBP", () => {
+  const raqui = acharProtocolo("bloqueio-neuroaxial-alto")!;
+  const hpp = acharProtocolo("hemorragia-pos-parto")!;
+  const colapso = acharProtocolo("colapso-materno")!;
+  const rn = acharProtocolo("reanimacao-neonatal")!;
+  const gestante: PacienteDaConsulta = { idadeAnos: 30, pesoKg: 70, gestante: true };
+  assert.deepEqual(calcularDose(dose(raqui, "efedrina-raqui"), raqui, gestante).contas.map((c) => c.volume), [1.2, 2.4]);
+  assert.deepEqual(calcularDose(dose(raqui, "atropina-raqui"), raqui, gestante).contas.map((c) => c.doseTotal), [0.6, 1.2]);
+  assert.ok(passosDe(raqui, "gestante").some((x) => /4º minuto/.test(x.texto)));
+  // Ocitocina 10 UI/h: 250 mL/h na de 20 UI/500 mL, 125 mL/h na de 40 UI.
+  assert.deepEqual(calcularDose(dose(hpp, "ocitocina-infusao-hpp"), hpp, gestante, 0).contas.map((c) => c.volume), [250]);
+  assert.deepEqual(calcularDose(dose(hpp, "ocitocina-infusao-hpp"), hpp, gestante, 1).contas.map((c) => c.volume), [125]);
+  assert.deepEqual(calcularDose(dose(hpp, "metilergometrina-hpp"), hpp, gestante).contas.map((c) => c.volume), [1]);
+  const miso = calcularDose(dose(hpp, "misoprostol-hpp"), hpp, gestante);
+  assert.equal(miso.bloqueio, null);
+  assert.deepEqual(miso.contas.map((c) => [c.doseTotal, c.volume]), [[800, undefined]]);
+  assert.ok(hpp.divergencias.some((d) => /ergot/i.test(d.tema)));
+  assert.equal(calcularVolume(hpp.volumes.find((v) => v.id === "pfc-hpp")!, gestante).texto, "1050 mL");
+  // Magnésio: 4 g = 20 mL da diluição do MS; 1 a 2 g/h = 50 a 100 mL/h.
+  assert.deepEqual(calcularDose(dose(colapso, "magnesio-ataque-eclampsia"), colapso, gestante).contas.map((c) => c.volume), [20]);
+  assert.deepEqual(calcularDose(dose(colapso, "magnesio-manutencao-eclampsia"), colapso, gestante).contas.map((c) => c.volume), [50, 100]);
+  // RN de 3 kg: 20 mcg/kg = 0,6 mL; tubo 100 mcg/kg = 3 mL; SF 30 mL.
+  const recem: PacienteDaConsulta = { idadeAnos: 0, pesoKg: 3 };
+  assert.deepEqual(calcularDose(dose(rn, "adrenalina-rn-iv"), rn, recem).contas.map((c) => c.volume), [0.3, 0.6, 0.9]);
+  const tubo = calcularDose(dose(rn, "adrenalina-rn-tubo"), rn, recem);
+  assert.deepEqual(tubo.contas.map((c) => c.volume), [3]);
+  assert.ok(!tubo.alertas.some((a) => a.nivel === "perigo"));
+  assert.equal(calcularVolume(rn.volumes[0], recem).texto, "30 mL");
+  assert.ok(itensDaCategoria("obstetricia").prontos.some((p) => p.id === "reanimacao-neonatal"));
+  for (const t of ["Bloqueio raquidiano alto ou total", "Hemorragia pós-parto", "Colapso materno e PCR na gestante"]) {
+    assert.ok(!itensDaCategoria("obstetricia").previstos.some((p) => p.titulo === t), t);
+  }
+});
+
+test("anestésico local, hipercalemia e hipertermia maligna: emulsão em mL/kg, doses máximas pelo peso, dantroleno em frascos", () => {
+  const last = acharProtocolo("toxicidade-anestesico-local")!;
+  const hiperk = acharProtocolo("hipercalemia")!;
+  const hm = acharProtocolo("hipertermia-maligna")!;
+  // 0,3 g/kg na de 200 mg/mL = 1,5 mL/kg: 105 mL com 70 kg, segurado em 100 mL.
+  const bolus = calcularDose(dose(last, "lipidica-bolus-last"), last, adulto);
+  assert.deepEqual(bolus.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume, c.limitada]), [[20, "g", 100, true]]);
+  assert.deepEqual(calcularDose(dose(last, "lipidica-bolus-last"), last, crianca).contas.map((c) => c.volume), [24]);
+  // Infusão 15 a 30 mL/kg/h.
+  assert.deepEqual(calcularDose(dose(last, "lipidica-infusao-last"), last, crianca).contas.map((c) => [c.volume, c.unidadeVolume]), [[240, "mL/h"], [480, "mL/h"]]);
+  const maximos = last.volumes.filter((v) => v.grupo).map((v) => calcularVolume(v, adulto).texto);
+  assert.deepEqual(maximos, ["210 mg", "490 mg", "140 mg", "210 mg", "490 mg"]);
+  assert.equal(calcularVolume(last.volumes.find((v) => v.id === "lipidica-maximo")!, adulto).texto, "840 mL");
+  // Hipercalemia: insulina diluída 1 UI/mL; criança 16 kg = 1,6 UI = 1,6 mL; glicose 0,5 g/kg a 25% = 2 mL/kg.
+  assert.deepEqual(calcularDose(dose(hiperk, "insulina-hiperk-ped"), hiperk, crianca).contas.map((c) => c.volume), [1.6]);
+  assert.ok(calcularDose(dose(hiperk, "insulina-hiperk-ped"), hiperk, crianca, 1).alertas.some((a) => /menor que 0,1 mL/.test(a.texto)));
+  assert.deepEqual(calcularDose(dose(hiperk, "glicose-hiperk-ped"), hiperk, crianca).contas.map((c) => c.volume), [32]);
+  assert.deepEqual(calcularDose(dose(hiperk, "gluconato-hiperk-ped"), hiperk, crianca).contas.map((c) => c.volume), [16]);
+  assert.deepEqual(calcularDose(dose(hiperk, "glicose-hiperk-adulto"), hiperk, adulto).contas.map((c) => c.volume), [25, 50]);
+  // Dantroleno 2,5 mg/kg × 70 = 175 mg = 525 mL (quase 9 frascos de 20 mg).
+  assert.deepEqual(calcularDose(dose(hm, "dantroleno-hm"), hm, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[175, 525]]);
+  assert.deepEqual(calcularDose(dose(hm, "dantroleno-hm"), hm, adulto, 1).contas.map((c) => c.volume), [3.5]);
+  assert.ok(hm.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "qrh-3-8")));
+  assert.equal((buscar("dantroleno")[0] as { protocolo: { id: string } }).protocolo.id, "hipertermia-maligna");
 });
 
 test("catálogo: os protocolos do Manual entram nas categorias e saem dos previstos; a busca acha pelo que se vê", () => {

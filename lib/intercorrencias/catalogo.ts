@@ -10,13 +10,16 @@ import type { Categoria, Previsto, Protocolo } from "./tipos.ts";
 import { ANAFILAXIA } from "./protocolos/anafilaxia.ts";
 import { BRONCOASPIRACAO } from "./protocolos/broncoaspiracao.ts";
 import { BRONCOESPASMO } from "./protocolos/broncoespasmo.ts";
+import { HIPERCALEMIA, HIPERTERMIA_MALIGNA, TOXICIDADE_AL } from "./protocolos/diversos.ts";
 import { EMBOLIA_GASOSA } from "./protocolos/embolia-gasosa.ts";
 import { HEMORRAGIA } from "./protocolos/hemorragia.ts";
+import { COLAPSO_MATERNO, HEMORRAGIA_POS_PARTO, RAQUI_TOTAL } from "./protocolos/obstetricia.ts";
 import { ISQUEMIA } from "./protocolos/isquemia.ts";
 import { LARINGOESPASMO } from "./protocolos/laringoespasmo.ts";
 import { PCR_AESP, PCR_FV_TV } from "./protocolos/pcr.ts";
 import { PRESSAO_VIAS_AEREAS } from "./protocolos/pressao-vias-aereas.ts";
 import { REACAO_HEMOLITICA } from "./protocolos/reacao-hemolitica.ts";
+import { REANIMACAO_NEONATAL } from "./protocolos/reanimacao-neonatal.ts";
 import { SAV_PEDIATRICO } from "./protocolos/sav-pediatrico.ts";
 import { INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, VENTILACAO_MASCARA } from "./protocolos/via-aerea.ts";
 
@@ -24,7 +27,8 @@ import { INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, VENTILACAO_MASCARA } from ".
 export const PROTOCOLOS: Protocolo[] = [
   PCR_FV_TV, PCR_AESP, SAV_PEDIATRICO, ISQUEMIA, HEMORRAGIA, ANAFILAXIA, REACAO_HEMOLITICA, EMBOLIA_GASOSA,
   VENTILACAO_MASCARA, INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, LARINGOESPASMO, PRESSAO_VIAS_AEREAS, BRONCOESPASMO,
-  BRONCOASPIRACAO,
+  BRONCOASPIRACAO, RAQUI_TOTAL, HEMORRAGIA_POS_PARTO, COLAPSO_MATERNO, REANIMACAO_NEONATAL, TOXICIDADE_AL, HIPERCALEMIA,
+  HIPERTERMIA_MALIGNA,
 ];
 
 export const CATEGORIAS: Array<{ id: Categoria; nome: string; letra: string }> = [
@@ -92,6 +96,7 @@ export const PREVISTOS: Previsto[] = [
  */
 const TAMBEM_EM: Record<string, { categoria: Categoria; noLugarDe: string }[]> = {
   laringoespasmo: [{ categoria: "pediatria", noLugarDe: "Laringoespasmo pediátrico" }],
+  "reanimacao-neonatal": [{ categoria: "obstetricia", noLugarDe: "Reanimação neonatal" }],
 };
 
 export const acharProtocolo = (id: string) => PROTOCOLOS.find((x) => x.id === id);

@@ -8,20 +8,13 @@
  */
 
 import type { ApresentacaoDoProtocolo, Protocolo } from "../tipos.ts";
+import { FENILEFRINA_100, METARAMINOL_05 } from "./comum.ts";
 
 const METOPROLOL_1: ApresentacaoDoProtocolo = {
   rotulo: "Ampola de 5 mg em 5 mL — 1 mg/mL", quantidade: 1, unidade: "mg", mL: 1, vias: ["IV"],
 };
 const ESMOLOL_10: ApresentacaoDoProtocolo = {
   rotulo: "10 mg/mL (100 mg em 10 mL)", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"],
-};
-const FENILEFRINA_100: ApresentacaoDoProtocolo = {
-  rotulo: "10 mg em 100 mL — 100 mcg/mL", quantidade: 100, unidade: "mcg", mL: 1, vias: ["IV"],
-  preparo: "1 ampola (10 mg) em 100 mL de SF 0,9%",
-};
-const METARAMINOL_05: ApresentacaoDoProtocolo = {
-  rotulo: "10 mg em 20 mL — 0,5 mg/mL", quantidade: 0.5, unidade: "mg", mL: 1, vias: ["IV"],
-  preparo: "1 ampola (10 mg) em 20 mL de SF 0,9%",
 };
 const NITROGLICERINA_1: ApresentacaoDoProtocolo = {
   rotulo: "50 mg em 50 mL — 1 mg/mL", quantidade: 1, unidade: "mg", mL: 1, vias: ["IV"],

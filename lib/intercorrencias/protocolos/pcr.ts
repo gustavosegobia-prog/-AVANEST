@@ -100,7 +100,8 @@ export const PCR_FV_TV: Protocolo = {
     { texto: "Adrenalina 1 mg depois do choque dos 2 minutos; depois, a cada 2 ciclos." },
     { texto: "Amiodarona 300 mg depois do choque dos 4 minutos (3º choque); mais 150 mg depois do 5º ciclo." },
     { texto: "Procurar a causa (4 H e 4 T) e fazer o ecocardiograma na checagem do ritmo." },
-    { texto: "Gestante: deslocar o útero para a esquerda com a mão; sem retorno em 5 minutos, cesárea perimortem.", so: ["gestante"] },
+    { texto: "Gestante: deslocar o útero para a esquerda com a mão e intubar cedo; sem retorno da circulação, cesárea perimortem a partir do 4º minuto.",
+      detalhe: "Ver o protocolo de colapso materno.", so: ["gestante"] },
     { texto: "Considerar cateterismo ou ECMO, conforme o caso.", detalhe: POS_RCE },
   ],
   medicamentos: [
@@ -161,6 +162,7 @@ export const PCR_FV_TV: Protocolo = {
   referencias: ["manual-01", "qrh-2-1", "aha-2020-adulto", "anzaag-diretriz-2022"],
   veja: VEJA_CRIANCA,
   ritmos: [RITMO_FV, RITMO_TV],
+  relacionados: [{ protocolo: "colapso-materno", texto: "Colapso materno e PCR na gestante" }],
 };
 
 export const PCR_AESP: Protocolo = {
@@ -189,7 +191,8 @@ export const PCR_AESP: Protocolo = {
     { texto: "Adrenalina 1 mg a cada 2 ciclos." },
     { texto: "Se o ritmo virar FV/TV: chocar e seguir o protocolo de FV/TV." },
     { texto: "Na assistolia, marca-passo só para bloqueio AV de alto grau." },
-    { texto: "Gestante: deslocar o útero para a esquerda com a mão; sem retorno em 5 minutos, cesárea perimortem.", so: ["gestante"] },
+    { texto: "Gestante: deslocar o útero para a esquerda com a mão e intubar cedo; sem retorno da circulação, cesárea perimortem a partir do 4º minuto.",
+      detalhe: "Ver o protocolo de colapso materno.", so: ["gestante"] },
     { texto: "Considerar cateterismo ou ECMO, conforme o caso.", detalhe: POS_RCE },
   ],
   medicamentos: [
@@ -225,6 +228,7 @@ export const PCR_AESP: Protocolo = {
   referencias: ["manual-02", "manual-01", "qrh-2-1", "aha-2020-adulto"],
   veja: VEJA_CRIANCA,
   ritmos: [RITMO_AESP, RITMO_ASSISTOLIA],
+  relacionados: [{ protocolo: "colapso-materno", texto: "Colapso materno e PCR na gestante" }],
 };
 
 /** Usadas pelo SAV pediátrico, que mostra os quatro ritmos. */
