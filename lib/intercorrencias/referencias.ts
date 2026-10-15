@@ -1,0 +1,229 @@
+/**
+ * AS REFERÊNCIAS DO MÓDULO.
+ *
+ * Uma lista só, e cada dose aponta para um id daqui. Regra de cadastro:
+ *
+ * - `conferida: true` só quando o texto original (ou o cartão, ou a página
+ *   oficial) foi aberto e o número foi lido nele. DOI conferido no CrossRef
+ *   não basta: o DOI prova que o artigo existe, não que diz aquilo.
+ * - `localizacao` é o trecho onde o número está. Sem ter lido, fica nula, e a
+ *   tela mostra "localização a conferir". Página nunca é chutada.
+ *
+ * Conferido em 15/10/2026: os cartões ANZAAG-ANZCA (PDFs oficiais da ANZCA),
+ * o QRH da Association of Anaesthetists (como publicado pelo NHS Lothian) e o
+ * guia AAGBI de 2009 (texto integral no PubMed Central). Os demais tiveram o
+ * DOI, o título, a revista e o volume conferidos no CrossRef.
+ */
+
+import type { Referencia } from "./tipos.ts";
+
+const LISTA: Referencia[] = [
+  /* ---------------- Anafilaxia ---------------- */
+  {
+    id: "anzaag-cartao-1",
+    titulo: "Anaphylaxis during Anaesthesia — Immediate Management, Adults 12+ (cartão 1)",
+    autoria: "ANZAAG e ANZCA",
+    publicacao: "Perioperative Anaphylaxis Management Guidelines, Appendix 1",
+    ano: 2022, edicao: "versão de 14/11/2022",
+    link: "https://anzca.edu.au/getattachment/e041035a-d4c7-40f6-a2ef-02b1e2f36171/Adult-Immediate-Management",
+    localizacao: "Cartão 1: bolus IV de adrenalina (moderada e grave), adrenalina IM, infusão, fluidos e PCR",
+    conferida: true,
+  },
+  {
+    id: "anzaag-cartao-2",
+    titulo: "Anaphylaxis during Anaesthesia — Immediate Management, Paediatric 0–12 yr (cartão 2)",
+    autoria: "ANZAAG e ANZCA",
+    publicacao: "Perioperative Anaphylaxis Management Guidelines, Appendix 1",
+    ano: 2022, edicao: "versão de 14/11/2022",
+    link: "https://www.anzca.edu.au/getattachment/04e44ee9-e899-48d3-8b60-52cd3bb09912/Card-2-Paediatric-Immediate-Management-2022",
+    localizacao: "Cartão 2: bolus IV por kg, adrenalina IM por idade, infusão, 20 mL/kg e PCR",
+    conferida: true,
+  },
+  {
+    id: "anzaag-cartao-3",
+    titulo: "Anaphylaxis during Anaesthesia — Refractory Management, Adults 12+ (cartão 3)",
+    autoria: "ANZAAG e ANZCA",
+    publicacao: "Perioperative Anaphylaxis Management Guidelines, Appendix 1",
+    ano: 2022, edicao: "versão de 14/11/2022",
+    link: "https://anzca.edu.au/getattachment/d1609b6c-64c4-446f-b82f-4790123970b7/Card-3-Adult-Refractory-Management",
+    localizacao: "Cartão 3: hipotensão resistente (noradrenalina, vasopressina, glucagon) e broncoespasmo resistente (salbutamol, magnésio)",
+    conferida: true,
+  },
+  {
+    id: "anzaag-cartao-4",
+    titulo: "Anaphylaxis during Anaesthesia — Refractory Management, Paediatric 0–12 yr (cartão 4)",
+    autoria: "ANZAAG e ANZCA",
+    publicacao: "Perioperative Anaphylaxis Management Guidelines, Appendix 1",
+    ano: 2022, edicao: "versão de 14/11/2022",
+    link: "https://anzca.edu.au/getattachment/b658727d-b325-4032-8726-5eb4b41f4d24/Card-4-Paediatric-Refractory-Management",
+    localizacao: "Cartão 4: noradrenalina, vasopressina, glucagon, salbutamol, magnésio, aminofilina e hidrocortisona por kg",
+    conferida: true,
+  },
+  {
+    id: "anzaag-diretriz-2022",
+    titulo: "Perioperative Anaphylaxis Management Guideline — background paper",
+    autoria: "ANZAAG e ANZCA",
+    publicacao: "Documento de fundamentação dos cartões",
+    ano: 2022, edicao: "versão de 2022",
+    link: "https://www.anzca.edu.au/resources/professional-documents/endorsed-guidelines/anaphylaxis-guideline-bp-2022.pdf",
+    localizacao: "5.5.9 (sugamadex), 5.7 (gestante), 5.10.2 (anti-histamínicos), 5.10.4 (triptase)",
+    conferida: true,
+  },
+  {
+    id: "anzaag-2017",
+    titulo: "Australian and New Zealand Anaesthetic Allergy Group/Australian and New Zealand College of Anaesthetists Perioperative Anaphylaxis Management Guidelines",
+    autoria: "Kolawole H, Marshall SD, Crilly H, Kerridge R, Roessler P",
+    publicacao: "Anaesthesia and Intensive Care. 2017;45(2):151–158",
+    ano: 2017, doi: "10.1177/0310057X1704500204",
+    localizacao: null, conferida: false,
+    observacao: "Versão anterior dos cartões; a de 2022 a substitui.",
+  },
+  {
+    id: "qrh-3-1",
+    titulo: "Quick Reference Handbook — 3-1 Anaphylaxis",
+    autoria: "Association of Anaesthetists (Grã-Bretanha e Irlanda)",
+    publicacao: "QRH, como publicado pelo NHS Lothian (Right Decisions)",
+    ano: 2019, edicao: "versão 3, revisada em 31/08/2019",
+    link: "https://www.rightdecisions.scot.nhs.uk/sjh-theatres-and-anaesthetics/anaesthetic-emergencies/3-1-anaphylaxis/",
+    localizacao: "Guia 3-1: adrenalina (adulto e criança), fluidos, glucagon, vasopressina, clorfeniramina, hidrocortisona e triptase",
+    conferida: true,
+  },
+  {
+    id: "aagbi-2009",
+    titulo: "Suspected anaphylactic reactions associated with anaesthesia",
+    autoria: "Harper NJN, Dixon T, Dugué P, Edgar DM, Fay A et al. (Association of Anaesthetists)",
+    publicacao: "Anaesthesia. 2009;64(2):199–211",
+    ano: 2009, doi: "10.1111/j.1365-2044.2008.05733.x",
+    link: "https://pmc.ncbi.nlm.nih.gov/articles/PMC3082210/",
+    localizacao: "Immediate management; Secondary management; Drug doses in children",
+    conferida: true,
+  },
+  {
+    id: "nap6",
+    titulo: "Anaesthesia, surgery, and life-threatening allergic reactions: management and outcomes in the 6th National Audit Project (NAP6)",
+    autoria: "Harper NJN, Cook TM, Garcez T, Lucas DN, Thomas M, Kemp H et al.",
+    publicacao: "British Journal of Anaesthesia. 2018;121(1):172–188",
+    ano: 2018, doi: "10.1016/j.bja.2018.04.015",
+    localizacao: null, conferida: false,
+  },
+  {
+    id: "garvey-2019",
+    titulo: "Management of suspected immediate perioperative allergic reactions: an international overview and consensus recommendations",
+    autoria: "Garvey LH, Dewachter P, Hepner DL, Mertes PM, Voltolini S, Clarke R et al.",
+    publicacao: "British Journal of Anaesthesia. 2019;123(1):e50–e64",
+    ano: 2019, doi: "10.1016/j.bja.2019.04.044",
+    localizacao: null, conferida: false,
+    observacao: "Consenso Delphi sobre os pontos em que as diretrizes divergiam (dose de adrenalina, fluidos, reação refratária).",
+  },
+
+  /* ---------------- Laringoespasmo ---------------- */
+  {
+    id: "qrh-3-6",
+    titulo: "Quick Reference Handbook — 3-6 Laryngospasm and stridor",
+    autoria: "Association of Anaesthetists (Grã-Bretanha e Irlanda)",
+    publicacao: "QRH, como publicado pelo NHS Lothian (Right Decisions)",
+    ano: 2019, edicao: "versão 1 (2018–19)",
+    link: "https://www.rightdecisions.scot.nhs.uk/sjh-theatres-and-anaesthetics/anaesthetic-emergencies/3-6-laryngospasm-and-stridor/",
+    localizacao: "Guia 3-6: sequência de condutas e quadro A (doses para tratar o laringoespasmo)",
+    conferida: true,
+  },
+  {
+    id: "gavel-2014",
+    titulo: "Laryngospasm in anaesthesia",
+    autoria: "Gavel G, Walker RWM",
+    publicacao: "Continuing Education in Anaesthesia Critical Care & Pain. 2014;14(2):47–51",
+    ano: 2014, doi: "10.1093/bjaceaccp/mkt031",
+    localizacao: null, conferida: false,
+  },
+  {
+    id: "hampson-evans-2008",
+    titulo: "Pediatric laryngospasm",
+    autoria: "Hampson-Evans D, Morgan P, Farrar M",
+    publicacao: "Pediatric Anesthesia. 2008;18(4):303–307",
+    ano: 2008, doi: "10.1111/j.1460-9592.2008.02446.x",
+    localizacao: null, conferida: false,
+    observacao: "Fundamentação do algoritmo de consenso pediátrico; as doses do algoritmo ainda não foram conferidas no texto.",
+  },
+  {
+    id: "alalami-2008",
+    titulo: "Laryngospasm: review of different prevention and treatment modalities",
+    autoria: "Alalami AA, Ayoub CM, Baraka AS",
+    publicacao: "Pediatric Anesthesia. 2008;18(4):281–288",
+    ano: 2008, doi: "10.1111/j.1460-9592.2008.02448.x",
+    localizacao: null, conferida: false,
+  },
+  {
+    id: "michelet-2017",
+    titulo: "Management of perioperative laryngospasm by French paediatric anaesthetists",
+    autoria: "Michelet D, Skhiri A, Greff B, Luce V, Dahmani S",
+    publicacao: "British Journal of Anaesthesia. 2017;119(2):342–343",
+    ano: 2017, doi: "10.1093/bja/aex200",
+    localizacao: null, conferida: false,
+    observacao: "Inquérito de prática, não recomendação.",
+  },
+
+  /* ---------------- Ressuscitação ---------------- */
+  {
+    id: "aha-2020-pediatrico",
+    titulo: "Part 4: Pediatric Basic and Advanced Life Support — 2020 American Heart Association Guidelines for CPR and ECC",
+    autoria: "Topjian AA, Raymond TT, Atkins D, Chan M, Duff JP, Joyner BL et al.",
+    publicacao: "Circulation. 2020;142(16 Suppl 2)",
+    ano: 2020, doi: "10.1161/CIR.0000000000000901",
+    localizacao: "Algoritmo de bradicardia pediátrica com pulso (a conferir no texto)", conferida: false,
+  },
+  {
+    id: "aha-2020-adulto",
+    titulo: "Part 3: Adult Basic and Advanced Life Support — 2020 American Heart Association Guidelines for CPR and ECC",
+    autoria: "Panchal AR, Bartos JA, Cabañas JG, Donnino MW, Drennan IR, Hirsch KG et al.",
+    publicacao: "Circulation. 2020;142(16 Suppl 2)",
+    ano: 2020, doi: "10.1161/CIR.0000000000000916",
+    localizacao: null, conferida: false,
+  },
+
+  /* ---------------- Bibliografia geral do módulo ---------------- */
+  {
+    id: "manual-de-crises",
+    titulo: "Manual de Crises em Anestesia (The Anaesthetic Crisis Manual)",
+    autoria: "Borshoff DC",
+    publicacao: "Edição internacional V2, versão brasileira produzida pela SAESP",
+    ano: null,
+    localizacao: null, conferida: false,
+    observacao: "Inspiração para a organização da consulta rápida; o conteúdo do AVANEST é próprio e não reproduz os algoritmos do manual. Ano e páginas a preencher pelo revisor.",
+  },
+  {
+    id: "saesp-tratado",
+    titulo: "Tratado de Anestesiologia SAESP",
+    autoria: "Sociedade de Anestesiologia do Estado de São Paulo (SAESP)",
+    publicacao: "10ª edição",
+    ano: null,
+    localizacao: null, conferida: false,
+    observacao: "Edição informada pelo responsável técnico; ano e capítulos a preencher pelo revisor.",
+  },
+  {
+    id: "miller-10",
+    titulo: "Miller's Anesthesia",
+    autoria: "Gropper MA (editor principal) et al.",
+    publicacao: "10ª edição, Elsevier",
+    ano: null,
+    localizacao: null, conferida: false,
+    observacao: "Ano e capítulos a preencher pelo revisor.",
+  },
+];
+
+export const REFERENCIAS: Readonly<Record<string, Referencia>> = Object.fromEntries(LISTA.map((r) => [r.id, r]));
+
+/** A bibliografia geral, que vale para todo o módulo. */
+export const BIBLIOGRAFIA_GERAL = ["manual-de-crises", "saesp-tratado", "miller-10"];
+
+export const acharReferencia = (id: string): Referencia | undefined => REFERENCIAS[id];
+
+/** "Kolawole H et al. Anaesthesia and Intensive Care. 2017;45(2):151–158." */
+export function citarReferencia(r: Referencia): string {
+  const autores = r.autoria.split(", ");
+  const quem = autores.length > 3 ? `${autores.slice(0, 3).join(", ")} et al.` : r.autoria;
+  // Cada parte vira uma frase: sem ponto duplo ("et al..") e com maiúscula ("Versão de…").
+  return [quem, r.titulo, r.publicacao, r.edicao].filter((x): x is string => Boolean(x))
+    .map((x) => x.trim().replace(/\.+$/, ""))
+    .map((x) => x.charAt(0).toUpperCase() + x.slice(1))
+    .join(". ") + ".";
+}

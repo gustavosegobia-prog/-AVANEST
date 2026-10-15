@@ -251,6 +251,15 @@ export function AreaMedica({
               <span>Ficha anestésica</span>
             </Link>
           )}
+          {/* Os protocolos de crise: tela própria, logo abaixo da ficha (é de
+              lá que se corre para eles). Mesma liberação da ficha enquanto
+              os protocolos estão em revisão. */}
+          {podeFichaAnestesica && (
+            <Link href="/crises" data-secao="crises" className="finMenuDireto">
+              <Icone nome="boia" tamanho={18} />
+              <span>Manejo de crises em anestesia</span>
+            </Link>
+          )}
         </nav>
         <p className="sr-only" aria-live="polite">{anuncio}</p>
 

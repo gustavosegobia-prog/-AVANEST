@@ -50,6 +50,7 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
       regras={(regras ?? []) as RegraDeDose[]}
       medicos={medicos}
       eu={{ id: perfil.id, nome: perfil.nome, crm: perfil.crm ?? "" }}
+      superAdmin={perfil.super_admin === true}
       instituicao={instituicao?.nome ?? ""}
       localDaSessao={local}
     />

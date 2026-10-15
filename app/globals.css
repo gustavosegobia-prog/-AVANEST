@@ -6975,7 +6975,9 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .evoPreCampo.metade,.evoPreCampo.dobro{grid-column:1/-1}
   .evoGradePre{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .evoGradePre .largo,.evoGradePre .evoEscolha{grid-column:1/-1}
-  .evoTopoAcoes{width:100%;justify-content:flex-end}
+  /* Quebra a linha em vez de empurrar desfazer e refazer para fora da tela
+     (com Intercorrências, cinco botões não cabem em 390 px). */
+  .evoTopoAcoes{width:100%;justify-content:flex-end;flex-wrap:wrap}
   .evoProfissional{grid-template-columns:minmax(0,1fr) 80px 54px}
 }
 
@@ -7424,6 +7426,8 @@ button.evoPFAsaN:disabled{cursor:default}
    em listas de uma superfície só, linha inteira tocável. */
 .evoInicio.fcFundo{max-width:none;margin:0;padding:0}
 .fcPagina{max-width:880px;margin:0 auto;padding:8px 20px 96px}
+/* Manejo de crises (app/crises): a mesma casca da ficha, com largura de leitura. */
+.fcPagina.crisesPagina{max-width:1100px}
 .fcTopo{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px}
 .fcVoltar{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px 0 8px;margin-left:-8px;
   border-radius:10px;color:var(--cor-tinta);font-weight:650;font-size:15px;text-decoration:none}

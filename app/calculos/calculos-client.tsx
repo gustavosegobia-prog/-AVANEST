@@ -25,6 +25,7 @@ import { Eletrolitos } from "./modulo-eletrolitos";
 import { Pca } from "./modulo-pca";
 import { Rotem } from "./modulo-rotem";
 import { Doses } from "./modulo-doses";
+import { Intercorrencias } from "@/components/intercorrencias/intercorrencias";
 
 /** Número com vírgula, como se lê no Brasil ("4,5 mm"), sempre com as casas pedidas. */
 const decimalBr = (v: number, casas: number) =>
@@ -37,9 +38,10 @@ const decimalBr = (v: number, casas: number) =>
 // Ponto de extensão da aba: um módulo novo é uma entrada em MODULOS e um
 // componente próprio. "teg", "rotem", "doses" entram assim, sem tocar nos que
 // já existem.
-type Modulo = "hub" | "gasometria" | "eletrolitos" | "osmolar" | "fick" | "pca" | "rotem" | "doses";
+type Modulo = "hub" | "intercorrencias" | "gasometria" | "eletrolitos" | "osmolar" | "fick" | "pca" | "rotem" | "doses";
 
 const MODULOS: Array<{ id: Exclude<Modulo, "hub">; icone: string; nome: string; descricao: string }> = [
+  { id: "intercorrencias", icone: "🚨", nome: "Intercorrências", descricao: "Crises em anestesia: reconhecer, agir agora e as doses para o paciente." },
   { id: "gasometria", icone: "🩸", nome: "Gasometria", descricao: "Foto ou digitação, interpretação ácido-base e orientações." },
   { id: "eletrolitos", icone: "⚡", nome: "Eletrólitos", descricao: "Valores, correção de sódio e potássio, hipercalemia e bicarbonato." },
   { id: "osmolar", icone: "💧", nome: "Gap osmolar", descricao: "Osmolalidade calculada, com divisor certo para ureia ou BUN." },
@@ -71,7 +73,7 @@ const numero = (texto: string): number | undefined => {
   return Number.isFinite(valor) ? valor : undefined;
 };
 
-export function CalculosClient() {
+export function CalculosClient({ superAdmin = false }: { superAdmin?: boolean }) {
   const [modulo, setModulo] = useState<Modulo>("hub");
   /**
    * Peso, sódio, hemoglobina e companhia valem para mais de uma calculadora.
@@ -125,6 +127,9 @@ export function CalculosClient() {
         {modulo === "pca" && <Pca dados={dados} set={set} />}
         {modulo === "rotem" && <Rotem />}
         {modulo === "doses" && <Doses dados={dados} set={set} />}
+        {modulo === "intercorrencias" && (
+          <Intercorrencias dados={dados} set={set} superAdmin={superAdmin} aoAbrirCalculadora={() => setModulo("doses")} />
+        )}
       </div>
     </main>
   );

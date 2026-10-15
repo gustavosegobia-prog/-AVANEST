@@ -32,6 +32,7 @@ import { GraficoSinais, type AlvoDaFaixa, type Toque } from "./grafico-sinais";
 import { JanelaMover, JanelaPonto, JanelaSinais, Historico, type NovoSinal } from "./janelas-sinais";
 import { JanelaMedicamento } from "./janela-medicamento";
 import { JanelaMonitor } from "./janela-monitor";
+import { IntercorrenciasNaFicha } from "@/components/intercorrencias/na-ficha";
 import { numero } from "./campos";
 import { JanelaEncerrar, JanelaEvento, JanelaGas, JanelaInfusao, JanelaLiquido, JanelaReabrir } from "./janelas-folha";
 import { PreAnestesicaDaFolha } from "./pre-da-folha";
@@ -60,6 +61,7 @@ type Abrir =
   | { tipo: "liquido"; sentido: "entrada" | "saida"; ms?: number; inicial?: { nome: string; categoria: string } }
   | { tipo: "evento" }
   | { tipo: "monitor" }
+  | { tipo: "intercorrencias" }
   | { tipo: "registro"; registro: Registro }
   | { tipo: "encerrar" }
   | { tipo: "reabrir" };
@@ -73,8 +75,12 @@ const minutoAtual = () => new Date(Math.round(Date.now() / 60000) * 60000).toISO
 const agoraMs = () => Date.now();
 const fmt = (v: number, casas = 2) => v.toLocaleString("pt-BR", { maximumFractionDigits: casas });
 
-export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, regras, medicos, eu, instituicao = "", localDaSessao = null }: {
+export function FolhaAnestesica({
+  folhaInicial, paciente, registrosIniciais, regras, medicos, eu, instituicao = "", localDaSessao = null, superAdmin = false,
+}: {
   folhaInicial: Folha;
+  /** Conferido no servidor: vê a prévia das intercorrências ainda em revisão. */
+  superAdmin?: boolean;
   /** O nome do serviço, como sai no alto da folha impressa. */
   instituicao?: string;
   /** O hospital do alfinete no topo do painel (lib/evolucao/acesso.ts). */
@@ -397,6 +403,7 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
             <button type="button" className="evoBotao icone" onClick={f.desfazerUltimo} disabled={!f.podeDesfazer} title="Desfazer">↶</button>
             <button type="button" className="evoBotao icone" onClick={f.refazerUltimo} disabled={!f.podeRefazer} title="Refazer">↷</button>
           </>}
+          <button type="button" className="evoBotao secundario" onClick={() => setAbrir({ tipo: "intercorrencias" })}>Intercorrências</button>
           <ImprimirFicha id={folha.id} className="evoBotao secundario"
             aguardar={f.pendentes.some((p) => !p.recusado)}>Imprimir</ImprimirFicha>
           {aberta
@@ -709,6 +716,9 @@ export function FolhaAnestesica({ folhaInicial, paciente, registrosIniciais, reg
             setAbrir(null);
           }}
           onFechar={() => setAbrir(null)} />
+      )}
+      {abrir?.tipo === "intercorrencias" && (
+        <IntercorrenciasNaFicha paciente={pacienteDaDose} superAdmin={superAdmin} onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "monitor" && (
         <JanelaMonitor atuais={atuais} onFechar={() => setAbrir(null)}
