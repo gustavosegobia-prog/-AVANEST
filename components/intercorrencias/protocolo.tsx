@@ -8,7 +8,7 @@ import {
 } from "@/lib/intercorrencias/calculo";
 import { acharProtocolo, CATEGORIAS } from "@/lib/intercorrencias/catalogo";
 import { acharReferencia, BIBLIOGRAFIA_GERAL } from "@/lib/intercorrencias/referencias";
-import { APROVACAO, aprovado } from "@/lib/intercorrencias/aprovacao";
+import { aprovacaoDe, dataDaAprovacao } from "@/lib/intercorrencias/aprovacao";
 import { ROTULO_NIVEL, type Calculo } from "@/lib/calculos/doses";
 import type { DoseDoProtocolo, Protocolo, Referencia, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
@@ -190,7 +190,7 @@ export function ProtocoloTela({
   const topo = useRef<HTMLDivElement>(null);
   useEffect(() => { topo.current?.scrollIntoView({ block: "start" }); }, []);
 
-  const aprovadoAqui = aprovado(p);
+  const aprovacao = aprovacaoDe(p);
   const paciente = pacienteDe(dados);
   const populacao = populacaoDe(paciente);
   const categoria = CATEGORIAS.find((c) => c.id === p.categoria)!;
@@ -221,7 +221,7 @@ export function ProtocoloTela({
     <div ref={topo} className={`${estilos.modulo} ${estilos.impressao}`} style={{ scrollMarginTop: 80 }}>
       <p className={estilos.soImpressao}>
         AVANEST · Intercorrências anestésicas · impresso em {dataBr(new Date().toISOString())} · versão {p.versao}
-        {aprovadoAqui ? ` · aprovada por ${APROVACAO.responsavel}, ${APROVACAO.crm}, em ${dataBr(APROVACAO.data)}` : " · sem aprovação registrada"}
+        {aprovacao ? ` · aprovada por ${aprovacao.responsavel}, ${aprovacao.crm}, em ${dataDaAprovacao(aprovacao)}` : " · sem aprovação registrada"}
         <br />Paciente: {resumoDoPaciente(paciente)}{paciente.gestante ? " · gestante" : ""}
       </p>
 
@@ -259,8 +259,8 @@ export function ProtocoloTela({
         </div>
         <div className={estilos.linhaSelos}>
           <span>Versão {p.versao} · conteúdo de {dataBr(p.atualizadoEm)}</span>
-          {aprovadoAqui ? (
-            <span>Aprovada por {APROVACAO.responsavel}, {APROVACAO.crm}, em {dataBr(APROVACAO.data)}</span>
+          {aprovacao ? (
+            <span>Aprovada por {aprovacao.responsavel}, {aprovacao.crm}, em {dataDaAprovacao(aprovacao)}</span>
           ) : (
             <span className={estilos.semAprovacao}>Versão nova, sem aprovação registrada</span>
           )}

@@ -78,7 +78,7 @@ export default async function DoisMesesPage({
             <li><b>Ficha anestésica</b>
               <span>No tablet, dentro da sala, impressa em A4.</span></li>
             <li><b>Manejo de crises</b>
-              <span>34 protocolos com as doses pelo peso do paciente.</span></li>
+              <span>49 protocolos com as doses pelo peso do paciente.</span></li>
             <li><b>Escala pessoal e do grupo</b>
               <span>Uma por hospital e a sua reunindo todas, com a troca de plantão registrada.</span></li>
             <li><b>Financeiro pessoal e do grupo</b>

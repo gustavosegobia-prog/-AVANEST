@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { acharProtocolo, buscar, itensDaCategoria, PREVISTOS, PROTOCOLOS } from "./catalogo.ts";
+import { acharProtocolo, buscar, CATEGORIAS, itensDaCategoria, PREVISTOS, PROTOCOLOS } from "./catalogo.ts";
 import {
   calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, type PacienteDaConsulta,
 } from "./calculo.ts";
 import { acharReferencia, REFERENCIAS } from "./referencias.ts";
-import { APROVACAO, aprovado } from "./aprovacao.ts";
+import { APROVACOES, aprovacaoDe, aprovado } from "./aprovacao.ts";
 
 const anafilaxia = acharProtocolo("anafilaxia")!;
 const laringo = acharProtocolo("laringoespasmo")!;
@@ -18,6 +18,14 @@ const bronco = acharProtocolo("broncoespasmo-grave")!;
 const dose = (p: typeof anafilaxia, id: string) => p.medicamentos.find((m) => m.id === id)!;
 const adulto: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
 const crianca: PacienteDaConsulta = { idadeAnos: 4, pesoKg: 16 };
+
+/** Os 15 cartões da minuta preliminar de outubro de 2026, ainda sem aprovação. */
+const NOVOS = [
+  "hipoglicemia-grave", "hipotermia-perioperatoria", "crise-adrenal", "convulsao-perioperatoria", "incendio-sala-cirurgica",
+  "falha-oxigenio-energia", "delirio-ao-despertar", "bradicardia-pediatrica", "eclampsia", "embolia-amniotica",
+  "via-aerea-dificil-gestante", "depressao-respiratoria-opioides", "bloqueio-neuromuscular-residual", "pneumotorax-hipertensivo",
+  "intubacao-esofagica-seletiva",
+];
 
 test("todo protocolo tem as seis partes, e toda dose aponta para uma referência que existe", () => {
   for (const p of PROTOCOLOS) {
@@ -109,8 +117,8 @@ test("busca pelo nome, pelo sinônimo e pelo sinal, sem acento; previstos aparec
   assert.equal(estridor[0].tipo === "protocolo" && estridor[0].protocolo.id, "laringoespasmo");
   assert.match(estridor[0].tipo === "protocolo" ? estridor[0].porque : "", /sinal|sinônimo/);
   assert.ok(buscar("urticaria").some((a) => a.tipo === "protocolo" && a.protocolo.id === "anafilaxia"));
-  const fogo = buscar("incendio");
-  assert.ok(fogo.some((a) => a.tipo === "previsto" && a.previsto.titulo === "Incêndio na sala cirúrgica"));
+  const tep = buscar("embolia pulmonar");
+  assert.ok(tep.some((a) => a.tipo === "previsto" && a.previsto.titulo === "Embolia pulmonar"));
   assert.deepEqual(buscar("  "), []);
   // O laringoespasmo pediátrico previsto é coberto pelo protocolo único, que fica só em Respiratório.
   assert.ok(!itensDaCategoria("pediatria").prontos.some((p) => p.id === "laringoespasmo"));
@@ -125,9 +133,13 @@ const contas = (p: ReturnType<typeof acha>, id: string, pac: PacienteDaConsulta,
 const vol = (p: ReturnType<typeof acha>, id: string, pac: PacienteDaConsulta) => calcularVolume(p.volumes.find((v) => v.id === id)!, pac);
 
 test("minuta de 15/10/2026: os 34 protocolos na versão 2, e toda seção de doses tem número ou nota", () => {
-  assert.equal(PROTOCOLOS.length, 34);
+  const minuta = Object.keys(APROVACOES[0].protocolos);
+  assert.equal(minuta.length, 34);
+  for (const id of minuta) {
+    assert.ok(acharProtocolo(id), id);
+    assert.equal(acha(id).versao, 2, id);
+  }
   for (const p of PROTOCOLOS) {
-    assert.equal(p.versao, 2, p.id);
     assert.equal(p.atualizadoEm, "2026-10-15", p.id);
     assert.ok(p.medicamentos.length + p.volumes.length + (p.notasDeDose?.length ?? 0) > 0 || p.id === "bloqueio-neuroaxial-alto", `${p.id}: seção de doses vazia`);
   }
@@ -422,14 +434,115 @@ test("sem revisão científica: todo protocolo pronto abre para quem usa, e nada
   }
 });
 
-test("aprovação médica registrada: nome, CRM, data e versão; vale para todos os 34 protocolos da versão 2", () => {
-  assert.equal(APROVACAO.responsavel, "Gustavo Segobia da Silva");
-  assert.equal(APROVACAO.crm, "CRM 49131");
-  assert.equal(APROVACAO.data, "2026-10-15");
-  assert.equal(APROVACAO.versao, 2);
-  // Mudou o conteúdo de um protocolo? Sobe a versão, e este teste lembra de registrar a nova aprovação.
-  for (const p of PROTOCOLOS) assert.ok(aprovado(p), `${p.id}: versão ${p.versao} de ${p.atualizadoEm} sem aprovação registrada`);
-  // A aprovação não se estende sozinha a uma versão nova.
+test("aprovação médica registrada: nome, CRM e data, protocolo por protocolo e versão por versão", () => {
+  const [primeira] = APROVACOES;
+  assert.equal(primeira.responsavel, "Gustavo Segobia da Silva");
+  assert.equal(primeira.crm, "CRM 49131");
+  assert.equal(primeira.data, "2026-10-15");
+  // Os 34 cartões da minuta de 15/10/2026 continuam aprovados na versão 2. Mudou o conteúdo de um deles?
+  // Sobe a versão, e este teste lembra de registrar a nova aprovação.
+  for (const id of Object.keys(primeira.protocolos)) {
+    const p = acha(id);
+    assert.equal(aprovacaoDe(p), primeira, `${p.id}: versão ${p.versao} de ${p.atualizadoEm} sem aprovação registrada`);
+  }
+  // A aprovação não se estende sozinha a uma versão nova nem a um protocolo novo.
   assert.equal(aprovado({ ...fvtv, versao: 3 }), false);
   assert.equal(aprovado({ ...fvtv, atualizadoEm: "2026-11-01" }), false);
+  for (const id of NOVOS) assert.equal(aprovado(acha(id)), false, id);
+  // A tela marca os sem aprovação na lista e diz quantos são no rodapé.
+  assert.equal(PROTOCOLOS.filter((p) => !aprovado(p)).length, 15);
+});
+
+
+test("minuta preliminar de outubro de 2026: os 15 cartões entram na versão 1 e tiram os previstos do índice", () => {
+  assert.equal(PROTOCOLOS.length, 49);
+  for (const id of NOVOS) {
+    const p = acha(id);
+    assert.equal(p.versao, 1, id);
+    assert.ok(p.referencias.includes("saesp-tratado"), `${id}: sem o Tratado SAESP`);
+  }
+  // Só a embolia pulmonar continua em preparação.
+  const previstos = CATEGORIAS.flatMap((c) => itensDaCategoria(c.id).previstos.map((x) => x.titulo));
+  assert.deepEqual(previstos, ["Embolia pulmonar"]);
+  const ids = (q: string) => buscar(q).flatMap((a) => (a.tipo === "protocolo" ? [a.protocolo.id] : []));
+  assert.equal(ids("naloxona")[0], "depressao-respiratoria-opioides");
+  assert.equal(ids("TOF")[0], "bloqueio-neuromuscular-residual");
+  assert.equal(ids("fogo")[0], "incendio-sala-cirurgica");
+  assert.equal(ids("eclampsia")[0], "eclampsia");
+  assert.equal(ids("tubo no esofago")[0], "intubacao-esofagica-seletiva");
+  assert.ok(ids("hidrocortisona").includes("crise-adrenal"));
+  assert.ok(ids("bradicardia").includes("bradicardia-pediatrica"));
+});
+
+test("hipoglicemia, crise adrenal e convulsão: glicose 10%, hidrocortisona por faixa de idade, benzodiazepínico e levetiracetam com teto", () => {
+  const hipo = acha("hipoglicemia-grave");
+  // 15 a 25 g de glicose 10%: 150 a 250 mL. Criança: 0,2 g/kg = 2 mL/kg.
+  assert.deepEqual(contas(hipo, "glicose-hipoglicemia-adulto", adulto).map((c) => [c[0], c[2]]), [[15, 150], [25, 250]]);
+  assert.deepEqual(contas(hipo, "glicose-hipoglicemia-ped", crianca).map((c) => [c[0], c[1], c[2]]), [[3.2, "g", 32]]);
+  assert.ok(hipo.notasDeDose?.some((n) => /glucagon IM/.test(n)));
+
+  const adrenal = acha("crise-adrenal");
+  const inicial = (idade: number) => adrenal.medicamentos
+    .filter((d) => d.populacao === "pediatrico" && doseServe(d, "pediatrico", idade)).map((d) => d.dose.usual);
+  assert.deepEqual(inicial(0.5), [25]);
+  assert.deepEqual(inicial(3), [50]);
+  assert.deepEqual(inicial(5.9), [50]);
+  assert.deepEqual(inicial(6), [100]);
+  assert.deepEqual(contas(adrenal, "hidrocortisona-crise-adulto", adulto).map((c) => [c[0], c[1], c[2]]), [[100, "mg", undefined]]);
+  assert.match(dose(adrenal, "hidrocortisona-crise-infusao").velocidade ?? "", /24 horas/);
+  assert.ok(adrenal.notasDeDose?.some((n) => /estresse/.test(n)));
+
+  const conv = acha("convulsao-perioperatoria");
+  // Lorazepam 0,1 mg/kg até 4 mg; sem apresentação no Brasil, a caixa diz o que usar.
+  assert.equal(calcularDose(dose(conv, "lorazepam-convulsao"), conv, crianca).contas[0].doseTotal, 1.6);
+  assert.equal(calcularDose(dose(conv, "lorazepam-convulsao"), conv, adulto).contas[0].doseTotal, 4);
+  assert.match(dose(conv, "lorazepam-convulsao").semVolume ?? "", /midazolam IM ou diazepam IV/);
+  // Diazepam 0,15–0,2 mg/kg até 10 mg, a 5 mg/mL.
+  assert.deepEqual(contas(conv, "diazepam-convulsao", crianca).map((c) => [c[0], c[2]]), [[2.4, 0.48], [3.2, 0.64]]);
+  assert.deepEqual(contas(conv, "diazepam-convulsao", adulto).map((c) => [c[0], c[2]]), [[10, 2], [10, 2]]);
+  assert.deepEqual(contas(conv, "midazolam-im-convulsao-adulto", adulto).map((c) => [c[0], c[2]]), [[10, 2]]);
+  assert.deepEqual(contas(conv, "midazolam-im-convulsao-ped", crianca).map((c) => [c[0], c[2]]), [[5, 1]]);
+  // Levetiracetam 60 mg/kg até 4.500 mg.
+  assert.deepEqual(contas(conv, "levetiracetam-convulsao", adulto).map((c) => [c[0], c[2]]), [[4200, 42]]);
+  assert.deepEqual(contas(conv, "levetiracetam-convulsao", { idadeAnos: 40, pesoKg: 90 }).map((c) => [c[0], c[2]]), [[4500, 45]]);
+});
+
+test("bradicardia pediátrica: adrenalina 0,1 mL/kg da solução a 0,1 mg/mL e atropina com mínimo de 0,1 e máximo de 0,5 mg", () => {
+  const bradi = acha("bradicardia-pediatrica");
+  assert.deepEqual(contas(bradi, "adrenalina-bradi-ped", crianca).map((c) => [c[0], c[1], c[2]]), [[160, "mcg", 1.6]]);
+  assert.equal(calcularDose(dose(bradi, "adrenalina-bradi-ped"), bradi, { idadeAnos: 11, pesoKg: 120 }).contas[0].doseTotal, 1000);
+  const pequeno = calcularDose(dose(bradi, "atropina-bradi-ped"), bradi, { idadeAnos: 0.3, pesoKg: 3 });
+  assert.equal(pequeno.contas[0].doseTotal, 0.1);
+  assert.equal(calcularDose(dose(bradi, "atropina-bradi-ped"), bradi, { idadeAnos: 11, pesoKg: 40 }).contas[0].doseTotal, 0.5);
+  // Adulto ou recém-nascido na sala de parto: o protocolo certo para a faixa.
+  assert.ok(bradi.veja?.some((v) => v.protocolo === "bradicardia" && v.quando.includes("adulto")));
+  assert.ok(bradi.veja?.some((v) => v.protocolo === "reanimacao-neonatal" && v.quando.includes("neonatal")));
+});
+
+test("eclâmpsia: 4 g de ataque (8 mL a 50%), 1 g/h no preparo SAESP de 124 mL, cálcio na intoxicação e a divergência com o colapso materno", () => {
+  const ecl = acha("eclampsia");
+  const gestante: PacienteDaConsulta = { idadeAnos: 28, pesoKg: 70, gestante: true };
+  assert.deepEqual(contas(ecl, "magnesio-eclampsia-ataque", gestante), [[4, "g", 8, "mL"]]);
+  assert.match(dose(ecl, "magnesio-eclampsia-ataque").velocidade ?? "", /10 a 20 minutos/);
+  // 12 g em 124 mL: 1 g/h = 10,33 mL/h.
+  assert.deepEqual(contas(ecl, "magnesio-eclampsia-manutencao", gestante), [[1, "g", 10.33, "mL/h"]]);
+  assert.deepEqual(contas(ecl, "magnesio-eclampsia-recorrencia", gestante), [[2, "g", 4, "mL"]]);
+  assert.deepEqual(contas(ecl, "gluconato-eclampsia", gestante), [[1, "g", 10, "mL"]]);
+  assert.ok(ecl.divergencias.some((d) => /Colapso materno/.test(d.escolha)));
+});
+
+test("opioides e bloqueio residual: naloxona 0,04 mg titulada, sugamadex 2, 4 e 16 mg/kg, neostigmina sem número", () => {
+  const op = acha("depressao-respiratoria-opioides");
+  // 0,04 mg: 1 mL da diluída a 0,04 mg/mL ou 0,1 mL da ampola de 0,4 mg/mL.
+  assert.deepEqual(contas(op, "naloxona-opioides-adulto", adulto, 0), [[0.04, "mg", 1, "mL"]]);
+  assert.deepEqual(contas(op, "naloxona-opioides-adulto", adulto, 1), [[0.04, "mg", 0.1, "mL"]]);
+  assert.ok(dose(op, "naloxona-opioides-adulto").altoRisco);
+
+  const bnm = acha("bloqueio-neuromuscular-residual");
+  assert.deepEqual(contas(bnm, "sugamadex-bnm-t2", adulto).map((c) => [c[0], c[2]]), [[140, 1.4]]);
+  assert.deepEqual(contas(bnm, "sugamadex-bnm-ptc", adulto).map((c) => [c[0], c[2]]), [[280, 2.8]]);
+  assert.deepEqual(contas(bnm, "sugamadex-bnm-imediata", adulto).map((c) => [c[0], c[2]]), [[1120, 11.2]]);
+  assert.equal(doseServe(dose(bnm, "sugamadex-bnm-imediata"), "pediatrico", 4), false);
+  assert.ok(!bnm.medicamentos.some((d) => d.farmaco === "Neostigmina"));
+  assert.ok(bnm.notasDeDose?.some((n) => /benzilisoquinol/.test(n)));
 });

@@ -117,7 +117,7 @@ const MODULOS: Modulo[] = [
   },
   {
     nome: "Manejo de crises",
-    texto: "34 protocolos de crise em anestesia, de PCR e anafilaxia a hipertermia maligna e via aérea difícil. Com o peso e a idade do paciente, as doses saem calculadas, com o volume de cada apresentação.",
+    texto: "49 protocolos de crise em anestesia, de PCR e anafilaxia a hipertermia maligna e via aérea difícil. Com o peso e a idade do paciente, as doses saem calculadas, com o volume de cada apresentação.",
     itens: ["Agir agora em passos numerados, para ler de longe", "Ritmos de parada como aparecem no monitor",
       "Cada protocolo cita a diretriz de onde saiu e sai em PDF para deixar na sala"],
     tela: ["/capa/manejo-de-crises.webp", 1600, 1000],
@@ -335,7 +335,7 @@ export default function HomePage() {
           </article>
           <article>
             <h3>Tem protocolo para crise em anestesia?</h3>
-            <p>Tem. São 34 protocolos, de PCR e anafilaxia a hipertermia maligna e via aérea
+            <p>Tem. São 49 protocolos, de PCR e anafilaxia a hipertermia maligna e via aérea
               difícil. Com o peso e a idade do paciente, as doses saem calculadas, com o volume de
               cada apresentação. Cada protocolo cita a diretriz de onde saiu.</p>
           </article>

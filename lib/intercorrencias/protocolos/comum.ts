@@ -83,6 +83,11 @@ export const MAGNESIO_50: ApresentacaoDoProtocolo = {
 export const MAGNESIO_10: ApresentacaoDoProtocolo = {
   rotulo: "Sulfato de magnésio 10% — 100 mg/mL", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV"],
 };
+/** Manutenção da eclâmpsia no preparo do Tratado SAESP: 12 g em 124 mL finais. */
+export const MAGNESIO_SAESP_124: ApresentacaoDoProtocolo = {
+  rotulo: "12 g em 124 mL — cerca de 97 mg/mL (preparo SAESP)", quantidade: 12, unidade: "g", mL: 124, vias: ["IV"],
+  preparo: "24 mL de sulfato de magnésio 50% (12 g) + 100 mL de SG 5% = 124 mL, em bomba de infusão",
+};
 /** Manutenção da eclâmpsia: 5 g em 250 mL finais. */
 export const MAGNESIO_20MG: ApresentacaoDoProtocolo = {
   rotulo: "5 g em 250 mL — 20 mg/mL", quantidade: 20, unidade: "mg", mL: 1, vias: ["IV"],
@@ -121,6 +126,30 @@ export const IPRATROPIO_NEBULIZACAO: ApresentacaoDoProtocolo = {
 export const SALBUTAMOL_IV_50: ApresentacaoDoProtocolo = {
   rotulo: "Salbutamol injetável 0,5 mg em 10 mL — 50 mcg/mL", quantidade: 50, unidade: "mcg", mL: 1, vias: ["IV"],
   preparo: "0,5 mg da apresentação injetável completados para 10 mL de SF 0,9%",
+};
+
+/* ---------------- Reversão ---------------- */
+export const SUGAMADEX_100: ApresentacaoDoProtocolo = {
+  rotulo: "Frasco de 200 mg em 2 mL — 100 mg/mL (conferir a bula da apresentação utilizada)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV"],
+};
+export const NALOXONA_004: ApresentacaoDoProtocolo = {
+  rotulo: "0,4 mg em 10 mL — 0,04 mg/mL", quantidade: 0.04, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "1 ampola de 0,4 mg/mL completada para 10 mL de SF 0,9%: cada mL é uma dose inicial",
+};
+export const NALOXONA_04: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 0,4 mg/mL, sem diluir", quantidade: 0.4, unidade: "mg", mL: 1, vias: ["IV", "IM"],
+};
+
+/* ---------------- Anticonvulsivantes ---------------- */
+/** Para o IM, a ampola concentrada: 15 mg em 3 mL ou 50 mg em 10 mL. */
+export const MIDAZOLAM_5_IM: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 5 mg/mL, sem diluir — IM", quantidade: 5, unidade: "mg", mL: 1, vias: ["IM"],
+};
+export const DIAZEPAM_5: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 10 mg em 2 mL — 5 mg/mL", quantidade: 5, unidade: "mg", mL: 1, vias: ["IV"],
+};
+export const LEVETIRACETAM_100: ApresentacaoDoProtocolo = {
+  rotulo: "100 mg/mL (500 mg em 5 mL)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV"],
 };
 
 /* ---------------- Outros ---------------- */

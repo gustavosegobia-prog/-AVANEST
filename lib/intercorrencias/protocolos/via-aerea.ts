@@ -9,11 +9,8 @@
  * AVANEST.
  */
 
-import type { ApresentacaoDoProtocolo, Protocolo } from "../tipos.ts";
-
-const SUGAMADEX_100: ApresentacaoDoProtocolo = {
-  rotulo: "Frasco de 200 mg em 2 mL — 100 mg/mL (conferir a bula da apresentação utilizada)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV"],
-};
+import type { Protocolo } from "../tipos.ts";
+import { SUGAMADEX_100 } from "./comum.ts";
 
 export const VENTILACAO_MASCARA: Protocolo = {
   id: "ventilacao-mascara-dificil",

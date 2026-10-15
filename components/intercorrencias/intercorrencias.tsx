@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import estilos from "./intercorrencias.module.css";
 import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS } from "@/lib/intercorrencias/catalogo";
-import { APROVACAO } from "@/lib/intercorrencias/aprovacao";
+import { APROVACOES, aprovado, dataDaAprovacao } from "@/lib/intercorrencias/aprovacao";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, type DadosDoPaciente } from "./paciente";
@@ -38,6 +38,13 @@ function lerFavoritos(): string[] {
     return [];
   }
 }
+
+/** O rodapé: quem aprovou quantos protocolos, e quantos ainda esperam aprovação. */
+const aprovacoes = APROVACOES.map((a) => {
+  const n = PROTOCOLOS.filter((p) => aprovado(p, [a])).length;
+  return `${n} protocolos aprovados por ${a.responsavel}, ${a.crm}, em ${dataDaAprovacao(a)}.`;
+}).join(" ");
+const semAprovacao = PROTOCOLOS.filter((p) => !aprovado(p)).length;
 
 export function Intercorrencias({
   dados, set, aoAbrirCalculadora, daFicha = false, titulo = "Intercorrências anestésicas",
@@ -143,7 +150,7 @@ export function Intercorrencias({
                           <li key={p.id}>
                             <button type="button" className={estilos.indiceSub}
                               aria-current={p.id === protocolo?.id ? "page" : undefined} onClick={() => abrir(p)}>
-                              {p.titulo}
+                              {p.titulo}{!aprovado(p) && <small>sem aprovação registrada</small>}
                             </button>
                           </li>
                         ))}
@@ -187,7 +194,8 @@ export function Intercorrencias({
                       <li key={a.protocolo.id}>
                         <button type="button" className={estilos.linha} onClick={() => abrir(a.protocolo)}>
                           <span className={estilos.linhaTexto}>
-                            <b>{a.protocolo.titulo}</b><small>{nome(a.protocolo.categoria)} · achado por {a.porque}</small>
+                            <b>{a.protocolo.titulo}</b>
+                            <small>{nome(a.protocolo.categoria)} · achado por {a.porque}{aprovado(a.protocolo) ? "" : " · sem aprovação registrada"}</small>
                           </span>
                           <Icone nome="seta" tamanho={18} className={estilos.linhaSeta} />
                         </button>
@@ -210,7 +218,7 @@ export function Intercorrencias({
 
       <div className={`${estilos.rodapes} ${estilos.naoImprimir}`}>
         <p className={estilos.rodape}>
-          Os protocolos seguem diretrizes publicadas, citadas no fim de cada um. Versão {APROVACAO.versao} aprovada por {APROVACAO.responsavel}, {APROVACAO.crm}, em {APROVACAO.data.split("-").reverse().join("/")}. Confira apresentação, via e dose antes de administrar.
+          Os protocolos seguem diretrizes publicadas, citadas no fim de cada um. {aprovacoes}{semAprovacao > 0 && ` ${semAprovacao} ainda sem aprovação registrada, marcados na lista.`} Confira apresentação, via e dose antes de administrar.
         </p>
       </div>
     </div>

@@ -10,6 +10,7 @@ import type { Categoria, Previsto, Protocolo } from "./tipos.ts";
 import { ANAFILAXIA } from "./protocolos/anafilaxia.ts";
 import { COLEGA_AFETADO, DEPOIS_DA_CRISE, DEZ_TS, PRE_INDUCAO, VERIFICACAO_APARELHO } from "./protocolos/apoio.ts";
 import { BRONCOASPIRACAO } from "./protocolos/broncoaspiracao.ts";
+import { BRADICARDIA_PEDIATRICA } from "./protocolos/bradicardia-pediatrica.ts";
 import { BRONCOESPASMO } from "./protocolos/broncoespasmo.ts";
 import {
   AUMENTO_ETCO2, BRADICARDIA, DESSATURACAO, HIPERTENSAO, HIPOTENSAO, QUEDA_ETCO2, TAQUIARRITMIA,
@@ -18,6 +19,11 @@ import { HIPERCALEMIA, HIPERTERMIA_MALIGNA, TOXICIDADE_AL } from "./protocolos/d
 import { EMBOLIA_GASOSA } from "./protocolos/embolia-gasosa.ts";
 import { HEMORRAGIA } from "./protocolos/hemorragia.ts";
 import { COLAPSO_MATERNO, HEMORRAGIA_POS_PARTO, RAQUI_TOTAL } from "./protocolos/obstetricia.ts";
+import { ECLAMPSIA, EMBOLIA_AMNIOTICA, VIA_AEREA_GESTANTE } from "./protocolos/obstetricia-complementar.ts";
+import { BNM_RESIDUAL, DEPRESSAO_OPIOIDES } from "./protocolos/opioides-e-bloqueio-residual.ts";
+import {
+  CONVULSAO, CRISE_ADRENAL, DELIRIO, FALHA_O2_ENERGIA, HIPOGLICEMIA, HIPOTERMIA, INCENDIO,
+} from "./protocolos/outras-emergencias.ts";
 import { ISQUEMIA } from "./protocolos/isquemia.ts";
 import { LARINGOESPASMO } from "./protocolos/laringoespasmo.ts";
 import { PCR_AESP, PCR_FV_TV } from "./protocolos/pcr.ts";
@@ -25,9 +31,13 @@ import { PRESSAO_VIAS_AEREAS } from "./protocolos/pressao-vias-aereas.ts";
 import { REACAO_HEMOLITICA } from "./protocolos/reacao-hemolitica.ts";
 import { REANIMACAO_NEONATAL } from "./protocolos/reanimacao-neonatal.ts";
 import { SAV_PEDIATRICO } from "./protocolos/sav-pediatrico.ts";
+import { INTUBACAO_ESOFAGICA, PNEUMOTORAX } from "./protocolos/torax-e-tubo.ts";
 import { INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, VENTILACAO_MASCARA } from "./protocolos/via-aerea.ts";
 
-/** Na ordem do Manual de Crises: as paradas primeiro. */
+/**
+ * Na ordem do Manual de Crises: as paradas primeiro. Depois, os cartões da
+ * minuta preliminar de outubro de 2026, na ordem dela.
+ */
 export const PROTOCOLOS: Protocolo[] = [
   PCR_FV_TV, PCR_AESP, SAV_PEDIATRICO, ISQUEMIA, HEMORRAGIA, ANAFILAXIA, REACAO_HEMOLITICA, EMBOLIA_GASOSA,
   VENTILACAO_MASCARA, INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, LARINGOESPASMO, PRESSAO_VIAS_AEREAS, BRONCOESPASMO,
@@ -35,6 +45,8 @@ export const PROTOCOLOS: Protocolo[] = [
   HIPERTERMIA_MALIGNA, DEZ_TS, DEPOIS_DA_CRISE, COLEGA_AFETADO,
   DESSATURACAO, HIPERTENSAO, HIPOTENSAO, TAQUIARRITMIA, BRADICARDIA, AUMENTO_ETCO2, QUEDA_ETCO2,
   VERIFICACAO_APARELHO, PRE_INDUCAO,
+  HIPOGLICEMIA, HIPOTERMIA, CRISE_ADRENAL, CONVULSAO, INCENDIO, FALHA_O2_ENERGIA, DELIRIO, BRADICARDIA_PEDIATRICA,
+  ECLAMPSIA, EMBOLIA_AMNIOTICA, VIA_AEREA_GESTANTE, DEPRESSAO_OPIOIDES, BNM_RESIDUAL, PNEUMOTORAX, INTUBACAO_ESOFAGICA,
 ];
 
 export const CATEGORIAS: Array<{ id: Categoria; nome: string; letra: string }> = [
@@ -88,9 +100,9 @@ export const PREVISTOS: Previsto[] = [
   p("pediatria", "Bradicardia pediátrica", ["bradicardia na criança"]),
   p("pediatria", "Reanimação neonatal", ["recém-nascido"]),
   p("outras", "Hipoglicemia grave", ["glicose baixa"]),
-  p("outras", "Hipotermia", ["temperatura baixa"]),
+  p("outras", "Hipotermia perioperatória", ["temperatura baixa"]),
   p("outras", "Crise adrenal", ["insuficiência adrenal"]),
-  p("outras", "Convulsão", ["crise convulsiva"]),
+  p("outras", "Convulsão perioperatória", ["crise convulsiva"]),
   p("outras", "Incêndio na sala cirúrgica", ["fogo"]),
   p("outras", "Falha de fornecimento de oxigênio ou energia", ["falta de oxigênio", "falta de energia"]),
   p("outras", "Delírio grave ao despertar", ["agitação ao despertar"]),

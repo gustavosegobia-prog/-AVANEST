@@ -102,7 +102,7 @@ const BLOCOS: Bloco[] = [
   {
     titulo: "O manejo de crises",
     itens: [
-      ["34 protocolos de crise em anestesia",
+      ["49 protocolos de crise em anestesia",
         "Parada cardíaca, anafilaxia, hipertermia maligna, via aérea difícil, crises obstétricas e "
         + "pediátricas, e as listas de verificação do aparelho e da pré-indução."],
       ["Doses pelo peso e pela idade do paciente",
