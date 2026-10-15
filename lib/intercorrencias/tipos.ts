@@ -14,7 +14,7 @@
 import type { Apresentacao, DosePorKg, Teto } from "../calculos/doses.ts";
 import type { BaseDePeso } from "../calculos/peso.ts";
 
-export type Categoria = "cardiovascular" | "respiratorio" | "medicamentos" | "obstetricia" | "pediatria" | "outras";
+export type Categoria = "cardiovascular" | "respiratorio" | "medicamentos" | "obstetricia" | "pediatria" | "outras" | "apoio";
 
 /** De quem é o protocolo (ou o passo, ou a dose). */
 export type Populacao = "adulto" | "gestante" | "pediatrico" | "neonatal";

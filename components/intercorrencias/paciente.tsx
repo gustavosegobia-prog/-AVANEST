@@ -22,6 +22,7 @@ export const COR_DA_CATEGORIA: Record<Categoria, string> = {
   obstetricia: "#c11574",
   pediatria: "#0e7c66",
   outras: "#b54708",
+  apoio: "#475467",
 };
 
 export function pacienteDe(d: DadosDoPaciente): PacienteDaConsulta {

@@ -138,7 +138,7 @@ export const TOXICIDADE_AL: Protocolo = {
     },
   ],
   volumes: [
-    { id: "lipidica-maximo", rotulo: "Emulsão lipídica 20% — máximo cumulativo", indicacao: "Somando bolus e infusão",
+    { id: "lipidica-maximo", rotulo: "Emulsão lipídica 20% — máximo cumulativo", grupo: "Emulsão lipídica", indicacao: "Somando bolus e infusão",
       populacao: "todas", porKg: { min: 12 }, referencias: ["qrh-3-10", "manual-20"] },
     maximoDeAL("max-lidocaina", "Lidocaína sem adrenalina", 3),
     maximoDeAL("max-lidocaina-adr", "Lidocaína com adrenalina", 7),
@@ -416,7 +416,7 @@ export const HIPERTERMIA_MALIGNA: Protocolo = {
     },
   ],
   volumes: [
-    { id: "lavagem-gelada-hm", rotulo: "Soro gelado", indicacao: "Bolus para lavagem vesical, gástrica ou peritoneal",
+    { id: "lavagem-gelada-hm", rotulo: "Soro gelado", grupo: "Resfriamento", indicacao: "Bolus para lavagem vesical, gástrica ou peritoneal",
       populacao: "todas", porKg: { min: 10 }, referencias: ["qrh-3-8"] },
   ],
   pensarEm: [

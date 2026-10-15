@@ -155,7 +155,6 @@ function tituloDosVolumes(lista: VolumeDoProtocolo[]): string {
   if (lista[0].grupo) return lista[0].grupo;
   if (lista.every((v) => v.unidade === "J")) return "Desfibrilação";
   if (lista.every((v) => !v.rotulo)) return "Cristaloide";
-  if (lista.every((v) => v.rotulo)) return "Hemocomponentes";
   return "Volumes";
 }
 

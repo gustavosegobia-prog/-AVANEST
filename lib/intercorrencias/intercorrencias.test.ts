@@ -417,7 +417,7 @@ test("anestésico local, hipercalemia e hipertermia maligna: emulsão em mL/kg, 
   assert.deepEqual(calcularDose(dose(last, "lipidica-bolus-last"), last, crianca).contas.map((c) => c.volume), [24]);
   // Infusão 15 a 30 mL/kg/h.
   assert.deepEqual(calcularDose(dose(last, "lipidica-infusao-last"), last, crianca).contas.map((c) => [c.volume, c.unidadeVolume]), [[240, "mL/h"], [480, "mL/h"]]);
-  const maximos = last.volumes.filter((v) => v.grupo).map((v) => calcularVolume(v, adulto).texto);
+  const maximos = last.volumes.filter((v) => v.unidade === "mg").map((v) => calcularVolume(v, adulto).texto);
   assert.deepEqual(maximos, ["210 mg", "490 mg", "140 mg", "210 mg", "490 mg"]);
   assert.equal(calcularVolume(last.volumes.find((v) => v.id === "lipidica-maximo")!, adulto).texto, "840 mL");
   // Hipercalemia: insulina diluída 1 UI/mL; criança 16 kg = 1,6 UI = 1,6 mL; glicose 0,5 g/kg a 25% = 2 mL/kg.
@@ -431,6 +431,35 @@ test("anestésico local, hipercalemia e hipertermia maligna: emulsão em mL/kg, 
   assert.deepEqual(calcularDose(dose(hm, "dantroleno-hm"), hm, adulto, 1).contas.map((c) => c.volume), [3.5]);
   assert.ok(hm.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "qrh-3-8")));
   assert.equal((buscar("dantroleno")[0] as { protocolo: { id: string } }).protocolo.id, "hipertermia-maligna");
+});
+
+test("vias de diagnóstico e listas: doses da aba 34 conferidas, amiodarona em mg/h, listas sem dose na categoria G", () => {
+  const taqui = acharProtocolo("taquiarritmia")!;
+  const bradi = acharProtocolo("bradicardia")!;
+  const has = acharProtocolo("hipertensao")!;
+  const hipo = acharProtocolo("hipotensao")!;
+  assert.deepEqual(calcularDose(dose(taqui, "adenosina-taqui"), taqui, adulto).contas.map((c) => c.volume), [2]);
+  // 60 e 30 mg/h na de 1,8 mg/mL: 16,67 e 33,33 mL/h (900 mg em 24 h).
+  assert.deepEqual(calcularDose(dose(taqui, "amiodarona-infusao-taqui"), taqui, adulto).contas.map((c) => c.volume), [16.67, 33.33]);
+  assert.ok(taqui.divergencias.some((d) => /Infusão de amiodarona/.test(d.tema)));
+  assert.equal(calcularVolume(taqui.volumes.find((v) => v.id === "cardioversao-ped")!, crianca).texto, "16 J");
+  // Atropina: criança 20 mcg/kg com teto; adulto 0,5 a 1 mg.
+  assert.deepEqual(calcularDose(dose(bradi, "atropina-bradi-ped"), bradi, crianca).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[320, "mcg", 1.28]]);
+  assert.deepEqual(calcularDose(dose(bradi, "atropina-bradi"), bradi, adulto).contas.map((c) => c.doseTotal), [0.5, 1]);
+  assert.deepEqual(calcularDose(dose(bradi, "dopamina-bradi"), bradi, adulto).contas.map((c) => c.volume), [8.4, 84]);
+  assert.deepEqual(calcularDose(dose(has, "esmolol-has"), has, adulto).contas.map((c) => c.volume), [3.5]);
+  assert.deepEqual(calcularDose(dose(hipo, "noradrenalina-infusao-hipo"), hipo, adulto).contas.map((c) => c.volume), [5.25, 105]);
+  for (const id of ["dessaturacao", "aumento-etco2", "diminuicao-etco2", "evento-sem-diagnostico", "depois-da-crise", "colega-afetado", "verificacao-aparelho", "verificacao-pre-inducao"]) {
+    assert.equal(acharProtocolo(id)!.medicamentos.length, 0, id);
+  }
+  assert.equal(itensDaCategoria("apoio").prontos.length, 5);
+  assert.equal(acharProtocolo("evento-sem-diagnostico")!.agirAgora.length, 10);
+  const ids = (q: string) => buscar(q).flatMap((a) => (a.tipo === "protocolo" ? [a.protocolo.id] : []));
+  assert.equal(ids("10 Ts")[0], "evento-sem-diagnostico");
+  assert.ok(ids("EtCO2 caindo").includes("diminuicao-etco2"));
+  for (const t of ["Bradicardia grave", "Taquiarritmia instável", "Hipotensão grave", "Crise hipertensiva"]) {
+    assert.ok(!itensDaCategoria("cardiovascular").previstos.some((p) => p.titulo === t), t);
+  }
 });
 
 test("catálogo: os protocolos do Manual entram nas categorias e saem dos previstos; a busca acha pelo que se vê", () => {

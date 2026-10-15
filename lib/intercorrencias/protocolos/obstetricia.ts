@@ -252,10 +252,10 @@ export const HEMORRAGIA_POS_PARTO: Protocolo = {
     },
   ],
   volumes: [
-    { id: "cristaloide-hpp", rotulo: "Cristaloide aquecido", indicacao: "No máximo, enquanto espera o sangue",
+    { id: "cristaloide-hpp", rotulo: "Cristaloide aquecido", grupo: "Volume e plasma", indicacao: "No máximo, enquanto espera o sangue",
       populacao: "adulto", fixo: { max: 3500 }, repeticao: "SF ou Ringer lactato; coloide não tem evidência.",
       referencias: ["manual-17"] },
-    { id: "pfc-hpp", rotulo: "Plasma fresco congelado", indicacao: "Cedo, para evitar a falha da hemostasia",
+    { id: "pfc-hpp", rotulo: "Plasma fresco congelado", grupo: "Volume e plasma", indicacao: "Cedo, para evitar a falha da hemostasia",
       populacao: "adulto", porKg: { min: 15 }, repeticao: "Depois, pelos exames de coagulação ou TEG/ROTEM.",
       referencias: ["manual-17"] },
   ],

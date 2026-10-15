@@ -8,8 +8,12 @@
 
 import type { Categoria, Previsto, Protocolo } from "./tipos.ts";
 import { ANAFILAXIA } from "./protocolos/anafilaxia.ts";
+import { COLEGA_AFETADO, DEPOIS_DA_CRISE, DEZ_TS, PRE_INDUCAO, VERIFICACAO_APARELHO } from "./protocolos/apoio.ts";
 import { BRONCOASPIRACAO } from "./protocolos/broncoaspiracao.ts";
 import { BRONCOESPASMO } from "./protocolos/broncoespasmo.ts";
+import {
+  AUMENTO_ETCO2, BRADICARDIA, DESSATURACAO, HIPERTENSAO, HIPOTENSAO, QUEDA_ETCO2, TAQUIARRITMIA,
+} from "./protocolos/diagnostico.ts";
 import { HIPERCALEMIA, HIPERTERMIA_MALIGNA, TOXICIDADE_AL } from "./protocolos/diversos.ts";
 import { EMBOLIA_GASOSA } from "./protocolos/embolia-gasosa.ts";
 import { HEMORRAGIA } from "./protocolos/hemorragia.ts";
@@ -28,7 +32,9 @@ export const PROTOCOLOS: Protocolo[] = [
   PCR_FV_TV, PCR_AESP, SAV_PEDIATRICO, ISQUEMIA, HEMORRAGIA, ANAFILAXIA, REACAO_HEMOLITICA, EMBOLIA_GASOSA,
   VENTILACAO_MASCARA, INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, LARINGOESPASMO, PRESSAO_VIAS_AEREAS, BRONCOESPASMO,
   BRONCOASPIRACAO, RAQUI_TOTAL, HEMORRAGIA_POS_PARTO, COLAPSO_MATERNO, REANIMACAO_NEONATAL, TOXICIDADE_AL, HIPERCALEMIA,
-  HIPERTERMIA_MALIGNA,
+  HIPERTERMIA_MALIGNA, DEZ_TS, DEPOIS_DA_CRISE, COLEGA_AFETADO,
+  DESSATURACAO, HIPERTENSAO, HIPOTENSAO, TAQUIARRITMIA, BRADICARDIA, AUMENTO_ETCO2, QUEDA_ETCO2,
+  VERIFICACAO_APARELHO, PRE_INDUCAO,
 ];
 
 export const CATEGORIAS: Array<{ id: Categoria; nome: string; letra: string }> = [
@@ -38,6 +44,7 @@ export const CATEGORIAS: Array<{ id: Categoria; nome: string; letra: string }> =
   { id: "obstetricia", nome: "Obstetrícia", letra: "D" },
   { id: "pediatria", nome: "Pediatria", letra: "E" },
   { id: "outras", nome: "Outras emergências", letra: "F" },
+  { id: "apoio", nome: "Antes e depois da crise", letra: "G" },
 ];
 
 const p = (categoria: Categoria, titulo: string, sinonimos: string[] = []): Previsto => ({ categoria, titulo, sinonimos });

@@ -67,7 +67,7 @@ export const REANIMACAO_NEONATAL: Protocolo = {
     },
   ],
   volumes: [
-    { id: "expansor-rn", rotulo: "Soro fisiológico 0,9%", indicacao: "Hipovolemia ou perda de sangue", populacao: "pediatrico",
+    { id: "expansor-rn", rotulo: "Soro fisiológico 0,9%", grupo: "Expansor de volume", indicacao: "Hipovolemia ou perda de sangue", populacao: "pediatrico",
       porKg: { min: 10 }, repeticao: "Em 5 a 10 minutos; repetir se indicado. Concentrado de hemácias O negativo só na suspeita de anemia fetal grave.",
       referencias: ["sbp-2022-rn", "manual-19"] },
   ],

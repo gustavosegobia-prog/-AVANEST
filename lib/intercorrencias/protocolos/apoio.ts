@@ -1,0 +1,188 @@
+/**
+ * ANTES E DEPOIS DA CRISE — as listas que não têm dose: a crise sem
+ * diagnóstico (os 10 Ts), o que fazer depois, o colega afetado, a verificação
+ * do aparelho e a pré-indução.
+ *
+ * A ordem e os itens vêm do Manual de Crises (abas 23, 24, 35 e 36, lidas no
+ * livro); a redação é do AVANEST, resumida, sem reproduzir o texto do livro.
+ */
+
+import type { Protocolo } from "../tipos.ts";
+
+const SEM_DOSE: Pick<Protocolo, "medicamentos" | "volumes" | "divergencias"> = { medicamentos: [], volumes: [], divergencias: [] };
+
+export const DEZ_TS: Protocolo = {
+  id: "evento-sem-diagnostico",
+  titulo: "Crise sem diagnóstico — os 10 Ts",
+  categoria: "apoio",
+  populacoes: ["adulto", "gestante", "pediatrico", "neonatal"],
+  versao: 1,
+  atualizadoEm: "2026-10-15",
+  sinonimos: ["10 Ts", "dez Ts", "evento terminal", "colapso sem causa", "não sei o que é"],
+  sinais: ["colapso", "parada", "hipotensão sem causa", "dessaturação sem causa", "piora súbita"],
+  resumo: "Crise grave e o diagnóstico não aparece: percorrer os dez T, em voz alta, com a equipe.",
+  reconhecer: [
+    "Colapso, parada ou piora súbita, e a causa ainda não está clara.",
+    "Uma pessoa lê a lista em voz alta enquanto as outras tratam.",
+  ],
+  agirAgora: [
+    { texto: "Tubos: circuito, posição, permeabilidade e integridade da via aérea." },
+    { texto: "Torrencial: hemorragia." },
+    { texto: "Triptase: anafilaxia (parada induzida por anafilaxia)." },
+    { texto: "Terminal: ritmo de doença cardíaca primária." },
+    { texto: "Tamponamento: traumático ou cirúrgico." },
+    { texto: "Tensão: pneumotórax hipertensivo." },
+    { texto: "Trombo: coronário, pulmonar, líquido amniótico, ar ou gordura." },
+    { texto: "Tóxico: fármacos, eletrólitos, distúrbio metabólico." },
+    { texto: "Total: bloqueio raquidiano total." },
+    { texto: "Tumor: edema cerebral e hipertensão intracraniana." },
+  ],
+  ...SEM_DOSE,
+  pensarEm: ["Os 4 H e 4 T da parada, junto com esta lista."],
+  depois: ["Achada a causa, abrir o protocolo dela.", "Registrar na ficha o que foi afastado e como."],
+  referencias: ["manual-23"],
+  relacionados: [
+    { protocolo: "pcr-aesp-assistolia", texto: "PCR — AESP/assistolia" },
+    { protocolo: "hemorragia-macica", texto: "Hemorragia maciça" },
+    { protocolo: "anafilaxia", texto: "Anafilaxia" },
+    { protocolo: "embolia-gasosa-venosa", texto: "Embolia gasosa venosa" },
+    { protocolo: "toxicidade-anestesico-local", texto: "Toxicidade por anestésico local" },
+    { protocolo: "bloqueio-neuroaxial-alto", texto: "Bloqueio raquidiano total" },
+  ],
+};
+
+export const DEPOIS_DA_CRISE: Protocolo = {
+  id: "depois-da-crise",
+  titulo: "Depois da crise",
+  categoria: "apoio",
+  populacoes: ["adulto", "gestante", "pediatrico", "neonatal"],
+  versao: 1,
+  atualizadoEm: "2026-10-15",
+  sinonimos: ["resultado da crise", "pós-crise", "óbito na sala", "comunicação com a família", "debriefing"],
+  sinais: ["óbito", "lesão", "evento adverso"],
+  resumo: "Cuidar do paciente, da família, da equipe e de quem conduziu: registro, comunicação honesta, conversa com a equipe e análise do caso.",
+  reconhecer: [
+    "Toda crise grave, com ou sem dano ao paciente.",
+    "Quem conduziu a crise também precisa de apoio.",
+  ],
+  agirAgora: [
+    { texto: "Chamar um colega mais experiente ou o plantonista para ajudar." },
+    { texto: "Garantir o cuidado contínuo do paciente depois da crise." },
+    { texto: "Em caso de morte, cumprir as obrigações legais (declaração de óbito, serviço de verificação ou IML, conforme o caso)." },
+    { texto: "Guardar os fármacos, as seringas e o equipamento usados." },
+    { texto: "Paciente com lesão: contar a ele assim que a consciência permitir." },
+    { texto: "Falar com a família logo e com precisão, em equipe, com papéis definidos; expressar pesar e pedir desculpas quando for o caso." },
+    { texto: "Abrir um canal de apoio para o paciente e a família." },
+    { texto: "Conversar com toda a equipe logo depois e de novo nos dias seguintes, se preciso." },
+    { texto: "Completar o registro na ficha e toda a documentação." },
+    { texto: "O anestesiologista escreve também um relato pessoal do caso." },
+    { texto: "Apoiar e acompanhar de perto o anestesiologista e a família dele." },
+    { texto: "Notificar o incidente nos canais da instituição e, quando couber, à seguradora." },
+    { texto: "Considerar 24 horas ou mais afastado da escala para quem conduziu." },
+    { texto: "Fazer a análise de causa raiz e pôr as recomendações em prática." },
+  ],
+  ...SEM_DOSE,
+  pensarEm: ["O colega pode precisar da abordagem do protocolo “O colega afetado”."],
+  depois: ["Rever o caso com a equipe em reunião de morbimortalidade."],
+  referencias: ["manual-24"],
+  relacionados: [{ protocolo: "colega-afetado", texto: "O colega afetado" }],
+};
+
+export const COLEGA_AFETADO: Protocolo = {
+  id: "colega-afetado",
+  titulo: "O colega afetado",
+  categoria: "apoio",
+  populacoes: ["adulto"],
+  versao: 1,
+  atualizadoEm: "2026-10-15",
+  sinonimos: ["colega com problema", "dependência química", "uso de substâncias", "burnout", "saúde do médico"],
+  sinais: ["colega", "substância", "conduta"],
+  resumo: "Problema de saúde mental, luto ou separação: conversa informal de um colega. Uso de substâncias, dependência ou má conduta: uma abordagem planejada.",
+  reconhecer: [
+    "Saúde mental, declínio cognitivo, separação ou luto: muitas vezes basta um colega preocupado se aproximar.",
+    "Uso de substâncias, dependência ou má conduta profissional: siga os passos abaixo.",
+  ],
+  agirAgora: [
+    { texto: "Pedir ajuda para organizar a primeira conversa e escolher bem quem conduz." },
+    { texto: "Reunir e documentar antes as evidências." },
+    { texto: "Conhecer as obrigações legais e as do Conselho de Medicina." },
+    { texto: "Incluir a avaliação de risco na preparação." },
+    { texto: "Ter compaixão: não reagir, não julgar, não diagnosticar." },
+    { texto: "Pedir que o colega ouça tudo antes de responder." },
+    { texto: "Frases simples e fatos objetivos; estar preparado para a negação." },
+    { texto: "Reconhecer o desconforto e deixar claro o desejo de ajudar." },
+    { texto: "Dar esperança: há tratamento e ele está disponível." },
+    { texto: "Ter apoio profissional pronto e alguém junto do colega logo depois da conversa." },
+  ],
+  ...SEM_DOSE,
+  pensarEm: ["Risco imediato para o colega ou para pacientes muda a urgência da abordagem."],
+  depois: ["Acompanhar o colega e a equipe nas semanas seguintes."],
+  referencias: ["manual-24"],
+};
+
+export const VERIFICACAO_APARELHO: Protocolo = {
+  id: "verificacao-aparelho",
+  titulo: "Verificação do aparelho de anestesia",
+  categoria: "apoio",
+  populacoes: ["adulto", "gestante", "pediatrico", "neonatal"],
+  versao: 1,
+  atualizadoEm: "2026-10-15",
+  sinonimos: ["checagem do aparelho", "checklist do aparelho", "15 pontos", "teste do aparelho"],
+  sinais: ["início do dia", "antes do caso"],
+  resumo: "Os 15 pontos: do 1 ao 9 no início da lista, do 10 ao 15 antes de cada caso.",
+  reconhecer: ["Itens 1 a 9: no começo de cada lista cirúrgica. Itens 10 a 15: revistos antes de cada paciente."],
+  agirAgora: [
+    { texto: "Aparelho ligado, organizado e posicionado para a cirurgia." },
+    { texto: "Data da manutenção e avisos no aparelho." },
+    { texto: "Autoteste, nos aparelhos eletrônicos." },
+    { texto: "Monitores ligados, com limites, alarmes, ciclos e linhas de amostragem; analisador de O2, oxímetro e capnógrafo funcionando." },
+    { texto: "Teste de tração nas conexões das mangueiras." },
+    { texto: "O2 conectado e reserva suficiente (cilindro)." },
+    { texto: "Outros gases conectados; pressões da rede entre 400 e 500 kPa." },
+    { texto: "Fluxômetros funcionando em toda a faixa." },
+    { texto: "Dispositivo anti-hipóxia e flush de O2 funcionando." },
+    { texto: "Antes de cada caso — vaporizadores cheios, encaixados e travados, tampa vedada, sem vazamento, desligados." },
+    { texto: "Circuito: montagem, conexões, válvulas, vazamentos, filtros, absorvedor de CO2 e o teste das duas bolsas." },
+    { texto: "Ventilador: conexões, válvula de alívio, alarmes de desconexão e de pressão alta, ajustes." },
+    { texto: "Exaustão de gases conectada, ajustada e funcionando." },
+    { texto: "Carrinho de via aérea com o material do plano e do plano de contingência." },
+    { texto: "Aspirador, inclinação da mesa e um meio alternativo de ventilar (ressuscitador autoinflável)." },
+  ],
+  ...SEM_DOSE,
+  pensarEm: ["Siga também a lista do fabricante e a da instituição."],
+  depois: ["Registrar a verificação, se a instituição pede."],
+  referencias: ["manual-35"],
+  relacionados: [{ protocolo: "verificacao-pre-inducao", texto: "Verificação pré-indução" }],
+};
+
+export const PRE_INDUCAO: Protocolo = {
+  id: "verificacao-pre-inducao",
+  titulo: "Verificação pré-indução",
+  categoria: "apoio",
+  populacoes: ["adulto", "gestante", "pediatrico", "neonatal"],
+  versao: 1,
+  atualizadoEm: "2026-10-15",
+  sinonimos: ["checklist pré-indução", "antes da indução", "pausa", "time-out"],
+  sinais: ["antes da indução", "antes do bloqueio"],
+  resumo: "Doze passos antes de induzir: equipamento, equipe, plano e contingência, paciente e lado, alergias, jejum, seringa conferida, pré-oxigenação e a conferência P-O-A-C.",
+  reconhecer: ["Antes de cada indução ou bloqueio."],
+  agirAgora: [
+    { texto: "Aparelho, equipamentos e monitores verificados." },
+    { texto: "Conhecer a formação e a experiência de quem vai auxiliar." },
+    { texto: "Combinar o plano anestésico em voz alta (lista pré-intubação, se houver); pedir opinião e abrir a comunicação." },
+    { texto: "Ter um plano de contingência; na dúvida, consultar um colega." },
+    { texto: "Saber onde estão o dantroleno, o carrinho de via aérea difícil e o de parada." },
+    { texto: "Paciente, procedimento e lado corretos — parar antes de bloquear." },
+    { texto: "Alergias." },
+    { texto: "Via aérea e jejum." },
+    { texto: "Rótulo do fármaco e da seringa: parar, conferir, injetar." },
+    { texto: "Pré-oxigenar com o O2 ligado e a curva de EtCO2 confirmada." },
+    { texto: "Depois da indução, a conferência P-O-A-C: pressão e frequência, oxigenação, agente anestésico, CO2 e frequência respiratória." },
+    { texto: "Na crise, pedir ajuda cedo." },
+  ],
+  ...SEM_DOSE,
+  pensarEm: ["Lista de verificação de cirurgia segura da instituição (pausa cirúrgica)."],
+  depois: ["Registrar na ficha a verificação, se a instituição pede."],
+  referencias: ["manual-36"],
+  relacionados: [{ protocolo: "verificacao-aparelho", texto: "Verificação do aparelho de anestesia" }],
+};

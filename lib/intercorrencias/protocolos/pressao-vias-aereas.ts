@@ -42,7 +42,10 @@ export const PRESSAO_VIAS_AEREAS: Protocolo = {
   medicamentos: [],
   volumes: [],
   pensarEm: [
-    "Laringoespasmo, broncoespasmo, edema.",
+    "Circuito: troca da bolsa pelo ventilador, chave manual-mecânica, válvula do circuito, válvula APL fechada ou travada, flush de O2 travado, circuito dobrado ou obstruído, ventilador mal ajustado.",
+    "Via aérea: laringoespasmo; tubo fora do lugar, pequeno ou obstruído.",
+    "Paciente: broncoespasmo, auto-PEEP, doença ou tumor da traqueia, corpo estranho, distensão abdominal, Trendelenburg, obesidade, compressão do tórax; alvéolo (edema, fibrose, contusão, infecção, SDRA).",
+    "As causas mais comuns: relaxamento insuficiente, posição do dispositivo, laringoespasmo, bolsa ou ventilador.",
     "Pneumotórax, hemotórax, rigidez da parede torácica.",
     "Anafilaxia, embolia, broncoaspiração, edema pulmonar, intubação seletiva, corpo estranho.",
     "O momento do evento: punção venosa central, fármaco recém-dado, ajuste do tubo, mudança de posição, pneumoperitônio, manobra cirúrgica.",
@@ -52,7 +55,7 @@ export const PRESSAO_VIAS_AEREAS: Protocolo = {
     "Registrar na ficha a causa encontrada e as condutas.",
   ],
   divergencias: [],
-  referencias: ["manual-13", "qrh-2-3"],
+  referencias: ["manual-13", "manual-33", "qrh-2-3"],
   relacionados: [
     { protocolo: "laringoespasmo", texto: "Laringoespasmo" },
     { protocolo: "broncoespasmo-grave", texto: "Broncoespasmo grave" },
