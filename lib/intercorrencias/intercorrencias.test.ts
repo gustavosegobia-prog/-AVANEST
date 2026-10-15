@@ -14,6 +14,7 @@ const aesp = acharProtocolo("pcr-aesp-assistolia")!;
 const sav = acharProtocolo("sav-pediatrico")!;
 const isquemia = acharProtocolo("isquemia-miocardica")!;
 const hemorragia = acharProtocolo("hemorragia-macica")!;
+const transfusional = acharProtocolo("reacao-hemolitica-transfusional")!;
 const dose = (p: typeof anafilaxia, id: string) => p.medicamentos.find((m) => m.id === id)!;
 const adulto: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
 const crianca: PacienteDaConsulta = { idadeAnos: 4, pesoKg: 16 };
@@ -274,6 +275,28 @@ test("hemorragia: ácido tranexâmico 1 g (o “1 mg” do Manual fica registrad
   assert.equal(vol("crio"), "2 a 3 unidades");
   assert.equal(vol("plaquetas"), "240 a 320 mL");
   assert.ok(hemorragia.volumes.every((v) => volumeServe(v, "gestante") && volumeServe(v, "pediatrico")));
+});
+
+test("reação hemolítica: manitol por kg nas duas concentrações, furosemida, infusões a 5 mL/h no adulto e por kg na criança", () => {
+  // 0,5 a 1 g/kg × 70 kg = 35 a 70 g: 175 a 350 mL do 20%, 140 a 280 mL do 25%.
+  const man = dose(transfusional, "manitol-rht");
+  assert.deepEqual(calcularDose(man, transfusional, adulto, 0).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[35, "g", 175], [70, "g", 350]]);
+  assert.deepEqual(calcularDose(man, transfusional, adulto, 1).contas.map((c) => c.volume), [140, 280]);
+  assert.deepEqual(calcularDose(dose(transfusional, "furosemida-rht-05"), transfusional, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[35, 3.5]]);
+  assert.deepEqual(calcularDose(dose(transfusional, "furosemida-rht-1-3"), transfusional, crianca).contas.map((c) => c.doseTotal), [16, 48]);
+  // Adulto: as três soluções do Manual começam em 5 mL/h, sem peso.
+  const semPeso: PacienteDaConsulta = { idadeAnos: 50, pesoKg: null };
+  for (const id of ["adrenalina-infusao-rht-adulto", "noradrenalina-infusao-rht-adulto", "dobutamina-infusao-rht-adulto"]) {
+    assert.deepEqual(calcularDose(dose(transfusional, id), transfusional, semPeso).contas.map((c) => [c.volume, c.unidadeVolume]), [[5, "mL/h"]], id);
+  }
+  // Criança de 16 kg na mesma solução: adrenalina 0,05 a 0,5 mcg/kg/min = 0,8 a 8 mL/h; dobutamina 2 a 20 = 0,38 a 3,84 mL/h.
+  assert.deepEqual(calcularDose(dose(transfusional, "adrenalina-infusao-rht-ped"), transfusional, crianca).contas.map((c) => c.volume), [0.8, 8]);
+  assert.deepEqual(calcularDose(dose(transfusional, "dobutamina-infusao-rht-ped"), transfusional, crianca).contas.map((c) => c.volume), [0.38, 3.84]);
+  assert.deepEqual(calcularDose(dose(transfusional, "noradrenalina-infusao-rht-ped"), transfusional, crianca).contas.map((c) => c.volume), [0.24, 12]);
+  // As divergências com o MSD Manual ficam registradas, e a busca acha pela transfusão.
+  assert.ok(["furosemida", "vasopressor", "diurese"].every((t) => transfusional.divergencias.some((d) => d.tema.toLowerCase().includes(t))));
+  assert.ok(buscar("transfusao").some((a) => a.tipo === "protocolo" && a.protocolo.id === "reacao-hemolitica-transfusional"));
+  assert.ok(!itensDaCategoria("medicamentos").previstos.some((p) => p.titulo === "Reação hemolítica transfusional"));
 });
 
 test("catálogo: os protocolos do Manual entram nas categorias e saem dos previstos; a busca acha pelo que se vê", () => {

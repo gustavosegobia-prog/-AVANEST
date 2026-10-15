@@ -12,11 +12,12 @@ import { HEMORRAGIA } from "./protocolos/hemorragia.ts";
 import { ISQUEMIA } from "./protocolos/isquemia.ts";
 import { LARINGOESPASMO } from "./protocolos/laringoespasmo.ts";
 import { PCR_AESP, PCR_FV_TV } from "./protocolos/pcr.ts";
+import { REACAO_HEMOLITICA } from "./protocolos/reacao-hemolitica.ts";
 import { SAV_PEDIATRICO } from "./protocolos/sav-pediatrico.ts";
 
 /** Na ordem do Manual de Crises: as paradas primeiro. */
 export const PROTOCOLOS: Protocolo[] = [
-  PCR_FV_TV, PCR_AESP, SAV_PEDIATRICO, ISQUEMIA, HEMORRAGIA, ANAFILAXIA, LARINGOESPASMO,
+  PCR_FV_TV, PCR_AESP, SAV_PEDIATRICO, ISQUEMIA, HEMORRAGIA, ANAFILAXIA, REACAO_HEMOLITICA, LARINGOESPASMO,
 ];
 
 export const CATEGORIAS: Array<{ id: Categoria; nome: string; letra: string }> = [
