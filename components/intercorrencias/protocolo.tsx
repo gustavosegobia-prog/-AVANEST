@@ -7,10 +7,10 @@ import {
   volumeServe, type Alerta, type DoseCalculada, type PacienteDaConsulta,
 } from "@/lib/intercorrencias/calculo";
 import { acharProtocolo, CATEGORIAS } from "@/lib/intercorrencias/catalogo";
-import { acharReferencia, BIBLIOGRAFIA_GERAL, citarReferencia } from "@/lib/intercorrencias/referencias";
+import { acharReferencia, BIBLIOGRAFIA_GERAL } from "@/lib/intercorrencias/referencias";
 import { ROTULO_NIVEL, type Calculo } from "@/lib/calculos/doses";
 import { ROTULO_SITUACAO, type Estado } from "@/lib/intercorrencias/situacao";
-import type { DoseDoProtocolo, Protocolo, Situacao, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
+import type { DoseDoProtocolo, Protocolo, Referencia, Situacao, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, pacienteDe, resumoDoPaciente, type DadosDoPaciente } from "./paciente";
 import { PainelDeRevisao } from "./revisao";
@@ -28,6 +28,18 @@ function curta(id: string): string {
   if (id.startsWith("qrh-")) return `QRH ${id.slice(4)} (Association of Anaesthetists)`;
   if (/^manual-\d+$/.test(id)) return `Manual de Crises, protocolo ${id.slice(7)}`;
   return `${r.autoria.split(",")[0].replace(/ et al\.?$/, "")}${r.autoria.includes(",") ? " et al." : ""}, ${r.ano ?? "s/ ano"}`;
+}
+
+/**
+ * Uma linha por referência: o primeiro autor, o título e o ano. Onde no texto,
+ * observações e a edição completa ficam no cadastro (referencias.ts), para a
+ * revisão — na consulta só ocupavam a tela.
+ */
+function referenciaCurta(r: Referencia): string {
+  const autores = r.autoria.split(";")[0].replace(/\s*\([^)]*\)/g, "").trim();
+  const primeiro = autores.split(",")[0].replace(/\s+et al\.?$/, "").trim();
+  const etAl = autores.includes(",") || /\bet al\b/.test(autores);
+  return `${primeiro}${etAl ? " et al" : ""}. ${r.titulo.replace(/\.$/, "")}.${r.ano ? ` ${r.ano}.` : ""}`;
 }
 
 function Avisos({ lista }: { lista: Alerta[] }) {
@@ -208,7 +220,6 @@ export function ProtocoloTela({
     volumes.filter((v) => !v.grupo && v.unidade !== "J"),
     ...nomeados.map((g) => volumes.filter((v) => v.grupo === g)),
   ].filter((g) => g.length);
-  const refsDasDoses = new Set(p.medicamentos.flatMap((d) => d.referencias));
   // O protocolo certo para a faixa do paciente: forte quando a faixa bate; sem idade, só a lembrança.
   const veja = (p.veja ?? [])
     .filter((v) => populacao === null || v.quando.includes(populacao))
@@ -428,26 +439,18 @@ export function ProtocoloTela({
         </section>
       )}
 
-      <section id="referencias" className={estilos.secao} aria-labelledby="t-refs">
-        <h3 id="t-refs">Referência científica</h3>
+      <section id="referencias" className={`${estilos.secao} ${estilos.secaoReferencias}`} aria-labelledby="t-refs">
+        <h3 id="t-refs">Referências</h3>
         <ol className={estilos.referencias}>
-          {[...p.referencias, ...BIBLIOGRAFIA_GERAL].map((id) => {
+          {[...new Set([...p.referencias, ...BIBLIOGRAFIA_GERAL])].map((id) => {
             const r = acharReferencia(id);
             if (!r) return null;
+            const url = r.doi ? `https://doi.org/${r.doi}` : r.link;
             return (
               <li key={id}>
-                {citarReferencia(r)}
-                {r.doi && <> DOI: <a href={`https://doi.org/${r.doi}`} target="_blank" rel="noreferrer">{r.doi}</a>.</>}
-                {r.link && <> <a href={r.link} target="_blank" rel="noreferrer">Abrir a fonte</a>.</>}
-                <br />
-                <span className={estilos.miuda}>
-                  {r.localizacao ? `Onde: ${r.localizacao}.` : "Localização no texto: a conferir."}
-                  {refsDasDoses.has(id) ? " Fundamenta doses deste protocolo." : ""}
-                  {r.observacao ? ` ${r.observacao}` : ""}
-                </span>
-                <span className={`${estilos.refEstado} ${r.conferida ? estilos.refOk : estilos.refConferir}`}>
-                  {r.conferida ? "conferida no original" : "a conferir"}
-                </span>
+                {referenciaCurta(r)}
+                {url && <> <a href={url} target="_blank" rel="noreferrer">Abrir</a></>}
+                {equipe && !r.conferida && <span className={estilos.refConferir}>a conferir</span>}
               </li>
             );
           })}

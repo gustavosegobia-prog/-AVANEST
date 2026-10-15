@@ -341,11 +341,10 @@
 .relacionados .botao svg { transform: rotate(-90deg); }
 
 /* ---------------- Referências e divergências ---------------- */
-.referencias { margin: 0; padding-left: 20px; display: grid; gap: 12px; font-size: 14px; line-height: 1.5; color: var(--cor-tinta); max-width: 80ch; }
+.secaoReferencias h3 { font-size: 16px; margin-bottom: 10px; }
+.referencias { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 13px; line-height: 1.45; color: var(--cor-tinta-fraca); max-width: 110ch; }
 .referencias a { color: var(--cor-marca-forte); text-decoration: underline; text-underline-offset: 2px; }
-.refEstado { display: inline-block; margin-left: 6px; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
-.refOk { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
-.refConferir { background: var(--cor-atencao-suave); color: var(--cor-atencao); }
+.refConferir { margin-left: 6px; font-size: 12px; font-weight: 650; color: var(--cor-atencao); }
 .divergencia { background: var(--cor-superficie-suave); border-radius: var(--ic-raio-p); padding: 12px 14px; display: grid; gap: 6px; }
 .divergencia + .divergencia { margin-top: 10px; }
 .divergencia strong { font-size: 15px; color: var(--cor-tinta-forte); }
@@ -360,6 +359,14 @@
 
 /* ---------------- Revisão ---------------- */
 .revisao { border-color: var(--cor-borda-forte); }
+details.revisao > summary {
+  cursor: pointer; display: flex; align-items: center; gap: 10px; min-height: 32px; list-style: none;
+  font-size: 16px; font-weight: 700; color: var(--cor-tinta-forte);
+}
+details.revisao > summary::-webkit-details-marker { display: none; }
+details.revisao > summary svg { margin-left: auto; color: var(--cor-tinta-fraca); transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
+details.revisao[open] > summary { margin-bottom: 14px; }
+details.revisao[open] > summary svg { transform: rotate(180deg); }
 .revisao textarea {
   width: 100%; min-height: 80px; font: inherit; font-size: 15px; border-radius: 9px; padding: 10px 12px; color: var(--cor-tinta-forte);
   border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie-suave);

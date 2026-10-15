@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import estilos from "./intercorrencias.module.css";
+import { Icone } from "@/components/icone";
 import { createClient } from "@/utils/supabase/client";
 import { assinatura, ehProtocolo, PODE_REGISTRAR, ROTULO_SITUACAO, type Estado } from "@/lib/intercorrencias/situacao";
 import type { Protocolo, Situacao } from "@/lib/intercorrencias/tipos";
@@ -53,8 +54,13 @@ export function PainelDeRevisao({ protocolo, estado, revisoes, superAdmin }: {
 
   const historico = [...estado.historico].reverse();
   return (
-    <section className={`${estilos.secao} ${estilos.revisao}`} aria-labelledby="t-revisao">
-      <h3 id="t-revisao">Revisão científica</h3>
+    // Fechada por padrão: é trabalho da equipe, e não pode ocupar a consulta.
+    <details className={`${estilos.secao} ${estilos.revisao}`}>
+      <summary>
+        Revisão científica
+        <span className={`${estilos.selo} ${estilos[`selo_${estado.daVersaoAtual}`]}`}>{ROTULO_SITUACAO[estado.daVersaoAtual]}</span>
+        <Icone nome="seta" tamanho={18} />
+      </summary>
       <div className={estilos.pilha}>
         <p className={estilos.miuda}>
           Seu papel: <b>{papel ? ROTULO_PAPEL[papel] : "—"}</b>
@@ -132,7 +138,7 @@ export function PainelDeRevisao({ protocolo, estado, revisoes, superAdmin }: {
           </ul>
         )}
       </div>
-    </section>
+    </details>
   );
 }
 
