@@ -1390,16 +1390,16 @@ export const CATALOGO: Medicamento[] = [
     observacao: "Em 10 minutos: rápido derruba a pressão. Trauma: começar até 3 horas e seguir com mais 1 g em 8 horas. Hemorragia pós-parto: mais 1 g se o sangramento continuar depois de 30 minutos. Na cirurgia ortopédica também se usa 10 a 20 mg/kg na indução.",
   },
   {
-    id: "ocitocina-bolus-adulto", nome: "Ocitocina — bolus na cesariana", grupo: "obstetricia", populacoes: ["adulto"], via: "IV",
+    id: "ocitocina-bolus-adulto", nome: "Ocitocina — bolus", grupo: "obstetricia", populacoes: ["adulto"], via: "IV",
     indicacao: "Depois do nascimento",
-    dose: { min: 1, max: 3, unidade: "UI", por: "fixa" },
+    dose: { usual: 10, unidade: "UI", por: "fixa" },
     apresentacoes: [
-      { rotulo: "5 UI em 10 mL — 0,5 UI/mL", quantidade: 0.5, unidade: "UI", mL: 1 },
-      { rotulo: "5 UI/mL (ampola de 1 mL)", quantidade: 5, unidade: "UI", mL: 1 },
+      { rotulo: "10 UI (2 ampolas) em 10 mL — 1 UI/mL", quantidade: 1, unidade: "UI", mL: 1 },
+      { rotulo: "Ampola de 5 UI em 1 mL", quantidade: 5, unidade: "UI", mL: 1 },
     ],
-    fonte: UTEROTONICOS, situacao: "validado", revisao: REVISAO_INCLUIDOS,
-    alerta: "Bolus rápido derruba a pressão e acelera o coração, com isquemia no ECG. Fazer lento, em pelo menos 30 segundos.",
-    observacao: "Cesariana eletiva: 1 UI. Em trabalho de parto: 3 UI. Sem tônus em 2 minutos, mais 3 UI; depois de duas doses de resgate, outro uterotônico. Junto, a infusão.",
+    fonte: SERVICO, situacao: "validado", revisao: REVISAO_INCLUIDOS,
+    alerta: "Lento, diluído, em 1 a 2 minutos: bolus rápido derruba a pressão e acelera o coração, com isquemia no ECG. Mais cuidado na hipovolemia e na cardiopatia.",
+    observacao: "10 UI é a dose do serviço. O consenso internacional (Heesen et al., Anaesthesia, 2019) usa menos na cesariana: 1 UI na eletiva e 3 UI em trabalho de parto. Junto, a infusão.",
   },
   {
     id: "ocitocina-bic-adulto", nome: "Ocitocina — infusão", grupo: "obstetricia", populacoes: ["adulto"],

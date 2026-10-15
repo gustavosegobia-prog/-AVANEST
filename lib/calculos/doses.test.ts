@@ -511,6 +511,9 @@ test("os sete incluídos: crises, obstetrícia e analgesia calculam certo", () =
   const met = acharMedicamento("metilergometrina-adulto")!;
   assert.equal(met.via, "IM");
   assert.match(met.alerta!, /pré-eclâmpsia/);
+  // Ocitocina em bolus: 10 UI, a dose do serviço — 10 mL a 1 UI/mL, ou 2 ampolas de 5 UI.
+  const bolusOci = acharMedicamento("ocitocina-bolus-adulto")!;
+  assert.deepEqual(bolusOci.apresentacoes.map((a) => calcular(bolusOci.dose!, 70, a)[0].volume), [10, 2]);
   for (const id of ["escopolamina-adulto", "tenoxicam-adulto", "ocitocina-bolus-adulto"]) {
     assert.equal(acharMedicamento(id)!.situacao, "validado", id);
   }
