@@ -978,7 +978,7 @@ export function DashboardClient({
                   area medica. */}
               {perfil.super_admin===true&&<>
                 <Link role="menuitem" href="/calculos" onClick={()=>setUserMenu(false)}>
-                  <Icone nome="calculadora"/> Cálculos extras
+                  <Icone nome="calculadora"/> Calculadora de doses
                 </Link>
                 <hr/>
               </>}

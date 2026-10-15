@@ -76,8 +76,12 @@ function lerFavoritos(): string[] {
 }
 const UNIDADES: Unidade[] = ["mg", "mcg", "g", "UI", "mEq"];
 
-export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v: string) => void }) {
-  const [calculado, setCalculado] = useState(false);
+export function Doses({ dados, set, embutida = false }: {
+  dados: Compartilhado; set: (c: string, v: string) => void;
+  /** Dentro da janela do manejo de crises: o título é o da janela, e com idade e peso já preenchidos a lista sai na hora. */
+  embutida?: boolean;
+}) {
+  const [calculado, setCalculado] = useState(embutida);
   const [termo, setTermo] = useState("");
   const [favoritos, setFavoritos] = useState<string[]>(lerFavoritos);
   const [abertos, setAbertos] = useState<GrupoId[]>(["inducao", "opioides"]);
@@ -122,11 +126,15 @@ export function Doses({ dados, set }: { dados: Compartilhado; set: (c: string, v
 
   return (
     <>
-      <h1 className={estilos.titulo}>Calculadora de doses</h1>
-      <p className={estilos.subtitulo}>
-        Idade e peso, e a lista sai calculada em dose e em mililitros. O número
-        grande é sempre o volume.
-      </p>
+      {!embutida && (
+        <>
+          <h1 className={estilos.titulo}>Calculadora de doses</h1>
+          <p className={estilos.subtitulo}>
+            Idade e peso, e a lista sai calculada em dose e em mililitros. O número
+            grande é sempre o volume.
+          </p>
+        </>
+      )}
       <p className={estilos.confira}>{AVISO_MODULO}</p>
 
       <section className={estilos.correcao}>

@@ -3,17 +3,17 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { CalculosClient } from "./calculos-client";
 
-// Ferramentas de apoio, e não prontuário: nada aqui lê ou escreve dados de
-// paciente. É o que permite abrir a aba no meio de um caso sem risco de
+// A calculadora de doses: apoio, e não prontuário. Nada aqui lê ou escreve
+// dados de paciente, o que permite abrir a aba no meio de um caso sem risco de
 // encostar na avaliação de alguém.
 //
-// Enquanto os módulos amadurecem, a aba é só do super-admin. E a restrição
+// Enquanto amadurece, a aba é só do super-admin. E a restrição
 // mora aqui, no servidor, não só no menu: esconder o link não impede ninguém
 // de digitar /calculos na barra de endereço.
 
 export const metadata: Metadata = {
-  title: "Cálculos extras | AVANEST",
-  description: "Gasometria e via aérea pediátrica: apoio rápido à decisão em sala.",
+  title: "Calculadora de doses | AVANEST",
+  description: "Idade e peso, e as doses saem em mg e em mL: apoio rápido em sala.",
 };
 
 export default async function CalculosPage() {

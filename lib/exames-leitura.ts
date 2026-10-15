@@ -1,8 +1,7 @@
 /**
  * Leitura dos exames laboratoriais a partir do texto de uma foto ou PDF anexado.
  *
- * Irmã de `lib/calculos/gasometria-leitura.ts`, e de propósito: o reconhecimento
- * da imagem acontece em outro lugar, aqui entra texto bruto e saem os campos da
+ * O reconhecimento da imagem acontece em outro lugar, aqui entra texto bruto e saem os campos da
  * ficha. É essa separação que torna a coisa testável — dá para escrever o laudo
  * de um laboratório à mão e conferir o que sai, sem foto nenhuma.
  *

@@ -7,7 +7,7 @@
 .tela {
   min-height: 100vh;
   background: var(--cor-fundo, #f1f5f8);
-  color: #142536;
+  color: var(--cor-tinta-forte, #142536);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -16,7 +16,7 @@
   align-items: center;
   gap: 16px;
   padding: 14px max(20px, calc((100vw - 1100px) / 2));
-  background: #fff;
+  background: var(--cor-superficie, #fff);
   border-bottom: 1px solid var(--cor-borda, #dce4ea);
   position: sticky;
   top: 0;
@@ -28,7 +28,7 @@
 .marca small { display: block; font-size: 12px; color: var(--cor-tinta-fraca, #5b6c7a); }
 .voltar {
   margin-left: auto; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer;
-  border: 1px solid var(--cor-borda, #dce4ea); background: #fff; color: var(--cor-marca-forte, #0f4c75);
+  border: 1px solid var(--cor-borda, #dce4ea); background: var(--cor-superficie, #fff); color: var(--cor-marca-forte, #0f4c75);
   border-radius: 8px; padding: 9px 14px; text-decoration: none; white-space: nowrap;
 }
 .voltar:focus-visible { outline: 2px solid var(--cor-marca, #1b6ca8); outline-offset: 2px; }
@@ -42,31 +42,17 @@
 .titulo { margin: 0; font-size: 27px; letter-spacing: -.01em; }
 .subtitulo { margin: 0; max-width: 62ch; color: var(--cor-tinta-fraca, #5b6c7a); font-size: 15px; }
 
-/* Cartões do hub: alvo grande, pensado para dedo e para pressa. */
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 6px; }
-.card {
-  display: flex; flex-direction: column; gap: 8px; text-align: left; cursor: pointer;
-  background: #fff; border: 1px solid var(--cor-borda, #dce4ea); border-radius: 12px;
-  padding: 22px 20px; font: inherit; color: inherit; min-height: 118px;
-  transition: border-color .15s ease, transform .15s ease;
-}
-.card:hover { border-color: var(--cor-marca, #1b6ca8); transform: translateY(-1px); }
-.card:focus-visible { outline: 2px solid var(--cor-marca, #1b6ca8); outline-offset: 2px; }
-.card strong { font-size: 19px; }
-.card span { font-size: 14px; color: var(--cor-tinta-fraca, #5b6c7a); line-height: 1.45; }
-
 .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .gradeCurta { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 12px; max-width: 620px; }
 
-/* align-content prende a caixa ao pé do campo. Sem isso, um rótulo que quebra
-   em duas linhas empurra só a sua caixa para baixo, e a fileira inteira perde
-   a linha de base — "Osmolalidade medida (mOsm/kg)" desalinhava as três. */
+/* align-content prende a caixa ao pé do campo: um rótulo que quebra em duas
+   linhas não tira a fileira da linha de base. */
 .campo {
   display: grid; gap: 6px; min-width: 0; align-content: space-between;
   font-size: 13px; font-weight: 700; color: var(--cor-tinta-fraca, #5b6c7a);
 }
 .campo input {
-  width: 100%; min-width: 0; height: 46px; font: inherit; font-size: 16px; font-weight: 600; color: #142536;
+  width: 100%; min-width: 0; height: 46px; font: inherit; font-size: 16px; font-weight: 600; color: var(--cor-tinta-forte, #142536);
   border: 1px solid var(--cor-borda-forte, #c3d0da); border-radius: 9px;
   background: var(--cor-superficie-suave, #f7fafc); padding: 0 12px;
 }
@@ -75,53 +61,14 @@
 .acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .primario {
   font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; border: 0; border-radius: 9px;
-  padding: 12px 22px; background: var(--cor-marca, #1b6ca8); color: #fff;
+  padding: 12px 22px; background: var(--cor-marca, #1b6ca8); color: var(--cor-marca-contraste, #fff);
 }
 .primario:disabled { opacity: .45; cursor: not-allowed; }
-.secundario {
-  font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; border-radius: 9px; padding: 12px 18px;
-  border: 1px solid var(--cor-borda, #dce4ea); background: #fff; color: var(--cor-tinta-fraca, #5b6c7a);
-}
+
 .dica { margin: 0; font-size: 14px; color: var(--cor-tinta-fraca, #5b6c7a); }
 
-.resultado {
-  display: flex; flex-direction: column; gap: 12px;
-  background: #fff; border: 1px solid var(--cor-borda, #dce4ea); border-radius: 12px; padding: 20px;
-}
-.resultadoTitulo {
-  margin: 0; font-size: 12px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase;
-  color: var(--cor-tinta-fraca, #5b6c7a);
-}
-.disturbio { margin: 0; font-size: 23px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.selo {
-  font-style: normal; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-  background: #fdece8; color: #9c3a20; border-radius: 5px; padding: 4px 9px;
-}
-.origem { margin: 0; font-size: 13px; color: var(--cor-tinta-fraca, #5b6c7a); }
-
-/* Rótulo e valor em pares, alinhados: a leitura é de relance. */
-.linha {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-  gap: 4px 18px; align-items: baseline; font-size: 15px;
-}
-.linha span { color: var(--cor-tinta-fraca, #5b6c7a); font-size: 13px; }
-.linha b { font-size: 16px; }
 .veredito { margin: 0; font-size: 15px; font-weight: 600; }
 
-.numeros { display: flex; flex-wrap: wrap; gap: 10px; }
-.numero {
-  display: grid; gap: 2px; min-width: 118px; padding: 9px 13px; border-radius: 9px;
-  background: var(--cor-superficie-suave, #f7fafc); border: 1px solid var(--cor-borda, #dce4ea);
-}
-.numero small { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--cor-tinta-fraca, #5b6c7a); }
-.numero b { font-size: 18px; }
-.numeroAlerta { background: #fdece8; border-color: #f0c4b6; }
-.numeroAlerta b { color: #9c3a20; }
-
-.verMais {
-  align-self: flex-start; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer;
-  background: none; border: 0; padding: 4px 0; color: var(--cor-marca, #1b6ca8); text-decoration: underline;
-}
 .completa { display: flex; flex-direction: column; gap: 9px; font-size: 14px; line-height: 1.5; }
 .completa p { margin: 0; }
 .aviso {
@@ -129,133 +76,42 @@
   border-left: 3px solid var(--cor-borda-forte, #c3d0da); padding-left: 11px;
 }
 
-/* Calibre sugerido no meio, vizinhos ao lado: a decisão de subir ou descer um
-   número é frequente, e ter as três opções à vista evita conta de cabeça. */
-.escada { display: grid; gap: 5px; }
-.escada > small { font-size: 12px; font-weight: 700; color: var(--cor-tinta-fraca, #5b6c7a); }
-.escada > div { display: flex; align-items: baseline; gap: 12px; }
-.escada span { font-size: 16px; color: var(--cor-tinta-fraca, #5b6c7a); }
-.escada b { font-size: 26px; font-weight: 750; }
-.calculado { font-size: 12px; color: var(--cor-tinta-fraca, #5b6c7a); }
-
 @media (max-width: 600px) {
   .titulo { font-size: 23px; }
-  .disturbio { font-size: 20px; }
   .conteudo { padding-top: 20px; }
 }
 
-/* Orientações e correções: blocos de leitura, não de números soltos. */
-.bloco { display: grid; gap: 6px; padding: 12px 14px; border-radius: 9px; background: var(--cor-superficie-suave, #f7fafc); border: 1px solid var(--cor-borda, #dce4ea); }
-.bloco strong { font-size: 14px; }
-.bloco ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
-.bloco li { font-size: 14px; line-height: 1.45; }
-.blocoCritico { background: #fdece8; border-color: #f0c4b6; }
-.blocoCritico strong { color: #9c3a20; }
 .correcao { display: grid; gap: 10px; padding: 14px; border-radius: 9px; border: 1px solid var(--cor-borda, #dce4ea); }
 .correcao > strong { font-size: 15px; }
 
-/* Indicadores rápidos: cinco leituras de relance, antes do texto.
-   Só duas cores fora do normal — se tudo que sai da faixa vira vermelho, o
-   vermelho para de significar alguma coisa. */
-.indicadores { display: flex; flex-wrap: wrap; gap: 8px; }
-.indicador {
-  display: grid; gap: 1px; min-width: 92px; padding: 7px 11px; border-radius: 8px;
-  border: 1px solid var(--cor-borda, #dce4ea); background: var(--cor-superficie-suave, #f7fafc);
-}
-.indicador small { font-size: 10.5px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--cor-tinta-fraca, #5b6c7a); }
-.indicador b { font-size: 15px; }
-.normal { }
-.alterado { background: #fff6e5; border-color: #f0d9a8; }
-.alterado b { color: #8a5a12; }
-.alerta { background: #fdece8; border-color: #f0c4b6; }
-.alerta b { color: #9c3a20; }
-
-/* Botão de foto: alvo grande, porque na prática é usado com uma mão só. */
-.foto {
-  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
-  font-size: 15px; font-weight: 700; padding: 12px 20px; border-radius: 9px;
-  border: 1px dashed var(--cor-marca, #1b6ca8); color: var(--cor-marca-forte, #0f4c75);
-  background: #fff;
-}
-.foto input { display: none; }
-.foto:hover { background: var(--cor-marca-suave, #eaf3fa); }
 .confira {
   margin: 0; font-size: 14px; font-weight: 600; line-height: 1.45;
-  background: #fff6e5; border: 1px solid #f0d9a8; color: #6b4708;
+  background: var(--cor-atencao-suave, #fff6e5); border: 1px solid color-mix(in srgb, var(--cor-atencao, #8a5a12) 30%, transparent); color: var(--cor-atencao, #6b4708);
   border-radius: 9px; padding: 11px 14px;
 }
 
-/* Barra de troca rápida entre calculadoras. Rola na horizontal no celular,
-   que é onde trocar de ferramenta sem voltar ao hub mais importa. */
-.barra {
-  display: flex; gap: 8px; overflow-x: auto; padding: 10px max(20px, calc((100vw - 1100px) / 2));
-  background: #fff; border-bottom: 1px solid var(--cor-borda, #dce4ea);
-  position: sticky; top: 59px; z-index: 9; scrollbar-width: thin;
-}
-.aba {
-  flex: 0 0 auto; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer;
-  border: 1px solid var(--cor-borda, #dce4ea); background: #fff; color: var(--cor-tinta-fraca, #5b6c7a);
-  border-radius: 20px; padding: 8px 15px; white-space: nowrap;
-}
-.aba:hover { border-color: var(--cor-marca, #1b6ca8); }
-.abaAtiva { background: var(--cor-marca, #1b6ca8); border-color: var(--cor-marca, #1b6ca8); color: #fff; }
 .seletor {
-  height: 46px; font: inherit; font-size: 15px; font-weight: 600; color: #142536;
+  height: 46px; font: inherit; font-size: 15px; font-weight: 600; color: var(--cor-tinta-forte, #142536);
   border: 1px solid var(--cor-borda-forte, #c3d0da); border-radius: 9px;
   background: var(--cor-superficie-suave, #f7fafc); padding: 0 10px;
 }
 
-/* PCA. Duas famílias de bloco convivem aqui e não podem se parecer:
-   o que veio do livro (blocoFonte, com a citação embaixo) e o que a pessoa
-   digitou. Confundir os dois é exatamente o erro que o módulo existe para
-   evitar, então a diferença é de cor e de borda, não só de texto. */
-.blocoFonte { background: #eef4f9; border-color: #cfe0ee; }
-.blocoOk { background: #eef7f0; border-color: #c7e3ce; }
-.blocoAtencao { background: #fff6e5; border-color: #f0d9a8; }
-.blocoAtencao strong { color: #8a5a12; }
+.blocoAtencao { background: var(--cor-atencao-suave, #fff6e5); border-color: color-mix(in srgb, var(--cor-atencao, #8a5a12) 30%, transparent); }
+.blocoAtencao strong { color: var(--cor-atencao, #8a5a12); }
 .fonte {
   margin: 0; font-size: 12px; font-style: italic; color: var(--cor-tinta-fraca, #5b6c7a);
 }
-.lista { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 14px; line-height: 1.45; }
-
-.opcoes { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.opcao {
-  display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600;
-  cursor: pointer; padding: 7px 0;
-}
-.opcao input { width: 20px; height: 20px; accent-color: var(--cor-marca, #1b6ca8); cursor: pointer; }
 
 /* Sim / Não / vazio: três estados, porque "não perguntei" não é "não". */
-.tres { display: grid; gap: 5px; }
-.tres > span { font-size: 13px; font-weight: 700; color: var(--cor-tinta-fraca, #5b6c7a); }
-.tres > div { display: flex; gap: 6px; }
+
 .tresBotao, .tresAtivo {
   font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; border-radius: 8px;
   padding: 8px 16px; border: 1px solid var(--cor-borda, #dce4ea);
 }
-.tresBotao { background: #fff; color: var(--cor-tinta-fraca, #5b6c7a); }
+.tresBotao { background: var(--cor-superficie, #fff); color: var(--cor-tinta-fraca, #5b6c7a); }
 .tresBotao:hover { border-color: var(--cor-marca, #1b6ca8); }
-.tresAtivo { background: var(--cor-marca, #1b6ca8); border-color: var(--cor-marca, #1b6ca8); color: #fff; }
+.tresAtivo { background: var(--cor-marca, #1b6ca8); border-color: var(--cor-marca, #1b6ca8); color: var(--cor-marca-contraste, #fff); }
 
-/* ROTEM: uma linha por parâmetro. Sigla e valor ficam à esquerda e as três
-   classificações à direita, então a coluna de botões alinha de cima a baixo e
-   o olho desce por ela sem reler nome de parâmetro. No celular tudo empilha. */
-.parametro {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
-  padding: 9px 0; border-top: 1px solid var(--cor-borda, #dce4ea);
-}
-/* Largura fixa, e não min-width: com o nome longo do MCF empurrando, cada
-   linha punha a caixa de valor num lugar diferente e a coluna deixava de ser
-   coluna. */
-.parametroNome { display: grid; gap: 1px; flex: 0 0 218px; min-width: 0; }
-.parametroNome b { font-size: 16px; }
-.parametroNome small { font-size: 12px; color: var(--cor-tinta-fraca, #5b6c7a); }
-.parametroValor {
-  width: 92px; height: 40px; font: inherit; font-size: 15px; font-weight: 600; color: #142536;
-  border: 1px solid var(--cor-borda-forte, #c3d0da); border-radius: 8px;
-  background: var(--cor-superficie-suave, #f7fafc); padding: 0 10px;
-}
-.parametroValor:focus { outline: 2px solid var(--cor-marca, #1b6ca8); outline-offset: -1px; }
 .parametroBotoes { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 .parametroBotoes button { padding: 8px 13px; font-size: 13.5px; }
 @media (max-width: 600px) {
@@ -263,32 +119,12 @@
   .parametroBotoes button { flex: 1 1 auto; }
 }
 
-/* Pergunta do Passo 0: enunciado à esquerda, Sim/Não à direita, e a
-   consequência do "não" só aparece quando ele é marcado — dizer antes o que
-   acontece se a resposta for negativa é ruído em cima de quem ainda nem
-   respondeu. */
-.pergunta {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
-  padding: 10px 0; border-top: 1px solid var(--cor-borda, #dce4ea);
-}
-.perguntaTexto { display: grid; gap: 3px; flex: 1 1 260px; min-width: 0; }
-.perguntaTexto b { font-size: 15px; }
-.perguntaTexto small { font-size: 13px; line-height: 1.4; color: #8a5a12; }
-
-/* Abas de dentro de um módulo. Mesma linguagem da barra de cima, sem grudar
-   no topo: quem está no meio de uma conta não precisa dela perseguindo a
-   rolagem. */
-.barraInterna {
-  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
-  scrollbar-width: thin;
-}
-
 /* Calculadora de doses. O volume é o número grande porque é ele que se
    aspira; a dose e a apresentação ficam menores, do tamanho de quem confere
    contra a ampola. */
 .acordeao {
   display: flex; align-items: center; gap: 8px; width: 100%;
-  font: inherit; font-size: 15px; font-weight: 700; color: #142536;
+  font: inherit; font-size: 15px; font-weight: 700; color: var(--cor-tinta-forte, #142536);
   background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
 }
 .acordeao small {
@@ -298,7 +134,7 @@
 }
 .remedio {
   display: grid; gap: 6px; padding: 13px 15px; border-radius: 10px;
-  background: #fff; border: 1px solid var(--cor-borda, #dce4ea);
+  background: var(--cor-superficie, #fff); border: 1px solid var(--cor-borda, #dce4ea);
 }
 .remedioTopo { display: flex; align-items: center; gap: 10px; }
 .remedioTopo strong { font-size: 16px; }
@@ -318,7 +154,7 @@
 }
 .volume { font-size: 25px; font-weight: 760; line-height: 1.15; color: var(--cor-marca-forte, #0f4c75); }
 .dose small { font-size: 12px; color: var(--cor-tinta-fraca, #5b6c7a); line-height: 1.4; }
-.limitada { color: #8a5a12; font-weight: 650; }
+.limitada { color: var(--cor-atencao, #8a5a12); font-weight: 650; }
 .faixa {
   font-size: 13.5px; font-weight: 700; color: var(--cor-marca-forte, #0f4c75);
   background: var(--cor-marca-suave, #eaf3fa); border-radius: 20px; padding: 6px 13px;
