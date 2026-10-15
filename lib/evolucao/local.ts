@@ -9,7 +9,3 @@
 /** Filtro `or` do PostgREST para as fichas de um hospital. */
 export const fichasDoLocal = (localId: string) =>
   `dados->>local_atendimento_id.eq.${localId},dados->>local_atendimento_id.is.null`;
-
-/** O mesmo para as avaliações, que guardam o hospital numa coluna própria. */
-export const avaliacoesDoLocal = (localId: string) =>
-  `local_atendimento_id.eq.${localId},local_atendimento_id.is.null`;

@@ -41,4 +41,4 @@ export async function localDaSessao(supabase: Awaited<ReturnType<typeof createCl
   return local ? { id: local.id, nome: nomeDoLocal(local) } : null;
 }
 
-export { avaliacoesDoLocal, fichasDoLocal } from "./local";
+export { fichasDoLocal } from "./local";

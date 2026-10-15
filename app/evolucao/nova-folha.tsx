@@ -29,12 +29,10 @@ function quemE(p: Achado) {
 // pré-anestésica mais recente dele no topo. A busca já diz, antes do toque, se
 // essa avaliação existe — e se o paciente já tem ficha aberta, leva a ela em
 // vez de abrir uma segunda.
-export function NovaFolha({ institutionId, recentes = [], local = null }: {
+export function NovaFolha({ institutionId, local = null }: {
   institutionId: string;
   /** O hospital da sessão: a ficha nova nasce nele (e só aparece na lista dele). */
   local?: { id: string; nome: string } | null;
-  /** Avaliados nos últimos dias: no computador, a lista já aparece antes de digitar. */
-  recentes?: Achado[];
 }) {
   const router = useRouter();
   const [busca, setBusca] = useState("");
@@ -246,14 +244,6 @@ export function NovaFolha({ institutionId, recentes = [], local = null }: {
         <ul className={`fcAchados${buscando ? " velho" : ""}`} aria-busy={buscando}>
           {lista.map((p) => linha(p))}
         </ul>
-      )}
-      {/* Só no computador (CSS): sobra tela, e o paciente da sala costuma ter
-          sido avaliado há poucos dias — um clique em vez de digitar. */}
-      {curto && recentes.length > 0 && (
-        <div className="fcRecentes">
-          <h3 className="fcSubtitulo">Avaliados nos últimos 14 dias</h3>
-          <ul className="fcAchados">{recentes.map((p) => linha(p))}</ul>
-        </div>
       )}
     </section>
   );

@@ -3,7 +3,7 @@ import { Icone } from "@/components/icone";
 import { Decorrido } from "./decorrido";
 import { ExcluirFolha } from "./excluir-folha";
 import { ImprimirFicha } from "@/components/evolucao/imprimir-ficha";
-import { NovaFolha, type Achado } from "./nova-folha";
+import { NovaFolha } from "./nova-folha";
 
 export type FolhaResumo = {
   id: string;
@@ -27,13 +27,11 @@ const dia = (iso: string) => DIA.format(new Date(iso));
 // que está em andamento, e achar a que já foi encerrada para conferir ou
 // imprimir.
 export function InicioDasFolhas({
-  institutionId, abertas, encerradas, semBanco, agora, recentes = [], local = null,
+  institutionId, abertas, encerradas, semBanco, agora, local = null,
 }: {
   institutionId: string;
   /** O hospital da sessão: a lista é só dele, e a ficha nova nasce nele. */
   local?: { id: string; nome: string } | null;
-  /** Avaliados nos últimos dias, prontos para abrir — a lista aparece só no computador. */
-  recentes?: Achado[];
   abertas: FolhaResumo[];
   encerradas: FolhaResumo[];
   semBanco: boolean;
@@ -64,7 +62,7 @@ export function InicioDasFolhas({
           // andamento e o encerrado à direita. No tablet e no celular, uma só,
           // nesta mesma ordem.
           <div className="fcColunas">
-            <NovaFolha institutionId={institutionId} recentes={recentes} local={local} />
+            <NovaFolha institutionId={institutionId} local={local} />
             <div className="fcLado">
               <section className="fcSecao" aria-labelledby="fc-andamento">
                 <h2 id="fc-andamento">
