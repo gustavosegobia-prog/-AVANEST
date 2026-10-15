@@ -134,4 +134,5 @@ export const ISQUEMIA: Protocolo = {
     },
   ],
   referencias: ["manual-04", "qrh-3-12"],
+  relacionados: [{ protocolo: "pcr-fv-tv", texto: "PCR — FV/TV sem pulso" }],
 };

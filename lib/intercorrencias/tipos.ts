@@ -93,6 +93,9 @@ export type RitmoDoProtocolo = { ritmo: Ritmo; nome: string; legenda: string; ch
 /** "Na criança, use o SAV pediátrico": o protocolo certo para a faixa do paciente. */
 export type VejaTambem = { protocolo: string; quando: Populacao[]; texto: string };
 
+/** O protocolo que costuma vir em seguida (da máscara difícil para o não ventilo, não intubo): um toque para abrir. */
+export type Relacionado = { protocolo: string; texto: string };
+
 export type DoseDoProtocolo = {
   id: string;
   farmaco: string;
@@ -150,6 +153,7 @@ export type Protocolo = {
   divergencias: Divergencia[];
   referencias: string[];
   veja?: VejaTambem[];
+  relacionados?: Relacionado[];
   /** Os ritmos do monitor que o protocolo ensina a reconhecer (PCR). */
   ritmos?: RitmoDoProtocolo[];
 };

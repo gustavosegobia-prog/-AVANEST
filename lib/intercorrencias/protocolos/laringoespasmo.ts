@@ -6,6 +6,10 @@
  * consenso (Hampson-Evans, 2008) não foram conferidas no texto e por isso não
  * entram como número; a prática francesa (inquérito de 2017) aparece só como
  * divergência, porque inquérito não é recomendação.
+ *
+ * Conferido com o Manual de Crises (protocolo 12, lido no livro): a sequência
+ * coincide; as doses de succinilcolina e de atropina do Manual são faixas
+ * diferentes e estão em `divergencias`.
  */
 
 import type { ApresentacaoDoProtocolo, Protocolo } from "../tipos.ts";
@@ -48,15 +52,18 @@ export const LARINGOESPASMO: Protocolo = {
     "Momentos típicos: indução inalatória, plano superficial, estímulo cirúrgico, secreção ou sangue na via aérea, extubação.",
   ],
   agirAgora: [
-    { texto: "Chamar ajuda, avisar a equipe e parar o estímulo.", detalhe: "Cirurgia, aspiração, manipulação da via aérea." },
+    { texto: "Chamar ajuda, avisar a equipe e parar o estímulo.",
+      detalhe: "Cirurgia, aspiração, manipulação da via aérea. Na criança a piora é rápida: pedir ajuda cedo." },
     { texto: "Tração da mandíbula.", detalhe: "Muitos associam a manobra de Larson: pressão firme no entalhe atrás do ramo da mandíbula." },
     { texto: "Retirar o que obstrui ou estimula: dispositivos, secreção, sangue, vômito.",
       detalhe: "Aspirar sob visão, na dúvida. Tubo traqueal bem posicionado afasta laringoespasmo." },
     { texto: "CPAP com O2 a 100% sob máscara bem acoplada.",
-      detalhe: "Evitar insuflação vigorosa (enche o estômago). Cânula oro ou nasofaríngea se a obstrução for acima da laringe." },
-    { texto: "Não abriu: manter o CPAP e aprofundar a anestesia com propofol." },
+      detalhe: "Na obstrução completa, insuflar com força piora a obstrução (efeito de válvula) e enche o estômago. A cânula orofaríngea ajuda a manter o CPAP." },
+    { texto: "Não abriu: manter o CPAP e aprofundar a anestesia com propofol.",
+      detalhe: "Aprofundar é opção no adulto; na criança, a hipóxia rápida geralmente não dá tempo." },
     { texto: "Persiste ou dessatura: bloqueador neuromuscular e ventilar.",
-      detalhe: "Succinilcolina IV; sem acesso venoso, IM (inclusive na língua). Considerar intubar, sobretudo se pode voltar." },
+      detalhe: "Succinilcolina IV; sem acesso venoso, IM, na língua ou IO. Deixar a succinilcolina já aspirada e à mão poupa tempo. Considerar intubar, sobretudo se pode voltar." },
+    { texto: "Criança dessaturando rápido: intubar já, mesmo sem relaxante, pode ser o tratamento certo.", so: ["pediatrico", "neonatal"] },
     { texto: "Criança com bradicardia: oxigenar e ventilar é o tratamento; atropina se a bradicardia persistir.",
       detalhe: "FC abaixo de 60 com má perfusão apesar de oxigenar e ventilar: compressões.",
       so: ["pediatrico", "neonatal"] },
@@ -82,11 +89,11 @@ export const LARINGOESPASMO: Protocolo = {
     },
     {
       id: "succinilcolina-im-laringoespasmo", farmaco: "Succinilcolina", indicacao: "Sem acesso venoso",
-      populacao: "todas", via: "IM (inclusive na língua)",
+      populacao: "todas", via: "IM, na língua ou IO",
       dose: { usual: 4, unidade: "mg", por: "kg" },
       apresentacoes: [SUCCINILCOLINA_50, SUCCINILCOLINA_10], altoRisco: true,
       cuidados: [...CUIDADOS_SUCCINILCOLINA, "Começa a agir mais devagar que pela via IV."],
-      referencias: ["qrh-3-6"],
+      referencias: ["qrh-3-6", "manual-12"],
     },
     {
       id: "rocuronio-laringoespasmo", farmaco: "Rocurônio", indicacao: "Alternativa quando a succinilcolina é contraindicada",
@@ -142,10 +149,33 @@ export const LARINGOESPASMO: Protocolo = {
       tema: "Dose IV de succinilcolina",
       posicoes: [
         { texto: "0,25 a 0,5 mg/kg IV para desfazer o espasmo.", referencia: "qrh-3-6" },
+        { texto: "0,1 a 1 mg/kg EV.", referencia: "manual-12" },
         { texto: "Na prática francesa (inquérito), 1 a 2 mg/kg conforme a idade.", referencia: "michelet-2017" },
       ],
-      escolha: "O protocolo segue o QRH para desfazer o espasmo; a dose de intubação fica na calculadora.",
+      escolha: "O protocolo segue o QRH para desfazer o espasmo (dentro da faixa do Manual); a dose de intubação fica na calculadora.",
+    },
+    {
+      tema: "Succinilcolina sem acesso venoso",
+      posicoes: [
+        { texto: "4 mg/kg IM.", referencia: "qrh-3-6" },
+        { texto: "2 a 4 mg/kg IM, intralingual ou intraóssea.", referencia: "manual-12" },
+      ],
+      escolha: "O protocolo calcula 4 mg/kg (o limite de cima do Manual) e inclui as vias do Manual.",
+    },
+    {
+      tema: "Atropina na bradicardia",
+      posicoes: [
+        { texto: "Criança: 0,02 mg/kg, máximo de 0,5 mg por dose.", referencia: "aha-2020-pediatrico" },
+        { texto: "Adulto: 1 mg, a cada 3 a 5 minutos, até 3 mg.", referencia: "aha-2020-adulto" },
+        { texto: "10 a 20 mcg/kg EV, sem separar adulto e criança (0,7 a 1,4 mg para 70 kg).", referencia: "manual-12" },
+      ],
+      escolha: "O protocolo segue a AHA, que separa adulto e criança; o limite de cima do Manual coincide com a dose da criança. O revisor confirma.",
     },
   ],
-  referencias: ["qrh-3-6", "gavel-2014", "hampson-evans-2008", "alalami-2008", "michelet-2017", "aha-2020-pediatrico", "aha-2020-adulto"],
+  relacionados: [
+    { protocolo: "ventilacao-mascara-dificil", texto: "Dificuldade de ventilação com máscara" },
+    { protocolo: "pressao-vias-aereas", texto: "Pressão elevada das vias aéreas" },
+    { protocolo: "broncoaspiracao", texto: "Broncoaspiração" },
+  ],
+  referencias: ["qrh-3-6", "manual-12", "gavel-2014", "hampson-evans-2008", "alalami-2008", "michelet-2017", "aha-2020-pediatrico", "aha-2020-adulto"],
 };

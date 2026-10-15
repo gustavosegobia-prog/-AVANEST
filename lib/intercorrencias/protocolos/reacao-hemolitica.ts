@@ -177,4 +177,9 @@ export const REACAO_HEMOLITICA: Protocolo = {
     },
   ],
   referencias: ["manual-07", "msd-transfusao", "manual-05"],
+  relacionados: [
+    { protocolo: "anafilaxia", texto: "Anafilaxia" },
+    { protocolo: "hemorragia-macica", texto: "Hemorragia maciça" },
+    { protocolo: "broncoespasmo-grave", texto: "Broncoespasmo grave" },
+  ],
 };

@@ -8,18 +8,23 @@
 
 import type { Categoria, Previsto, Protocolo } from "./tipos.ts";
 import { ANAFILAXIA } from "./protocolos/anafilaxia.ts";
+import { BRONCOASPIRACAO } from "./protocolos/broncoaspiracao.ts";
+import { BRONCOESPASMO } from "./protocolos/broncoespasmo.ts";
 import { EMBOLIA_GASOSA } from "./protocolos/embolia-gasosa.ts";
 import { HEMORRAGIA } from "./protocolos/hemorragia.ts";
 import { ISQUEMIA } from "./protocolos/isquemia.ts";
 import { LARINGOESPASMO } from "./protocolos/laringoespasmo.ts";
 import { PCR_AESP, PCR_FV_TV } from "./protocolos/pcr.ts";
+import { PRESSAO_VIAS_AEREAS } from "./protocolos/pressao-vias-aereas.ts";
 import { REACAO_HEMOLITICA } from "./protocolos/reacao-hemolitica.ts";
 import { SAV_PEDIATRICO } from "./protocolos/sav-pediatrico.ts";
+import { INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, VENTILACAO_MASCARA } from "./protocolos/via-aerea.ts";
 
 /** Na ordem do Manual de Crises: as paradas primeiro. */
 export const PROTOCOLOS: Protocolo[] = [
   PCR_FV_TV, PCR_AESP, SAV_PEDIATRICO, ISQUEMIA, HEMORRAGIA, ANAFILAXIA, REACAO_HEMOLITICA, EMBOLIA_GASOSA,
-  LARINGOESPASMO,
+  VENTILACAO_MASCARA, INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, LARINGOESPASMO, PRESSAO_VIAS_AEREAS, BRONCOESPASMO,
+  BRONCOASPIRACAO,
 ];
 
 export const CATEGORIAS: Array<{ id: Categoria; nome: string; letra: string }> = [
@@ -46,7 +51,7 @@ export const PREVISTOS: Previsto[] = [
   p("cardiovascular", "Embolia gasosa venosa", ["embolia aérea", "EtCO2 caindo"]),
   p("respiratorio", "Dificuldade de ventilação com máscara", ["não ventila", "máscara difícil"]),
   p("respiratorio", "Intubação difícil não prevista", ["via aérea difícil", "não intubo"]),
-  p("respiratorio", "Não intubo, não oxigeno", ["CICO", "cricotireoidostomia", "via aérea cirúrgica"]),
+  p("respiratorio", "Não ventilo, não intubo", ["não intubo, não oxigeno", "CICO", "cricotireoidostomia", "via aérea cirúrgica"]),
   p("respiratorio", "Laringoespasmo"),
   p("respiratorio", "Broncoespasmo grave", ["chiado", "sibilo", "asma"]),
   p("respiratorio", "Broncoaspiração", ["aspiração", "vômito"]),

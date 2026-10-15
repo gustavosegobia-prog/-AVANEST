@@ -102,4 +102,8 @@ export const EMBOLIA_GASOSA: Protocolo = {
     },
   ],
   referencias: ["manual-08", "qrh-3-5", "manual-07"],
+  relacionados: [
+    { protocolo: "pcr-aesp-assistolia", texto: "PCR — AESP/assistolia" },
+    { protocolo: "pcr-fv-tv", texto: "PCR — FV/TV sem pulso" },
+  ],
 };

@@ -42,6 +42,8 @@ function Avisos({ lista }: { lista: Alerta[] }) {
   );
 }
 
+/** O teto de uma infusão por kg/min é por minuto: "Máximo: 200 mcg/min". */
+const porMinuto = (d: DoseDoProtocolo) => (d.dose.por === "kg/min" ? "/min" : d.dose.por === "kg/h" ? "/h" : "");
 const periodo = (c: Calculo) => (c.por === "kg/min" || c.por === "min" ? "/min" : c.por === "kg/h" || c.por === "h" ? "/h" : "");
 
 function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoConfirmar }: {
@@ -69,7 +71,7 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
         <div className={`${estilos.caixa} ${estilos.caixaRef}`}>
           <small>Dose de referência</small>
           <b>{conta.referencia}</b>
-          {d.tetoAbsoluto && <div className={estilos.miuda}>Máximo: {numero(d.tetoAbsoluto.valor)} {d.tetoAbsoluto.unidade}</div>}
+          {d.tetoAbsoluto && <div className={estilos.miuda}>Máximo: {numero(d.tetoAbsoluto.valor)} {d.tetoAbsoluto.unidade}{porMinuto(d)}</div>}
         </div>
         {bloqueio ? (
           <p className={estilos.bloqueio} style={{ gridColumn: "span 2" }}>{bloqueio}</p>
@@ -204,6 +206,9 @@ export function ProtocoloTela({
     .filter((v) => populacao === null || v.quando.includes(populacao))
     .map((v) => ({ ...v, alvo: acharProtocolo(v.protocolo) }))
     .filter((v) => v.alvo);
+  // Protocolo só de condutas (via aérea, broncoaspiração): sem a seção de doses.
+  const temDoses = p.medicamentos.length > 0 || p.volumes.length > 0;
+  const relacionados = (p.relacionados ?? []).filter((r) => acharProtocolo(r.protocolo));
 
   return (
     <div ref={topo} className={`${estilos.modulo} ${estilos.impressao}`}
@@ -284,7 +289,7 @@ export function ProtocoloTela({
 
       <nav className={`${estilos.atalhos} ${estilos.naoImprimir}`} aria-label="Partes do protocolo">
         <a href="#agir">Agir agora</a>{p.ritmos?.length ? <a href="#ritmos">Ritmos</a> : null}
-        <a href="#doses">Doses</a><a href="#reconhecer">Reconhecer</a>
+        {temDoses && <a href="#doses">Doses</a>}<a href="#reconhecer">Reconhecer</a>
         <a href="#pensar">Pensar em</a><a href="#depois">Depois</a><a href="#referencias">Referências</a>
       </nav>
 
@@ -303,9 +308,20 @@ export function ProtocoloTela({
         </ol>
       </section>
 
+      {aoAbrirProtocolo && relacionados.length > 0 && (
+        <nav className={`${estilos.relacionados} ${estilos.naoImprimir}`} aria-label="Protocolos que costumam vir em seguida">
+          <span>Ir para</span>
+          {relacionados.map((r) => (
+            <button key={r.protocolo} type="button" className={estilos.botao} onClick={() => aoAbrirProtocolo(r.protocolo)}>
+              {r.texto} →
+            </button>
+          ))}
+        </nav>
+      )}
+
       {p.ritmos && p.ritmos.length > 0 && <RitmosNoMonitor ritmos={p.ritmos} />}
 
-      <section id="doses" className={estilos.secao} aria-labelledby="t-doses">
+      {temDoses && <section id="doses" className={estilos.secao} aria-labelledby="t-doses">
         <h3 id="t-doses">Medicamentos e doses{populacao ? ` · ${ROTULO_POPULACAO[populacao]}` : ""}</h3>
         <div className={estilos.doses}>
           {populacao && doses.length === 0 && volumes.length === 0 && (
@@ -351,7 +367,7 @@ export function ProtocoloTela({
             </div>
           ))}
         </div>
-      </section>
+      </section>}
 
       <section id="reconhecer" className={`${estilos.secao} ${estilos.reconhecer}`} aria-labelledby="t-rec">
         <h3 id="t-rec">Reconhecer</h3>

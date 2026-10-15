@@ -16,6 +16,7 @@ const isquemia = acharProtocolo("isquemia-miocardica")!;
 const hemorragia = acharProtocolo("hemorragia-macica")!;
 const transfusional = acharProtocolo("reacao-hemolitica-transfusional")!;
 const embolia = acharProtocolo("embolia-gasosa-venosa")!;
+const bronco = acharProtocolo("broncoespasmo-grave")!;
 const dose = (p: typeof anafilaxia, id: string) => p.medicamentos.find((m) => m.id === id)!;
 const adulto: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
 const crianca: PacienteDaConsulta = { idadeAnos: 4, pesoKg: 16 };
@@ -25,7 +26,6 @@ test("todo protocolo tem as seis partes, e toda dose aponta para uma referência
     for (const parte of ["reconhecer", "agirAgora", "pensarEm", "depois", "referencias"] as const) {
       assert.ok(p[parte].length > 0, `${p.id}: ${parte} vazio`);
     }
-    assert.ok(p.medicamentos.length > 0, `${p.id}: sem medicamentos`);
     const ids = new Set<string>();
     for (const m of p.medicamentos) {
       assert.ok(!ids.has(m.id), `${p.id}: id repetido ${m.id}`);
@@ -41,6 +41,10 @@ test("todo protocolo tem as seis partes, e toda dose aponta para uma referência
     for (const v of p.volumes) {
       for (const r of v.referencias) assert.ok(acharReferencia(r), `${v.id}: ${r}`);
       assert.ok(v.referencias.length > 0 && (v.porKg || v.fixo), `${v.id}: sem conta ou sem fonte`);
+    }
+    for (const rel of p.relacionados ?? []) {
+      assert.ok(acharProtocolo(rel.protocolo), `${p.id}: relacionado ${rel.protocolo} não existe`);
+      assert.notEqual(rel.protocolo, p.id, `${p.id}: relacionado a si mesmo`);
     }
     for (const v of p.veja ?? []) {
       const alvo = acharProtocolo(v.protocolo);
@@ -312,6 +316,61 @@ test("embolia gasosa: cristaloide do QRH (fixo no adulto, por kg na criança) e 
   assert.equal(buscar("embolia gasosa")[0].tipo === "protocolo" && (buscar("embolia gasosa")[0] as { protocolo: { id: string } }).protocolo.id, "embolia-gasosa-venosa");
   assert.ok(!itensDaCategoria("cardiovascular").previstos.some((p) => p.titulo === "Embolia gasosa venosa"));
   assert.ok(passosDe(embolia, "adulto").some((x) => /óxido nitroso/.test(x.texto)));
+});
+
+test("via aérea difícil: a sequência máscara → intubação → não ventilo, não intubo, com sugamadex 16 mg/kg e a divergência da punção", () => {
+  const mascara = acharProtocolo("ventilacao-mascara-dificil")!;
+  const tubo = acharProtocolo("intubacao-dificil")!;
+  const cico = acharProtocolo("nao-ventilo-nao-intubo")!;
+  const sug = calcularDose(dose(tubo, "sugamadex-intubacao-dificil"), tubo, adulto);
+  assert.deepEqual(sug.contas.map((c) => [c.doseTotal, c.volume]), [[1120, 11.2]]);
+  assert.ok(sug.dose.cuidados?.some((c) => /não garante via aérea/.test(c)));
+  assert.equal(cico.medicamentos.length, 0);
+  assert.ok(mascara.relacionados?.some((r) => r.protocolo === "nao-ventilo-nao-intubo"));
+  assert.ok(tubo.relacionados?.some((r) => r.protocolo === "nao-ventilo-nao-intubo"));
+  assert.ok(cico.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "das-2015") && /bisturi/.test(d.escolha)));
+  assert.ok(cico.agirAgora.some((x) => /14 G/.test(x.texto) && /1 bar/.test(x.detalhe ?? "")));
+  const ids = (q: string) => buscar(q).flatMap((a) => (a.tipo === "protocolo" ? [a.protocolo.id] : []));
+  assert.equal(ids("CICO")[0], "nao-ventilo-nao-intubo");
+  assert.equal(ids("nao intubo nao oxigeno")[0], "nao-ventilo-nao-intubo");
+  const resp = itensDaCategoria("respiratorio");
+  for (const t of ["Dificuldade de ventilação com máscara", "Intubação difícil não prevista", "Não ventilo, não intubo", "Pressão elevada das vias aéreas", "Broncoespasmo grave", "Broncoaspiração"]) {
+    assert.ok(!resp.previstos.some((p) => p.titulo === t), t);
+  }
+  assert.equal(acharProtocolo("broncoaspiracao")!.medicamentos.length, 0);
+  assert.equal(acharProtocolo("pressao-vias-aereas")!.medicamentos.length, 0);
+});
+
+test("broncoespasmo: adrenalina por kg, salbutamol IV com teto por minuto na criança, nebulização pela idade", () => {
+  assert.deepEqual(calcularDose(dose(bronco, "adrenalina-bolus-bronco"), bronco, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[7, 0.7], [70, 7]]);
+  assert.deepEqual(calcularDose(dose(bronco, "adrenalina-infusao-bronco"), bronco, adulto).contas.map((c) => c.volume), [7]);
+  assert.deepEqual(calcularDose(dose(bronco, "adrenalina-infusao-bronco"), bronco, crianca).contas.map((c) => c.volume), [1.6]);
+  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-bolus-bronco-adulto"), bronco, adulto).contas.map((c) => c.volume), [5]);
+  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-infusao-bronco-adulto"), bronco, { idadeAnos: 40, pesoKg: null }).contas.map((c) => c.volume), [3, 15]);
+  // Criança de 16 kg: carga de 80 mcg/min = 48 mL/h na de 100 mcg/mL; com 50 kg, o teto de 200 mcg/min segura.
+  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-carga-bronco-ped"), bronco, crianca).contas.map((c) => [c.doseTotal, c.volume]), [[80, 48]]);
+  const grande = calcularDose(dose(bronco, "salbutamol-carga-bronco-ped"), bronco, { idadeAnos: 11, pesoKg: 50 });
+  assert.deepEqual(grande.contas.map((c) => [c.doseTotal, c.limitada]), [[200, true]]);
+  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-manutencao-bronco-ped"), bronco, { idadeAnos: 11, pesoKg: 50 }).contas.map((c) => c.doseTotal), [50, 80]);
+  assert.deepEqual(calcularDose(dose(bronco, "salbutamol-bolus-bronco-ped"), bronco, { idadeAnos: 6, pesoKg: 20 }).contas.map((c) => c.doseTotal), [250]);
+  // Nebulização: 2,5 mg abaixo de 5 anos, 5 mg a partir dos 5.
+  assert.equal(doseServe(dose(bronco, "salbutamol-nebulizacao-bronco-menor-5"), "pediatrico", 4), true);
+  assert.equal(doseServe(dose(bronco, "salbutamol-nebulizacao-bronco"), "pediatrico", 4), false);
+  assert.equal(doseServe(dose(bronco, "salbutamol-nebulizacao-bronco"), "pediatrico", 8), true);
+  assert.equal(doseServe(dose(bronco, "ipratropio-bronco-ped"), "pediatrico", 1), false);
+  assert.ok(!calcularDose(dose(bronco, "salbutamol-nebulizacao-bronco"), bronco, adulto).alertas.some((a) => a.nivel === "perigo"));
+  assert.ok(bronco.divergencias.some((d) => /criança/.test(d.tema) && d.posicoes.length === 2));
+});
+
+test("laringoespasmo conferido com o Manual (12): vias da succinilcolina e as faixas do Manual como divergência", () => {
+  const im = dose(laringo, "succinilcolina-im-laringoespasmo");
+  assert.match(im.via, /IO/);
+  assert.ok(!calcularDose(im, laringo, crianca).alertas.some((a) => a.nivel === "perigo"));
+  for (const tema of ["Dose IV de succinilcolina", "Succinilcolina sem acesso venoso", "Atropina na bradicardia"]) {
+    assert.ok(laringo.divergencias.find((d) => d.tema === tema)?.posicoes.some((x) => x.referencia === "manual-12"), tema);
+  }
+  assert.ok(passosDe(laringo, "pediatrico").some((x) => /intubar já, mesmo sem relaxante/.test(x.texto)));
+  assert.ok(!passosDe(laringo, "adulto").some((x) => /intubar já, mesmo sem relaxante/.test(x.texto)));
 });
 
 test("catálogo: os protocolos do Manual entram nas categorias e saem dos previstos; a busca acha pelo que se vê", () => {
