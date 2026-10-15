@@ -163,7 +163,6 @@ export function Intercorrencias({
                       onClick={() => setExpandida((v) => (v === c.id ? null : c.id))}>
                       <span className={estilos.indiceLetra} aria-hidden="true">{c.letra}</span>
                       <span className={estilos.indiceNome}>{c.nome}</span>
-                      <span className={estilos.indiceConta} aria-label={`${prontos.length} protocolos`}>{prontos.length}</span>
                       <Icone nome="seta" tamanho={16} className={estilos.indiceSeta} />
                     </button>
                     {aberta && (
