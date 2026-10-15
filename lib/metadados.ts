@@ -22,7 +22,7 @@ export const IMAGEM_DE_COMPARTILHAMENTO = {
   height: 630,
   // O alt não é enfeite: leitor de tela e cliente de e-mail que não baixa
   // imagem mostram este texto no lugar dela.
-  alt: "AVANEST — gestão em anestesiologia: avaliação pré-anestésica, escala do serviço e o controle do que você tem a receber.",
+  alt: "AVANEST, da recepção ao fechamento do mês: recepção, consulta pré-anestésica, ficha anestésica, manejo de crises, escala e financeiro.",
 };
 
 export function paginaPublica(a: {

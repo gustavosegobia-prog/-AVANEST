@@ -147,7 +147,7 @@ export const REACAO_HEMOLITICA: Protocolo = {
         { texto: "Duas linhas: 0,5 mg/kg EV e 1 a 3 mg/kg EV, sem dizer quando usar cada uma.", referencia: "manual-07" },
         { texto: "40 a 80 mg IV no adulto (1 a 2 mg/kg na criança), ajustando as doses seguintes pela diurese.", referencia: "msd-transfusao" },
       ],
-      escolha: "O protocolo mostra as duas doses do Manual (para 70 kg: 35 mg, ou 70 a 210 mg). O revisor define qual usar e quando.",
+      escolha: "O protocolo mostra as duas doses do Manual (para 70 kg: 35 mg, ou 70 a 210 mg). Confira com a rotina do seu serviço.",
     },
     {
       tema: "Vasopressor",
@@ -155,7 +155,7 @@ export const REACAO_HEMOLITICA: Protocolo = {
         { texto: "Adrenalina, noradrenalina e dobutamina em infusão.", referencia: "manual-07" },
         { texto: "Evitar os vasopressores que reduzem o fluxo renal (adrenalina, noradrenalina, dopamina em dose alta); se precisar, dopamina 2 a 5 mcg/kg/min.", referencia: "msd-transfusao" },
       ],
-      escolha: "O protocolo segue o Manual: sob anestesia, com choque, a pressão de perfusão vem primeiro. Diferença importante: o revisor decide.",
+      escolha: "O protocolo segue o Manual: sob anestesia, com choque, a pressão de perfusão vem primeiro. Diferença importante. Confira com a rotina do seu serviço.",
     },
     {
       tema: "Meta de diurese",
@@ -170,7 +170,7 @@ export const REACAO_HEMOLITICA: Protocolo = {
       posicoes: [
         { texto: "“0,05-05 mcg/kg/min” na tabela.", referencia: "manual-07" },
       ],
-      escolha: "Lido como 0,05 a 0,5 mcg/kg/min: falta a vírgula do segundo número. O revisor confirma.",
+      escolha: "Lido como 0,05 a 0,5 mcg/kg/min: falta a vírgula do segundo número.",
     },
   ],
   referencias: ["manual-07", "msd-transfusao", "manual-05"],

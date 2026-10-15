@@ -12,9 +12,8 @@ export const metadata: Metadata = {
 // própria, a partir do menu da área médica.
 //
 // Quem entra: quem tem acesso clínico (médico, administrador, proprietário) e
-// o super-admin. O que cada um VÊ é decidido lá dentro: o médico só enxerga o
-// que um revisor aprovou; a prévia em revisão é da equipe científica e do
-// super-admin. Nada aqui lê ou grava dado de paciente.
+// o super-admin. Todos veem os mesmos protocolos. Nada aqui lê ou grava dado
+// de paciente.
 export default async function CrisesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

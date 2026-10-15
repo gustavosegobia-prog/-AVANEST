@@ -5,7 +5,7 @@
  * Association of Anaesthetists (aberto e lido), que dá o volume de
  * cristaloide. O protocolo 08 manda usar adrenalina, mas não dá dose: a
  * solução e o início vêm da tabela do próprio Manual (protocolo 07), e isso
- * está dito no cartão para o revisor confirmar. O texto é do AVANEST.
+ * está dito no cartão. O texto é do AVANEST.
  */
 
 import type { Protocolo } from "../tipos.ts";
@@ -91,14 +91,14 @@ export const EMBOLIA_GASOSA: Protocolo = {
         { texto: "Adrenalina 3 mg em 50 mL, começando em 5 mL/h no adulto de 70 kg; 0,05 a 0,5 mcg/kg/min na criança (tabela da reação transfusional).", referencia: "manual-07" },
         { texto: "Inotrópico “pode ser necessário”, sem fármaco nem dose.", referencia: "qrh-3-5" },
       ],
-      escolha: "O protocolo usa a tabela de adrenalina do próprio Manual (protocolo 07). O revisor confirma ou indica outra dose.",
+      escolha: "O protocolo usa a tabela de adrenalina do próprio Manual (protocolo 07).",
     },
     {
       tema: "“PA elevada” entre os sinais",
       posicoes: [
         { texto: "Lista “PVC elevada” e “PA elevada” entre os sinais durante a anestesia.", referencia: "manual-08" },
       ],
-      escolha: "Lido como pressão da artéria pulmonar elevada: a pressão arterial sistêmica costuma cair (hipotensão também está na lista). O revisor confirma.",
+      escolha: "Lido como pressão da artéria pulmonar elevada: a pressão arterial sistêmica costuma cair (hipotensão também está na lista).",
     },
   ],
   referencias: ["manual-08", "qrh-3-5", "manual-07"],

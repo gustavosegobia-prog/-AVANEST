@@ -169,7 +169,7 @@ export const LARINGOESPASMO: Protocolo = {
         { texto: "Adulto: 1 mg, a cada 3 a 5 minutos, até 3 mg.", referencia: "aha-2020-adulto" },
         { texto: "10 a 20 mcg/kg EV, sem separar adulto e criança (0,7 a 1,4 mg para 70 kg).", referencia: "manual-12" },
       ],
-      escolha: "O protocolo segue a AHA, que separa adulto e criança; o limite de cima do Manual coincide com a dose da criança. O revisor confirma.",
+      escolha: "O protocolo segue a AHA, que separa adulto e criança; o limite de cima do Manual coincide com a dose da criança.",
     },
   ],
   relacionados: [

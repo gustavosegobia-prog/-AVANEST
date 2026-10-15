@@ -1,16 +1,13 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import estilos from "./intercorrencias.module.css";
 import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS } from "@/lib/intercorrencias/catalogo";
-import { resolverEstado, ROTULO_SITUACAO, type Estado } from "@/lib/intercorrencias/situacao";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, type DadosDoPaciente } from "./paciente";
 import { ProtocoloTela } from "./protocolo";
-import { EquipeCientifica } from "./revisao";
-import { useRevisoes } from "./use-revisoes";
 
 /**
  * INTERCORRÊNCIAS ANESTÉSICAS — a consulta da crise.
@@ -23,10 +20,9 @@ import { useRevisoes } from "./use-revisoes";
  * a tela inteira. A busca acha pelo nome, pelo
  * sinônimo ou pelo que se vê no monitor ("estridor", "PA caindo").
  *
- * Quem vê o quê: o médico vê só o que um revisor aprovou (o instantâneo
- * aprovado, mesmo que o código já tenha uma versão nova); a equipe científica
- * vê tudo, com a situação de cada um e a prévia marcada como prévia. Consultar
- * não registra nada no prontuário.
+ * Todo protocolo pronto abre para quem usa: o conteúdo é o do código, com a
+ * versão, a data e as referências de cada um. Consultar não registra nada no
+ * prontuário.
  */
 
 const FAVORITOS = "avanest:intercorrencias:favoritos";
@@ -43,7 +39,7 @@ function lerFavoritos(): string[] {
 }
 
 export function Intercorrencias({
-  dados, set, aoAbrirCalculadora, daFicha = false, superAdmin = false, titulo = "Intercorrências anestésicas",
+  dados, set, aoAbrirCalculadora, daFicha = false, titulo = "Intercorrências anestésicas",
 }: {
   /** "Manejo de crises em anestesia" no menu da área médica. */
   titulo?: string;
@@ -52,14 +48,7 @@ export function Intercorrencias({
   aoAbrirCalculadora?: () => void;
   /** Aberto de dentro da ficha: os dados vieram do atendimento. */
   daFicha?: boolean;
-  /**
-   * Conferido no servidor (perfis.super_admin). Vale como administrador do
-   * módulo mesmo antes de o banco dele existir: é quem vê a prévia para
-   * aprovar o desenho.
-   */
-  superAdmin?: boolean;
 }) {
-  const revisoes = useRevisoes();
   const id = useId();
   const busca = useRef<HTMLInputElement>(null);
   const grade = useRef<HTMLDivElement>(null);
@@ -69,14 +58,7 @@ export function Intercorrencias({
   const [termo, setTermo] = useState("");
   const [favoritos, setFavoritos] = useState<string[]>(lerFavoritos);
 
-  const equipe = superAdmin || Boolean(revisoes.papel && (revisoes.papel.papel || revisoes.papel.admin));
-  const estados = useMemo(
-    () => Object.fromEntries(PROTOCOLOS.map((p) => [p.id, resolverEstado(p, revisoes.registros)])) as Record<string, Estado>,
-    [revisoes.registros],
-  );
-  const disponivel = (p: Protocolo) => equipe || Boolean(estados[p.id].emUso);
   const abrir = (p: Protocolo) => {
-    if (!disponivel(p)) return;
     // Aberto pela busca ou por "Abrir também": a coluna passa a mostrar a categoria dele.
     if (!expandida || !itensDaCategoria(expandida).prontos.includes(p)) setExpandida(p.categoria);
     setTermo("");
@@ -99,18 +81,8 @@ export function Intercorrencias({
     busca.current?.focus();
   };
 
-  const encontrado = aberto ? PROTOCOLOS.find((p) => p.id === aberto) : undefined;
-  const protocolo = encontrado && disponivel(encontrado) ? encontrado : undefined;
+  const protocolo = aberto ? PROTOCOLOS.find((p) => p.id === aberto) : undefined;
   const buscando = !protocolo && Boolean(termo.trim());
-
-  /** A etiqueta do item: a situação para a equipe; para o médico, só "em revisão" quando ainda não pode abrir. */
-  const selo = (p: Protocolo) => {
-    const e = estados[p.id];
-    const s = equipe ? e.daVersaoAtual : e.emUso ? (e.precisaAtualizar ? "necessita_atualizacao" : "aprovado") : null;
-    return s
-      ? <span className={`${estilos.selo} ${estilos[`selo_${s}`]}`}>{ROTULO_SITUACAO[s]}</span>
-      : <span className={`${estilos.selo} ${estilos.selo_preparo}`}>Em revisão</span>;
-  };
 
   const achados = buscar(termo);
   const favoritados = favoritos.map((x) => PROTOCOLOS.find((p) => p.id === x)).filter((p): p is Protocolo => Boolean(p));
@@ -143,7 +115,7 @@ export function Intercorrencias({
                 <ul className={estilos.indiceLista}>
                   {favoritados.map((p) => (
                     <li key={p.id}>
-                      <button type="button" className={`${estilos.indiceItem} ${estilos.indiceFavorito}`} disabled={!disponivel(p)}
+                      <button type="button" className={`${estilos.indiceItem} ${estilos.indiceFavorito}`}
                         aria-current={p.id === protocolo?.id ? "page" : undefined} onClick={() => abrir(p)}>
                         <Icone nome="estrela" tamanho={15} /><span className={estilos.indiceNome}>{p.titulo}</span>
                       </button>
@@ -168,10 +140,9 @@ export function Intercorrencias({
                       <ul id={`${id}-${c.id}`} className={estilos.indiceSubs}>
                         {prontos.map((p) => (
                           <li key={p.id}>
-                            <button type="button" className={estilos.indiceSub} disabled={!disponivel(p)}
+                            <button type="button" className={estilos.indiceSub}
                               aria-current={p.id === protocolo?.id ? "page" : undefined} onClick={() => abrir(p)}>
                               {p.titulo}
-                              {!disponivel(p) && <small>em revisão</small>}
                             </button>
                           </li>
                         ))}
@@ -194,10 +165,10 @@ export function Intercorrencias({
         <div className={estilos.principal}>
           {protocolo ? (
             <ProtocoloTela key={protocolo.id}
-              doCodigo={protocolo} estado={estados[protocolo.id]} equipe={equipe} superAdmin={superAdmin} dados={dados} set={set} daFicha={daFicha}
+              p={protocolo} dados={dados} set={set} daFicha={daFicha}
               favorito={favoritos.includes(protocolo.id)} aoFavoritar={() => alternarFavorito(protocolo.id)}
               aoVoltar={fechar} aoBuscar={buscarOutra}
-              aoAbrirCalculadora={aoAbrirCalculadora} revisoes={revisoes}
+              aoAbrirCalculadora={aoAbrirCalculadora}
               aoAbrirProtocolo={(x) => { const alvo = PROTOCOLOS.find((p) => p.id === x); if (alvo) abrir(alvo); }}
             />
           ) : buscando ? (
@@ -213,11 +184,11 @@ export function Intercorrencias({
                     const nome = (c: Categoria) => CATEGORIAS.find((x) => x.id === c)!.nome;
                     return a.tipo === "protocolo" ? (
                       <li key={a.protocolo.id}>
-                        <button type="button" className={estilos.linha} disabled={!disponivel(a.protocolo)} onClick={() => abrir(a.protocolo)}>
+                        <button type="button" className={estilos.linha} onClick={() => abrir(a.protocolo)}>
                           <span className={estilos.linhaTexto}>
                             <b>{a.protocolo.titulo}</b><small>{nome(a.protocolo.categoria)} · achado por {a.porque}</small>
                           </span>
-                          {selo(a.protocolo)}
+                          <Icone nome="seta" tamanho={18} className={estilos.linhaSeta} />
                         </button>
                       </li>
                     ) : (
@@ -233,17 +204,12 @@ export function Intercorrencias({
               )}
             </section>
           ) : null}
-
-          {!protocolo && revisoes.papel?.admin && !revisoes.semBanco && <EquipeCientifica />}
         </div>
       </div>
 
       <div className={`${estilos.rodapes} ${estilos.naoImprimir}`}>
-        {revisoes.fonte === "copia" && !equipe && (
-          <p className={estilos.rodape}>Sem conexão: usando as versões aprovadas salvas neste aparelho.</p>
-        )}
         <p className={estilos.rodape}>
-          Os protocolos seguem diretrizes publicadas, citadas em cada um, e só valem como conteúdo clínico depois da aprovação de um revisor médico.
+          Os protocolos seguem diretrizes publicadas, citadas no fim de cada um. Confira apresentação, via e dose antes de administrar.
         </p>
       </div>
     </div>

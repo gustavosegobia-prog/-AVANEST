@@ -8,7 +8,7 @@
  *
  * As doses vêm dos cartões ANZAAG-ANZCA de 2022 (abertos e lidos nos PDFs
  * oficiais) e do QRH da Association of Anaesthetists; onde as duas fontes
- * diferem, as duas ficam em `divergencias` e o revisor decide. O texto das
+ * diferem, as duas ficam em `divergencias`, à vista do médico. O texto das
  * condutas é do AVANEST: os cartões são protegidos por direito autoral, e
  * o que se aproveita deles são os números e a ordem clínica, com a fonte.
  */
@@ -361,7 +361,7 @@ export const ANAFILAXIA: Protocolo = {
         { texto: "50 mcg como dose inicial, repetida conforme a resposta.", referencia: "qrh-3-1" },
         { texto: "Grau 2: 20 mcg; grau 3: 100 a 200 mcg, a cada 1 a 2 minutos.", referencia: "manual-06" },
       ],
-      escolha: "O protocolo segue o cartão ANZAAG de 2022, graduado pela gravidade. O Manual dá dose maior no grau 3 (100 a 200 mcg contra 50 a 100 mcg): diferença importante, o revisor decide.",
+      escolha: "O protocolo segue o cartão ANZAAG de 2022, graduado pela gravidade. O Manual dá dose maior no grau 3 (100 a 200 mcg contra 50 a 100 mcg): diferença importante. Confira com a rotina do seu serviço.",
     },
     {
       tema: "Bolus IV de adrenalina na criança",
@@ -369,7 +369,7 @@ export const ANAFILAXIA: Protocolo = {
         { texto: "2 mcg/kg na moderada; 4 a 10 mcg/kg com risco de vida (solução de 20 mcg/mL).", referencia: "anzaag-cartao-2" },
         { texto: "1 mcg/kg, titulando pela resposta (solução de 10 mcg/mL).", referencia: "qrh-3-1" },
       ],
-      escolha: "O protocolo segue o cartão ANZAAG; as duas soluções aparecem para o cálculo. Diferença importante: o revisor confirma.",
+      escolha: "O protocolo segue o cartão ANZAAG; as duas soluções aparecem para o cálculo.",
     },
     {
       tema: "Anti-histamínico",
@@ -396,7 +396,7 @@ export const ANAFILAXIA: Protocolo = {
         { texto: "Adulto: 1 mg logo, e depois a cada 2º ciclo de RCP.", referencia: "manual-02" },
         { texto: "Criança: 10 mcg/kg logo, e a cada 3 a 5 minutos.", referencia: "manual-03" },
       ],
-      escolha: "A dose é a mesma nas fontes; o intervalo segue o algoritmo de PCR. O revisor decide se, na anafilaxia, vale o intervalo mais curto do cartão.",
+      escolha: "A dose é a mesma nas fontes; o intervalo segue o algoritmo de PCR. Na anafilaxia, o cartão admite o intervalo mais curto.",
     },
     {
       tema: "Hidrocortisona na criança",

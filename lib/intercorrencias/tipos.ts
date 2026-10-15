@@ -2,10 +2,7 @@
  * INTERCORRÊNCIAS ANESTÉSICAS — a forma de um protocolo.
  *
  * Um protocolo é DADO, não código: só texto, números e ids, sem função
- * nenhuma. É o que permite guardar no banco o instantâneo exato que o revisor
- * aprovou (lib/intercorrencias/situacao.ts) e mostrar esse instantâneo mesmo
- * depois que a versão do código mudou — a aprovação vale para o conteúdo que
- * foi lido, não para o que veio depois.
+ * nenhuma. A tela só lê; cada mudança de conteúdo sobe a versão e a data.
  *
  * As doses usam o mesmo motor da calculadora (lib/calculos/doses.ts): a mesma
  * DosePorKg, a mesma Apresentacao, o mesmo teto. Nenhuma fórmula nova.
@@ -18,9 +15,6 @@ export type Categoria = "cardiovascular" | "respiratorio" | "medicamentos" | "ob
 
 /** De quem é o protocolo (ou o passo, ou a dose). */
 export type Populacao = "adulto" | "gestante" | "pediatrico" | "neonatal";
-
-/** Os cinco estados de um protocolo; só "aprovado" é conteúdo clínico validado. */
-export type Situacao = "rascunho" | "pendente" | "aprovado" | "necessita_atualizacao" | "suspenso";
 
 /**
  * Uma referência verificável. `localizacao` é o trecho (cartão, seção,

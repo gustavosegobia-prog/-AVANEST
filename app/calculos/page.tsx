@@ -25,5 +25,5 @@ export default async function CalculosPage() {
     .from("perfis").select("super_admin, status").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || perfil.super_admin !== true) redirect("/dashboard");
 
-  return <CalculosClient superAdmin />;
+  return <CalculosClient />;
 }

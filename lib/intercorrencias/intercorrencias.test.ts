@@ -5,7 +5,6 @@ import {
   calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, volumeServe, type PacienteDaConsulta,
 } from "./calculo.ts";
 import { acharReferencia, REFERENCIAS } from "./referencias.ts";
-import { assinatura, resolverEstado, type RegistroDeRevisao } from "./situacao.ts";
 
 const anafilaxia = acharProtocolo("anafilaxia")!;
 const laringo = acharProtocolo("laringoespasmo")!;
@@ -482,73 +481,18 @@ test("catálogo: os protocolos do Manual entram nas categorias e saem dos previs
   assert.ok(ids("sangramento").includes("hemorragia-macica"));
 });
 
-const registro = (r: Partial<RegistroDeRevisao> & Pick<RegistroDeRevisao, "situacao" | "assinatura" | "criadoEm">): RegistroDeRevisao => ({
-  id: r.criadoEm, protocolo: "anafilaxia", versao: 1, conteudo: anafilaxia, observacao: null,
-  autorNome: "Revisor Fictício", autorCrm: "CRM-SP 000000", autorPapel: "revisor", ...r,
-});
-
-test("situação: sem registro é pendente; aprovado põe em uso; versão nova não derruba a aprovada", () => {
-  const atual = assinatura(anafilaxia);
-  assert.equal(assinatura(anafilaxia), atual, "a assinatura é estável");
-  assert.notEqual(assinatura({ ...anafilaxia, versao: 2 }), atual);
-
-  const nada = resolverEstado(anafilaxia, []);
-  assert.equal(nada.daVersaoAtual, "pendente");
-  assert.equal(nada.emUso, null);
-
-  const aprovado = resolverEstado(anafilaxia, [registro({ situacao: "aprovado", assinatura: atual, criadoEm: "2026-10-20T10:00:00Z" })]);
-  assert.equal(aprovado.daVersaoAtual, "aprovado");
-  assert.equal(aprovado.emUso, anafilaxia);
-
-  // O código mudou (versão 2): a 1 continua em uso, e a 2 espera revisão.
-  const v2 = { ...anafilaxia, versao: 2, resumo: "outro texto" };
-  const antigo = resolverEstado(v2, [registro({ situacao: "aprovado", assinatura: atual, criadoEm: "2026-10-20T10:00:00Z" })]);
-  assert.equal(antigo.daVersaoAtual, "pendente");
-  assert.equal(antigo.versaoNovaEsperando, true);
-  assert.equal((antigo.emUso as typeof anafilaxia).versao, 1);
-
-  // Necessita atualização: continua em uso, com aviso.
-  const atualizar = resolverEstado(anafilaxia, [
-    registro({ situacao: "aprovado", assinatura: atual, criadoEm: "2026-10-20T10:00:00Z" }),
-    registro({ situacao: "necessita_atualizacao", assinatura: atual, criadoEm: "2026-11-01T10:00:00Z" }),
-  ]);
-  assert.equal(atualizar.daVersaoAtual, "necessita_atualizacao");
-  assert.ok(atualizar.emUso && atualizar.precisaAtualizar);
-
-  // Suspenso: sai de uso; uma nova aprovação (reversão) volta.
-  const suspenso = resolverEstado(anafilaxia, [
-    registro({ situacao: "aprovado", assinatura: atual, criadoEm: "2026-10-20T10:00:00Z" }),
-    registro({ situacao: "suspenso", assinatura: atual, criadoEm: "2026-11-02T10:00:00Z" }),
-  ]);
-  assert.equal(suspenso.daVersaoAtual, "suspenso");
-  assert.equal(suspenso.emUso, null);
-  const revertido = resolverEstado(anafilaxia, [
-    ...suspenso.historico,
-    registro({ situacao: "aprovado", assinatura: atual, criadoEm: "2026-11-03T10:00:00Z" }),
-  ]);
-  assert.equal(revertido.daVersaoAtual, "aprovado");
-
-  // Instantâneo inválido no banco não vira conteúdo em uso.
-  const lixo = resolverEstado(anafilaxia, [registro({ situacao: "aprovado", assinatura: atual, criadoEm: "2026-10-20T10:00:00Z", conteudo: { id: "anafilaxia" } })]);
-  assert.equal(lixo.emUso, null);
-  // Registro de outro protocolo não conta.
-  assert.equal(resolverEstado(laringo, aprovado.historico).daVersaoAtual, "pendente");
-});
-
-test("o banco e a tela concordam sobre quem registra o quê, e o histórico não muda", async () => {
-  const { readFileSync } = await import("node:fs");
-  const { PODE_REGISTRAR } = await import("./situacao.ts");
-  const sql = readFileSync(new URL("../../supabase/migrations/202610150001_intercorrencias_anestesicas.sql", import.meta.url), "utf8");
-  // Editor: só rascunho e pendente; admin: mais suspender; aprovar exige revisor com CRM.
-  assert.match(sql, /v_papel = 'editor' and p_situacao not in \('rascunho', 'pendente'\)/);
-  assert.match(sql, /v_papel = 'admin' and p_situacao not in \('rascunho', 'pendente', 'suspenso'\)/);
-  assert.deepEqual(PODE_REGISTRAR.editor, ["rascunho", "pendente"]);
-  assert.deepEqual(PODE_REGISTRAR.admin, ["rascunho", "pendente", "suspenso"]);
-  assert.match(sql, /autor_papel = 'revisor' and autor_crm is not null/);
-  assert.match(sql, /REVISOR_SEM_CRM/);
-  // Só cresce: gatilho contra update e delete; e as funções fora do alcance de anon.
-  assert.match(sql, /before update or delete on public\.intercorrencias_revisoes/);
-  for (const f of ["intercorrencias_meu_papel()", "intercorrencias_registrar(text, integer, text, text, jsonb, text)", "intercorrencias_definir_papel(text, text)", "intercorrencias_equipe_lista()"]) {
-    assert.ok(sql.includes(`revoke all on function public.${f} from public, anon;`), f);
+test("sem revisão científica: todo protocolo pronto abre para quem usa, e nada fala em revisor", async () => {
+  const { existsSync, readFileSync } = await import("node:fs");
+  const ler = (c: string) => readFileSync(new URL(`../../${c}`, import.meta.url), "utf8");
+  const tela = ler("components/intercorrencias/intercorrencias.tsx");
+  // Nenhum item do índice, da busca ou dos favoritos fica travado.
+  assert.doesNotMatch(tela, /disabled=\{!disponivel/);
+  assert.doesNotMatch(tela, /em revisão/i);
+  assert.doesNotMatch(ler("components/intercorrencias/protocolo.tsx"), /Prévia para revisão|Aprovado por/);
+  // A migração do histórico de revisão nunca foi aplicada e saiu do repositório.
+  assert.ok(!existsSync(new URL("../../supabase/migrations/202610150001_intercorrencias_anestesicas.sql", import.meta.url)));
+  // As notas de divergência, que o médico lê, dizem o que o protocolo faz, sem "o revisor decide".
+  for (const p of PROTOCOLOS) {
+    for (const d of p.divergencias) assert.doesNotMatch(d.escolha, /revisor/i, `${p.id}: ${d.tema}`);
   }
 });

@@ -165,7 +165,7 @@ export const TOXICIDADE_AL: Protocolo = {
         { texto: "Diazepam 0,1–0,2 mg/kg (“2–5 mg” para 70 kg) e tiopental 1 mg/kg (“50 mg” para 70 kg): o valor por kg e o valor para 70 kg não fecham.", referencia: "manual-20" },
         { texto: "Benzodiazepínico, tiopental ou propofol em doses pequenas e incrementais, sem número.", referencia: "qrh-3-10" },
       ],
-      escolha: "O protocolo calcula pelo kg da tabela e manda titular em doses pequenas. O revisor confirma.",
+      escolha: "O protocolo calcula pelo kg da tabela e manda titular em doses pequenas.",
     },
     {
       tema: "Teto da emulsão lipídica",
@@ -180,7 +180,7 @@ export const TOXICIDADE_AL: Protocolo = {
       posicoes: [
         { texto: "Ropivacaína aparece duas vezes: 3/3 mg/kg e 6/9 mg/kg (sem e com adrenalina).", referencia: "manual-20" },
       ],
-      escolha: "A segunda linha ficou de fora até o revisor dizer qual anestésico é (provavelmente prilocaína).",
+      escolha: "A segunda linha ficou de fora: o Manual não diz qual anestésico é (provavelmente prilocaína).",
     },
   ],
   referencias: ["manual-20", "qrh-3-10", "qrh-2-7"],
@@ -330,7 +330,7 @@ export const HIPERCALEMIA: Protocolo = {
         { texto: "10 unidades, com 25 a 50 mL de glicose a 50%.", referencia: "manual-21" },
         { texto: "5 a 10 unidades, com 50 mL de glicose a 50% e depois glicose a 10% a 50 mL/h.", referencia: "msd-hipercalemia" },
       ],
-      escolha: "O protocolo calcula 10 UI (Manual); o revisor decide se acrescenta a glicose contínua do MSD.",
+      escolha: "O protocolo calcula 10 UI (Manual). O MSD acrescenta glicose a 10% contínua depois do bolus.",
     },
     {
       tema: "Gluconato de cálcio no adulto",
@@ -438,7 +438,7 @@ export const HIPERTERMIA_MALIGNA: Protocolo = {
         { texto: "2,5 mg/kg, repetindo a cada 10 a 15 minutos até a crise passar.", referencia: "manual-22" },
         { texto: "2,5 mg/kg; depois 1 mg/kg a cada 10 a 15 minutos, até 10 mg/kg.", referencia: "qrh-3-8" },
       ],
-      escolha: "O protocolo mostra a dose inicial de 2,5 mg/kg; o revisor decide o tamanho da repetição.",
+      escolha: "O protocolo mostra a dose inicial de 2,5 mg/kg.",
     },
     {
       tema: "Troca do circuito",
@@ -453,7 +453,7 @@ export const HIPERTERMIA_MALIGNA: Protocolo = {
       posicoes: [
         { texto: "“> 2 mL/min” na frente do cartão e “> 2 mL/kg/h” no verso.", referencia: "manual-22" },
       ],
-      escolha: "O protocolo usa 2 mL/kg/h; o revisor confirma.",
+      escolha: "O protocolo usa 2 mL/kg/h.",
     },
   ],
   referencias: ["manual-22", "qrh-3-8"],

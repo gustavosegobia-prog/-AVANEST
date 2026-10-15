@@ -13,9 +13,8 @@ import type { DadosDoPaciente } from "./paciente";
  * Consultar não escreve nada na ficha. A intercorrência entra no prontuário
  * pelo evento "Intercorrência", lançado pelo médico.
  */
-export function IntercorrenciasNaFicha({ paciente, superAdmin, onFechar }: {
+export function IntercorrenciasNaFicha({ paciente, onFechar }: {
   paciente: { idadeMeses: number | null; pesoKg: number | null; alturaCm?: number | null; sexo?: string | null };
-  superAdmin: boolean;
   onFechar: () => void;
 }) {
   const [dados, setDados] = useState<DadosDoPaciente>(() => {
@@ -32,7 +31,7 @@ export function IntercorrenciasNaFicha({ paciente, superAdmin, onFechar }: {
   });
   return (
     <Janela titulo="Intercorrências anestésicas" subtitulo="Consulta: nada aqui é lançado na ficha." largura="larga" onFechar={onFechar}>
-      <Intercorrencias dados={dados} set={(c, v) => setDados((d) => ({ ...d, [c]: v }))} daFicha superAdmin={superAdmin} />
+      <Intercorrencias dados={dados} set={(c, v) => setDados((d) => ({ ...d, [c]: v }))} daFicha />
     </Janela>
   );
 }

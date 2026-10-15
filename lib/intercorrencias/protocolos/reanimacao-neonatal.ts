@@ -98,7 +98,7 @@ export const REANIMACAO_NEONATAL: Protocolo = {
         { texto: "Depois que a FC sobe, 30 a 40 por minuto.", referencia: "manual-19" },
         { texto: "40 a 60 movimentos por minuto.", referencia: "sbp-2022-rn" },
       ],
-      escolha: "O protocolo não fixa número no passo; o revisor escolhe.",
+      escolha: "O protocolo não fixa número no passo.",
     },
     {
       tema: "Dose de adrenalina",

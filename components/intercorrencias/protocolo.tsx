@@ -9,13 +9,10 @@ import {
 import { acharProtocolo, CATEGORIAS } from "@/lib/intercorrencias/catalogo";
 import { acharReferencia, BIBLIOGRAFIA_GERAL } from "@/lib/intercorrencias/referencias";
 import { ROTULO_NIVEL, type Calculo } from "@/lib/calculos/doses";
-import { ROTULO_SITUACAO, type Estado } from "@/lib/intercorrencias/situacao";
-import type { DoseDoProtocolo, Protocolo, Referencia, Situacao, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
+import type { DoseDoProtocolo, Protocolo, Referencia, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, pacienteDe, resumoDoPaciente, type DadosDoPaciente } from "./paciente";
-import { PainelDeRevisao } from "./revisao";
 import { RitmosNoMonitor } from "./ritmos";
-import type { Revisoes } from "./use-revisoes";
 
 const DATA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo" });
 export const dataBr = (iso: string) => DATA.format(new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso));
@@ -32,8 +29,8 @@ function curta(id: string): string {
 
 /**
  * Uma linha por referência: o primeiro autor, o título e o ano. Onde no texto,
- * observações e a edição completa ficam no cadastro (referencias.ts), para a
- * revisão — na consulta só ocupavam a tela.
+ * observações e a edição completa ficam no cadastro (referencias.ts) — na
+ * consulta só ocupavam a tela.
  */
 function referenciaCurta(r: Referencia): string {
   const autores = r.autoria.split(";")[0].replace(/\s*\([^)]*\)/g, "").trim();
@@ -60,8 +57,8 @@ function Avisos({ lista }: { lista: Alerta[] }) {
 const porMinuto = (d: DoseDoProtocolo) => (d.dose.por === "kg/min" ? "/min" : d.dose.por === "kg/h" ? "/h" : "");
 const periodo = (c: Calculo) => (c.por === "kg/min" || c.por === "min" ? "/min" : c.por === "kg/h" || c.por === "h" ? "/h" : "");
 
-function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoConfirmar }: {
-  d: DoseDoProtocolo; protocolo: Protocolo; paciente: PacienteDaConsulta; semFaixa: boolean; previa: boolean;
+function CartaoDose({ d, protocolo, paciente, semFaixa, confirmadas, aoConfirmar }: {
+  d: DoseDoProtocolo; protocolo: Protocolo; paciente: PacienteDaConsulta; semFaixa: boolean;
   /** Soluções já conferidas ("rótulo|via"): conferir uma vez vale para todos os cartões que a usam. */
   confirmadas: string[]; aoConfirmar: (chave: string) => void;
 }) {
@@ -92,7 +89,7 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
         ) : (
           <>
             <div className={`${estilos.caixa} ${estilos.caixaDose}`}>
-              <small>Dose calculada{previa ? " · prévia" : ""}</small>
+              <small>Dose calculada</small>
               {conta.contas.map((c) => (
                 <div key={c.nivel} className={estilos.nivel}>
                   {varios && <em>{ROTULO_NIVEL[c.nivel]}</em>}
@@ -173,14 +170,9 @@ function tituloDosVolumes(lista: VolumeDoProtocolo[]): string {
 }
 
 export function ProtocoloTela({
-  doCodigo, estado, equipe, superAdmin, dados, set, daFicha, favorito, aoFavoritar, aoVoltar, aoBuscar, aoAbrirCalculadora, aoAbrirProtocolo,
-  revisoes,
+  p, dados, set, daFicha, favorito, aoFavoritar, aoVoltar, aoBuscar, aoAbrirCalculadora, aoAbrirProtocolo,
 }: {
-  superAdmin: boolean;
-  /** A versão do código (o que o revisor revisa). */
-  doCodigo: Protocolo;
-  estado: Estado;
-  equipe: boolean;
+  p: Protocolo;
   dados: DadosDoPaciente;
   set: (c: string, v: string) => void;
   daFicha: boolean;
@@ -191,19 +183,11 @@ export function ProtocoloTela({
   aoAbrirCalculadora?: () => void;
   /** "Criança: use o SAV pediátrico" abre o outro protocolo. */
   aoAbrirProtocolo?: (id: string) => void;
-  revisoes: Revisoes;
 }) {
-  const [verEmUso, setVerEmUso] = useState(false);
   const [confirmadas, setConfirmadas] = useState<string[]>([]);
   // Abre no começo do protocolo, e não onde a lista estava rolada.
   const topo = useRef<HTMLDivElement>(null);
   useEffect(() => { topo.current?.scrollIntoView({ block: "start" }); }, []);
-  // O médico vê só o aprovado; a equipe vê a versão do código, e pode
-  // comparar com a que está em uso.
-  const p = !equipe ? estado.emUso! : verEmUso && estado.emUso ? estado.emUso : doCodigo;
-  const mostrandoAprovado = Boolean(estado.emUso) && (!equipe || verEmUso || estado.emUso === doCodigo);
-  const situacao: Situacao = mostrandoAprovado ? (estado.precisaAtualizar ? "necessita_atualizacao" : "aprovado") : estado.daVersaoAtual;
-  const previa = !mostrandoAprovado;
 
   const paciente = pacienteDe(dados);
   const populacao = populacaoDe(paciente);
@@ -232,7 +216,7 @@ export function ProtocoloTela({
   return (
     <div ref={topo} className={`${estilos.modulo} ${estilos.impressao}`} style={{ scrollMarginTop: 80 }}>
       <p className={estilos.soImpressao}>
-        AVANEST · Intercorrências anestésicas · impresso em {dataBr(new Date().toISOString())} · versão {p.versao} · {ROTULO_SITUACAO[situacao]}
+        AVANEST · Intercorrências anestésicas · impresso em {dataBr(new Date().toISOString())} · versão {p.versao}
         <br />Paciente: {resumoDoPaciente(paciente)}{paciente.gestante ? " · gestante" : ""}
       </p>
 
@@ -269,36 +253,9 @@ export function ProtocoloTela({
           ))}
         </div>
         <div className={estilos.linhaSelos}>
-          <span className={`${estilos.selo} ${estilos[`selo_${situacao}`]}`}>{ROTULO_SITUACAO[situacao]}</span>
           <span>Versão {p.versao} · conteúdo de {dataBr(p.atualizadoEm)}</span>
-          {mostrandoAprovado && estado.aprovacao && (
-            <span>Aprovado por {estado.aprovacao.autorNome}{estado.aprovacao.autorCrm ? ` (${estado.aprovacao.autorCrm})` : ""} em {dataBr(estado.aprovacao.criadoEm)}</span>
-          )}
         </div>
       </header>
-
-      {previa && (
-        <p className={estilos.revisaoAviso} role="note">
-          <Icone nome="alerta" tamanho={17} />
-          <span>Prévia para revisão: ainda não aprovado pelo revisor médico. Não usar como referência clínica.</span>
-        </p>
-      )}
-      {mostrandoAprovado && estado.precisaAtualizar && (
-        <p className={estilos.revisaoAviso} role="note">
-          <Icone nome="alerta" tamanho={17} />
-          <span>O revisor marcou esta versão para atualização. Ela continua valendo até a nova ser aprovada.</span>
-        </p>
-      )}
-      {equipe && estado.versaoNovaEsperando && (
-        <div className={`${estilos.barraAcoes} ${estilos.naoImprimir}`}>
-          <span className={estilos.miuda}>
-            Os médicos veem a versão {(estado.emUso as Protocolo).versao} aprovada; a versão {doCodigo.versao} espera revisão.
-          </span>
-          <button type="button" className={estilos.botao} onClick={() => setVerEmUso((v) => !v)}>
-            {verEmUso ? "Ver a versão nova" : "Ver a versão em uso"}
-          </button>
-        </div>
-      )}
 
       {/* No computador, os dados do paciente ficam na coluna da esquerda. */}
       <div className={`${estilos.naoImprimir} ${estilos.soNoEstreito}`}>
@@ -375,7 +332,7 @@ export function ProtocoloTela({
             <div key={titulo ?? "todas"} className={`${estilos.doses} ${estilos.listaDoses}`}>
               {titulo && <h4 className={estilos.grupoDoses}>{titulo}</h4>}
               {lista.map((d) => (
-                <CartaoDose key={`${d.id}-${populacao}`} d={d} protocolo={p} paciente={paciente} semFaixa={populacao === null} previa={previa}
+                <CartaoDose key={`${d.id}-${populacao}`} d={d} protocolo={p} paciente={paciente} semFaixa={populacao === null}
                   confirmadas={confirmadas} aoConfirmar={(c) => setConfirmadas((v) => [...v, c])} />
               ))}
             </div>
@@ -424,7 +381,7 @@ export function ProtocoloTela({
 
       {p.divergencias.length > 0 && (
         <section className={estilos.secao}>
-          <details open={equipe}>
+          <details>
             <summary>Diferenças entre as fontes ({p.divergencias.length})<Icone nome="seta" tamanho={18} /></summary>
             <div style={{ marginTop: 12 }}>
               {p.divergencias.map((d) => (
@@ -450,18 +407,11 @@ export function ProtocoloTela({
               <li key={id}>
                 {referenciaCurta(r)}
                 {url && <> <a href={url} target="_blank" rel="noreferrer">Abrir</a></>}
-                {equipe && !r.conferida && <span className={estilos.refConferir}>a conferir</span>}
               </li>
             );
           })}
         </ol>
       </section>
-
-      {equipe && (
-        <div className={estilos.naoImprimir}>
-          <PainelDeRevisao protocolo={doCodigo} estado={estado} revisoes={revisoes} superAdmin={superAdmin} />
-        </div>
-      )}
 
       <p className={estilos.rodape}>
         Auxílio cognitivo para emergência. Não substitui o julgamento médico: confira apresentação, via e dose antes de administrar.

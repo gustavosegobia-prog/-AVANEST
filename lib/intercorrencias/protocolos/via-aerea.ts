@@ -195,7 +195,7 @@ export const NAO_VENTILO_NAO_INTUBO: Protocolo = {
         { texto: "Punção com cateter e técnica cirúrgica; as instituições diferem no apoio a uma ou às duas.", referencia: "manual-11" },
         { texto: "Cricotireoidostomia com bisturi é a técnica de resgate recomendada; oxigenação de alta pressão por cânula fina se associa a complicações graves.", referencia: "das-2015" },
       ],
-      escolha: "O protocolo mostra primeiro a técnica com bisturi (DAS) e deixa a punção como alternativa da instituição. O revisor decide.",
+      escolha: "O protocolo mostra primeiro a técnica com bisturi (DAS) e deixa a punção como alternativa da instituição.",
     },
   ],
   referencias: ["manual-11", "das-2015"],

@@ -123,7 +123,7 @@ export const ISQUEMIA: Protocolo = {
         { texto: "50 mg em 50 mL de SF 0,9%; começar com 3 a 5 mL/h e titular.", referencia: "manual-04" },
         { texto: "Solução de 1 mg/mL; começar com 0,1 mL/kg/h (7 mL/h para 70 kg) e titular. Não recomendada na criança.", referencia: "qrh-3-12" },
       ],
-      escolha: "O protocolo mostra o início do Manual, fixo e menor; os dois titulam pela resposta. O revisor decide.",
+      escolha: "O protocolo mostra o início do Manual, fixo e menor; os dois titulam pela resposta.",
     },
   ],
   referencias: ["manual-04", "qrh-3-12"],

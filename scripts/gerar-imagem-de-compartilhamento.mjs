@@ -34,73 +34,65 @@ const LARGURA = 1200;
 const ALTURA = 630;
 
 /**
- * A tela da avaliação, a mesma da capa do site, embutida — o navegador do
- * script não tem servidor. Antes era a foto gerada do hero (monitor com o logo
- * antigo de coração); a prévia do link é a primeira imagem do sistema que
- * muita gente vê, e não pode ser inventada.
+ * As telas, as mesmas da capa do site (public/capa), embutidas — o navegador
+ * do script não tem servidor. A ficha anestésica no tablet na frente e o
+ * manejo de crises atrás: os dois módulos que o colega não encontra em outro
+ * sistema. A prévia do link é a primeira imagem do sistema que muita gente
+ * vê, e não pode ser inventada: são capturas reais, com dados fictícios.
  */
-const tela = await readFile(join(RAIZ, "public", "capa", "avaliacao-computador.webp"));
-const fundo = `data:image/webp;base64,${tela.toString("base64")}`;
+const embutir = async (arquivo) =>
+  `data:image/webp;base64,${(await readFile(join(RAIZ, "public", "capa", arquivo))).toString("base64")}`;
+const ficha = await embutir("ficha-anestesica.webp");
+const crises = await embutir("manejo-de-crises.webp");
 
 /**
- * A folha da fonte.
- *
- * Da rede por padrão. Onde a rede é bloqueada — e o proxy deste ambiente
- * bloqueia —, `FONTE_LOCAL` aponta para uma pasta com o CSS e os `.woff2`
- * baixados, e tudo entra na página em base64: nenhuma requisição no caminho.
- *
- *     FONTE_LOCAL=~/fontes/outfit node scripts/gerar-imagem-de-compartilhamento.mjs
- *
- * O CSS pode se chamar `outfit.css` ou `outfit-embutida.css` — o segundo já vem
- * com as fontes embutidas e é usado como está.
+ * A fonte é a mesma que o site serve (public/fontes), embutida em base64:
+ * nenhuma requisição no caminho, e nada do Google — o site deixou de usar o
+ * Google Fonts pela privacidade de quem visita, e o gerador segue a mesma
+ * regra.
  */
 async function folhaDaFonte() {
-  const pasta = process.env.FONTE_LOCAL;
-  if (!pasta) {
-    return '<link rel="stylesheet" href="https://fonts.googleapis.com/css2'
-      + '?family=Outfit:wght@500;600;800&display=swap">';
+  const faces = [];
+  for (const [arquivo, faixa] of [
+    ["outfit-latin-v15.woff2", "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212"],
+    ["outfit-latin-ext-v15.woff2", "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+20A0-20AB,U+20AD-20C4"],
+  ]) {
+    const bytes = await readFile(join(RAIZ, "public", "fontes", arquivo));
+    faces.push(`@font-face{font-family:"Outfit";font-weight:100 900;unicode-range:${faixa};`
+      + `src:url(data:font/woff2;base64,${bytes.toString("base64")}) format("woff2")}`);
   }
-  const nomes = ["outfit-embutida.css", "outfit.css"];
-  let css = null;
-  for (const nome of nomes) {
-    css = await readFile(join(pasta, nome), "utf8").catch(() => null);
-    if (css) break;
-  }
-  if (!css) throw new Error(`Não achei ${nomes.join(" nem ")} em ${pasta}`);
-  for (const arquivo of [...css.matchAll(/url\(([^)]+\.woff2)\)/g)].map((m) => m[1])) {
-    const bytes = await readFile(join(pasta, arquivo.replace(/^.*\//, "")));
-    css = css.replaceAll(arquivo, `data:font/woff2;base64,${bytes.toString("base64")}`);
-  }
-  return `<style>${css}</style>`;
+  return `<style>${faces.join("")}</style>`;
 }
 
 const pagina = `<!doctype html><meta charset="utf-8">
 ${await folhaDaFonte()}
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{width:${LARGURA}px;height:${ALTURA}px;overflow:hidden;
-    font-family:Outfit,'Segoe UI',system-ui,sans-serif;background:#041626}
-  body{background:radial-gradient(700px 420px at 85% 35%,#0f4466 0%,transparent 62%),#071c2f}
-  /* A tela entra pela direita e passa da borda: é o sistema, não um enfeite.
-     O véu à esquerda garante o contraste do texto onde os dois se encontram. */
-  .foto{position:absolute;left:640px;top:96px;width:760px;border-radius:16px;overflow:hidden;
-    background:#fff;box-shadow:0 30px 80px -20px #000c,0 0 0 1px #ffffff26}
-  .foto i{display:block;height:30px;background:#e8eef3;border-bottom:1px solid #d3dde6}
-  .foto img{display:block;width:100%}
+  body{width:${LARGURA}px;height:${ALTURA}px;overflow:hidden;position:relative;
+    font-family:Outfit,'Segoe UI',system-ui,sans-serif;background:#071c2f}
+  /* As telas entram pela direita e passam da borda: é o sistema, não um
+     enfeite. O véu à esquerda garante o contraste do texto onde se encontram. */
+  .janela{position:absolute;left:700px;top:58px;width:640px;border-radius:14px;overflow:hidden;
+    background:#fff;box-shadow:0 30px 70px -24px #000d,0 0 0 1px #ffffff26}
+  .janela i{display:block;height:26px;background:#e8eef3;border-bottom:1px solid #d3dde6}
+  .janela img{display:block;width:100%}
+  .tablet{position:absolute;left:620px;top:250px;width:560px;padding:11px;border-radius:26px;
+    background:#0b1824;box-shadow:0 34px 80px -20px #000e,0 0 0 1px #ffffff2e}
+  .tablet img{display:block;width:100%;border-radius:14px}
   .veu{position:absolute;inset:0;
-    background:linear-gradient(90deg,#071c2f 0%,#071c2ff2 46%,#071c2f66 60%,#071c2f00 72%)}
-  .conteudo{position:absolute;inset:0;padding:90px;display:flex;flex-direction:column;
+    background:linear-gradient(90deg,#071c2f 0%,#071c2ff5 44%,#071c2f80 55%,#071c2f00 66%)}
+  .conteudo{position:absolute;inset:0;padding:0 90px;display:flex;flex-direction:column;
     justify-content:center;gap:26px}
-  .marca{display:flex;align-items:center;gap:22px}
-  .marca svg{width:78px;height:78px}
-  .marca b{font-size:52px;font-weight:800;letter-spacing:.13em;color:#fff;line-height:1}
-  h1{font-size:62px;font-weight:600;line-height:1.06;letter-spacing:-.025em;color:#fff;
-    max-width:15ch}
-  p{font-size:27px;line-height:1.45;color:#c5d4df;max-width:34ch}
-  .selo{position:absolute;left:90px;bottom:78px;font-size:19px;font-weight:600;
-    letter-spacing:.24em;text-transform:uppercase;color:#2bc5a8}
+  .marca{display:flex;align-items:center;gap:20px}
+  .marca svg{width:70px;height:70px}
+  .marca b{font-size:46px;font-weight:600;letter-spacing:.16em;color:#fff;line-height:1}
+  h1{font-size:54px;font-weight:600;line-height:1.08;letter-spacing:-.025em;color:#fff;white-space:nowrap}
+  p{font-size:25px;line-height:1.45;color:#c5d4df;max-width:31ch}
+  p b{color:#43c8b8;font-weight:600}
 </style>
-<div class="foto"><i></i><img src="${fundo}" alt=""></div><div class="veu"></div>
+<div class="janela"><i></i><img src="${crises}" alt=""></div>
+<div class="tablet"><img src="${ficha}" alt=""></div>
+<div class="veu"></div>
 <div class="conteudo">
   <div class="marca">
     <svg viewBox="0 0 128 128">
@@ -112,12 +104,12 @@ ${await folhaDaFonte()}
     </svg>
     <b>AVANEST</b>
   </div>
-  <h1>Gestão em anestesiologia</h1>
-  <p>Avaliação pré-anestésica, escala do serviço e o controle do que você tem a receber.</p>
-</div>
-<div class="selo">Feito por anestesiologista</div>`;
+  <h1>Da recepção ao<br>fechamento do mês.</h1>
+  <p>Recepção, consulta pré-anestésica, ficha anestésica, manejo de crises, escala e financeiro. <b>Feito por anestesiologista.</b></p>
+</div>`;
 
-const navegador = await chromium.launch();
+// CHROMIUM aponta um navegador já instalado, quando o do Playwright não está.
+const navegador = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 const aba = await navegador.newPage({ viewport: { width: LARGURA, height: ALTURA } });
 await aba.setContent(pagina, { waitUntil: "domcontentloaded" });
 
@@ -131,7 +123,7 @@ if (!temOutfit) {
   await navegador.close();
   throw new Error(
     "A fonte Outfit não carregou — a imagem sairia com a letra do sistema. "
-    + "Verifique o acesso a fonts.googleapis.com e rode de novo.");
+    + "Confira os arquivos em public/fontes e rode de novo.");
 }
 
 await mkdir(join(RAIZ, "public"), { recursive: true });

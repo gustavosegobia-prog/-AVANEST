@@ -164,14 +164,14 @@ export const HEMORRAGIA: Protocolo = {
         { texto: "“1 mg EV por 10 min, depois 1 mg por 8 h” (tabela do protocolo).", referencia: "manual-05" },
         { texto: "1 g IV em bolus; fora da obstetrícia, mais 1 g em 8 horas.", referencia: "qrh-3-2" },
       ],
-      escolha: "O protocolo usa 1 g, a dose do QRH e dos ensaios clínicos. O “1 mg” do Manual parece erro de impressão (mil vezes menos): o revisor confirma.",
+      escolha: "O protocolo usa 1 g, a dose do QRH e dos ensaios clínicos. O “1 mg” do Manual parece erro de impressão (mil vezes menos).",
     },
     {
       tema: "Meta de excesso de base",
       posicoes: [
         { texto: "“BE < −6” entre as metas da hemorragia.", referencia: "manual-05" },
       ],
-      escolha: "Como meta, BE abaixo de −6 seria acidose pior. O protocolo deixou o BE fora das metas (usa pH e lactato) até o revisor confirmar o sentido — provavelmente BE acima de −6.",
+      escolha: "Como meta, BE abaixo de −6 seria acidose pior. O protocolo deixa o BE fora das metas e usa pH e lactato. O sentido do Manual é, provavelmente, BE acima de −6.",
     },
     {
       tema: "Dose de plaquetas",
@@ -179,7 +179,7 @@ export const HEMORRAGIA: Protocolo = {
         { texto: "15 a 20 mL/kg, com contagem abaixo de 75 × 10⁹/L.", referencia: "manual-05" },
         { texto: "Manter as plaquetas acima de 75 × 10⁹/L, sem dose definida.", referencia: "qrh-3-2" },
       ],
-      escolha: "O protocolo calcula pelo Manual. No adulto, 15 a 20 mL/kg passa de 1 litro: o revisor confirma, e o banco de sangue define a unidade.",
+      escolha: "O protocolo calcula pelo Manual. No adulto, 15 a 20 mL/kg passa de 1 litro: o banco de sangue define a unidade.",
     },
   ],
   referencias: ["manual-05", "qrh-3-2"],

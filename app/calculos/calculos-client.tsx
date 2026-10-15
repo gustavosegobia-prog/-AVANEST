@@ -73,7 +73,7 @@ const numero = (texto: string): number | undefined => {
   return Number.isFinite(valor) ? valor : undefined;
 };
 
-export function CalculosClient({ superAdmin = false }: { superAdmin?: boolean }) {
+export function CalculosClient() {
   const [modulo, setModulo] = useState<Modulo>("hub");
   /**
    * Peso, sódio, hemoglobina e companhia valem para mais de uma calculadora.
@@ -128,7 +128,7 @@ export function CalculosClient({ superAdmin = false }: { superAdmin?: boolean })
         {modulo === "rotem" && <Rotem />}
         {modulo === "doses" && <Doses dados={dados} set={set} />}
         {modulo === "intercorrencias" && (
-          <Intercorrencias dados={dados} set={set} superAdmin={superAdmin} aoAbrirCalculadora={() => setModulo("doses")} />
+          <Intercorrencias dados={dados} set={set} aoAbrirCalculadora={() => setModulo("doses")} />
         )}
       </div>
     </main>

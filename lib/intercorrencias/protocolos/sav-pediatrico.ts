@@ -143,7 +143,7 @@ export const SAV_PEDIATRICO: Protocolo = {
         { texto: "0,02 mg/kg, só se a bradicardia vier do aumento do tônus vagal.", referencia: "manual-03" },
         { texto: "10 mcg/kg, se o tônus vagal é a causa provável.", referencia: "qrh-2-1" },
       ],
-      escolha: "O protocolo calcula 0,02 mg/kg (Manual), com máximo de 0,5 mg por dose; a dose do QRH é a metade. O revisor decide.",
+      escolha: "O protocolo calcula 0,02 mg/kg (Manual), com máximo de 0,5 mg por dose; a dose do QRH é a metade.",
     },
   ],
   referencias: ["manual-03", "qrh-2-1", "aha-2020-pediatrico", "manual-01"],

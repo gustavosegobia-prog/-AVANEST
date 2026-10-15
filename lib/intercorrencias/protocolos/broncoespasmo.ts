@@ -205,7 +205,7 @@ export const BRONCOESPASMO: Protocolo = {
         { texto: "2 a 12 anos: carga de 5 mcg/kg/min (máximo 200 mcg/min) por 1 hora, depois 1 a 2 mcg/kg/min (máximo 80 mcg/min).", referencia: "manual-14" },
         { texto: "Bolus de 5 mcg/kg (1 a 23 meses) ou 15 mcg/kg (2 a 17 anos, máximo 250 mcg) em 5 minutos; infusão de 0,5 a 1 mcg/kg/min (máximo 20 mcg/min).", referencia: "qrh-3-4" },
       ],
-      escolha: "O protocolo mostra o bolus do QRH e a infusão do Manual. As infusões diferem muito — a do Manual chega a quatro vezes a do QRH: o revisor decide.",
+      escolha: "O protocolo mostra o bolus do QRH e a infusão do Manual. As infusões diferem muito — a do Manual chega a quatro vezes a do QRH. Confira com a rotina do seu serviço.",
     },
     {
       tema: "Bolus de adrenalina no adulto",

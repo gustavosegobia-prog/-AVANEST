@@ -764,7 +764,7 @@ const LISTA: Referencia[] = [
     publicacao: "10ª edição",
     ano: null,
     localizacao: null, conferida: false,
-    observacao: "Edição informada pelo responsável técnico; ano e capítulos a preencher pelo revisor.",
+    observacao: "Edição informada pelo responsável técnico; ano e capítulos a preencher.",
   },
   {
     id: "miller-10",
@@ -773,7 +773,7 @@ const LISTA: Referencia[] = [
     publicacao: "10ª edição, Elsevier",
     ano: null,
     localizacao: null, conferida: false,
-    observacao: "Ano e capítulos a preencher pelo revisor.",
+    observacao: "Ano e capítulos a preencher.",
   },
 ];
 

@@ -21,7 +21,7 @@ export function CrisesClient({ superAdmin }: { superAdmin: boolean }) {
         </header>
         <Intercorrencias
           titulo="Manejo de crises em anestesia"
-          dados={dados} set={(c, v) => setDados((d) => ({ ...d, [c]: v }))} superAdmin={superAdmin}
+          dados={dados} set={(c, v) => setDados((d) => ({ ...d, [c]: v }))}
           aoAbrirCalculadora={superAdmin ? () => router.push("/calculos") : undefined}
         />
       </main>

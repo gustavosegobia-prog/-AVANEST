@@ -76,11 +76,9 @@ const agoraMs = () => Date.now();
 const fmt = (v: number, casas = 2) => v.toLocaleString("pt-BR", { maximumFractionDigits: casas });
 
 export function FolhaAnestesica({
-  folhaInicial, paciente, registrosIniciais, regras, medicos, eu, instituicao = "", localDaSessao = null, superAdmin = false,
+  folhaInicial, paciente, registrosIniciais, regras, medicos, eu, instituicao = "", localDaSessao = null,
 }: {
   folhaInicial: Folha;
-  /** Conferido no servidor: vê a prévia das intercorrências ainda em revisão. */
-  superAdmin?: boolean;
   /** O nome do serviço, como sai no alto da folha impressa. */
   instituicao?: string;
   /** O hospital do alfinete no topo do painel (lib/evolucao/acesso.ts). */
@@ -718,7 +716,7 @@ export function FolhaAnestesica({
           onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "intercorrencias" && (
-        <IntercorrenciasNaFicha paciente={pacienteDaDose} superAdmin={superAdmin} onFechar={() => setAbrir(null)} />
+        <IntercorrenciasNaFicha paciente={pacienteDaDose} onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "monitor" && (
         <JanelaMonitor atuais={atuais} onFechar={() => setAbrir(null)}

@@ -225,7 +225,7 @@ export const HIPERTENSAO: Protocolo = {
         { texto: "50 mg em 50 mL: começar com 3 a 5 mL/h (50 a 83 mcg/min) ou 5 mcg/min; até 100 mcg/min. Na tabela de infusões: 50 mg em 250 mL, 5 a 20 mcg/min (3 a 6 mL/h), até 400.", referencia: "manual-34" },
         { texto: "0,5 a 5 mcg/kg/min; adulto 2 a 20 mL/h da solução de 1 mg/mL.", referencia: "qrh-2-5" },
       ],
-      escolha: "As páginas do Manual não fecham entre si (3 a 5 mL/h de 1 mg/mL não é 5 mcg/min). O protocolo mostra 5 a 100 mcg/min para titular; o revisor define o início.",
+      escolha: "As páginas do Manual não fecham entre si (3 a 5 mL/h de 1 mg/mL não é 5 mcg/min). O protocolo mostra 5 a 100 mcg/min para titular pela resposta.",
     },
   ],
   referencias: ["manual-27", "manual-34", "qrh-2-5"],
@@ -500,14 +500,14 @@ export const TAQUIARRITMIA: Protocolo = {
         { texto: "300 mg em 20 minutos, depois 900 mg em 24 horas.", referencia: "manual-34" },
         { texto: "5 mg/kg (adulto 300 mg) em mais de 3 minutos.", referencia: "qrh-2-7" },
       ],
-      escolha: "Com pulso, o protocolo segue os 20 minutos do Manual; o revisor confirma.",
+      escolha: "Com pulso, o protocolo segue os 20 minutos do Manual.",
     },
     {
       tema: "Infusão de amiodarona",
       posicoes: [
         { texto: "900 mg em 500 mL de SG 5% a 60 mL/h por 6 horas e 30 mL/h por 18 horas.", referencia: "manual-34" },
       ],
-      escolha: "Com 900 mg em 500 mL, essas velocidades somam 900 mL e passariam de 1,5 g no dia. Os números fecham como mg/h (60 e 30 mg/h = 900 mg): o protocolo calcula assim. O revisor confirma.",
+      escolha: "Com 900 mg em 500 mL, essas velocidades somam 900 mL e passariam de 1,5 g no dia. Os números fecham como mg/h (60 e 30 mg/h = 900 mg): o protocolo calcula assim.",
     },
     {
       tema: "Adenosina",

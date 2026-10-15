@@ -136,7 +136,7 @@ export const RAQUI_TOTAL: Protocolo = {
         { texto: "12 a 15 mg.", referencia: "manual-16" },
         { texto: "6 a 12 mg, repetidos até 30 mg.", referencia: "qrh-3-11" },
       ],
-      escolha: "O protocolo calcula 6 a 12 mg, menor e repetível, com o total de 30 mg do QRH. O revisor decide.",
+      escolha: "O protocolo calcula 6 a 12 mg, menor e repetível, com o total de 30 mg do QRH.",
     },
   ],
   referencias: ["manual-16", "qrh-3-11"],
@@ -278,7 +278,7 @@ export const HEMORRAGIA_POS_PARTO: Protocolo = {
         { texto: "“Ergotamina” 500 mcg IM ou EV lento; ou 250 mcg IM ou EV em 5 minutos, até 1 mg.", referencia: "manual-17" },
         { texto: "Metilergometrina 0,2 mg IM, repetir em 20 minutos; até 1 mg em 24 horas.", referencia: "opas-2018-hpp" },
       ],
-      escolha: "A dose do Manual é a da ergometrina (o nome na tradução parece trocado — ergotamina é outro fármaco). O protocolo usa a metilergometrina, que é a disponível no Brasil, na dose da OPAS. O revisor confirma.",
+      escolha: "A dose do Manual é a da ergometrina (o nome na tradução parece trocado — ergotamina é outro fármaco). O protocolo usa a metilergometrina, que é a disponível no Brasil, na dose da OPAS.",
     },
     {
       tema: "Infusão de ocitocina",
@@ -395,7 +395,7 @@ export const COLAPSO_MATERNO: Protocolo = {
         { texto: "Gestação acima de 24 semanas e sem retorno da circulação: parto depois de 4 minutos.", referencia: "manual-18" },
         { texto: "Útero na altura da cicatriz umbilical ou acima (cerca de 20 semanas): cesárea perimortem se não houver retorno em 4 minutos.", referencia: "aha-2020-adulto" },
       ],
-      escolha: "O protocolo escreve “acima de 20 a 24 semanas”: o revisor define o corte.",
+      escolha: "O protocolo escreve “acima de 20 a 24 semanas”, entre o corte do Manual e o da AHA.",
     },
     {
       tema: "Sulfato de magnésio",
