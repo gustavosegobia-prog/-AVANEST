@@ -1,12 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { acharProtocolo, buscar, itensDaCategoria, PREVISTOS, PROTOCOLOS } from "./catalogo.ts";
-import { calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, type PacienteDaConsulta } from "./calculo.ts";
+import {
+  calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, volumeServe, type PacienteDaConsulta,
+} from "./calculo.ts";
 import { acharReferencia, REFERENCIAS } from "./referencias.ts";
 import { assinatura, resolverEstado, type RegistroDeRevisao } from "./situacao.ts";
 
 const anafilaxia = acharProtocolo("anafilaxia")!;
 const laringo = acharProtocolo("laringoespasmo")!;
+const fvtv = acharProtocolo("pcr-fv-tv")!;
+const aesp = acharProtocolo("pcr-aesp-assistolia")!;
+const sav = acharProtocolo("sav-pediatrico")!;
+const isquemia = acharProtocolo("isquemia-miocardica")!;
+const hemorragia = acharProtocolo("hemorragia-macica")!;
 const dose = (p: typeof anafilaxia, id: string) => p.medicamentos.find((m) => m.id === id)!;
 const adulto: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
 const crianca: PacienteDaConsulta = { idadeAnos: 4, pesoKg: 16 };
@@ -23,13 +30,24 @@ test("todo protocolo tem as seis partes, e toda dose aponta para uma referência
       ids.add(m.id);
       assert.ok(m.referencias.length > 0, `${m.id}: dose sem referência`);
       for (const r of m.referencias) assert.ok(acharReferencia(r), `${m.id}: referência ${r} não existe`);
-      // Sem concentração presumida: toda dose tem apresentação rotulada.
-      assert.ok(m.apresentacoes.length > 0 && m.apresentacoes.every((a) => a.rotulo.trim()), `${m.id}: sem apresentação`);
+      // Sem concentração presumida: toda apresentação tem rótulo. Sem nenhuma (o frasco
+      // varia com o fabricante), a tela dá só a dose total — e alto risco não pode ser assim.
+      assert.ok(m.apresentacoes.every((a) => a.rotulo.trim()), `${m.id}: apresentação sem rótulo`);
+      if (m.apresentacoes.length === 0) assert.ok(!m.altoRisco, `${m.id}: alto risco sem apresentação`);
       if (m.par) assert.ok(p.medicamentos.some((x) => x.id === m.par), `${m.id}: par ${m.par} não existe`);
     }
-    for (const v of p.volumes) for (const r of v.referencias) assert.ok(acharReferencia(r), `${v.id}: ${r}`);
+    for (const v of p.volumes) {
+      for (const r of v.referencias) assert.ok(acharReferencia(r), `${v.id}: ${r}`);
+      assert.ok(v.referencias.length > 0 && (v.porKg || v.fixo), `${v.id}: sem conta ou sem fonte`);
+    }
+    for (const v of p.veja ?? []) {
+      const alvo = acharProtocolo(v.protocolo);
+      assert.ok(alvo, `${p.id}: veja ${v.protocolo} não existe`);
+      assert.ok(v.quando.some((q) => alvo!.populacoes.includes(q)), `${p.id}: ${v.protocolo} não atende ${v.quando}`);
+    }
     for (const d of p.divergencias) {
-      assert.ok(d.posicoes.length >= 2, `${p.id}: divergência com uma posição só`);
+      // Uma posição só é a leitura duvidosa de uma fonte (erro de impressão), com a decisão do protocolo.
+      assert.ok(d.posicoes.length >= 1 && d.escolha.trim(), `${p.id}: divergência vazia`);
       for (const pos of d.posicoes) assert.ok(acharReferencia(pos.referencia), `${p.id}: ${pos.referencia}`);
     }
     for (const r of p.referencias) assert.ok(acharReferencia(r), `${p.id}: ${r}`);
@@ -184,6 +202,95 @@ test("busca pelo nome, pelo sinônimo e pelo sinal, sem acento; previstos aparec
   assert.ok(!itensDaCategoria("pediatria").previstos.some((p) => p.titulo === "Laringoespasmo pediátrico"));
   assert.ok(!itensDaCategoria("respiratorio").previstos.some((p) => p.titulo === "Laringoespasmo"));
   assert.equal(PREVISTOS.filter((p) => p.categoria === "cardiovascular").length, 10);
+});
+
+test("PCR do adulto: 1 mg de adrenalina, amiodarona 300 mg, choque fixo; a criança vai para o SAV pediátrico", () => {
+  const adr = dose(fvtv, "adrenalina-pcr");
+  assert.deepEqual(calcularDose(adr, fvtv, adulto, 0).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1, "mg", 1]]);
+  assert.deepEqual(calcularDose(adr, fvtv, adulto, 1).contas.map((c) => c.volume), [10]);
+  assert.deepEqual(calcularDose(dose(fvtv, "amiodarona-pcr-300"), fvtv, adulto).contas.map((c) => c.volume), [6]);
+  assert.deepEqual(calcularDose(dose(fvtv, "lidocaina-pcr"), fvtv, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[70, 3.5]]);
+  assert.deepEqual(calcularDose(dose(fvtv, "bicarbonato-pcr"), fvtv, adulto).contas.map((c) => c.volume), [70, 140]);
+  assert.deepEqual(calcularDose(dose(fvtv, "magnesio-pcr"), fvtv, adulto).contas.map((c) => c.volume), [2, 4]);
+  const choques = fvtv.volumes.map((v) => calcularVolume(v, { idadeAnos: 40, pesoKg: null }).texto);
+  assert.deepEqual(choques, ["120 a 200 J", "360 J"]);
+  // Criança no protocolo do adulto: nenhuma dose serve, e o atalho aponta o pediátrico.
+  assert.equal(fvtv.medicamentos.filter((d) => doseServe(d, "pediatrico", 4)).length, 0);
+  assert.ok(fvtv.veja?.some((v) => v.protocolo === "sav-pediatrico" && v.quando.includes("pediatrico")));
+  assert.equal(calcularDose(dose(aesp, "atropina-pcr-vagal"), aesp, adulto).contas.length, 2);
+  // Os ritmos: chocáveis na FV/TV, não chocáveis na AESP/assistolia; o pediátrico mostra os quatro.
+  assert.deepEqual(fvtv.ritmos?.map((r) => [r.ritmo, r.chocavel]), [["fv", true], ["tv", true]]);
+  assert.deepEqual(aesp.ritmos?.map((r) => [r.ritmo, r.chocavel]), [["aesp", false], ["assistolia", false]]);
+  assert.equal(sav.ritmos?.length, 4);
+});
+
+test("SAV pediátrico: 10 mcg/kg, 4 J/kg, amiodarona com o teto do adulto, tubo dez vezes a dose da veia", () => {
+  const adr = calcularDose(dose(sav, "adrenalina-sav-ped"), sav, crianca);
+  assert.deepEqual(adr.contas.map((c) => [c.doseTotal, c.volume]), [[160, 1.6]]);
+  const tubo = calcularDose(dose(sav, "adrenalina-tubo-ped"), sav, crianca);
+  assert.deepEqual(tubo.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1600, "mcg", 1.6]]);
+  assert.ok(!tubo.alertas.some((a) => a.nivel === "perigo"), "a ampola pura é a do tubo");
+  assert.deepEqual(calcularDose(dose(sav, "amiodarona-sav-ped"), sav, crianca).contas.map((c) => [c.doseTotal, c.volume]), [[80, 1.6]]);
+  const grande = calcularDose(dose(sav, "amiodarona-sav-ped"), sav, { idadeAnos: 11, pesoKg: 70 });
+  assert.deepEqual(grande.contas.map((c) => [c.doseTotal, c.limitada]), [[300, true]]);
+  // Lidocaína 20 a 50 mcg/kg/min × 16 kg na de 20 mg/mL: 0,96 a 2,4 mL/h.
+  assert.deepEqual(calcularDose(dose(sav, "lidocaina-infusao-sav-ped"), sav, crianca).contas.map((c) => [c.volume, c.unidadeVolume]), [[0.96, "mL/h"], [2.4, "mL/h"]]);
+  assert.deepEqual(calcularDose(dose(sav, "cloreto-de-calcio-sav-ped"), sav, crianca).contas.map((c) => c.volume), [3.2]);
+  assert.equal(calcularDose(dose(sav, "atropina-sav-ped"), sav, { idadeAnos: 11, pesoKg: 40 }).contas[0].doseTotal, 0.5);
+  const choque = sav.volumes.find((v) => v.id === "choque-ped")!;
+  assert.equal(calcularVolume(choque, crianca).texto, "64 J");
+  assert.equal(calcularVolume(choque, crianca).base, "4 J/kg");
+  assert.ok(sav.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "qrh-2-1") && /atropina/i.test(d.tema)));
+});
+
+test("isquemia: nitroglicerina 3 a 5 mL/h sem peso, esmolol por kg, só adulto", () => {
+  const ntg = calcularDose(dose(isquemia, "nitroglicerina-isquemia"), isquemia, { idadeAnos: 60, pesoKg: null });
+  assert.equal(ntg.bloqueio, null);
+  assert.deepEqual(ntg.contas.map((c) => [c.volume, c.unidadeVolume]), [[3, "mL/h"], [5, "mL/h"]]);
+  assert.deepEqual(calcularDose(dose(isquemia, "esmolol-bolus-isquemia"), isquemia, adulto).contas.map((c) => [c.doseTotal, c.volume]), [[35, 3.5]]);
+  assert.deepEqual(calcularDose(dose(isquemia, "esmolol-infusao-isquemia"), isquemia, adulto).contas.map((c) => c.volume), [21, 84]);
+  assert.deepEqual(calcularDose(dose(isquemia, "fenilefrina-isquemia"), isquemia, adulto).contas.map((c) => c.volume), [0.25, 0.5]);
+  assert.equal(isquemia.medicamentos.filter((d) => doseServe(d, "pediatrico", 6)).length, 0);
+  assert.ok(isquemia.divergencias.some((d) => d.posicoes.some((x) => x.referencia === "qrh-3-12")));
+});
+
+test("hemorragia: ácido tranexâmico 1 g (o “1 mg” do Manual fica registrado), cálcio, hemocomponentes e fibrinogênio sem frasco", () => {
+  assert.deepEqual(calcularDose(dose(hemorragia, "tranexamico-hemorragia-adulto"), hemorragia, adulto).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1, "g", 20]]);
+  const txa = hemorragia.divergencias.find((d) => /tranexâmico/.test(d.tema))!;
+  assert.ok(txa.posicoes.some((x) => x.referencia === "manual-05" && /1 mg/.test(x.texto)));
+  assert.deepEqual(calcularDose(dose(hemorragia, "tranexamico-hemorragia-ped"), hemorragia, crianca).contas.map((c) => [c.doseTotal, c.volume]), [[240, 4.8]]);
+  assert.deepEqual(calcularDose(dose(hemorragia, "tranexamico-infusao-ped"), hemorragia, crianca).contas.map((c) => [c.volume, c.unidadeVolume]), [[0.64, "mL/h"]]);
+  // Gluconato 50 mg/kg × 50 kg = 2.500 mg passa dos 2 g do adulto: compara mesmo em unidades diferentes.
+  const glu = calcularDose(dose(hemorragia, "gluconato-hemorragia-ped"), hemorragia, { idadeAnos: 11, pesoKg: 50 });
+  assert.ok(glu.alertas.some((a) => /passa da dose do adulto \(2 g\)/.test(a.texto)));
+  // Fibrinogênio: dose total, sem volume (o frasco varia); sem peso, pede o peso.
+  const fib = calcularDose(dose(hemorragia, "fibrinogenio-hemorragia"), hemorragia, adulto);
+  assert.equal(fib.bloqueio, null);
+  assert.equal(fib.apresentacao, null);
+  assert.deepEqual(fib.contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume]), [[1750, "mg", undefined], [3500, "mg", undefined]]);
+  assert.equal(calcularDose(dose(hemorragia, "fibrinogenio-hemorragia"), hemorragia, { idadeAnos: 40, pesoKg: null }).bloqueio, "Informe o peso para calcular.");
+  const vol = (id: string) => calcularVolume(hemorragia.volumes.find((v) => v.id === id)!, crianca).texto;
+  assert.equal(vol("pfc"), "240 mL");
+  assert.equal(vol("crio"), "2 a 3 unidades");
+  assert.equal(vol("plaquetas"), "240 a 320 mL");
+  assert.ok(hemorragia.volumes.every((v) => volumeServe(v, "gestante") && volumeServe(v, "pediatrico")));
+});
+
+test("catálogo: os protocolos do Manual entram nas categorias e saem dos previstos; a busca acha pelo que se vê", () => {
+  const cardio = itensDaCategoria("cardiovascular");
+  for (const id of ["pcr-fv-tv", "pcr-aesp-assistolia", "isquemia-miocardica", "hemorragia-macica"]) {
+    assert.ok(cardio.prontos.some((p) => p.id === id), id);
+  }
+  for (const t of ["PCR — FV/TV sem pulso", "PCR — AESP/assistolia", "Isquemia miocárdica intraoperatória", "Hemorragia maciça"]) {
+    assert.ok(!cardio.previstos.some((p) => p.titulo === t), t);
+  }
+  assert.ok(itensDaCategoria("pediatria").prontos.some((p) => p.id === "sav-pediatrico"));
+  assert.ok(!itensDaCategoria("pediatria").previstos.some((p) => p.titulo === "Suporte avançado de vida pediátrico"));
+  const ids = (q: string) => buscar(q).flatMap((a) => (a.tipo === "protocolo" ? [a.protocolo.id] : []));
+  assert.equal(ids("FV")[0], "pcr-fv-tv");
+  for (const id of ["pcr-fv-tv", "pcr-aesp-assistolia", "sav-pediatrico"]) assert.ok(ids("parada").includes(id), id);
+  assert.equal(ids("supra de ST")[0], "isquemia-miocardica");
+  assert.ok(ids("sangramento").includes("hemorragia-macica"));
 });
 
 const registro = (r: Partial<RegistroDeRevisao> & Pick<RegistroDeRevisao, "situacao" | "assinatura" | "criadoEm">): RegistroDeRevisao => ({

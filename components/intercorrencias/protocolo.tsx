@@ -6,13 +6,14 @@ import {
   calcularDose, calcularVolume, conferirPaciente, doseServe, numero, passosDe, populacaoDe, ROTULO_POPULACAO,
   volumeServe, type Alerta, type DoseCalculada, type PacienteDaConsulta,
 } from "@/lib/intercorrencias/calculo";
-import { CATEGORIAS } from "@/lib/intercorrencias/catalogo";
+import { acharProtocolo, CATEGORIAS } from "@/lib/intercorrencias/catalogo";
 import { acharReferencia, BIBLIOGRAFIA_GERAL, citarReferencia } from "@/lib/intercorrencias/referencias";
 import { ROTULO_NIVEL, type Calculo } from "@/lib/calculos/doses";
 import { ROTULO_SITUACAO, type Estado } from "@/lib/intercorrencias/situacao";
-import type { DoseDoProtocolo, Protocolo, Situacao } from "@/lib/intercorrencias/tipos";
+import type { DoseDoProtocolo, Protocolo, Situacao, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
 import { COR_DA_CATEGORIA, CamposDoPaciente, pacienteDe, resumoDoPaciente, type DadosDoPaciente } from "./paciente";
 import { PainelDeRevisao } from "./revisao";
+import { RitmosNoMonitor } from "./ritmos";
 import type { Revisoes } from "./use-revisoes";
 
 const DATA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo" });
@@ -52,8 +53,8 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
   const conta: DoseCalculada = calcularDose(d, protocolo, paciente, indice);
   const original = d.apresentacoes[indice] ?? d.apresentacoes[0];
   const bloqueio = semFaixa ? "Informe a idade para calcular na faixa certa." : conta.bloqueio;
-  const chave = `${original.rotulo}|${d.via}`;
-  const precisaConfirmar = d.altoRisco && !confirmadas.includes(chave);
+  const chave = `${original?.rotulo ?? "sem frasco"}|${d.via}`;
+  const precisaConfirmar = d.altoRisco && original && !confirmadas.includes(chave);
   const varios = conta.contas.length > 1;
 
   return (
@@ -85,7 +86,9 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
             </div>
             <div className={`${estilos.caixa} ${estilos.caixaVolume}`}>
               <small>Volume</small>
-              {precisaConfirmar ? (
+              {!original ? (
+                <span className={estilos.confirmado}>Pela bula: o frasco e a reconstituição variam com o fabricante.</span>
+              ) : precisaConfirmar ? (
                 <>
                   <button type="button" className={estilos.confirmar}
                     onClick={() => aoConfirmar(chave)}>
@@ -118,7 +121,7 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
         )}
       </div>
 
-      {d.apresentacoes.length > 1 ? (
+      {!original ? null : d.apresentacoes.length > 1 ? (
         <div className={estilos.apresentacoes} role="group" aria-label="Concentração">
           {d.apresentacoes.map((a, i) => (
             <button key={a.rotulo} type="button" aria-pressed={i === indice} onClick={() => setIndice(i)}>{a.rotulo}</button>
@@ -130,7 +133,7 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
       {d.apresentacoes.length > 1 && conta.apresentacao?.rotulo !== original.rotulo && conta.apresentacao && (
         <p className={estilos.preparo}>{conta.apresentacao.rotulo}</p>
       )}
-      {original.preparo && <p className={estilos.preparo}>Preparo: {original.preparo}</p>}
+      {original?.preparo && <p className={estilos.preparo}>Preparo: {original.preparo}</p>}
       {d.repeticao && <p className={estilos.miuda}><b>Repetir:</b> {d.repeticao}</p>}
       {d.velocidade && <p className={estilos.miuda}><b>Ritmo:</b> {d.velocidade}</p>}
       <Avisos lista={conta.alertas} />
@@ -145,8 +148,17 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, previa, confirmadas, aoC
   );
 }
 
+/** "Desfibrilação", "Cristaloide", "Hemocomponentes": o nome do grupo pelo que há nele. */
+function tituloDosVolumes(lista: VolumeDoProtocolo[]): string {
+  if (lista.every((v) => v.unidade === "J")) return "Desfibrilação";
+  if (lista.every((v) => !v.rotulo)) return "Cristaloide";
+  if (lista.every((v) => v.rotulo)) return "Hemocomponentes";
+  return "Volumes";
+}
+
 export function ProtocoloTela({
-  doCodigo, estado, equipe, superAdmin, dados, set, daFicha, favorito, aoFavoritar, aoVoltar, aoBuscar, aoAbrirCalculadora, revisoes,
+  doCodigo, estado, equipe, superAdmin, dados, set, daFicha, favorito, aoFavoritar, aoVoltar, aoBuscar, aoAbrirCalculadora, aoAbrirProtocolo,
+  revisoes,
 }: {
   superAdmin: boolean;
   /** A versão do código (o que o revisor revisa). */
@@ -161,6 +173,8 @@ export function ProtocoloTela({
   aoVoltar: () => void;
   aoBuscar: () => void;
   aoAbrirCalculadora?: () => void;
+  /** "Criança: use o SAV pediátrico" abre o outro protocolo. */
+  aoAbrirProtocolo?: (id: string) => void;
   revisoes: Revisoes;
 }) {
   const [verEmUso, setVerEmUso] = useState(false);
@@ -183,7 +197,13 @@ export function ProtocoloTela({
     ? [["Adulto", doses.filter((d) => d.populacao !== "pediatrico")], ["Criança", doses.filter((d) => d.populacao === "pediatrico")]] as const
     : [[null, doses]] as const;
   const volumes = p.volumes.filter((v) => populacao === null || volumeServe(v, populacao));
+  const gruposDeVolumes = [volumes.filter((v) => v.unidade === "J"), volumes.filter((v) => v.unidade !== "J")].filter((g) => g.length);
   const refsDasDoses = new Set(p.medicamentos.flatMap((d) => d.referencias));
+  // O protocolo certo para a faixa do paciente: forte quando a faixa bate; sem idade, só a lembrança.
+  const veja = (p.veja ?? [])
+    .filter((v) => populacao === null || v.quando.includes(populacao))
+    .map((v) => ({ ...v, alvo: acharProtocolo(v.protocolo) }))
+    .filter((v) => v.alvo);
 
   return (
     <div ref={topo} className={`${estilos.modulo} ${estilos.impressao}`}
@@ -250,8 +270,21 @@ export function ProtocoloTela({
       </div>
       <Avisos lista={conferirPaciente(paciente)} />
 
+      {veja.map((v) => (
+        <div key={v.protocolo} className={`${estilos.veja} ${populacao ? estilos.vejaForte : ""}`} role="note">
+          <span>{v.texto}</span>
+          {aoAbrirProtocolo && (
+            <button type="button" className={`${estilos.botao} ${populacao ? estilos.botaoForte : ""} ${estilos.naoImprimir}`}
+              onClick={() => aoAbrirProtocolo(v.protocolo)}>
+              Abrir {v.alvo!.titulo}
+            </button>
+          )}
+        </div>
+      ))}
+
       <nav className={`${estilos.atalhos} ${estilos.naoImprimir}`} aria-label="Partes do protocolo">
-        <a href="#agir">Agir agora</a><a href="#doses">Doses</a><a href="#reconhecer">Reconhecer</a>
+        <a href="#agir">Agir agora</a>{p.ritmos?.length ? <a href="#ritmos">Ritmos</a> : null}
+        <a href="#doses">Doses</a><a href="#reconhecer">Reconhecer</a>
         <a href="#pensar">Pensar em</a><a href="#depois">Depois</a><a href="#referencias">Referências</a>
       </nav>
 
@@ -270,9 +303,25 @@ export function ProtocoloTela({
         </ol>
       </section>
 
+      {p.ritmos && p.ritmos.length > 0 && <RitmosNoMonitor ritmos={p.ritmos} />}
+
       <section id="doses" className={estilos.secao} aria-labelledby="t-doses">
         <h3 id="t-doses">Medicamentos e doses{populacao ? ` · ${ROTULO_POPULACAO[populacao]}` : ""}</h3>
         <div className={estilos.doses}>
+          {populacao && doses.length === 0 && volumes.length === 0 && (
+            <div className={`${estilos.bloqueio} ${estilos.semDoses}`}>
+              <span>
+                Este protocolo não traz doses para {ROTULO_POPULACAO[populacao].toLowerCase()}
+                {veja.length ? "." : ". Confira a idade informada."}
+              </span>
+              {aoAbrirProtocolo && veja.map((v) => (
+                <button key={v.protocolo} type="button" className={`${estilos.botao} ${estilos.botaoForte} ${estilos.naoImprimir}`}
+                  onClick={() => aoAbrirProtocolo(v.protocolo)}>
+                  Abrir {v.alvo!.titulo}
+                </button>
+              ))}
+            </div>
+          )}
           {grupos.map(([titulo, lista]) => (
             <div key={titulo ?? "todas"} className={estilos.doses}>
               {titulo && <h4 className={estilos.grupoDoses}>{titulo}</h4>}
@@ -282,14 +331,15 @@ export function ProtocoloTela({
               ))}
             </div>
           ))}
-          {volumes.length > 0 && (
-            <>
-              <h4 className={estilos.grupoDoses}>Cristaloide</h4>
+          {gruposDeVolumes.map((grupo) => (
+            <div key={grupo[0].id} className={estilos.doses}>
+              <h4 className={estilos.grupoDoses}>{tituloDosVolumes(grupo)}</h4>
               <div className={estilos.volumes}>
-                {volumes.map((v) => {
+                {grupo.map((v) => {
                   const c = calcularVolume(v, paciente);
                   return (
                     <div key={v.id} className={estilos.volume}>
+                      {v.rotulo && <strong className={estilos.volumeNome}>{v.rotulo}</strong>}
                       <small>{v.indicacao} · {c.base}</small>
                       {c.bloqueio ? <span className={estilos.miuda}>{c.bloqueio}</span> : <b>{c.texto}</b>}
                       {v.repeticao && <small>{v.repeticao}</small>}
@@ -298,8 +348,8 @@ export function ProtocoloTela({
                   );
                 })}
               </div>
-            </>
-          )}
+            </div>
+          ))}
         </div>
       </section>
 

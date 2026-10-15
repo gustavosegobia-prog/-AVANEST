@@ -216,6 +216,37 @@
 .volume { border: 1px solid var(--cor-borda, #dce4ea); border-radius: 10px; padding: 12px; background: #fbfcfd; display: grid; gap: 4px; }
 .volume b { font-size: 21px; }
 .volume small { color: var(--cor-tinta-fraca, #5b6c7a); font-size: 13px; }
+.volumeNome { font-size: 15px; font-weight: 750; color: #142536; }
+
+/* "Criança: use o SAV pediátrico" — forte quando a faixa do paciente pede o outro protocolo. */
+.veja {
+  display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between;
+  border: 1px solid var(--cor-borda, #dce4ea); border-left: 4px solid var(--cat); border-radius: 10px;
+  padding: 10px 12px; background: #fff; font-size: 14.5px; line-height: 1.4; color: #33495c;
+}
+.vejaForte { background: #fff4e5; border-color: #f0c27a; border-left-color: #b45309; color: #5c3b06; font-weight: 650; font-size: 15.5px; }
+
+/* ---------------- Ritmos no monitor ---------------- */
+.ritmos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; }
+.ritmo { margin: 0; display: grid; gap: 8px; align-content: start; }
+.ritmos + .miuda { margin-top: 14px; font-size: 13px; color: var(--cor-tinta-fraca, #5b6c7a); }
+.semDoses { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.monitor { display: block; width: 100%; height: auto; }
+.monitorTela { fill: #061310; }
+.monitorTraco { fill: none; stroke: #3ef08a; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.monitorDivisa { stroke: #1d3a31; stroke-width: 1; }
+.monitorRotulo { fill: #3ef08a; font-size: 11px; font-weight: 650; }
+.monitorValor { fill: #3ef08a; font-size: 24px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.monitorPaValor { font-size: 15px; font-weight: 750; }
+.monitorPa { fill: #ff6b5e; }
+.ritmo figcaption { display: grid; gap: 3px; font-size: 14px; line-height: 1.45; color: #33495c; }
+.ritmo figcaption b { font-size: 16px; color: #142536; }
+.chocavel, .naoChocavel {
+  justify-self: start; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  border-radius: 999px; padding: 3px 10px;
+}
+.chocavel { background: #fde3df; color: #8f1d12; }
+.naoChocavel { background: #e6edf3; color: #2c4458; }
 
 /* ---------------- Referências e divergências ---------------- */
 .referencias { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 14px; line-height: 1.5; }
@@ -276,7 +307,11 @@
   .soImpressao { display: block; }
   /* Quebra de página entre os blocos pequenos, nunca no meio de um passo ou de uma dose. */
   .secao { border-color: #999; }
-  .passos li, .dose, .volume, .divergencia, .referencias li { break-inside: avoid; }
+  .passos li, .dose, .volume, .divergencia, .referencias li, .ritmo { break-inside: avoid; }
+  .monitorTela { fill: #fff; stroke: #000; }
+  .monitorTraco { stroke: #000; }
+  .monitorRotulo, .monitorValor, .monitorPa { fill: #000; }
+  .vejaForte { background: #fff; }
   .secao h3 { break-after: avoid; }
   .dose { background: #fff; }
   .confirmar { display: none; }

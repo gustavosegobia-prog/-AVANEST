@@ -67,16 +67,31 @@ export type ApresentacaoDoProtocolo = Apresentacao & {
   porPeso?: true;
 };
 
-/** Volume de cristaloide: por kg (criança) ou fixo (adulto). */
+/**
+ * O que não é fármaco mas se calcula pelo paciente: cristaloide e
+ * hemocomponente (mL), carga do choque (J), crioprecipitado (unidades).
+ * Por kg ou fixo; `maximo` segura a conta por kg.
+ */
 export type VolumeDoProtocolo = {
   id: string;
+  /** O nome no cartão: "Cristaloide", "Choque", "Plasma fresco congelado". Sem ele, cristaloide. */
+  rotulo?: string;
   indicacao: string;
   populacao: "adulto" | "pediatrico" | "todas";
-  mlPorKg?: { min?: number; max?: number };
-  mlFixo?: { min?: number; max?: number };
+  unidade?: "mL" | "J" | "unidades";
+  porKg?: { min?: number; max?: number };
+  fixo?: { min?: number; max?: number };
+  maximo?: number;
   repeticao?: string;
   referencias: string[];
 };
+
+/** Um traçado de monitor para reconhecer o ritmo (desenhado pelo AVANEST, não é foto). */
+export type Ritmo = "fv" | "tv" | "aesp" | "assistolia";
+export type RitmoDoProtocolo = { ritmo: Ritmo; nome: string; legenda: string; chocavel: boolean };
+
+/** "Na criança, use o SAV pediátrico": o protocolo certo para a faixa do paciente. */
+export type VejaTambem = { protocolo: string; quando: Populacao[]; texto: string };
 
 export type DoseDoProtocolo = {
   id: string;
@@ -134,6 +149,9 @@ export type Protocolo = {
   depois: string[];
   divergencias: Divergencia[];
   referencias: string[];
+  veja?: VejaTambem[];
+  /** Os ritmos do monitor que o protocolo ensina a reconhecer (PCR). */
+  ritmos?: RitmoDoProtocolo[];
 };
 
 /** Um título das seis categorias que ainda não tem protocolo escrito. */

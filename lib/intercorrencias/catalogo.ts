@@ -8,9 +8,16 @@
 
 import type { Categoria, Previsto, Protocolo } from "./tipos.ts";
 import { ANAFILAXIA } from "./protocolos/anafilaxia.ts";
+import { HEMORRAGIA } from "./protocolos/hemorragia.ts";
+import { ISQUEMIA } from "./protocolos/isquemia.ts";
 import { LARINGOESPASMO } from "./protocolos/laringoespasmo.ts";
+import { PCR_AESP, PCR_FV_TV } from "./protocolos/pcr.ts";
+import { SAV_PEDIATRICO } from "./protocolos/sav-pediatrico.ts";
 
-export const PROTOCOLOS: Protocolo[] = [ANAFILAXIA, LARINGOESPASMO];
+/** Na ordem do Manual de Crises: as paradas primeiro. */
+export const PROTOCOLOS: Protocolo[] = [
+  PCR_FV_TV, PCR_AESP, SAV_PEDIATRICO, ISQUEMIA, HEMORRAGIA, ANAFILAXIA, LARINGOESPASMO,
+];
 
 export const CATEGORIAS: Array<{ id: Categoria; nome: string; letra: string }> = [
   { id: "cardiovascular", nome: "Cardiovascular", letra: "A" },

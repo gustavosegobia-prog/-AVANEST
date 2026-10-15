@@ -82,6 +82,7 @@ export function Intercorrencias({
         aoVoltar={() => { setAberto(null); setCategorias((c) => (c.includes(protocolo.categoria) ? c : [...c, protocolo.categoria])); }}
         aoBuscar={() => { setAberto(null); setTermo(""); setFocarBusca(true); }}
         aoAbrirCalculadora={aoAbrirCalculadora} revisoes={revisoes}
+        aoAbrirProtocolo={(id) => { const alvo = PROTOCOLOS.find((p) => p.id === id); if (alvo && disponivel(alvo)) setAberto(id); }}
       />
     );
   }

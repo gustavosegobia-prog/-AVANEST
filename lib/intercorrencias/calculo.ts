@@ -14,7 +14,7 @@
  */
 
 import {
-  calcular, ESCREVER_POR, virgula, type Apresentacao, type Calculo, type DosePorKg,
+  calcular, converter, ESCREVER_POR, virgula, type Apresentacao, type Calculo, type DosePorKg, type Unidade,
 } from "../calculos/doses.ts";
 import { pesoDaDose, type PesoDaDose } from "../calculos/peso.ts";
 import type { DoseDoProtocolo, Populacao, Protocolo, VolumeDoProtocolo } from "./tipos.ts";
@@ -161,7 +161,7 @@ function textoDoPar(d: DoseDoProtocolo, protocolo: Protocolo): string | null {
 }
 
 /** O maior número que a dose do adulto alcança, quando é fixa — para comparar com a da criança. */
-function maximoDoAdulto(d: DoseDoProtocolo, protocolo: Protocolo): { valor: number; unidade: string } | null {
+function maximoDoAdulto(d: DoseDoProtocolo, protocolo: Protocolo): { valor: number; unidade: Unidade } | null {
   const par = d.par ? protocolo.medicamentos.find((m) => m.id === d.par) : undefined;
   if (!par || par.populacao !== "adulto" || (par.dose.por !== "fixa" && par.dose.por !== "min" && par.dose.por !== "h")) return null;
   const valor = Math.max(...[par.dose.min, par.dose.usual, par.dose.max].filter((v): v is number => v !== undefined));
@@ -194,19 +194,23 @@ export function calcularDose(
     return { ...base, apresentacao: null, contas: [], peso, bloqueio: "Informe o peso para calcular." };
   }
 
-  const apresentacao = concretizar(d, indiceApresentacao, peso?.kg ?? p.pesoKg);
-  if (!apresentacao) {
+  // Sem apresentação cadastrada (fibrinogênio, complexo protrombínico): o
+  // frasco varia com o fabricante, então sai a dose total e o volume fica
+  // para a bula. Com apresentação cadastrada que não se resolve, nada sai.
+  const semFrasco = d.apresentacoes.length === 0;
+  const apresentacao = semFrasco ? null : concretizar(d, indiceApresentacao, peso?.kg ?? p.pesoKg);
+  if (!apresentacao && !semFrasco) {
     return { ...base, apresentacao: null, contas: [], peso, bloqueio: "Sem concentração cadastrada: o volume não é calculado." };
   }
   const original = d.apresentacoes[indiceApresentacao] ?? d.apresentacoes[0];
-  if (!viaCombina(original?.vias, d.via)) {
+  if (original && !viaCombina(original.vias, d.via)) {
     alertas.unshift({
       nivel: "perigo",
       texto: `${original!.rotulo} é para ${original!.vias!.join(" ou ")}, e esta dose é ${d.via}. Confira antes de aspirar.`,
     });
   }
 
-  const contas = calcular(d.dose, peso?.kg ?? 1, apresentacao, d.tetoAbsoluto);
+  const contas = calcular(d.dose, peso?.kg ?? 1, apresentacao ?? undefined, d.tetoAbsoluto);
   const incompativel = contas.find((c) => c.incompatibilidade);
   if (incompativel) {
     return { ...base, apresentacao, contas: [], peso, bloqueio: incompativel.incompatibilidade! };
@@ -228,7 +232,9 @@ export function calcularDose(
   const pesoConta = peso?.kg ?? null;
   if (adulto && d.dose.por === "kg" && pesoConta !== null && pesoConta >= PESO_DE_ADULTO) {
     const maior = Math.max(...contas.map((c) => c.doseTotal));
-    if (adulto.unidade === d.dose.unidade && maior > adulto.valor) {
+    // Mesma grandeza em unidades diferentes (2 g do adulto, 2.500 mg da criança) também compara.
+    const doAdulto = converter(adulto.valor, adulto.unidade, d.dose.unidade);
+    if (doAdulto !== undefined && maior > doAdulto) {
       alertas.unshift({
         nivel: "atencao",
         texto: `Com ${numero(pesoConta, 1)} kg, a conta por kg (${numero(maior)} ${d.dose.unidade}) passa da dose do adulto (${numero(adulto.valor)} ${adulto.unidade}). Considere a dose do adulto.`,
@@ -237,7 +243,7 @@ export function calcularDose(
   }
 
   const pequeno = contas.find((c) => c.volume !== undefined && c.unidadeVolume === "mL" && c.volume < 0.1);
-  if (pequeno) {
+  if (pequeno && apresentacao) {
     const diluida = d.apresentacoes.findIndex((a, i) => i !== indiceApresentacao && !a.porPeso && a.quantidade / a.mL < apresentacao.quantidade / apresentacao.mL);
     alertas.unshift({
       nivel: "atencao",
@@ -254,15 +260,17 @@ export function calcularDose(
 export type VolumeCalculado = { volume: VolumeDoProtocolo; texto: string; base: string; bloqueio: string | null };
 
 export function calcularVolume(v: VolumeDoProtocolo, p: PacienteDaConsulta): VolumeCalculado {
+  const u = v.unidade ?? "mL";
   const faixa = (f: { min?: number; max?: number }) => [f.min, f.max].filter((x): x is number => x !== undefined);
-  if (v.mlFixo) {
-    const t = faixa(v.mlFixo).map((x) => numero(x, 0)).join(" a ");
-    return { volume: v, texto: `${t} mL`, base: "volume fixo", bloqueio: null };
+  if (v.fixo) {
+    const t = faixa(v.fixo).map((x) => numero(x, 0)).join(" a ");
+    return { volume: v, texto: `${t} ${u}`, base: "fixo", bloqueio: null };
   }
-  const porKgV = faixa(v.mlPorKg ?? {});
-  const base = `${porKgV.map((x) => numero(x, 0)).join(" a ")} mL/kg`;
+  const porKgV = faixa(v.porKg ?? {});
+  const base = `${porKgV.map((x) => numero(x, 2)).join(" a ")} ${u}/kg${v.maximo ? `, máximo de ${numero(v.maximo, 0)} ${u}` : ""}`;
   if (!ok(p.pesoKg)) return { volume: v, texto: "", base, bloqueio: "Informe o peso para calcular." };
-  return { volume: v, texto: `${porKgV.map((x) => numero(x * p.pesoKg!, 0)).join(" a ")} mL`, base, bloqueio: null };
+  const conta = porKgV.map((x) => Math.min(x * p.pesoKg!, v.maximo ?? Infinity));
+  return { volume: v, texto: `${[...new Set(conta.map((x) => numero(x, 0)))].join(" a ")} ${u}`, base, bloqueio: null };
 }
 
 export function volumeServe(v: VolumeDoProtocolo, populacao: Populacao): boolean {
