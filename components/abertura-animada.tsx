@@ -110,7 +110,12 @@ else{sessionStorage.setItem('avanest:abertura','1')}
  * (6,04 × nome − 14,24 × slogan) ÷ 23. O tamanho das letras do slogan não muda
  * — a imagem do iOS guarda o lugar dele, e a altura tem de ser a mesma.
  * O `text-indent` do slogan, igual ao espaçamento, devolve à esquerda o espaço
- * que sobra depois da última letra: sem ele, a linha sai 1 ou 2 px do centro.
+ * que sobra depois da última letra: sem ele, a linha sai 1 ou 2 px do centro. *
+ * AS CORES DO NOME SÃO AS DO CABEÇALHO DA CAPA (components/app-logo.tsx):
+ * "AV" azul, o segundo A passando do azul para o verde e "NEST" verde. Cada
+ * letra aqui é uma caixa com o recuo antes e o espaçamento depois, então o
+ * corte do A vai a 56–60% da caixa — o mesmo ponto da letra (uns 60% do A)
+ * em que o cabeçalho corta.
  */
 const ESTILO_DA_ABERTURA = `.abertura{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
   background:#fff;
@@ -129,8 +134,10 @@ const ESTILO_DA_ABERTURA = `.abertura{position:fixed;inset:0;z-index:9999;displa
   font-size:clamp(23px,7.551vw,32px);font-weight:800;letter-spacing:.1012em;
   line-height:1;
   text-indent:.1012em}
-.marcaNome span:nth-child(-n+4){color:#0879c9}
-.marcaNome span:nth-child(n+5){color:#2bc5a8}
+.marcaNome span:nth-child(-n+2){color:#2b86d4}
+.marcaNome span:nth-child(3){background:linear-gradient(90deg,#2b86d4 56%,#2bc5a8 60%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.marcaNome span:nth-child(n+4){color:#2bc5a8}
 .marcaSlogan{margin:8.4px 0 0;font-size:clamp(7.5px,2.28vw,9.5px);font-weight:600;
   line-height:1;letter-spacing:calc((6.04 * clamp(23px,7.551vw,32px) - 14.24 * clamp(7.5px,2.28vw,9.5px)) / 23);text-transform:uppercase;color:#7c95a8;
   text-indent:calc((6.04 * clamp(23px,7.551vw,32px) - 14.24 * clamp(7.5px,2.28vw,9.5px)) / 23)}

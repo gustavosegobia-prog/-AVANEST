@@ -104,8 +104,10 @@ ${FOLHA_DA_FONTE}
     font-size:clamp(23px,7.551vw,32px);font-weight:800;letter-spacing:.1012em;text-indent:.1012em;
     /* Sem tinta, com o lugar guardado — veja o cabeçalho. */
     visibility:hidden}
-  .nome span:nth-child(-n+4){color:#0879c9}
-  .nome span:nth-child(n+5){color:#2bc5a8}
+  .nome span:nth-child(-n+2){color:#2b86d4}
+  .nome span:nth-child(3){background:linear-gradient(90deg,#2b86d4 56%,#2bc5a8 60%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .nome span:nth-child(n+4){color:#2bc5a8}
   .slogan{margin:8.4px 0 0;font-size:clamp(7.5px,2.28vw,9.5px);font-weight:600;line-height:1;
     letter-spacing:calc((6.04 * clamp(23px,7.551vw,32px) - 14.24 * clamp(7.5px,2.28vw,9.5px)) / 23);
     text-transform:uppercase;color:#7c95a8;text-indent:calc((6.04 * clamp(23px,7.551vw,32px) - 14.24 * clamp(7.5px,2.28vw,9.5px)) / 23);
