@@ -68,28 +68,26 @@ export function CamposDoPaciente({ dados, set, daFicha, compacto = false }: {
       </div>
       {daFicha && <p className={estilos.origem}>Dados do atendimento aberto. Confira antes de usar as doses.</p>}
       {aberto && (
-        <>
-          <div className={estilos.campos}>
-            <Campo chave="idade" rotulo="Idade (anos)" valor={dados.idade ?? ""} set={set} modo="numeric" />
-            <Campo chave="idadeMeses" rotulo="Meses" valor={dados.idadeMeses ?? ""} set={set} modo="numeric" />
-            <Campo chave="peso" rotulo="Peso (kg)" valor={dados.peso ?? ""} set={set} />
-            <Campo chave="altura" rotulo="Altura (cm)" valor={dados.altura ?? ""} set={set} modo="numeric" />
-            <label className={estilos.campo}>
-              <span>Sexo</span>
-              <select value={dados.sexo ?? ""} onChange={(e) => set("sexo", e.target.value)}>
-                <option value="">—</option>
-                <option value="Feminino">Feminino</option>
-                <option value="Masculino">Masculino</option>
-              </select>
-            </label>
-          </div>
-          <div>
+        <div className={estilos.campos}>
+          <Campo chave="idade" rotulo="Idade (anos)" valor={dados.idade ?? ""} set={set} modo="numeric" />
+          <Campo chave="idadeMeses" rotulo="Meses" valor={dados.idadeMeses ?? ""} set={set} modo="numeric" />
+          <Campo chave="peso" rotulo="Peso (kg)" valor={dados.peso ?? ""} set={set} />
+          <Campo chave="altura" rotulo="Altura (cm)" valor={dados.altura ?? ""} set={set} modo="numeric" />
+          <label className={estilos.campo}>
+            <span>Sexo</span>
+            <select value={dados.sexo ?? ""} onChange={(e) => set("sexo", e.target.value)}>
+              <option value="">—</option>
+              <option value="Feminino">Feminino</option>
+              <option value="Masculino">Masculino</option>
+            </select>
+          </label>
+          <div className={estilos.campoGestante}>
             <button type="button" className={estilos.chip} aria-pressed={dados.gestante === "sim"}
               onClick={() => set("gestante", dados.gestante === "sim" ? "" : "sim")}>
               {dados.gestante === "sim" && <Icone nome="confirmado" tamanho={16} />}Gestante
             </button>
           </div>
-        </>
+        </div>
       )}
     </section>
   );

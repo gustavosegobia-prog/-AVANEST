@@ -229,7 +229,7 @@ export function ProtocoloTela({
         <button type="button" className={estilos.botao} onClick={aoVoltar} aria-label={`Voltar para ${categoria.nome}`}>
           <Icone nome="voltar" tamanho={18} />Voltar
         </button>
-        <button type="button" className={estilos.botao} onClick={aoBuscar}>
+        <button type="button" className={`${estilos.botao} ${estilos.soNoEstreito}`} onClick={aoBuscar}>
           <Icone nome="busca" tamanho={18} />Buscar outra
         </button>
         <button type="button" className={`${estilos.botao} ${estilos.empurra}`} aria-pressed={favorito} onClick={aoFavoritar}
@@ -289,7 +289,8 @@ export function ProtocoloTela({
         </div>
       )}
 
-      <div className={estilos.naoImprimir}>
+      {/* No computador, os dados do paciente ficam na coluna da esquerda. */}
+      <div className={`${estilos.naoImprimir} ${estilos.soNoEstreito}`}>
         <CamposDoPaciente dados={dados} set={set} daFicha={daFicha} compacto />
       </div>
       <Avisos lista={conferirPaciente(paciente)} />
@@ -360,7 +361,7 @@ export function ProtocoloTela({
             </div>
           )}
           {grupos.map(([titulo, lista]) => (
-            <div key={titulo ?? "todas"} className={estilos.doses}>
+            <div key={titulo ?? "todas"} className={`${estilos.doses} ${estilos.listaDoses}`}>
               {titulo && <h4 className={estilos.grupoDoses}>{titulo}</h4>}
               {lista.map((d) => (
                 <CartaoDose key={`${d.id}-${populacao}`} d={d} protocolo={p} paciente={paciente} semFaixa={populacao === null} previa={previa}
