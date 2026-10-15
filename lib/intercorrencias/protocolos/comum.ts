@@ -17,6 +17,11 @@ export const ADRENALINA_10: ApresentacaoDoProtocolo = {
   rotulo: "1 mg em 100 mL — 10 mcg/mL (1:100.000)", quantidade: 10, unidade: "mcg", mL: 1, vias: ["IV"],
   preparo: "1 ampola (1 mg) em 100 mL de SF 0,9%",
 };
+/** Seringa de 50 mL para infusão (Manual de Crises, protocolo 07). */
+export const ADRENALINA_60: ApresentacaoDoProtocolo = {
+  rotulo: "3 mg em 50 mL — 60 mcg/mL", quantidade: 60, unidade: "mcg", mL: 1, vias: ["IV"],
+  preparo: "3 ampolas (3 mg) em 50 mL de SF 0,9%",
+};
 export const AMIODARONA_50: ApresentacaoDoProtocolo = {
   rotulo: "Ampola de 150 mg em 3 mL — 50 mg/mL", quantidade: 50, unidade: "mg", mL: 1, vias: ["IV"],
 };

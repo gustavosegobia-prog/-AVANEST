@@ -15,6 +15,7 @@ const sav = acharProtocolo("sav-pediatrico")!;
 const isquemia = acharProtocolo("isquemia-miocardica")!;
 const hemorragia = acharProtocolo("hemorragia-macica")!;
 const transfusional = acharProtocolo("reacao-hemolitica-transfusional")!;
+const embolia = acharProtocolo("embolia-gasosa-venosa")!;
 const dose = (p: typeof anafilaxia, id: string) => p.medicamentos.find((m) => m.id === id)!;
 const adulto: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
 const crianca: PacienteDaConsulta = { idadeAnos: 4, pesoKg: 16 };
@@ -297,6 +298,20 @@ test("reação hemolítica: manitol por kg nas duas concentrações, furosemida,
   assert.ok(["furosemida", "vasopressor", "diurese"].every((t) => transfusional.divergencias.some((d) => d.tema.toLowerCase().includes(t))));
   assert.ok(buscar("transfusao").some((a) => a.tipo === "protocolo" && a.protocolo.id === "reacao-hemolitica-transfusional"));
   assert.ok(!itensDaCategoria("medicamentos").previstos.some((p) => p.titulo === "Reação hemolítica transfusional"));
+});
+
+test("embolia gasosa: cristaloide do QRH (fixo no adulto, por kg na criança) e a adrenalina da tabela do Manual, dita como emprestada", () => {
+  const vol = (id: string, p: PacienteDaConsulta) => calcularVolume(embolia.volumes.find((v) => v.id === id)!, p).texto;
+  assert.equal(vol("cristaloide-embolia-adulto", adulto), "500 a 1000 mL");
+  assert.equal(vol("cristaloide-embolia-ped", crianca), "320 mL");
+  assert.deepEqual(calcularDose(dose(embolia, "adrenalina-infusao-embolia-adulto"), embolia, { idadeAnos: 50, pesoKg: null }).contas.map((c) => c.volume), [5]);
+  assert.deepEqual(calcularDose(dose(embolia, "adrenalina-infusao-embolia-ped"), embolia, crianca).contas.map((c) => c.volume), [0.8, 8]);
+  // A dose não está no protocolo 08: o cartão diz de onde veio, e a divergência mostra as três fontes.
+  for (const m of embolia.medicamentos) assert.match(m.velocidade ?? "", /protocolo 08 do Manual não dá dose/);
+  assert.equal(embolia.divergencias.find((d) => /adrenalina/i.test(d.tema))?.posicoes.length, 3);
+  assert.equal(buscar("embolia gasosa")[0].tipo === "protocolo" && (buscar("embolia gasosa")[0] as { protocolo: { id: string } }).protocolo.id, "embolia-gasosa-venosa");
+  assert.ok(!itensDaCategoria("cardiovascular").previstos.some((p) => p.titulo === "Embolia gasosa venosa"));
+  assert.ok(passosDe(embolia, "adulto").some((x) => /óxido nitroso/.test(x.texto)));
 });
 
 test("catálogo: os protocolos do Manual entram nas categorias e saem dos previstos; a busca acha pelo que se vê", () => {
