@@ -24,6 +24,7 @@ function curta(id: string): string {
   if (!r) return id;
   if (id.startsWith("anzaag-cartao-")) return `ANZAAG-ANZCA 2022, cartão ${id.slice(-1)}`;
   if (id.startsWith("qrh-")) return `QRH ${id.slice(4)} (Association of Anaesthetists)`;
+  if (/^manual-\d+$/.test(id)) return `Manual de Crises, protocolo ${id.slice(7)}`;
   return `${r.autoria.split(",")[0].replace(/ et al\.?$/, "")}${r.autoria.includes(",") ? " et al." : ""}, ${r.ano ?? "s/ ano"}`;
 }
 

@@ -1,6 +1,11 @@
 /**
  * ANAFILAXIA PERIOPERATÓRIA — adulto, gestante e criança.
  *
+ * Conferido também com o Manual de Crises em Anestesia (protocolo 06, lido
+ * no exemplar do responsável técnico): as doses da criança, a adrenalina IM
+ * por idade, a infusão e o manejo refratário coincidem; o bolus IV do adulto
+ * no grau 3 diverge e está em `divergencias`.
+ *
  * As doses vêm dos cartões ANZAAG-ANZCA de 2022 (abertos e lidos nos PDFs
  * oficiais) e do QRH da Association of Anaesthetists; onde as duas fontes
  * diferem, as duas ficam em `divergencias` e o revisor decide. O texto das
@@ -82,6 +87,7 @@ export const ANAFILAXIA: Protocolo = {
   ],
   resumo: "Hipotensão e/ou broncoespasmo minutos depois de um fármaco, com ou sem pele. Adrenalina cedo, pela gravidade.",
   reconhecer: [
+    "Gravidade: grau 1, só pele e mucosa; grau 2 (moderada), hipotensão, taquicardia, broncoespasmo, ventilação difícil; grau 3 (risco de vida), hipotensão grave, bradi ou taquiarritmia, broncoespasmo grave ou edema de via aérea; grau 4, PCR.",
     "Hipotensão sem outra explicação, em geral minutos depois do antibiótico, do bloqueador neuromuscular ou de outro fármaco IV.",
     "Taquicardia; às vezes bradicardia.",
     "Broncoespasmo: pressão de via aérea subindo, curva de capnografia obstrutiva, EtCO2 caindo, dessaturação.",
@@ -99,8 +105,9 @@ export const ANAFILAXIA: Protocolo = {
     { texto: "Hipotensão: elevar as pernas. PA sistólica abaixo de 50 mmHg ou PCR: começar compressões.",
       detalhe: "PCR: adrenalina na dose de PCR e algoritmo de ritmo não chocável." },
     { texto: "Adrenalina IV em bolus pela gravidade, repetindo a cada 1 a 2 minutos.",
-      detalhe: "Moderada: dose menor; com risco de vida: dose maior. Sem acesso venoso ou sem monitorização: adrenalina IM." },
-    { texto: "Cristaloide rápido, em acesso calibroso, repetindo até a pressão responder." },
+      detalhe: "Grau 2 (moderada): dose menor; grau 3 (risco de vida): dose maior. Sem acesso venoso ou sem monitorização: adrenalina IM." },
+    { texto: "Cristaloide rápido, em acesso calibroso, repetindo até a pressão responder.",
+      detalhe: "Pelo menos 20 mL/kg; pode precisar de um segundo acesso. Considere linha arterial cedo." },
     { texto: "Mais de 3 bolus: iniciar a infusão de adrenalina (pode ser periférica)." },
     { texto: "Gestante: deslocar o útero para a esquerda com a mão. PCR sem retorno em 5 minutos: cesárea perimortem.",
       so: ["gestante"] },
@@ -111,7 +118,7 @@ export const ANAFILAXIA: Protocolo = {
   medicamentos: [
     /* ---------------- Adulto: imediato ---------------- */
     {
-      id: "adrenalina-iv-moderada-adulto", farmaco: "Adrenalina", indicacao: "Reação moderada",
+      id: "adrenalina-iv-moderada-adulto", farmaco: "Adrenalina", indicacao: "Grau 2 — reação moderada",
       populacao: "adulto", via: "IV",
       dose: { min: 10, max: 20, unidade: "mcg", por: "fixa" },
       apresentacoes: [ADRENALINA_100, ADRENALINA_10], altoRisco: true,
@@ -119,7 +126,7 @@ export const ANAFILAXIA: Protocolo = {
       par: "adrenalina-iv-moderada-ped", referencias: ["anzaag-cartao-1"],
     },
     {
-      id: "adrenalina-iv-grave-adulto", farmaco: "Adrenalina", indicacao: "Reação com risco de vida",
+      id: "adrenalina-iv-grave-adulto", farmaco: "Adrenalina", indicacao: "Grau 3 — risco de vida",
       populacao: "adulto", via: "IV",
       dose: { min: 50, max: 100, unidade: "mcg", por: "fixa" },
       apresentacoes: [ADRENALINA_100, ADRENALINA_10], altoRisco: true,
@@ -127,12 +134,12 @@ export const ANAFILAXIA: Protocolo = {
       par: "adrenalina-iv-grave-ped", referencias: ["anzaag-cartao-1", "qrh-3-1"],
     },
     {
-      id: "adrenalina-im-adulto", farmaco: "Adrenalina", indicacao: "Sem acesso venoso ou sem monitorização, ou enquanto prepara a infusão",
+      id: "adrenalina-im-adulto", farmaco: "Adrenalina", indicacao: "Graus 2 e 3 sem acesso venoso ou sem monitorização, ou enquanto prepara a infusão",
       populacao: "adulto", via: "IM",
       dose: { usual: 500, unidade: "mcg", por: "fixa" },
       apresentacoes: [ADRENALINA_PURA_IM], altoRisco: true,
       repeticao: "A cada 5 minutos, se preciso, na face lateral da coxa.",
-      referencias: ["anzaag-cartao-1", "qrh-3-1"],
+      referencias: ["anzaag-cartao-1", "qrh-3-1", "manual-06"],
     },
     {
       id: "adrenalina-infusao-adulto", farmaco: "Adrenalina", indicacao: "Depois de 3 bolus",
@@ -140,15 +147,15 @@ export const ANAFILAXIA: Protocolo = {
       dose: { min: 3, max: 40, unidade: "mcg", por: "min" },
       apresentacoes: [ADRENALINA_60], altoRisco: true,
       velocidade: "Começar em 3 mcg/min e titular até 40 mcg/min (cerca de 0,05 a 0,5 mcg/kg/min). Pode ser periférica.",
-      par: "adrenalina-infusao-ped", referencias: ["anzaag-cartao-1", "qrh-3-1"],
+      par: "adrenalina-infusao-ped", referencias: ["anzaag-cartao-1", "qrh-3-1", "manual-06"],
     },
     {
       id: "adrenalina-pcr-adulto", farmaco: "Adrenalina", indicacao: "PCR",
       populacao: "adulto", via: "IV",
       dose: { usual: 1, unidade: "mg", por: "fixa" },
       apresentacoes: [ADRENALINA_PURA_PCR], altoRisco: true,
-      repeticao: "Algoritmo de ritmo não chocável. O cartão ANZAAG admite repetir a cada 1 a 2 minutos.",
-      par: "adrenalina-pcr-ped", referencias: ["anzaag-cartao-1"],
+      repeticao: "Logo, e a cada 2º ciclo de RCP (Manual, protocolo 02). O cartão ANZAAG admite repetir a cada 1 a 2 minutos na anafilaxia.",
+      par: "adrenalina-pcr-ped", referencias: ["anzaag-cartao-1", "manual-02"],
     },
 
     /* ---------------- Adulto: refratário ---------------- */
@@ -157,7 +164,7 @@ export const ANAFILAXIA: Protocolo = {
       populacao: "adulto", via: "IV, infusão contínua",
       dose: { min: 3, max: 40, unidade: "mcg", por: "min" },
       apresentacoes: [NORADRENALINA_16], altoRisco: true,
-      velocidade: "3 a 40 mcg/min (cerca de 0,05 a 0,5 mcg/kg/min), junto com a adrenalina.",
+      velocidade: "3 a 40 mcg/min (cerca de 0,05 a 0,5 mcg/kg/min), junto com a adrenalina. O Manual (protocolo 06) indica 0,1 mcg/kg/min.",
       par: "noradrenalina-ped", referencias: ["anzaag-cartao-3"],
       cuidados: ["Não confundir com adrenalina: rótulos e seringas parecidos."],
     },
@@ -167,14 +174,14 @@ export const ANAFILAXIA: Protocolo = {
       dose: { min: 1, max: 2, unidade: "UI", por: "fixa" },
       apresentacoes: [VASOPRESSINA_1],
       repeticao: "Depois, infusão de 2 UI/h.",
-      par: "vasopressina-bolus-ped", referencias: ["anzaag-cartao-3", "qrh-3-1"],
+      par: "vasopressina-bolus-ped", referencias: ["anzaag-cartao-3", "qrh-3-1", "manual-06"],
     },
     {
       id: "vasopressina-infusao-adulto", farmaco: "Vasopressina", indicacao: "Hipotensão resistente — infusão",
       populacao: "adulto", via: "IV, infusão contínua",
       dose: { usual: 2, unidade: "UI", por: "h" },
       apresentacoes: [VASOPRESSINA_02],
-      par: "vasopressina-infusao-ped", referencias: ["anzaag-cartao-3"],
+      par: "vasopressina-infusao-ped", referencias: ["anzaag-cartao-3", "manual-06"],
     },
     {
       id: "glucagon-adulto", farmaco: "Glucagon", indicacao: "Hipotensão resistente em uso de betabloqueador",
@@ -183,7 +190,7 @@ export const ANAFILAXIA: Protocolo = {
       apresentacoes: [GLUCAGON_1],
       repeticao: "A cada 5 minutos até responder.",
       cuidados: ["Pode dar náusea e vômito: proteger a via aérea."],
-      par: "glucagon-ped", referencias: ["anzaag-cartao-3", "qrh-3-1"],
+      par: "glucagon-ped", referencias: ["anzaag-cartao-3", "qrh-3-1", "manual-06"],
     },
     {
       id: "magnesio-adulto", farmaco: "Sulfato de magnésio", indicacao: "Broncoespasmo resistente",
@@ -204,36 +211,36 @@ export const ANAFILAXIA: Protocolo = {
 
     /* ---------------- Criança (0 a 12 anos): imediato ---------------- */
     {
-      id: "adrenalina-iv-moderada-ped", farmaco: "Adrenalina", indicacao: "Reação moderada",
+      id: "adrenalina-iv-moderada-ped", farmaco: "Adrenalina", indicacao: "Grau 2 — reação moderada",
       populacao: "pediatrico", via: "IV",
       dose: { usual: 2, unidade: "mcg", por: "kg" },
       apresentacoes: [ADRENALINA_20, ADRENALINA_10], altoRisco: true,
       repeticao: "A cada 1 a 2 minutos; aumentar se não responder.",
-      par: "adrenalina-iv-moderada-adulto", referencias: ["anzaag-cartao-2"],
+      par: "adrenalina-iv-moderada-adulto", referencias: ["anzaag-cartao-2", "manual-06"],
     },
     {
-      id: "adrenalina-iv-grave-ped", farmaco: "Adrenalina", indicacao: "Reação com risco de vida",
+      id: "adrenalina-iv-grave-ped", farmaco: "Adrenalina", indicacao: "Grau 3 — risco de vida",
       populacao: "pediatrico", via: "IV",
       dose: { min: 4, max: 10, unidade: "mcg", por: "kg" },
       apresentacoes: [ADRENALINA_20, ADRENALINA_10], altoRisco: true,
       repeticao: "A cada 1 a 2 minutos; aumentar se não responder.",
-      par: "adrenalina-iv-grave-adulto", referencias: ["anzaag-cartao-2"],
+      par: "adrenalina-iv-grave-adulto", referencias: ["anzaag-cartao-2", "manual-06"],
     },
     {
-      id: "adrenalina-im-ped-menor-6", farmaco: "Adrenalina", indicacao: "Sem acesso venoso — menos de 6 anos",
+      id: "adrenalina-im-ped-menor-6", farmaco: "Adrenalina", indicacao: "Graus 2 e 3 sem acesso venoso — menos de 6 anos",
       populacao: "pediatrico", idadeAnos: { max: 6 }, via: "IM",
       dose: { usual: 150, unidade: "mcg", por: "fixa" },
       apresentacoes: [ADRENALINA_PURA_IM], altoRisco: true,
       repeticao: "A cada 5 minutos, se preciso, na face lateral da coxa.",
-      referencias: ["anzaag-cartao-2", "aagbi-2009"],
+      referencias: ["anzaag-cartao-2", "aagbi-2009", "manual-06"],
     },
     {
-      id: "adrenalina-im-ped-6-12", farmaco: "Adrenalina", indicacao: "Sem acesso venoso — 6 a 12 anos",
+      id: "adrenalina-im-ped-6-12", farmaco: "Adrenalina", indicacao: "Graus 2 e 3 sem acesso venoso — 6 a 12 anos",
       populacao: "pediatrico", idadeAnos: { min: 6, max: 12 }, via: "IM",
       dose: { usual: 300, unidade: "mcg", por: "fixa" },
       apresentacoes: [ADRENALINA_PURA_IM], altoRisco: true,
       repeticao: "A cada 5 minutos, se preciso, na face lateral da coxa.",
-      referencias: ["anzaag-cartao-2", "aagbi-2009"],
+      referencias: ["anzaag-cartao-2", "aagbi-2009", "manual-06"],
     },
     {
       id: "adrenalina-infusao-ped", farmaco: "Adrenalina", indicacao: "Iniciar assim que possível",
@@ -248,8 +255,8 @@ export const ANAFILAXIA: Protocolo = {
       populacao: "pediatrico", via: "IV",
       dose: { usual: 10, unidade: "mcg", por: "kg" }, tetoAbsoluto: { valor: 1, unidade: "mg" },
       apresentacoes: [ADRENALINA_100], altoRisco: true,
-      repeticao: "A cada 1 a 4 minutos, se preciso (cartão ANZAAG). Máximo de 1 mg por dose.",
-      par: "adrenalina-pcr-adulto", referencias: ["anzaag-cartao-2", "aha-2020-pediatrico"],
+      repeticao: "A cada 3 a 5 minutos (Manual, protocolo 03); o cartão ANZAAG admite 1 a 4 minutos. Máximo de 1 mg por dose.",
+      par: "adrenalina-pcr-adulto", referencias: ["anzaag-cartao-2", "aha-2020-pediatrico", "manual-03"],
     },
 
     /* ---------------- Criança: refratário ---------------- */
@@ -310,10 +317,13 @@ export const ANAFILAXIA: Protocolo = {
     },
   ],
   volumes: [
-    { id: "cristaloide-moderada-adulto", indicacao: "Reação moderada", populacao: "adulto",
+    { id: "cristaloide-kg-adulto", indicacao: "Bolus inicial (pelo menos)", populacao: "adulto",
+      mlPorKg: { min: 20 }, repeticao: "Volumes maiores e um segundo acesso podem ser necessários.",
+      referencias: ["qrh-3-1", "manual-06"] },
+    { id: "cristaloide-moderada-adulto", indicacao: "Grau 2 — reação moderada", populacao: "adulto",
       mlFixo: { min: 500 }, repeticao: "Repetir conforme a pressão.",
       referencias: ["anzaag-cartao-1"] },
-    { id: "cristaloide-grave-adulto", indicacao: "Reação com risco de vida", populacao: "adulto",
+    { id: "cristaloide-grave-adulto", indicacao: "Grau 3 — risco de vida", populacao: "adulto",
       mlFixo: { min: 1000 }, repeticao: "Repetir conforme a pressão; PCR: 2 L. Planejar grande volume.",
       referencias: ["anzaag-cartao-1"] },
     { id: "cristaloide-refrataria-adulto", indicacao: "Hipotensão resistente — volume adicional", populacao: "adulto",
@@ -335,7 +345,7 @@ export const ANAFILAXIA: Protocolo = {
   ],
   depois: [
     "Triptase: assim que possível depois do início, e de novo em 1 h, 4 h e depois de 24 h (ANZAAG 2022). Anotar o horário de cada amostra.",
-    "Corticoide só depois de estabilizar. Anti-histamínico não trata hipotensão nem broncoespasmo.",
+    "Corticoide só depois de estabilizar. Anti-histamínico não trata hipotensão nem broncoespasmo; se usar, oral de segunda geração, com o paciente estável (parenteral não recomendado).",
     "Sugamadex não é recomendado para tratar a suspeita de anafilaxia ao rocurônio.",
     "Decidir com o cirurgião se a cirurgia continua; nas reações graves, em geral é adiada.",
     "UTI ou observação monitorizada: a reação pode durar ou voltar.",
@@ -349,8 +359,9 @@ export const ANAFILAXIA: Protocolo = {
       posicoes: [
         { texto: "Pela gravidade: 10 a 20 mcg na moderada (sem resposta, 50 mcg); 50 a 100 mcg com risco de vida (sem resposta, 200 mcg).", referencia: "anzaag-cartao-1" },
         { texto: "50 mcg como dose inicial, repetida conforme a resposta.", referencia: "qrh-3-1" },
+        { texto: "Grau 2: 20 mcg; grau 3: 100 a 200 mcg, a cada 1 a 2 minutos.", referencia: "manual-06" },
       ],
-      escolha: "O protocolo segue o cartão ANZAAG de 2022, graduado pela gravidade; os 50 mcg do QRH cabem na faixa da reação grave.",
+      escolha: "O protocolo segue o cartão ANZAAG de 2022, graduado pela gravidade. O Manual dá dose maior no grau 3 (100 a 200 mcg contra 50 a 100 mcg): diferença importante, o revisor decide.",
     },
     {
       tema: "Bolus IV de adrenalina na criança",
@@ -365,8 +376,27 @@ export const ANAFILAXIA: Protocolo = {
       posicoes: [
         { texto: "Clorfeniramina IV no manejo secundário (adulto 10 mg).", referencia: "qrh-3-1" },
         { texto: "Sem papel na fase aguda; retirado dos cartões. Prometazina injetável não deve ser usada (piora a hipotensão).", referencia: "anzaag-diretriz-2022" },
+        { texto: "Quando estável, anti-histamínico oral de segunda geração (e corticoide); parenteral não recomendado.", referencia: "manual-06" },
       ],
-      escolha: "Não entra na lista de doses. O revisor decide se inclui, e com qual apresentação disponível no Brasil.",
+      escolha: "Não entra na lista de doses da crise. Se usar, oral de segunda geração depois de estabilizar (ANZAAG e Manual).",
+    },
+    {
+      tema: "Volume de cristaloide no adulto",
+      posicoes: [
+        { texto: "Moderada 500 mL; risco de vida 1.000 mL; PCR 2 L.", referencia: "anzaag-cartao-1" },
+        { texto: "20 mL/kg em bolus, repetindo até a pressão responder.", referencia: "qrh-3-1" },
+        { texto: "Pelo menos 20 mL/kg; volumes maiores e um segundo acesso podem ser necessários.", referencia: "manual-06" },
+      ],
+      escolha: "Os dois aparecem: o fixo da ANZAAG e o por kg do QRH e do Manual (1.400 mL para 70 kg).",
+    },
+    {
+      tema: "Intervalo da adrenalina na PCR",
+      posicoes: [
+        { texto: "Adulto: 1 mg, repetindo a cada 1 a 2 minutos se preciso.", referencia: "anzaag-cartao-1" },
+        { texto: "Adulto: 1 mg logo, e depois a cada 2º ciclo de RCP.", referencia: "manual-02" },
+        { texto: "Criança: 10 mcg/kg logo, e a cada 3 a 5 minutos.", referencia: "manual-03" },
+      ],
+      escolha: "A dose é a mesma nas fontes; o intervalo segue o algoritmo de PCR. O revisor decide se, na anafilaxia, vale o intervalo mais curto do cartão.",
     },
     {
       tema: "Hidrocortisona na criança",
@@ -380,13 +410,14 @@ export const ANAFILAXIA: Protocolo = {
       tema: "Horário das amostras de triptase",
       posicoes: [
         { texto: "Logo depois do início, 1 h, 4 h e depois de 24 h.", referencia: "anzaag-diretriz-2022" },
+        { texto: "Em 1, 4 e 24 horas.", referencia: "manual-06" },
         { texto: "Assim que estável, 1 a 2 h e depois de 24 h.", referencia: "qrh-3-1" },
       ],
-      escolha: "O protocolo segue o ANZAAG 2022, que inclui as amostras do QRH.",
+      escolha: "O protocolo segue o ANZAAG 2022, que inclui as amostras do QRH e do Manual.",
     },
   ],
   referencias: [
     "anzaag-cartao-1", "anzaag-cartao-2", "anzaag-cartao-3", "anzaag-cartao-4", "anzaag-diretriz-2022",
-    "qrh-3-1", "aagbi-2009", "nap6", "garvey-2019", "anzaag-2017", "aha-2020-pediatrico",
+    "qrh-3-1", "aagbi-2009", "manual-06", "manual-02", "manual-03", "nap6", "garvey-2019", "anzaag-2017", "aha-2020-pediatrico",
   ],
 };
