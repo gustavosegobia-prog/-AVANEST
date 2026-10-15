@@ -87,7 +87,7 @@
 .indiceTitulo:first-child { margin-top: 4px; }
 .indiceLista { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .indiceItem {
-  display: grid; grid-template-columns: 18px minmax(0, 1fr) 16px; align-items: center; gap: 10px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 16px; align-items: center; gap: 10px;
   width: 100%; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 9px; background: none;
   font: inherit; font-size: 15px; font-weight: 600; color: var(--cor-tinta); cursor: pointer; text-align: left;
 }
@@ -97,12 +97,11 @@
 .indiceItem:focus-visible, .indiceSub:focus-visible { outline: 2px solid var(--cor-marca); outline-offset: -2px; }
 .indiceItem:disabled, .indiceSub:disabled { cursor: default; color: var(--cor-tinta-fraca); }
 .indiceItem:disabled:hover, .indiceSub:disabled:hover { background: none; }
-.indiceLetra { font-weight: 800; color: var(--cor-marca); font-variant-numeric: tabular-nums; }
 .indiceSeta { color: var(--cor-tinta-fraca); transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
 .indiceItem[aria-expanded="true"] .indiceSeta { transform: rotate(180deg); }
 .indiceFavorito { grid-template-columns: 18px minmax(0, 1fr); }
 .indiceFavorito svg { color: var(--cor-atencao); fill: currentColor; }
-.indiceSubs { display: grid; gap: 1px; list-style: none; margin: 2px 0 10px; padding: 0 0 0 28px; }
+.indiceSubs { display: grid; gap: 1px; list-style: none; margin: 2px 0 10px; padding: 0 0 0 14px; }
 .indiceSub {
   display: grid; gap: 1px; width: 100%; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px; background: none;
   text-align: left; font: inherit; font-size: 14.5px; font-weight: 550; line-height: 1.3; color: var(--cor-tinta); cursor: pointer;
@@ -138,10 +137,6 @@
 }
 .vazio { margin: 0; color: var(--cor-tinta-fraca); font-size: 15px; }
 
-.letra {
-  flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
-  background: var(--cor-marca-suave); color: var(--cor-marca-forte); font-weight: 800; font-size: 16px;
-}
 
 .selo {
   flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px;
@@ -178,7 +173,6 @@
 .protoTitulo p { margin: 0; font-size: 16.5px; line-height: 1.5; color: var(--cor-tinta); max-width: 68ch; text-wrap: pretty; }
 .linhaSelos { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 13px; color: var(--cor-tinta-fraca); }
 .tagCategoria { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; color: var(--cor-tinta); }
-.tagCategoria .letra { width: 24px; height: 24px; border-radius: 7px; font-size: 12.5px; }
 .faixa { padding: 3px 10px; border-radius: 999px; background: var(--cor-superficie-suave); color: var(--cor-tinta-fraca); font-weight: 650; font-size: 12.5px; }
 .faixaAtiva { background: var(--cor-tinta-forte); color: var(--cor-superficie); }
 

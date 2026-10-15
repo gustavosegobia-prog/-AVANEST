@@ -251,7 +251,7 @@ export function ProtocoloTela({
         <p>{p.resumo}</p>
         <div className={estilos.linhaSelos}>
           <span className={estilos.tagCategoria}>
-            <span className={estilos.letra} aria-hidden="true">{categoria.letra}</span>{categoria.nome}
+            {categoria.nome}
           </span>
           {p.populacoes.map((x) => (
             <span key={x} className={`${estilos.faixa} ${x === populacao ? estilos.faixaAtiva : ""}`}>{ROTULO_POPULACAO[x]}</span>
