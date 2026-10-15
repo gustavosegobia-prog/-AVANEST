@@ -97,13 +97,13 @@ export const PREVISTOS: Previsto[] = [
 ];
 
 /**
- * Os protocolos que valem em mais de uma categoria: o laringoespasmo é um só
- * para adulto e criança, e aparece também em Pediatria — no lugar do
- * "Laringoespasmo pediátrico" previsto.
+ * Cada protocolo aparece numa categoria só, sem repetição. Quando um protocolo
+ * já cobre um previsto de outra categoria, o previsto sai da lista: o
+ * laringoespasmo é um só para adulto e criança (fica em Respiratório) e ocupa
+ * o lugar do "Laringoespasmo pediátrico".
  */
-const TAMBEM_EM: Record<string, { categoria: Categoria; noLugarDe: string }[]> = {
-  laringoespasmo: [{ categoria: "pediatria", noLugarDe: "Laringoespasmo pediátrico" }],
-  "reanimacao-neonatal": [{ categoria: "obstetricia", noLugarDe: "Reanimação neonatal" }],
+const COBRE: Record<string, string[]> = {
+  laringoespasmo: ["Laringoespasmo pediátrico"],
 };
 
 export const acharProtocolo = (id: string) => PROTOCOLOS.find((x) => x.id === id);
@@ -112,13 +112,12 @@ export const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "
 
 /** Os títulos previstos que já têm protocolo (o próprio, ou o que ocupa o lugar dele). */
 const cobertos = (protocolos: readonly Protocolo[]) => new Set(protocolos.flatMap((x) => [
-  semAcento(x.titulo), ...(TAMBEM_EM[x.id] ?? []).map((t) => semAcento(t.noLugarDe)),
+  semAcento(x.titulo), ...(COBRE[x.id] ?? []).map(semAcento),
 ]));
 
 /** O que uma categoria mostra: os protocolos prontos e os previstos ainda sem protocolo. */
 export function itensDaCategoria(categoria: Categoria, protocolos: readonly Protocolo[] = PROTOCOLOS) {
-  const prontos = protocolos.filter((x) => x.categoria === categoria
-    || (TAMBEM_EM[x.id] ?? []).some((t) => t.categoria === categoria));
+  const prontos = protocolos.filter((x) => x.categoria === categoria);
   const jaTem = cobertos(protocolos);
   const previstos = PREVISTOS.filter((x) => x.categoria === categoria && !jaTem.has(semAcento(x.titulo)));
   return { prontos, previstos };

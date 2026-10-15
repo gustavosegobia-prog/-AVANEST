@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { acharProtocolo, buscar, itensDaCategoria, PREVISTOS, PROTOCOLOS } from "./catalogo.ts";
+import { acharProtocolo, buscar, CATEGORIAS, itensDaCategoria, PREVISTOS, PROTOCOLOS } from "./catalogo.ts";
 import {
   calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, volumeServe, type PacienteDaConsulta,
 } from "./calculo.ts";
@@ -203,8 +203,8 @@ test("busca pelo nome, pelo sinônimo e pelo sinal, sem acento; previstos aparec
   const fogo = buscar("incendio");
   assert.ok(fogo.some((a) => a.tipo === "previsto" && a.previsto.titulo === "Incêndio na sala cirúrgica"));
   assert.deepEqual(buscar("  "), []);
-  // O laringoespasmo pediátrico previsto é coberto pelo protocolo único.
-  assert.ok(itensDaCategoria("pediatria").prontos.some((p) => p.id === "laringoespasmo"));
+  // O laringoespasmo pediátrico previsto é coberto pelo protocolo único, que fica só em Respiratório.
+  assert.ok(!itensDaCategoria("pediatria").prontos.some((p) => p.id === "laringoespasmo"));
   assert.ok(!itensDaCategoria("pediatria").previstos.some((p) => p.titulo === "Laringoespasmo pediátrico"));
   assert.ok(!itensDaCategoria("respiratorio").previstos.some((p) => p.titulo === "Laringoespasmo"));
   assert.equal(PREVISTOS.filter((p) => p.categoria === "cardiovascular").length, 10);
@@ -401,7 +401,10 @@ test("obstetrícia: raqui alta, HPP com uterotônicos, magnésio do Ministério 
   assert.deepEqual(tubo.contas.map((c) => c.volume), [3]);
   assert.ok(!tubo.alertas.some((a) => a.nivel === "perigo"));
   assert.equal(calcularVolume(rn.volumes[0], recem).texto, "30 mL");
-  assert.ok(itensDaCategoria("obstetricia").prontos.some((p) => p.id === "reanimacao-neonatal"));
+  // Reanimação neonatal só em Pediatria: cada protocolo numa categoria.
+  assert.ok(!itensDaCategoria("obstetricia").prontos.some((p) => p.id === "reanimacao-neonatal"));
+  const listados = CATEGORIAS.flatMap((c) => itensDaCategoria(c.id).prontos.map((p) => p.id));
+  assert.deepEqual([...listados].sort(), PROTOCOLOS.map((p) => p.id).sort());
   for (const t of ["Bloqueio raquidiano alto ou total", "Hemorragia pós-parto", "Colapso materno e PCR na gestante"]) {
     assert.ok(!itensDaCategoria("obstetricia").previstos.some((p) => p.titulo === t), t);
   }
