@@ -18,8 +18,8 @@ import { useRevisoes } from "./use-revisoes";
  * Os dados do paciente numa faixa no alto. No computador, embaixo dela, duas
  * colunas: à esquerda, fixas ao rolar, a busca e as categorias (as abas do
  * manual), que se abrem ali mesmo mostrando os protocolos; à direita, só o
- * protocolo escolhido. A tela muda quando se escolhe o protocolo, não quando
- * se abre a categoria. No celular, uma coluna só, e o protocolo aberto ocupa
+ * protocolo escolhido (ou os resultados da busca). A tela muda quando se
+ * escolhe o protocolo, não quando se abre a categoria. No celular, uma coluna só, e o protocolo aberto ocupa
  * a tela inteira. A busca acha pelo nome, pelo
  * sinônimo ou pelo que se vê no monitor ("estridor", "PA caindo").
  *
@@ -234,19 +234,7 @@ export function Intercorrencias({
                 </ul>
               )}
             </section>
-          ) : (
-            // Antes de escolher: a tela ensina o caminho, sem repetir a lista da coluna.
-            <section className={estilos.inicio} aria-labelledby={`${id}-inicio`}>
-              <h3 id={`${id}-inicio`}>Escolha o protocolo na coluna ao lado</h3>
-              <p>Abra a categoria e clique no protocolo: ele aparece aqui, com as doses calculadas para o paciente informado acima.</p>
-              <div className={estilos.exemplos}>
-                <span>Ou busque pelo que está vendo:</span>
-                {["estridor", "PA caindo", "EtCO2 caindo", "dessaturação", "sangramento"].map((t) => (
-                  <button key={t} type="button" className={estilos.chip} onClick={() => { setTermo(t); busca.current?.focus(); }}>{t}</button>
-                ))}
-              </div>
-            </section>
-          )}
+          ) : null}
 
           {!protocolo && revisoes.papel?.admin && !revisoes.semBanco && <EquipeCientifica />}
         </div>
