@@ -5,6 +5,7 @@ import {
   calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, type PacienteDaConsulta,
 } from "./calculo.ts";
 import { acharReferencia, REFERENCIAS } from "./referencias.ts";
+import { APROVACAO, aprovado } from "./aprovacao.ts";
 
 const anafilaxia = acharProtocolo("anafilaxia")!;
 const laringo = acharProtocolo("laringoespasmo")!;
@@ -412,11 +413,23 @@ test("sem revisão científica: todo protocolo pronto abre para quem usa, e nada
   // Nenhum item do índice, da busca ou dos favoritos fica travado.
   assert.doesNotMatch(tela, /disabled=\{!disponivel/);
   assert.doesNotMatch(tela, /em revisão/i);
-  assert.doesNotMatch(ler("components/intercorrencias/protocolo.tsx"), /Prévia para revisão|Aprovado por/);
+  assert.doesNotMatch(ler("components/intercorrencias/protocolo.tsx"), /Prévia para revisão/);
   // A migração do histórico de revisão nunca foi aplicada e saiu do repositório.
   assert.ok(!existsSync(new URL("../../supabase/migrations/202610150001_intercorrencias_anestesicas.sql", import.meta.url)));
   // As notas de divergência, que o médico lê, dizem o que o protocolo faz, sem "o revisor decide".
   for (const p of PROTOCOLOS) {
     for (const d of p.divergencias) assert.doesNotMatch(d.escolha, /revisor/i, `${p.id}: ${d.tema}`);
   }
+});
+
+test("aprovação médica registrada: nome, CRM, data e versão; vale para todos os 34 protocolos da versão 2", () => {
+  assert.equal(APROVACAO.responsavel, "Gustavo Segobia da Silva");
+  assert.equal(APROVACAO.crm, "CRM 49131");
+  assert.equal(APROVACAO.data, "2026-10-15");
+  assert.equal(APROVACAO.versao, 2);
+  // Mudou o conteúdo de um protocolo? Sobe a versão, e este teste lembra de registrar a nova aprovação.
+  for (const p of PROTOCOLOS) assert.ok(aprovado(p), `${p.id}: versão ${p.versao} de ${p.atualizadoEm} sem aprovação registrada`);
+  // A aprovação não se estende sozinha a uma versão nova.
+  assert.equal(aprovado({ ...fvtv, versao: 3 }), false);
+  assert.equal(aprovado({ ...fvtv, atualizadoEm: "2026-11-01" }), false);
 });

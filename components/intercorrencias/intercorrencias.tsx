@@ -4,6 +4,7 @@ import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import estilos from "./intercorrencias.module.css";
 import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS } from "@/lib/intercorrencias/catalogo";
+import { APROVACAO } from "@/lib/intercorrencias/aprovacao";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, type DadosDoPaciente } from "./paciente";
@@ -209,7 +210,7 @@ export function Intercorrencias({
 
       <div className={`${estilos.rodapes} ${estilos.naoImprimir}`}>
         <p className={estilos.rodape}>
-          Os protocolos seguem diretrizes publicadas, citadas no fim de cada um. Confira apresentação, via e dose antes de administrar.
+          Os protocolos seguem diretrizes publicadas, citadas no fim de cada um. Versão {APROVACAO.versao} aprovada por {APROVACAO.responsavel}, {APROVACAO.crm}, em {APROVACAO.data.split("-").reverse().join("/")}. Confira apresentação, via e dose antes de administrar.
         </p>
       </div>
     </div>

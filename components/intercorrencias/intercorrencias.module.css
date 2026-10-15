@@ -170,6 +170,7 @@
 .protoTitulo h2 { margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.025em; color: var(--cor-tinta-forte); text-wrap: balance; }
 .protoTitulo p { margin: 0; font-size: 16.5px; line-height: 1.5; color: var(--cor-tinta); max-width: 68ch; text-wrap: pretty; }
 .linhaSelos { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 13px; color: var(--cor-tinta-fraca); }
+.semAprovacao { color: var(--cor-atencao); font-weight: 650; }
 .tagCategoria { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; color: var(--cor-tinta); }
 .faixa { padding: 3px 10px; border-radius: 999px; background: var(--cor-superficie-suave); color: var(--cor-tinta-fraca); font-weight: 650; font-size: 12.5px; }
 .faixaAtiva { background: var(--cor-tinta-forte); color: var(--cor-superficie); }
