@@ -12,8 +12,8 @@ import { paginaPublica } from "@/lib/metadados";
 export const metadata: Metadata = paginaPublica({
   titulo: "Software para anestesista e grupos de anestesia | AVANEST",
   descricao:
-    "Software para anestesiologistas: avaliação pré-anestésica com ficha impressa, escala "
-    + "médica do grupo e o que você tem a receber. 2 meses grátis.",
+    "Software para anestesiologistas: recepção, avaliação pré-anestésica, ficha anestésica, "
+    + "manejo de crises, escala e financeiro do grupo. 2 meses grátis.",
   caminho: "/",
 });
 
@@ -49,15 +49,18 @@ const DADOS_ESTRUTURADOS = {
   url: "https://www.avanest.com.br",
   inLanguage: "pt-BR",
   description:
-    "Software para anestesiologistas e grupos de anestesia: avaliação pré-anestésica em "
-    + "nove etapas com escores de risco e ficha impressa, escala médica por hospital, "
-    + "registro da produção do dia e controle do que foi faturado e recebido.",
+    "Software para anestesiologistas e grupos de anestesia: recepção com agenda do dia, "
+    + "avaliação pré-anestésica em nove etapas com escores de risco, ficha anestésica do "
+    + "intraoperatório no tablet, protocolos de crise com doses pelo peso, escala por hospital "
+    + "e o financeiro do grupo e de cada médico.",
   featureList: [
-    "Avaliação pré-anestésica digital com ficha para impressão",
+    "Recepção: agenda do dia, chegada e etapas do atendimento",
+    "Avaliação pré-anestésica digital com ficha, termo e orientações para impressão",
     "Escores de risco: ASA, STOP-BANG, Apfel e índice de Lee (RCRI)",
-    "Escala de plantões por instituição, com troca entre colegas",
-    "Registro da produção do plantão e do que foi faturado",
-    "Leitura da ficha de internação por foto",
+    "Ficha anestésica do intraoperatório no tablet, impressa em A4",
+    "Protocolos de crise em anestesia com doses calculadas pelo peso",
+    "Escala de plantões por instituição e escala pessoal, com troca entre colegas",
+    "Financeiro do grupo e do médico: produção, faturamento, glosas e repasses",
   ],
   offers: {
     "@type": "Offer",
@@ -72,6 +75,74 @@ const DADOS_ESTRUTURADOS = {
   // um mudasse, ele ficaria com duas versões da mesma marca e escolheria uma.
   provider: { "@id": ID_DA_ORGANIZACAO },
 };
+
+type Modulo = {
+  nome: string; texto: string; itens: string[]; link?: [string, string];
+  tela: [string, number, number]; alt: string; tablet?: boolean;
+  segunda?: [string, number, number, string];
+};
+
+/**
+ * Os seis módulos, na ordem do dia do serviço: o paciente chega, é avaliado,
+ * opera, e a crise pode acontecer na sala; a escala e o dinheiro fecham o mês.
+ * Cada frase diz o que o colega faz com o módulo — e cada item é uma coisa que
+ * a tela ao lado mostra ou que o sistema de fato faz.
+ */
+const MODULOS: Modulo[] = [
+  {
+    nome: "Recepção",
+    texto: "A agenda do dia por médico e por hospital. A recepção marca, registra a chegada e acompanha cada paciente até a consulta terminar, sem abrir o conteúdo clínico.",
+    itens: ["Agendado, aguardando, em atendimento e concluído na mesma lista", "Busca por nome, CPF ou telefone",
+      "Falta, desmarcação e reagendamento ficam no histórico"],
+    tela: ["/capa/recepcao.webp", 1600, 956],
+    alt: "Recepção do AVANEST: a agenda do dia com pacientes concluídos, em atendimento e aguardando (dados fictícios)",
+  },
+  {
+    nome: "Consulta pré-anestésica",
+    texto: "Nove etapas no celular ou no computador. Lee, STOP-Bang e Apfel saem calculados do que já foi respondido, e a ASA é você quem escolhe.",
+    itens: ["Ficha, termo de consentimento e orientações impressos no timbre do hospital",
+      "O medicamento a suspender sai com o prazo escrito", "Os dados da consulta seguem para a ficha anestésica"],
+    link: ["/avaliacao-pre-anestesica", "Guia da avaliação pré-anestésica"],
+    tela: ["/capa/avaliacao-computador.webp", 1600, 1025],
+    alt: "Avaliação pré-anestésica no AVANEST: as nove etapas e a identificação da paciente (dados fictícios)",
+  },
+  {
+    nome: "Ficha anestésica",
+    texto: "A folha de anestesia no tablet, dentro da sala. Você toca no gráfico para lançar PA e FC e registra medicação, infusão, gases e eventos com um toque.",
+    itens: ["Doses sugeridas pelo peso e pela idade, que você confere antes de registrar",
+      "Salva a cada lançamento e guarda autor e horário de cada registro", "Imprime em A4 no formato da folha de papel"],
+    link: ["/ficha-anestesica", "O que a ficha anestésica deve conter"],
+    tela: ["/capa/ficha-anestesica.webp", 1500, 1042], tablet: true,
+    alt: "Ficha anestésica no tablet: gases, infusões, líquidos, sinais vitais e a lista de medicação (dados fictícios)",
+  },
+  {
+    nome: "Manejo de crises",
+    texto: "34 protocolos de crise em anestesia, de PCR e anafilaxia a hipertermia maligna e via aérea difícil. Com o peso e a idade do paciente, as doses saem calculadas, com o volume de cada apresentação.",
+    itens: ["Agir agora em passos numerados, para ler de longe", "Ritmos de parada como aparecem no monitor",
+      "Cada protocolo cita a diretriz de onde saiu e sai em PDF para deixar na sala"],
+    tela: ["/capa/manejo-de-crises.webp", 1600, 1000],
+    alt: "Hipertermia maligna no AVANEST: dantroleno calculado para 72 kg, com o volume em frascos (dados fictícios)",
+  },
+  {
+    nome: "Escala pessoal e do grupo",
+    texto: "Uma escala por hospital para o grupo e a sua, reunindo todos os lugares onde você trabalha. O plantão troca de mãos com aceite, e o nome de quem pediu e de quem aceitou fica registrado.",
+    itens: ["Mês, semana ou lista, com os feriados marcados", "Cada médico recebe os próprios plantões por e-mail",
+      "Plantões fora do grupo entram na sua escala e só você vê"],
+    link: ["/escala-medica", "Escala médica do grupo"],
+    tela: ["/capa/escala.webp", 1600, 956],
+    alt: "Minha escala no AVANEST: o mês com os plantões em dois hospitais e o total a receber (dados fictícios)",
+  },
+  {
+    nome: "Financeiro pessoal e do grupo",
+    texto: "Para o grupo, produção, notas, glosas, recebimentos e repasses, com a composição de cada número. Para você, quanto fez, quanto recebeu e quanto ainda falta receber.",
+    itens: ["Faturado, recebido e a receber por convênio e por competência", "Glosas com prazo de recurso e cobranças em atraso apontadas",
+      "Meu financeiro: o ano em um gráfico, plantão por plantão"],
+    link: ["/recursos", "O controle financeiro por dentro"],
+    tela: ["/capa/financeiro-grupo.webp", 1600, 956],
+    alt: "Financeiro do grupo no AVANEST: recebido, a receber, faturado e recebimentos por convênio (dados fictícios)",
+    segunda: ["/capa/financeiro-pessoal.webp", 1600, 956, "Meu financeiro: o total do mês e o gráfico do ano do médico (dados fictícios)"],
+  },
+];
 
 export default function HomePage() {
   const whatsappUrl =
@@ -122,19 +193,21 @@ export default function HomePage() {
           {/* O BENEFÍCIO PRIMEIRO, a lista de funções depois. O título anterior
               ("Da avaliação pré-anestésica ao fluxo de caixa do serviço")
               dizia o que o sistema cobre; este diz o que ele devolve a quem
-              usa. O que ele cobre vem logo abaixo, em três linhas. */}
+              usa. O que ele cobre vem logo abaixo, nos seis módulos. */}
           <h1>Menos burocracia. Mais tempo para o que realmente importa.</h1>
           <p className="avnLead">
             Gestão clínica, escalas e finanças em uma única plataforma,
             desenvolvida por anestesiologista para anestesiologistas.
           </p>
-          {/* Os três benefícios em uma linha cada, sem parágrafo embaixo: quem
-              chega quer saber o que o sistema faz em um olhar; o detalhe está
-              na seção "O que o sistema cobre" e em /recursos. */}
-          <ul className="avnBeneficios">
-            <li>Avaliação pré-anestésica completa</li>
-            <li>Escalas organizadas, equipe conectada</li>
-            <li>Controle financeiro sem complicação</li>
+          {/* OS SEIS MÓDULOS, um por linha curta, em duas colunas no computador.
+              Cada um tem a sua tela real mais abaixo, em "O sistema por dentro". */}
+          <ul className="avnBeneficios avnModulosLista">
+            <li>Recepção</li>
+            <li>Consulta pré-anestésica</li>
+            <li>Ficha anestésica</li>
+            <li>Manejo de crises</li>
+            <li>Escala pessoal e do grupo</li>
+            <li>Financeiro pessoal e do grupo</li>
           </ul>
           {/* O TESTE GRÁTIS É A AÇÃO PRINCIPAL, e o próprio botão diz a oferta —
               sem título nem descrição repetindo "2 meses grátis" acima dele.
@@ -176,16 +249,15 @@ export default function HomePage() {
           recepção e financeiro — e cada um decide por motivos diferentes. Um
           texto só, para os dois, acabava falando com nenhum. */}
       <section className="avnPerfis" aria-labelledby="avn-perfis-titulo">
-        <p className="avnPerfisSobre">PARA QUEM É</p>
-        <h2 id="avn-perfis-titulo">Escolha o seu caminho.</h2>
+        <h2 id="avn-perfis-titulo">Para quem trabalha sozinho e para quem coordena um grupo.</h2>
         <div className="avnPerfisGrade">
           <article>
             <h3>Sou anestesiologista</h3>
             <p className="avnPerfilQuem">Trabalho por conta própria, em um ou em vários hospitais.</p>
             <ul>
-              <li>A avaliação pré-anestésica no celular, com os escores calculados a partir do que já foi respondido.</li>
-              <li>Os plantões de todas as instituições reunidos em uma escala só.</li>
-              <li>O que você produziu, faturou e ainda tem a receber, mês a mês.</li>
+              <li>A avaliação pré-anestésica no celular e a ficha anestésica no tablet, dentro da sala.</li>
+              <li>Os plantões de todos os hospitais reunidos em uma escala só.</li>
+              <li>O que você fez, recebeu e ainda tem a receber, mês a mês.</li>
             </ul>
             <a className="avnPerfilBotao primario" href={`${CAMINHO_DA_CAMPANHA}?de=perfil-individual`}>Começar 2 meses grátis</a>
           </article>
@@ -193,8 +265,9 @@ export default function HomePage() {
             <h3>Gerencio um grupo de anestesia</h3>
             <p className="avnPerfilQuem">Coordeno a escala, a recepção e o financeiro de uma equipe.</p>
             <ul>
-              <li>A escala do grupo por instituição, com as trocas entre colegas registradas.</li>
+              <li>A escala do grupo por hospital, com as trocas entre colegas registradas.</li>
               <li>Recepção, área médica e financeiro com acessos separados por função.</li>
+              <li>Os mesmos protocolos de crise, com doses pelo peso, para toda a equipe.</li>
               <li>O fechamento do mês e os repasses, com a composição de cada número.</li>
             </ul>
             <a className="avnPerfilBotao" href="/planos">Ver planos para grupos</a>
@@ -203,52 +276,41 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="avnInfo" id="como-funciona">
-        <p>O QUE O SISTEMA COBRE</p>
-        <h2>Três frentes que hoje vivem separadas.</h2>
-        <div className="avnGrid">
-          {[
-            /* A avaliação vem primeiro: é o que o colega reconhece de imediato
-               e o que ele faz antes de o paciente entrar. Depois a escala e o
-               dinheiro, que são o que ele não esperava encontrar no mesmo
-               lugar — e é aí que o sistema deixa de ser mais um. */
-            [
-              "01",
-              "Avaliação pré-anestésica",
-              "Nove etapas, com índice de Lee, STOP-Bang e Apfel calculados a partir do que já foi respondido. Ao final saem a ficha, o termo de consentimento e as orientações ao paciente, impressos no timbre do hospital em que ele foi atendido.",
-              "/avaliacao-pre-anestesica",
-              "Guia da avaliação pré-anestésica",
-            ],
-            [
-              "02",
-              "Escala do serviço",
-              "Uma escala por instituição, e a do profissional reunindo todas em um calendário. O plantão do grupo não se apaga: é transferido a um colega, com autor, data e resposta registrados.",
-              "/escala-medica",
-              "Escala médica do grupo",
-            ],
-            [
-              "03",
-              "Controle de caixa",
-              "A produção do dia registrada em uma linha, ainda no hospital. O fechamento do mês sai pronto para o financeiro, e o sistema aponta o que foi faturado e ainda não foi recebido.",
-              "/recursos",
-              "O controle financeiro por dentro",
-            ],
-          ].map(([n, title, text, href, rotulo]) => (
-            <article key={n}>
-              <b>{n}</b><h3>{title}</h3><p>{text}</p>
-              {/* O texto do link é o nome da busca: é a âncora que diz ao
-                  Google do que trata a página de destino. */}
-              <a className="avnCartaoLink" href={href}>{rotulo} →</a>
-            </article>
-          ))}
-        </div>
-        {/* Os três cartões acima são o gancho. Quem quer saber de verdade —
-            e anestesiologista quer — precisa de um caminho para a lista
-            inteira, em vez de decidir por três frases. */}
+      {/* O SISTEMA POR DENTRO. Cada módulo com a tela de verdade, capturada do
+          sistema com dados fictícios (public/capa). Quem vai confiar o
+          consultório, a sala e o caixa a um sistema quer ver a tela antes de
+          criar a conta, e não um desenho dela. */}
+      <section className="avnModulos" id="como-funciona" aria-labelledby="avn-modulos-titulo">
+        <h2 id="avn-modulos-titulo">Da recepção ao fechamento do mês, no mesmo sistema.</h2>
+        <p className="avnModulosLead">
+          Seis módulos com os mesmos pacientes, a mesma equipe e os mesmos hospitais. O que entra
+          na consulta segue para a sala, e o que acontece na sala chega ao financeiro.
+        </p>
+        {MODULOS.map((m) => (
+          <article key={m.nome} className="avnModulo">
+            <div className="avnModuloTexto">
+              <h3>{m.nome}</h3>
+              <p>{m.texto}</p>
+              <ul>{m.itens.map((x) => <li key={x}>{x}</li>)}</ul>
+              {m.link && <a className="avnCartaoLink" href={m.link[0]}>{m.link[1]} →</a>}
+            </div>
+            <figure className={`avnModuloTela ${m.tablet ? "avnModuloTablet" : ""}`}>
+              {!m.tablet && <div className="avnTelaBarra" aria-hidden="true"><i /><i /><i /><span>avanest.com.br</span></div>}
+              <Image src={m.tela[0]} width={m.tela[1]} height={m.tela[2]} alt={m.alt} loading="lazy"
+                sizes="(min-width: 1101px) 640px, calc(100vw - 40px)" />
+              {m.segunda && (
+                <span className="avnModuloSegunda">
+                  <Image src={m.segunda[0]} width={m.segunda[1]} height={m.segunda[2]} alt={m.segunda[3]} loading="lazy"
+                    sizes="(min-width: 1101px) 300px, 45vw" />
+                </span>
+              )}
+            </figure>
+          </article>
+        ))}
+        <p className="avnModulosNota">Telas reais do sistema, com pacientes e médicos fictícios.</p>
         <div className="avnActions">
-          <a className="avnSecondary avnVerTudo" href="/recursos">
-            Ver todos os recursos
-          </a>
+          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=modulos`}>Começar 2 meses grátis</a>
+          <a className="avnSecondary avnVerTudo" href="/recursos">Ver todos os recursos</a>
         </div>
       </section>
       {/* PERGUNTAS FREQUENTES, em texto na página. Respondem às dúvidas de
@@ -260,15 +322,22 @@ export default function HomePage() {
         <div className="conteudoPerguntas">
           <article>
             <h3>O que um software para anestesista precisa fazer?</h3>
-            <p>Registrar a avaliação pré-anestésica com o que a Resolução CFM 2.174/2017 pede,
-              imprimir a ficha, o termo e as orientações, organizar a escala do grupo e mostrar o
-              que foi produzido e recebido. O AVANEST faz as quatro coisas no mesmo lugar.</p>
+            <p>Registrar a avaliação pré-anestésica e a ficha de anestesia com o que a Resolução
+              CFM 2.174/2017 pede, apoiar a equipe numa crise, organizar a escala e mostrar o que
+              foi produzido e recebido. O AVANEST faz isso no mesmo lugar, com a recepção junto.</p>
           </article>
           <article>
             <h3>O AVANEST faz a ficha anestésica?</h3>
-            <p>Faz a parte pré-anestésica: a ficha de avaliação, o termo de consentimento e as
-              orientações ao paciente. A diferença entre as fichas está explicada na página da{" "}
+            <p>Faz. A ficha de anestesia do intraoperatório é preenchida no tablet durante o caso,
+              puxa os dados da avaliação pré-anestésica e sai impressa em A4 no formato da folha de
+              papel. O que cada ficha deve conter está na página da{" "}
               <a href="/ficha-anestesica">ficha anestésica</a>.</p>
+          </article>
+          <article>
+            <h3>Tem protocolo para crise em anestesia?</h3>
+            <p>Tem. São 34 protocolos, de PCR e anafilaxia a hipertermia maligna e via aérea
+              difícil. Com o peso e a idade do paciente, as doses saem calculadas, com o volume de
+              cada apresentação. Cada protocolo cita a diretriz de onde saiu.</p>
           </article>
           <article>
             <h3>Serve para a escala médica do grupo?</h3>
@@ -290,6 +359,17 @@ export default function HomePage() {
             <p>Cada serviço só enxerga os próprios dados, a trava fica no banco de dados e cada
               alteração guarda autor, data e hora. A recepção não abre o conteúdo clínico.</p>
           </article>
+        </div>
+      </section>
+      {/* O FECHAMENTO: quem leu até aqui decidiu ou quase. A oferta de novo,
+          com a condição dita do mesmo jeito que no topo. */}
+      <section className="avnFechamento" aria-labelledby="avn-fechamento">
+        <h2 id="avn-fechamento">Use no seu próximo plantão.</h2>
+        <p>2 meses grátis com o sistema completo. A primeira cobrança só vence depois deles, e
+          cancelando antes você não paga nada.</p>
+        <div className="avnActions">
+          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=fim-da-capa`}>Começar 2 meses grátis</a>
+          <a className="avnSecondary" href={whatsappUrl} target="_blank" rel="noreferrer">Conversar no WhatsApp</a>
         </div>
       </section>
       <RodapePublico />

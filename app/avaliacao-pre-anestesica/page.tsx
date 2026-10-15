@@ -347,7 +347,8 @@ export default function AvaliacaoPreAnestesicaPage() {
               <h3>A avaliação vale para a ficha anestésica do intraoperatório?</h3>
               <p>São documentos diferentes. A ficha de anestesia registra o que acontece durante o
                 procedimento e tem itens próprios, explicados na página da{" "}
-                <Link href="/ficha-anestesica">ficha anestésica</Link>.</p>
+                <Link href="/ficha-anestesica">ficha anestésica</Link>. No AVANEST, a ficha do
+                intraoperatório já começa com os dados da avaliação.</p>
             </article>
           </div>
         </section>

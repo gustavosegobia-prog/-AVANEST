@@ -13,10 +13,11 @@ import { BotaoImprimir } from "@/components/botao-imprimir";
 // ficha de avaliação pré-anestésica — e é esse o nome do módulo no próprio
 // AVANEST (lib/modulos.ts). Quem pesquisa pode querer qualquer uma das duas.
 //
-// O QUE O SISTEMA FAZ ESTÁ DITO COM TODAS AS LETRAS: a parte pré-anestésica.
-// A ficha do intraoperatório continua no prontuário do hospital. Página que
-// deixa o colega achar que vai encontrar o registro do intraoperatório no
-// sistema vira cancelamento na primeira semana.
+// O QUE O SISTEMA FAZ ESTÁ DITO COM TODAS AS LETRAS: a avaliação
+// pré-anestésica e a ficha de anestesia do intraoperatório, no tablet, com a
+// saída da sala. A ficha da recuperação pós-anestésica continua no prontuário
+// do hospital. Página que promete o que o sistema não faz vira cancelamento na
+// primeira semana.
 //
 // O MODELO PARA IMPRIMIR é o que faz esta página merecer o primeiro resultado:
 // quem pesquisa "ficha anestésica" muitas vezes quer a folha, e a folha está
@@ -191,11 +192,12 @@ export default function FichaAnestesicaPage() {
         origem="ficha-anestesica"
         atual={CAMINHO}
         fim={{
-          titulo: "A ficha pré-anestésica preenchida no celular e impressa no timbre do hospital.",
-          texto: "O AVANEST faz a parte pré-anestésica da documentação: a ficha de avaliação, o "
-            + "termo de consentimento e as orientações ao paciente. Tudo é salvo enquanto você "
-            + "digita, os escores saem calculados e cada documento é impresso com o logo do "
-            + "hospital do atendimento e a sua assinatura com CRM e RQE.",
+          titulo: "A avaliação no celular e a ficha anestésica no tablet, dentro da sala.",
+          texto: "O AVANEST faz a avaliação pré-anestésica, o termo de consentimento e as "
+            + "orientações ao paciente, e também a ficha de anestesia do intraoperatório: você "
+            + "toca no gráfico para lançar PA e FC e registra medicação, infusões, gases e "
+            + "eventos. Tudo é salvo enquanto você trabalha, com autor e horário, e a folha sai "
+            + "impressa em A4 no formato da ficha de papel.",
         }}
       >
         <section className="recBloco" id="tres-fichas">
@@ -307,11 +309,16 @@ export default function FichaAnestesicaPage() {
             legível, fica guardada no prontuário do paciente e sai de novo igual à original.
           </p>
           <p>
-            O AVANEST cuida da parte pré-anestésica: a avaliação em nove etapas, com índice de Lee,
-            STOP-Bang e Apfel calculados a partir do que já foi respondido; o termo de
-            consentimento; e as orientações de jejum e de medicamentos que o paciente leva para
-            casa. A ficha de anestesia do intraoperatório e a da recuperação continuam no
-            prontuário do hospital.
+            O AVANEST cuida da avaliação pré-anestésica em nove etapas, com índice de Lee,
+            STOP-Bang e Apfel calculados a partir do que já foi respondido, do termo de
+            consentimento e das orientações de jejum e de medicamentos que o paciente leva para
+            casa.
+          </p>
+          <p>
+            A ficha de anestesia do intraoperatório é preenchida no tablet durante o caso e já
+            começa com os dados da avaliação. As doses aparecem sugeridas pelo peso e pela idade
+            para você conferir antes de registrar, e a saída da sala fica registrada com o destino
+            e o Aldrete. A ficha da recuperação pós-anestésica continua no prontuário do hospital.
           </p>
         </section>
 

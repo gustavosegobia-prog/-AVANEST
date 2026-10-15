@@ -58,7 +58,7 @@ export default async function DoisMesesPage({
       <section className="avnLoginCard avnCampanhaCard">
         <div className="avnLoginIllustration">
           <AppLogo />
-          <p>Avaliação pré-anestésica, escala e financeiro do serviço de anestesia em um sistema só.</p>
+          <p>Recepção, consulta pré-anestésica, ficha anestésica, crises, escala e financeiro em um sistema só.</p>
         </div>
         <div className="avnLoginContent avnCampanha">
           <p className="avnCampanhaSelo">Teste grátis</p>
@@ -68,20 +68,27 @@ export default async function DoisMesesPage({
             criando a conta hoje. Cancele antes e não paga nada. Sem fidelidade.
           </p>
 
+          {/* OS SEIS MÓDULOS, uma linha cada: lida no telefone, a lista mostra
+              tudo o que entra nos 2 meses sem empurrar o botão para longe. */}
           <ul className="avnCampanhaLista">
-            <li><b>Avaliação pré-anestésica completa</b>
-              <span>Nove etapas, com índice de Lee, STOP-Bang e Apfel calculados a partir do que
-              você já respondeu. No fim saem a ficha, o termo de consentimento e as
-              orientações, impressos no timbre do hospital.</span></li>
-            <li><b>Escala do serviço</b>
-              <span>Uma escala por instituição e a sua reunindo todas. O plantão não se apaga:
-              é transferido a um colega, com autor, data e resposta registrados.</span></li>
+            <li><b>Recepção</b>
+              <span>A agenda do dia por médico e por hospital.</span></li>
+            <li><b>Consulta pré-anestésica</b>
+              <span>Lee, STOP-Bang e Apfel calculados, e os documentos no timbre do hospital.</span></li>
+            <li><b>Ficha anestésica</b>
+              <span>No tablet, dentro da sala, impressa em A4.</span></li>
+            <li><b>Manejo de crises</b>
+              <span>34 protocolos com as doses pelo peso do paciente.</span></li>
+            <li><b>Escala pessoal e do grupo</b>
+              <span>Uma por hospital e a sua reunindo todas, com a troca de plantão registrada.</span></li>
+            <li><b>Financeiro pessoal e do grupo</b>
+              <span>O que você fez, recebeu e tem a receber, e o fechamento do grupo.</span></li>
           </ul>
 
           {/* O ESCOPO, dito ANTES do botão. Com o cartão cadastrado, os 2 meses
               já são da assinatura: o sistema inteiro, e não só uma parte. */}
           <p className="avnCampanhaEscopo">
-            Nos {MESES_DE_TESTE} meses você usa o sistema completo, com Recepção e Financeiro.
+            Nos {MESES_DE_TESTE} meses você usa o sistema completo, com os seis módulos.
           </p>
 
           <Link className="avnLoginSubmit avnCampanhaBotao" href={`/criar-conta?origem=${origem}`}>

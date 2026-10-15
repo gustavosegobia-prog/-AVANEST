@@ -14,8 +14,8 @@ const TRILHA = [{ nome: "Início", caminho: "/" }, { nome: "O que o AVANEST faz"
 export const metadata: Metadata = paginaPublica({
   titulo: "O que o AVANEST faz | Sistema para anestesiologistas",
   descricao:
-    "Avaliação pré-anestésica, escala por hospital, produção do plantão e faturamento "
-    + "— o dia inteiro do anestesiologista em um sistema só.",
+    "Recepção, avaliação pré-anestésica, ficha anestésica no tablet, protocolos de crise com "
+    + "doses pelo peso, escala por hospital e financeiro do médico e do grupo.",
   caminho: "/recursos",
 });
 
@@ -39,6 +39,23 @@ type Bloco = { titulo: string; itens: [string, string][]; leia?: [string, string
 
 const BLOCOS: Bloco[] = [
   {
+    titulo: "A recepção",
+    itens: [
+      ["A agenda do dia por médico e por hospital",
+        "A recepção marca, registra a chegada e acompanha cada paciente até o fim da consulta. "
+        + "Agendado, aguardando, em atendimento e concluído aparecem na mesma lista."],
+      ["Busca por nome, CPF ou telefone",
+        "O paciente que volta é achado pelo que a recepção tiver na mão, e o horário já ocupado "
+        + "aparece antes de marcar outro por cima."],
+      ["Falta, desmarcação e reagendamento no histórico",
+        "Reagendar cria uma marcação nova e a antiga fica registrada como reagendada. Cada consulta "
+        + "tem o histórico de quem mudou o quê, e quando."],
+      ["Sem acesso ao conteúdo clínico",
+        "A recepção vê agenda e cadastro. A avaliação e o financeiro ficam fechados para ela no "
+        + "banco de dados, e não só na tela."],
+    ],
+  },
+  {
     titulo: "A avaliação pré-anestésica",
     leia: ["/avaliacao-pre-anestesica", "O que a avaliação pré-anestésica deve conter"],
     itens: [
@@ -58,6 +75,45 @@ const BLOCOS: Bloco[] = [
         "Acima de um ano vale a fórmula da idade. Abaixo de um ano, não: o tamanho do tubo passa "
         + "a sair de tabela por peso, porque aplicar a fórmula de criança maior em recém-nascido "
         + "erra para cima."],
+    ],
+  },
+  {
+    titulo: "A ficha anestésica",
+    leia: ["/ficha-anestesica", "O que a ficha anestésica deve conter"],
+    itens: [
+      ["No tablet, dentro da sala",
+        "A folha de anestesia na tela, no desenho da ficha de papel. Ela já começa com o que a "
+        + "avaliação respondeu (peso, ASA, alergias, medicamentos em uso, via aérea e jejum) para "
+        + "você conferir, e não redigitar."],
+      ["PA e FC no toque do gráfico",
+        "Você toca no gráfico para lançar a pressão e a frequência do horário. Medicação, "
+        + "infusões, gases, líquidos e eventos entram com um toque."],
+      ["Doses sugeridas pelo peso e pela idade",
+        "A dose do adulto e a da criança aparecem sugeridas, e a infusão já vem em mL/h. Você "
+        + "confere e muda antes de registrar. Alergia registrada na avaliação gera alerta."],
+      ["A foto do monitor vira registro",
+        "Fotografe a tela de tendências no fim do caso. Os valores lidos aparecem numa tabela "
+        + "para você conferir antes de lançar."],
+      ["Saída da sala, autor e horário",
+        "A saída para a RPA ou a UTI fecha o tempo da anestesia, com o Aldrete. Cada registro guarda "
+        + "quem lançou e quando, e a folha sai impressa em A4."],
+    ],
+  },
+  {
+    titulo: "O manejo de crises",
+    itens: [
+      ["34 protocolos de crise em anestesia",
+        "Parada cardíaca, anafilaxia, hipertermia maligna, via aérea difícil, crises obstétricas e "
+        + "pediátricas, e as listas de verificação do aparelho e da pré-indução."],
+      ["Doses pelo peso e pela idade do paciente",
+        "Com o peso e a idade, cada dose sai calculada com o volume de cada apresentação. O "
+        + "dantroleno de um paciente de 72 kg já aparece em frascos."],
+      ["Para ler de longe, durante a crise",
+        "O que fazer agora vem primeiro, em passos numerados. Os ritmos de parada aparecem como "
+        + "no monitor, e os favoritos ficam no alto da lista."],
+      ["Cada protocolo cita a fonte",
+        "A diretriz de onde cada recomendação saiu fica no fim do protocolo, que também sai em PDF "
+        + "para imprimir e deixar na sala."],
     ],
   },
   {
@@ -213,9 +269,9 @@ export default function RecursosPage() {
         <p className="avnEyebrow">O SISTEMA POR DENTRO</p>
         <h1>O dia inteiro do anestesiologista, em um sistema só.</h1>
         <p className="avnLead">
-          Da avaliação pré-anestésica ao valor que entra no fim do mês — passando pela
-          escala do serviço, pelos documentos que o paciente leva para casa e pelo
-          fechamento que vai para o financeiro.
+          Da recepção do paciente ao valor que entra no fim do mês, passando pela consulta
+          pré-anestésica, pela ficha da sala, pelos protocolos de crise, pela escala do serviço
+          e pelo fechamento que vai para o financeiro.
         </p>
       </section>
 

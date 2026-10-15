@@ -12,10 +12,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.avanest.com.br"),
   title: "AVANEST | Gestão em anestesiologia",
-  // 155 caracteres, e o número tem motivo: o Google corta a descrição perto de
-  // 160 na busca. A versão anterior tinha 168 e terminava em "…faturado e
+  // Até 155 caracteres, e o número tem motivo: o Google corta a descrição perto
+  // de 160 na busca. A versão anterior tinha 168 e terminava em "…faturado e
   // rece…" — a última coisa que a pessoa lia era uma palavra partida.
-  description: "Sistema de gestão para serviços de anestesiologia: avaliação pré-anestésica em nove etapas, escala por instituição e controle do que você tem a receber.",
+  description: "Sistema para anestesiologistas: recepção, avaliação pré-anestésica, ficha anestésica no tablet, protocolos de crise, escala e financeiro do grupo.",
   /* O QUE APARECE QUANDO ALGUÉM COLA UM LINK.
      As doze páginas do site estavam sem `og:image`: um link do avanest.com.br
      no WhatsApp, no Instagram ou no LinkedIn saía como bloco de texto cinza,
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     // Sem `url` aqui: a página que herdasse este bloco declararia ser a capa.
     // Cada página pública declara o próprio endereço em lib/metadados.ts.
     title: "AVANEST | Gestão em anestesiologia",
-    description: "Da avaliação pré-anestésica ao fluxo de caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",
+    description: "Da recepção ao fechamento do mês: consulta pré-anestésica, ficha anestésica, crises, escala e financeiro. Feito por anestesiologista.",
     // A mesma imagem que as páginas públicas declaram por lib/metadados.ts —
     // uma fonte só, para a prévia não mudar de uma página para a outra.
     images: [IMAGEM_DE_COMPARTILHAMENTO],
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AVANEST | Gestão em anestesiologia",
-    description: "Da avaliação pré-anestésica ao fluxo de caixa do serviço. Desenvolvido por anestesiologista, dentro de um serviço em atividade.",
+    description: "Da recepção ao fechamento do mês: consulta pré-anestésica, ficha anestésica, crises, escala e financeiro. Feito por anestesiologista.",
     images: ["/compartilhar.png"],
   },
 };

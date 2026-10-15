@@ -6291,6 +6291,86 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .avnOferta .avnActions{display:grid;gap:12px}
 }
 
+/* --- Os seis módulos (app/page.tsx) ---------------------------------------
+   Na primeira tela, os nomes em duas colunas no lugar dos três benefícios:
+   a mesma altura de antes, e quem chega lê num olhar tudo o que o sistema
+   cobre. A leitura desce pela coluna, na ordem do dia: recepção, consulta e
+   sala; depois crise, escala e financeiro. Cada coluna tem a largura do
+   nome mais longo, para nenhum quebrar; onde as duas não cabem lado a lado
+   (celular, e o notebook pequeno, em que o texto divide a tela com as
+   imagens), uma coluna só. */
+.avnModulosLista{max-width:none;grid-template-columns:repeat(2,auto);grid-template-rows:repeat(3,auto);
+  grid-auto-flow:column;justify-content:start;column-gap:36px}
+@media(min-width:1101px){.avnModulosLista li{font-size:17.5px}}
+@media(max-width:700px),(min-width:1101px) and (max-width:1340px){
+  .avnModulosLista{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-flow:row}
+}
+
+/* O sistema por dentro: cada módulo com a tela real ao lado. No computador
+   o lado da tela alterna, e o olho desce em zigue-zague; no celular, o texto
+   e logo abaixo a tela. A moldura não corta o que passa da borda (a segunda
+   tela do financeiro), por isso os cantos ficam na barra e na imagem. */
+.avnModulos{padding:88px max(20px,calc((100vw - 1180px)/2)) 80px;background:var(--avn-bg)}
+.avnModulos>h2{max-width:820px;margin:0;font-size:clamp(28px,3.4vw,44px);line-height:1.12;
+  letter-spacing:-.025em;color:var(--avn-ink);text-wrap:balance}
+.avnModulosLead{max-width:680px;margin:18px 0 0;color:#40546a;font-size:18px;line-height:1.6}
+.avnModulo{display:grid;grid-template-columns:minmax(0,1fr);gap:28px;margin-top:72px}
+.avnModuloTexto h3{margin:0;font-size:clamp(24px,2.4vw,30px);line-height:1.2;letter-spacing:-.02em;color:var(--avn-ink)}
+.avnModuloTexto>p{margin:12px 0 0;max-width:58ch;color:#3a4e60;font-size:17px;line-height:1.65}
+.avnModuloTexto ul{margin:18px 0 0;padding-left:20px;display:grid;gap:8px;max-width:58ch;
+  color:#334657;font-size:15.5px;line-height:1.5;list-style:disc}
+.avnModuloTexto ul li::marker{color:#11776c}
+.avnModuloTexto .avnCartaoLink{margin-top:14px;color:#0b6a61}
+.avnModuloTela{position:relative;margin:0;border-radius:14px;background:#fff;
+  box-shadow:0 1px 3px #0b2a4229,0 28px 56px -30px #0b2a42a6}
+.avnModuloTela>img{display:block;width:100%;height:auto;border-radius:0 0 14px 14px}
+.avnModuloTela .avnTelaBarra{border-radius:14px 14px 0 0}
+/* A ficha é usada no tablet, dentro da sala: a tela vai numa moldura de
+   tablet, e não na janela do navegador. */
+.avnModuloTablet{padding:12px;border-radius:28px;background:#0b1824;
+  box-shadow:0 2px 4px #0b2a4233,0 30px 60px -28px #0b2a42bf}
+.avnModuloTablet>img{border-radius:14px}
+/* O financeiro tem duas telas: a do grupo e, por cima no canto, a do médico. */
+.avnModuloSegunda{position:absolute;right:-14px;bottom:-36px;width:44%;border-radius:10px;overflow:hidden;
+  background:#fff;box-shadow:0 2px 6px #0b2a4233,0 24px 48px -18px #0b2a42b3}
+.avnModuloSegunda img{display:block;width:100%;height:auto}
+.avnModulo:has(.avnModuloSegunda) .avnModuloTela{margin-bottom:36px}
+.avnModulosNota{margin:80px 0 0;color:#4a5d6e;font-size:14px}
+.avnModulos .avnActions{margin:16px 0 0;flex-wrap:wrap}
+.avnModulos .avnSecondary{border-color:#b6c7d4;color:var(--avn-navy);background:#fff}
+.avnModulos .avnSecondary:hover{border-color:var(--avn-navy)}
+@media(min-width:1101px){
+  .avnModulos{padding-top:112px;padding-bottom:96px}
+  .avnModulo{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:center;
+    column-gap:clamp(40px,5vw,80px);margin-top:112px}
+  .avnModulo:nth-of-type(even){grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+  .avnModulo:nth-of-type(even) .avnModuloTexto{order:2}
+  .avnModulo:nth-of-type(even) .avnModuloSegunda{right:auto;left:-14px}
+}
+@media(max-width:760px){
+  .avnModulos{padding-top:56px;padding-bottom:56px}
+  .avnModulosLead{font-size:17px}
+  .avnModulo{gap:22px;margin-top:52px}
+  .avnModuloTexto>p{font-size:16.5px}
+  .avnModuloTablet{padding:8px;border-radius:20px}
+  .avnModuloTablet>img{border-radius:10px}
+  .avnModuloSegunda{right:-8px;bottom:-28px;width:52%;border-radius:8px}
+  .avnModulo:has(.avnModuloSegunda) .avnModuloTela{margin-bottom:28px}
+  .avnModulosNota{margin-top:56px}
+}
+
+/* O fechamento: a oferta de novo, para quem leu até o fim. Azul da marca,
+   para não se confundir com o rodapé preto logo abaixo. */
+.avnFechamento{padding:80px max(20px,calc((100vw - 1180px)/2));color:#fff;background:var(--avn-navy2)}
+.avnFechamento h2{margin:0;font-size:clamp(28px,3.4vw,44px);line-height:1.12;letter-spacing:-.025em;color:#fff}
+.avnFechamento p{max-width:620px;margin:16px 0 0;color:#c5d4df;font-size:18px;line-height:1.6}
+.avnFechamento .avnActions{margin:30px 0 0;flex-wrap:wrap}
+@media(max-width:680px){
+  .avnFechamento{padding-top:56px;padding-bottom:56px}
+  .avnFechamento p{font-size:17px}
+  .avnModulos .avnActions,.avnFechamento .avnActions{display:grid;gap:12px}
+}
+
 /* --- Barra do topo das páginas públicas, mais fina --------------------------
    Eram 88px de altura com botões de 48px: a barra ocupava quase um décimo da
    tela de um notebook antes de qualquer conteúdo. Agora 64px, botões de 40px
@@ -7752,13 +7832,12 @@ button.evoPFAsaN:disabled{cursor:default}
    linha, numa caixa de até 1400px — menos borda do que os 1180 de antes. */
 @media(min-width:1101px){
   .avnCapa{--avn-moldura:max(32px,calc((100vw - 1400px)/2))}
-  .avnCapa .avnPerfis,.avnCapa .avnInfo,.avnCapa .avnPerguntasCapa,.avnCapa .rodapePublico{
+  .avnCapa .avnPerfis,.avnCapa .avnModulos,.avnCapa .avnPerguntasCapa,.avnCapa .avnFechamento,.avnCapa .rodapePublico{
     padding-left:var(--avn-moldura);padding-right:var(--avn-moldura)}
 }
-/* Tablet e celular: menos vão entre as seções, e o terceiro cartão de "Três
-   frentes" ocupa a linha inteira em vez de ficar ao lado de um buraco. */
-.avnCapa .avnInfo{padding-bottom:32px}
-.avnCapa .avnPerguntasCapa{padding-top:16px}
+/* As perguntas vêm logo depois da faixa clara dos módulos, com fundo
+   branco: a própria troca de fundo já separa, e o vão de cima é curto. */
+.avnCapa .avnPerguntasCapa{padding-top:56px;padding-bottom:64px}
 @media(max-width:800px){
   .avnInfo{padding-top:56px}
 }

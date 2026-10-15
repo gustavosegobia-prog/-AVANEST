@@ -15,7 +15,7 @@ import { PaginaDeConteudo } from "@/components/pagina-de-conteudo";
 // perder o cadastro. Aqui o título repete a busca e o teste grátis está no topo.
 //
 // Cada item abaixo existe no sistema hoje (a régua de app/recursos/page.tsx). O
-// que ainda não existe está dito como "ainda não": a ficha do intraoperatório.
+// que o sistema não faz está dito com todas as letras: a ficha da recuperação.
 
 const CAMINHO = "/avaliacao-pre-anestesica-digital";
 const REVISADO_EM = "2026-10-10";
@@ -168,9 +168,9 @@ export default function AvaliacaoDigitalPage() {
             </article>
             <article>
               <h3>A ficha do intraoperatório está incluída?</h3>
-              <p>Ainda não. Hoje o AVANEST faz a parte pré-anestésica: avaliação, termo e
-                orientações. A diferença entre as fichas está na página da{" "}
-                <Link href="/ficha-anestesica">ficha anestésica</Link>.</p>
+              <p>Está. A ficha de anestesia é preenchida no tablet durante o caso, já começa com
+                os dados desta avaliação e sai impressa em A4. A diferença entre as fichas está na
+                página da <Link href="/ficha-anestesica">ficha anestésica</Link>.</p>
             </article>
           </div>
         </section>
