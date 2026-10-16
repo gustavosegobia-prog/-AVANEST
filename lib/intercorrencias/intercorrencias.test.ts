@@ -513,6 +513,19 @@ test("hipoglicemia: glicose 10% — adulto 20 g em 15 min, criança e recém-nas
   assert.equal(dose(hipo, "glucagon-hipo-menor-25").dose.usual, 0.5);
   assert.equal(dose(hipo, "glucagon-hipo-adulto").dose.usual, 1);
   assert.ok(dose(hipo, "glicose-hipo-adulto").cuidados?.some((c) => /50%.*periférica/.test(c)));
+  // Glucagon pela faixa de peso, e não pela idade: a criança de 30 kg recebe 1 mg.
+  const glucagon = (pac: PacienteDaConsulta) => hipo.medicamentos
+    .filter((d) => d.farmaco === "Glucagon" && doseServe(d, populacaoDe(pac)!, pac.idadeAnos, pac.pesoKg))
+    .map((d) => calcularDose(d, hipo, pac));
+  assert.deepEqual(glucagon({ idadeAnos: 5, pesoKg: 20 }).map((r) => r.contas[0].doseTotal), [0.5]);
+  assert.deepEqual(glucagon({ idadeAnos: 9, pesoKg: 30 }).map((r) => r.contas[0].doseTotal), [1]);
+  assert.deepEqual(glucagon(adulto).map((r) => r.contas[0].doseTotal), [1]);
+  assert.deepEqual(glucagon({ idadeAnos: 40, pesoKg: null }).map((r) => r.contas[0].doseTotal), [1]);
+  // Criança sem peso: as duas faixas aparecem, e nenhuma dá conta.
+  assert.deepEqual(glucagon({ idadeAnos: 5, pesoKg: null }).map((r) => r.bloqueio), [
+    "Informe o peso: a dose depende da faixa de peso.", "Informe o peso: a dose depende da faixa de peso.",
+  ]);
+  assert.match(calcularDose(dose(hipo, "glucagon-hipo-menor-25"), hipo, { idadeAnos: 9, pesoKg: 30 }).bloqueio!, /30 kg, esta dose não se aplica \(abaixo de 25 kg\)/);
 });
 
 test("crise adrenal: hidrocortisona 100 mg no adulto, 2 mg/kg (até 100 mg) na criança e 4 mg/kg no recém-nascido; SF por faixa", () => {
@@ -533,6 +546,13 @@ test("convulsão: diazepam e midazolam IM da AES, levetiracetam 60 mg/kg até 4.
   assert.deepEqual(contas(conv, "diazepam-convulsao", adulto).map((c) => [c[0], c[2]]), [[10, 2], [10, 2]]);
   assert.deepEqual(contas(conv, "midazolam-im-convulsao-adulto", adulto).map((c) => [c[0], c[2]]), [[10, 2]]);
   assert.deepEqual(contas(conv, "midazolam-im-convulsao-ped", crianca).map((c) => [c[0], c[2]]), [[5, 1]]);
+  // Midazolam IM pela faixa de peso da AES: 40 kg ainda é 5 mg; acima, 10 mg; abaixo de 13 kg, nenhuma.
+  const mida = (pac: PacienteDaConsulta) => conv.medicamentos
+    .filter((d) => d.farmaco === "Midazolam" && doseServe(d, populacaoDe(pac)!, pac.idadeAnos, pac.pesoKg)).map((d) => d.dose.usual);
+  assert.deepEqual(mida({ idadeAnos: 11, pesoKg: 40 }), [5]);
+  assert.deepEqual(mida({ idadeAnos: 11, pesoKg: 45 }), [10]);
+  assert.deepEqual(mida({ idadeAnos: 1, pesoKg: 10 }), []);
+  assert.deepEqual(mida(adulto), [10]);
   assert.deepEqual(contas(conv, "levetiracetam-convulsao", adulto).map((c) => [c[0], c[2]]), [[4200, 42]]);
   assert.deepEqual(contas(conv, "levetiracetam-convulsao", { idadeAnos: 40, pesoKg: 90 }).map((c) => [c[0], c[2]]), [[4500, 45]]);
   assert.ok(!conv.medicamentos.some((d) => d.farmaco === "Lorazepam"));

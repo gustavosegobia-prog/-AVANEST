@@ -78,14 +78,16 @@ export const HIPOGLICEMIA: Protocolo = {
       referencias: ["pes-2015-hipoglicemia"],
     },
     {
-      id: "glucagon-hipo-menor-25", farmaco: "Glucagon", indicacao: "Sem acesso venoso — criança abaixo de 25 kg", populacao: "pediatrico", via: "IM ou SC",
+      id: "glucagon-hipo-menor-25", farmaco: "Glucagon", indicacao: "Sem acesso venoso — criança abaixo de 25 kg", populacao: "pediatrico",
+      faixaDePeso: { abaixoDe: 25 }, via: "IM ou SC",
       dose: { usual: 0.5, unidade: "mg", por: "fixa" }, apresentacoes: [],
       semVolume: "Frasco de 1 mg reconstituído a 1 mg/mL: conferir a apresentação",
       cuidados: ["A partir de 25 kg: 1 mg."],
       referencias: ["ispad-2022-hipoglicemia"],
     },
     {
-      id: "glucagon-hipo-adulto", farmaco: "Glucagon", indicacao: "Sem acesso venoso — adulto ou criança a partir de 25 kg", populacao: "adulto", via: "IM",
+      id: "glucagon-hipo-adulto", farmaco: "Glucagon", indicacao: "Sem acesso venoso — adulto ou criança a partir de 25 kg", populacao: "todas",
+      faixaDePeso: { aPartirDe: 25 }, via: "IM",
       dose: { usual: 1, unidade: "mg", por: "fixa" }, apresentacoes: [],
       semVolume: "Frasco de 1 mg reconstituído a 1 mg/mL: conferir a apresentação",
       cuidados: ["Pode levar até 15 minutos para agir; náusea e vômito ao acordar."],
@@ -158,7 +160,8 @@ export const HIPOTERMIA: Protocolo = {
   volumes: [],
   notasDeDose: [
     "Sem fármaco próprio: o tratamento é aquecer.",
-    "Entre 30 e 35 °C, dar a dose usual com o dobro do intervalo; abaixo de 30 °C, reduzir anestésicos e bloqueadores e alongar os intervalos.",
+    "PCR na hipotermia acidental: vasoativos só a partir de 30 °C; entre 30 e 35 °C, dose usual com o dobro do intervalo.",
+    "O frio prolonga o efeito de anestésicos e bloqueadores neuromusculares: monitorar o bloqueio e titular as doses.",
     "Prevenir queimadura: nada quente direto na pele fria; inspecionar a pele aquecida a cada 20–30 minutos.",
   ],
   pensarEm: [
@@ -315,19 +318,19 @@ export const CONVULSAO: Protocolo = {
       referencias: ["aes-2016-estado-de-mal"],
     },
     {
-      id: "midazolam-im-convulsao-adulto", farmaco: "Midazolam", indicacao: "Primeira linha, sem acesso — acima de 40 kg", populacao: "adulto", via: "IM",
+      id: "midazolam-im-convulsao-adulto", farmaco: "Midazolam", indicacao: "Primeira linha, sem acesso — acima de 40 kg", populacao: "todas",
+      faixaDePeso: { acimaDe: 40 }, via: "IM",
       dose: { usual: 10, unidade: "mg", por: "fixa" }, apresentacoes: [MIDAZOLAM_5_IM],
       repeticao: "Dose única.",
       cuidados: ["De 13 a 40 kg: 5 mg."],
-      par: "midazolam-im-convulsao-ped",
       referencias: ["aes-2016-estado-de-mal"],
     },
     {
-      id: "midazolam-im-convulsao-ped", farmaco: "Midazolam", indicacao: "Primeira linha, sem acesso — 13 a 40 kg", populacao: "pediatrico", via: "IM",
+      id: "midazolam-im-convulsao-ped", farmaco: "Midazolam", indicacao: "Primeira linha, sem acesso — 13 a 40 kg", populacao: "pediatrico",
+      faixaDePeso: { aPartirDe: 13, ate: 40 }, via: "IM",
       dose: { usual: 5, unidade: "mg", por: "fixa" }, apresentacoes: [MIDAZOLAM_5_IM],
       repeticao: "Dose única.",
       cuidados: ["Acima de 40 kg: 10 mg. Abaixo de 13 kg, a fonte não dá dose IM."],
-      par: "midazolam-im-convulsao-adulto",
       referencias: ["aes-2016-estado-de-mal"],
     },
     {

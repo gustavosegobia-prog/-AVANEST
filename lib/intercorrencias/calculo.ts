@@ -57,9 +57,26 @@ const FAIXA_DA_DOSE: Record<DoseDoProtocolo["populacao"], Populacao[]> = {
   todas: ["adulto", "gestante", "pediatrico", "neonatal"],
 };
 
-/** A dose vale para este paciente? A faixa e, quando há, a idade (início incluso, fim não). */
-export function doseServe(d: DoseDoProtocolo, populacao: Populacao, idadeAnos: number | null): boolean {
+/** “a partir de 25 kg”, “de 13 a 40 kg”. */
+export function escreverFaixaDePeso(f: NonNullable<DoseDoProtocolo["faixaDePeso"]>): string {
+  const de = f.aPartirDe !== undefined ? `a partir de ${numero(f.aPartirDe)} kg` : f.acimaDe !== undefined ? `acima de ${numero(f.acimaDe)} kg` : "";
+  const ate = f.ate !== undefined ? `até ${numero(f.ate)} kg` : f.abaixoDe !== undefined ? `abaixo de ${numero(f.abaixoDe)} kg` : "";
+  if (f.aPartirDe !== undefined && f.ate !== undefined) return `de ${numero(f.aPartirDe)} a ${numero(f.ate)} kg`;
+  return [de, ate].filter(Boolean).join(" e ");
+}
+
+/** O peso cabe na faixa de peso da dose? Sem faixa ou sem peso, cabe. */
+export function pesoNaFaixa(d: DoseDoProtocolo, pesoKg: number | null): boolean {
+  const f = d.faixaDePeso;
+  if (!f || !ok(pesoKg)) return true;
+  return (f.aPartirDe === undefined || pesoKg >= f.aPartirDe) && (f.acimaDe === undefined || pesoKg > f.acimaDe)
+    && (f.abaixoDe === undefined || pesoKg < f.abaixoDe) && (f.ate === undefined || pesoKg <= f.ate);
+}
+
+/** A dose vale para este paciente? A faixa, o peso quando a dose tem faixa de peso e, quando há, a idade (início incluso, fim não). */
+export function doseServe(d: DoseDoProtocolo, populacao: Populacao, idadeAnos: number | null, pesoKg: number | null = null): boolean {
   if (!FAIXA_DA_DOSE[d.populacao].includes(populacao)) return false;
+  if (!pesoNaFaixa(d, pesoKg)) return false;
   if (!d.idadeAnos || idadeAnos === null) return true;
   return (d.idadeAnos.min === undefined || idadeAnos >= d.idadeAnos.min)
     && (d.idadeAnos.max === undefined || idadeAnos < d.idadeAnos.max);
@@ -192,6 +209,14 @@ export function calcularDose(
   const precisaPeso = porKg(d.dose) || Boolean(d.apresentacoes[indiceApresentacao]?.porPeso);
   if (precisaPeso && !ok(p.pesoKg)) {
     return { ...base, apresentacao: null, contas: [], peso, bloqueio: "Informe o peso para calcular." };
+  }
+  // Dose fixa por faixa de peso: na criança sem peso, não há como escolher a faixa.
+  const faixa = populacaoDe(p);
+  if (d.faixaDePeso && !ok(p.pesoKg) && (faixa === "pediatrico" || faixa === "neonatal" || (faixa === null && d.populacao === "pediatrico"))) {
+    return { ...base, apresentacao: null, contas: [], peso, bloqueio: "Informe o peso: a dose depende da faixa de peso." };
+  }
+  if (d.faixaDePeso && !pesoNaFaixa(d, p.pesoKg)) {
+    return { ...base, apresentacao: null, contas: [], peso, bloqueio: `Com ${numero(p.pesoKg!, 1)} kg, esta dose não se aplica (${escreverFaixaDePeso(d.faixaDePeso)}).` };
   }
 
   // Sem apresentação cadastrada (fibrinogênio, complexo protrombínico): o

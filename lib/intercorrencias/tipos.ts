@@ -108,6 +108,12 @@ export type DoseDoProtocolo = {
   populacao: "adulto" | "pediatrico" | "todas";
   /** Faixa de idade, para dose fixa por idade (adrenalina IM na criança). */
   idadeAnos?: { min?: number; max?: number };
+  /**
+   * Faixa de peso, em kg, para dose fixa por peso (glucagon abaixo ou a partir
+   * de 25 kg). Com o peso, a dose de fora da faixa some; na criança sem peso,
+   * não há conta.
+   */
+  faixaDePeso?: { aPartirDe?: number; acimaDe?: number; abaixoDe?: number; ate?: number };
   via: string;
   dose: DosePorKg;
   tetoAbsoluto?: Teto;

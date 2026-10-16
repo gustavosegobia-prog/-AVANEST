@@ -235,6 +235,7 @@ export const VIA_AEREA_GESTANTE: Protocolo = {
   volumes: [],
   notasDeDose: [
     "Prosseguindo sem tubo: manter a anestesia e, com supraglótico de segunda geração, aspirar o estômago pelo canal de drenagem.",
+    "Os 16 mg/kg valem só para reversão imediata depois de rocurônio 1,2 mg/kg; não é dose geral de sugamadex (bloqueio residual: 2 ou 4 mg/kg).",
   ],
   pensarEm: [
     "Edema de via aérea, obesidade, mamas volumosas, posicionamento ruim, cricoide mal aplicada e laringoespasmo ao acordar.",

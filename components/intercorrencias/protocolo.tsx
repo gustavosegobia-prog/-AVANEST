@@ -208,7 +208,7 @@ export function ProtocoloTela({
   const paciente = pacienteDe(dados);
   const populacao = populacaoDe(paciente);
   const categoria = CATEGORIAS.find((c) => c.id === p.categoria)!;
-  const doses = p.medicamentos.filter((d) => populacao === null || doseServe(d, populacao, paciente.idadeAnos));
+  const doses = p.medicamentos.filter((d) => populacao === null || doseServe(d, populacao, paciente.idadeAnos, paciente.pesoKg));
   const grupos = populacao === null
     ? [["Adulto", doses.filter((d) => d.populacao !== "pediatrico")], ["Criança", doses.filter((d) => d.populacao === "pediatrico")]] as const
     : [[null, doses]] as const;
