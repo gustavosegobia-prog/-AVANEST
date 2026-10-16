@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import estilos from "./intercorrencias.module.css";
 import {
   calcularDose, calcularVolume, conferirPaciente, doseServe, numero, passosDe, populacaoDe, ROTULO_POPULACAO,
@@ -10,7 +10,7 @@ import { acharProtocolo, CATEGORIAS } from "@/lib/intercorrencias/catalogo";
 import { acharReferencia, BIBLIOGRAFIA_GERAL } from "@/lib/intercorrencias/referencias";
 import { aprovacaoDe, dataDaAprovacao } from "@/lib/intercorrencias/aprovacao";
 import { ROTULO_NIVEL, type Calculo } from "@/lib/calculos/doses";
-import type { DoseDoProtocolo, Protocolo, Referencia, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
+import type { DoseDoProtocolo, Passo, Protocolo, Referencia, VolumeDoProtocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, pacienteDe, resumoDoPaciente, type DadosDoPaciente } from "./paciente";
 import { RitmosNoMonitor } from "./ritmos";
@@ -163,6 +163,17 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, confirmadas, aoConfirmar
 }
 
 /** "Desfibrilação", "Cristaloide", "Hemocomponentes": o nome do grupo pelo que há nele. */
+/** Os passos em caminhos (incêndio na via aérea, no campo): a numeração recomeça em cada um. */
+function caminhos(passos: Passo[]): Array<{ nome?: string; passos: Passo[] }> {
+  const lista: Array<{ nome?: string; passos: Passo[] }> = [];
+  for (const x of passos) {
+    const ultimo = lista[lista.length - 1];
+    if (ultimo && ultimo.nome === x.caminho) ultimo.passos.push(x);
+    else lista.push({ nome: x.caminho, passos: [x] });
+  }
+  return lista;
+}
+
 function tituloDosVolumes(lista: VolumeDoProtocolo[]): string {
   if (lista[0].grupo) return lista[0].grupo;
   if (lista.every((v) => v.unidade === "J")) return "Desfibrilação";
@@ -172,6 +183,7 @@ function tituloDosVolumes(lista: VolumeDoProtocolo[]): string {
 
 export function ProtocoloTela({
   p, dados, set, daFicha, favorito, aoFavoritar, aoVoltar, aoBuscar, aoAbrirCalculadora, aoAbrirProtocolo,
+  disponivel = (x) => Boolean(acharProtocolo(x)),
 }: {
   p: Protocolo;
   dados: DadosDoPaciente;
@@ -184,6 +196,8 @@ export function ProtocoloTela({
   aoAbrirCalculadora?: () => void;
   /** "Criança: use o SAV pediátrico" abre o outro protocolo. */
   aoAbrirProtocolo?: (id: string) => void;
+  /** O protocolo de destino está liberado para quem usa? Sem aprovação, só na prévia do responsável. */
+  disponivel?: (id: string) => boolean;
 }) {
   const [confirmadas, setConfirmadas] = useState<string[]>([]);
   // Abre no começo do protocolo, e não onde a lista estava rolada.
@@ -209,13 +223,13 @@ export function ProtocoloTela({
   // O protocolo certo para a faixa do paciente: forte quando a faixa bate; sem idade, só a lembrança.
   const veja = (p.veja ?? [])
     .filter((v) => populacao === null || v.quando.includes(populacao))
-    .map((v) => ({ ...v, alvo: acharProtocolo(v.protocolo) }))
+    .map((v) => ({ ...v, alvo: disponivel(v.protocolo) ? acharProtocolo(v.protocolo) : undefined }))
     .filter((v) => v.alvo);
   // Protocolo só de condutas (via aérea, listas): a seção de doses traz só as notas — e, sem notas, não aparece.
   const temCalculo = p.medicamentos.length > 0 || p.volumes.length > 0;
   const notas = p.notasDeDose ?? [];
   const temDoses = temCalculo || notas.length > 0;
-  const relacionados = (p.relacionados ?? []).filter((r) => acharProtocolo(r.protocolo));
+  const relacionados = (p.relacionados ?? []).filter((r) => disponivel(r.protocolo));
 
   return (
     <div ref={topo} className={`${estilos.modulo} ${estilos.impressao}`} style={{ scrollMarginTop: 80 }}>
@@ -265,6 +279,12 @@ export function ProtocoloTela({
             <span className={estilos.semAprovacao}>Versão nova, sem aprovação registrada</span>
           )}
         </div>
+        {!aprovacao && (
+          <p className={estilos.avisoValidacao}>
+            <Icone nome="alerta" tamanho={17} />
+            <span>Em validação: só o responsável médico vê este protocolo. Não está liberado para uso clínico.</span>
+          </p>
+        )}
       </header>
 
       {/* No computador, os dados do paciente ficam na coluna da esquerda. */}
@@ -308,17 +328,22 @@ export function ProtocoloTela({
 
       <section id="agir" className={`${estilos.secao} ${estilos.agir}`} aria-labelledby="t-agir">
         <h3 id="t-agir"><Icone nome="alerta" tamanho={21} />Agir agora</h3>
-        <ol className={estilos.passos}>
-          {passosDe(p, populacao).map((x) => (
-            <li key={x.texto}>
-              <div>
-                {x.so && <span className={estilos.soPara}>{x.so.map((s) => ROTULO_POPULACAO[s]).join(" / ")}</span>}
-                <b>{x.texto}</b>
-                {x.detalhe && <small>{x.detalhe}</small>}
-              </div>
-            </li>
-          ))}
-        </ol>
+        {caminhos(passosDe(p, populacao)).map((c, i) => (
+          <Fragment key={c.nome ?? i}>
+            {c.nome && <h4 className={estilos.caminho}>{c.nome}</h4>}
+            <ol className={estilos.passos}>
+              {c.passos.map((x) => (
+                <li key={x.texto}>
+                  <div>
+                    {x.so && <span className={estilos.soPara}>{x.so.map((s) => ROTULO_POPULACAO[s]).join(" / ")}</span>}
+                    <b>{x.texto}</b>
+                    {x.detalhe && <small>{x.detalhe}</small>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </Fragment>
+        ))}
       </section>
 
       {temDoses && <section id="doses" className={temCalculo ? estilos.secaoAberta : estilos.secao} aria-labelledby="t-doses">
@@ -411,8 +436,9 @@ export function ProtocoloTela({
 
       <section id="referencias" className={`${estilos.secao} ${estilos.secaoReferencias}`} aria-labelledby="t-refs">
         <h3 id="t-refs">Referências</h3>
+        {p.revisadoEm && <p className={estilos.dataRevisao}>Revisão científica de {dataBr(p.revisadoEm)}</p>}
         <ol className={estilos.referencias}>
-          {[...new Set([...p.referencias, ...BIBLIOGRAFIA_GERAL])].map((id) => {
+          {[...new Set([...p.referencias, ...(p.bibliografiaGeral === false ? [] : BIBLIOGRAFIA_GERAL)])].map((id) => {
             const r = acharReferencia(id);
             if (!r) return null;
             const url = r.doi ? `https://doi.org/${r.doi}` : r.link;

@@ -83,6 +83,14 @@ export const MAGNESIO_50: ApresentacaoDoProtocolo = {
 export const MAGNESIO_10: ApresentacaoDoProtocolo = {
   rotulo: "Sulfato de magnésio 10% — 100 mg/mL", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV"],
 };
+/**
+ * Eclâmpsia, preparo do Manual de Crises (aba 34): 8 g em 100 mL finais. O
+ * ataque de 4 g em 15 min corre a 200 mL/h; a manutenção de 1 g/h, a 12,5 mL/h.
+ */
+export const MAGNESIO_80: ApresentacaoDoProtocolo = {
+  rotulo: "8 g em 100 mL — 80 mg/mL (preparo do Manual de Crises)", quantidade: 8, unidade: "g", mL: 100, vias: ["IV"],
+  preparo: "16 mL de sulfato de magnésio 50% (8 g) completados para 100 mL de SF 0,9%, em bomba de infusão",
+};
 /** Manutenção da eclâmpsia no preparo do Tratado SAESP: 12 g em 124 mL finais. */
 export const MAGNESIO_SAESP_124: ApresentacaoDoProtocolo = {
   rotulo: "12 g em 124 mL — cerca de 97 mg/mL (preparo SAESP)", quantidade: 12, unidade: "g", mL: 124, vias: ["IV"],
@@ -135,6 +143,14 @@ export const SUGAMADEX_100: ApresentacaoDoProtocolo = {
 export const NALOXONA_004: ApresentacaoDoProtocolo = {
   rotulo: "0,4 mg em 10 mL — 0,04 mg/mL", quantidade: 0.04, unidade: "mg", mL: 1, vias: ["IV"],
   preparo: "1 ampola de 0,4 mg/mL completada para 10 mL de SF 0,9%: cada mL é uma dose inicial",
+};
+/** Diluição pediátrica da bula do sugamadex. */
+export const SUGAMADEX_10: ApresentacaoDoProtocolo = {
+  rotulo: "200 mg em 20 mL — 10 mg/mL (diluição pediátrica)", quantidade: 10, unidade: "mg", mL: 1, vias: ["IV"],
+  preparo: "Frasco de 200 mg em 2 mL (100 mg/mL) + 18 mL de SF 0,9% = 20 mL; usar logo após preparar",
+};
+export const NEOSTIGMINA_05: ApresentacaoDoProtocolo = {
+  rotulo: "Ampola de 0,5 mg/mL", quantidade: 0.5, unidade: "mg", mL: 1, vias: ["IV"],
 };
 export const NALOXONA_04: ApresentacaoDoProtocolo = {
   rotulo: "Ampola de 0,4 mg/mL, sem diluir", quantidade: 0.4, unidade: "mg", mL: 1, vias: ["IV", "IM"],

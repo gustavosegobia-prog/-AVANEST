@@ -1,51 +1,66 @@
 /**
  * PNEUMOTÓRAX HIPERTENSIVO E INTUBAÇÃO ESOFÁGICA OU SELETIVA — cartões 14 e 15
- * da minuta preliminar “Protocolos de crise” (outubro de 2026, para validação
- * médica).
+ * da minuta preliminar “Protocolos de crise” (outubro de 2026).
  *
- * Base: Tratado SAESP. Atualizações: diretriz WSES-AAST 2025 de trauma
- * torácico (pneumotórax) e consenso PUMA de 2022 sobre intubação esofágica não
- * reconhecida. O texto é do AVANEST. Versão 1, sem aprovação registrada até a
- * validação.
+ * Versão 2: revisão científica de 16/10/2026. Conferidos no texto: diretriz
+ * WSES-AAST 2025 de trauma torácico; consenso PUMA 2022 (intubação esofágica
+ * não reconhecida); QRH 2-2 e 2-3; Manual de Crises, abas 26, 32 e 33. O ATLS
+ * 11 e o livro de Medicina Intensiva da USP não estavam acessíveis: o local da
+ * descompressão segue a WSES-AAST. O texto é do AVANEST.
  */
 
 import type { Protocolo } from "../tipos.ts";
+
+const REVISAO = "2026-10-16";
 
 export const PNEUMOTORAX: Protocolo = {
   id: "pneumotorax-hipertensivo",
   titulo: "Pneumotórax hipertensivo",
   categoria: "respiratorio",
   populacoes: ["adulto", "gestante", "pediatrico"],
-  versao: 1,
-  atualizadoEm: "2026-10-15",
-  sinonimos: ["pneumotórax", "pneumotórax sob tensão", "descompressão torácica", "drenagem de tórax"],
+  versao: 2,
+  atualizadoEm: REVISAO,
+  revisadoEm: REVISAO,
+  bibliografiaGeral: false,
+  sinonimos: ["pneumotórax", "pneumotórax sob tensão", "descompressão torácica", "drenagem de tórax", "toracostomia"],
   sinais: ["pressão de pico alta", "dessaturação", "hipotensão", "murmúrio abolido", "tórax assimétrico", "enfisema subcutâneo",
-    "turgência jugular", "desvio de traqueia", "depois de acesso central", "depois de bloqueio"],
-  resumo: "Ventilação difícil com hipotensão e tórax assimétrico: no paciente instável, descomprimir já, sem esperar imagem; depois, drenagem definitiva.",
+    "turgência jugular", "desvio de traqueia", "depois de acesso central", "depois de bloqueio", "laparoscopia"],
+  resumo: "Ventilação difícil com hipotensão e tórax assimétrico, sob pressão positiva: descomprimir já no instável, sem esperar imagem, e drenar.",
   reconhecer: [
-    "Pressão de via aérea subindo, dessaturação e hipotensão, com expansão ou murmúrio assimétricos.",
-    "Enfisema subcutâneo, turgência jugular e desvio da traqueia podem faltar.",
+    "Sob ventilação mecânica: pressão de via aérea subindo, volume corrente caindo, dessaturação e hipotensão, com expansão e murmúrio assimétricos.",
+    "Taquicardia, turgência jugular, desvio da traqueia, enfisema subcutâneo e cianose podem estar presentes ou faltar; pode evoluir para PCR.",
+    "Ultrassom à beira do leito é o exame mais útil no instável; não atrasar a descompressão por imagem.",
   ],
   agirAgora: [
-    { texto: "Pedir ajuda; checar o sistema de ventilação e o tubo." },
-    { texto: "O2 a 100% e suporte hemodinâmico." },
-    { texto: "Suspeitar diante de achados assimétricos, sobretudo depois de punção central, bloqueio, trauma ou ventilação com pressão alta." },
-    { texto: "Instável: descompressão imediata, por profissional habilitado.",
-      detalhe: "Toracostomia no 4º ou 5º espaço intercostal, na linha axilar adequada; a agulha é medida temporária em cenários específicos." },
-    { texto: "Não aguardar a imagem para descomprimir o paciente instável." },
-    { texto: "Drenagem torácica definitiva." },
-    { texto: "Reavaliar ventilação e hemodinâmica depois de cada passo." },
+    { texto: "Pedir ajuda; O2 a 100%; ventilar à mão para sentir a complacência." },
+    { texto: "Excluir em segundos o aparelho e o tubo: autoinflável direto no tubo; tubo dobrado, obstruído ou seletivo." },
+    { texto: "Instável: descompressão imediata por profissional habilitado.", detalhe: "Toracostomia digital ou agulha no 5º espaço intercostal, linha axilar média, ou no 2º espaço, linha hemiclavicular." },
+    { texto: "Dreno torácico: 4º a 6º espaço intercostal, linha axilar anterior ou média.", detalhe: "Sob pressão positiva, a drenagem é praticamente obrigatória." },
+    { texto: "Laparoscopia: desinsuflar o pneumoperitônio." },
+    { texto: "Reavaliar ventilação e hemodinâmica depois de cada passo; PCR: protocolos de PCR, com a descompressão." },
   ],
   medicamentos: [],
   volumes: [],
-  notasDeDose: ["Sem fármaco próprio: o tratamento é a descompressão."],
-  pensarEm: ["Intubação seletiva, tubo obstruído, broncoespasmo, tamponamento cardíaco e embolia gasosa."],
-  depois: [
-    "Confirmar a expansão pulmonar e o funcionamento do dreno.",
-    "Investigar e registrar a causa.",
+  notasDeDose: ["Sem fármaco próprio: o tratamento é a descompressão e a drenagem."],
+  pensarEm: [
+    "Intubação seletiva, tubo obstruído, broncoespasmo, auto-PEEP, tamponamento cardíaco e embolia gasosa.",
+    "Causas anestésicas: punção venosa central, bloqueio do plexo braquial ou paravertebral, barotrauma, laparoscopia e cirurgia perto do diafragma.",
   ],
-  divergencias: [],
-  referencias: ["saesp-tratado", "wses-aast-2025-torax"],
+  depois: [
+    "Radiografia ou ultrassom para conferir a expansão e o dreno.",
+    "A agulha pode deslocar ou deixar de funcionar: trocar por dreno.",
+    "Registrar a causa provável e o procedimento.",
+  ],
+  divergencias: [
+    {
+      tema: "Local da descompressão",
+      posicoes: [
+        { texto: "Dreno no 4º a 6º espaço, linha axilar anterior ou média; sem dreno, agulha no 2º espaço hemiclavicular ou no 5º axilar médio, ou toracostomia digital.", referencia: "wses-aast-2025-torax" },
+      ],
+      escolha: "O cartão segue a WSES-AAST 2025. A versão anterior citava o 4º ou 5º espaço pelo Tratado SAESP, sem página localizada; o ATLS 11 não pôde ser conferido.",
+    },
+  ],
+  referencias: ["wses-aast-2025-torax", "qrh-2-3", "manual-33"],
   relacionados: [
     { protocolo: "pressao-vias-aereas", texto: "Pressão elevada das vias aéreas" },
     { protocolo: "intubacao-esofagica-seletiva", texto: "Intubação esofágica ou seletiva" },
@@ -58,44 +73,50 @@ export const INTUBACAO_ESOFAGICA: Protocolo = {
   titulo: "Intubação esofágica ou seletiva",
   categoria: "respiratorio",
   populacoes: ["adulto", "gestante", "pediatrico", "neonatal"],
-  versao: 1,
-  atualizadoEm: "2026-10-15",
-  sinonimos: ["tubo no esôfago", "intubação seletiva", "intubação brônquica", "tubo deslocado", "sem capnografia"],
+  versao: 2,
+  atualizadoEm: REVISAO,
+  revisadoEm: REVISAO,
+  bibliografiaGeral: false,
+  sinonimos: ["tubo no esôfago", "intubação seletiva", "intubação brônquica", "tubo deslocado", "sem capnografia", "no trace wrong place"],
   sinais: ["sem curva de capnografia", "EtCO2 ausente", "dessaturação", "pressão de pico alta", "murmúrio assimétrico", "distensão gástrica",
     "tubo profundo", "mudança de posição"],
-  resumo: "Sem capnografia sustentada, o tubo está no lugar errado: parar de ventilar por ele, oxigenar por máscara ou supraglótico e reintubar. Seletiva: recuar o tubo aos poucos e confirmar.",
+  resumo: "Sem CO2 expirado sustentado, o tubo está no lugar errado: tirar, oxigenar por máscara ou supraglótico e reintubar. Seletiva: com CO2 e SpO2 baixa ou pressão alta, recuar o tubo aos poucos e confirmar.",
   reconhecer: [
-    "Esofágica: ausência de capnografia sustentada, dessaturação, distensão gástrica.",
-    "Seletiva: dessaturação, pressão de pico alta, expansão e murmúrio assimétricos, tubo além da marca habitual.",
-    "Ausculta isolada não confirma a posição do tubo.",
+    "CO2 sustentado exige as quatro: onda que sobe na expiração e cai na inspiração; amplitude constante ou crescente em pelo menos 7 ventilações; pico acima de 7,5 mmHg; leitura compatível com o quadro.",
+    "Esofágica: traçado plano, decrescente ou baixo, dessaturação, distensão gástrica. PCR e broncoespasmo não explicam traçado plano.",
+    "Seletiva: CO2 presente, mas SpO2 baixa, pressão de pico alta, expansão e murmúrio assimétricos, tubo além da marca habitual.",
+    "Ausculta e SpO2 normal não confirmam a posição do tubo.",
   ],
   agirAgora: [
-    { texto: "Suspeita de esofágica: parar de ventilar pelo tubo e pedir ajuda." },
-    { texto: "Garantir oxigenação e ventilação." },
-    { texto: "Procurar capnografia sustentada (várias curvas)." },
-    { texto: "Não confirmada: retirar o tubo e ventilar por máscara ou supraglótico." },
-    { texto: "Reintubar e confirmar pela capnografia." },
-    { texto: "Suspeita de seletiva: conferir profundidade e fixação do tubo.", detalhe: "Posição da cabeça, expansão e ausculta dos dois lados." },
-    { texto: "Recuar o tubo em pequenos incrementos." },
-    { texto: "Confirmar por capnografia, ausculta e, se disponível, broncoscopia." },
-    { texto: "Sem melhora: procurar outras causas." },
+    { texto: "Operador e auxiliar dizem em voz alta se há CO2 sustentado e SpO2 adequada.", caminho: "A. Esofágica: sem CO2 sustentado" },
+    { texto: "Sem causa corrigível em segundos (desconexão, zero do capnógrafo, vazamento): retirar o tubo.", detalhe: "Padrão mesmo com intubação que pareceu fácil.", caminho: "A. Esofágica: sem CO2 sustentado" },
+    { texto: "O2 a 100% por máscara ou supraglótico; confirmar CO2 sustentado por eles.", caminho: "A. Esofágica: sem CO2 sustentado" },
+    { texto: "Reoxigenar e otimizar (videolaringoscópio, posição, operador) antes de reintubar; confirmar de novo pela capnografia.", caminho: "A. Esofágica: sem CO2 sustentado" },
+    { texto: "Não ventila por máscara nem supraglótico: resgate de via aérea, até o acesso frontal.", caminho: "A. Esofágica: sem CO2 sustentado" },
+    { texto: "Conferir a marca do tubo no dente e a fixação; posição da cabeça.", caminho: "B. Seletiva: CO2 presente, oxigenação ou pressão ruins" },
+    { texto: "Expansão, ausculta das axilas e pressões; isolar o aparelho com autoinflável.", caminho: "B. Seletiva: CO2 presente, oxigenação ou pressão ruins" },
+    { texto: "Desinsuflar o balonete e recuar o tubo em pequenos incrementos, reavaliando a cada um.", caminho: "B. Seletiva: CO2 presente, oxigenação ou pressão ruins" },
+    { texto: "Confirmar por capnografia e expansão simétrica; broncoscopia se disponível ou se persistir.", caminho: "B. Seletiva: CO2 presente, oxigenação ou pressão ruins" },
+    { texto: "Sem melhora: pneumotórax, obstrução do tubo, broncoespasmo e outras causas.", caminho: "B. Seletiva: CO2 presente, oxigenação ou pressão ruins" },
   ],
   medicamentos: [],
   volumes: [],
   notasDeDose: ["Sem fármaco próprio: fármacos conforme o plano de via aérea."],
   pensarEm: [
-    "A posição cirúrgica e a mobilização da cabeça podem deslocar o tubo; pneumotórax, broncoespasmo e obstrução do tubo.",
+    "Tubo que migra com a posição cirúrgica, a mobilização da cabeça, o pneumoperitônio ou as compressões, sobretudo na criança.",
+    "Pneumotórax, obstrução do tubo (secreção, dobra), broncoespasmo e falha do equipamento.",
   ],
   depois: [
-    "Capnografia contínua até a extubação.",
-    "Avaliar broncoaspiração depois da intubação esofágica.",
-    "Documentar e vigiar o paciente.",
+    "Capnografia contínua até a extubação; reconfirmar após mudança de posição, de pressão ou de SpO2.",
+    "Depois de intubação esofágica: avaliar broncoaspiração e distensão gástrica.",
+    "Documentar e discutir com a equipe.",
   ],
   divergencias: [],
-  referencias: ["saesp-tratado", "chrimes-2022"],
+  referencias: ["chrimes-2022", "qrh-2-2", "manual-32", "manual-26"],
   relacionados: [
     { protocolo: "dessaturacao", texto: "Dessaturação súbita" },
     { protocolo: "pneumotorax-hipertensivo", texto: "Pneumotórax hipertensivo" },
     { protocolo: "broncoaspiracao", texto: "Broncoaspiração" },
+    { protocolo: "nao-ventilo-nao-intubo", texto: "Não ventilo, não intubo" },
   ],
 };

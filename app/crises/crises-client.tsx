@@ -36,6 +36,7 @@ export function CrisesClient({ superAdmin }: { superAdmin: boolean }) {
           titulo="Manejo de crises em anestesia"
           dados={dados} set={set}
           aoAbrirCalculadora={superAdmin ? () => setCalculadora(true) : undefined}
+          previa={superAdmin}
         />
       </main>
       {calculadora && (

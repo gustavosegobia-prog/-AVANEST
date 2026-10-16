@@ -43,6 +43,12 @@ export type Passo = {
   detalhe?: string;
   /** Só para estas populações (o deslocamento uterino é da gestante). */
   so?: Populacao[];
+  /**
+   * O caminho a que o passo pertence, quando o protocolo tem mais de um
+   * ("A. Fogo na via aérea", "B. Fogo no campo"): a tela abre um título para
+   * cada caminho e recomeça a numeração.
+   */
+  caminho?: string;
 };
 
 /**
@@ -166,6 +172,14 @@ export type Protocolo = {
   relacionados?: Relacionado[];
   /** Os ritmos do monitor que o protocolo ensina a reconhecer (PCR). */
   ritmos?: RitmoDoProtocolo[];
+  /** AAAA-MM-DD da última revisão científica (fontes reabertas e conferidas). */
+  revisadoEm?: string;
+  /**
+   * Falso quando o protocolo não se apoia na bibliografia geral do módulo (Manual
+   * de Crises e Tratado SAESP): a tela lista só as referências do próprio
+   * protocolo, sem atribuir a uma obra o que não foi localizado nela.
+   */
+  bibliografiaGeral?: false;
 };
 
 /** Um título das seis categorias que ainda não tem protocolo escrito. */

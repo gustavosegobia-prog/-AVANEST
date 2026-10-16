@@ -39,15 +39,22 @@ function lerFavoritos(): string[] {
   }
 }
 
+/**
+ * Só o protocolo com aprovação médica registrada vai para quem usa. O que ainda
+ * não tem aparece como "em preparação" e só abre na prévia do responsável
+ * médico (super-admin), marcado como em validação.
+ */
+const LIBERADOS = PROTOCOLOS.filter((p) => aprovado(p));
+
 /** O rodapé: quem aprovou quantos protocolos, e quantos ainda esperam aprovação. */
 const aprovacoes = APROVACOES.map((a) => {
   const n = PROTOCOLOS.filter((p) => aprovado(p, [a])).length;
   return `${n} protocolos aprovados por ${a.responsavel}, ${a.crm}, em ${dataDaAprovacao(a)}.`;
 }).join(" ");
-const semAprovacao = PROTOCOLOS.filter((p) => !aprovado(p)).length;
+const emValidacao = PROTOCOLOS.length - LIBERADOS.length;
 
 export function Intercorrencias({
-  dados, set, aoAbrirCalculadora, daFicha = false, titulo = "Intercorrências anestésicas",
+  dados, set, aoAbrirCalculadora, daFicha = false, titulo = "Intercorrências anestésicas", previa = false,
 }: {
   /** "Manejo de crises em anestesia" no menu da área médica. */
   titulo?: string;
@@ -56,7 +63,11 @@ export function Intercorrencias({
   aoAbrirCalculadora?: () => void;
   /** Aberto de dentro da ficha: os dados vieram do atendimento. */
   daFicha?: boolean;
+  /** A prévia do responsável médico: mostra também os protocolos em validação, sem aprovação registrada. */
+  previa?: boolean;
 }) {
+  const disponiveis = previa ? PROTOCOLOS : LIBERADOS;
+  const disponivel = (x: string) => disponiveis.some((p) => p.id === x);
   const id = useId();
   const busca = useRef<HTMLInputElement>(null);
   const grade = useRef<HTMLDivElement>(null);
@@ -68,7 +79,7 @@ export function Intercorrencias({
 
   const abrir = (p: Protocolo) => {
     // Aberto pela busca ou por "Abrir também": a coluna passa a mostrar a categoria dele.
-    if (!expandida || !itensDaCategoria(expandida).prontos.includes(p)) setExpandida(p.categoria);
+    if (!expandida || !itensDaCategoria(expandida, disponiveis).prontos.includes(p)) setExpandida(p.categoria);
     setTermo("");
     setAberto(p.id);
   };
@@ -89,11 +100,11 @@ export function Intercorrencias({
     busca.current?.focus();
   };
 
-  const protocolo = aberto ? PROTOCOLOS.find((p) => p.id === aberto) : undefined;
+  const protocolo = aberto ? disponiveis.find((p) => p.id === aberto) : undefined;
   const buscando = !protocolo && Boolean(termo.trim());
 
-  const achados = buscar(termo);
-  const favoritados = favoritos.map((x) => PROTOCOLOS.find((p) => p.id === x)).filter((p): p is Protocolo => Boolean(p));
+  const achados = buscar(termo, disponiveis);
+  const favoritados = favoritos.map((x) => disponiveis.find((p) => p.id === x)).filter((p): p is Protocolo => Boolean(p));
 
   return (
     <div className={`${estilos.modulo} ${estilos.casca} ${protocolo ? estilos.comProtocolo : ""} ${buscando ? estilos.buscando : ""}`}>
@@ -135,7 +146,7 @@ export function Intercorrencias({
             <h3 className={estilos.indiceTitulo}>Categorias</h3>
             <ul className={estilos.indiceLista}>
               {CATEGORIAS.map((c) => {
-                const { prontos, previstos } = itensDaCategoria(c.id);
+                const { prontos, previstos } = itensDaCategoria(c.id, disponiveis);
                 const aberta = expandida === c.id;
                 return (
                   <li key={c.id}>
@@ -150,7 +161,7 @@ export function Intercorrencias({
                           <li key={p.id}>
                             <button type="button" className={estilos.indiceSub}
                               aria-current={p.id === protocolo?.id ? "page" : undefined} onClick={() => abrir(p)}>
-                              {p.titulo}{!aprovado(p) && <small>sem aprovação registrada</small>}
+                              {p.titulo}{!aprovado(p) && <small>em validação</small>}
                             </button>
                           </li>
                         ))}
@@ -177,7 +188,8 @@ export function Intercorrencias({
               favorito={favoritos.includes(protocolo.id)} aoFavoritar={() => alternarFavorito(protocolo.id)}
               aoVoltar={fechar} aoBuscar={buscarOutra}
               aoAbrirCalculadora={aoAbrirCalculadora}
-              aoAbrirProtocolo={(x) => { const alvo = PROTOCOLOS.find((p) => p.id === x); if (alvo) abrir(alvo); }}
+              aoAbrirProtocolo={(x) => { const alvo = disponiveis.find((p) => p.id === x); if (alvo) abrir(alvo); }}
+              disponivel={disponivel}
             />
           ) : buscando ? (
             <section className={estilos.folha} aria-live="polite" aria-labelledby={`${id}-achados`}>
@@ -195,7 +207,7 @@ export function Intercorrencias({
                         <button type="button" className={estilos.linha} onClick={() => abrir(a.protocolo)}>
                           <span className={estilos.linhaTexto}>
                             <b>{a.protocolo.titulo}</b>
-                            <small>{nome(a.protocolo.categoria)} · achado por {a.porque}{aprovado(a.protocolo) ? "" : " · sem aprovação registrada"}</small>
+                            <small>{nome(a.protocolo.categoria)} · achado por {a.porque}{aprovado(a.protocolo) ? "" : " · em validação"}</small>
                           </span>
                           <Icone nome="seta" tamanho={18} className={estilos.linhaSeta} />
                         </button>
@@ -218,7 +230,10 @@ export function Intercorrencias({
 
       <div className={`${estilos.rodapes} ${estilos.naoImprimir}`}>
         <p className={estilos.rodape}>
-          Os protocolos seguem diretrizes publicadas, citadas no fim de cada um. {aprovacoes}{semAprovacao > 0 && ` ${semAprovacao} ainda sem aprovação registrada, marcados na lista.`} Confira apresentação, via e dose antes de administrar.
+          Os protocolos seguem diretrizes publicadas, citadas no fim de cada um. {aprovacoes}
+          {emValidacao > 0 && (previa
+            ? ` ${emValidacao} em validação, visíveis só nesta prévia e marcados na lista.`
+            : " Os demais estão em preparação e só entram depois da aprovação.")} Confira apresentação, via e dose antes de administrar.
         </p>
       </div>
     </div>
