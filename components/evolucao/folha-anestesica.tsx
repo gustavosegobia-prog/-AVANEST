@@ -472,7 +472,7 @@ export function FolhaAnestesica({
           </div>
 
           {colunas.length > 0 && (
-            <p className="evoDicaGrafico">Arraste os pontos tracejados de cada coluna até o valor do monitor e solte: lança naquele horário.</p>
+            <p className="evoDicaGrafico">Arraste os pontos tracejados de cada coluna até o valor do monitor e solte: lança naquele horário. Na linha de SpO₂, EtCO₂ ou temperatura, segure um valor e puxe para o lado para repetir nas colunas seguintes.</p>
           )}
           {montado ? (
             <GraficoSinais
@@ -483,6 +483,14 @@ export function FolhaAnestesica({
                 const momento = new Date(ms).toISOString();
                 f.registrar({ tipo: "sinal", momento, dados: { parametro: p, valor }, origem: estimada ? "estimado" : "manual" });
                 setAviso({ texto: `${PARAMETROS[p].curto}${estimada ? " estimada" : ""} ${fmt(valor, 1)} às ${hora(momento)}`, desfazer: true });
+              }}
+              onRepetir={(p, valor, momentos) => {
+                f.registrarLote(momentos.map((ms) => ({ tipo: "sinal", momento: new Date(ms).toISOString(), dados: { parametro: p, valor } })));
+                const n = momentos.length;
+                setAviso({
+                  texto: `${PARAMETROS[p].curto} ${fmt(valor, 1)} em ${n} ${n === 1 ? "coluna" : "colunas"}, de ${hora(new Date(momentos[0]).toISOString())} a ${hora(new Date(momentos[n - 1]).toISOString())}`,
+                  desfazer: true,
+                });
               }}
               onTocar={(t) => setAbrir({ tipo: "sinais", ms: Math.min(t.ms, Date.now()) })}
               onTocarLinha={(p, ms) => setAbrir({ tipo: "sinais", ms: Math.min(ms, Date.now()), foco: p, so: p })}

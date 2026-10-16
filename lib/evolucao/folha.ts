@@ -6,6 +6,7 @@ import { montarInfusoes } from "./infusoes.ts";
 import { periodosSemMonitorizacao, lacunaPadrao } from "./sinais.ts";
 import { conferirAlergia } from "./alergias.ts";
 import { antropometriaPlausivel } from "../numero-clinico.ts";
+import { dataLocal } from "../data-local.ts";
 
 /**
  * IMC do peso e da altura da folha, com uma casa. Nulo sem os dois ou com
@@ -219,4 +220,43 @@ export function conferirEncerramento(
     }
   }
   return p;
+}
+
+// ---------------------------------------------------------------------------
+// Ficha de outro dia ou horário
+// ---------------------------------------------------------------------------
+// A ficha nasce com o horário de agora. Para passar a limpo uma anestesia que
+// já aconteceu (a sedação da semana passada), o médico diz a data, o início e
+// o fim: a folha começa no início, e o fim marcado para a grade ali — sem ele,
+// a grade de uma ficha de dez dias atrás iria até hoje, coluna por coluna. Com
+// o fim marcado, tudo o que for lançado depois pede o horário (é a regra da
+// dose lançada depois do fim), e o banco aceita qualquer horário entre o
+// início e agora.
+
+export type HorarioDaFicha =
+  | { ok: true; data: string; inicioIso: string; fimIso: string | null }
+  | { ok: false; erro: string };
+
+const instante = (data: string, hhmm: string) => Date.parse(`${data}T${hhmm}:00-03:00`);
+
+/** Data e horários escolhidos → os instantes da ficha, ou o porquê de não dar. */
+export function horarioDaFicha(e: { data: string; inicio: string; fim: string }, agora: Date = new Date()): HorarioDaFicha {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(e.data)) return { ok: false, erro: "Informe a data do procedimento." };
+  if (!/^\d{2}:\d{2}$/.test(e.inicio)) return { ok: false, erro: "Informe o início da anestesia." };
+  const inicio = instante(e.data, e.inicio);
+  if (Number.isNaN(inicio)) return { ok: false, erro: "Data ou horário inválido." };
+  const limite = agora.getTime() + 5 * 60000;
+  if (inicio > limite) return { ok: false, erro: "O início não pode ser depois de agora." };
+  const hoje = dataLocal(agora);
+  if (!e.fim) {
+    return e.data === hoje
+      ? { ok: true, data: e.data, inicioIso: new Date(inicio).toISOString(), fimIso: null }
+      : { ok: false, erro: "Informe o fim da anestesia: a ficha de outro dia precisa terminar." };
+  }
+  if (!/^\d{2}:\d{2}$/.test(e.fim)) return { ok: false, erro: "Fim da anestesia inválido." };
+  let fim = instante(e.data, e.fim);
+  // Fim antes do início: passou da meia-noite.
+  if (fim <= inicio) fim += 86400000;
+  if (fim > limite) return { ok: false, erro: "O fim não pode ser depois de agora." };
+  return { ok: true, data: e.data, inicioIso: new Date(inicio).toISOString(), fimIso: new Date(fim).toISOString() };
 }

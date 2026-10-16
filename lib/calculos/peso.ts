@@ -19,6 +19,12 @@
  *
  * Quem pesa menos que o ideal (ou o magro) recebe pelo peso atual: o peso
  * "corrigido" nunca aumenta a dose.
+ *
+ * SÓ NO OBESO (IMC de 30 ou mais). Antes a troca valia para todo adulto com
+ * altura e sexo, e o peso magro é sempre bem menor que o da balança: uma
+ * paciente de 54 kg e 1,54 m (IMC 22,8) recebia fentanil por 34,9 kg e
+ * midazolam por 46,9 kg — doses que o anestesiologista via como baixas demais,
+ * e com razão. Fora da obesidade, o peso da balança é o peso da dose.
  */
 
 export type BaseDePeso = "atual" | "ideal" | "ajustado" | "magro";
@@ -81,6 +87,15 @@ export function pesoMagro(a: Antropometria): number | null {
   return umaCasa(magro);
 }
 
+/** IMC a partir do qual o peso da dose deixa de ser o da balança (obesidade, OMS). */
+export const IMC_OBESIDADE = 30;
+
+/** IMC do adulto com altura plausível; nulo sem altura. */
+export function imcDe(a: Antropometria): number | null {
+  if (!ok(a.pesoKg) || !ok(a.alturaCm) || a.alturaCm < 100 || a.alturaCm > 250) return null;
+  return a.pesoKg / (a.alturaCm / 100) ** 2;
+}
+
 export type PesoDaDose = {
   /** O peso que entra na conta (nulo: sem peso). */
   kg: number | null;
@@ -96,11 +111,14 @@ export function pesoDaDose(base: BaseDePeso | undefined, a: Antropometria): Peso
   if (!base || base === "atual" || atual === null) return { kg: atual, base: "atual", aviso: null };
   // Criança: a tabela pediátrica já é pelo peso da balança.
   if (ok(a.idadeAnos) && a.idadeAnos < 18) return { kg: atual, base: "atual", aviso: null };
+  // Fora da obesidade, o peso da balança.
+  const imc = imcDe(a);
+  if (imc !== null && imc < IMC_OBESIDADE) return { kg: atual, base: "atual", aviso: null };
   const corrigido = base === "ideal" ? pesoIdeal(a) : base === "ajustado" ? pesoAjustado(a) : pesoMagro(a);
   if (corrigido === null) {
     return {
       kg: atual, base: "atual",
-      aviso: `No obeso, este fármaco vai pelo ${ROTULO_BASE[base]}. Sem altura e sexo, a conta usou o peso atual.`,
+      aviso: `No obeso (IMC de 30 ou mais), este fármaco vai pelo ${ROTULO_BASE[base]}. Sem altura e sexo, a conta usou o peso atual.`,
     };
   }
   if (corrigido >= atual) return { kg: atual, base: "atual", aviso: null };

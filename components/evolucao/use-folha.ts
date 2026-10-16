@@ -42,6 +42,8 @@ export type Sincronia = "salvo" | "salvando" | "sem_conexao" | "erro";
 
 type Acao =
   | { tipo: "criar"; id: string; copia: NovoRegistro }
+  /** Vários registros de um gesto só (arrastar um sinal pelas colunas): desfaz junto. */
+  | { tipo: "lote"; itens: Array<{ id: string; copia: NovoRegistro }> }
   | { tipo: "corrigir"; antigo: Registro; novoId: string; novo: NovoRegistro }
   | { tipo: "excluir"; alvo: Registro };
 
@@ -195,6 +197,14 @@ export function useFolha(folhaInicial: Folha, registrosIniciais: Registro[]) {
     return id;
   }, [enviar, folhaInicial.id, mudarFila]);
 
+  /** Um gesto, vários registros: um "Desfazer" tira todos. */
+  const registrarLote = useCallback((lista: NovoRegistro[]) => {
+    if (!lista.length) return;
+    const itens = lista.map((copia) => ({ id: registrar(copia, { semDesfazer: true }), copia }));
+    setDesfazer((d) => [...d.slice(-49), { tipo: "lote", itens }]);
+    setRefazer([]);
+  }, [registrar]);
+
   const corrigir = useCallback((antigo: Registro, novo: Omit<NovoRegistro, "tipo" | "substitui_id">) => {
     const n: NovoRegistro = { ...novo, tipo: antigo.tipo, substitui_id: antigo.id };
     const novoId = registrar(n, { semDesfazer: true });
@@ -217,6 +227,11 @@ export function useFolha(folhaInicial: Folha, registrosIniciais: Registro[]) {
     if (a.tipo === "criar") {
       registrar({ tipo: a.copia.tipo, momento: a.copia.momento, substitui_id: a.id, anulado: true, motivo: "Desfeito" },
         { semDesfazer: true });
+    } else if (a.tipo === "lote") {
+      for (const i of a.itens) {
+        registrar({ tipo: i.copia.tipo, momento: i.copia.momento, substitui_id: i.id, anulado: true, motivo: "Desfeito" },
+          { semDesfazer: true });
+      }
     } else if (a.tipo === "corrigir") {
       registrar({ tipo: a.antigo.tipo, momento: a.antigo.momento, dados: a.antigo.dados, origem: a.antigo.origem,
         substitui_id: a.novoId, motivo: "Desfeito" }, { semDesfazer: true });
@@ -234,6 +249,9 @@ export function useFolha(folhaInicial: Folha, registrosIniciais: Registro[]) {
     if (a.tipo === "criar") {
       const id = registrar(a.copia, { semDesfazer: true });
       setDesfazer((d) => [...d, { tipo: "criar", id, copia: a.copia }]);
+    } else if (a.tipo === "lote") {
+      const itens = a.itens.map((i) => ({ id: registrar(i.copia, { semDesfazer: true }), copia: i.copia }));
+      setDesfazer((d) => [...d, { tipo: "lote", itens }]);
     } else {
       // Refazer correção ou exclusão sobre o estado que mudou desde então é
       // ambíguo; a folha prefere pedir o gesto de novo a adivinhar.
@@ -311,7 +329,7 @@ export function useFolha(folhaInicial: Folha, registrosIniciais: Registro[]) {
 
   return {
     folha, setFolha, todos, atuais, idsPendentes, pendentes, sincronia, recusa, setRecusa,
-    registrar, corrigir, excluir, desfazerUltimo, refazerUltimo,
+    registrar, registrarLote, corrigir, excluir, desfazerUltimo, refazerUltimo,
     podeDesfazer: desfazer.length > 0, podeRefazer: refazer.length > 0,
     mudarCabecalho, cabecalhoSalvo, recarregarTudo, descartarRecusados,
   };

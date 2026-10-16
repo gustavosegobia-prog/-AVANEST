@@ -67,3 +67,43 @@ export function janelaVisivel(inicioFolha: number, fim: number, zoomMin: number,
   const d = deslocMin === null ? maxDesloc : Math.min(maxDesloc, Math.max(0, deslocMin));
   return { inicio: comeco + d * 60000, minutos: zoomMin, totalMin, maxDesloc, desloc: d };
 }
+
+/** No máximo tantas colunas num arraste só: um escorregão não enche a tarde inteira. */
+export const MAX_COLUNAS_REPETIDAS = 96;
+
+/**
+ * Arrastar um sinal pela linha (SpO₂ 99 até onde o dedo soltar, como no
+ * AxREG): os horários a lançar, um por coluna do intervalo, entre a coluna de
+ * origem (que já tem o valor) e a de destino, inclusive.
+ *
+ * O horário de cada coluna é o mesmo do toque na linha: o meio da coluna,
+ * nunca depois de agora nem do fim da anestesia. Coluna que já tem valor
+ * daquele sinal fica como está (arrastar não sobrescreve), e coluna que ainda
+ * não começou fica de fora. Vale para os dois lados.
+ */
+export function colunasParaRepetir(o: {
+  origemMs: number;
+  destinoMs: number;
+  intervaloMin: number;
+  agoraMs: number;
+  /** Fim da anestesia (ou saída da sala), quando marcado. */
+  fimMs?: number | null;
+  /** Os horários em que aquele sinal já tem valor. */
+  ocupados: readonly number[];
+}): number[] {
+  const passo = o.intervaloMin * 60000;
+  const colOrigem = Math.floor(o.origemMs / passo);
+  const colDestino = Math.floor(o.destinoMs / passo);
+  if (colOrigem === colDestino) return [];
+  const limite = Math.min(o.agoraMs, o.fimMs ?? Infinity);
+  const ocupadas = new Set(o.ocupados.map((ms) => Math.floor(ms / passo)));
+  const sentido = colDestino > colOrigem ? 1 : -1;
+  const saida: number[] = [];
+  for (let c = colOrigem + sentido; sentido > 0 ? c <= colDestino : c >= colDestino; c += sentido) {
+    const inicio = c * passo;
+    if (inicio > limite || ocupadas.has(c)) continue;
+    saida.push(Math.round(Math.min(inicio + passo / 2, limite) / 60000) * 60000);
+    if (saida.length >= MAX_COLUNAS_REPETIDAS) break;
+  }
+  return saida.sort((a, b) => a - b);
+}

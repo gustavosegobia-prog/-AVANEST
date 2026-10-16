@@ -7,6 +7,11 @@ import type { Sugestao, SugestoesDaFicha } from "@/lib/evolucao/sugestoes";
 // Um toque PREENCHE a dose — não registra. O número fica no campo, editável,
 // e o médico confirma. A fonte vai embaixo, sempre: é o que diz de onde o
 // número veio.
+//
+// O botão diz a dose por kg ("0,05 mg/kg"), e não "Mínima" e "Máxima": as
+// pontas da faixa de uma dose da tabela não são o limite do total. Chamada de
+// "Máxima", a ponta de cima de uma sedação titulada (midazolam 0,05 mg/kg)
+// parecia proibir os 5 mg que o anestesiologista fez em doses repetidas.
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 
@@ -37,10 +42,10 @@ export function SugestoesDeDose({ sugestoes, pesoKg, escolhida, mostrarVia = fal
           <div className="evoSugDoses">
             {c.doses.map((d) => (
               <button key={d.chave} type="button" aria-pressed={escolhida === d.dose}
-                aria-label={`Usar ${fmt(d.dose)} ${d.unidade} (${d.nivel.toLowerCase()}, ${d.base})`}
+                aria-label={`Usar ${fmt(d.dose)} ${d.unidade} (${d.base})`}
                 onClick={() => onEscolher(d)}>
                 <b>{fmt(d.dose)} {d.unidade}</b>
-                <small>{c.doses.length > 1 ? d.nivel : d.base}{d.limitada ? " · teto" : ""}</small>
+                <small>{d.base}{d.limitada ? " · teto" : ""}</small>
               </button>
             ))}
           </div>

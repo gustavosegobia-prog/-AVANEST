@@ -38,3 +38,14 @@ test("o peso da dose nunca aumenta a conta, e diz quando não pôde corrigir", (
   // Criança: a tabela pediátrica é pelo peso da balança, sem aviso.
   assert.deepEqual(pesoDaDose("ideal", { pesoKg: 20, idadeAnos: 6 }), { kg: 20, base: "atual", aviso: null });
 });
+
+test("fora da obesidade, a dose vai pelo peso da balança (o caso da paciente de 54 kg)", () => {
+  // 54 kg, 154 cm, IMC 22,8: o peso ideal (46,9) e o magro (34,9) são menores, mas não valem.
+  const paciente = { pesoKg: 54, alturaCm: 154, sexo: "Feminino", idadeAnos: 50 };
+  for (const base of ["ideal", "magro", "ajustado"] as const) {
+    assert.deepEqual(pesoDaDose(base, paciente), { kg: 54, base: "atual", aviso: null }, base);
+  }
+  // IMC 29,9: ainda o da balança; IMC 30: o corrigido.
+  assert.equal(pesoDaDose("magro", { ...paciente, pesoKg: 70.9 }).base, "atual");
+  assert.equal(pesoDaDose("magro", { ...paciente, pesoKg: 71.2 }).base, "magro");
+});

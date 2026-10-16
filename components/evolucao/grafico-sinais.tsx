@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
-  EIXO_Y, marcasDeTempo, pontoDoToque, tempoParaX, valorParaY, yParaValor, type Escala,
+  EIXO_Y, colunasParaRepetir, marcasDeTempo, pontoDoToque, tempoParaX, valorParaY, yParaValor, type Escala,
 } from "@/lib/evolucao/grafico";
 import {
   EM_LINHA, NO_GRAFICO, PARAMETROS, lacunaPadrao, marcaForte, periodosSemMonitorizacao, pontosDe, trechos,
@@ -79,7 +79,7 @@ const ROTULO_GAS: Record<string, string> = { o2: "O₂ L/min", ar: "Ar L/min", n
 export function GraficoSinais({
   atuais, idsPendentes, cabecalho, fimMs, agoraMs, aberta, intervalo, janelaInicio, janelaMinutos,
   alturaGrade, somenteLeitura, colunas = [], onTocar, onTocarLinha, onTocarFaixa, onAbrirPonto, onAbrirRegistro, onMover,
-  onLancar,
+  onLancar, onRepetir,
 }: {
   atuais: Registro[];
   idsPendentes: Set<string>;
@@ -106,12 +106,21 @@ export function GraficoSinais({
    * `estimada`: a PAM calculada, lançada sem arrastar — grava como estimada.
    */
   onLancar?: (p: Parametro, valor: number, ms: number, estimada: boolean) => void;
+  /**
+   * Arrastou um valor de SpO₂, EtCO₂ ou temperatura pela linha: o mesmo valor
+   * em cada coluna até onde soltou (lib/evolucao/grafico.ts, colunasParaRepetir).
+   */
+  onRepetir?: (p: Parametro, valor: number, momentos: number[]) => void;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
   const [largura, setLargura] = useState(800);
   const [arraste, setArraste] = useState<{ registro: Registro; x: number; y: number; ativo: boolean; x0: number; y0: number } | null>(null);
   const [puxando, setPuxando] = useState<{ p: Parametro; ms: number; y: number; y0: number; ativo: boolean } | null>(null);
+  // Um valor da linha de SpO₂, EtCO₂ ou temperatura sendo puxado para o lado.
+  const [estendendo, setEstendendo] = useState<{
+    p: Parametro; valor: number; registro: Registro; faixa: number; origemMs: number; x0: number; x: number; ativo: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const el = caixa.current;
@@ -309,8 +318,38 @@ export function GraficoSinais({
         return;
       }
     }
+    // Um valor na linha de SpO₂, EtCO₂ ou temperatura: segurar e puxar repete.
+    const naLinha = valorDaLinhaNoToque(lx, ly);
+    if (naLinha) {
+      prender(ev);
+      setEstendendo({ ...naLinha, x0: lx, x: lx, ativo: false });
+      return;
+    }
     // O resto espera o dedo subir.
     toqueSimples.current = { lx, ly, x0: ev.clientX, y0: ev.clientY };
+  }
+
+  /** O valor de sinal (SpO₂, EtCO₂, temperatura) sob o dedo, para arrastar pela linha. */
+  function valorDaLinhaNoToque(lx: number, ly: number) {
+    if (somenteLeitura || !onRepetir || ly < FAIXA_HORAS || ly >= topoEventos) return null;
+    const indice = Math.floor((ly - FAIXA_HORAS) / LINHA);
+    const f = faixas[indice];
+    if (!f || f.modo !== "sinal" || !f.parametro) return null;
+    const perto = f.marcas.filter((m) => visivel(m.ms))
+      .map((m) => ({ m, d: Math.abs(x(m.ms) - lx) })).filter((o) => o.d <= 16).sort((a, b) => a.d - b.d)[0];
+    const r = perto && porId.get(perto.m.id);
+    const valor = r ? Number(r.dados.valor) : NaN;
+    if (!r || !Number.isFinite(valor)) return null;
+    return { p: f.parametro, valor, registro: r, faixa: indice, origemMs: perto.m.ms };
+  }
+
+  /** As colunas que o arraste em curso vai preencher. */
+  function colunasDoArraste(s: NonNullable<typeof estendendo>) {
+    const f = faixas[s.faixa];
+    return colunasParaRepetir({
+      origemMs: s.origemMs, destinoMs: tempoDoX(Math.min(Math.max(s.x, CALHA), largura)),
+      intervaloMin: intervalo, agoraMs, fimMs, ocupados: f ? f.marcas.map((m) => m.ms) : [],
+    });
   }
 
   /** O toque que desceu e subiu no mesmo lugar: abre o que estava ali. */
@@ -393,7 +432,8 @@ export function GraficoSinais({
 
   /** Este ponto do gráfico se arrasta? (linha pronta ou ponto já lançado) */
   function arrastavel(lx: number, ly: number): boolean {
-    if (somenteLeitura || lx < CALHA || ly < topoGrade) return false;
+    if (somenteLeitura || lx < CALHA) return false;
+    if (ly < topoGrade) return Boolean(valorDaLinhaNoToque(lx, ly));
     return Boolean(prontoNoToque(lx, ly) || pontoNoToque(lx, ly));
   }
 
@@ -425,6 +465,11 @@ export function GraficoSinais({
   function aoMover(ev: React.PointerEvent<SVGSVGElement>) {
     const t = toqueSimples.current;
     if (t && Math.hypot(ev.clientX - t.x0, ev.clientY - t.y0) > ANDOU) toqueSimples.current = null;
+    if (estendendo) {
+      const { lx } = local(ev);
+      setEstendendo({ ...estendendo, x: lx, ativo: estendendo.ativo || Math.abs(lx - estendendo.x0) > 8 });
+      return;
+    }
     if (puxando) {
       const { ly } = local(ev);
       const yLimitado = Math.min(topoGrade + alturaGrade, Math.max(topoGrade, ly));
@@ -442,6 +487,16 @@ export function GraficoSinais({
     const t = toqueSimples.current;
     toqueSimples.current = null;
     if (t) { tocar(t.lx, t.ly); return; }
+    if (estendendo) {
+      // Sem arrastar, é o toque de sempre: abre o valor.
+      if (!estendendo.ativo) onAbrirPonto(estendendo.registro);
+      else {
+        const momentos = colunasDoArraste(estendendo);
+        if (momentos.length) onRepetir?.(estendendo.p, estendendo.valor, momentos);
+      }
+      setEstendendo(null);
+      return;
+    }
     if (puxando) {
       const r = prontas.find((c) => c.ms === puxando.ms)?.itens.find((x) => x.parametro === puxando.p);
       // O ponto neutro só vale arrastado; um toque nele abre a janela de sinais.
@@ -464,7 +519,7 @@ export function GraficoSinais({
         width={largura} height={altura} viewBox={`0 0 ${largura} ${altura}`}
         onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar}
         // O navegador assumiu o gesto (rolagem): não era toque nem arraste.
-        onPointerCancel={() => { toqueSimples.current = null; setArraste(null); setPuxando(null); }}
+        onPointerCancel={() => { toqueSimples.current = null; setArraste(null); setPuxando(null); setEstendendo(null); }}
         // No toque, o navegador ainda solta um clique no mesmo lugar depois de
         // a janela abrir — e ele caía num campo (ou botão) da janela.
         onTouchEnd={(ev) => { if (ev.cancelable) ev.preventDefault(); }}
@@ -563,6 +618,22 @@ export function GraficoSinais({
                   x={x(m.ms)} y={y0 + LINHA / 2 + 4} textAnchor="middle">{m.texto}</text>
               ));
           })}
+
+          {/* O valor sendo puxado pela linha: as colunas que vão receber, antes de soltar. */}
+          {estendendo?.ativo && (() => {
+            const y0 = FAIXA_HORAS + estendendo.faixa * LINHA;
+            const destino = Math.min(Math.max(estendendo.x, CALHA), largura);
+            const texto = estendendo.p === "temp" ? estendendo.valor.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : String(estendendo.valor);
+            return (
+              <g className="evoRepetindo" aria-hidden="true">
+                <rect x={Math.min(x(estendendo.origemMs), destino)} y={y0 + 2}
+                  width={Math.abs(destino - x(estendendo.origemMs))} height={LINHA - 4} rx={4} />
+                {colunasDoArraste(estendendo).map((ms) => (
+                  <text key={ms} className="evoValorLinha pendente" x={x(ms)} y={y0 + LINHA / 2 + 4} textAnchor="middle">{texto}</text>
+                ))}
+              </g>
+            );
+          })()}
 
           {/* Eventos: as marcas na faixa e a linha dos marcos descendo pelo gráfico */}
           {eventos.map((ev, i) => {

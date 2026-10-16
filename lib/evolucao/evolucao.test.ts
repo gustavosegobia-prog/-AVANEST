@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { historicoDe, vigentes, type Registro } from "./registros.ts";
 import { lacunaPadrao, pamEstimada, pamEstimadaCabe, periodosSemMonitorizacao, pontosDe, trechos } from "./sinais.ts";
-import { pontoDoToque, tempoParaX, valorParaY, xParaTempo, yParaValor, marcasDeTempo, janelaVisivel } from "./grafico.ts";
+import { pontoDoToque, tempoParaX, valorParaY, xParaTempo, yParaValor, marcasDeTempo, janelaVisivel, colunasParaRepetir, MAX_COLUNAS_REPETIDAS } from "./grafico.ts";
 import { consumoSevoflurano, formatarMl, mlNoIntervalo } from "./sevoflurano.ts";
 import {
   CATALOGO, administrados, agruparPorMedicamento, buscarNoCatalogo, converterMassa, doseAcumulada,
@@ -15,6 +15,7 @@ import { SEM_REFERENCIA, avaliarDose, idadeEmDias, type RegraDeDose } from "./do
 import {
   conferirEncerramento, duracaoEmMinutos, equipeParaImpressao, fimDaAnestesia, horarioDaSaida, horarioDoMarco,
   minutosDeTorniquete, periodosDeTorniquete,
+  horarioDaFicha,
 } from "./folha.ts";
 import { classificarErro, motivoLegivel } from "./fila.ts";
 
@@ -431,4 +432,42 @@ test("folha de 3 em 3 min: a grade forte e a lacuna seguem de 15 min", async () 
   assert.deepEqual([...INTERVALOS], [3, 5, 10, 15]);
   assert.deepEqual(INTERVALOS.map(marcaForte), [15, 15, 30, 45]);
   assert.deepEqual(INTERVALOS.map(lacuna), [15, 15, 30, 45]);
+});
+
+test("arrastar um sinal pela linha: uma coluna por intervalo, sem sobrescrever e sem passar de agora", () => {
+  const h = (hhmm: string) => Date.parse(`2026-10-10T${hhmm}:00-03:00`);
+  // SpO2 99 às 10:02 (coluna 10:00), folha de 5 min, arrastada até 10:21; agora são 10:23.
+  const base = { origemMs: h("10:02"), intervaloMin: 5, agoraMs: h("10:23"), ocupados: [h("10:02"), h("10:12")] };
+  assert.deepEqual(colunasParaRepetir({ ...base, destinoMs: h("10:21") }),
+    [h("10:07") + 30000, h("10:17") + 30000, h("10:22") + 30000].map((ms) => Math.round(ms / 60000) * 60000));
+  // A coluna de agora vai no máximo até agora; a que ainda não começou fica de fora.
+  assert.deepEqual(colunasParaRepetir({ ...base, ocupados: [h("10:02")], destinoMs: h("10:44") }).at(-1), h("10:23"));
+  // Para trás também, e nada quando o dedo não saiu da coluna.
+  assert.deepEqual(colunasParaRepetir({ ...base, origemMs: h("10:12"), destinoMs: h("10:01"), ocupados: [h("10:12")] }),
+    [h("10:02") + 30000, h("10:07") + 30000].map((ms) => Math.round(ms / 60000) * 60000));
+  assert.deepEqual(colunasParaRepetir({ ...base, destinoMs: h("10:04") }), []);
+  // Com o fim da anestesia marcado, para nele.
+  assert.ok(colunasParaRepetir({ ...base, agoraMs: h("23:00"), fimMs: h("10:15"), ocupados: [], destinoMs: h("11:00") })
+    .every((ms) => ms <= h("10:15")));
+  // Um escorregão não enche a tarde inteira.
+  assert.equal(colunasParaRepetir({ ...base, agoraMs: h("23:59"), ocupados: [], destinoMs: h("23:50") }).length, MAX_COLUNAS_REPETIDAS);
+});
+
+test("ficha de outro dia: início e fim viram os horários da folha; hoje, o fim é opcional", () => {
+  const agora = new Date("2026-10-16T18:45:00-03:00");
+  const passada = horarioDaFicha({ data: "2026-10-10", inicio: "09:10", fim: "10:05" }, agora);
+  assert.deepEqual(passada, {
+    ok: true, data: "2026-10-10",
+    inicioIso: new Date("2026-10-10T09:10:00-03:00").toISOString(), fimIso: new Date("2026-10-10T10:05:00-03:00").toISOString(),
+  });
+  // Outro dia sem fim: não abre (a grade iria até hoje).
+  assert.match((horarioDaFicha({ data: "2026-10-10", inicio: "09:10", fim: "" }, agora) as { erro: string }).erro, /fim da anestesia/);
+  // Hoje, começou mais cedo e ainda está em curso.
+  assert.equal((horarioDaFicha({ data: "2026-10-16", inicio: "17:30", fim: "" }, agora) as { fimIso: string | null }).fimIso, null);
+  // Passou da meia-noite: o fim é no dia seguinte.
+  const noite = horarioDaFicha({ data: "2026-10-14", inicio: "23:20", fim: "01:10" }, agora) as { fimIso: string };
+  assert.equal(noite.fimIso, new Date("2026-10-15T01:10:00-03:00").toISOString());
+  // Nada no futuro.
+  assert.match((horarioDaFicha({ data: "2026-10-17", inicio: "08:00", fim: "09:00" }, agora) as { erro: string }).erro, /depois de agora/);
+  assert.match((horarioDaFicha({ data: "2026-10-16", inicio: "18:00", fim: "19:30" }, agora) as { erro: string }).erro, /fim não pode/);
 });

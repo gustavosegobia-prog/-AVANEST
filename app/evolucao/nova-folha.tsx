@@ -8,6 +8,8 @@ import { Icone } from "@/components/icone";
 import { cabecalhoInicial, type PacienteDaFolha } from "@/lib/evolucao/importar";
 import { motivoAoAbrirFolha } from "@/lib/evolucao/fila";
 import { fichasDoLocal } from "@/lib/evolucao/local";
+import { horarioDaFicha } from "@/lib/evolucao/folha";
+import { dataLocal, horaLocal } from "@/lib/data-local";
 
 type Encontrado = PacienteDaFolha & { id: string };
 export type Achado = Encontrado & {
@@ -43,6 +45,9 @@ export function NovaFolha({ institutionId, local = null }: {
   // cadastro mínimo aqui mesmo, e a ficha nasce em branco para preencher.
   const [novo, setNovo] = useState<{ nome: string; idade: string; sexo: string; convenio: string; cirurgia: string } | null>(null);
   const [cadastrando, setCadastrando] = useState(false);
+  // Agora (o padrão) ou outro dia e horário, para passar a limpo uma anestesia
+  // que já aconteceu (lib/evolucao/folha.ts, horarioDaFicha).
+  const [quando, setQuando] = useState<{ data: string; inicio: string; fim: string } | null>(null);
 
   useEffect(() => {
     const termo = busca.trim();
@@ -109,6 +114,8 @@ export function NovaFolha({ institutionId, local = null }: {
   }
 
   async function abrir(p: Encontrado) {
+    const horario = quando ? horarioDaFicha(quando) : null;
+    if (horario && !horario.ok) { setErro(horario.erro); return; }
     setAbrindo(p.id);
     setErro("");
     const supabase = createClient();
@@ -123,16 +130,33 @@ export function NovaFolha({ institutionId, local = null }: {
     const dados = {
       ...cabecalhoInicial(p, avaliacao ? { id: avaliacao.id, dados: avaliacao.dados } : null, new Date()),
       ...(local ? { local_atendimento_id: local.id, local_atendimento: local.nome } : {}),
+      ...(horario?.ok ? { data_procedimento: horario.data } : {}),
     };
     const { data, error } = await supabase
       .from("evolucoes_anestesicas")
-      .insert({ institution_id: institutionId, patient_id: p.id, avaliacao_id: avaliacao?.id ?? null, dados })
+      .insert({
+        institution_id: institutionId, patient_id: p.id, avaliacao_id: avaliacao?.id ?? null, dados,
+        ...(horario?.ok ? { inicio_em: horario.inicioIso } : {}),
+      })
       .select("id")
       .single();
     if (error || !data) {
       setErro(motivoAoAbrirFolha(error));
       setAbrindo(null);
       return;
+    }
+    // Ficha de outro horário: início e fim da anestesia já marcados, pela
+    // mesma porta dos outros registros (a que confere no servidor).
+    if (horario?.ok) {
+      const marcos = [{ codigo: "inicio_anestesia", momento: horario.inicioIso },
+        ...(horario.fimIso ? [{ codigo: "fim_anestesia", momento: horario.fimIso }] : [])];
+      for (const m of marcos) {
+        await fetch("/api/evolucao/registrar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: crypto.randomUUID(), evolucao_id: data.id, tipo: "evento", momento: m.momento,
+            dados: { codigo: m.codigo }, origem: "manual" }),
+        }).catch(() => null);
+      }
     }
     router.push(`/evolucao/${data.id}`);
   }
@@ -198,6 +222,34 @@ export function NovaFolha({ institutionId, local = null }: {
           autoComplete="off" autoCapitalize="words" spellCheck={false} enterKeyHint="search"
         />
       </label>
+      <div className="fcQuando" role="group" aria-label="Quando foi a anestesia">
+        <span>Quando</span>
+        <button type="button" aria-pressed={!quando} className={!quando ? "ativo" : undefined}
+          onClick={() => { setQuando(null); setErro(""); }}>Agora</button>
+        <button type="button" aria-pressed={Boolean(quando)} className={quando ? "ativo" : undefined}
+          onClick={() => setQuando((q) => q ?? { data: dataLocal(), inicio: horaLocal(), fim: "" })}>Outro dia ou horário</button>
+      </div>
+      {quando && (
+        <div className="fcQuandoCampos">
+          <label><span>Data</span>
+            <input type="date" value={quando.data} max={dataLocal()} required
+              onChange={(e) => { setQuando({ ...quando, data: e.target.value }); setErro(""); }} />
+          </label>
+          <label><span>Início da anestesia</span>
+            <input type="time" value={quando.inicio} required
+              onChange={(e) => { setQuando({ ...quando, inicio: e.target.value }); setErro(""); }} />
+          </label>
+          <label><span>Fim da anestesia</span>
+            <input type="time" value={quando.fim}
+              onChange={(e) => { setQuando({ ...quando, fim: e.target.value }); setErro(""); }} />
+          </label>
+          <p className="fcQuandoDica">
+            {quando.data === dataLocal() && !quando.fim
+              ? "Hoje, o fim pode ficar para depois."
+              : "A ficha abre com o início e o fim marcados; o que você lançar depois pede o horário."}
+          </p>
+        </div>
+      )}
       <p className={`fcSituacao${achados?.falhou && !buscando && !curto ? " falhou" : ""}`} aria-live="polite">{situacao}</p>
       {erro && <p className="fcErro" role="alert">{erro}</p>}
 
