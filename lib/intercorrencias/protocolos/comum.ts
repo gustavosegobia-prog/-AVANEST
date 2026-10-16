@@ -91,9 +91,12 @@ export const MAGNESIO_80: ApresentacaoDoProtocolo = {
   rotulo: "8 g em 100 mL — 80 mg/mL (preparo do Manual de Crises)", quantidade: 8, unidade: "g", mL: 100, vias: ["IV"],
   preparo: "16 mL de sulfato de magnésio 50% (8 g) completados para 100 mL de SF 0,9%, em bomba de infusão",
 };
-/** Manutenção da eclâmpsia no preparo do Tratado SAESP: 12 g em 124 mL finais. */
+/**
+ * Manutenção da eclâmpsia em 12 g em 124 mL finais: preparo que a minuta de
+ * outubro de 2026 atribui ao Tratado SAESP, sem página localizada no livro.
+ */
 export const MAGNESIO_SAESP_124: ApresentacaoDoProtocolo = {
-  rotulo: "12 g em 124 mL — cerca de 97 mg/mL (preparo SAESP)", quantidade: 12, unidade: "g", mL: 124, vias: ["IV"],
+  rotulo: "12 g em 124 mL — cerca de 97 mg/mL (preparo da minuta, a conferir)", quantidade: 12, unidade: "g", mL: 124, vias: ["IV"],
   preparo: "24 mL de sulfato de magnésio 50% (12 g) + 100 mL de SG 5% = 124 mL, em bomba de infusão",
 };
 /** Manutenção da eclâmpsia: 5 g em 250 mL finais. */
