@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
-import { destinoSeguro, exigeDuasEtapas } from "@/lib/duas-etapas";
+import { DUAS_ETAPAS_LIGADA, destinoSeguro, exigeDuasEtapas } from "@/lib/duas-etapas";
 import { DuasEtapas } from "./duas-etapas";
 
 export const metadata: Metadata = {
@@ -18,6 +18,9 @@ export default async function DuasEtapasPage({ searchParams }: { searchParams: P
   if (!user) redirect("/login");
 
   const temCodigo = user.factors?.some((f) => f.status === "verified") ?? false;
+  // Com a verificação desligada, só quem ainda tem um código cadastrado passa
+  // por aqui (para digitá-lo); ninguém é levado a cadastrar um novo.
+  if (!DUAS_ETAPAS_LIGADA && !temCodigo) redirect(destino);
   // Com o código ativo e a sessão ainda sem ele, o banco recusa esta consulta
   // (é a tranca funcionando) e o perfil vem vazio — mas aí a tela só pede o
   // código, e não precisa saber se ele é obrigatório.

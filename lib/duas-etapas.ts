@@ -22,8 +22,24 @@ type QuemEntra = {
   permissoes?: string[] | null;
 };
 
+/**
+ * DESLIGADA EM 18/10/2026, por decisão do responsável pela plataforma: ninguém
+ * é mandado cadastrar nem digitar o código, Minha conta deixa de oferecer a
+ * ativação, e os cadastros que existiam foram apagados (auth.mfa_factors).
+ *
+ * Para religar, volte para `true`. A regra por papel continua em
+ * `papelExigeDuasEtapas`, e a tranca do banco (202610100003) segue instalada:
+ * sem nenhum fator verificado, ela não age sobre ninguém.
+ */
+export const DUAS_ETAPAS_LIGADA = false;
+
 /** Esta pessoa precisa ter a verificação em duas etapas ativa para entrar? */
 export function exigeDuasEtapas(perfil: QuemEntra | null | undefined): boolean {
+  return DUAS_ETAPAS_LIGADA && papelExigeDuasEtapas(perfil);
+}
+
+/** A regra por papel, para quando a verificação estiver ligada. */
+export function papelExigeDuasEtapas(perfil: QuemEntra | null | undefined): boolean {
   if (!perfil) return false;
   if (perfil.super_admin === true) return true;
   if (perfil.role === "owner" || perfil.role === "admin") return true;

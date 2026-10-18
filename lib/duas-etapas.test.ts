@@ -1,16 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { codigoDigitado, destinoSeguro, exigeDuasEtapas, rotaPedeDuasEtapas, segredoEmGrupos } from "./duas-etapas.ts";
+import { DUAS_ETAPAS_LIGADA, codigoDigitado, destinoSeguro, exigeDuasEtapas, papelExigeDuasEtapas, rotaPedeDuasEtapas, segredoEmGrupos } from "./duas-etapas.ts";
 
-test("proprietário, administrador e operador são obrigados; o resto não", () => {
-  assert.equal(exigeDuasEtapas({ role: "owner" }), true);
-  assert.equal(exigeDuasEtapas({ role: "admin" }), true);
-  assert.equal(exigeDuasEtapas({ role: "medico", super_admin: true }), true);
-  assert.equal(exigeDuasEtapas({ role: "medico", permissoes: ["medico", "admin"] }), true, "concessão antiga de admin também");
-  assert.equal(exigeDuasEtapas({ role: "medico", permissoes: ["medico", "financeiro"] }), false);
-  assert.equal(exigeDuasEtapas({ role: "recepcao" }), false);
-  assert.equal(exigeDuasEtapas(null), false);
+test("a regra por papel: proprietário, administrador e operador; o resto não", () => {
+  assert.equal(papelExigeDuasEtapas({ role: "owner" }), true);
+  assert.equal(papelExigeDuasEtapas({ role: "admin" }), true);
+  assert.equal(papelExigeDuasEtapas({ role: "medico", super_admin: true }), true);
+  assert.equal(papelExigeDuasEtapas({ role: "medico", permissoes: ["medico", "admin"] }), true, "concessão antiga de admin também");
+  assert.equal(papelExigeDuasEtapas({ role: "medico", permissoes: ["medico", "financeiro"] }), false);
+  assert.equal(papelExigeDuasEtapas({ role: "recepcao" }), false);
+  assert.equal(papelExigeDuasEtapas(null), false);
+});
+
+test("desligada desde 18/10/2026: ninguém é obrigado, nem o proprietário", () => {
+  assert.equal(DUAS_ETAPAS_LIGADA, false);
+  for (const p of [{ role: "owner" }, { role: "admin" }, { role: "medico", super_admin: true }]) {
+    assert.equal(exigeDuasEtapas(p), false, p.role);
+  }
 });
 
 test("o proxy confere o sistema por dentro, e não as páginas públicas", () => {

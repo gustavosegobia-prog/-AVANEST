@@ -43,7 +43,7 @@ export default function PrivacidadePage() {
     <PaginaLegal
       titulo="Política de Privacidade"
       resumo="Como o AVANEST trata dados pessoais, em especial dados de saúde, conforme a Lei nº 13.709/2018 (LGPD)."
-      vigencia="14 de outubro de 2026"
+      vigencia="18 de outubro de 2026"
     >
       <div className="legalEmResumo">
         <p><b>Em resumo</b></p>
@@ -270,7 +270,6 @@ export default function PrivacidadePage() {
           consulta é filtrada pela organização de quem a fez.
         </li>
         <li>Perfis de acesso: a recepção não vê conteúdo clínico; o financeiro não vê avaliação.</li>
-        <li>Verificação em duas etapas obrigatória para proprietários e administradores.</li>
         <li>Senhas guardadas com hash — ninguém no AVANEST consegue ler a sua.</li>
         <li>Verificação anti-robô no login, no cadastro e na recuperação de senha.</li>
         <li>Registro de auditoria das ações relevantes.</li>

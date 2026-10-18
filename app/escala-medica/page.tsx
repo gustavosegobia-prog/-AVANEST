@@ -195,8 +195,7 @@ export default function EscalaMedicaPage() {
             <article>
               <h3>Os dados ficam seguros?</h3>
               <p>Cada grupo só enxerga os próprios dados, e a trava fica no banco de dados. Cada
-                alteração guarda autor, data e hora, e as contas de quem administra o grupo entram com
-                verificação em duas etapas.</p>
+                alteração guarda autor, data e hora.</p>
             </article>
           </div>
         </section>
