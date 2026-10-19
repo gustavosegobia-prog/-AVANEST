@@ -7679,8 +7679,11 @@ button.evoPFAsaN:disabled{cursor:default}
 @media(min-width:1101px){.medAbas a.finMenuDireto{padding:10px;gap:9px;font-size:14px}}
 @media(max-width:1100px){.medAbas a.finMenuDireto{width:auto;padding:8px 12px;white-space:nowrap}}
 @media(max-width:620px){
-  .medAbas a.finMenuDireto{grid-column:1/-1;width:100%;min-height:44px;white-space:normal;
+  .medAbas a.finMenuDireto{width:100%;min-height:44px;white-space:normal;
     border:1px solid var(--cor-borda);background:var(--cor-superficie)}
+  /* Cada item numa coluna: a Ficha anestésica encaixa ao lado de Pendências.
+     Só o último estica, e só quando ficaria sozinho na linha. */
+  .medAbas > :last-child:nth-child(odd){grid-column:1/-1}
 }
 
 /* Ficha anestésica, a entrada no computador: a página ocupa a tela em duas
