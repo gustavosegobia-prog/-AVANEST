@@ -5727,10 +5727,20 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
   .escalaSemanaItem{min-width:0;width:100%}
 }
 .escalaSemanaItem[class*="med-"]{border-left-color:var(--med-cor,var(--cor-borda-forte))}
+/* No tablet, contagem numa linha (plantões e horas) e dinheiro na outra
+   (total, recebido, a receber): com 3 colunas, os 5 cartões deixavam um
+   buraco no fim da segunda linha. */
+@media(min-width:561px) and (max-width:900px){
+  .plantaoMetrics.compacta{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .plantaoMetrics.compacta .metricCard{grid-column:span 2}
+  .plantaoMetrics.compacta .metricCard:nth-child(-n+2){grid-column:span 3}
+}
 @media(max-width:560px){
   .plantaoMetrics.compacta{grid-template-columns:repeat(2,minmax(0,1fr))}
   .plantaoMetrics.compacta .metricCard{min-width:0}
   .plantaoMetrics.compacta .metricCard strong{font-size:16px;overflow-wrap:anywhere}
+  /* O último cartão (A receber) estica quando ficaria sozinho na linha. */
+  .plantaoMetrics.compacta .metricCard:last-child:nth-child(odd){grid-column:1/-1}
 }
 /* A coluna única do celular não pode crescer além da tela por causa do
    conteúdo mais largo: 1fr tem mínimo automático, e minmax(0,1fr) a prende. */
