@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { passosDoTutorial } from "./tutorial.ts";
+import { TUTORIAL_SO_NO_PRIMEIRO_ACESSO_DESDE, abreTutorialSozinho, passosDoTutorial } from "./tutorial.ts";
 
 const medico = { role: "medico", nome: "Dr. GUSTAVO SEGOBIA DA SILVA",
                  areas: ["medico", "plantoes"] };
@@ -223,4 +223,15 @@ test("o passo do iPhone tem etapa própria, e não uma observação no meio", ()
   const iphone = passosDoTutorial(tudo).filter((e) => /iPhone/i.test(e.titulo));
   assert.equal(iphone.length, 1, "o iPhone precisa de uma etapa só dele");
   assert.match(iphone[0].texto, /compartilhar/, "o caminho inteiro, não o resumo");
+});
+
+test("o tutorial abre sozinho só no primeiro acesso, uma vez por conta", () => {
+  assert.equal(TUTORIAL_SO_NO_PRIMEIRO_ACESSO_DESDE, "2026-10-19");
+  // Conta nova, nunca viu: abre.
+  assert.equal(abreTutorialSozinho({ criadaEm: "2026-10-20T13:00:00Z", vistoEm: undefined }), true);
+  // Já viu, em qualquer aparelho: não abre mais.
+  assert.equal(abreTutorialSozinho({ criadaEm: "2026-10-20T13:00:00Z", vistoEm: "2026-10-20T13:01:00Z" }), false);
+  // Conta de antes da regra: o primeiro acesso já passou.
+  assert.equal(abreTutorialSozinho({ criadaEm: "2026-09-24T20:58:00Z", vistoEm: undefined }), false);
+  assert.equal(abreTutorialSozinho({ criadaEm: null, vistoEm: undefined }), false);
 });

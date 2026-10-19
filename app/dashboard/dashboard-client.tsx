@@ -323,6 +323,7 @@ export function DashboardClient({
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
   podeFichaAnestesica = false,
+  tutorialNoPrimeiroAcesso = false,
   testeAte,
   abaDaEscala,
   plantaoEmFoco,
@@ -371,6 +372,8 @@ export function DashboardClient({
   trocasEsperando?: number;
   /** A ficha anestésica está liberada para esta pessoa (organização + acesso clínico). */
   podeFichaAnestesica?: boolean;
+  /** O tutorial abre sozinho só no primeiro acesso da conta (lib/tutorial.ts). */
+  tutorialNoPrimeiroAcesso?: boolean;
   /** ISO do fim do teste grátis. Nulo para quem já assinou ou tem cortesia. */
   testeAte?: string | null;
   /** Aba em que a Escala abre quando o endereço pede — ver app/dashboard/page.tsx. */
@@ -1249,6 +1252,7 @@ export function DashboardClient({
           avaliação" olhando para o Financeiro não ensina nada. */}
       <TutorialInicial
         papel={{ role: perfil.role, nome: perfil.nome, areas: allowedViews }}
+        abrirSozinho={tutorialNoPrimeiroAcesso}
         onIrPara={(area) => changeView(area as DashboardView)}
       />
       <ChatFlutuante perfil={perfil} abrirEm={pedidoDeChat} />

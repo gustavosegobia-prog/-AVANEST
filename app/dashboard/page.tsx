@@ -9,6 +9,7 @@ import { nomeCurto } from "@/lib/escala";
 import { hoje as hojeNoBrasil, mesAtual, somarMeses } from "@/lib/data-local";
 import { areasLiberadas, areasNoTeste, modulosDaOrganizacao } from "@/lib/modulos";
 import { faltaCartao } from "@/lib/teste-gratis";
+import { abreTutorialSozinho } from "@/lib/tutorial";
 
 export default async function DashboardPage({
   searchParams,
@@ -458,6 +459,7 @@ export default async function DashboardPage({
       // da pré-carga (e confere com o servidor) ou acabou de chegar.
       geradoEm={new Date().getTime()}
       podeFichaAnestesica={podeFicha === true}
+      tutorialNoPrimeiroAcesso={abreTutorialSozinho({ criadaEm: user.created_at, vistoEm: user.user_metadata?.tutorial_visto_em })}
       // Vem do servidor, que já tem a sessão. Buscar no navegador deixaria a
       // tela "carregando..." — e o botão de trocar senha travado — sempre que
       // a chamada demorasse ou falhasse.

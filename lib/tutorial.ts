@@ -336,3 +336,29 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
  * estava esconderia o conteúdo novo justamente de quem já usa o sistema.
  */
 export const CHAVE_TUTORIAL = "avanest_tutorial_v3";
+
+// ---------------------------------------------------------------------------
+// Quando o tutorial abre sozinho
+// ---------------------------------------------------------------------------
+// Só no PRIMEIRO acesso, e uma vez por conta. Antes a marca de "já visto" ficava
+// só no aparelho: cada celular novo, janela anônima ou navegador limpo
+// reapresentava o tutorial a quem usa o sistema há meses. Agora ela vai junto
+// da conta (user_metadata.tutorial_visto_em, gravado quando o tutorial abre) e
+// vale em qualquer aparelho. Rever continua a um toque, em "Ver o tutorial".
+//
+// Quem já tinha conta antes desta regra já passou pelo primeiro acesso: o
+// tutorial não abre mais sozinho para essas contas.
+
+/** O dia em que a regra começou: contas mais antigas já tiveram o primeiro acesso. */
+export const TUTORIAL_SO_NO_PRIMEIRO_ACESSO_DESDE = "2026-10-19";
+
+/** O tutorial abre sozinho para esta conta? */
+export function abreTutorialSozinho(conta: { criadaEm: string | null | undefined; vistoEm: unknown }): boolean {
+  if (conta.vistoEm) return false;
+  const criada = String(conta.criadaEm ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}/.test(criada)) return false;
+  return criada.slice(0, 10) >= TUTORIAL_SO_NO_PRIMEIRO_ACESSO_DESDE;
+}
+
+/** O aviso para reabrir o tutorial sem recarregar a página. */
+export const EVENTO_REABRIR_TUTORIAL = "avanest:reabrir-tutorial";

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CHAVE_TUTORIAL, passosDoTutorial, type Papel } from "@/lib/tutorial";
+import { CHAVE_TUTORIAL, EVENTO_REABRIR_TUTORIAL, passosDoTutorial, type Papel } from "@/lib/tutorial";
+import { createClient } from "@/utils/supabase/client";
 import { posicaoDaJanela, type Recorte } from "@/lib/tutorial-posicao";
 import { Icone } from "@/components/icone";
 
@@ -28,19 +29,20 @@ import { Icone } from "@/components/icone";
 // para a tela do Financeiro não ensina nada; a cada passo o painel atrás muda
 // para a área de que o texto fala, e a pessoa vê o lugar enquanto lê sobre ele.
 //
-// Onde fica guardado que já foi visto: no APARELHO, e não no cadastro. É uma
-// decisão com custo — quem abrir depois no celular vê de novo — e com um ganho
-// que pesa mais: nada de esquema novo no banco para uma janela que a pessoa vai
-// ver uma vez. Se um dia isto incomodar, o lugar certo é uma coluna em perfis.
+// Onde fica guardado que já foi visto: NA CONTA (user_metadata), e não só no
+// aparelho — a regra está em lib/tutorial.ts, abreTutorialSozinho. Ele abre
+// sozinho uma vez, no primeiro acesso; depois, só pelo "Ver o tutorial".
 
 
 /** Uma folga em volta do elemento: o holofote colado na borda parece erro. */
 const FOLGA = 8;
 
 export function TutorialInicial({
-  papel, onIrPara,
+  papel, onIrPara, abrirSozinho,
 }: {
   papel: Papel;
+  /** Primeiro acesso desta conta (lib/tutorial.ts, abreTutorialSozinho). */
+  abrirSozinho: boolean;
   /** Leva o painel para a área da etapa, para o texto e a tela combinarem. */
   onIrPara: (area: string) => void;
 }) {
@@ -64,8 +66,23 @@ export function TutorialInicial({
   // no servidor, onde localStorage não existe, e inicializar por ele faria o
   // HTML do servidor discordar do primeiro render do navegador.
   useEffect(() => {
+    if (!abrirSozinho) return;
+    let jaVistoAqui = false;
+    try { jaVistoAqui = localStorage.getItem(CHAVE_TUTORIAL) === "1"; } catch { /* segue pela conta */ }
+    if (jaVistoAqui) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- estado do aparelho, só existe depois de montar
-    try { setAberto(localStorage.getItem(CHAVE_TUTORIAL) !== "1"); } catch { /* sem tutorial */ }
+    setAberto(true);
+    // Marcado ao ABRIR, e não ao terminar: quem fecha o aplicativo no meio do
+    // tutorial não o recebe de novo no próximo acesso.
+    try { localStorage.setItem(CHAVE_TUTORIAL, "1"); } catch { /* a conta guarda */ }
+    void createClient().auth.updateUser({ data: { tutorial_visto_em: new Date().toISOString() } });
+  }, [abrirSozinho]);
+
+  // "Ver o tutorial", no menu: abre de novo, do começo, sem recarregar.
+  useEffect(() => {
+    const reabrir = () => { setPasso(0); setAberto(true); };
+    window.addEventListener(EVENTO_REABRIR_TUTORIAL, reabrir);
+    return () => window.removeEventListener(EVENTO_REABRIR_TUTORIAL, reabrir);
   }, []);
 
   // O foco entra na janela ao abrir e a cada passo. Sem isso, quem navega por
@@ -308,8 +325,7 @@ export function TutorialInicial({
   );
 }
 
-/** Reabre o tutorial: apaga a marca do aparelho e recarrega a tela. */
+/** Reabre o tutorial, do começo, na mesma tela. */
 export function reabrirTutorial() {
-  try { localStorage.removeItem(CHAVE_TUTORIAL); } catch { /* nada a fazer */ }
-  window.location.reload();
+  window.dispatchEvent(new Event(EVENTO_REABRIR_TUTORIAL));
 }
