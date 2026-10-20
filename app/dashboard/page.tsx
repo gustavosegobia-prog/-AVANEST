@@ -60,6 +60,7 @@ export default async function DashboardPage({
     { data: locaisData },
     { data: assinaturaData },
     { data: podeFicha },
+    { data: podeCentro },
   ] = await Promise.all([
     supabase.from("instituicoes")
       .select("nome, tipo, telefone, email, modulos, plano, created_at")
@@ -69,6 +70,9 @@ export default async function DashboardPage({
     supabase.rpc("minha_assinatura"),
     // A ficha anestésica, liberada por organização: a mesma pergunta das políticas do banco.
     supabase.rpc("pode_evolucao", { p_institution_id: perfil.institution_id }),
+    // O mapa cirúrgico, ligado por organização (202610210001). Sem a migração
+    // a função não existe, a resposta vem nula e o botão simplesmente não nasce.
+    supabase.rpc("pode_ver_centro", { p_institution_id: perfil.institution_id }),
   ]);
 
   // Trava comercial: assinatura vencida ou suspensa impede o uso do sistema.
@@ -459,6 +463,7 @@ export default async function DashboardPage({
       // da pré-carga (e confere com o servidor) ou acabou de chegar.
       geradoEm={new Date().getTime()}
       podeFichaAnestesica={podeFicha === true}
+      podeMapaCirurgico={podeCentro === true}
       tutorialNoPrimeiroAcesso={abreTutorialSozinho({ criadaEm: user.created_at, vistoEm: user.user_metadata?.tutorial_visto_em })}
       // Vem do servidor, que já tem a sessão. Buscar no navegador deixaria a
       // tela "carregando..." — e o botão de trocar senha travado — sempre que

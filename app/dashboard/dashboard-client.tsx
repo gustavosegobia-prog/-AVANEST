@@ -97,6 +97,7 @@ const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho",
                    "julho","agosto","setembro","outubro","novembro","dezembro"];
 import { dataLocal, hoje, mesAtual, somarDias } from "@/lib/data-local";
 import { areasLiberadas, modulosDaOrganizacao, papeisConvidaveis } from "@/lib/modulos";
+import { CONVENIOS } from "@/lib/convenios";
 import { lerDinheiro } from "@/lib/dinheiro";
 import { senhaRecusada } from "@/lib/senha-recusada";
 import { DUAS_ETAPAS_LIGADA, exigeDuasEtapas } from "@/lib/duas-etapas";
@@ -146,10 +147,7 @@ export const PRIVATE_PAY_CONVENIO = "Particular";
 
 /** As formas que o banco aceita — a lista é a mesma da restrição da tabela. */
 export const METODOS_DE_PAGAMENTO = ["PIX", "Dinheiro", "Cartão", "Transferência", "Outro"];
-export const CONVENIOS = [
-  "Particular","Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde",
-  "SulAmérica","Amil","CASSI","SANEPAR","COPEL",
-];
+export { CONVENIOS };
 
 /**
  * Quem entra na escala.
@@ -323,6 +321,7 @@ export function DashboardClient({
   initialNewPatient = false, autoStartAssessment = false, localAtivo = null, totalDeLocais = 0, locais = [],
   trocasEsperando = 0,
   podeFichaAnestesica = false,
+  podeMapaCirurgico = false,
   tutorialNoPrimeiroAcesso = false,
   testeAte,
   abaDaEscala,
@@ -372,6 +371,8 @@ export function DashboardClient({
   trocasEsperando?: number;
   /** A ficha anestésica está liberada para esta pessoa (organização + acesso clínico). */
   podeFichaAnestesica?: boolean;
+  /** O mapa cirúrgico está ligado para a organização e a pessoa pode vê-lo (pode_ver_centro). */
+  podeMapaCirurgico?: boolean;
   /** O tutorial abre sozinho só no primeiro acesso da conta (lib/tutorial.ts). */
   tutorialNoPrimeiroAcesso?: boolean;
   /** ISO do fim do teste grátis. Nulo para quem já assinou ou tem cortesia. */
@@ -862,6 +863,10 @@ export function DashboardClient({
             Escala
             {trocasEsperando>0&&<b className="navAviso" title={`${trocasEsperando===1?"Um plantão oferecido espera":"Plantões oferecidos esperam"} a sua resposta`}>{trocasEsperando}</b>}
           </button>}
+          {/* O mapa cirúrgico mora em tela própria, como a ficha anestésica:
+              é um link, e não uma área do painel, e só nasce onde a
+              organização tem o recurso ligado. */}
+          {podeMapaCirurgico&&<Link href="/centro-cirurgico" data-area="centro" prefetch={false}>Centro cirúrgico</Link>}
           {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={naBarra === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")} onPointerEnter={() => prefetchar("financeiro")} onFocus={() => prefetchar("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={naBarra === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")} onPointerEnter={() => prefetchar("admin")} onFocus={() => prefetchar("admin")}>Admin</button>}
         </nav>
