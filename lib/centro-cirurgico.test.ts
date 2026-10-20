@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
-  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, type Caso,
+  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, painelDaTv, type Caso,
 } from "./centro-cirurgico.ts";
 
 const iso = (data: string, h: string) => new Date(`${data}T${h}:00-03:00`).toISOString();
@@ -161,4 +161,36 @@ test("o resumo do dia conta os atos por anestesista e por convênio, e aponta o 
   assert.equal(r.cancelados, 1);
   assert.equal(r.naoIniciados, 1);
   assert.deepEqual(contagemPorEtapa(casos), { agendado: 1, em_sala: 1, rpa: 1, concluido: 2, cancelado: 1 });
+});
+
+test("a TV mostra iniciais, e não o nome", () => {
+  assert.equal(iniciaisDoPaciente("Maria Aparecida da Souza"), "M. A. S.");
+  assert.equal(iniciaisDoPaciente("  joão   dos Santos e Silva "), "J. S. S.");
+  assert.equal(iniciaisDoPaciente(" "), "—");
+});
+
+test("atrasado é quem passou do horário e ainda não entrou", () => {
+  const agora = Date.parse("2026-10-21T08:00:00-03:00");
+  assert.equal(atraso(caso({ horario: "07:30" }), agora), 30);
+  assert.equal(atraso(caso({ horario: "07:50" }), agora), null);
+  assert.equal(atraso(caso({ horario: "07:00", etapa: "em_sala" }), agora), null);
+  assert.equal(atraso(caso({ horario: null }), agora), null);
+});
+
+test("o painel da TV: quem está na sala, os próximos, e a RPA por ordem de chegada", () => {
+  const salas = [{ id: "s1", nome: "Sala 1", ordem: 1, ativa: true }, { id: "s2", nome: "Sala 2", ordem: 2, ativa: false }];
+  const casos = [
+    caso({ id: "a", sala_id: "s1", horario: "07:00", etapa: "concluido" }),
+    caso({ id: "b", sala_id: "s1", horario: "09:00", etapa: "em_sala" }),
+    caso({ id: "c", sala_id: "s1", horario: "13:00", etapa: "agendado" }),
+    caso({ id: "d", sala_id: "s1", horario: "11:00", etapa: "agendado" }),
+    caso({ id: "e", sala_id: "s1", horario: "08:00", etapa: "rpa", saida_sala_em: iso("2026-10-21", "09:30") }),
+    caso({ id: "f", sala_id: "s2", horario: "08:00", etapa: "rpa", saida_sala_em: iso("2026-10-21", "09:10") }),
+  ];
+  const p = painelDaTv(salas, casos);
+  assert.deepEqual(p.porSala.map((s) => s.sala.nome), ["Sala 1"]);
+  assert.deepEqual(p.porSala[0].agora.map((c) => c.id), ["b"]);
+  assert.deepEqual(p.porSala[0].aSeguir.map((c) => c.id), ["d", "c"]);
+  assert.equal(p.porSala[0].feitas, 2);
+  assert.deepEqual(p.rpa.map((c) => c.id), ["f", "e"]);
 });

@@ -1,0 +1,77 @@
+/* O mapa na TV do corredor. Lido a três, cinco metros, de passagem:
+   - tudo medido em vw, para a mesma tela servir à TV de 32" e à de 65";
+   - fundo escuro (os tokens do tema escuro do site): na TV, branco ofusca;
+   - a única cor forte é o estado da sala — azul em uso, verde livre — e o
+     âmbar de quem está atrasado ou na RPA. */
+
+.tv {
+  --g: clamp(8px, .9vw, 22px);
+  position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--g);
+  padding: var(--g) calc(var(--g) * 1.4); overflow: hidden;
+  background: var(--cor-fundo); color: var(--cor-tinta); font-family: inherit;
+}
+.tv * { box-sizing: border-box; }
+.tv p, .tv h2, .tv h3, .tv ol, .tv ul { margin: 0; padding: 0; }
+
+/* ── O alto ─────────────────────────────────────────────────────────────── */
+.topo { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: calc(var(--g) * 2); }
+.casa { display: grid; line-height: 1.1; }
+.casa span { font-size: 1.05vw; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--cor-tinta-fraca); }
+.casa strong { font-size: 1.9vw; font-weight: 750; color: var(--cor-tinta-forte); }
+.numeros { list-style: none; display: flex; justify-content: center; gap: calc(var(--g) * 1.6); }
+.numeros li { display: flex; align-items: baseline; gap: .5vw; font-size: 1.3vw; font-weight: 650; color: var(--cor-tinta-fraca); }
+.numeros b { font-size: 2.6vw; font-weight: 800; color: var(--cor-tinta-forte); font-variant-numeric: tabular-nums; }
+.emSala b { color: var(--cor-marca-clara, var(--cor-marca)); }
+.naRpa b { color: var(--cor-atencao); }
+.altas b { color: var(--cor-sucesso); }
+.relogio { display: grid; justify-items: end; line-height: 1; }
+.relogio strong { font-size: 4vw; font-weight: 800; letter-spacing: -.02em; color: var(--cor-tinta-forte); font-variant-numeric: tabular-nums; }
+.relogio span { margin-top: .3vw; font-size: 1.05vw; color: var(--cor-tinta-fraca); }
+
+/* ── O quadro: uma coluna por sala e a RPA no fim ───────────────────────── */
+.quadro { display: grid; grid-template-columns: repeat(var(--salas), minmax(0, 1fr)) minmax(0, .85fr); gap: var(--g); min-height: 0; }
+.sala, .rpa { display: flex; flex-direction: column; gap: calc(var(--g) * .9); min-height: 0; overflow: hidden;
+  padding: calc(var(--g) * 1.1); border-radius: calc(var(--g) * 1.2); border: 2px solid var(--cor-borda); background: var(--cor-superficie); }
+.ocupada { border-color: var(--cor-marca); }
+.livre { border-color: color-mix(in srgb, var(--cor-sucesso) 55%, var(--cor-borda)); }
+.rpa { border-color: color-mix(in srgb, var(--cor-atencao) 60%, var(--cor-borda)); background: var(--cor-superficie-suave); }
+
+.cabeca { display: flex; align-items: center; justify-content: space-between; gap: var(--g); }
+.cabeca h2 { font-size: 2.1vw; font-weight: 800; letter-spacing: -.01em; color: var(--cor-tinta-forte); }
+.estado { padding: .25vw .8vw; border-radius: 999px; font-size: 1.05vw; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.ocupada .estado { background: var(--cor-marca); color: var(--cor-marca-contraste, #fff); }
+.livre .estado { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
+.rpa .estado { min-width: 2.4vw; text-align: center; background: var(--cor-atencao-suave); color: var(--cor-atencao); font-size: 1.4vw; }
+
+.agora { display: grid; gap: .35vw; padding-bottom: calc(var(--g) * .8); border-bottom: 1px solid var(--cor-borda); }
+.quem { font-size: 2.3vw; font-weight: 800; line-height: 1.05; color: var(--cor-tinta-forte); }
+.quem span { font-size: 1.2vw; font-weight: 600; color: var(--cor-tinta-fraca); }
+.cirurgia { font-size: 1.35vw; font-weight: 600; line-height: 1.2; color: var(--cor-tinta);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.equipe { font-size: 1.05vw; color: var(--cor-tinta-fraca); }
+.tempo { font-size: 3.4vw; font-weight: 800; line-height: 1; color: var(--cor-tinta-forte); font-variant-numeric: tabular-nums; }
+.vaga { padding: calc(var(--g) * 1.2) 0; font-size: 1.4vw; font-weight: 650; color: var(--cor-tinta-fraca); }
+
+.seguir h3 { margin-bottom: .5vw; font-size: .95vw; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--cor-tinta-fraca); }
+.seguir ol { list-style: none; display: grid; gap: .55vw; }
+.seguir li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 .8vw; align-items: baseline; font-size: 1.15vw; }
+.seguir li b { font-size: 1.3vw; font-weight: 800; color: var(--cor-tinta-forte); font-variant-numeric: tabular-nums; }
+.seguir li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cor-tinta); }
+.seguir li em { grid-column: 2; font-style: normal; font-size: 1vw; font-weight: 750; color: var(--cor-atencao); }
+.atrasado b { color: var(--cor-atencao); }
+.rodapeSala { margin-top: auto; font-size: 1vw; color: var(--cor-tinta-fraca); }
+
+.listaRpa { list-style: none; display: grid; gap: calc(var(--g) * .9); }
+.listaRpa li { display: grid; gap: .25vw; padding-bottom: calc(var(--g) * .7); border-bottom: 1px solid var(--cor-borda); }
+.listaRpa li:last-child { border-bottom: 0; }
+.listaRpa .quem { font-size: 1.8vw; }
+.listaRpa .cirurgia { font-size: 1.15vw; -webkit-line-clamp: 1; }
+.tempoRpa { font-size: 1.6vw; font-weight: 800; color: var(--cor-atencao); font-variant-numeric: tabular-nums; }
+
+.semSalas { align-self: center; justify-self: center; font-size: 2vw; color: var(--cor-tinta-fraca); }
+
+/* ── O pé ───────────────────────────────────────────────────────────────── */
+.rodape { display: flex; align-items: center; gap: calc(var(--g) * 2); font-size: .95vw; color: var(--cor-tinta-fraca); }
+.rodape span:nth-child(2) { margin-left: auto; }
+.rodape button { padding: .4vw 1vw; border: 1px solid var(--cor-borda-forte); border-radius: 8px; background: transparent;
+  color: var(--cor-tinta); font: inherit; font-weight: 700; cursor: pointer; }

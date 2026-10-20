@@ -440,3 +440,54 @@ export function resumoDoDia(casos: Caso[], nomeDe: (id: string) => string | unde
     naoIniciados: casos.filter((c) => c.etapa === "agendado" && !c.entrada_sala_em).length,
   };
 }
+
+// ---------------------------------------------------------------------------
+// O painel da TV do corredor
+// ---------------------------------------------------------------------------
+
+const PARTICULAS = new Set(["da", "de", "do", "das", "dos", "e"]);
+
+/**
+ * "Maria Aparecida da Souza" → "M. A. S.".
+ *
+ * A TV fica no corredor, e quem passa lê. O nome inteiro é dado de saúde de
+ * quem está sendo operado; as iniciais com a idade e a cirurgia bastam para a
+ * equipe saber de quem se trata.
+ */
+export function iniciaisDoPaciente(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter((p) => p && !PARTICULAS.has(p.toLowerCase()));
+  if (!partes.length) return "—";
+  return partes.map((p) => `${p.charAt(0).toLocaleUpperCase("pt-BR")}.`).join(" ");
+}
+
+/** Minutos de atraso de quem ainda não entrou; nulo se não está atrasado. */
+export function atraso(c: Caso, agoraMs: number, tolerancia = 15): number | null {
+  if (c.etapa !== "agendado" || !c.horario) return null;
+  const min = minutosEntre(instanteDe(c.data, c.horario), agoraMs);
+  return min != null && min > tolerancia ? min : null;
+}
+
+export type SalaNaTv = { sala: Sala; agora: Caso[]; aSeguir: Caso[]; feitas: number; restantes: number };
+
+/**
+ * O que a TV mostra de cada sala: quem está nela agora, os próximos da fila e
+ * quantas já terminaram. As salas desativadas ficam fora — a TV é do dia de
+ * hoje, e não do cadastro.
+ */
+export function painelDaTv(salas: Sala[], casos: Caso[], proximos = 3) {
+  const ativas = [...salas].filter((s) => s.ativa).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR"));
+  const porSala: SalaNaTv[] = ativas.map((sala) => {
+    const daSala = ordenarCasos(casos.filter((c) => c.sala_id === sala.id));
+    const fila = daSala.filter((c) => c.etapa === "agendado");
+    return {
+      sala,
+      agora: daSala.filter((c) => c.etapa === "em_sala"),
+      aSeguir: fila.slice(0, proximos),
+      feitas: daSala.filter((c) => c.etapa === "rpa" || c.etapa === "concluido").length,
+      restantes: fila.length,
+    };
+  });
+  const rpa = [...casos.filter((c) => c.etapa === "rpa")]
+    .sort((a, b) => (a.saida_sala_em ?? "").localeCompare(b.saida_sala_em ?? ""));
+  return { porSala, rpa, contagem: contagemPorEtapa(casos) };
+}

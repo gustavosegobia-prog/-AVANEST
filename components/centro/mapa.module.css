@@ -13,7 +13,7 @@
 .titulo h1 { margin: 0; font-size: clamp(26px, 3.2vw, 34px); line-height: 1.1; font-weight: 750; letter-spacing: -.025em; color: var(--cor-tinta-forte); }
 .titulo p { margin: 4px 0 0; font-size: 14.5px; color: var(--cor-tinta-fraca); }
 .acoesDoTopo { display: flex; gap: 8px; }
-.acoesDoTopo :global(button) { display: inline-flex; align-items: center; gap: 6px; }
+.acoesDoTopo :global(button), .acoesDoTopo a { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
 
 /* ── O dia e a vista ─────────────────────────────────────────────────────── */
 .dia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 14px; }
@@ -183,7 +183,8 @@
 @media (max-width: 640px) {
   .titulo { margin-top: 6px; }
   .acoesDoTopo { width: 100%; }
-  .acoesDoTopo :global(button) { flex: 1; justify-content: center; min-height: 44px; }
+  .acoesDoTopo { flex-wrap: wrap; }
+  .acoesDoTopo :global(button), .acoesDoTopo a { flex: 1; justify-content: center; min-height: 44px; }
   .vistas { width: 100%; margin-left: 0; }
   .vistas button { flex: 1; justify-content: center; }
   .nomeDoDia { flex: 1; }

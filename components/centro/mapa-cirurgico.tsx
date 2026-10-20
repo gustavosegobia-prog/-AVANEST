@@ -126,17 +126,23 @@ export function MapaCirurgico({
           <h1>Mapa cirúrgico</h1>
           <p>{nomeDaCasa}</p>
         </div>
-        {podeMontar && (
-          <div className={estilos.acoesDoTopo}>
+        <div className={estilos.acoesDoTopo}>
+          {/* Abre em outra aba: é a que vai para a TV, em tela cheia. */}
+          <a href="/centro-cirurgico/tv" target="_blank" rel="noopener" className="outlineClinical compact">
+            <Icone nome="painel" tamanho={16} /> Modo TV
+          </a>
+          {podeMontar && (
             <button type="button" className="outlineClinical compact" onClick={() => setAberta({ tipo: "salas" })}>
               <Icone nome="ajustes" tamanho={16} /> Salas
             </button>
+          )}
+          {podeMontar && (
             <button type="button" className="primaryClinical compact" disabled={!salasAtivas.length}
               onClick={() => setAberta({ tipo: "novo", salaId: salasAtivas[0]?.id ?? "" })}>
               + Paciente
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <nav className={estilos.dia} aria-label="Dia do mapa">
