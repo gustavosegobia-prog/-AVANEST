@@ -11,6 +11,8 @@
 // Da grade, `lerMapa` tira a data, a anestesista do título e os pacientes.
 // Tudo aqui é puro: a leitura do arquivo mora em centro-importar-arquivo.ts.
 
+import { CONVENIOS } from "./convenios.ts";
+
 export type Palavra = { t: string; x0: number; x1: number; y0: number; y1: number };
 
 export type Campo = "numero" | "hora" | "paciente" | "idade" | "convenio" | "cirurgiao" | "sala" | "procedimento" | "leito";
@@ -169,9 +171,23 @@ export function gradeDePalavras(palavras: Palavra[]): string[][] | null {
     }
     return ys;
   };
-  let ancoras = ancorasDe("numero", (t) => /^\d{1,3}$/.test(t));
-  if (ancoras.length < 2) ancoras = ancorasDe("hora", (t) => /^(\d{1,2}[:h]\d{2}|a\/s|as)$/i.test(t));
-  if (ancoras.length < 2) ancoras = ancorasDe("paciente", () => true);
+  // O horário primeiro: uma célula de uma linha só, centrada, que o OCR lê bem
+  // ("08:00", "A/S"). O número da linha não serve de primeira: no mapa real o
+  // OCR leu os números das linhas VAZIAS do fim (13 a 21) e pulou os das
+  // preenchidas — e as âncoras caíam todas onde não havia paciente.
+  // Depois, o paciente sem horário lido vira âncora própria, se estiver longe
+  // de qualquer horário: a linha não se perde porque o OCR não leu "A/S". O
+  // nome quebrado em duas linhas fica a meia linha do horário, e não duplica.
+  let ancoras = ancorasDe("hora", (t) => /^(\d{1,2}[:h.]\d{2}|a\/s|as|a\/5|a5)$/i.test(t));
+  if (ancoras.length < 2) ancoras = ancorasDe("numero", (t) => /^\d{1,3}$/.test(t));
+  const linhasDoPaciente = ancorasDe("paciente", () => true);
+  if (ancoras.length < 2) ancoras = linhasDoPaciente;
+  else {
+    for (const y of linhasDoPaciente) {
+      if (ancoras.every((a) => Math.abs(a - y) > alturaTipica * 1.5)) ancoras.push(y);
+    }
+    ancoras.sort((a, b) => a - b);
+  }
   if (!ancoras.length) return null;
   const vao = ancoras.length > 1
     ? Math.min(...ancoras.slice(1).map((y, i) => y - ancoras[i]))
@@ -286,6 +302,21 @@ export function anestesistaDoTitulo(texto: string): string | null {
 
 const vazio = (s: string | undefined) => !s || !s.trim() || /^[-_—–]+$/.test(s.trim());
 
+const CONHECIDOS = ["SUS", ...CONVENIOS];
+
+/**
+ * O convênio na grafia que o sistema já usa: "UNIMED" e "unimed" viram
+ * "Unimed", para o resumo do dia não contar o mesmo convênio duas vezes. O que
+ * não está na lista fica em maiúsculas, como no mapa ("SUS C"). A leitura de
+ * foto às vezes dobra uma letra solta ("sus Cc"): letra repetida sozinha volta
+ * a ser uma.
+ */
+export function convenioLimpo(s: string): string {
+  const t = s.trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR")
+    .split(" ").map((p) => (/^(\p{L})\1{1,2}$/u.test(p) ? p[0] : p)).join(" ");
+  return CONHECIDOS.find((c) => normalizar(c) === normalizar(t)) ?? t;
+}
+
 /**
  * Os pacientes da grade. A linha dos títulos é a primeira com três títulos
  * conhecidos; o que vem acima é o título do mapa (data e anestesista).
@@ -318,7 +349,7 @@ export function lerMapa(grade: string[][]): MapaImportado | null {
       horario: horaDaCelula(celula(linha, "hora")),
       paciente: nomeProprio(paciente),
       idade: celula(linha, "idade") && Number.isInteger(idade) && idade <= 130 ? idade : null,
-      convenio: texto("convenio"),
+      convenio: texto("convenio") && convenioLimpo(texto("convenio")!),
       cirurgiao: texto("cirurgiao"),
       sala: nomeDaSala(celula(linha, "sala")),
       procedimento: procedimento.replace(/\s+/g, " "),

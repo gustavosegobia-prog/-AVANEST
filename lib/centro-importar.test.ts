@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { deflateRawSync } from "node:zlib";
 import {
-  anestesistaDoTitulo, campoDoTitulo, casarAnestesista, casarSala, dataDoTexto, gradeDoCsv, gradeDePalavras,
+  anestesistaDoTitulo, campoDoTitulo, casarAnestesista, casarSala, convenioLimpo, dataDoTexto, gradeDoCsv, gradeDePalavras,
   horaDaCelula, lerMapa, nomeDaSala, nomeProprio, type Palavra,
 } from "./centro-importar.ts";
 import { gradeDaAba, gradeDoXlsx, posicaoDaCelula, textosCompartilhados } from "./xlsx-leitura.ts";
@@ -60,6 +60,17 @@ test("hora, data e anestesista do jeito que o mapa escreve", () => {
   assert.equal(anestesistaDoTitulo("21/10/2026"), null);
 });
 
+test("o convênio na grafia do sistema, e a letra dobrada da foto desfeita", () => {
+  assert.equal(convenioLimpo("UNIMED"), "Unimed");
+  assert.equal(convenioLimpo("unimed"), "Unimed");
+  assert.equal(convenioLimpo("PARTICULAR"), "Particular");
+  assert.equal(convenioLimpo("sus"), "SUS");
+  assert.equal(convenioLimpo("sus Cc"), "SUS C");
+  assert.equal(convenioLimpo("SUS  C"), "SUS C");
+  assert.equal(convenioLimpo("Bradesco saúde"), "Bradesco Saúde");
+  assert.equal(convenioLimpo("Cassems"), "CASSEMS");
+});
+
 test("nomes e salas arrumados", () => {
   assert.equal(nomeProprio("MARIA APARECIDA DA SILVA"), "Maria Aparecida da Silva");
   assert.equal(nomeProprio("joão dos santos"), "João dos Santos");
@@ -76,7 +87,7 @@ test("da grade do mapa saem os pacientes, na ordem, com A/S e leito", () => {
   assert.equal(m.ignoradas, 1);
   assert.deepEqual(m.linhas.map((l) => l.paciente), ["Maria Aparecida da Silva", "Joao dos Santos", "Ana Luiza Costa", "Clara Pereira"]);
   assert.deepEqual(m.linhas[0], {
-    linha: 1, horario: "07:30", paciente: "Maria Aparecida da Silva", idade: 34, convenio: "UNIMED",
+    linha: 1, horario: "07:30", paciente: "Maria Aparecida da Silva", idade: 34, convenio: "Unimed",
     cirurgiao: "DR. PAULO M", sala: "Sala 4", procedimento: "RETIRADA DE CATETER DJ", leito: "UNIMED",
   });
   assert.equal(m.linhas[1].horario, null);
@@ -135,7 +146,7 @@ test("das palavras soltas do PDF ou da foto, a tabela de volta — com a cirurgi
   assert.equal(m.data, "2026-10-21");
   assert.equal(m.anestesista, "Fernanda");
   assert.deepEqual(m.linhas.map((l) => [l.horario, l.paciente, l.idade, l.convenio, l.sala, l.procedimento, l.leito]), [
-    ["07:30", "Maria Silva", 34, "UNIMED", "Sala 4", "RETIRADA DE CATETER", "UNIMED"],
+    ["07:30", "Maria Silva", 34, "Unimed", "Sala 4", "RETIRADA DE CATETER", "UNIMED"],
     ["08:00", "Ana Costa", 51, "SUS", "Sala 2", "FRATURA DE PLATO JOELHO DIREITO", "9/1"],
     [null, "Jose Costa", 52, "SUS", "Sala 2", "RETIRADA DE FIO", null],
   ]);

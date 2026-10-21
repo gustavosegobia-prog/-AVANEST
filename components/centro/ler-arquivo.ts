@@ -86,7 +86,10 @@ async function palavrasDaFoto(arquivo: File, avancar: (fracao: number) => void):
     logger: (m: { status?: string; progress?: number }) => { if (m.status === "recognizing text" && m.progress != null) avancar(m.progress); },
   });
   try {
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
+    // O modo automático, e não o de "texto esparso": no mapa real de 22/10 o
+    // esparso perdeu o número de 11 das 12 salas ("SALA" sem o 1) e duas
+    // idades; o automático leu todas.
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
     const { data } = await worker.recognize(await ampliada(arquivo), {}, { blocks: true });
     const palavras: Palavra[] = [];
     for (const bloco of data.blocks ?? []) {

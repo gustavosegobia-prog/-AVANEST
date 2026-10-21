@@ -426,14 +426,16 @@ const SEM_CONVENIO = "Sem convênio";
 /** "Dra. Ana Lima" → "Ana Lima", para ordenar pelo nome e não pelo título. */
 const semTitulo = (nome: string) => nome.replace(/^\s*dr(a)?\.?\s+/i, "");
 
+/** "UNIMED", "Unimed" e "unimed" são o mesmo convênio no resumo; vale a primeira grafia. */
 function contarConvenios(casos: Caso[]) {
-  const m = new Map<string, number>();
+  const m = new Map<string, { convenio: string; atos: number }>();
   for (const c of casos) {
-    const k = c.convenio?.trim() || SEM_CONVENIO;
-    m.set(k, (m.get(k) ?? 0) + 1);
+    const nome = c.convenio?.trim() || SEM_CONVENIO;
+    const k = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
+    const atual = m.get(k);
+    m.set(k, { convenio: atual?.convenio ?? nome, atos: (atual?.atos ?? 0) + 1 });
   }
-  return [...m.entries()]
-    .map(([convenio, atos]) => ({ convenio, atos }))
+  return [...m.values()]
     .sort((a, b) => b.atos - a.atos || a.convenio.localeCompare(b.convenio, "pt-BR"));
 }
 
