@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
@@ -11,6 +12,7 @@ import {
   type Caso, type Etapa, type PlantaoDaEscala, type Sala, type Passo,
 } from "@/lib/centro-cirurgico";
 import { JanelaDoCaso, JanelaDoPasso, JanelaDeCancelar, JanelaDasSalas, mensagemDoBanco } from "./janelas";
+import { JanelaDeImportar } from "./importar";
 import estilos from "./mapa.module.css";
 
 export type Anestesista = { id: string; nome: string; apelido: string };
@@ -21,6 +23,7 @@ type Aberta =
   | { tipo: "passo"; caso: Caso; acao: Passo["acao"] }
   | { tipo: "cancelar"; caso: Caso }
   | { tipo: "salas" }
+  | { tipo: "importar" }
   | null;
 
 const DIA_LONGO = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
@@ -65,6 +68,8 @@ export function MapaCirurgico({
   const [filtro, setFiltro] = useState<Etapa | null>(null);
   const [aberta, setAberta] = useState<Aberta>(null);
   const [erro, setErro] = useState("");
+  const [aviso, setAviso] = useState("");
+  const router = useRouter();
 
   const porId = useMemo(() => new Map(anestesistas.map((a) => [a.id, a])), [anestesistas]);
   const apelido = useCallback((id: string | null) => (id ? porId.get(id)?.apelido ?? "Anestesista" : ""), [porId]);
@@ -154,6 +159,11 @@ export function MapaCirurgico({
             </button>
           )}
           {podeMontar && (
+            <button type="button" className="outlineClinical compact" onClick={() => setAberta({ tipo: "importar" })}>
+              <Icone nome="nota" tamanho={16} /> Importar mapa
+            </button>
+          )}
+          {podeMontar && (
             <button type="button" className="primaryClinical compact" disabled={!salasAtivas.length}
               onClick={() => setAberta({ tipo: "novo", salaId: salasAtivas[0]?.id ?? "" })}>
               + Paciente
@@ -182,6 +192,7 @@ export function MapaCirurgico({
       </nav>
 
       {erro && <p className={estilos.erro} role="alert">{erro}</p>}
+      {aviso && <p className={estilos.avisoOk} role="status">{aviso}</p>}
 
       {vista === "mapa" ? (
         <>
@@ -282,6 +293,18 @@ export function MapaCirurgico({
       )}
       {aberta?.tipo === "cancelar" && (
         <JanelaDeCancelar caso={aberta.caso} gravar={gravar} onFechar={() => setAberta(null)} onFeito={() => setAberta(null)} />
+      )}
+      {aberta?.tipo === "importar" && (
+        <JanelaDeImportar institutionId={institutionId} diaAberto={dia} salas={salas} anestesistas={anestesistas}
+          dePlantao={(data, horario) => anestesistasDePlantao(plantoes, data, horario)}
+          onFechar={() => setAberta(null)}
+          onImportado={(data, quantos) => {
+            setAberta(null);
+            setAviso(`${quantos} ${quantos === 1 ? "paciente importado" : "pacientes importados"}. Confira a ordem de cada sala.`);
+            // O mapa de outro dia: vai para ele. O de hoje: recarrega aqui.
+            if (data !== dia) router.push(`/centro-cirurgico?data=${data}`);
+            else void recarregar();
+          }} />
       )}
       {aberta?.tipo === "salas" && (
         <JanelaDasSalas institutionId={institutionId} salas={salas}

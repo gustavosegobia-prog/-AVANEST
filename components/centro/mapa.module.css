@@ -227,3 +227,29 @@
    apagá-lo: o "screen" some com ele, sem retângulo em volta do logo. */
 :global(html[data-tema=escuro]) .marcaDagua { mix-blend-mode: screen; opacity: .08; }
 :global(html[data-tema=escuro]) .marcaDagua img { filter: grayscale(1) invert(1) contrast(1.5) brightness(1.6); }
+
+/* ── Importar o mapa ────────────────────────────────────────────────────── */
+.avisoOk { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--cor-sucesso-suave); color: var(--cor-tinta); font-weight: 600; }
+.importarArquivo { display: grid; justify-items: start; gap: 6px; margin-bottom: 14px; }
+.importarTopo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin-bottom: 12px; }
+.importarAvisos { margin: 0 0 12px; padding: 10px 14px 10px 30px; border-radius: 12px; background: var(--cor-atencao-suave);
+  display: grid; gap: 4px; font-size: 14px; color: var(--cor-tinta); }
+.importarTabela { max-height: 52vh; overflow: auto; border: 1px solid var(--cor-borda); border-radius: 12px; }
+.importarTabela table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.importarTabela th { position: sticky; top: 0; z-index: 1; padding: 8px; background: var(--cor-superficie-suave); text-align: left;
+  font-size: 11.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; color: var(--cor-tinta-fraca); white-space: nowrap; }
+.importarTabela td { padding: 8px; border-top: 1px solid var(--cor-borda); vertical-align: top; color: var(--cor-tinta); }
+.importarTabela td small { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--cor-atencao-suave);
+  color: var(--cor-atencao); font-size: 11px; font-weight: 750; }
+.importarTabela input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--cor-marca); }
+.desmarcada td { opacity: .5; }
+@media (max-width: 640px) {
+  .importarTopo { grid-template-columns: minmax(0, 1fr); }
+  .importarTabela { max-height: none; }
+  .importarTabela thead { display: none; }
+  .importarTabela tr { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 2px 8px; padding: 10px; border-top: 1px solid var(--cor-borda); }
+  .importarTabela td { padding: 0; border: 0; grid-column: 2; }
+  .importarTabela td:first-child { grid-column: 1; grid-row: 1 / span 9; }
+  .importarTabela td[data-rotulo]:not([data-rotulo="Paciente"]):not(:empty)::before { content: attr(data-rotulo) ": "; color: var(--cor-tinta-fraca); }
+  .importarTabela td:empty { display: none; }
+}
