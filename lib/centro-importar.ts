@@ -79,23 +79,54 @@ export function campoDoTitulo(texto: string): Campo | null {
 const meioY = (p: Palavra) => (p.y0 + p.y1) / 2;
 const meioX = (p: Palavra) => (p.x0 + p.x1) / 2;
 
+/** A palavra da foto com a confiança do OCR (0 a 100). */
+export type PalavraLida = Palavra & { c: number };
+
+/** As duas caixas dividem mais de 30% da menor delas. */
+function sobrepoe(a: Palavra, b: Palavra): boolean {
+  const largura = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+  const altura = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+  if (largura <= 0 || altura <= 0) return false;
+  const menor = Math.min((a.x1 - a.x0) * (a.y1 - a.y0), (b.x1 - b.x0) * (b.y1 - b.y0));
+  return menor > 0 && (largura * altura) / menor > 0.3;
+}
+
+/**
+ * Junta duas leituras da mesma foto. O OCR tem dois jeitos de achar o texto,
+ * e cada um erra num lugar: o automático lê a sala e a idade, mas embaralha a
+ * célula com a cirurgia em duas linhas ("FRATURA DE PLATO TIBIAL DE / JOELHO
+ * DIREITO" saiu "irradia o"); o de texto esparso lê essa célula inteira, mas
+ * perdeu o número da sala no mapa real de 22/10.
+ *
+ * A primeira leitura é a base, e a palavra firme dela (confiança 40 ou mais)
+ * nunca sai. A segunda só entra onde a base não tem palavra firme — e, se
+ * também for firme (60 ou mais), tira da base o chute que estava ali.
+ */
+export function juntarLeituras(base: PalavraLida[], reforco: PalavraLida[]): Palavra[] {
+  const firmes = base.filter((p) => p.c >= 40);
+  const entram = reforco.filter((r) => r.c >= 60 && !firmes.some((p) => sobrepoe(p, r)));
+  const ficam = base.filter((p) => p.c >= 40 || !entram.some((r) => sobrepoe(p, r)));
+  return [...ficam, ...entram].map(({ t, x0, x1, y0, y1 }) => ({ t, x0, x1, y0, y1 }));
+}
+
 /**
  * Remonta a tabela a partir de palavras com posição.
  *
  * 1. A linha dos títulos é a que tem pelo menos três títulos conhecidos.
- * 2. As colunas vão de um título ao outro, com a divisa no meio do caminho.
- *    O que fica à esquerda do primeiro título é a coluna do número da linha.
- * 3. As linhas da tabela são ancoradas no NÚMERO da linha (1, 2, 3…), que o
- *    mapa centraliza na célula. Isso resolve a cirurgia que quebra em duas
+ * 2. As colunas vão de um título ao outro, com a divisa no vão vazio entre
+ *    elas. O que fica à esquerda do primeiro título é a coluna do número.
+ * 3. As linhas da tabela são ancoradas no HORÁRIO (e no nome, quando o
+ *    horário não foi lido). Isso resolve a cirurgia que quebra em duas
  *    linhas ("FRATURA DE PLATO TIBIAL DE / JOELHO DIREITO"): cada pedaço vai
- *    para a âncora mais próxima, e não vira um paciente novo. Sem a coluna do
- *    número, a âncora é o horário, e depois o nome.
+ *    para a âncora mais próxima, e não vira um paciente novo.
  *
  * Devolve a grade com o título do mapa (o que está acima dos títulos, numa
  * célula só) e a linha dos títulos no alto, como uma planilha.
  */
 export function gradeDePalavras(palavras: Palavra[]): string[][] | null {
-  const limpas = palavras.filter((p) => p.t.trim());
+  // A linha da borda da tabela, na foto, às vezes é lida como "|" — sozinha
+  // ou grudada na palavra ("| PARTICULAR").
+  const limpas = palavras.map((p) => ({ ...p, t: p.t.trim().replace(/^[|¦]+|[|¦]+$/g, "") })).filter((p) => p.t);
   if (!limpas.length) return null;
   const alturas = limpas.map((p) => p.y1 - p.y0).sort((a, b) => a - b);
   const alturaTipica = alturas[Math.floor(alturas.length / 2)] || 1;

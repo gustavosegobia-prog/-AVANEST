@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { deflateRawSync } from "node:zlib";
 import {
   anestesistaDoTitulo, campoDoTitulo, casarAnestesista, casarSala, convenioLimpo, dataDoTexto, gradeDoCsv, gradeDePalavras,
-  horaDaCelula, lerMapa, nomeDaSala, nomeProprio, type Palavra,
+  horaDaCelula, juntarLeituras, lerMapa, nomeDaSala, nomeProprio, type Palavra,
 } from "./centro-importar.ts";
 import { gradeDaAba, gradeDoXlsx, posicaoDaCelula, textosCompartilhados } from "./xlsx-leitura.ts";
 
@@ -151,6 +151,33 @@ test("das palavras soltas do PDF ou da foto, a tabela de volta — com a cirurgi
     [null, "Jose Costa", 52, "SUS", "Sala 2", "RETIRADA DE FIO", null],
   ]);
   assert.equal(gradeDePalavras([palavra("nada", 0, 0)]), null);
+});
+
+test("duas leituras da foto juntas: a firme da primeira fica, o chute dá lugar à segunda", () => {
+  const lida = (t: string, x: number, y: number, c: number, largura?: number) => ({ ...palavra(t, x, y, largura), c });
+  const automatica = [
+    lida("SALA", 755, 120, 92), lida("2", 795, 120, 88),
+    // A cirurgia em duas linhas, embaralhada: chutes de baixa confiança.
+    lida("irradia", 850, 116, 11), lida("o", 935, 116, 23),
+  ];
+  const esparsa = [
+    // "SALA" sem o número, por cima da leitura firme: não entra.
+    lida("SALA", 752, 120, 95, 50),
+    lida("FRATURA", 850, 112, 96), lida("DE", 915, 112, 93), lida("PLATO", 935, 112, 91),
+    lida("JOELHO", 850, 128, 96),
+    // Fraca nas duas: não entra.
+    lida("xx", 1000, 112, 40),
+  ];
+  assert.deepEqual(juntarLeituras(automatica, esparsa).map((p) => p.t), ["SALA", "2", "FRATURA", "DE", "PLATO", "JOELHO"]);
+});
+
+test("a borda da tabela lida como “|” não entra na célula", () => {
+  const p: Palavra[] = [
+    palavra("HORA", 40, 40), palavra("PACIENTE", 160, 40), palavra("CONVENIO", 490, 40), palavra("PROCEDIMENTO", 880, 40),
+    palavra("07:30", 40, 80), palavra("MARIA", 160, 80), palavra("|", 485, 80), palavra("PARTICULAR|", 495, 80), palavra("HTV", 880, 80),
+    palavra("08:00", 40, 120), palavra("ANA", 160, 120), palavra("SUS", 495, 120), palavra("RTU", 880, 120),
+  ];
+  assert.deepEqual(lerMapa(gradeDePalavras(p)!)!.linhas.map((l) => l.convenio), ["Particular", "SUS"]);
 });
 
 // ---------------------------------------------------------------------------

@@ -87,8 +87,11 @@ export function JanelaDeImportar({ institutionId, diaAberto, salas, anestesistas
   }
 
   const escolhidas = useMemo(() => (mapa?.linhas ?? []).filter((l) => marcadas.has(l.linha)), [mapa, marcadas]);
-  const salasNovas = useMemo(() => [...new Set(escolhidas.map((l) => l.sala).filter((s): s is string => Boolean(s) && !casarSala(s, salas)))],
-    [escolhidas, salas]);
+  // Na ordem do número, e não na do arquivo: a sala criada primeiro vira a
+  // primeira coluna do mapa, e o mapa do grupo começa pela Sala 4 se o
+  // primeiro paciente do dia estiver nela.
+  const salasNovas = useMemo(() => [...new Set(escolhidas.map((l) => l.sala).filter((s): s is string => Boolean(s) && !casarSala(s, salas)))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true })), [escolhidas, salas]);
 
   async function importar() {
     if (!escolhidas.length) return;

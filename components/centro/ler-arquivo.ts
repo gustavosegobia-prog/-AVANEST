@@ -2,7 +2,8 @@
 // nenhum: a planilha, o PDF e a foto são lidos aqui e só os pacientes que o
 // enfermeiro confirmar vão para o banco.
 
-import { gradeDoCsv, gradeDePalavras, type Palavra } from "@/lib/centro-importar";
+import type { PSM as ModoDaPagina } from "tesseract.js";
+import { gradeDoCsv, gradeDePalavras, juntarLeituras, type Palavra, type PalavraLida } from "@/lib/centro-importar";
 import { gradeDoXlsx } from "@/lib/xlsx-leitura";
 
 const extensao = (f: File) => f.name.toLowerCase().split(".").pop() ?? "";
@@ -79,30 +80,40 @@ async function ampliada(arquivo: File): Promise<HTMLCanvasElement | File> {
   }
 }
 
-/** A foto ou o print do mapa: o OCR do aparelho, com a posição de cada palavra. */
+/**
+ * A foto ou o print do mapa: o OCR do aparelho, com a posição de cada palavra.
+ * Lê duas vezes e junta (`juntarLeituras`): o modo automático acerta a sala e
+ * a idade, o de texto esparso acerta a cirurgia escrita em duas linhas.
+ */
 async function palavrasDaFoto(arquivo: File, avancar: (fracao: number) => void): Promise<Palavra[]> {
   const { createWorker, PSM } = await import("tesseract.js");
+  let leitura = 0;
   const worker = await createWorker("por", undefined, {
-    logger: (m: { status?: string; progress?: number }) => { if (m.status === "recognizing text" && m.progress != null) avancar(m.progress); },
+    logger: (m: { status?: string; progress?: number }) => {
+      if (m.status === "recognizing text" && m.progress != null) avancar((leitura + m.progress) / 2);
+    },
   });
   try {
-    // O modo automático, e não o de "texto esparso": no mapa real de 22/10 o
-    // esparso perdeu o número de 11 das 12 salas ("SALA" sem o 1) e duas
-    // idades; o automático leu todas.
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
-    const { data } = await worker.recognize(await ampliada(arquivo), {}, { blocks: true });
-    const palavras: Palavra[] = [];
-    for (const bloco of data.blocks ?? []) {
-      for (const par of bloco.paragraphs) {
-        for (const linha of par.lines) {
-          for (const w of linha.words) {
-            if (w.confidence < 20 || !w.text.trim()) continue;
-            palavras.push({ t: w.text, x0: w.bbox.x0, x1: w.bbox.x1, y0: w.bbox.y0, y1: w.bbox.y1 });
+    const imagem = await ampliada(arquivo);
+    const ler = async (modo: ModoDaPagina) => {
+      await worker.setParameters({ tessedit_pageseg_mode: modo });
+      const { data } = await worker.recognize(imagem, {}, { blocks: true });
+      const palavras: PalavraLida[] = [];
+      for (const bloco of data.blocks ?? []) {
+        for (const par of bloco.paragraphs) {
+          for (const linha of par.lines) {
+            for (const w of linha.words) {
+              if (w.confidence < 20 || !w.text.trim()) continue;
+              palavras.push({ t: w.text, x0: w.bbox.x0, x1: w.bbox.x1, y0: w.bbox.y0, y1: w.bbox.y1, c: w.confidence });
+            }
           }
         }
       }
-    }
-    return palavras;
+      return palavras;
+    };
+    const automatica = await ler(PSM.AUTO);
+    leitura = 1;
+    return juntarLeituras(automatica, await ler(PSM.SPARSE_TEXT));
   } finally {
     await worker.terminate();
   }
