@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje } from "@/lib/data-local";
-import { CAMPOS_DO_CASO, type Caso, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, type Caso, type Sala } from "@/lib/centro-cirurgico";
 import { diasDoMes, mesValido, planilhaDoRelatorio, relatorioDoMes } from "@/lib/centro-relatorio";
 import { Icone } from "@/components/icone";
 import { RelatorioDoMes } from "@/components/centro/relatorio";
@@ -15,18 +15,18 @@ export const metadata: Metadata = {
 };
 
 // O relatório do mês: quantas cirurgias, e o tempo de cada uma em sala e na
-// RPA. Só para quem monta o mapa — pode_montar_centro(), a mesma pergunta das
-// políticas do banco (202610210001). Lê o que o mapa já gravou; não escreve.
+// RPA. Só para quem monta o mapa — abreOCentro(), sobre pode_montar_centro()
+// das políticas do banco (202610210001). Lê o que o mapa já gravou; não escreve.
 export default async function RelatorioDoCentroPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: perfil } = await supabase
-    .from("perfis").select("id, institution_id, status").eq("id", user.id).maybeSingle();
+    .from("perfis").select("id, institution_id, status, super_admin").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) redirect("/dashboard");
   const inst = perfil.institution_id as string;
   const { data: podeMontar } = await supabase.rpc("pode_montar_centro", { p_institution_id: inst });
-  if (podeMontar !== true) redirect("/centro-cirurgico");
+  if (!abreOCentro(podeMontar, perfil.super_admin)) redirect("/dashboard");
 
   const { mes: pedido } = await searchParams;
   const dia = hoje();

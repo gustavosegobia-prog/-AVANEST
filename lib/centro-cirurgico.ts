@@ -559,3 +559,17 @@ export function marcaDaCasa(nomeDaCasa: string, locais: Array<{ nome: string; lo
   if (daCasa) return daCasa.logo_url;
   return comLogo.length === 1 ? comLogo[0].logo_url : null;
 }
+
+// ---------------------------------------------------------------------------
+// Quem abre o centro cirúrgico
+// ---------------------------------------------------------------------------
+
+/**
+ * Por enquanto (pedido de 21/10/2026), o centro cirúrgico só aparece para
+ * quem MONTA o mapa — o enfermeiro chefe — na casa em que ele está ligado.
+ * O banco deixa os médicos da casa verem o mapa (pode_ver_centro) e o
+ * super-admin ver tudo; as telas ficam fechadas para eles até a liberação.
+ * Liberar para os médicos é voltar a perguntar pode_ver_centro.
+ */
+export const abreOCentro = (podeMontar: boolean | null | undefined, superAdmin: boolean | null | undefined) =>
+  podeMontar === true && superAdmin !== true;

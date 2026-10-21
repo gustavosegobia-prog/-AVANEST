@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
-  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, type Caso,
+  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, abreOCentro, type Caso,
 } from "./centro-cirurgico.ts";
 
 const iso = (data: string, h: string) => new Date(`${data}T${h}:00-03:00`).toISOString();
@@ -242,4 +242,11 @@ test("a marca d'água é o logo da própria casa, e não o do primeiro hospital 
   // Um logo só: é ele.
   assert.equal(marcaDaCasa("Hospital Épsilon — Centro Cirúrgico", [{ nome: "Fundação Épsilon", logo_url: "e.png" }]), "e.png");
   assert.equal(marcaDaCasa(grupo, []), null);
+});
+
+test("por enquanto o centro cirúrgico só abre para quem monta o mapa", () => {
+  assert.equal(abreOCentro(true, false), true, "o enfermeiro chefe");
+  assert.equal(abreOCentro(false, false), false, "o médico da casa");
+  assert.equal(abreOCentro(true, true), false, "o super-admin, que só via pela chave geral");
+  assert.equal(abreOCentro(null, null), false, "sem a função no banco");
 });
