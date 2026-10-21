@@ -154,6 +154,11 @@ export function MapaCirurgico({
             <Icone nome="painel" tamanho={16} /> Modo TV
           </a>
           {podeMontar && (
+            <Link href={`/centro-cirurgico/relatorio?mes=${dia.slice(0, 7)}`} prefetch={false} className="outlineClinical compact">
+              <Icone nome="grafico" tamanho={16} /> Relatório
+            </Link>
+          )}
+          {podeMontar && (
             <button type="button" className="outlineClinical compact" onClick={() => setAberta({ tipo: "salas" })}>
               <Icone nome="ajustes" tamanho={16} /> Salas
             </button>

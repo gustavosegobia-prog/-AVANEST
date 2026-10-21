@@ -60,7 +60,7 @@ export function larguraDaColuna(linhas: Celula[][], coluna: number) {
 }
 
 function folha(linhas: Celula[][]) {
-  const colunas = Math.max(0, ...linhas.map((l) => l.length));
+  const colunas = linhas.reduce((m, l) => Math.max(m, l.length), 0);
   const larguras = Array.from({ length: colunas }, (_, c) =>
     `<col min="${c + 1}" max="${c + 1}" width="${larguraDaColuna(linhas, c)}" customWidth="1"/>`).join("");
 
@@ -167,7 +167,11 @@ function zipar(arquivos: Arquivo[]) {
     escreverU32(saida, arquivo.dados.length);
     escreverU16(saida, nome.length);
     escreverU16(saida, 0);                   // sem campo extra
-    saida.push(...nome, ...arquivo.dados);
+    // Byte a byte, e não com `push(...dados)`: espalhar a folha inteira como
+    // argumentos estoura a pilha a partir de uns cem mil bytes — um mês de
+    // centro cirúrgico já passa disso.
+    for (const b of nome) saida.push(b);
+    for (const b of arquivo.dados) saida.push(b);
 
     escreverU32(central, 0x02014b50);        // assinatura do diretório central
     escreverU16(central, 20); escreverU16(central, 20);
@@ -181,11 +185,11 @@ function zipar(arquivos: Arquivo[]) {
     escreverU16(central, 0); escreverU16(central, 0);
     escreverU32(central, 0);
     escreverU32(central, inicio);            // onde começa o cabeçalho local
-    central.push(...nome);
+    for (const b of nome) central.push(b);
   }
 
   const inicioDoCentral = saida.length;
-  saida.push(...central);
+  for (const b of central) saida.push(b);
   escreverU32(saida, 0x06054b50);            // fim do diretório central
   escreverU16(saida, 0); escreverU16(saida, 0);
   escreverU16(saida, arquivos.length); escreverU16(saida, arquivos.length);

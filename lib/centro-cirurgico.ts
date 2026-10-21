@@ -427,7 +427,7 @@ const SEM_CONVENIO = "Sem convênio";
 const semTitulo = (nome: string) => nome.replace(/^\s*dr(a)?\.?\s+/i, "");
 
 /** "UNIMED", "Unimed" e "unimed" são o mesmo convênio no resumo; vale a primeira grafia. */
-function contarConvenios(casos: Caso[]) {
+export function contarConvenios(casos: Caso[]) {
   const m = new Map<string, { convenio: string; atos: number }>();
   for (const c of casos) {
     const nome = c.convenio?.trim() || SEM_CONVENIO;
