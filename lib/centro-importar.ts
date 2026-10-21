@@ -82,13 +82,22 @@ const meioX = (p: Palavra) => (p.x0 + p.x1) / 2;
 /** A palavra da foto com a confiança do OCR (0 a 100). */
 export type PalavraLida = Palavra & { c: number };
 
-/** As duas caixas dividem mais de 30% da menor delas. */
-function sobrepoe(a: Palavra, b: Palavra): boolean {
+/** A área em comum das duas caixas, e a de cada uma. */
+function cruzamento(a: Palavra, b: Palavra) {
   const largura = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
   const altura = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
-  if (largura <= 0 || altura <= 0) return false;
-  const menor = Math.min((a.x1 - a.x0) * (a.y1 - a.y0), (b.x1 - b.x0) * (b.y1 - b.y0));
-  return menor > 0 && (largura * altura) / menor > 0.3;
+  const area = (p: Palavra) => (p.x1 - p.x0) * (p.y1 - p.y0);
+  return { comum: largura > 0 && altura > 0 ? largura * altura : 0, a: area(a), b: area(b) };
+}
+/** As duas caixas dividem mais de 30% da menor delas. */
+function sobrepoe(a: Palavra, b: Palavra): boolean {
+  const { comum, a: aa, b: ab } = cruzamento(a, b);
+  return comum > 0 && comum / Math.min(aa, ab) > 0.3;
+}
+/** As duas caixas são o mesmo lugar: o comum passa de 60% do conjunto. */
+function mesmoLugar(a: Palavra, b: Palavra): boolean {
+  const { comum, a: aa, b: ab } = cruzamento(a, b);
+  return comum > 0 && comum / (aa + ab - comum) > 0.6;
 }
 
 /**
@@ -98,14 +107,16 @@ function sobrepoe(a: Palavra, b: Palavra): boolean {
  * DIREITO" saiu "irradia o"); o de texto esparso lê essa célula inteira, mas
  * perdeu o número da sala no mapa real de 22/10.
  *
- * A primeira leitura é a base, e a palavra firme dela (confiança 40 ou mais)
- * nunca sai. A segunda só entra onde a base não tem palavra firme — e, se
- * também for firme (60 ou mais), tira da base o chute que estava ali.
+ * A primeira leitura é a base. A palavra da segunda (confiança 60 ou mais)
+ * entra onde a base não tem nada, ou só tem chute (menos de 40), ou leu a
+ * mesma caixa com menos certeza — no mapa real, "13:30" (96) no lugar de
+ * "23530" (49). Uma caixa da segunda que cobre um pedaço de palavra firme da
+ * base não entra: é o "SALA" do modo esparso por cima do "1" do automático.
  */
 export function juntarLeituras(base: PalavraLida[], reforco: PalavraLida[]): Palavra[] {
-  const firmes = base.filter((p) => p.c >= 40);
-  const entram = reforco.filter((r) => r.c >= 60 && !firmes.some((p) => sobrepoe(p, r)));
-  const ficam = base.filter((p) => p.c >= 40 || !entram.some((r) => sobrepoe(p, r)));
+  const entram = reforco.filter((r) => r.c >= 60
+    && base.every((p) => !sobrepoe(p, r) || p.c < 40 || (mesmoLugar(p, r) && r.c > p.c)));
+  const ficam = base.filter((p) => !entram.some((r) => sobrepoe(p, r)));
   return [...ficam, ...entram].map(({ t, x0, x1, y0, y1 }) => ({ t, x0, x1, y0, y1 }));
 }
 
@@ -309,6 +320,24 @@ export function horaDaCelula(v: string): string | null {
   return m ? `${m[1].padStart(2, "0")}:${m[2]}` : null;
 }
 
+// A letra que o OCR põe no lugar do dígito parecido.
+const DIGITO_PARECIDO: Record<string, string> = {
+  O: "0", o: "0", D: "0", Q: "0", I: "1", l: "1", "|": "1", Z: "2", z: "2", S: "5", s: "5",
+  G: "6", b: "6", T: "7", F: "7", B: "8", g: "9", q: "9",
+};
+
+/**
+ * A idade: "72", "72 anos", "8a". Na célula curta, a letra vira o dígito
+ * parecido — no print do mapa real de 22/10, o 7 em negrito foi lido "F2".
+ */
+export function idadeDaCelula(v: string): number | null {
+  let t = v.trim();
+  if (/^\S{1,3}$/.test(t)) t = [...t].map((ch) => DIGITO_PARECIDO[ch] ?? ch).join("");
+  if (!/\d/.test(t)) return null;
+  const n = Number(t.replace(/\D/g, ""));
+  return Number.isInteger(n) && n <= 130 ? n : null;
+}
+
 /** A data do título: "21/10/2026", "21/10/26", ou o número de série de data do Excel. */
 export function dataDoTexto(texto: string): string | null {
   const m = texto.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})\b/);
@@ -373,13 +402,12 @@ export function lerMapa(grade: string[][]): MapaImportado | null {
     if (vazio(paciente)) return;
     const procedimento = celula(linha, "procedimento");
     if (vazio(procedimento)) { ignoradas++; return; }
-    const idade = Number(celula(linha, "idade").replace(/\D/g, ""));
     const texto = (c: Campo) => (vazio(celula(linha, c)) ? null : celula(linha, c).replace(/\s+/g, " "));
     linhas.push({
       linha: k + 1,
       horario: horaDaCelula(celula(linha, "hora")),
       paciente: nomeProprio(paciente),
-      idade: celula(linha, "idade") && Number.isInteger(idade) && idade <= 130 ? idade : null,
+      idade: idadeDaCelula(celula(linha, "idade")),
       convenio: texto("convenio") && convenioLimpo(texto("convenio")!),
       cirurgiao: texto("cirurgiao"),
       sala: nomeDaSala(celula(linha, "sala")),

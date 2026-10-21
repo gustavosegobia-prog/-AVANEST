@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { deflateRawSync } from "node:zlib";
 import {
   anestesistaDoTitulo, campoDoTitulo, casarAnestesista, casarSala, convenioLimpo, dataDoTexto, gradeDoCsv, gradeDePalavras,
-  horaDaCelula, juntarLeituras, lerMapa, nomeDaSala, nomeProprio, type Palavra,
+  horaDaCelula, idadeDaCelula, juntarLeituras, lerMapa, nomeDaSala, nomeProprio, type Palavra,
 } from "./centro-importar.ts";
 import { gradeDaAba, gradeDoXlsx, posicaoDaCelula, textosCompartilhados } from "./xlsx-leitura.ts";
 
@@ -169,6 +169,20 @@ test("duas leituras da foto juntas: a firme da primeira fica, o chute dá lugar 
     lida("xx", 1000, 112, 40),
   ];
   assert.deepEqual(juntarLeituras(automatica, esparsa).map((p) => p.t), ["SALA", "2", "FRATURA", "DE", "PLATO", "JOELHO"]);
+  // A mesma caixa lida pelas duas: fica a leitura mais certa.
+  assert.deepEqual(juntarLeituras([lida("23530", 40, 160, 49, 45)], [lida("13:30", 40, 160, 96, 45)]).map((p) => p.t), ["13:30"]);
+  assert.deepEqual(juntarLeituras([lida("13:30", 40, 160, 90, 45)], [lida("13530", 40, 160, 70, 45)]).map((p) => p.t), ["13:30"]);
+});
+
+test("a idade com a letra que o OCR troca pelo dígito", () => {
+  assert.equal(idadeDaCelula("72"), 72);
+  assert.equal(idadeDaCelula("F2"), 72);
+  assert.equal(idadeDaCelula("5O"), 50);
+  assert.equal(idadeDaCelula("72 anos"), 72);
+  assert.equal(idadeDaCelula("8a"), 8);
+  assert.equal(idadeDaCelula(""), null);
+  assert.equal(idadeDaCelula("-"), null);
+  assert.equal(idadeDaCelula("200"), null);
 });
 
 test("a borda da tabela lida como “|” não entra na célula", () => {
