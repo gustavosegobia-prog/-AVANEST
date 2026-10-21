@@ -40,7 +40,7 @@ function situacao(l: LinhaDaTv): string {
  * Sem botão. Sem nome completo: iniciais e idade, porque quem passa no
  * corredor lê a TV. Atualiza a cada meio minuto e pede para a tela não apagar.
  */
-export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosIniciais, apelidos, agora: agoraDoServidor }: {
+export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosIniciais, apelidos, agora: agoraDoServidor, marca = null }: {
   institutionId: string;
   dia: string;
   nomeDaCasa: string;
@@ -48,6 +48,8 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
   casosIniciais: Caso[];
   apelidos: Record<string, string>;
   agora: number;
+  /** O logo do hospital (cadastro de locais), em marca d'água. */
+  marca?: string | null;
 }) {
   const [salas, setSalas] = useState(salasIniciais);
   const [casos, setCasos] = useState(casosIniciais);
@@ -131,6 +133,12 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
 
   return (
     <div className={`clinicalDark ${estilos.tv}`}>
+      {marca && (
+        <div className={estilos.marcaDagua} aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo enviado pelo hospital, de qualquer tamanho */}
+          <img src={marca} alt="" />
+        </div>
+      )}
       <header className={estilos.topo}>
         <div className={estilos.casa}>
           <span>Centro cirúrgico</span>

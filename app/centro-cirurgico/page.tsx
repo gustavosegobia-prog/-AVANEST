@@ -37,7 +37,7 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
   const { data: pedido } = await searchParams;
   const dia = /^\d{4}-\d{2}-\d{2}$/.test(pedido ?? "") ? (pedido as string) : hoje();
 
-  const [instituicao, salas, casos, equipe, plantoes] = await Promise.all([
+  const [instituicao, salas, casos, equipe, plantoes, local] = await Promise.all([
     supabase.from("instituicoes").select("nome").eq("id", inst).maybeSingle(),
     supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst).order("ordem"),
     supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst).eq("data", dia),
@@ -45,6 +45,10 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
     // Ontem também: a cirurgia das 5h é do plantão de 24h que começou ontem às 7h.
     supabase.from("plantoes").select("data, hora_inicio, hora_fim, perfil_id, situacao")
       .eq("institution_id", inst).eq("privado", false).gte("data", somarDias(dia, -1)).lte("data", dia),
+    // O logo do hospital, do cadastro de locais (Admin → Locais): a marca
+    // d'água do mapa. Sem logo cadastrado, o mapa sai sem marca.
+    supabase.from("locais_atendimento").select("logo_url").eq("institution_id", inst).eq("ativo", true)
+      .not("logo_url", "is", null).order("created_at").limit(1).maybeSingle(),
   ]);
 
   // Quem anestesia: o médico da casa, e quem atua como médico. Recepção e
@@ -69,6 +73,7 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
       plantoes={(plantoes.data ?? []) as PlantaoDaEscala[]}
       podeMontar={podeMontar === true}
       semBanco={Boolean(casos.error)}
+      marca={(local.data?.logo_url as string | undefined) || null}
       agora={agoraMs()}
     />
   );

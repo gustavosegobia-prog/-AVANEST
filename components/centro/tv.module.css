@@ -77,3 +77,9 @@
 .privacidade { margin-left: auto; }
 .rodape button { padding: .4vw 1vw; border: 1px solid var(--cor-borda-forte); border-radius: 8px; background: transparent;
   color: var(--cor-tinta); font: inherit; font-weight: 700; cursor: pointer; }
+
+/* A marca d'água do hospital, por cima da lista: na TV escura o logo é
+   invertido e somado ("screen"), e o fundo branco do JPG some. */
+.marcaDagua { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; pointer-events: none;
+  opacity: .09; mix-blend-mode: screen; }
+.marcaDagua img { width: 62vw; max-height: 62vh; object-fit: contain; filter: grayscale(1) invert(1) contrast(1.5) brightness(1.6); }

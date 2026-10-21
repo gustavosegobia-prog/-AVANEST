@@ -42,6 +42,7 @@ const nomeDoDia = (dia: string) => {
  */
 export function MapaCirurgico({
   institutionId, nomeDaCasa, dia, hoje, salasIniciais, casosIniciais, anestesistas, plantoes, podeMontar, semBanco, agora: agoraDoServidor,
+  marca = null,
 }: {
   institutionId: string;
   nomeDaCasa: string;
@@ -54,6 +55,8 @@ export function MapaCirurgico({
   podeMontar: boolean;
   semBanco: boolean;
   agora: number;
+  /** O logo do hospital (cadastro de locais), em marca d'água. */
+  marca?: string | null;
 }) {
   const [salas, setSalas] = useState(salasIniciais);
   const [casos, setCasos] = useState(casosIniciais);
@@ -124,7 +127,7 @@ export function MapaCirurgico({
 
   if (semBanco) {
     return (
-      <Casca>
+      <Casca marca={marca}>
         <p className={estilos.faixa}>
           O banco do mapa cirúrgico ainda não está instalado. Rode a migração
           <code> 202610210001_mapa_cirurgico.sql</code> no Supabase.
@@ -134,7 +137,7 @@ export function MapaCirurgico({
   }
 
   return (
-    <Casca>
+    <Casca marca={marca}>
       <div className={estilos.titulo}>
         <div>
           <h1>Mapa cirúrgico</h1>
@@ -288,9 +291,17 @@ export function MapaCirurgico({
   );
 }
 
-function Casca({ children }: { children: React.ReactNode }) {
+function Casca({ children, marca }: { children: React.ReactNode; marca: string | null }) {
   return (
     <div className="fcFundo temaApp">
+      {/* A marca d'água do hospital: por cima de tudo, bem clara, e sem
+          receber toque — o clique atravessa. */}
+      {marca && (
+        <div className={estilos.marcaDagua} aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo enviado pelo hospital, de qualquer tamanho */}
+          <img src={marca} alt="" />
+        </div>
+      )}
       <main className={`fcPagina ${estilos.pagina}`}>
         <header className="fcTopo">
           <Link href="/dashboard" className="fcVoltar">
@@ -322,6 +333,12 @@ function Cartao({ caso: c, agora, anestesista, podeMontar, onPasso, onEditar, on
     <article className={`${estilos.cartao} ${estilos[`etapa_${c.etapa}`]}`}>
       <div className={estilos.linhaDoTopo}>
         <span className={estilos.hora}>{horaNoMapa(c)}</span>
+        {podeMontar && onMover && (
+          <span className={estilos.setas}>
+            <button type="button" onClick={onMover.subir} disabled={!onMover.subir} aria-label={`Subir ${c.paciente} na fila`}>↑</button>
+            <button type="button" onClick={onMover.descer} disabled={!onMover.descer} aria-label={`Descer ${c.paciente} na fila`}>↓</button>
+          </span>
+        )}
         <span className={estilos.chip}>
           {NOME_DA_ETAPA[c.etapa]}
           {naEtapa != null && <> · {duracao(naEtapa)}</>}
@@ -355,12 +372,6 @@ function Cartao({ caso: c, agora, anestesista, podeMontar, onPasso, onEditar, on
             aria-label={`Editar ${c.paciente}`}>
             Editar
           </button>
-          {onMover && (
-            <span className={estilos.setas}>
-              <button type="button" onClick={onMover.subir} disabled={!onMover.subir} aria-label={`Subir ${c.paciente} na fila`}>↑</button>
-              <button type="button" onClick={onMover.descer} disabled={!onMover.descer} aria-label={`Descer ${c.paciente} na fila`}>↓</button>
-            </span>
-          )}
         </div>
       )}
     </article>

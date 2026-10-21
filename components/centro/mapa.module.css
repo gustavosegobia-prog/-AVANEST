@@ -13,7 +13,7 @@
 .titulo h1 { margin: 0; font-size: clamp(26px, 3.2vw, 34px); line-height: 1.1; font-weight: 750; letter-spacing: -.025em; color: var(--cor-tinta-forte); }
 .titulo p { margin: 4px 0 0; font-size: 14.5px; color: var(--cor-tinta-fraca); }
 .acoesDoTopo { display: flex; gap: 8px; }
-.acoesDoTopo :global(button), .acoesDoTopo a { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+.acoesDoTopo :global(button), .acoesDoTopo a { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; white-space: nowrap; }
 
 /* ── O dia e a vista ─────────────────────────────────────────────────────── */
 .dia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 14px; }
@@ -69,7 +69,8 @@
 
 .cartao { display: grid; gap: 3px; padding: 12px 14px 12px 14px;
   border: 1px solid var(--cor-borda); border-left: 5px solid var(--faixa); border-radius: 12px; background: var(--cor-superficie); }
-.linhaDoTopo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.linhaDoTopo { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; min-width: 0; }
+.linhaDoTopo .chip { margin-left: auto; }
 .hora { font-size: 15px; font-weight: 750; color: var(--cor-tinta-forte); font-variant-numeric: tabular-nums; }
 .chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px;
   background: var(--selo); color: var(--selo-tinta); font-size: 12.5px; font-weight: 750; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -88,9 +89,10 @@
 .acoesDoCartao { display: flex; gap: 8px; margin-top: 8px; }
 .passo { flex: 1; min-height: 44px; }
 .editar { min-height: 44px; }
-.setas { display: inline-flex; margin-left: auto; border: 1px solid var(--cor-borda); border-radius: 10px; overflow: hidden; }
-.setas button { width: 40px; min-height: 44px; border: 0; background: var(--cor-superficie); color: var(--cor-tinta);
-  font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
+/* Subir e descer na fila: ao lado da hora, que é o que a posição muda. */
+.setas { display: inline-flex; flex: none; border: 1px solid var(--cor-borda); border-radius: 9px; overflow: hidden; }
+.setas button { width: 34px; height: 32px; border: 0; background: var(--cor-superficie); color: var(--cor-tinta);
+  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
 .setas button + button { border-left: 1px solid var(--cor-borda); }
 .setas button:disabled { color: var(--cor-borda-forte); cursor: default; }
 .setas button:not(:disabled):hover { background: var(--cor-superficie-suave); }
@@ -211,3 +213,17 @@
   .salaLinha { grid-template-columns: minmax(0, 1fr) 40px 40px; }
   .salaLinha > :last-child { grid-column: 1 / -1; }
 }
+
+/* ── A marca d'água do hospital ─────────────────────────────────────────────
+   Por cima do mapa, clarinha, e o toque atravessa. O logo costuma vir em JPG
+   com fundo branco: "multiply" some com o branco no tema claro; no escuro, o
+   logo é invertido e somado ("screen"), e o fundo preto da inversão some. */
+/* A mistura fica na camada de fora, e não na imagem: a camada fixa com
+   z-index isola o que está dentro dela, e a imagem se misturaria com o nada. */
+.marcaDagua { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; pointer-events: none;
+  opacity: .07; mix-blend-mode: multiply; }
+.marcaDagua img { width: min(72vw, 980px); max-height: 60vh; object-fit: contain; filter: brightness(1.15) contrast(1.4); }
+/* Invertido, o branco do JPG vira quase preto, e o contraste termina de$
+   apagá-lo: o "screen" some com ele, sem retângulo em volta do logo. */
+:global(html[data-tema=escuro]) .marcaDagua { mix-blend-mode: screen; opacity: .08; }
+:global(html[data-tema=escuro]) .marcaDagua img { filter: grayscale(1) invert(1) contrast(1.5) brightness(1.6); }

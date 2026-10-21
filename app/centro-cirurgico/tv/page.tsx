@@ -27,11 +27,15 @@ export default async function TvDoCentroPage() {
   if (podeVer !== true) redirect("/dashboard");
 
   const dia = hoje();
-  const [instituicao, salas, casos, equipe] = await Promise.all([
+  const [instituicao, salas, casos, equipe, local] = await Promise.all([
     supabase.from("instituicoes").select("nome").eq("id", inst).maybeSingle(),
     supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst).order("ordem"),
     supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst).eq("data", dia),
     supabase.from("perfis").select("id, nome").eq("institution_id", inst),
+    // O logo do hospital, do cadastro de locais (Admin → Locais): a marca
+    // d'água do mapa. Sem logo cadastrado, o mapa sai sem marca.
+    supabase.from("locais_atendimento").select("logo_url").eq("institution_id", inst).eq("ativo", true)
+      .not("logo_url", "is", null).order("created_at").limit(1).maybeSingle(),
   ]);
   const apelidos = apelidosDaEquipe((equipe.data ?? []) as Array<{ id: string; nome: string }>);
 
@@ -43,6 +47,7 @@ export default async function TvDoCentroPage() {
       salasIniciais={(salas.data ?? []) as Sala[]}
       casosIniciais={(casos.data ?? []) as unknown as Caso[]}
       apelidos={Object.fromEntries(apelidos)}
+      marca={(local.data?.logo_url as string | undefined) || null}
       agora={agoraMs()}
     />
   );
