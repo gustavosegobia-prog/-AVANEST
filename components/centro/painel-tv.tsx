@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import {
-  CAMPOS_DO_CASO, contagemPorEtapa, duracao, hhmm, horaDe, iniciaisDoPaciente, linhasDaTv,
+  CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, iniciaisDoPaciente, linhasDaTv,
   type Caso, type LinhaDaTv, type Sala,
 } from "@/lib/centro-cirurgico";
 import estilos from "./tv.module.css";
@@ -165,7 +165,7 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
           const c = l.caso;
           return (
             <div key={c.id} className={`${estilos.linha} ${estilos[`s_${l.situacao}`]}`} role="row">
-              <span role="cell" className={estilos.hora}>{hhmm(c.horario) || horaDe(c.entrada_sala_em) || "—"}</span>
+              <span role="cell" className={estilos.hora}>{horaNoMapa(c)}</span>
               <span role="cell" className={estilos.paciente}>{iniciaisDoPaciente(c.paciente)} <small>{idade(c)}</small></span>
               <span role="cell" className={estilos.texto}>{c.procedimento}</span>
               <span role="cell" className={estilos.texto}>{nomeDaSala(c.sala_id)}</span>

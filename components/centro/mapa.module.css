@@ -88,6 +88,12 @@
 .acoesDoCartao { display: flex; gap: 8px; margin-top: 8px; }
 .passo { flex: 1; min-height: 44px; }
 .editar { min-height: 44px; }
+.setas { display: inline-flex; margin-left: auto; border: 1px solid var(--cor-borda); border-radius: 10px; overflow: hidden; }
+.setas button { width: 40px; min-height: 44px; border: 0; background: var(--cor-superficie); color: var(--cor-tinta);
+  font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
+.setas button + button { border-left: 1px solid var(--cor-borda); }
+.setas button:disabled { color: var(--cor-borda-forte); cursor: default; }
+.setas button:not(:disabled):hover { background: var(--cor-superficie-suave); }
 
 .vazio { padding: 28px 24px; border: 1px dashed var(--cor-borda-forte); border-radius: 16px; background: var(--cor-superficie); text-align: center; }
 .vazio h2 { margin: 0 0 6px; font-size: 18px; color: var(--cor-tinta-forte); }

@@ -7,7 +7,7 @@ import { Icone } from "@/components/icone";
 import { somarDias } from "@/lib/data-local";
 import {
   CAMPOS_DO_CASO, ETAPAS_DO_FLUXO, NOME_DA_ETAPA, NOME_DO_DESTINO, anestesistasDePlantao, colunasDoMapa,
-  contagemPorEtapa, duracao, hhmm, horaDe, proximoPasso, resumoDoDia, tempoNaEtapa, tempos,
+  contagemPorEtapa, duracao, horaDe, horaNoMapa, mover, proximaOrdem, proximoPasso, resumoDoDia, tempoNaEtapa, tempos,
   type Caso, type Etapa, type PlantaoDaEscala, type Sala, type Passo,
 } from "@/lib/centro-cirurgico";
 import { JanelaDoCaso, JanelaDoPasso, JanelaDeCancelar, JanelaDasSalas, mensagemDoBanco } from "./janelas";
@@ -100,6 +100,20 @@ export function MapaCirurgico({
     setAgora(Date.now());
     return "";
   }, []);
+
+  /** Sobe ou desce o paciente na fila da sala, trocando com o vizinho. */
+  const moverNaFila = useCallback(async (fila: Caso[], id: string, direcao: -1 | 1) => {
+    const mudancas = mover(fila, id, direcao);
+    if (!mudancas.length) return;
+    setErro("");
+    const sb = createClient();
+    for (const m of mudancas) {
+      const { error } = await sb.from("centro_casos").update({ ordem: m.ordem }).eq("id", m.id);
+      if (error) { setErro(mensagemDoBanco(error.message)); void recarregar(); return; }
+    }
+    const nova = new Map(mudancas.map((m) => [m.id, m.ordem]));
+    setCasos((lista) => lista.map((c) => (nova.has(c.id) ? { ...c, ordem: nova.get(c.id)! } : c)));
+  }, [recarregar]);
 
   const contagem = useMemo(() => contagemPorEtapa(casos), [casos]);
   const visiveis = useMemo(() => (filtro ? casos.filter((c) => c.etapa === filtro) : casos), [casos, filtro]);
@@ -212,11 +226,17 @@ export function MapaCirurgico({
                   </header>
                   {col.casos.length ? (
                     <ol className={estilos.fila}>
-                      {col.casos.map((c) => (
+                      {col.casos.map((c, i) => (
                         <li key={c.id}>
                           <Cartao caso={c} agora={agora} anestesista={apelido(c.anestesista_id)} podeMontar={podeMontar}
                             onPasso={(acao) => setAberta({ tipo: "passo", caso: c, acao })}
-                            onEditar={() => setAberta({ tipo: "editar", caso: c })} />
+                            onEditar={() => setAberta({ tipo: "editar", caso: c })}
+                            // Mexer na fila só com a sala inteira à vista: com o filtro, o
+                            // vizinho da tela não é o vizinho da fila.
+                            onMover={filtro ? undefined : {
+                              subir: i > 0 ? () => void moverNaFila(col.casos, c.id, -1) : undefined,
+                              descer: i < col.casos.length - 1 ? () => void moverNaFila(col.casos, c.id, 1) : undefined,
+                            }} />
                         </li>
                       ))}
                     </ol>
@@ -239,6 +259,7 @@ export function MapaCirurgico({
           caso={aberta.tipo === "editar" ? aberta.caso : null}
           salaInicial={aberta.tipo === "novo" ? aberta.salaId : ""}
           salas={salas}
+          ordemNova={proximaOrdem(casos)}
           anestesistas={anestesistas}
           dePlantao={(data, horario) => anestesistasDePlantao(plantoes, data, horario)}
           onFechar={() => setAberta(null)}
@@ -283,9 +304,10 @@ function Casca({ children }: { children: React.ReactNode }) {
 }
 
 /** O cartão do paciente: quem, o quê, onde está agora, e o próximo passo. */
-function Cartao({ caso: c, agora, anestesista, podeMontar, onPasso, onEditar }: {
+function Cartao({ caso: c, agora, anestesista, podeMontar, onPasso, onEditar, onMover }: {
   caso: Caso; agora: number; anestesista: string; podeMontar: boolean;
   onPasso: (acao: Passo["acao"]) => void; onEditar: () => void;
+  onMover?: { subir?: () => void; descer?: () => void };
 }) {
   const passo = proximoPasso(c);
   const naEtapa = tempoNaEtapa(c, agora);
@@ -295,11 +317,11 @@ function Cartao({ caso: c, agora, anestesista, podeMontar, onPasso, onEditar }: 
     c.saida_sala_em && `Saiu ${horaDe(c.saida_sala_em)}`,
     c.alta_rpa_em && `Alta ${horaDe(c.alta_rpa_em)}${c.aldrete_alta != null ? ` (Aldrete ${c.aldrete_alta})` : ""}`,
   ].filter(Boolean);
-  const detalhe = [c.cirurgiao, c.convenio].filter(Boolean).join(" · ");
+  const detalhe = [c.cirurgiao, c.convenio, c.leito && `Leito ${c.leito}`].filter(Boolean).join(" · ");
   return (
     <article className={`${estilos.cartao} ${estilos[`etapa_${c.etapa}`]}`}>
       <div className={estilos.linhaDoTopo}>
-        <span className={estilos.hora}>{hhmm(c.horario) || "—"}</span>
+        <span className={estilos.hora}>{horaNoMapa(c)}</span>
         <span className={estilos.chip}>
           {NOME_DA_ETAPA[c.etapa]}
           {naEtapa != null && <> · {duracao(naEtapa)}</>}
@@ -333,6 +355,12 @@ function Cartao({ caso: c, agora, anestesista, podeMontar, onPasso, onEditar }: 
             aria-label={`Editar ${c.paciente}`}>
             Editar
           </button>
+          {onMover && (
+            <span className={estilos.setas}>
+              <button type="button" onClick={onMover.subir} disabled={!onMover.subir} aria-label={`Subir ${c.paciente} na fila`}>↑</button>
+              <button type="button" onClick={onMover.descer} disabled={!onMover.descer} aria-label={`Descer ${c.paciente} na fila`}>↓</button>
+            </span>
+          )}
         </div>
       )}
     </article>
@@ -381,7 +409,7 @@ function Resumo({ resumo, salas }: { resumo: ReturnType<typeof resumoDoDia>; sal
                 <tbody>
                   {l.atos.map((c) => (
                     <tr key={c.id}>
-                      <td data-rotulo="Entrada">{horaDe(c.entrada_sala_em) || hhmm(c.horario)}<small>{nomeDaSala(c.sala_id)}</small></td>
+                      <td data-rotulo="Entrada">{horaDe(c.entrada_sala_em) || horaNoMapa(c)}<small>{nomeDaSala(c.sala_id)}</small></td>
                       <td data-rotulo="Paciente">{c.paciente}</td>
                       <td data-rotulo="Cirurgia">{c.procedimento}</td>
                       <td data-rotulo="Convênio">{c.convenio || <em>sem convênio</em>}</td>

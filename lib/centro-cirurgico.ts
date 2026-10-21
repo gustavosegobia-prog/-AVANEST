@@ -23,7 +23,9 @@ export type Caso = {
   id: string;
   data: string;               // "AAAA-MM-DD"
   sala_id: string | null;
-  horario: string | null;     // "HH:MM" ou "HH:MM:SS", como o Postgres devolve
+  /** A posição no mapa do dia — a coluna numerada do mapa em papel. */
+  ordem?: number | null;
+  horario: string | null;     // "HH:MM" ou "HH:MM:SS"; nulo é "A/S", a seguir do anterior
   paciente: string;
   idade: number | null;
   prontuario: string | null;
@@ -40,14 +42,16 @@ export type Caso = {
   alta_rpa_em: string | null;
   aldrete_alta: number | null;
   cancelado_motivo: string | null;
+  /** Quarto e leito para onde volta ("9/3", "Suíte 2"). */
+  leito?: string | null;
   observacoes: string | null;
   created_at?: string;
 };
 
 /** As colunas que a tela lê — a mesma lista no servidor e na recarga do navegador. */
 export const CAMPOS_DO_CASO =
-  "id, data, sala_id, horario, paciente, idade, prontuario, procedimento, cirurgiao, convenio, anestesista_id, etapa, destino, "
-  + "entrada_sala_em, inicio_cirurgia_em, fim_cirurgia_em, saida_sala_em, alta_rpa_em, aldrete_alta, cancelado_motivo, observacoes, created_at";
+  "id, data, sala_id, ordem, horario, paciente, idade, prontuario, procedimento, cirurgiao, convenio, anestesista_id, etapa, destino, "
+  + "entrada_sala_em, inicio_cirurgia_em, fim_cirurgia_em, saida_sala_em, alta_rpa_em, aldrete_alta, cancelado_motivo, leito, observacoes, created_at";
 
 export const NOME_DA_ETAPA: Record<Etapa, string> = {
   agendado: "Agendado",
@@ -246,12 +250,12 @@ export function avisoDoAldrete(total: number | null): string | null {
 export type FormDoCaso = {
   data: string; sala_id: string; horario: string; paciente: string; idade: string;
   prontuario: string; procedimento: string; cirurgiao: string; convenio: string;
-  anestesista_id: string; observacoes: string;
+  anestesista_id: string; leito: string; observacoes: string;
 };
 
 export const formVazio = (data: string, sala_id = ""): FormDoCaso => ({
   data, sala_id, horario: "", paciente: "", idade: "", prontuario: "", procedimento: "",
-  cirurgiao: "", convenio: "", anestesista_id: "", observacoes: "",
+  cirurgiao: "", convenio: "", anestesista_id: "", leito: "", observacoes: "",
 });
 
 export function formDoCaso(c: Caso): FormDoCaso {
@@ -259,7 +263,7 @@ export function formDoCaso(c: Caso): FormDoCaso {
     data: c.data, sala_id: c.sala_id ?? "", horario: hhmm(c.horario), paciente: c.paciente,
     idade: c.idade == null ? "" : String(c.idade), prontuario: c.prontuario ?? "",
     procedimento: c.procedimento, cirurgiao: c.cirurgiao ?? "", convenio: c.convenio ?? "",
-    anestesista_id: c.anestesista_id ?? "", observacoes: c.observacoes ?? "",
+    anestesista_id: c.anestesista_id ?? "", leito: c.leito ?? "", observacoes: c.observacoes ?? "",
   };
 }
 
@@ -289,7 +293,7 @@ export function linhaDoForm(f: FormDoCaso):
       data: f.data, sala_id: f.sala_id || null, horario: f.horario || null,
       paciente: limpo(f.paciente), idade, prontuario: ouNulo(f.prontuario),
       procedimento: limpo(f.procedimento), cirurgiao: ouNulo(f.cirurgiao), convenio: ouNulo(f.convenio),
-      anestesista_id: f.anestesista_id || null, observacoes: ouNulo(f.observacoes),
+      anestesista_id: f.anestesista_id || null, leito: ouNulo(f.leito), observacoes: ouNulo(f.observacoes),
     },
   };
 }
@@ -325,14 +329,47 @@ export function anestesistasDePlantao(plantoes: PlantaoDaEscala[], data: string,
 // O mapa do dia
 // ---------------------------------------------------------------------------
 
-const chaveHorario = (c: Caso) => hhmm(c.horario) || "99:99";
+/** "07:30" quando tem hora marcada; "A/S" (a seguir) quando não tem. */
+export const horaNoMapa = (c: Pick<Caso, "horario">) => hhmm(c.horario) || "A/S";
 
-/** A fila de uma sala: pelo horário marcado, e quem não tem horário no fim. */
-export function ordenarCasos(casos: Caso[]): Caso[] {
-  return [...casos].sort((a, b) =>
-    chaveHorario(a).localeCompare(chaveHorario(b))
+const semOrdem = Number.MAX_SAFE_INTEGER;
+
+/**
+ * A ordem do mapa, como a enfermagem escreveu: pela posição (a coluna
+ * numerada do papel), e não pelo horário. No mapa real metade das linhas é
+ * "A/S" — a seguir do anterior da mesma sala —, e ordenar pelo horário jogaria
+ * todas elas para o fim. Sem posição gravada, vale o horário.
+ */
+export function compararNoMapa(a: Caso, b: Caso): number {
+  return (a.ordem ?? semOrdem) - (b.ordem ?? semOrdem)
+    || (hhmm(a.horario) || "99:99").localeCompare(hhmm(b.horario) || "99:99")
     || (a.created_at ?? "").localeCompare(b.created_at ?? "")
-    || a.id.localeCompare(b.id));
+    || a.id.localeCompare(b.id);
+}
+
+/** A fila de uma sala, na ordem do mapa. */
+export function ordenarCasos(casos: Caso[]): Caso[] {
+  return [...casos].sort(compararNoMapa);
+}
+
+/** A posição do próximo paciente posto no mapa: depois de todos. */
+export const proximaOrdem = (casos: Caso[]) => casos.reduce((m, c) => Math.max(m, c.ordem ?? 0), 0) + 1;
+
+/**
+ * Subir ou descer um paciente na fila da sala: troca de lugar com o vizinho.
+ * Devolve as posições novas de quem mudou — todos da sala renumerados a
+ * partir da menor posição deles, para posições repetidas ou vazias não
+ * deixarem a troca sem efeito.
+ */
+export function mover(fila: Caso[], id: string, direcao: -1 | 1): Array<{ id: string; ordem: number }> {
+  const i = fila.findIndex((c) => c.id === id);
+  const j = i + direcao;
+  if (i < 0 || j < 0 || j >= fila.length) return [];
+  const nova = [...fila];
+  [nova[i], nova[j]] = [nova[j], nova[i]];
+  const conhecidas = fila.map((c) => c.ordem).filter((o): o is number => o != null);
+  const base = conhecidas.length ? Math.min(...conhecidas) : 1;
+  return nova.map((c, k) => ({ id: c.id, ordem: base + k })).filter((x, k) => nova[k].ordem !== x.ordem);
 }
 
 export type ColunaDoMapa = { sala: Sala | null; casos: Caso[] };
@@ -474,19 +511,17 @@ export type LinhaDaTv = { caso: Caso; situacao: SituacaoNaTv; minutos: number | 
  * A lista da TV: todos os pacientes do dia numa fila só, e a cor diz onde
  * cada um está.
  *
- * A ordem é a do mapa — pelo horário marcado —, e quem entra em sala muda de
+ * A ordem é a do mapa — a posição que a enfermagem deu —, e quem entra em sala muda de
  * cor no MESMO lugar: a fila não pula enquanto se olha para ela. Quem sai para
  * a RPA desce para o fim, com outra cor, por ordem de chegada; depois vêm as
  * altas, e as canceladas por último.
  */
 export function linhasDaTv(casos: Caso[], agoraMs: number): LinhaDaTv[] {
-  const chave = (c: Caso) => hhmm(c.horario) || horaDe(c.entrada_sala_em) || "99:99";
-  const porHorario = (a: Caso, b: Caso) => chave(a).localeCompare(chave(b)) || a.paciente.localeCompare(b.paciente, "pt-BR");
   const porInstante = (k: (c: Caso) => string | null) => (a: Caso, b: Caso) => (k(a) ?? "").localeCompare(k(b) ?? "");
-  const fila = casos.filter((c) => c.etapa === "agendado" || c.etapa === "em_sala").sort(porHorario);
+  const fila = casos.filter((c) => c.etapa === "agendado" || c.etapa === "em_sala").sort(compararNoMapa);
   const rpa = casos.filter((c) => c.etapa === "rpa").sort(porInstante((c) => c.saida_sala_em));
   const altas = casos.filter((c) => c.etapa === "concluido").sort(porInstante((c) => c.alta_rpa_em ?? c.saida_sala_em));
-  const canceladas = casos.filter((c) => c.etapa === "cancelado").sort(porHorario);
+  const canceladas = casos.filter((c) => c.etapa === "cancelado").sort(compararNoMapa);
   return [...fila, ...rpa, ...altas, ...canceladas].map((caso) => {
     if (caso.etapa === "em_sala" || caso.etapa === "rpa") {
       return { caso, situacao: caso.etapa, minutos: tempoNaEtapa(caso, agoraMs) };

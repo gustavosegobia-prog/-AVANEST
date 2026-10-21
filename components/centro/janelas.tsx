@@ -38,13 +38,15 @@ export function mensagemDoBanco(m: string): string {
  * acompanhar o horário no momento em que alguém escolhe outro nome.
  */
 export function JanelaDoCaso({
-  institutionId, dia, caso, salaInicial, salas, anestesistas, dePlantao, onFechar, onSalvo, onApagado, onCancelar, gravar,
+  institutionId, dia, caso, salaInicial, salas, ordemNova, anestesistas, dePlantao, onFechar, onSalvo, onApagado, onCancelar, gravar,
 }: {
   institutionId: string;
   dia: string;
   caso: Caso | null;
   salaInicial: string;
   salas: Sala[];
+  /** A posição do paciente novo no mapa: depois de todos. */
+  ordemNova: number;
   anestesistas: Anestesista[];
   dePlantao: (data: string, horario: string | null) => string[];
   onFechar: () => void;
@@ -82,7 +84,7 @@ export function JanelaDoCaso({
     const sb = createClient();
     const pedido = caso
       ? sb.from("centro_casos").update(r.linha).eq("id", caso.id)
-      : sb.from("centro_casos").insert({ institution_id: institutionId, ...r.linha });
+      : sb.from("centro_casos").insert({ institution_id: institutionId, ordem: ordemNova, ...r.linha });
     const { data, error } = await pedido.select(CAMPOS_DO_CASO).maybeSingle();
     setOcupado(false);
     if (error) { setErro(mensagemDoBanco(error.message)); return; }
@@ -147,7 +149,8 @@ export function JanelaDoCaso({
         <label className="clinicalField"><span>Data *</span>
           <input type="date" value={form.data} onChange={(e) => mudar("data", e.target.value)} /></label>
         <label className="clinicalField"><span>Horário</span>
-          <input type="time" value={form.horario} onChange={(e) => mudar("horario", e.target.value)} /></label>
+          <input type="time" value={form.horario} onChange={(e) => mudar("horario", e.target.value)} />
+          <small className={estilos.dica}>Em branco é “A/S”: a seguir do anterior da mesma sala.</small></label>
         <label className="clinicalField"><span>Sala</span>
           <select value={form.sala_id} onChange={(e) => mudar("sala_id", e.target.value)}>
             <option value="">Sem sala</option>
@@ -165,6 +168,8 @@ export function JanelaDoCaso({
               ? `De plantão${form.horario ? ` às ${form.horario}` : " no dia"}: ${plantao.map(nome).filter(Boolean).join(", ")}.`
               : "Ninguém na escala neste horário."}
           </small></label>
+        <label className="clinicalField"><span>Quarto / leito</span>
+          <input value={form.leito} onChange={(e) => mudar("leito", e.target.value)} maxLength={40} placeholder="Ex.: 9/3, Suíte 2" /></label>
         <label className={`clinicalField ${estilos.campoLargo}`}><span>Observações</span>
           <textarea rows={2} value={form.observacoes} onChange={(e) => mudar("observacoes", e.target.value)} maxLength={500}
             placeholder="Ex.: alergia a látex, precisa de vaga de UTI" /></label>

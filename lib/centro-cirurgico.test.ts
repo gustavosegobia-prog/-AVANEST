@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
-  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, type Caso,
+  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, type Caso,
 } from "./centro-cirurgico.ts";
 
 const iso = (data: string, h: string) => new Date(`${data}T${h}:00-03:00`).toISOString();
@@ -192,4 +192,38 @@ test("a TV é uma fila só: em sala muda de cor no lugar, RPA desce para o fim, 
   assert.deepEqual(l.map((x) => x.caso.id), ["sala", "atrasada", "depois", "rpa1", "rpa2", "alta", "cancelada"]);
   assert.deepEqual(l.map((x) => x.situacao), ["em_sala", "atrasado", "agendado", "rpa", "rpa", "concluido", "cancelado"]);
   assert.deepEqual(l.map((x) => x.minutos), [50, 30, null, 40, 20, null, null]);
+});
+
+test("o mapa segue a posição da enfermagem: o A/S fica no lugar, e não no fim", () => {
+  const casos = [
+    caso({ id: "3", ordem: 3, horario: null }),
+    caso({ id: "1", ordem: 1, horario: "07:30" }),
+    caso({ id: "2", ordem: 2, horario: null }),
+    caso({ id: "4", ordem: 4, horario: "14:00" }),
+    caso({ id: "5", ordem: 5, horario: null }),
+  ];
+  assert.deepEqual(ordenarCasos(casos).map((c) => c.id), ["1", "2", "3", "4", "5"]);
+  assert.equal(horaNoMapa(caso({ horario: null })), "A/S");
+  assert.equal(horaNoMapa(caso({ horario: "07:30:00" })), "07:30");
+  // Sem posição gravada, vale o horário (e o sem horário vai para o fim).
+  assert.deepEqual(ordenarCasos([caso({ id: "x", horario: null }), caso({ id: "y", horario: "09:00" })]).map((c) => c.id), ["y", "x"]);
+  // A TV segue a mesma ordem.
+  assert.deepEqual(linhasDaTv(casos, Date.parse("2026-10-21T07:00:00-03:00")).map((l) => l.caso.id), ["1", "2", "3", "4", "5"]);
+  assert.equal(proximaOrdem(casos), 6);
+  assert.equal(proximaOrdem([]), 1);
+});
+
+test("subir e descer na fila da sala troca com o vizinho, mesmo com posição repetida ou vazia", () => {
+  const fila = [caso({ id: "a", ordem: 2 }), caso({ id: "b", ordem: 5 }), caso({ id: "c", ordem: 9 })];
+  assert.deepEqual(mover(fila, "c", -1), [{ id: "c", ordem: 3 }, { id: "b", ordem: 4 }]);
+  assert.deepEqual(mover(fila, "a", -1), []);
+  assert.deepEqual(mover(fila, "c", 1), []);
+  const semPosicao = [caso({ id: "a", ordem: null }), caso({ id: "b", ordem: null })];
+  assert.deepEqual(mover(semPosicao, "a", 1), [{ id: "b", ordem: 1 }, { id: "a", ordem: 2 }]);
+});
+
+test("o quarto/leito vai e volta do formulário", () => {
+  const r = linhaDoForm({ ...formVazio("2026-10-21"), paciente: "P", procedimento: "C", leito: " 9/3 " });
+  assert.ok(r.ok && r.linha.leito === "9/3");
+  assert.equal(formDoCaso(caso({ leito: "Suíte 2" })).leito, "Suíte 2");
 });

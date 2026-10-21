@@ -116,6 +116,10 @@ create table if not exists public.centro_casos (
   institution_id uuid not null references public.instituicoes(id) on delete cascade,
   data date not null,
   sala_id uuid references public.centro_salas(id) on delete set null,
+  -- A posição no mapa do dia, como a coluna numerada do mapa em papel. Muitos
+  -- pacientes não têm hora marcada — são "A/S", a seguir do anterior da mesma
+  -- sala —, e só a ordem diz quem vem depois de quem.
+  ordem integer,
   horario time,
   paciente text not null check (length(btrim(paciente)) between 1 and 120),
   idade smallint check (idade between 0 and 130),
@@ -135,6 +139,8 @@ create table if not exists public.centro_casos (
   alta_rpa_em timestamptz,
   aldrete_alta smallint check (aldrete_alta between 0 and 10),
   cancelado_motivo text check (cancelado_motivo is null or length(cancelado_motivo) <= 300),
+  -- Quarto e leito para onde o paciente volta ("9/3", "Suíte 2").
+  leito text check (leito is null or length(leito) <= 40),
   observacoes text check (observacoes is null or length(observacoes) <= 500),
   patient_id uuid references public.pacientes(id) on delete set null,
   evolucao_id uuid references public.evolucoes_anestesicas(id) on delete set null,
@@ -151,7 +157,7 @@ create table if not exists public.centro_casos (
   constraint centro_casos_cirurgia_em_ordem
     check (fim_cirurgia_em is null or inicio_cirurgia_em is null or fim_cirurgia_em >= inicio_cirurgia_em)
 );
-create index if not exists centro_casos_dia_idx on public.centro_casos (institution_id, data);
+create index if not exists centro_casos_dia_idx on public.centro_casos (institution_id, data, ordem);
 create index if not exists centro_casos_anestesista_idx on public.centro_casos (anestesista_id, data);
 alter table public.centro_casos enable row level security;
 
