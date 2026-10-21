@@ -467,27 +467,34 @@ export function atraso(c: Caso, agoraMs: number, tolerancia = 15): number | null
   return min != null && min > tolerancia ? min : null;
 }
 
-export type SalaNaTv = { sala: Sala; agora: Caso[]; aSeguir: Caso[]; feitas: number; restantes: number };
+export type SituacaoNaTv = "agendado" | "atrasado" | "em_sala" | "rpa" | "concluido" | "cancelado";
+export type LinhaDaTv = { caso: Caso; situacao: SituacaoNaTv; minutos: number | null };
 
 /**
- * O que a TV mostra de cada sala: quem está nela agora, os próximos da fila e
- * quantas já terminaram. As salas desativadas ficam fora — a TV é do dia de
- * hoje, e não do cadastro.
+ * A lista da TV: todos os pacientes do dia numa fila só, e a cor diz onde
+ * cada um está.
+ *
+ * A ordem é a do mapa — pelo horário marcado —, e quem entra em sala muda de
+ * cor no MESMO lugar: a fila não pula enquanto se olha para ela. Quem sai para
+ * a RPA desce para o fim, com outra cor, por ordem de chegada; depois vêm as
+ * altas, e as canceladas por último.
  */
-export function painelDaTv(salas: Sala[], casos: Caso[], proximos = 3) {
-  const ativas = [...salas].filter((s) => s.ativa).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR"));
-  const porSala: SalaNaTv[] = ativas.map((sala) => {
-    const daSala = ordenarCasos(casos.filter((c) => c.sala_id === sala.id));
-    const fila = daSala.filter((c) => c.etapa === "agendado");
-    return {
-      sala,
-      agora: daSala.filter((c) => c.etapa === "em_sala"),
-      aSeguir: fila.slice(0, proximos),
-      feitas: daSala.filter((c) => c.etapa === "rpa" || c.etapa === "concluido").length,
-      restantes: fila.length,
-    };
+export function linhasDaTv(casos: Caso[], agoraMs: number): LinhaDaTv[] {
+  const chave = (c: Caso) => hhmm(c.horario) || horaDe(c.entrada_sala_em) || "99:99";
+  const porHorario = (a: Caso, b: Caso) => chave(a).localeCompare(chave(b)) || a.paciente.localeCompare(b.paciente, "pt-BR");
+  const porInstante = (k: (c: Caso) => string | null) => (a: Caso, b: Caso) => (k(a) ?? "").localeCompare(k(b) ?? "");
+  const fila = casos.filter((c) => c.etapa === "agendado" || c.etapa === "em_sala").sort(porHorario);
+  const rpa = casos.filter((c) => c.etapa === "rpa").sort(porInstante((c) => c.saida_sala_em));
+  const altas = casos.filter((c) => c.etapa === "concluido").sort(porInstante((c) => c.alta_rpa_em ?? c.saida_sala_em));
+  const canceladas = casos.filter((c) => c.etapa === "cancelado").sort(porHorario);
+  return [...fila, ...rpa, ...altas, ...canceladas].map((caso) => {
+    if (caso.etapa === "em_sala" || caso.etapa === "rpa") {
+      return { caso, situacao: caso.etapa, minutos: tempoNaEtapa(caso, agoraMs) };
+    }
+    if (caso.etapa === "agendado") {
+      const min = atraso(caso, agoraMs);
+      return { caso, situacao: min != null ? "atrasado" : "agendado", minutos: min };
+    }
+    return { caso, situacao: caso.etapa, minutos: null };
   });
-  const rpa = [...casos.filter((c) => c.etapa === "rpa")]
-    .sort((a, b) => (a.saida_sala_em ?? "").localeCompare(b.saida_sala_em ?? ""));
-  return { porSala, rpa, contagem: contagemPorEtapa(casos) };
 }
