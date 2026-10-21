@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
-  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, type Caso,
+  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, type Caso,
 } from "./centro-cirurgico.ts";
 
 const iso = (data: string, h: string) => new Date(`${data}T${h}:00-03:00`).toISOString();
@@ -226,4 +226,20 @@ test("o quarto/leito vai e volta do formulário", () => {
   const r = linhaDoForm({ ...formVazio("2026-10-21"), paciente: "P", procedimento: "C", leito: " 9/3 " });
   assert.ok(r.ok && r.linha.leito === "9/3");
   assert.equal(formDoCaso(caso({ leito: "Suíte 2" })).leito, "Suíte 2");
+});
+
+test("a marca d'água é o logo da própria casa, e não o do primeiro hospital da lista", () => {
+  // Nomes fictícios.
+  const grupo = "Grupo Alfa — Serviço de Anestesiologia";
+  const locais = [
+    { nome: "Hospital Beta", logo_url: "beta.png" },
+    { nome: "GRUPO ALFA", logo_url: "alfa.png" },
+    { nome: "Clínica Gama", logo_url: null },
+  ];
+  assert.equal(marcaDaCasa(grupo, locais), "alfa.png");
+  // Vários hospitais e nenhum com o nome da casa: sem marca.
+  assert.equal(marcaDaCasa(grupo, [locais[0], { nome: "Instituto Delta", logo_url: "delta.png" }]), null);
+  // Um logo só: é ele.
+  assert.equal(marcaDaCasa("Hospital Épsilon — Centro Cirúrgico", [{ nome: "Fundação Épsilon", logo_url: "e.png" }]), "e.png");
+  assert.equal(marcaDaCasa(grupo, []), null);
 });

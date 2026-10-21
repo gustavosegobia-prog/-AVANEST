@@ -535,3 +535,27 @@ export function linhasDaTv(casos: Caso[], agoraMs: number): LinhaDaTv[] {
     return { caso, situacao: caso.etapa, minutos: null };
   });
 }
+
+// ---------------------------------------------------------------------------
+// A marca d'água
+// ---------------------------------------------------------------------------
+
+const nomeSimples = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/**
+ * O logo da casa, para a marca d'água do mapa e da TV.
+ *
+ * Só o logo da PRÓPRIA organização: o do local com o mesmo nome dela
+ * ("INOVANEST — Serviço de…" acha o local "INOVANEST"), ou o único logo
+ * cadastrado. O grupo de anestesia que atende em vários hospitais tem um logo
+ * por hospital — o primeiro da lista punha a Santa Casa no mapa do grupo. Sem
+ * um logo que seja claramente da casa, o mapa fica sem marca.
+ */
+export function marcaDaCasa(nomeDaCasa: string, locais: Array<{ nome: string; logo_url: string | null }>): string | null {
+  const comLogo = locais.filter((l): l is { nome: string; logo_url: string } => Boolean(l.logo_url));
+  const nomes = new Set([nomeSimples(nomeDaCasa), nomeSimples(nomeDaCasa.split(/\s+[—–-]\s+/)[0])]);
+  const daCasa = comLogo.find((l) => nomes.has(nomeSimples(l.nome)));
+  if (daCasa) return daCasa.logo_url;
+  return comLogo.length === 1 ? comLogo[0].logo_url : null;
+}

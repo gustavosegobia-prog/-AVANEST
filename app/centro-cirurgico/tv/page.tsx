@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje } from "@/lib/data-local";
 import { apelidosDaEquipe } from "@/lib/escala";
-import { CAMPOS_DO_CASO, type Caso, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, marcaDaCasa, type Caso, type Sala } from "@/lib/centro-cirurgico";
 import { PainelTv } from "@/components/centro/painel-tv";
 
 export const metadata: Metadata = {
@@ -27,15 +27,15 @@ export default async function TvDoCentroPage() {
   if (podeVer !== true) redirect("/dashboard");
 
   const dia = hoje();
-  const [instituicao, salas, casos, equipe, local] = await Promise.all([
+  const [instituicao, salas, casos, equipe, locais] = await Promise.all([
     supabase.from("instituicoes").select("nome").eq("id", inst).maybeSingle(),
     supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst).order("ordem"),
     supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst).eq("data", dia),
     supabase.from("perfis").select("id, nome").eq("institution_id", inst),
-    // O logo do hospital, do cadastro de locais (Admin → Locais): a marca
-    // d'água do mapa. Sem logo cadastrado, o mapa sai sem marca.
-    supabase.from("locais_atendimento").select("logo_url").eq("institution_id", inst).eq("ativo", true)
-      .not("logo_url", "is", null).order("created_at").limit(1).maybeSingle(),
+    // Os logos do cadastro de locais (Admin → Locais): a marca d'água é o da
+    // própria casa (marcaDaCasa). Sem ele, o mapa sai sem marca.
+    supabase.from("locais_atendimento").select("nome, logo_url").eq("institution_id", inst).eq("ativo", true)
+      .not("logo_url", "is", null),
   ]);
   const apelidos = apelidosDaEquipe((equipe.data ?? []) as Array<{ id: string; nome: string }>);
 
@@ -47,7 +47,7 @@ export default async function TvDoCentroPage() {
       salasIniciais={(salas.data ?? []) as Sala[]}
       casosIniciais={(casos.data ?? []) as unknown as Caso[]}
       apelidos={Object.fromEntries(apelidos)}
-      marca={(local.data?.logo_url as string | undefined) || null}
+      marca={marcaDaCasa((instituicao.data?.nome as string | undefined) ?? "", (locais.data ?? []) as Array<{ nome: string; logo_url: string | null }>)}
       agora={agoraMs()}
     />
   );

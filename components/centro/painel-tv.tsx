@@ -6,6 +6,7 @@ import {
   CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, iniciaisDoPaciente, linhasDaTv,
   type Caso, type LinhaDaTv, type Sala,
 } from "@/lib/centro-cirurgico";
+import { MarcaDagua } from "./marca-dagua";
 import estilos from "./tv.module.css";
 
 const RELOGIO = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -133,12 +134,7 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
 
   return (
     <div className={`clinicalDark ${estilos.tv}`}>
-      {marca && (
-        <div className={estilos.marcaDagua} aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element -- logo enviado pelo hospital, de qualquer tamanho */}
-          <img src={marca} alt="" />
-        </div>
-      )}
+      <MarcaDagua src={marca} className={estilos.marcaDagua} />
       <header className={estilos.topo}>
         <div className={estilos.casa}>
           <span>Centro cirúrgico</span>

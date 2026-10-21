@@ -13,6 +13,7 @@ import {
 } from "@/lib/centro-cirurgico";
 import { JanelaDoCaso, JanelaDoPasso, JanelaDeCancelar, JanelaDasSalas, mensagemDoBanco } from "./janelas";
 import { JanelaDeImportar } from "./importar";
+import { MarcaDagua } from "./marca-dagua";
 import estilos from "./mapa.module.css";
 
 export type Anestesista = { id: string; nome: string; apelido: string };
@@ -324,12 +325,7 @@ function Casca({ children, marca }: { children: React.ReactNode; marca: string |
     <div className="fcFundo temaApp">
       {/* A marca d'água do hospital: por cima de tudo, bem clara, e sem
           receber toque — o clique atravessa. */}
-      {marca && (
-        <div className={estilos.marcaDagua} aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element -- logo enviado pelo hospital, de qualquer tamanho */}
-          <img src={marca} alt="" />
-        </div>
-      )}
+      <MarcaDagua src={marca} className={estilos.marcaDagua} />
       <main className={`fcPagina ${estilos.pagina}`}>
         <header className="fcTopo">
           <Link href="/dashboard" className="fcVoltar">
