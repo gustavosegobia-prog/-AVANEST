@@ -96,6 +96,9 @@
 .rodape { display: flex; align-items: center; gap: calc(var(--g) * 2); font-size: .95vw; color: var(--cor-tinta-fraca); }
 .paginas { padding: .2vw .8vw; border-radius: 999px; background: var(--cor-superficie-suave); color: var(--cor-tinta-forte); font-weight: 750; }
 .privacidade { margin-left: auto; }
+/* Depois de recarregar sozinha numa versão nova: o aviso de que um clique
+   devolve a tela cheia, na cor da marca para quem está perto do computador. */
+.atualizou { padding: .3vw 1vw; border-radius: 999px; background: var(--cor-marca); color: #fff; font-weight: 750; }
 .rodape button { padding: .4vw 1vw; border: 1px solid var(--cor-borda-forte); border-radius: 8px; background: transparent;
   color: var(--cor-tinta); font: inherit; font-weight: 700; cursor: pointer; }
 

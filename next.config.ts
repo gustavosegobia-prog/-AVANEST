@@ -70,7 +70,13 @@ const IMPRESSAO_EMBUTIVEL = [
   },
 ];
 
+// A VERSÃO DO SITE (lib/versao.ts): o commit que a Vercel está publicando,
+// escrito no código do navegador e no do servidor no mesmo build. Fora da
+// Vercel fica "local" dos dois lados — e versões iguais nunca recarregam nada.
+const VERSAO_DO_SITE = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || "local";
+
 const nextConfig: NextConfig = {
+  env: { VERSAO_DO_SITE },
   async headers() {
     return [
       { source: "/:path*", headers: CABECALHOS },

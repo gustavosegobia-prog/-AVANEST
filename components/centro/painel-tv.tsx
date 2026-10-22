@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { hoje } from "@/lib/data-local";
+import { VERSAO_DO_SITE, deveRecarregar } from "@/lib/versao";
 import {
   CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, linhasDaTv, nomeNaTv,
   type Caso, type LinhaDaTv, type Sala,
@@ -17,6 +19,12 @@ const DATA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric",
 const LINHA_VW = 0.036;
 /** Quanto tempo cada página fica na tela quando a lista não cabe numa só. */
 const TROCA_DE_PAGINA_MS = 12000;
+/** De quanto em quanto tempo a TV pergunta se saiu versão nova do site. */
+const CONFERE_VERSAO_MS = 5 * 60_000;
+/** A versão pela qual a TV já recarregou (lib/versao.ts, deveRecarregar). */
+const CHAVE_VERSAO = "avanest:tv-recarregou-para";
+/** A TV estava em tela cheia quando recarregou: o primeiro toque volta a ela. */
+const CHAVE_TELA_CHEIA = "avanest:tv-voltar-tela-cheia";
 
 const idade = (c: Caso) => (c.idade == null ? "" : `${c.idade}a`);
 
@@ -103,6 +111,11 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
   const [casos, setCasos] = useState(casosIniciais);
   const [agora, setAgora] = useState(agoraDoServidor);
   const [atualizado, setAtualizado] = useState(agoraDoServidor);
+  // O dia que a TV mostra. Começa no do servidor e vira sozinho à meia-noite:
+  // a TV fica ligada dias seguidos, e com o dia fixo na abertura ela seguia
+  // mostrando os pacientes de ontem na manhã seguinte.
+  const diaAtual = useRef(dia);
+  const [voltarTelaCheia, setVoltarTelaCheia] = useState(false);
   const [semRede, setSemRede] = useState(false);
   const [telaCheia, setTelaCheia] = useState(false);
   const [porPagina, setPorPagina] = useState(12);
@@ -113,20 +126,74 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
     const sb = createClient();
     const [s, c] = await Promise.all([
       sb.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", institutionId).order("ordem"),
-      sb.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", institutionId).eq("data", dia),
+      sb.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", institutionId).eq("data", diaAtual.current),
     ]);
     if (s.error || c.error) { setSemRede(true); return; }
     setSalas((s.data ?? []) as Sala[]);
     setCasos((c.data ?? []) as unknown as Caso[]);
     setSemRede(false);
     setAtualizado(Date.now());
-  }, [institutionId, dia]);
+  }, [institutionId]);
 
   useEffect(() => {
-    const relogio = window.setInterval(() => setAgora(Date.now()), 15000);
+    const relogio = window.setInterval(() => {
+      setAgora(Date.now());
+      // Virou o dia: o mapa novo entra na hora, sem esperar o próximo meio minuto.
+      const d = hoje();
+      if (d !== diaAtual.current) { diaAtual.current = d; void recarregar(); }
+    }, 15000);
     const dados = window.setInterval(() => { void recarregar(); }, 30000);
     return () => { window.clearInterval(relogio); window.clearInterval(dados); };
   }, [recarregar]);
+
+  // VERSÃO NOVA DO SITE. Os dados chegam sozinhos, mas o código da página não:
+  // uma melhoria publicada só aparecia na TV com alguém apertando F5 (22/10/2026,
+  // a assinatura que não apareceu). A cada cinco minutos ela pergunta a versão
+  // ao servidor e, se mudou, recarrega — uma vez por versão. Sem cookie na
+  // pergunta, para a resposta ser a da versão publicada, e não a da que a
+  // sessão abriu.
+  useEffect(() => {
+    const conferir = async () => {
+      try {
+        const r = await fetch(`/api/versao?t=${Date.now()}`, { cache: "no-store", credentials: "omit" });
+        if (!r.ok) return;
+        const { versao } = (await r.json()) as { versao?: string };
+        let tentada: string | null = null;
+        try { tentada = sessionStorage.getItem(CHAVE_VERSAO); } catch { /* sem memória da aba: segue */ }
+        if (!versao || !deveRecarregar(VERSAO_DO_SITE, versao, tentada)) return;
+        try {
+          sessionStorage.setItem(CHAVE_VERSAO, versao);
+          if (document.fullscreenElement) sessionStorage.setItem(CHAVE_TELA_CHEIA, "1");
+        } catch { /* recarrega mesmo assim */ }
+        window.location.reload();
+      } catch { /* sem rede: pergunta de novo na próxima */ }
+    };
+    const id = window.setInterval(() => { void conferir(); }, CONFERE_VERSAO_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Depois de recarregar, a tela cheia se perde: o navegador só a devolve com
+  // um toque de alguém. Se ela estava em tela cheia, o primeiro clique ou
+  // tecla em qualquer lugar da TV volta para ela, e um aviso diz isso.
+  useEffect(() => {
+    let voltar = false;
+    try { voltar = sessionStorage.getItem(CHAVE_TELA_CHEIA) === "1"; } catch { /* sem memória da aba: fica o botão Tela cheia */ }
+    if (!voltar || document.fullscreenElement) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- memória da aba, só existe depois de montar
+    setVoltarTelaCheia(true);
+    // A marca só sai com o toque: até lá, outra recarga ainda volta à tela cheia.
+    const aoTocar = () => {
+      try { sessionStorage.removeItem(CHAVE_TELA_CHEIA); } catch { /* segue */ }
+      setVoltarTelaCheia(false);
+      void document.documentElement.requestFullscreen?.().catch(() => {});
+    };
+    document.addEventListener("pointerdown", aoTocar, { once: true });
+    document.addEventListener("keydown", aoTocar, { once: true });
+    return () => {
+      document.removeEventListener("pointerdown", aoTocar);
+      document.removeEventListener("keydown", aoTocar);
+    };
+  }, []);
 
   // Quantas linhas cabem: a altura da lista dividida pela altura de uma linha,
   // que é fixa (em vw) justamente para esta conta dar certo em qualquer TV.
@@ -233,6 +300,9 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
       <div className={estilos.rodape}>
         <span>{semRede ? "Sem conexão: mostrando o último mapa recebido" : `Atualizado às ${RELOGIO.format(atualizado)} · atualiza sozinho`}</span>
         {paginas > 1 && <span className={estilos.paginas}>Página {atual + 1} de {paginas}</span>}
+        {voltarTelaCheia && (
+          <span className={estilos.atualizou} role="status">Sistema atualizado · clique em qualquer lugar para voltar à tela cheia</span>
+        )}
         <span className={estilos.privacidade}>Só o primeiro e o segundo nome, por privacidade</span>
         {!telaCheia && (
           <button type="button" onClick={() => void document.documentElement.requestFullscreen?.().catch(() => {})}>
