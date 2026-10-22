@@ -107,3 +107,37 @@
 .marcaDagua { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; pointer-events: none;
   opacity: .09; mix-blend-mode: screen; }
 .marcaDagua img { width: 62vw; max-height: 62vh; object-fit: contain; filter: grayscale(1) invert(1) contrast(1.5) brightness(1.6); }
+
+/* ── Fundo claro ────────────────────────────────────────────────────────────
+   A opção do aparelho (botão "Fundo claro", lib/tema.ts), pedida em 22/10/2026:
+   fundo branco e letras pretas. Os tons das linhas são mais fortes que os
+   "suaves" do site — a três metros, um verde quase branco não se distingue do
+   branco — e as palavras de cada situação, mais escuras, para ler sobre eles.
+   Vence a classe do tema escuro por estar presa ao <html>. */
+:global(html[data-tv-tema=claro]) .tv {
+  color-scheme: light;
+  --cor-fundo: #eef2f6;
+  --cor-superficie: #fff;
+  --cor-superficie-suave: #e6ecf2;
+  --cor-borda: #d2dbe4;
+  --cor-borda-forte: #9aabbc;
+  --cor-tinta-forte: #000;
+  --cor-tinta: #111;
+  --cor-tinta-fraca: #3b4651;
+  --cor-marca: #1668b3;
+  --cor-marca-forte: #0d5493;
+  --cor-marca-suave: #e4f0fb;
+  --cor-marca-contraste: #fff;
+  --cor-sucesso: #08704f;
+  --cor-sucesso-suave: #c6ecd8;
+  --cor-atencao: #7f5500;
+  --cor-atencao-suave: #ffe2a0;
+  --cor-perigo: #b3242a;
+  --cor-perigo-forte: #8f1c21;
+  --cor-perigo-suave: #f9cfd0;
+  --alta: var(--cor-marca);
+}
+/* O logo do hospital no claro: sem inverter, misturado por cima ("multiply"),
+   e o fundo branco do JPG some no branco da lista. */
+:global(html[data-tv-tema=claro]) .marcaDagua { mix-blend-mode: multiply; opacity: .07; }
+:global(html[data-tv-tema=claro]) .marcaDagua img { filter: grayscale(1) contrast(1.3); }

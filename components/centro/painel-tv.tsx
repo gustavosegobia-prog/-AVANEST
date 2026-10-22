@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { hoje } from "@/lib/data-local";
 import { VERSAO_DO_SITE, deveRecarregar } from "@/lib/versao";
+import { assinarTemaDaTv, guardarTvClara, tvClara } from "@/lib/tema";
 import {
   CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, linhasDaTv, nomeNaTv,
   type Caso, type LinhaDaTv, type Sala,
@@ -116,6 +117,9 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
   // mostrando os pacientes de ontem na manhã seguinte.
   const diaAtual = useRef(dia);
   const [voltarTelaCheia, setVoltarTelaCheia] = useState(false);
+  // Fundo claro ou escuro: o CSS segue o <html> (lib/tema.ts); daqui só sai o
+  // rótulo do botão. No servidor não há aparelho, e o padrão é o escuro.
+  const clara = useSyncExternalStore(assinarTemaDaTv, tvClara, () => false);
   const [semRede, setSemRede] = useState(false);
   const [telaCheia, setTelaCheia] = useState(false);
   const [porPagina, setPorPagina] = useState(12);
@@ -304,6 +308,11 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
           <span className={estilos.atualizou} role="status">Sistema atualizado · clique em qualquer lugar para voltar à tela cheia</span>
         )}
         <span className={estilos.privacidade}>Só o primeiro e o segundo nome, por privacidade</span>
+        {!telaCheia && (
+          <button type="button" onClick={() => guardarTvClara(!clara)}>
+            {clara ? "Fundo escuro" : "Fundo claro"}
+          </button>
+        )}
         {!telaCheia && (
           <button type="button" onClick={() => void document.documentElement.requestFullscreen?.().catch(() => {})}>
             Tela cheia

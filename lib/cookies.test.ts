@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { COOKIE_LOCAL, COOKIE_LOCAL_MAX_AGE } from "./local-ativo.ts";
-import { CHAVE_DO_TEMA } from "./tema.ts";
+import { CHAVE_DO_TEMA, CHAVE_DO_TEMA_DA_TV } from "./tema.ts";
 import { CHAVE_DO_CONSENTIMENTO, rotaAceitaAnuncios } from "./anuncios.ts";
 
 // A Política de Cookies é um inventário: cada promessa dela tem de bater com o
@@ -15,6 +15,10 @@ test("a política de cookies lista o que o sistema grava, com os nomes do códig
   assert.ok(politica.includes(`nome: "${COOKIE_LOCAL}"`), COOKIE_LOCAL);
   assert.equal(COOKIE_LOCAL_MAX_AGE, 60 * 60 * 24 * 30, "a política diz 30 dias para o cookie do local");
   assert.ok(politica.includes(`nome: "${CHAVE_DO_TEMA}"`), CHAVE_DO_TEMA);
+  assert.ok(politica.includes(`nome: "${CHAVE_DO_TEMA_DA_TV}"`), CHAVE_DO_TEMA_DA_TV);
+  for (const chave of ler("components/centro/painel-tv.tsx").matchAll(/const CHAVE_[A-Z_]+ = "(avanest:[^"]+)"/g)) {
+    assert.ok(politica.includes(chave[1]), `a TV do centro cirúrgico: ${chave[1]}`);
+  }
   assert.ok(politica.includes(`nome: "${CHAVE_DO_CONSENTIMENTO}"`), CHAVE_DO_CONSENTIMENTO);
 
   const fila = ler("lib/evolucao/fila.ts").match(/`(avanest:evolucao-fila:)\$\{/);

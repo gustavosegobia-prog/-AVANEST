@@ -59,7 +59,9 @@ const PREFERENCIAS: Linha[] = [
   { nome: "avanest:painel:…, avanest:evo-pre, avanest:escala-impressa", onde: "Armazenamento local", para: "Painéis abertos ou recolhidos e o modelo de impressão da escala.", duracao: "Até você mudar" },
   { nome: "avanest:evo-favoritos:…, avanest.doses.favoritos", onde: "Armazenamento local", para: "Medicamentos favoritos na ficha e na calculadora de doses.", duracao: "Até você mudar" },
   { nome: "avanest-instalar-convite, avanest-push-convite", onde: "Armazenamento local", para: "Quando voltar a sugerir instalar o aplicativo ou ligar as notificações.", duracao: "7 e 14 dias" },
+  { nome: "avanest:tv-tema", onde: "Armazenamento local", para: "Fundo claro ou escuro na TV do centro cirúrgico.", duracao: "Até você mudar" },
   { nome: "avanest:abertura", onde: "Armazenamento da sessão", para: "Se a abertura da marca já passou nesta visita.", duracao: "Até fechar a aba" },
+  { nome: "avanest:tv-recarregou-para, avanest:tv-voltar-tela-cheia", onde: "Armazenamento da sessão", para: "A versão do site pela qual a TV do centro cirúrgico já recarregou, e se ela estava em tela cheia.", duracao: "Até fechar a aba" },
 ];
 
 const ANUNCIOS: Linha[] = [
