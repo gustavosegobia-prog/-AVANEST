@@ -465,7 +465,7 @@ export default async function DashboardPage({
       // da pré-carga (e confere com o servidor) ou acabou de chegar.
       geradoEm={new Date().getTime()}
       podeFichaAnestesica={podeFicha === true}
-      podeMapaCirurgico={abreOCentro(podeCentro, perfil.super_admin)}
+      podeMapaCirurgico={abreOCentro(podeCentro)}
       tutorialNoPrimeiroAcesso={abreTutorialSozinho({ criadaEm: user.created_at, vistoEm: user.user_metadata?.tutorial_visto_em })}
       // Vem do servidor, que já tem a sessão. Buscar no navegador deixaria a
       // tela "carregando..." — e o botão de trocar senha travado — sempre que

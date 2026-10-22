@@ -245,8 +245,7 @@ test("a marca d'água é o logo da própria casa, e não o do primeiro hospital 
 });
 
 test("por enquanto o centro cirúrgico só abre para quem monta o mapa", () => {
-  assert.equal(abreOCentro(true, false), true, "o enfermeiro chefe");
-  assert.equal(abreOCentro(false, false), false, "o médico da casa");
-  assert.equal(abreOCentro(true, true), false, "o super-admin, que só via pela chave geral");
-  assert.equal(abreOCentro(null, null), false, "sem a função no banco");
+  assert.equal(abreOCentro(true), true, "o enfermeiro chefe, e o super-admin para testar");
+  assert.equal(abreOCentro(false), false, "o médico da casa, que o banco deixaria ver");
+  assert.equal(abreOCentro(null), false, "sem a função no banco");
 });

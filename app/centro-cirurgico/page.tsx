@@ -25,11 +25,11 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: perfil } = await supabase
-    .from("perfis").select("id, institution_id, status, super_admin").eq("id", user.id).maybeSingle();
+    .from("perfis").select("id, institution_id, status").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) redirect("/dashboard");
   const inst = perfil.institution_id as string;
   const { data: podeMontar } = await supabase.rpc("pode_montar_centro", { p_institution_id: inst });
-  if (!abreOCentro(podeMontar, perfil.super_admin)) redirect("/dashboard");
+  if (!abreOCentro(podeMontar)) redirect("/dashboard");
 
   const { data: pedido } = await searchParams;
   const dia = /^\d{4}-\d{2}-\d{2}$/.test(pedido ?? "") ? (pedido as string) : hoje();
