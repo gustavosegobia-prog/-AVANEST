@@ -147,7 +147,7 @@ export function MapaCirurgico({
       <div className={estilos.titulo}>
         <div>
           <h1>Mapa cirúrgico</h1>
-          <p>{nomeDaCasa}</p>
+          {nomeDaCasa && <p>{nomeDaCasa}</p>}
         </div>
         <div className={estilos.acoesDoTopo}>
           {/* Abre em outra aba: é a que vai para a TV, em tela cheia. */}

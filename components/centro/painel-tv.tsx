@@ -137,8 +137,7 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
       <MarcaDagua src={marca} className={estilos.marcaDagua} />
       <header className={estilos.topo}>
         <div className={estilos.casa}>
-          <span>Centro cirúrgico</span>
-          <strong>{nomeDaCasa}</strong>
+          {nomeDaCasa ? <><span>Centro cirúrgico</span><strong>{nomeDaCasa}</strong></> : <strong>Centro cirúrgico</strong>}
         </div>
         {/* Os números são também a legenda: cada um na cor da sua linha. */}
         <ul className={estilos.numeros} aria-label="Pacientes por etapa">

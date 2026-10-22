@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje } from "@/lib/data-local";
-import { CAMPOS_DO_CASO, abreOCentro, type Caso, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, mostraACasa, type Caso, type Sala } from "@/lib/centro-cirurgico";
 import { diasDoMes, mesValido, planilhaDoRelatorio, relatorioDoMes } from "@/lib/centro-relatorio";
 import { Icone } from "@/components/icone";
 import { RelatorioDoMes } from "@/components/centro/relatorio";
@@ -22,11 +22,12 @@ export default async function RelatorioDoCentroPage({ searchParams }: { searchPa
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: perfil } = await supabase
-    .from("perfis").select("id, institution_id, status").eq("id", user.id).maybeSingle();
+    .from("perfis").select("id, institution_id, status, super_admin").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) redirect("/dashboard");
   const inst = perfil.institution_id as string;
   const { data: podeMontar } = await supabase.rpc("pode_montar_centro", { p_institution_id: inst });
   if (!abreOCentro(podeMontar)) redirect("/dashboard");
+  const casa = mostraACasa(perfil.super_admin);
 
   const { mes: pedido } = await searchParams;
   const dia = hoje();
@@ -60,7 +61,7 @@ export default async function RelatorioDoCentroPage({ searchParams }: { searchPa
             <Icone nome="voltar" tamanho={18} /> Mapa cirúrgico
           </Link>
         </header>
-        <RelatorioDoMes r={r} nomeDaCasa={(instituicao.data?.nome as string | undefined) ?? ""} mesDeHoje={mesDeHoje}
+        <RelatorioDoMes r={r} nomeDaCasa={casa ? (instituicao.data?.nome as string | undefined) ?? "" : ""} mesDeHoje={mesDeHoje}
           planilha={planilhaDoRelatorio(r)} />
       </main>
     </div>

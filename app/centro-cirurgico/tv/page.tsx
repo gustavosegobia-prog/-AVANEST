@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje } from "@/lib/data-local";
 import { apelidosDaEquipe } from "@/lib/escala";
-import { CAMPOS_DO_CASO, abreOCentro, marcaDaCasa, type Caso, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, marcaDaCasa, mostraACasa, type Caso, type Sala } from "@/lib/centro-cirurgico";
 import { PainelTv } from "@/components/centro/painel-tv";
 
 export const metadata: Metadata = {
@@ -20,11 +20,12 @@ export default async function TvDoCentroPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: perfil } = await supabase
-    .from("perfis").select("id, institution_id, status").eq("id", user.id).maybeSingle();
+    .from("perfis").select("id, institution_id, status, super_admin").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) redirect("/dashboard");
   const inst = perfil.institution_id as string;
   const { data: podeMontar } = await supabase.rpc("pode_montar_centro", { p_institution_id: inst });
   if (!abreOCentro(podeMontar)) redirect("/dashboard");
+  const casa = mostraACasa(perfil.super_admin);
 
   const dia = hoje();
   const [instituicao, salas, casos, equipe, locais] = await Promise.all([
@@ -43,11 +44,11 @@ export default async function TvDoCentroPage() {
     <PainelTv
       institutionId={inst}
       dia={dia}
-      nomeDaCasa={(instituicao.data?.nome as string | undefined) ?? ""}
+      nomeDaCasa={casa ? (instituicao.data?.nome as string | undefined) ?? "" : ""}
       salasIniciais={(salas.data ?? []) as Sala[]}
       casosIniciais={(casos.data ?? []) as unknown as Caso[]}
       apelidos={Object.fromEntries(apelidos)}
-      marca={marcaDaCasa((instituicao.data?.nome as string | undefined) ?? "", (locais.data ?? []) as Array<{ nome: string; logo_url: string | null }>)}
+      marca={casa ? marcaDaCasa((instituicao.data?.nome as string | undefined) ?? "", (locais.data ?? []) as Array<{ nome: string; logo_url: string | null }>) : null}
       agora={agoraMs()}
     />
   );

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje, somarDias } from "@/lib/data-local";
 import { apelidosDaEquipe } from "@/lib/escala";
-import { CAMPOS_DO_CASO, abreOCentro, marcaDaCasa, type Caso, type PlantaoDaEscala, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, marcaDaCasa, mostraACasa, type Caso, type PlantaoDaEscala, type Sala } from "@/lib/centro-cirurgico";
 import { MapaCirurgico, type Anestesista } from "@/components/centro/mapa-cirurgico";
 
 export const metadata: Metadata = {
@@ -25,11 +25,12 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: perfil } = await supabase
-    .from("perfis").select("id, institution_id, status").eq("id", user.id).maybeSingle();
+    .from("perfis").select("id, institution_id, status, super_admin").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) redirect("/dashboard");
   const inst = perfil.institution_id as string;
   const { data: podeMontar } = await supabase.rpc("pode_montar_centro", { p_institution_id: inst });
   if (!abreOCentro(podeMontar)) redirect("/dashboard");
+  const casa = mostraACasa(perfil.super_admin);
 
   const { data: pedido } = await searchParams;
   const dia = /^\d{4}-\d{2}-\d{2}$/.test(pedido ?? "") ? (pedido as string) : hoje();
@@ -61,7 +62,7 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
     <MapaCirurgico
       key={dia}
       institutionId={inst}
-      nomeDaCasa={(instituicao.data?.nome as string | undefined) ?? ""}
+      nomeDaCasa={casa ? (instituicao.data?.nome as string | undefined) ?? "" : ""}
       dia={dia}
       hoje={hoje()}
       salasIniciais={(salas.data ?? []) as Sala[]}
@@ -70,7 +71,7 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
       plantoes={(plantoes.data ?? []) as PlantaoDaEscala[]}
       podeMontar={podeMontar === true}
       semBanco={Boolean(casos.error)}
-      marca={marcaDaCasa((instituicao.data?.nome as string | undefined) ?? "", (locais.data ?? []) as Array<{ nome: string; logo_url: string | null }>)}
+      marca={casa ? marcaDaCasa((instituicao.data?.nome as string | undefined) ?? "", (locais.data ?? []) as Array<{ nome: string; logo_url: string | null }>) : null}
       agora={agoraMs()}
     />
   );

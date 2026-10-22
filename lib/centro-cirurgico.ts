@@ -573,3 +573,12 @@ export function marcaDaCasa(nomeDaCasa: string, locais: Array<{ nome: string; lo
  * fechadas para eles até a liberação, que é voltar a perguntar pode_ver_centro.
  */
 export const abreOCentro = (podeMontar: boolean | null | undefined) => podeMontar === true;
+
+/**
+ * O nome e a marca d'água da casa no mapa, na TV e no relatório. No login do
+ * super-admin, que abre o centro cirúrgico só para testar na própria
+ * organização (pedido de 22/10/2026), as telas saem sem os dois: a INOVANEST
+ * não usa o mapa. Para quem monta o mapa de verdade — o enfermeiro chefe da
+ * FUNDHOSPAR —, ficam o nome e a marca d'água do hospital.
+ */
+export const mostraACasa = (superAdmin: boolean | null | undefined) => superAdmin !== true;

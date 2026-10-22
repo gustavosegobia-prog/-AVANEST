@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
-  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, abreOCentro, type Caso,
+  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, abreOCentro, mostraACasa, type Caso,
 } from "./centro-cirurgico.ts";
 
 const iso = (data: string, h: string) => new Date(`${data}T${h}:00-03:00`).toISOString();
@@ -250,4 +250,10 @@ test("por enquanto o centro cirúrgico só abre para quem monta o mapa", () => {
   assert.equal(abreOCentro(true), true, "o enfermeiro chefe, e o super-admin para testar");
   assert.equal(abreOCentro(false), false, "o médico da casa, que o banco deixaria ver");
   assert.equal(abreOCentro(null), false, "sem a função no banco");
+});
+
+test("o nome e a marca d'água da casa saem no login de quem monta o mapa, e não no teste do super-admin", () => {
+  assert.equal(mostraACasa(false), true);
+  assert.equal(mostraACasa(null), true);
+  assert.equal(mostraACasa(true), false);
 });

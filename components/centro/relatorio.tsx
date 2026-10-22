@@ -34,7 +34,7 @@ export function RelatorioDoMes({ r, nomeDaCasa, mesDeHoje, planilha }: {
       <div className={estilos.titulo}>
         <div>
           <h1>Relatório do mês</h1>
-          <p>{nomeDaCasa}</p>
+          {nomeDaCasa && <p>{nomeDaCasa}</p>}
         </div>
         <AcoesDoRelatorio planilha={planilha} arquivo={`avanest-centro-cirurgico-${r.mes}.xlsx`} />
       </div>
