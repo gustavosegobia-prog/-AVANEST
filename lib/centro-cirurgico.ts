@@ -11,6 +11,7 @@
 // quem pode gravar.
 
 import { ALDRETE, somaAldrete } from "./evolucao/lista-da-folha.ts";
+import { nomeDoLocal } from "./local-ativo.ts";
 
 export { ALDRETE, somaAldrete };
 
@@ -586,3 +587,25 @@ export const abreOCentro = (podeMontar: boolean | null | undefined) => podeMonta
  * FUNDHOSPAR —, ficam o nome e a marca d'água do hospital.
  */
 export const mostraACasa = (superAdmin: boolean | null | undefined) => superAdmin !== true;
+
+/**
+ * O nome e a marca d'água do mapa, da TV e do relatório.
+ *
+ * Vale primeiro o hospital escolhido em "Onde você vai atender hoje?", que é
+ * onde a TV está pendurada: o nome fantasia e o logo dele (pedido de
+ * 22/10/2026 — a TV do FUNDHOSPAR, ligada na conta do grupo de anestesia,
+ * dizia só "Centro cirúrgico"). Sem hospital escolhido, a organização, como
+ * antes; e o super-admin, que testa na própria organização, fica sem nome e
+ * sem marca (mostraACasa).
+ */
+export function casaDoCentro({ local, organizacao, locais, superAdmin }: {
+  local: { nome: string; nome_fantasia?: string | null; logo_url: string | null } | null;
+  organizacao: string;
+  locais: Array<{ nome: string; logo_url: string | null }>;
+  superAdmin: boolean | null | undefined;
+}): { nome: string; marca: string | null } {
+  const daOrganizacao = mostraACasa(superAdmin);
+  const marcaDaOrganizacao = daOrganizacao ? marcaDaCasa(organizacao, locais) : null;
+  if (local) return { nome: nomeDoLocal(local), marca: local.logo_url ?? marcaDaOrganizacao };
+  return daOrganizacao ? { nome: organizacao, marca: marcaDaOrganizacao } : { nome: "", marca: null };
+}

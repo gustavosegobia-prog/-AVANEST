@@ -3,12 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje } from "@/lib/data-local";
-import { CAMPOS_DO_CASO, abreOCentro, mostraACasa, type Caso, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, type Caso, type Sala } from "@/lib/centro-cirurgico";
 import { diasDoMes, mesValido, planilhaDoRelatorio, relatorioDoMes } from "@/lib/centro-relatorio";
 import { Icone } from "@/components/icone";
 import { RelatorioDoMes } from "@/components/centro/relatorio";
 import { AssinaturaAvanest } from "@/components/centro/assinatura";
 import estilos from "@/components/centro/relatorio.module.css";
+import { casaDaSessao } from "../casa";
 
 export const metadata: Metadata = {
   title: "Relatório do centro cirúrgico | AVANEST",
@@ -28,7 +29,6 @@ export default async function RelatorioDoCentroPage({ searchParams }: { searchPa
   const inst = perfil.institution_id as string;
   const { data: podeMontar } = await supabase.rpc("pode_montar_centro", { p_institution_id: inst });
   if (!abreOCentro(podeMontar)) redirect("/dashboard");
-  const casa = mostraACasa(perfil.super_admin);
 
   const { mes: pedido } = await searchParams;
   const dia = hoje();
@@ -45,8 +45,8 @@ export default async function RelatorioDoCentroPage({ searchParams }: { searchPa
     casos.push(...(data as unknown as Caso[]));
     if (data.length < 1000) break;
   }
-  const [instituicao, salas, equipe] = await Promise.all([
-    supabase.from("instituicoes").select("nome").eq("id", inst).maybeSingle(),
+  const [casa, salas, equipe] = await Promise.all([
+    casaDaSessao(supabase, inst, perfil.super_admin),
     supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst).order("ordem"),
     supabase.from("perfis").select("id, nome").eq("institution_id", inst),
   ]);
@@ -62,7 +62,7 @@ export default async function RelatorioDoCentroPage({ searchParams }: { searchPa
             <Icone nome="voltar" tamanho={18} /> Mapa cirúrgico
           </Link>
         </header>
-        <RelatorioDoMes r={r} nomeDaCasa={casa ? (instituicao.data?.nome as string | undefined) ?? "" : ""} mesDeHoje={mesDeHoje}
+        <RelatorioDoMes r={r} nomeDaCasa={casa.nome} mesDeHoje={mesDeHoje}
           planilha={planilhaDoRelatorio(r)} />
       </main>
       <AssinaturaAvanest />

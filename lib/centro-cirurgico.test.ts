@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
-  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, nomeNaTv, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, abreOCentro, mostraACasa, type Caso,
+  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, nomeNaTv, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, abreOCentro, mostraACasa, casaDoCentro, type Caso,
 } from "./centro-cirurgico.ts";
 
 const iso = (data: string, h: string) => new Date(`${data}T${h}:00-03:00`).toISOString();
@@ -258,4 +258,25 @@ test("o nome e a marca d'água da casa saem no login de quem monta o mapa, e nã
   assert.equal(mostraACasa(false), true);
   assert.equal(mostraACasa(null), true);
   assert.equal(mostraACasa(true), false);
+});
+
+test("o nome e a marca d'água: o hospital escolhido na sessão vem primeiro", () => {
+  const locais = [{ nome: "INOVANEST", logo_url: "ino.png" }, { nome: "Santa Casa", logo_url: "sc.png" }];
+  const fundhospar = { nome: "FUNDAÇÃO HOSPITALAR DE SAUDE DO PARANA", nome_fantasia: "FUNDHOSPAR", logo_url: "fh.png" };
+  const grupo = "INOVANEST — Serviço de Anestesiologia";
+  // O super-admin na TV do hospital: o nome fantasia e o logo do hospital.
+  assert.deepEqual(casaDoCentro({ local: fundhospar, organizacao: grupo, locais, superAdmin: true }), { nome: "FUNDHOSPAR", marca: "fh.png" });
+  // Sem hospital escolhido, o super-admin continua sem nome e sem marca.
+  assert.deepEqual(casaDoCentro({ local: null, organizacao: grupo, locais, superAdmin: true }), { nome: "", marca: null });
+  // Quem não é super-admin, sem hospital escolhido: a casa, como antes.
+  assert.deepEqual(casaDoCentro({ local: null, organizacao: grupo, locais, superAdmin: false }), { nome: grupo, marca: "ino.png" });
+  // Hospital sem logo: o nome dele, e a marca da casa quando houver.
+  assert.deepEqual(
+    casaDoCentro({ local: { nome: "Hospital Sem Logo", nome_fantasia: null, logo_url: null }, organizacao: grupo, locais, superAdmin: false }),
+    { nome: "Hospital Sem Logo", marca: "ino.png" },
+  );
+  assert.deepEqual(
+    casaDoCentro({ local: { nome: "Hospital Sem Logo", nome_fantasia: null, logo_url: null }, organizacao: grupo, locais, superAdmin: true }),
+    { nome: "Hospital Sem Logo", marca: null },
+  );
 });
