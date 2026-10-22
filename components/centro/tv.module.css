@@ -141,3 +141,9 @@
    e o fundo branco do JPG some no branco da lista. */
 :global(html[data-tv-tema=claro]) .marcaDagua { mix-blend-mode: multiply; opacity: .07; }
 :global(html[data-tv-tema=claro]) .marcaDagua img { filter: grayscale(1) contrast(1.3); }
+/* O logo repintado de azul (MarcaDagua): sem mistura nem filtro, o mesmo azul
+   bem clarinho no fundo escuro e no claro. */
+.marcaDagua[data-pintado] { mix-blend-mode: normal; opacity: .16; }
+.marcaDagua[data-pintado] img { filter: none; }
+:global(html[data-tv-tema=claro]) .marcaDagua[data-pintado] { mix-blend-mode: normal; opacity: .1; }
+:global(html[data-tv-tema=claro]) .marcaDagua[data-pintado] img { filter: none; }

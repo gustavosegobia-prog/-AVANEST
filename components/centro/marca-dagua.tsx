@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { pintarDeAzul } from "@/lib/marca-dagua";
 
 /**
  * A marca d'água do hospital no mapa e na TV — só quando o logo combina.
@@ -10,16 +11,26 @@ import { useEffect, useState } from "react";
  * círculo azul-marinho) faz o contrário — o fundo vira um disco cinza atrás
  * da tela inteira. Antes de mostrar, o logo é lido num quadradinho de 32 px:
  * se o que ele tem de opaco é escuro na média, fica sem marca.
+ *
+ * O logo que passa é repintado de um azul só, bem clarinho (pintarDeAzul):
+ * a mesma marca em qualquer hospital, no tema claro e no escuro. Se o
+ * navegador não deixar ler a imagem, vai o logo como veio, misturado.
  */
 export function MarcaDagua({ src, className }: { src: string | null; className: string }) {
   const [serve, setServe] = useState<boolean | null>(null);
+  const [azul, setAzul] = useState<string | null>(null);
 
   useEffect(() => {
     if (!src) return;
     let vivo = true;
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => { if (vivo) setServe(logoClaro(img)); };
+    img.onload = () => {
+      if (!vivo) return;
+      const claro = logoClaro(img);
+      setServe(claro);
+      setAzul(claro ? logoAzul(img) : null);
+    };
     img.onerror = () => { if (vivo) setServe(false); };
     img.src = src;
     return () => { vivo = false; };
@@ -27,9 +38,9 @@ export function MarcaDagua({ src, className }: { src: string | null; className: 
 
   if (!src || !serve) return null;
   return (
-    <div className={className} aria-hidden="true">
+    <div className={className} aria-hidden="true" data-pintado={azul ? "" : undefined}>
       {/* eslint-disable-next-line @next/next/no-img-element -- logo enviado pelo hospital, de qualquer tamanho */}
-      <img src={src} alt="" crossOrigin="anonymous" />
+      <img src={azul ?? src} alt="" crossOrigin="anonymous" />
     </div>
   );
 }
@@ -56,5 +67,26 @@ function logoClaro(img: HTMLImageElement): boolean {
   } catch {
     // Sem poder ler a imagem (servidor sem permissão de leitura), vale o logo.
     return true;
+  }
+}
+
+/** O logo repintado de azul, em PNG transparente; até 1200 px no lado maior. */
+function logoAzul(img: HTMLImageElement): string | null {
+  try {
+    const escala = Math.min(1, 1200 / Math.max(img.naturalWidth, img.naturalHeight, 1));
+    const largura = Math.max(1, Math.round(img.naturalWidth * escala));
+    const altura = Math.max(1, Math.round(img.naturalHeight * escala));
+    const canvas = document.createElement("canvas");
+    canvas.width = largura;
+    canvas.height = altura;
+    const g = canvas.getContext("2d");
+    if (!g) return null;
+    g.drawImage(img, 0, 0, largura, altura);
+    const quadro = g.getImageData(0, 0, largura, altura);
+    pintarDeAzul(quadro.data);
+    g.putImageData(quadro, 0, 0);
+    return canvas.toDataURL("image/png");
+  } catch {
+    return null;
   }
 }

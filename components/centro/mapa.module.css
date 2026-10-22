@@ -228,6 +228,12 @@
    apagá-lo: o "screen" some com ele, sem retângulo em volta do logo. */
 :global(html[data-tema=escuro]) .marcaDagua { mix-blend-mode: screen; opacity: .08; }
 :global(html[data-tema=escuro]) .marcaDagua img { filter: grayscale(1) invert(1) contrast(1.5) brightness(1.6); }
+/* O logo repintado de azul (MarcaDagua): já vem sem o fundo branco, então
+   vai sem mistura nem filtro — o mesmo azul bem clarinho no claro e no escuro. */
+.marcaDagua[data-pintado] { mix-blend-mode: normal; opacity: .1; }
+.marcaDagua[data-pintado] img { filter: none; }
+:global(html[data-tema=escuro]) .marcaDagua[data-pintado] { mix-blend-mode: normal; opacity: .16; }
+:global(html[data-tema=escuro]) .marcaDagua[data-pintado] img { filter: none; }
 
 /* O "Sair" do login da enfermagem tem a cara do "Painel" que ele substitui. */
 .sair { background: none; border: 0; font-family: inherit; cursor: pointer; }
