@@ -29,6 +29,50 @@ function situacao(l: LinhaDaTv): string {
   return c.destino === "uti" ? `UTI ${horaDe(c.saida_sala_em)}` : `Alta ${horaDe(c.alta_rpa_em ?? c.saida_sala_em)}`;
 }
 
+/** A velocidade do letreiro: 3% da largura da tela por segundo, em qualquer TV. */
+const LETREIRO_VW_POR_S = 0.03;
+/** A parte de cada volta em que o começo do texto fica parado, para ler — a mesma do CSS. */
+const LETREIRO_PAUSA = 0.2;
+
+/**
+ * O texto que não cabe na coluna passa devagar da direita para a esquerda,
+ * como letreiro; o que cabe fica parado (pedido de 22/10/2026: a cirurgia
+ * comprida saía cortada com reticências). Duas cópias seguidas, com um
+ * respiro entre elas, e a faixa anda meia largura: a volta emenda sem salto.
+ * A cada volta, o começo do texto fica um instante parado, para ler.
+ * Quem prefere menos movimento no sistema vê o texto parado, com reticências.
+ */
+function Letreiro({ texto, className }: { texto: string; className: string }) {
+  const caixa = useRef<HTMLSpanElement>(null);
+  const copia = useRef<HTMLSpanElement>(null);
+  const [duracaoS, setDuracaoS] = useState(0);
+
+  useEffect(() => {
+    const el = caixa.current;
+    if (!el) return;
+    // O ResizeObserver mede logo ao começar a observar, e de novo se a TV mudar de tamanho.
+    const observador = new ResizeObserver(() => {
+      const largura = copia.current?.offsetWidth ?? 0;
+      const respiro = parseFloat(getComputedStyle(el).fontSize) * 3;
+      const andando = (largura + respiro) / (window.innerWidth * LETREIRO_VW_POR_S);
+      setDuracaoS(largura > el.clientWidth + 1 ? andando / (1 - LETREIRO_PAUSA) : 0);
+    });
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [texto]);
+
+  const rola = duracaoS > 0;
+  return (
+    <span ref={caixa} role="cell" className={`${className} ${rola ? estilos.letreiro : ""}`}
+      style={rola ? ({ "--volta": `${duracaoS.toFixed(1)}s` } as React.CSSProperties) : undefined}>
+      <span className={estilos.faixa}>
+        <span ref={copia} className={estilos.copia}>{texto}</span>
+        {rola && <span className={estilos.copia} aria-hidden="true">{texto}</span>}
+      </span>
+    </span>
+  );
+}
+
 /**
  * O mapa na TV do corredor do centro cirúrgico.
  *
@@ -175,7 +219,7 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
             <div key={c.id} className={`${estilos.linha} ${estilos[`s_${l.situacao}`]}`} role="row">
               <span role="cell" className={estilos.hora}>{horaNoMapa(c)}</span>
               <span role="cell" className={estilos.paciente}>{nomeNaTv(c.paciente)} <small>{idade(c)}</small></span>
-              <span role="cell" className={estilos.texto}>{c.procedimento}</span>
+              <Letreiro texto={c.procedimento} className={estilos.texto} />
               <span role="cell" className={estilos.texto}>{nomeDaSala(c.sala_id)}</span>
               <span role="cell" className={estilos.texto}>{c.cirurgiao ?? ""}</span>
               <span role="cell" className={estilos.texto}>{quem(c.anestesista_id)}</span>

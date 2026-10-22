@@ -59,6 +59,22 @@
 .paciente { font-size: 1.5vw; font-weight: 800; color: var(--cor-tinta-forte); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .paciente small { font-size: 1vw; font-weight: 600; color: var(--cor-tinta-fraca); }
 .texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* O letreiro da cirurgia comprida (Letreiro, em painel-tv.tsx): a faixa com
+   duas cópias anda meia largura por volta, da direita para a esquerda. */
+.faixa { display: inline-block; }
+.copia { display: inline-block; }
+.letreiro { text-overflow: clip; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2em), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 2em), transparent); }
+.letreiro .faixa { animation: letreiro var(--volta, 12s) linear infinite; will-change: transform; }
+.letreiro .copia { margin-right: 3em; }
+/* Os primeiros 20% da volta parados no começo do texto (LETREIRO_PAUSA). */
+@keyframes letreiro { 0%, 20% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .letreiro { text-overflow: ellipsis; -webkit-mask-image: none; mask-image: none; }
+  .letreiro .faixa, .letreiro .copia { display: inline; }
+  .letreiro .faixa { animation: none; }
+  .letreiro .copia + .copia { display: none; }
+}
 .situacao { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; color: var(--cor-tinta-fraca); }
 
 /* As cores de cada situação: a faixa da esquerda, o fundo da linha e a palavra. */
