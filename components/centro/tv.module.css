@@ -50,7 +50,7 @@
 /* ── A lista ────────────────────────────────────────────────────────────── */
 .lista { min-height: 0; overflow: hidden; border-radius: calc(var(--g) * 1.1); border: 1px solid var(--cor-borda); background: var(--cor-superficie); }
 .linha { --faixa: transparent; display: grid; align-items: center; gap: 0 1.1vw;
-  grid-template-columns: 6.5vw 11vw minmax(0, 2.6fr) 7vw minmax(0, 1.3fr) 9vw 14vw;
+  grid-template-columns: 6.5vw 17vw minmax(0, 2.4fr) 7vw minmax(0, 1.2fr) 9vw 14vw;
   height: var(--linha); padding: 0 1.2vw 0 1vw; border-left: .55vw solid var(--faixa); border-bottom: 1px solid var(--cor-borda);
   font-size: 1.3vw; color: var(--cor-tinta); }
 .cabeca { height: 2.6vw; border-left-color: transparent; background: var(--cor-superficie-suave);

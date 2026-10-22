@@ -487,16 +487,20 @@ export function resumoDoDia(casos: Caso[], nomeDe: (id: string) => string | unde
 const PARTICULAS = new Set(["da", "de", "do", "das", "dos", "e"]);
 
 /**
- * "Maria Aparecida da Souza" → "M. A. S.".
+ * O nome do paciente na TV: o primeiro e o segundo nome — "Maria Aparecida
+ * da Souza" → "Maria Aparecida"; "Ester dos Santos" → "Ester dos Santos".
  *
- * A TV fica no corredor, e quem passa lê. O nome inteiro é dado de saúde de
- * quem está sendo operado; as iniciais com a idade e a cirurgia bastam para a
- * equipe saber de quem se trata.
+ * A TV fica no corredor, e quem passa lê. Antes eram só as iniciais; não
+ * bastavam para a equipe saber de quem se trata (pedido de 22/10/2026). O
+ * resto do sobrenome continua fora da tela.
  */
-export function iniciaisDoPaciente(nome: string): string {
-  const partes = nome.trim().split(/\s+/).filter((p) => p && !PARTICULAS.has(p.toLowerCase()));
+export function nomeNaTv(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
   if (!partes.length) return "—";
-  return partes.map((p) => `${p.charAt(0).toLocaleUpperCase("pt-BR")}.`).join(" ");
+  // "de", "dos"… sozinhos não são nome: vão junto com a palavra seguinte.
+  let fim = 2;
+  if (partes[1] && PARTICULAS.has(partes[1].toLowerCase())) fim = 3;
+  return partes.slice(0, fim).join(" ");
 }
 
 /** Minutos de atraso de quem ainda não entrou; nulo se não está atrasado. */

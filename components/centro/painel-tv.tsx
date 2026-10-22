@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import {
-  CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, iniciaisDoPaciente, linhasDaTv,
+  CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, linhasDaTv, nomeNaTv,
   type Caso, type LinhaDaTv, type Sala,
 } from "@/lib/centro-cirurgico";
 import { MarcaDagua } from "./marca-dagua";
@@ -32,14 +32,16 @@ function situacao(l: LinhaDaTv): string {
 /**
  * O mapa na TV do corredor do centro cirúrgico.
  *
- * Uma lista só, com todos os pacientes do dia, na ordem do horário — e a cor
- * conta a história: azul é em sala, âmbar é RPA (que desce para o fim da
- * lista), verde apagado é alta, vermelho é quem passou do horário e ainda não
- * entrou. Quando o dia não cabe numa tela, a lista vira páginas que trocam
- * sozinhas, como no painel do aeroporto.
+ * Uma lista só, com todos os pacientes do dia, em blocos (linhasDaTv) — e a
+ * cor conta a história: verde é em sala, amarelo é RPA, vermelho é cancelada,
+ * azul apagado é alta, e o horário em vermelho é quem passou da hora e ainda
+ * não entrou. Quando o dia não cabe
+ * numa tela, a lista vira páginas que trocam sozinhas, como no painel do
+ * aeroporto.
  *
- * Sem botão. Sem nome completo: iniciais e idade, porque quem passa no
- * corredor lê a TV. Atualiza a cada meio minuto e pede para a tela não apagar.
+ * Sem botão. Sem nome completo: o primeiro e o segundo nome e a idade, porque
+ * quem passa no corredor lê a TV. Atualiza a cada meio minuto e pede para a
+ * tela não apagar.
  */
 export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosIniciais, apelidos, agora: agoraDoServidor, marca = null }: {
   institutionId: string;
@@ -172,7 +174,7 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
           return (
             <div key={c.id} className={`${estilos.linha} ${estilos[`s_${l.situacao}`]}`} role="row">
               <span role="cell" className={estilos.hora}>{horaNoMapa(c)}</span>
-              <span role="cell" className={estilos.paciente}>{iniciaisDoPaciente(c.paciente)} <small>{idade(c)}</small></span>
+              <span role="cell" className={estilos.paciente}>{nomeNaTv(c.paciente)} <small>{idade(c)}</small></span>
               <span role="cell" className={estilos.texto}>{c.procedimento}</span>
               <span role="cell" className={estilos.texto}>{nomeDaSala(c.sala_id)}</span>
               <span role="cell" className={estilos.texto}>{c.cirurgiao ?? ""}</span>
@@ -186,7 +188,7 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
       <div className={estilos.rodape}>
         <span>{semRede ? "Sem conexão: mostrando o último mapa recebido" : `Atualizado às ${RELOGIO.format(atualizado)} · atualiza sozinho`}</span>
         {paginas > 1 && <span className={estilos.paginas}>Página {atual + 1} de {paginas}</span>}
-        <span className={estilos.privacidade}>Iniciais no lugar do nome, por privacidade</span>
+        <span className={estilos.privacidade}>Só o primeiro e o segundo nome, por privacidade</span>
         {!telaCheia && (
           <button type="button" onClick={() => void document.documentElement.requestFullscreen?.().catch(() => {})}>
             Tela cheia

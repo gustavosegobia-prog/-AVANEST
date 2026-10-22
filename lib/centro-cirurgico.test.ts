@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
-  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, iniciaisDoPaciente, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, abreOCentro, mostraACasa, type Caso,
+  resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, nomeNaTv, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, abreOCentro, mostraACasa, type Caso,
 } from "./centro-cirurgico.ts";
 
 const iso = (data: string, h: string) => new Date(`${data}T${h}:00-03:00`).toISOString();
@@ -163,10 +163,12 @@ test("o resumo do dia conta os atos por anestesista e por convênio, e aponta o 
   assert.deepEqual(contagemPorEtapa(casos), { agendado: 1, em_sala: 1, rpa: 1, concluido: 2, cancelado: 1 });
 });
 
-test("a TV mostra iniciais, e não o nome", () => {
-  assert.equal(iniciaisDoPaciente("Maria Aparecida da Souza"), "M. A. S.");
-  assert.equal(iniciaisDoPaciente("  joão   dos Santos e Silva "), "J. S. S.");
-  assert.equal(iniciaisDoPaciente(" "), "—");
+test("a TV mostra o primeiro e o segundo nome, e não o nome inteiro", () => {
+  assert.equal(nomeNaTv("Maria Aparecida da Souza"), "Maria Aparecida");
+  assert.equal(nomeNaTv("  Ester   dos Santos "), "Ester dos Santos");
+  assert.equal(nomeNaTv("José"), "José");
+  assert.equal(nomeNaTv("Sandra Regina de Franca dos Santos"), "Sandra Regina");
+  assert.equal(nomeNaTv(" "), "—");
 });
 
 test("atrasado é quem passou do horário e ainda não entrou", () => {
