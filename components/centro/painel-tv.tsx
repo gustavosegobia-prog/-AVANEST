@@ -142,10 +142,13 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
         </div>
         {/* Os números são também a legenda: cada um na cor da sua linha. */}
         <ul className={estilos.numeros} aria-label="Pacientes por etapa">
-          <li className={estilos.n_agendado}><b>{contagem.agendado}</b> aguardando</li>
           <li className={estilos.n_em_sala}><b>{contagem.em_sala}</b> em sala</li>
+          <li className={estilos.n_agendado}><b>{contagem.agendado}</b> aguardando</li>
           <li className={estilos.n_rpa}><b>{contagem.rpa}</b> na RPA</li>
           <li className={estilos.n_concluido}><b>{contagem.concluido}</b> {contagem.concluido === 1 ? "alta" : "altas"}</li>
+          {contagem.cancelado > 0 && (
+            <li className={estilos.n_cancelado}><b>{contagem.cancelado}</b> {contagem.cancelado === 1 ? "cancelada" : "canceladas"}</li>
+          )}
         </ul>
         <div className={estilos.relogio}>
           <strong>{RELOGIO.format(agora)}</strong>

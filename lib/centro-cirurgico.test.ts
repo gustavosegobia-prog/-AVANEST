@@ -177,7 +177,7 @@ test("atrasado é quem passou do horário e ainda não entrou", () => {
   assert.equal(atraso(caso({ horario: null }), agora), null);
 });
 
-test("a TV é uma fila só: em sala muda de cor no lugar, RPA desce para o fim, depois altas e canceladas", () => {
+test("a TV em blocos: em sala, aguardando, RPA, altas e canceladas por último", () => {
   const agora = Date.parse("2026-10-21T10:00:00-03:00");
   const casos = [
     caso({ id: "alta", horario: "07:00", etapa: "concluido", saida_sala_em: iso("2026-10-21", "08:00"), alta_rpa_em: iso("2026-10-21", "08:40") }),
@@ -187,11 +187,13 @@ test("a TV é uma fila só: em sala muda de cor no lugar, RPA desce para o fim, 
     caso({ id: "depois", horario: "13:00", etapa: "agendado" }),
     caso({ id: "rpa2", horario: "08:00", etapa: "rpa", saida_sala_em: iso("2026-10-21", "09:40") }),
     caso({ id: "rpa1", horario: "07:30", etapa: "rpa", saida_sala_em: iso("2026-10-21", "09:20") }),
+    // Mais abaixo no mapa, mas já em sala: sobe para o bloco de cima.
+    caso({ id: "sala2", horario: "13:30", etapa: "em_sala", entrada_sala_em: iso("2026-10-21", "09:30") }),
   ];
   const l = linhasDaTv(casos, agora);
-  assert.deepEqual(l.map((x) => x.caso.id), ["sala", "atrasada", "depois", "rpa1", "rpa2", "alta", "cancelada"]);
-  assert.deepEqual(l.map((x) => x.situacao), ["em_sala", "atrasado", "agendado", "rpa", "rpa", "concluido", "cancelado"]);
-  assert.deepEqual(l.map((x) => x.minutos), [50, 30, null, 40, 20, null, null]);
+  assert.deepEqual(l.map((x) => x.caso.id), ["sala", "sala2", "atrasada", "depois", "rpa1", "rpa2", "alta", "cancelada"]);
+  assert.deepEqual(l.map((x) => x.situacao), ["em_sala", "em_sala", "atrasado", "agendado", "rpa", "rpa", "concluido", "cancelado"]);
+  assert.deepEqual(l.map((x) => x.minutos), [50, 30, 30, null, 40, 20, null, null]);
 });
 
 test("o mapa segue a posição da enfermagem: o A/S fica no lugar, e não no fim", () => {

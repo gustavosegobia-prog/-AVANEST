@@ -1,7 +1,8 @@
 /* O mapa na TV do corredor. Lido a três, cinco metros, de passagem:
-   - uma lista só, todos os pacientes do dia, e a COR diz onde cada um está:
-     azul em sala, âmbar RPA (no fim da lista), verde apagado alta,
-     vermelho atrasada, cinza riscado cancelada;
+   - uma lista só, todos os pacientes do dia, e a COR diz onde cada um está
+     (pedido de 22/10/2026): a linha inteira verde em sala, amarela na RPA,
+     vermelha cancelada; azul apagado alta; o horário em vermelho, atrasada.
+     Em blocos: em sala, aguardando, RPA, altas, canceladas por último;
    - tudo medido em vw, para a mesma tela servir à TV de 32" e à de 65";
    - a linha tem altura fixa (--linha), que o componente usa para saber
      quantas cabem por página;
@@ -10,10 +11,11 @@
 .tv {
   --g: clamp(8px, .9vw, 22px);
   --linha: 3.6vw;
-  --em-sala: var(--cor-marca-clara, var(--cor-marca));
+  --em-sala: var(--cor-sucesso);
   --rpa: var(--cor-atencao);
-  --alta: var(--cor-sucesso);
+  --alta: var(--cor-marca-clara, var(--cor-marca));
   --atraso: var(--cor-perigo);
+  --cancelada: var(--cor-perigo);
   position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--g);
   padding: var(--g) calc(var(--g) * 1.4); overflow: hidden;
   background: var(--cor-fundo); color: var(--cor-tinta); font-family: inherit;
@@ -39,6 +41,8 @@
 .n_rpa b { color: var(--rpa); }
 .numeros .n_concluido { --c: var(--alta); }
 .n_concluido b { color: var(--alta); }
+.numeros .n_cancelado { --c: var(--cancelada); }
+.n_cancelado b { color: var(--cancelada); }
 .relogio { display: grid; justify-items: end; line-height: 1; }
 .relogio strong { font-size: 4vw; font-weight: 800; letter-spacing: -.02em; color: var(--cor-tinta-forte); font-variant-numeric: tabular-nums; }
 .relogio span { margin-top: .3vw; font-size: 1.05vw; color: var(--cor-tinta-fraca); }
@@ -58,7 +62,7 @@
 .situacao { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; color: var(--cor-tinta-fraca); }
 
 /* As cores de cada situação: a faixa da esquerda, o fundo da linha e a palavra. */
-.s_em_sala { --faixa: var(--em-sala); background: var(--cor-marca-suave); }
+.s_em_sala { --faixa: var(--em-sala); background: var(--cor-sucesso-suave); }
 .s_em_sala .situacao { color: var(--em-sala); }
 .s_rpa { --faixa: var(--rpa); background: var(--cor-atencao-suave); }
 .s_rpa .situacao { color: var(--rpa); }
@@ -66,7 +70,8 @@
 .s_atrasado { --faixa: var(--atraso); }
 .s_concluido { --faixa: color-mix(in srgb, var(--alta) 60%, transparent); opacity: .62; }
 .s_concluido .situacao { color: var(--alta); }
-.s_cancelado { opacity: .42; }
+.s_cancelado { --faixa: var(--cancelada); background: var(--cor-perigo-suave); }
+.s_cancelado .situacao { color: var(--cancelada); }
 .s_cancelado .paciente, .s_cancelado .texto { text-decoration: line-through; }
 
 .vazio { padding: 3vw; font-size: 1.8vw; color: var(--cor-tinta-fraca); text-align: center; }

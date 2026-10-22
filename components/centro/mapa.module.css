@@ -2,8 +2,9 @@
    visual do AVANEST.
    1. Cores só dos tokens do site (--cor-*), no claro e no escuro.
    2. A etapa é a única cor forte do cartão — a faixa da esquerda e o selo.
-      Agendado é neutro, em sala é a marca, RPA é atenção, alta é sucesso. O
-      olho de longe lê a cor; de perto, o selo diz a palavra.
+      As mesmas da TV (22/10/2026): agendado neutro, em sala verde, RPA
+      amarela, alta azul, cancelada vermelha. O olho de longe lê a cor; de
+      perto, o selo diz a palavra.
    3. Uma coluna por sala no computador; no celular, as salas uma embaixo da
       outra, com o cartão inteiro na largura da tela. */
 
@@ -50,9 +51,9 @@
 
 /* A cor de cada etapa: uma variável, usada pela faixa e pelo selo. */
 .etapa_agendado { --faixa: var(--cor-borda-forte); --selo: var(--cor-superficie-suave); --selo-tinta: var(--cor-tinta-fraca); }
-.etapa_em_sala { --faixa: var(--cor-marca); --selo: var(--cor-marca-suave); --selo-tinta: var(--cor-marca-forte); }
+.etapa_em_sala { --faixa: var(--cor-sucesso); --selo: var(--cor-sucesso-suave); --selo-tinta: var(--cor-sucesso); }
 .etapa_rpa { --faixa: var(--cor-atencao); --selo: var(--cor-atencao-suave); --selo-tinta: var(--cor-atencao); }
-.etapa_concluido { --faixa: var(--cor-sucesso); --selo: var(--cor-sucesso-suave); --selo-tinta: var(--cor-sucesso); }
+.etapa_concluido { --faixa: var(--cor-marca); --selo: var(--cor-marca-suave); --selo-tinta: var(--cor-marca-forte); }
 .etapa_cancelado { --faixa: var(--cor-perigo); --selo: var(--cor-perigo-suave); --selo-tinta: var(--cor-perigo-forte); }
 
 /* ── O quadro ────────────────────────────────────────────────────────────── */
