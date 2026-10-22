@@ -88,7 +88,7 @@ function Letreiro({ texto, className }: { texto: string; className: string }) {
  *
  * Uma lista só, com todos os pacientes do dia, em blocos (linhasDaTv) — e a
  * cor conta a história: verde é em sala, amarelo é RPA, vermelho é cancelada,
- * azul apagado é alta, e o horário em vermelho é quem passou da hora e ainda
+ * azul é finalizada (alta ou UTI), e o horário em vermelho é quem passou da hora e ainda
  * não entrou. Quando o dia não cabe
  * numa tela, a lista vira páginas que trocam sozinhas, como no painel do
  * aeroporto.
@@ -307,18 +307,19 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
         {voltarTelaCheia && (
           <span className={estilos.atualizou} role="status">Sistema atualizado · clique em qualquer lugar para voltar à tela cheia</span>
         )}
-        <span className={estilos.privacidade}>Só o primeiro e o segundo nome, por privacidade</span>
-        {!telaCheia && (
-          <button type="button" onClick={() => guardarTvClara(!clara)}>
-            {clara ? "Fundo escuro" : "Fundo claro"}
-          </button>
-        )}
-        {!telaCheia && (
-          <button type="button" onClick={() => void document.documentElement.requestFullscreen?.().catch(() => {})}>
-            Tela cheia
-          </button>
-        )}
-        <AssinaturaAvanest naTv />
+        <div className={estilos.direita}>
+          {!telaCheia && (
+            <button type="button" onClick={() => guardarTvClara(!clara)}>
+              {clara ? "Fundo escuro" : "Fundo claro"}
+            </button>
+          )}
+          {!telaCheia && (
+            <button type="button" onClick={() => void document.documentElement.requestFullscreen?.().catch(() => {})}>
+              Tela cheia
+            </button>
+          )}
+          <AssinaturaAvanest naTv />
+        </div>
       </div>
     </div>
   );

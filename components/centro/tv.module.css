@@ -1,7 +1,7 @@
 /* O mapa na TV do corredor. Lido a três, cinco metros, de passagem:
    - uma lista só, todos os pacientes do dia, e a COR diz onde cada um está
      (pedido de 22/10/2026): a linha inteira verde em sala, amarela na RPA,
-     vermelha cancelada; azul apagado alta; o horário em vermelho, atrasada.
+     vermelha cancelada, azul finalizada (alta ou UTI); o horário em vermelho, atrasada.
      Em blocos: em sala, aguardando, RPA, altas, canceladas por último;
    - tudo medido em vw, para a mesma tela servir à TV de 32" e à de 65";
    - a linha tem altura fixa (--linha), que o componente usa para saber
@@ -14,6 +14,7 @@
   --em-sala: var(--cor-sucesso);
   --rpa: var(--cor-atencao);
   --alta: var(--cor-marca-clara, var(--cor-marca));
+  --alta-fundo: #15304a;
   --atraso: var(--cor-perigo);
   --cancelada: var(--cor-perigo);
   position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--g);
@@ -84,7 +85,10 @@
 .s_rpa .situacao { color: var(--rpa); }
 .s_atrasado .hora, .s_atrasado .situacao { color: var(--atraso); }
 .s_atrasado { --faixa: var(--atraso); }
-.s_concluido { --faixa: color-mix(in srgb, var(--alta) 60%, transparent); opacity: .62; }
+/* A finalizada (alta ou UTI) tem a sua cor também, azul — pedido de
+   22/10/2026: antes ela só ficava apagada, e com o dia andando a lista virava
+   quase toda cinza. */
+.s_concluido { --faixa: var(--alta); background: var(--alta-fundo); }
 .s_concluido .situacao { color: var(--alta); }
 .s_cancelado { --faixa: var(--cancelada); background: var(--cor-perigo-suave); }
 .s_cancelado .situacao { color: var(--cancelada); }
@@ -95,7 +99,8 @@
 /* ── O pé ───────────────────────────────────────────────────────────────── */
 .rodape { display: flex; align-items: center; gap: calc(var(--g) * 2); font-size: .95vw; color: var(--cor-tinta-fraca); }
 .paginas { padding: .2vw .8vw; border-radius: 999px; background: var(--cor-superficie-suave); color: var(--cor-tinta-forte); font-weight: 750; }
-.privacidade { margin-left: auto; }
+/* Os botões e a assinatura, encostados à direita. */
+.direita { display: flex; align-items: center; gap: calc(var(--g) * 2); margin-left: auto; }
 /* Depois de recarregar sozinha numa versão nova: o aviso de que um clique
    devolve a tela cheia, na cor da marca para quem está perto do computador. */
 .atualizou { padding: .3vw 1vw; border-radius: 999px; background: var(--cor-marca); color: #fff; font-weight: 750; }
@@ -136,6 +141,7 @@
   --cor-perigo-forte: #8f1c21;
   --cor-perigo-suave: #f9cfd0;
   --alta: var(--cor-marca);
+  --alta-fundo: #d3e4f7;
 }
 /* O logo do hospital no claro: sem inverter, misturado por cima ("multiply"),
    e o fundo branco do JPG some no branco da lista. */
