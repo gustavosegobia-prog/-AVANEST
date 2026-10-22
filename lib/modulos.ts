@@ -114,8 +114,10 @@ export const AREAS_QUE_A_ASSINATURA_ABRE: Modulo[] = MODULOS
  * abre absolutamente nada: a pessoa entraria, faria a senha e cairia numa tela
  * sem nenhuma aba. O convite que não leva a lugar nenhum não deve ser oferecido.
  */
-export function papeisConvidaveis(modulos: Modulo[] | null): string[] {
+export function papeisConvidaveis(modulos: Modulo[] | null, comCentro = false): string[] {
   const todos = ["recepcao", "medico", "financeiro", "admin"];
-  if (!modulos) return todos;
-  return todos.filter((papel) => !restringivel(papel) || modulos.includes(papel));
+  const contratados = modulos ? todos.filter((papel) => !restringivel(papel) || modulos.includes(papel)) : todos;
+  // "Centro cirúrgico" (o login da enfermagem, só o mapa) só onde o mapa está
+  // ligado para a organização — quem convida abre o centro cirúrgico.
+  return comCentro ? [...contratados, "centro"] : contratados;
 }

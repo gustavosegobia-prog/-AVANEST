@@ -99,6 +99,11 @@ describe("quem se pode convidar", () => {
   it("administrador nunca sai da lista", () => {
     assert.equal(papeisConvidaveis(["medico"]).includes("admin"), true);
   });
+
+  it("Centro cirúrgico só onde o mapa está ligado", () => {
+    assert.equal(papeisConvidaveis(["medico", "plantoes"]).includes("centro"), false);
+    assert.deepEqual(papeisConvidaveis(["medico", "plantoes"], true), ["medico", "admin", "centro"]);
+  });
 });
 
 describe("o que é restringível", () => {

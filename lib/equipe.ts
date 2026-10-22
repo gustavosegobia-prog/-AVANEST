@@ -87,6 +87,10 @@ export const FUNCOES: Record<string, { rotulo: string; resumo: string }> = {
     rotulo: "Financeiro",
     resumo: "Cuida do faturamento, recebimentos e fechamento do mês, sem acesso ao conteúdo clínico.",
   },
+  centro: {
+    rotulo: "Centro cirúrgico",
+    resumo: "Só o mapa cirúrgico: monta o mapa do dia, marca entrada em sala, saída e alta da RPA, e abre a TV e o relatório. Não vê pacientes, agenda, escala nem financeiro. Serve para o login da enfermagem do centro cirúrgico.",
+  },
 };
 
 export const rotuloDaFuncao = (role: string) => FUNCOES[role]?.rotulo ?? role;
@@ -209,7 +213,7 @@ export const vinculoAtivo = (p: Pessoa) => p.status === "ativo";
 export type Nivel = "Visualizar" | "Cadastrar" | "Editar" | "Aprovar" | "Administrar";
 
 export type AreaEfetiva = {
-  id: "pacientes" | "avaliacoes" | "escala" | "financeiro" | "administracao";
+  id: "pacientes" | "avaliacoes" | "escala" | "financeiro" | "centro" | "administracao";
   nome: string;
   niveis: Nivel[];
   /** O que cada nível quer dizer nesta área, na ordem dos níveis. */
@@ -294,6 +298,15 @@ export function areasEfetivas(p: Pessoa, ctx: Contexto = {}): AreaEfetiva[] {
       descricao: "Vê e lança atendimentos, recebimentos e despesas, e confere e fecha o mês.",
       origem: origem(finFuncao, "financeiro"),
       foraDoPlano: !temModulo(ctx, "financeiro"),
+    });
+  }
+
+  if (p.role === "centro") {
+    lista.push({
+      id: "centro", nome: "Centro cirúrgico",
+      niveis: ["Visualizar", "Cadastrar", "Editar"],
+      descricao: "Vê e monta o mapa cirúrgico do dia, marca as etapas de cada paciente e abre a TV e o relatório do mês.",
+      origem: "funcao",
     });
   }
 
@@ -543,7 +556,7 @@ export function pendencias(e: EntradaDasPendencias): Pendencia[] {
     }
 
     if (!vinculoAtivo(p)) continue;
-    const naEscala = p.na_escala !== false && p.role !== "recepcao" && p.role !== "financeiro";
+    const naEscala = p.na_escala !== false && p.role !== "recepcao" && p.role !== "financeiro" && p.role !== "centro";
     const crm = lerCRM(p.crm);
     if (naEscala && atuaComoMedico(p) && (!crm || !crm.uf)) {
       lista.push({

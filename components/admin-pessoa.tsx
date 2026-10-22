@@ -24,7 +24,7 @@ export type Ator = { id: string; role: string; permissoes?: string[] | null };
 const NIVEIS: Nivel[] = ["Visualizar", "Cadastrar", "Editar", "Aprovar", "Administrar"];
 const dataBr = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
 const dataHora = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-const APOIO = ["recepcao", "financeiro"];
+const APOIO = ["recepcao", "financeiro", "centro"];
 /** O primeiro nome, sem "Dr."/"Dra." — "O que Dr. pode fazer" não diz de quem. */
 const primeiroNome = (nome: string) =>
   nome.trim().split(/\s+/).find((x) => !/^(dr|dra|prof|profa)\.?$/i.test(x)) ?? nome.trim();

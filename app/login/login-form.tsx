@@ -128,8 +128,10 @@ export function LoginForm({ passwordChanged = false, convite = "", plano = "" }:
         .select("plano, created_at").eq("id", quem.institution_id).maybeSingle();
       precisaContratar = faltaCartao({ plano: org?.plano, criadaEm: org?.created_at });
     }
-    const escolheLocal = quem?.role !== "recepcao";
-    const destino = precisaContratar ? "/assinatura" : escolheLocal ? "/locais" : "/dashboard";
+    // A enfermagem do centro cirúrgico (função "centro") só tem o mapa: vai direto para ele.
+    const escolheLocal = quem?.role !== "recepcao" && quem?.role !== "centro";
+    const destino = precisaContratar ? "/assinatura"
+      : quem?.role === "centro" ? "/centro-cirurgico" : escolheLocal ? "/locais" : "/dashboard";
     // Proprietário e administrador sem o código ativo cadastram agora, antes
     // de entrar. A pergunta é feita aqui porque a conta ainda não tem fator:
     // a consulta do perfil passa.

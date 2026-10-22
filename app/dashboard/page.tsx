@@ -45,6 +45,13 @@ export default async function DashboardPage({
   if (exigeDuasEtapas(perfil) && !user.factors?.some((f) => f.status === "verified")) {
     redirect("/duas-etapas?depois=%2Fdashboard");
   }
+  // O login "Centro cirúrgico" (a enfermagem do centro) só tem o mapa: vai
+  // direto para ele. Se o mapa não estiver liberado, fica no painel — que sai
+  // vazio, mas não volta para o mapa em círculo.
+  if (perfil.role === "centro") {
+    const { data: abre } = await supabase.rpc("pode_montar_centro", { p_institution_id: perfil.institution_id });
+    if (abreOCentro(abre)) redirect("/centro-cirurgico");
+  }
 
   // AS TRÊS JUNTAS, e não uma depois da outra.
   //

@@ -25,7 +25,7 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: perfil } = await supabase
-    .from("perfis").select("id, institution_id, status, super_admin").eq("id", user.id).maybeSingle();
+    .from("perfis").select("id, institution_id, status, super_admin, role").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) redirect("/dashboard");
   const inst = perfil.institution_id as string;
   const { data: podeMontar } = await supabase.rpc("pode_montar_centro", { p_institution_id: inst });
@@ -71,6 +71,7 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
       plantoes={(plantoes.data ?? []) as PlantaoDaEscala[]}
       podeMontar={podeMontar === true}
       semBanco={Boolean(casos.error)}
+      soMapa={perfil.role === "centro"}
       marca={casa ? marcaDaCasa((instituicao.data?.nome as string | undefined) ?? "", (locais.data ?? []) as Array<{ nome: string; logo_url: string | null }>) : null}
       agora={agoraMs()}
     />

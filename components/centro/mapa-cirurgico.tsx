@@ -14,6 +14,7 @@ import {
 import { JanelaDoCaso, JanelaDoPasso, JanelaDeCancelar, JanelaDasSalas, mensagemDoBanco } from "./janelas";
 import { JanelaDeImportar } from "./importar";
 import { MarcaDagua } from "./marca-dagua";
+import { AssinaturaAvanest } from "./assinatura";
 import estilos from "./mapa.module.css";
 
 export type Anestesista = { id: string; nome: string; apelido: string };
@@ -46,7 +47,7 @@ const nomeDoDia = (dia: string) => {
  */
 export function MapaCirurgico({
   institutionId, nomeDaCasa, dia, hoje, salasIniciais, casosIniciais, anestesistas, plantoes, podeMontar, semBanco, agora: agoraDoServidor,
-  marca = null,
+  marca = null, soMapa = false,
 }: {
   institutionId: string;
   nomeDaCasa: string;
@@ -61,6 +62,8 @@ export function MapaCirurgico({
   agora: number;
   /** O logo do hospital (cadastro de locais), em marca d'água. */
   marca?: string | null;
+  /** O login da enfermagem (função "Centro cirúrgico"): só o mapa, sem painel. */
+  soMapa?: boolean;
 }) {
   const [salas, setSalas] = useState(salasIniciais);
   const [casos, setCasos] = useState(casosIniciais);
@@ -133,7 +136,7 @@ export function MapaCirurgico({
 
   if (semBanco) {
     return (
-      <Casca marca={marca}>
+      <Casca marca={marca} soMapa={soMapa}>
         <p className={estilos.faixa}>
           O banco do mapa cirúrgico ainda não está instalado. Rode a migração
           <code> 202610210001_mapa_cirurgico.sql</code> no Supabase.
@@ -143,7 +146,7 @@ export function MapaCirurgico({
   }
 
   return (
-    <Casca marca={marca}>
+    <Casca marca={marca} soMapa={soMapa}>
       <div className={estilos.titulo}>
         <div>
           <h1>Mapa cirúrgico</h1>
@@ -320,7 +323,7 @@ export function MapaCirurgico({
   );
 }
 
-function Casca({ children, marca }: { children: React.ReactNode; marca: string | null }) {
+function Casca({ children, marca, soMapa }: { children: React.ReactNode; marca: string | null; soMapa: boolean }) {
   return (
     <div className="fcFundo temaApp">
       {/* A marca d'água do hospital: por cima de tudo, bem clara, e sem
@@ -328,13 +331,40 @@ function Casca({ children, marca }: { children: React.ReactNode; marca: string |
       <MarcaDagua src={marca} className={estilos.marcaDagua} />
       <main className={`fcPagina ${estilos.pagina}`}>
         <header className="fcTopo">
-          <Link href="/dashboard" className="fcVoltar">
-            <Icone nome="voltar" tamanho={18} /> Painel
-          </Link>
+          {soMapa ? <Sair /> : (
+            <Link href="/dashboard" className="fcVoltar">
+              <Icone nome="voltar" tamanho={18} /> Painel
+            </Link>
+          )}
         </header>
         {children}
       </main>
+      <AssinaturaAvanest />
     </div>
+  );
+}
+
+/**
+ * O login da enfermagem do centro cirúrgico só abre o mapa: não há painel
+ * para onde voltar. No lugar do "Painel", o "Sair" — que encerra a sessão de
+ * verdade, para o computador do balcão poder trocar de pessoa.
+ */
+function Sair() {
+  const router = useRouter();
+  const [saindo, setSaindo] = useState(false);
+  async function sair() {
+    setSaindo(true);
+    try {
+      await createClient().auth.signOut();
+    } catch {
+      // Sem falar com o servidor, sair daqui ainda é melhor que ficar preso.
+    }
+    router.replace("/login");
+  }
+  return (
+    <button type="button" className={`fcVoltar ${estilos.sair}`} onClick={sair} disabled={saindo}>
+      {saindo ? "Saindo…" : "Sair"}
+    </button>
   );
 }
 

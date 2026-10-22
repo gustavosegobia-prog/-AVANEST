@@ -3,9 +3,9 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 
-const ALLOWED_ROLES = new Set(["recepcao", "medico", "financeiro", "admin"]);
+const ALLOWED_ROLES = new Set(["recepcao", "medico", "financeiro", "admin", "centro"]);
 /** Quem não entra na escala, e por isso não tem por que ter CRM no cadastro. */
-const SEM_ESCALA = new Set(["recepcao", "financeiro"]);
+const SEM_ESCALA = new Set(["recepcao", "financeiro", "centro"]);
 
 /** O cliente com a chave de serviço, num lugar só para o tipo casar. */
 function clienteAdmin(serviceKey: string) {
@@ -124,6 +124,14 @@ export async function POST(request: NextRequest) {
   if (!nome || !ALLOWED_ROLES.has(role)) {
     return NextResponse.json({ error: "Confira nome e área de acesso." }, { status: 400 });
   }
+  // "Centro cirúrgico" é o login da enfermagem que só abre o mapa: só existe
+  // onde o mapa está ligado e quem convida pode montá-lo.
+  if (role === "centro") {
+    const { data: monta } = await supabase.rpc("pode_montar_centro", { p_institution_id: actor.institution_id });
+    if (monta !== true) {
+      return NextResponse.json({ error: "O mapa cirúrgico não está ligado para esta organização." }, { status: 403 });
+    }
+  }
   if (semAcesso) {
     // Sem acesso só faz sentido para quem entra na escala. Um cadastro sem
     // login e sem CRM produz alguém que não consegue entrar no sistema nem ser
@@ -186,7 +194,17 @@ export async function POST(request: NextRequest) {
     ...(crm && (!SEM_ESCALA.has(role) || atuacaoMedica) ? { crm, rqe: rqe || null } : {}),
   });
   if (profileError) {
-    return NextResponse.json({ error: "O usuário foi convidado, mas o perfil não pôde ser criado. Revise a tabela de perfis." }, { status: 500 });
+    // A conta de login acabou de nascer (o convite recusa e-mail já
+    // cadastrado) e ficaria sem perfil: um acesso que abre uma tela vazia e
+    // trava o e-mail para um novo convite. Desfaz, para dar para refazer.
+    await admin.auth.admin.deleteUser(criado.id).catch(() => null);
+    // 23514: o banco ainda não aceita a função (a migração 202610220001 não rodou).
+    const funcaoNova = role === "centro" && profileError.code === "23514";
+    return NextResponse.json({
+      error: funcaoNova
+        ? "A função Centro cirúrgico ainda não foi liberada no banco. Nada foi cadastrado; tente de novo depois da atualização."
+        : "O perfil não pôde ser criado, e o convite foi desfeito. Tente de novo; se repetir, revise a tabela de perfis.",
+    }, { status: 500 });
   }
 
   await supabase.from("auditoria").insert({

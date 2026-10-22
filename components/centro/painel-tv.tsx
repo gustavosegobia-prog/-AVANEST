@@ -7,6 +7,7 @@ import {
   type Caso, type LinhaDaTv, type Sala,
 } from "@/lib/centro-cirurgico";
 import { MarcaDagua } from "./marca-dagua";
+import { AssinaturaAvanest } from "./assinatura";
 import estilos from "./tv.module.css";
 
 const RELOGIO = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -238,6 +239,7 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
             Tela cheia
           </button>
         )}
+        <AssinaturaAvanest naTv />
       </div>
     </div>
   );

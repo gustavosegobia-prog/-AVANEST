@@ -43,8 +43,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       : { data: null };
     const precisaContratar = (assinatura ? assinatura.liberada === false : false)
       || faltaCartao({ plano: org?.plano, criadaEm: org?.created_at });
-    const escolheLocal = quem?.role !== "recepcao";
-    redirect(precisaContratar ? "/assinatura" : escolheLocal ? "/locais" : "/dashboard");
+    const escolheLocal = quem?.role !== "recepcao" && quem?.role !== "centro";
+    redirect(precisaContratar ? "/assinatura"
+      : quem?.role === "centro" ? "/centro-cirurgico" : escolheLocal ? "/locais" : "/dashboard");
   }
 
   return (

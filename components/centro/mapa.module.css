@@ -229,6 +229,10 @@
 :global(html[data-tema=escuro]) .marcaDagua { mix-blend-mode: screen; opacity: .08; }
 :global(html[data-tema=escuro]) .marcaDagua img { filter: grayscale(1) invert(1) contrast(1.5) brightness(1.6); }
 
+/* O "Sair" do login da enfermagem tem a cara do "Painel" que ele substitui. */
+.sair { background: none; border: 0; font-family: inherit; cursor: pointer; }
+.sair:disabled { cursor: progress; opacity: .6; }
+
 /* ── Importar o mapa ────────────────────────────────────────────────────── */
 .avisoOk { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--cor-sucesso-suave); color: var(--cor-tinta); font-weight: 600; }
 .importarArquivo { display: grid; justify-items: start; gap: 6px; margin-bottom: 14px; }

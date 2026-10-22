@@ -1,0 +1,36 @@
+/* A assinatura do AVANEST: canto inferior direito, por cima de tudo, bem
+   discreta e sem receber toque. Cores da marca (as mesmas da AppLogo). */
+
+.assinatura { position: fixed; right: 12px; bottom: 10px; z-index: 31; display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px 6px 8px; border-radius: 10px; pointer-events: none; user-select: none;
+  /* Um fundo da cor da página, quase opaco: o mapa rola por baixo e a
+     assinatura não se mistura com o texto dos cartões. */
+  background: color-mix(in srgb, var(--cor-fundo) 86%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.assinatura > * { opacity: .72; }
+.simbolo { width: 26px; height: 26px; flex: none; }
+.texto { display: grid; line-height: 1; }
+.texto strong { font-size: 14px; font-weight: 800; letter-spacing: .12em; }
+.texto small { margin-top: 3px; font-size: 7.5px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--cor-tinta-fraca); }
+.av { color: var(--cor-marca-clara, #2b86d4); }
+.a { background: linear-gradient(90deg, var(--cor-marca-clara, #2b86d4) 0 48%, #2bc5a8 52% 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nest { color: #2bc5a8; }
+
+/* Na TV ela é o último item do rodapé — o canto inferior direito sem cobrir
+   nenhuma linha da lista — e tudo é medido em vw, para a mesma assinatura
+   servir à TV de 32" e à de 65". */
+.naTv { position: static; gap: .5vw; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.naTv .simbolo { width: 1.7vw; height: 1.7vw; }
+.naTv .texto strong { font-size: .95vw; }
+.naTv .texto small { margin-top: .2vw; font-size: .5vw; }
+
+@media (max-width: 640px) {
+  .assinatura { right: 8px; bottom: 8px; padding: 4px 8px 4px 6px; }
+  .simbolo { width: 20px; height: 20px; }
+  .texto strong { font-size: 11px; }
+  .texto small { font-size: 6px; }
+}
+
+@media print {
+  .assinatura { position: fixed; background: none; }
+}

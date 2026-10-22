@@ -5,5 +5,20 @@
       "maxFindings": 5,
       "maxChars": 8000
     }
+  },
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "components/centro/assinatura.module.css"
+        ],
+        "createdAt": "2026-10-22T20:15:53.297Z",
+        "reason": "Agent: the two-color 'A' is the AVANEST brand lockup, same hard-stop split as .brandMidA in app/globals.css"
+      }
+    ]
   }
 }

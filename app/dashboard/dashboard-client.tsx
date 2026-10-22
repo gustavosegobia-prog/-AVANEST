@@ -166,7 +166,7 @@ export { CONVENIOS };
  * Médico ativo sem CRM não é excluído em silêncio — a escala mostra o nome
  * dele num aviso, apontando onde preencher.
  */
-const EQUIPE_DE_APOIO = ["recepcao", "financeiro"];
+const EQUIPE_DE_APOIO = ["recepcao", "financeiro", "centro"];
 
 // Quem aparece na fila de nomes de quem monta a escala. Três perguntas, e
 // todas precisam de "sim": o acesso está ativo, a pessoa responde pela
@@ -1147,7 +1147,7 @@ export function DashboardClient({
           pacientes={pacientes} agendamentos={agendamentos} erroExterno={open ? "" : error}
           onNovoPaciente={()=>setOpen(true)} onAtualizar={()=>router.refresh()} />
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()} nomeDaOrganizacao={organizacao?.nome??null} carregadoEm={carregadoEm}/>
-      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} localAtivo={localAtivo} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin}/>}
+      : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} localAtivo={localAtivo} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin} comCentro={podeMapaCirurgico}/>}
 
       {/* A janela compartilhada (components/janela.tsx): contorno por fora,
           rolagem por dentro, cabeçalho sempre à vista e a página travada. */}
@@ -2742,7 +2742,9 @@ function traduzirAbaDoAdmin(aba:string):{secao:SecaoDoAdmin;equipe?:"pessoas"|"c
   }
 }
 
-function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefresh,abrirEm,onAberturaAtendida}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];
+function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefresh,abrirEm,onAberturaAtendida,comCentro=false}:{perfil:Perfil;organizacao:Organizacao|null;perfis:PerfilGerenciado[];auditoria:Auditoria[];
+  /** O mapa cirúrgico está ligado aqui: o convite oferece a função "Centro cirúrgico". */
+  comCentro?:boolean;
   /** O local escolhido no topo — dito aqui só para avisar que ele NÃO filtra a Administração. */
   localAtivo?:LocalDisponivel|null;
   onRefresh:()=>void;
@@ -2781,7 +2783,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefres
   const podeAdministrar=["admin","owner"].includes(perfil.role);
   const dados=useDadosDaEquipe(true);
   const modulos=modulosDaOrganizacao(organizacao?.modulos);
-  const papeis=useMemo(()=>papeisConvidaveis(modulos),[modulos]);
+  const papeis=useMemo(()=>papeisConvidaveis(modulos,comCentro),[modulos,comCentro]);
   const ctx={modulos,temEscalista:perfis.some(p=>p.escalista===true&&p.status==="ativo")};
   const nomes=useMemo(()=>new Map(perfis.map(p=>[p.id,p.nome])),[perfis]);
 

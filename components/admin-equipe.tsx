@@ -142,7 +142,7 @@ export function EquipeEAcessos({
           <label><span>Função</span>
             <select value={filtros.funcao} onChange={(e) => onFiltros({ ...filtros, funcao: e.target.value })}>
               <option value="todas">Todas</option>
-              {["owner", "admin", "medico", "recepcao", "financeiro"].map((r) => <option key={r} value={r}>{rotuloDaFuncao(r)}</option>)}
+              {["owner", "admin", "medico", "recepcao", "financeiro", "centro"].map((r) => <option key={r} value={r}>{rotuloDaFuncao(r)}</option>)}
             </select></label>
           <label><span>Acesso</span>
             <select value={filtros.acesso} onChange={(e) => onFiltros({ ...filtros, acesso: e.target.value as Filtros["acesso"] })}>
@@ -203,7 +203,7 @@ export function EquipeEAcessos({
                       {extras.map((a) => <small key={a} className="admEtiqueta">+ {NOME_DA_AREA_EXTRA[a]}</small>)}
                       {legado.length > 0 && <small className="admEtiqueta atencao" title={legado.map((c) => c.efeito).join(" ")}>concessão antiga</small>}
                       {p.escalista && <small className="admEtiqueta">monta a escala</small>}
-                      {p.na_escala === false && !["recepcao", "financeiro"].includes(p.role) && <small className="admEtiqueta neutra">fora da escala</small>}
+                      {p.na_escala === false && !["recepcao", "financeiro", "centro"].includes(p.role) && <small className="admEtiqueta neutra">fora da escala</small>}
                     </span>
                   </td>
                   <td data-rotulo="Acesso">

@@ -84,6 +84,12 @@ describe("permissões efetivas", () => {
     assert.ok(escala(p("dono", { role: "owner" }), true).includes("Administrar"));
   });
 
+  it("Centro cirúrgico abre só o mapa: nada de pacientes, escala ou financeiro", () => {
+    const enf = p("enf", { role: "centro" });
+    assert.deepEqual(areasEfetivas(enf).map((a) => a.id), ["centro"]);
+    assert.equal(areasEfetivas(p("dono", { role: "owner" })).some((a) => a.id === "centro"), false);
+  });
+
   it("módulo não contratado aparece marcado, não some nem é prometido", () => {
     const fin = areasEfetivas(p("f", { role: "financeiro" }), { modulos: ["medico", "plantoes"] })[0];
     assert.equal(fin.foraDoPlano, true);
