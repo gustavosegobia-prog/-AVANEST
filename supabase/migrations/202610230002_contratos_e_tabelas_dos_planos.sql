@@ -274,14 +274,22 @@ begin
 end;
 $$;
 
+-- Funções de gatilho: só rodam como gatilho, e não ficam ao alcance da API.
+revoke execute on function public.contrato_versao_protegida(), public.contrato_valor_da_versao(),
+  public.contrato_da_operadora() from public, anon, authenticated;
+
+-- O super-admin, pelo próprio perfil (ver a parte 1: e_super_admin() não é
+-- executável por authenticated).
 alter table public.importacoes_tabelas enable row level security;
 drop policy if exists "importacoes_da_clinica" on public.importacoes_tabelas;
 create policy "importacoes_da_clinica" on public.importacoes_tabelas
   for all to authenticated
   using ((institution_id is not null and public.pode_tabelas_honorarios(institution_id))
-         or (institution_id is null and public.e_super_admin()))
+         or (institution_id is null
+             and exists (select 1 from public.perfis p where p.id = (select auth.uid()) and p.super_admin is true)))
   with check ((institution_id is not null and public.pode_tabelas_honorarios(institution_id))
-              or (institution_id is null and public.e_super_admin()));
+              or (institution_id is null
+             and exists (select 1 from public.perfis p where p.id = (select auth.uid()) and p.super_admin is true)));
 revoke all on public.importacoes_tabelas, public.tuss_versoes, public.tuss_codigos from anon;
 
 -- Os arquivos importados: bucket privado, uma pasta por organização e a pasta
@@ -296,11 +304,13 @@ create policy "tabelas_honorarios_le" on storage.objects
   using (bucket_id = 'tabelas-honorarios' and (
     ((storage.foldername(name))[1] = public.current_institution_id()::text
       and public.pode_tabelas_honorarios(public.current_institution_id()))
-    or ((storage.foldername(name))[1] = 'tuss' and public.e_super_admin())));
+    or ((storage.foldername(name))[1] = 'tuss'
+      and exists (select 1 from public.perfis p where p.id = (select auth.uid()) and p.super_admin is true))));
 drop policy if exists "tabelas_honorarios_envia" on storage.objects;
 create policy "tabelas_honorarios_envia" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'tabelas-honorarios' and (
     ((storage.foldername(name))[1] = public.current_institution_id()::text
       and public.pode_tabelas_honorarios(public.current_institution_id()))
-    or ((storage.foldername(name))[1] = 'tuss' and public.e_super_admin())));
+    or ((storage.foldername(name))[1] = 'tuss'
+      and exists (select 1 from public.perfis p where p.id = (select auth.uid()) and p.super_admin is true))));

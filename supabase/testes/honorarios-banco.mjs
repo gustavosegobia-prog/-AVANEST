@@ -53,6 +53,9 @@ create function public.modulo_liberado(p_modulo text) returns boolean language s
     from public.instituicoes i join public.perfis p on p.institution_id = i.id where p.id = auth.uid() and p.status = 'ativo'), false) $$;
 create function public.e_super_admin() returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.perfis sa where sa.id = auth.uid() and sa.super_admin and sa.status = 'ativo') $$;
+-- Como no banco de verdade (202607310006): authenticated não executa e_super_admin(),
+-- e o perfil tem RLS. Uma política que chamasse a função derrubaria a consulta.
+revoke execute on function public.e_super_admin() from public, anon, authenticated;
 
 create table public.producao_do_dia (
   id uuid primary key default gen_random_uuid(), institution_id uuid not null references public.instituicoes on delete cascade,
@@ -68,6 +71,11 @@ create policy "so_a_minha_producao" on public.producao_do_dia for all to authent
 create policy "financeiro_le_o_que_foi_enviado" on public.producao_do_dia for select to authenticated
   using (institution_id = public.current_institution_id() and enviado_em is not null and public.current_has_permission('financeiro'));
 grant all on all tables in schema public to anon, authenticated;
+alter table public.perfis enable row level security;
+create policy "usuario_le_proprio_perfil" on public.perfis for select to authenticated
+  using (id = auth.uid() or institution_id = public.current_institution_id());
+insert into storage.objects (bucket_id, name) values ('fotos-de-outro-modulo', 'a/foto.jpg');
+create policy "outro_modulo_le" on storage.objects for select to authenticated using (bucket_id = 'fotos-de-outro-modulo');
 
 insert into public.instituicoes values ('${INST.A}','Clínica A',null),('${INST.B}','Clínica B',null),('${INST.S}','Plataforma',null);
 insert into public.perfis (id, institution_id, nome, role, super_admin) values
@@ -227,5 +235,16 @@ const audProd = await como(null, `select dados_anteriores, dados_novos from audi
 assert.deepEqual(audProd[0], { dados_anteriores: { valor: 450 }, dados_novos: { valor: 480 } });
 assert.equal(JSON.stringify(audProd).includes("PACIENTE"), false);
 ok("Auditoria da Produção: só depois do envio, com antes e depois, sem o nome do paciente");
+
+// O que aconteceu na primeira aplicação: uma política nova no storage que
+// chamava e_super_admin() fazia falhar a leitura de TODOS os arquivos.
+assert.equal((await como(U.medA, `select count(*)::int as n from storage.objects`))[0].n, 1);
+assert.equal((await como(U.medA, `select count(*)::int as n from tuss_versoes`))[0].n, 2);
+assert.equal((await como(U.medA, `select count(*)::int as n from importacoes_tabelas`))[0].n, 0);
+ok("Políticas novas não quebram as leituras de quem não é super-admin (storage, TUSS, importações)");
+for (const f of ["procedimento_da_producao", "protege_honorario_da_producao", "contrato_versao_protegida", "correspondencia_protegida"]) {
+  await falha(U.medA, `select public.${f}()`, /permission denied|trigger functions can only be called as triggers/);
+}
+ok("Funções de gatilho não ficam ao alcance da API");
 
 console.log(`\n${passou} verificações passaram.`);

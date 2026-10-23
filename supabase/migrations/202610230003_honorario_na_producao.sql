@@ -247,6 +247,10 @@ create trigger audita_producao_movimentos
   after insert on public.producao_movimentos
   for each row execute function public.audita_honorarios();
 
+-- Funções de gatilho: só rodam como gatilho, e não ficam ao alcance da API.
+revoke execute on function public.protege_honorario_da_producao(), public.procedimento_da_producao(),
+  public.movimento_da_producao(), public.audita_honorario_da_producao() from public, anon, authenticated;
+
 alter table public.producao_procedimentos enable row level security;
 alter table public.producao_movimentos enable row level security;
 revoke all on public.producao_procedimentos, public.producao_movimentos from anon;

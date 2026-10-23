@@ -245,6 +245,11 @@ $$;
 revoke all on function public.publicar_versao_tuss(uuid) from public, anon;
 grant execute on function public.publicar_versao_tuss(uuid) to authenticated;
 
+-- Nas políticas, o super-admin é lido do próprio perfil, e não por
+-- e_super_admin(): essa função não é executável por authenticated
+-- (202607310006), e a política roda com os privilégios de quem consulta —
+-- chamá-la derrubaria toda leitura destas tabelas (e, no storage, a de todos
+-- os arquivos). Ninguém marca super_admin no próprio perfil (protege_super_admin).
 alter table public.tuss_versoes enable row level security;
 alter table public.tuss_codigos enable row level security;
 
@@ -253,14 +258,18 @@ create policy "todos_leem_a_tuss" on public.tuss_versoes
   for select to authenticated using (true);
 drop policy if exists "plataforma_mantem_a_tuss" on public.tuss_versoes;
 create policy "plataforma_mantem_a_tuss" on public.tuss_versoes
-  for all to authenticated using (public.e_super_admin()) with check (public.e_super_admin());
+  for all to authenticated
+  using (exists (select 1 from public.perfis p where p.id = (select auth.uid()) and p.super_admin is true))
+  with check (exists (select 1 from public.perfis p where p.id = (select auth.uid()) and p.super_admin is true));
 
 drop policy if exists "todos_leem_os_codigos" on public.tuss_codigos;
 create policy "todos_leem_os_codigos" on public.tuss_codigos
   for select to authenticated using (true);
 drop policy if exists "plataforma_mantem_os_codigos" on public.tuss_codigos;
 create policy "plataforma_mantem_os_codigos" on public.tuss_codigos
-  for all to authenticated using (public.e_super_admin()) with check (public.e_super_admin());
+  for all to authenticated
+  using (exists (select 1 from public.perfis p where p.id = (select auth.uid()) and p.super_admin is true))
+  with check (exists (select 1 from public.perfis p where p.id = (select auth.uid()) and p.super_admin is true));
 
 -- ============================================================================
 -- 2. CBHPM — edições e portes anestésicos (AN0 a AN8), por organização
@@ -489,3 +498,7 @@ begin
   end loop;
 end;
 $$;
+
+-- Funções de gatilho: só rodam como gatilho, e não ficam ao alcance da API.
+revoke execute on function public.cbhpm_linha_da_edicao(), public.cbhpm_edicao_protegida(),
+  public.correspondencia_protegida() from public, anon, authenticated;
