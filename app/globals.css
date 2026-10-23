@@ -6487,6 +6487,15 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 /* Em todo menu lateral (Financeiro, Administração, Escala) o que é clicável
    fica em negrito — era 650, perto demais do texto comum. */
 .financeTarefas button{font-weight:750}
+/* Link do menu para outra página (Tabelas e honorários): o desenho de um
+   item direto do menu, e não o de um link de texto. */
+.menuLateral a.finMenuLink{display:flex;align-items:center;gap:9px;padding:10px;border-radius:9px;
+  font-size:14px;font-weight:800;color:var(--cor-tinta);text-decoration:none;transition:background var(--transicao)}
+.menuLateral a.finMenuLink span{flex:1}
+.menuLateral a.finMenuLink svg{flex:none;color:var(--cor-tinta-fraca)}
+.menuLateral a.finMenuLink:hover{background:var(--cor-superficie-suave)}
+.menuLateral a.finMenuLink:focus-visible{outline:0;box-shadow:var(--foco)}
+@media(max-width:1100px){.menuLateral a.finMenuLink{padding:8px 12px;white-space:nowrap;font-size:14.5px}}
 
 /* Título de grupo que não é botão (Escala): o mesmo peso do título de grupo
    do Financeiro — é o pai das opções de baixo, e tem de parecer. */
