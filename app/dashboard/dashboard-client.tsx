@@ -863,10 +863,6 @@ export function DashboardClient({
             Escala
             {trocasEsperando>0&&<b className="navAviso" title={`${trocasEsperando===1?"Um plantão oferecido espera":"Plantões oferecidos esperam"} a sua resposta`}>{trocasEsperando}</b>}
           </button>}
-          {/* O mapa cirúrgico mora em tela própria, como a ficha anestésica:
-              é um link, e não uma área do painel, e só nasce onde a
-              organização tem o recurso ligado. */}
-          {podeMapaCirurgico&&<Link href="/centro-cirurgico" data-area="centro" prefetch={false}>Centro cirúrgico</Link>}
           {allowedViews.includes("financeiro")&&<button data-area="financeiro" disabled={isAreaPending} className={naBarra === "financeiro" ? "active" : ""} aria-current={view==="financeiro"?"page":undefined} onClick={() => changeView("financeiro")} onPointerEnter={() => prefetchar("financeiro")} onFocus={() => prefetchar("financeiro")}>Financeiro</button>}
           {allowedViews.includes("admin")&&<button data-area="admin" disabled={isAreaPending} className={naBarra === "admin" ? "active" : ""} aria-current={view==="admin"?"page":undefined} onClick={() => changeView("admin")} onPointerEnter={() => prefetchar("admin")} onFocus={() => prefetchar("admin")}>Admin</button>}
         </nav>
@@ -1016,6 +1012,14 @@ export function DashboardClient({
               {perfil.super_admin===true&&
                 <Link role="menuitem" href="/organizacoes" onClick={()=>setUserMenu(false)}>
                   <Icone nome="estrela"/> Organizações
+                </Link>}
+              {/* O mapa cirúrgico mora em tela própria e, por enquanto, só para
+                  quem o monta (abreOCentro): o super-admin e o enfermeiro chefe
+                  da FUNDHOSPAR. Fica no menu da conta, e não na barra das áreas
+                  (pedido de 23/10/2026), logo abaixo de Organizações. */}
+              {podeMapaCirurgico&&
+                <Link role="menuitem" href="/centro-cirurgico" prefetch={false} onClick={()=>setUserMenu(false)}>
+                  <Icone nome="painel"/> Centro cirúrgico
                 </Link>}
               <hr/>
               <button role="menuitem" onClick={logout}><Icone nome="cadeado"/> Bloquear tela</button>
