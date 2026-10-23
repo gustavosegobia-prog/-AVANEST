@@ -6,7 +6,9 @@ import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 
-const MIG = readFileSync(new URL("../migrations/202610230001_tabelas_e_honorarios.sql", import.meta.url), "utf8");
+// As três partes, na ordem em que vão para o banco.
+const MIG = ["202610230001_tabelas_e_honorarios.sql", "202610230002_contratos_e_tabelas_dos_planos.sql", "202610230003_honorario_na_producao.sql"]
+  .map((f) => readFileSync(new URL(`../migrations/${f}`, import.meta.url), "utf8")).join("\n");
 const db = new PGlite({ extensions: { pg_trgm } });
 
 const U = {
@@ -192,12 +194,21 @@ await como(null, `update producao_do_dia set honorario_situacao = 'calculado' wh
 await como(U.medA, `update producao_do_dia set convenio = 'Particular' where id = $1`, [pr.id]);
 assert.equal((await como(U.medA, `select honorario_situacao from producao_do_dia where id = $1`, [pr.id]))[0].honorario_situacao, "nao_calculado");
 ok("Produção: trocar o convênio desfaz o cálculo anterior");
+// O caminho da tela (components/honorarios/honorario-da-anestesia): apaga os
+// códigos e grava de novo, sem informar dono nem organização — o gatilho põe.
+await como(U.medA, `delete from producao_procedimentos where producao_id = $1`, [pr.id]);
+await como(U.medA, `insert into producao_procedimentos (producao_id, ordem, tuss_codigo) values ($1,1,'90000002'),($1,2,'90000003')`, [pr.id]);
+await como(U.medA, `update producao_do_dia set urgencia = true where id = $1`, [pr.id]);
+const trocados = await como(U.medA, `select ordem, tuss_codigo, perfil_id, institution_id from producao_procedimentos where producao_id = $1 order by ordem`, [pr.id]);
+assert.deepEqual(trocados.map((t) => [t.ordem, t.tuss_codigo, t.perfil_id, t.institution_id]), [[1, "90000002", U.medA, INST.A], [2, "90000003", U.medA, INST.A]]);
+await falha(U.medA2, `insert into producao_procedimentos (producao_id, ordem, tuss_codigo) values ($1,3,'90000004')`, /row-level security/, [pr.id]);
+ok("Produção: a tela troca os códigos e marca a urgência; o colega não grava código na anestesia de outro");
 
 assert.equal((await como(U.medA2, `select * from producao_procedimentos`)).length, 0);
 assert.equal((await como(U.finA, `select * from producao_procedimentos`)).length, 0);
 ok("Privacidade: colega e Financeiro não veem os procedimentos antes do envio");
 await como(U.medA, `update producao_do_dia set enviado_em = now() where id = $1`, [pr.id]);
-assert.equal((await como(U.finA, `select * from producao_procedimentos`)).length, 1);
+assert.equal((await como(U.finA, `select * from producao_procedimentos`)).length, 2, "os dois códigos da anestesia enviada");
 assert.equal((await como(U.finB, `select * from producao_procedimentos`)).length, 0);
 ok("Privacidade: depois do envio o Financeiro da clínica vê; o de outra clínica, não");
 

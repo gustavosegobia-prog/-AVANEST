@@ -265,3 +265,28 @@ ol.listaSimples { list-style: decimal; }
   .escolha { min-width: 0; flex: 1 1 100%; }
   .acoesDaLinha { justify-content: flex-start; }
 }
+
+/* Honorário da anestesia (Produção) */
+/* A ordem importa (o principal primeiro): o número é desenhado, porque o
+   item em grade não mostra o marcador da lista. */
+.codigosEscolhidos { margin: 0; padding: 0; display: grid; gap: var(--esp-2); list-style: none; counter-reset: ordem; }
+.codigosEscolhidos li::before { counter-increment: ordem; content: counter(ordem) "."; font-weight: 800; color: var(--cor-marca); }
+.marca { display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 600; min-height: 44px; }
+.marca input { width: 18px; height: 18px; accent-color: var(--cor-marca); }
+.codigosEscolhidos li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: var(--esp-3); align-items: center; font-size: 14px; }
+.achados { list-style: none; margin: 0; padding: 4px; display: grid; gap: 2px; border: 1px solid var(--cor-borda); border-radius: var(--raio-2); background: var(--cor-superficie); }
+.achados button {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--esp-3); width: 100%; text-align: left; padding: 8px 10px;
+  border: 0; border-radius: var(--raio-1); background: none; color: var(--cor-tinta); font: inherit; font-size: 14px; cursor: pointer;
+}
+.achados button:hover { background: var(--cor-superficie-suave); }
+.achados button:focus-visible { outline: 0; box-shadow: var(--foco); }
+.selo {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; padding: 2px 9px; min-height: 26px; width: fit-content;
+  border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-cheio); background: var(--cor-superficie);
+  color: var(--cor-tinta); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer;
+}
+.selo:hover { background: var(--cor-superficie-suave); }
+.selo:focus-visible { outline: 0; box-shadow: var(--foco); }
+.seloOk { border-color: transparent; background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
+.seloPendente { border-color: transparent; background: var(--cor-atencao-suave); color: var(--cor-atencao); }

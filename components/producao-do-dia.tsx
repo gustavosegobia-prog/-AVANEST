@@ -10,6 +10,7 @@ import { hoje as hojeLocal, ultimoDiaDoMes } from "@/lib/data-local";
 import { lerDinheiro } from "@/lib/dinheiro";
 import { camposDaBaixa, type SituacaoDaProducao } from "@/lib/baixa-da-producao";
 import { chaveDoPagador, grafiaConhecida, rotulosDePagador } from "@/lib/financeiro-indicadores";
+import { HonorarioDaAnestesia, SeloDoHonorario } from "@/components/honorarios/honorario-da-anestesia";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -36,6 +37,13 @@ export type Producao = {
   recebido_em?: string | null;
   /** O dia em que a nota saiu. Nulo enquanto a nota não foi emitida. */
   faturado_em?: string | null;
+  /**
+   * O honorário previsto (migração 202610230003). Ausentes enquanto a
+   * migração não foi aplicada — e aí a linha não mostra o honorário.
+   */
+  urgencia?: boolean;
+  honorario_situacao?: string;
+  honorario_valor_previsto?: number | string | null;
 };
 
 const SITUACOES: Array<[string, string]> = [
@@ -639,6 +647,25 @@ export function ProducaoDoMes({
   /** O dia do carimbo. Vale para todos os marcados — por isso fica acima deles. */
   const [dataDaBaixa, setDataDaBaixa] = useState(hojeLocal());
   const [salvandoBaixa, setSalvandoBaixa] = useState(false);
+  /**
+   * O honorário previsto de cada anestesia (Tabelas e honorários). Enquanto o
+   * módulo é conferido, só o super-admin vê; e só depois que o banco tem as
+   * colunas — antes disso a linha continua exatamente como era.
+   */
+  const [superAdmin, setSuperAdmin] = useState(false);
+  const [conferindo, setConferindo] = useState<Producao | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("perfis").select("super_admin").eq("id", user.id).maybeSingle();
+      if (vivo) setSuperAdmin((data as { super_admin?: boolean } | null)?.super_admin === true);
+    })();
+    return () => { vivo = false; };
+  }, []);
+  const comHonorario = superAdmin && itens.some((i) => i.honorario_situacao !== undefined);
 
   useEffect(() => {
     let vivo = true;
@@ -1094,6 +1121,9 @@ export function ProducaoDoMes({
                 <small>
                   {i.convenio}{i.procedimento ? ` · ${i.procedimento}` : ""}
                 </small>
+                {comHonorario && (
+                  <SeloDoHonorario situacao={i.honorario_situacao} valor={i.honorario_valor_previsto} onAbrir={() => setConferindo(i)} />
+                )}
               </span>
               <select value={i.local_id ?? ""} aria-label={`Hospital de ${i.paciente}`}
                 className={i.local_id || doPlantao ? undefined : "faltando"}
@@ -1134,6 +1164,10 @@ export function ProducaoDoMes({
             );
           })}
         </section>
+      )}
+      {conferindo && (
+        <HonorarioDaAnestesia anestesia={conferindo} onFechar={() => setConferindo(null)}
+          onCalculado={(id, campos) => setItens((lista) => lista.map((x) => (x.id === id ? { ...x, ...campos } : x)))} />
       )}
     </>
   );
