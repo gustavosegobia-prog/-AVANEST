@@ -1013,9 +1013,9 @@ export function DashboardClient({
                 <Link role="menuitem" href="/organizacoes" onClick={()=>setUserMenu(false)}>
                   <Icone nome="estrela"/> Organizações
                 </Link>}
-              {/* O mapa cirúrgico mora em tela própria e, por enquanto, só para
-                  quem o monta (abreOCentro): o super-admin e o enfermeiro chefe
-                  da FUNDHOSPAR. Fica no menu da conta, e não na barra das áreas
+              {/* O mapa cirúrgico mora em tela própria: para todos da casa onde
+                  ele está ligado (abreOCentro) — hoje a FUNDHOSPAR — e para o
+                  super-admin. Fica no menu da conta, e não na barra das áreas
                   (pedido de 23/10/2026), logo abaixo de Organizações. */}
               {podeMapaCirurgico&&
                 <Link role="menuitem" href="/centro-cirurgico" prefetch={false} onClick={()=>setUserMenu(false)}>

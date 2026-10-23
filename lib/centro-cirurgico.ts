@@ -571,13 +571,14 @@ export function marcaDaCasa(nomeDaCasa: string, locais: Array<{ nome: string; lo
 // ---------------------------------------------------------------------------
 
 /**
- * Por enquanto (pedidos de 21 e 22/10/2026), o centro cirúrgico só aparece
- * para quem MONTA o mapa: o enfermeiro chefe, na casa em que o mapa está
- * ligado, e o super-admin, para testar na própria organização. O banco deixa
- * também os médicos da casa verem o mapa (pode_ver_centro); as telas ficam
- * fechadas para eles até a liberação, que é voltar a perguntar pode_ver_centro.
+ * Quem abre o mapa e a TV: todos da casa em que o centro cirúrgico está ligado
+ * que o banco deixa ver (pode_ver_centro — médicos, enfermagem e quem
+ * administra), e o super-admin. Liberado para toda a FUNDHOSPAR em 23/10/2026;
+ * antes, só quem monta o mapa. Marcar as etapas e o relatório do mês
+ * continuam com quem monta (pode_montar_centro): para os outros o mapa é só
+ * leitura.
  */
-export const abreOCentro = (podeMontar: boolean | null | undefined) => podeMontar === true;
+export const abreOCentro = (pode: boolean | null | undefined) => pode === true;
 
 /**
  * O nome e a marca d'água da casa no mapa, na TV e no relatório. No login do

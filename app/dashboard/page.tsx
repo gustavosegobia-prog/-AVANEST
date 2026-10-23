@@ -78,10 +78,10 @@ export default async function DashboardPage({
     supabase.rpc("minha_assinatura"),
     // A ficha anestésica, liberada por organização: a mesma pergunta das políticas do banco.
     supabase.rpc("pode_evolucao", { p_institution_id: perfil.institution_id }),
-    // O mapa cirúrgico, ligado por organização (202610210001) e, por enquanto,
-    // só para quem monta o mapa (abreOCentro). Sem a migração a função não
+    // O mapa cirúrgico, ligado por organização (202610210001): para todos da
+    // casa que o banco deixa ver (abreOCentro). Sem a migração a função não
     // existe, a resposta vem nula e o botão simplesmente não nasce.
-    supabase.rpc("pode_montar_centro", { p_institution_id: perfil.institution_id }),
+    supabase.rpc("pode_ver_centro", { p_institution_id: perfil.institution_id }),
   ]);
 
   // Trava comercial: assinatura vencida ou suspensa impede o uso do sistema.

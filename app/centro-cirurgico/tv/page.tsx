@@ -24,8 +24,8 @@ export default async function TvDoCentroPage() {
     .from("perfis").select("id, institution_id, status, super_admin").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) redirect("/dashboard");
   const inst = perfil.institution_id as string;
-  const { data: podeMontar } = await supabase.rpc("pode_montar_centro", { p_institution_id: inst });
-  if (!abreOCentro(podeMontar)) redirect("/dashboard");
+  const { data: podeVer } = await supabase.rpc("pode_ver_centro", { p_institution_id: inst });
+  if (!abreOCentro(podeVer)) redirect("/dashboard");
 
   const dia = hoje();
   const [casa, salas, casos, equipe] = await Promise.all([
