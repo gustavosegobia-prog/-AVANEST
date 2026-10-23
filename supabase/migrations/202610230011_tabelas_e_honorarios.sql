@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Tabelas e honorários anestésicos — a base de dados, parte 1 de 3: TUSS,
--- CBHPM e correspondências (partes 2 e 3: 202610230002 e 202610230003)
+-- CBHPM e correspondências (partes 2 e 3: 202610230012 e 202610230013)
 --
 -- Pedido de 23/10/2026: códigos TUSS (ANS), portes anestésicos da CBHPM,
 -- contratos por convênio e o honorário previsto de cada anestesia da

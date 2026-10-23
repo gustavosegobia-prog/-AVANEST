@@ -38,7 +38,7 @@ export type Producao = {
   /** O dia em que a nota saiu. Nulo enquanto a nota não foi emitida. */
   faturado_em?: string | null;
   /**
-   * O honorário previsto (migração 202610230003). Ausentes enquanto a
+   * O honorário previsto (migração 202610230013). Ausentes enquanto a
    * migração não foi aplicada — e aí a linha não mostra o honorário.
    */
   urgencia?: boolean;

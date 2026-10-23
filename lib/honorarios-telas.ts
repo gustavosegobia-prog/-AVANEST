@@ -20,7 +20,7 @@ export const AREAS: Array<{ id: Area; rotulo: string }> = [
 export const ehArea = (x: string | null | undefined): x is Area => AREAS.some((a) => a.id === x);
 
 /**
- * A migração 202610230001 ainda não foi aplicada: a tabela (ou a função)
+ * A migração 202610230011 ainda não foi aplicada: a tabela (ou a função)
  * não existe. PostgREST diz PGRST205/PGRST202; o Postgres, 42P01/42883.
  */
 export function faltaInstalar(erro: { code?: string | null; message?: string | null } | null | undefined): boolean {

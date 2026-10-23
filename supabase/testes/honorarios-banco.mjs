@@ -1,4 +1,4 @@
-// Testa a migração 202610230001 (tabelas e honorários) num Postgres local
+// Testa a migração 202610230011 (tabelas e honorários) num Postgres local
 // (PGlite), sem tocar no banco de verdade: as tabelas e funções do Supabase
 // que ela usa são imitadas aqui. Dados todos fictícios. Rodar: npm run test:banco
 import { readFileSync } from "node:fs";
@@ -7,7 +7,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 
 // As três partes, na ordem em que vão para o banco.
-const MIG = ["202610230001_tabelas_e_honorarios.sql", "202610230002_contratos_e_tabelas_dos_planos.sql", "202610230003_honorario_na_producao.sql"]
+const MIG = ["202610230011_tabelas_e_honorarios.sql", "202610230012_contratos_e_tabelas_dos_planos.sql", "202610230013_honorario_na_producao.sql"]
   .map((f) => readFileSync(new URL(`../migrations/${f}`, import.meta.url), "utf8")).join("\n");
 const db = new PGlite({ extensions: { pg_trgm } });
 

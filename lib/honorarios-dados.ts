@@ -1,4 +1,4 @@
-// Das linhas do banco (migração 202610230001) para o que o cálculo usa
+// Das linhas do banco (migração 202610230011) para o que o cálculo usa
 // (lib/honorarios.ts). Sem consulta nenhuma: quem lê o banco é a tela ou a
 // rota; aqui só se monta, e por isso dá para testar.
 

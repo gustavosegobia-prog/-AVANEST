@@ -152,7 +152,7 @@ function NaoInstalado() {
       <div>
         <h2>Módulo ainda não instalado no banco</h2>
         <p>
-          As tabelas de TUSS, CBHPM e contratos entram com a migração <code>202610230001_tabelas_e_honorarios</code>,
+          As tabelas de TUSS, CBHPM e contratos entram com a migração <code>202610230011_tabelas_e_honorarios</code>,
           que ainda não foi aplicada. Nada do que já existe muda até lá.
         </p>
       </div>

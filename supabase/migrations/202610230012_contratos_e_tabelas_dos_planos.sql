@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Tabelas e honorários anestésicos — parte 2 de 3: planos de saúde (operadoras),
 -- contratos e versões, a tabela do plano, as importações de arquivo e o
--- bucket privado dos arquivos. Depende da parte 1 (202610230001). Só
+-- bucket privado dos arquivos. Depende da parte 1 (202610230011). Só
 -- acrescenta; as regras gerais estão no cabeçalho da parte 1.
 -- ============================================================================
 

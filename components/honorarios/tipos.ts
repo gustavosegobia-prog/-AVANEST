@@ -1,5 +1,5 @@
 // As linhas que a página de "Tabelas e honorários" lê do banco
-// (migração 202610230001), como o Supabase as devolve: numeric em texto.
+// (migração 202610230011), como o Supabase as devolve: numeric em texto.
 
 import type {
   LinhaContrato, LinhaEdicao, LinhaOperadora, LinhaValorPorte, LinhaValorProcedimento, LinhaVersao,

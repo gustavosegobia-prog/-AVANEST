@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 // Tabelas e honorários: TUSS, CBHPM, contratos dos convênios e as regras do
-// cálculo do honorário anestésico (migração 202610230001, lib/honorarios.ts).
+// cálculo do honorário anestésico (migração 202610230011, lib/honorarios.ts).
 //
 // Enquanto amadurece, só o super-admin abre — o padrão dos módulos novos
 // (PRODUCT.md). A trava de verdade continua sendo o banco: as tabelas da
