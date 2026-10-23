@@ -8008,3 +8008,7 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 /* A troca de área do painel: a barra corre enquanto a área nova chega. */
 .clinicalShell .barraCarregando{top:0}
 
+/* Quadro "Prontuário do hospital" na tela de documentos (envio da ficha por e-mail). */
+.envioProntuario p{font-size:13px;line-height:1.45;margin:6px 0 10px;color:#3d5164}
+.envioProntuario .envioOk{color:var(--cor-sucesso);font-weight:600}
+.localFormDica{grid-column:1/-1;margin:-6px 0 0;font-size:12.5px;line-height:1.45;color:#5a7086}

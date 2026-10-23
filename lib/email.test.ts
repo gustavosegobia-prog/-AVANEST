@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { enderecoValido, provedorDeEmail, separarRemetente } from "./email.ts";
+import { enderecoValido, enviarEmail, provedorDeEmail, separarRemetente } from "./email.ts";
 
 const CHAVES = ["RESEND_API_KEY", "SENDGRID_API_KEY", "EMAIL_PROVEDOR", "EMAIL_REMETENTE"];
 const guardadas = Object.fromEntries(CHAVES.map((c) => [c, process.env[c]]));
@@ -139,5 +139,47 @@ describe("o que vai para cada serviço", () => {
     const re = await corpoEnviado({ RESEND_API_KEY: "re_x" });
     assert.equal(re.corpo.html, "<p>oi</p>");
     assert.equal(re.corpo.text, "oi");
+  });
+});
+
+describe("o anexo", () => {
+  const original = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = original; });
+
+  function capturar() {
+    const corpos: Record<string, unknown>[] = [];
+    globalThis.fetch = (async (_url: string, init: { body: string }) => {
+      corpos.push(JSON.parse(init.body));
+      return new Response("{}", { status: 202 });
+    }) as unknown as typeof fetch;
+    return corpos;
+  }
+
+  const mensagem = {
+    para: "prontuario@hospital.com.br", assunto: "a", html: "<p>a</p>", texto: "a",
+    anexos: [{ nome: "ficha.pdf", base64: "JVBERi0=", tipo: "application/pdf" }],
+  };
+
+  it("vai pelo Resend no formato do Resend", async () => {
+    ambiente({ RESEND_API_KEY: "re_x" });
+    const corpos = capturar();
+    await enviarEmail(mensagem);
+    assert.deepEqual(corpos[0].attachments, [{ filename: "ficha.pdf", content: "JVBERi0=" }]);
+  });
+
+  it("vai pelo SendGrid no formato do SendGrid", async () => {
+    ambiente({ SENDGRID_API_KEY: "SG.x" });
+    const corpos = capturar();
+    await enviarEmail(mensagem);
+    assert.deepEqual(corpos[0].attachments, [
+      { content: "JVBERi0=", filename: "ficha.pdf", type: "application/pdf", disposition: "attachment" },
+    ]);
+  });
+
+  it("sem anexo, o corpo não ganha campo vazio", async () => {
+    ambiente({ RESEND_API_KEY: "re_x" });
+    const corpos = capturar();
+    await enviarEmail({ ...mensagem, anexos: undefined });
+    assert.equal("attachments" in corpos[0], false);
   });
 });

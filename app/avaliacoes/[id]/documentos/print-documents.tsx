@@ -9,6 +9,7 @@ import {frasePreditores,preditoresMarcados,resumoViaAerea,riscoNoMasculino} from
 import {BrandMark, NomeDaMarca} from "@/components/brand-mark";
 import {aplicarDados,termoVigenteEm,type VersaoDoTermo} from "@/lib/termo-consentimento";
 import { antropometriaPlausivel } from "@/lib/numero-clinico";
+import { EnvioAoProntuario } from "./envio-ao-prontuario";
 
 type Data=Record<string,string|boolean>;
 /**
@@ -659,6 +660,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
       <aside className="documentsSidebar"><section><h3>Selecionar documentos</h3><DocChoice checked={selected.assessment} onChange={v=>setSelected(s=>({...s,assessment:v}))} title="Ficha de Avaliação Pré-Anestésica" detail="1 cópia — prontuário"/><DocChoice checked={selected.consent} onChange={v=>setSelected(s=>({...s,consent:v}))} title="Termo de Consentimento Anestésico" detail="1 cópia — assinatura e prontuário"/><DocChoice checked={selected.guidance} onChange={v=>setSelected(s=>({...s,guidance:v}))} title="Orientações Pré-Anestésicas" detail="1 cópia — entrega ao paciente"/></section>
         <section><h3>Verificação antes da impressão</h3><div className="documentChecks">{checks.map(([label,ok])=><span className={ok?"ok":"pending"} key={label}>{ok?"✓":"⚠"} {label}{!ok?" — pendente":""}</span>)}</div>{pending.length>0&&<div className="pendingNotice">Pendências não bloqueantes: {pending.join("; ")}. O documento exibirá “a definir” quando necessário.</div>}</section>
         <section><button className="printButton" disabled={!Object.values(selected).some(Boolean)} onClick={printDocuments}>▣ Imprimir PDF ({Object.values(selected).filter(Boolean).length} documentos)</button><p>Na janela que abrir, escolha “Salvar como PDF”. Cada documento selecionado será impresso em folha própria.</p>{hasPrinted&&<div className="postPrintActions"><a className="nextPatientButton" href="/dashboard?area=medico&novo=1&iniciar=1">Próximo paciente</a><a className="postPrintMenuButton" href="/dashboard?area=medico">Menu de avaliações</a></div>}<hr/><h4>Enviar orientações ao paciente</h4><button className="channelButton whatsapp" onClick={()=>openChannel("whatsapp")}>WhatsApp</button><button className="channelButton" onClick={()=>openChannel("email")}>E-mail</button><button className="channelButton sms" onClick={()=>openChannel("sms")}>SMS</button><p>Os atalhos abrem o aplicativo escolhido. Revise a mensagem e anexe o PDF antes de enviar.</p>{notice&&<div className="pendingNotice">{notice}</div>}</section>
+        <EnvioAoProntuario avaliacaoId={avaliacao.id}/>
       </aside></div>
     </div>
   </main>;
