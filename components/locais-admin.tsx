@@ -23,6 +23,8 @@ type Local = {
   endereco: string | null; numero: string | null; bairro: string | null;
   cidade: string | null; estado: string | null; cep: string | null;
   telefone: string | null; email: string | null;
+  /** Para onde vai o PDF da avaliação concluída (lib/email-prontuario.ts). */
+  email_prontuario?: string | null;
   logo_url: string | null; grupo_anestesia: string | null; logo_grupo_url: string | null;
   observacoes: string | null; ativo: boolean; oculto?: boolean; oculto_por?: string | null;
 };
@@ -30,7 +32,7 @@ type Local = {
 const VAZIO = {
   nome: "", nome_fantasia: "", cnpj: "", tipo: "hospital",
   endereco: "", numero: "", bairro: "", cidade: "", estado: "", cep: "",
-  telefone: "", email: "", grupo_anestesia: "", observacoes: "",
+  telefone: "", email: "", email_prontuario: "", grupo_anestesia: "", observacoes: "",
   logo_url: "", logo_grupo_url: "",
 };
 
@@ -312,6 +314,13 @@ function FormularioCompleto({
       cep: form.cep.trim() || null,
       telefone: form.telefone.trim() || null,
       email: form.email.trim() || null,
+      // Só vai no pedido quando mudou. A coluna nasce numa migration, e o
+      // PostgREST recusa a gravação inteira por causa de uma coluna que ainda
+      // não existe: assim, editar o endereço de um local não quebra antes de
+      // ela rodar.
+      ...(form.email_prontuario.trim() !== String(local?.email_prontuario ?? "").trim()
+        ? { email_prontuario: form.email_prontuario.trim().toLowerCase() || null }
+        : {}),
       grupo_anestesia: form.grupo_anestesia.trim() || null,
       observacoes: form.observacoes.trim() || null,
       logo_url: form.logo_url || null,
@@ -378,6 +387,8 @@ function FormularioCompleto({
           <div className="localFormGrade">
             <label className="clinicalField span2"><span>Telefone</span><input {...campo("telefone")} /></label>
             <label className="clinicalField span2"><span>E-mail</span><input {...campo("email")} type="email" /></label>
+            <label className="clinicalField wide"><span>E-mail do prontuário</span><input {...campo("email_prontuario")} type="email" placeholder="ex.: prontuario@hospital.com.br" /></label>
+            <p className="localFormDica">Ao concluir uma avaliação neste local, a ficha em PDF vai sozinha para este e-mail, para o hospital anexar ao prontuário. Use um endereço do próprio hospital. Deixe vazio para não enviar.</p>
           </div>
 
           <h3 className="localFormTitulo">Grupo de anestesia e marcas</h3>

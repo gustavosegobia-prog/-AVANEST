@@ -39,6 +39,19 @@ export type Mensagem = {
    * chance de dizer que a assinatura está ativa.
    */
   texto: string;
+  /**
+   * Arquivos que vão junto. Hoje só o PDF da avaliação, enviado ao prontuário
+   * do hospital (lib/email-prontuario.ts). O conteúdo vem em base64 porque é
+   * assim que os dois provedores recebem anexo no JSON.
+   */
+  anexos?: Anexo[];
+};
+
+export type Anexo = {
+  nome: string;
+  /** O arquivo inteiro em base64, sem o prefixo `data:`. */
+  base64: string;
+  tipo: string;
 };
 
 export type Resultado =
@@ -122,6 +135,9 @@ async function porResend(mensagem: Mensagem): Promise<Resultado> {
       subject: mensagem.assunto,
       html: mensagem.html,
       text: mensagem.texto,
+      ...(mensagem.anexos?.length
+        ? { attachments: mensagem.anexos.map((a) => ({ filename: a.nome, content: a.base64 })) }
+        : {}),
     }),
   });
   if (!resposta.ok) return { ok: false, erro: await motivo(resposta) };
@@ -148,6 +164,13 @@ async function porSendGrid(mensagem: Mensagem): Promise<Resultado> {
         { type: "text/plain", value: mensagem.texto },
         { type: "text/html", value: mensagem.html },
       ],
+      ...(mensagem.anexos?.length
+        ? {
+            attachments: mensagem.anexos.map((a) => ({
+              content: a.base64, filename: a.nome, type: a.tipo, disposition: "attachment",
+            })),
+          }
+        : {}),
     }),
   });
   // O SendGrid responde 202 com corpo VAZIO. Tentar ler JSON aqui daria erro
