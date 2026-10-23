@@ -105,6 +105,7 @@ import { DuasEtapasNaConta } from "@/components/duas-etapas-na-conta";
 import { explicarEscala, podeEscolherEscalista, podeMontarEscala } from "@/lib/escalista";
 import { AtivarNotificacoes, NotificacoesNoMenu } from "@/components/ativar-notificacoes";
 import { InstalarNaTela } from "@/components/instalar-na-tela";
+import { AceiteDosTermos } from "@/components/aceite-dos-termos";
 import { RecepcaoView } from "@/components/recepcao";
 import { AreaMedica } from "@/components/area-medica";
 import { Janela, useTravaDeRolagem } from "@/components/janela";
@@ -1066,6 +1067,11 @@ export function DashboardClient({
           ligadas, quando o navegador não tem push, e quando o VAPID não foi
           configurado — não é um recurso que se anuncia sem poder cumprir. */}
       {chavePush && <AtivarNotificacoes chavePublica={chavePush}/>}
+
+      {/* O aceite de um texto novo dos Termos de Uso, para quem ainda não
+          aceitou a versão atual. Só aqui no painel: nunca por cima da ficha,
+          da crise ou da TV do centro cirúrgico. */}
+      <AceiteDosTermos/>
 
       {/* Pode não sobrar área nenhuma: um recepcionista numa organização que
           contratou só ficha e escala. Antes dos módulos isso era impossível e

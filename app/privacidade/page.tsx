@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { paginaPublica } from "@/lib/metadados";
 import { PaginaLegal } from "@/components/pagina-legal";
+import { VERSAO_DOS_TERMOS, dataPorExtenso } from "@/lib/termos";
 
 export const metadata: Metadata = paginaPublica({
   titulo: "Política de Privacidade | AVANEST",
@@ -43,7 +44,7 @@ export default function PrivacidadePage() {
     <PaginaLegal
       titulo="Política de Privacidade"
       resumo="Como o AVANEST trata dados pessoais, em especial dados de saúde, conforme a Lei nº 13.709/2018 (LGPD)."
-      vigencia="18 de outubro de 2026"
+      vigencia={dataPorExtenso(VERSAO_DOS_TERMOS)}
     >
       <div className="legalEmResumo">
         <p><b>Em resumo</b></p>
@@ -134,6 +135,10 @@ export default function PrivacidadePage() {
           clínico.
         </li>
         <li>Cumprir obrigações legais de guarda de prontuário e de registros de acesso.</li>
+        <li>
+          Guardar a prova do aceite dos <a href="/termos">Termos de Uso</a> e desta Política: data,
+          hora, versão do texto aceito, endereço IP e navegador.
+        </li>
         <li>Segurança: registrar acessos e alterações, e investigar incidentes.</li>
         <li>
           Medir os anúncios do AVANEST nas páginas públicas do site, só para quem aceita o cookie de
@@ -155,7 +160,7 @@ export default function PrivacidadePage() {
         </li>
         <li><b>Dados de crianças e adolescentes:</b> as mesmas, no melhor interesse deles (art. 14).</li>
         <li><b>Dados cadastrais de pacientes:</b> execução do serviço e obrigação legal (art. 7º, II e V).</li>
-        <li><b>Dados de conta, cobrança, avisos e uso da conta:</b> execução do contrato e legítimo interesse (art. 7º, V e IX).</li>
+        <li><b>Dados de conta, cobrança, avisos, uso da conta e prova do aceite:</b> execução do contrato e legítimo interesse (art. 7º, V e IX).</li>
         <li><b>Auditoria e segurança:</b> legítimo interesse e obrigação legal (art. 7º, IX e II).</li>
         <li><b>Registros de acesso à aplicação:</b> obrigação legal (Marco Civil da Internet, Lei nº 12.965/2014, art. 15).</li>
         <li>
@@ -255,6 +260,7 @@ export default function PrivacidadePage() {
         <li><b>Registros de acesso à aplicação</b> (IP, data e hora): no mínimo 6 meses, como exige o Marco Civil da Internet (art. 15).</li>
         <li><b>Demais registros de auditoria:</b> enquanto úteis à segurança e à prestação de contas.</li>
         <li><b>Conta de usuário:</b> enquanto houver vínculo com a organização.</li>
+        <li><b>Prova do aceite dos Termos e desta Política:</b> enquanto durar o contrato e pelo prazo em que ele ainda puder ser discutido na Justiça.</li>
         <li><b>Cookies e dados no navegador:</b> os prazos de cada um estão na <a href="/cookies">Política de Cookies</a>.</li>
       </ul>
       <p>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { paginaPublica } from "@/lib/metadados";
 import { PaginaLegal } from "@/components/pagina-legal";
+import { TERMOS_VALEM_PARA_QUEM_JA_USAVA, VERSAO_DOS_TERMOS, dataPorExtenso } from "@/lib/termos";
 
 export const metadata: Metadata = paginaPublica({
   titulo: "Termos de Uso | AVANEST",
@@ -17,7 +18,7 @@ export default function TermosPage() {
     <PaginaLegal
       titulo="Termos de Uso"
       resumo="Estas condições regem o uso do AVANEST. Ao criar uma conta ou usar o sistema, você concorda com elas."
-      vigencia="15 de outubro de 2026"
+      vigencia={dataPorExtenso(VERSAO_DOS_TERMOS)}
     >
       <h2>1. Quem somos</h2>
       <p>
@@ -166,14 +167,65 @@ export default function TermosPage() {
         ser suspensa imediatamente, sem prejuízo das medidas cabíveis.
       </p>
 
-      <h2>12. Alterações</h2>
+      <h2>12. Propriedade intelectual e confidencialidade</h2>
+      <p>
+        O AVANEST — o programa e o seu código, as telas, os textos, os protocolos, os modelos de
+        documentos e a marca — pertence à G. Segobia Serviços Médicos Ltda. e é protegido pela Lei
+        nº 9.609/1998 (programas de computador) e pela Lei nº 9.610/1998 (direitos autorais). O
+        período grátis e a assinatura dão apenas o direito de <b>usar</b> o sistema, de forma
+        pessoal, intransferível e não exclusiva, enquanto durar o acesso. Nenhum direito de
+        propriedade é transferido.
+      </p>
+      <p className="legalDestaque">
+        <b>No período grátis, durante a assinatura e depois do fim de ambos</b>, é vedado:
+      </p>
+      <ul>
+        <li>
+          copiar, reproduzir ou adaptar, no todo ou em parte, telas, textos, protocolos, fluxos ou
+          modelos do sistema para distribuí-los, vendê-los ou incorporá-los a outro produto ou
+          serviço;
+        </li>
+        <li>fazer engenharia reversa, descompilar ou tentar obter o código do sistema;</li>
+        <li>usar o acesso para desenvolver, ou ajudar terceiro a desenvolver, produto concorrente;</li>
+        <li>extrair conteúdo do sistema de forma automatizada;</li>
+        <li>dar acesso a quem não foi convidado pela organização.</li>
+      </ul>
+      <p>
+        Imprimir e salvar pelo próprio sistema os documentos dos atendimentos e os protocolos, para
+        uso da equipe, é uso normal e está permitido.
+      </p>
+      <p>
+        São <b>confidenciais</b> as informações não públicas a que se tem acesso pelo uso do
+        sistema: funcionalidades ainda não lançadas, condições comerciais, documentação e respostas
+        do suporte. Elas não podem ser divulgadas a terceiros durante o acesso e por 5 anos depois
+        do fim dele.
+      </p>
+      <p>
+        Este item trata do sistema, e não dos dados: o que a organização insere continua dela (item
+        7), e ela pode exportar os seus dados a qualquer momento (item 8).
+      </p>
+      <p>
+        O descumprimento autoriza a suspensão imediata do acesso e obriga a indenizar as perdas e
+        danos, sem prejuízo das sanções previstas na Lei nº 9.609/1998 e na Lei nº 9.279/1996.
+      </p>
+      <p>
+        Para quem se cadastrou antes de {dataPorExtenso(VERSAO_DOS_TERMOS)}, este item vale a partir
+        do aceite dentro do sistema ou de {dataPorExtenso(TERMOS_VALEM_PARA_QUEM_JA_USAVA)}, o que
+        vier primeiro.
+      </p>
+
+      <h2>13. Alterações</h2>
       <p>
         Estes termos podem ser atualizados. Mudanças relevantes serão comunicadas por e-mail ou
         dentro do sistema com pelo menos 30 dias de antecedência. Seguir usando o AVANEST após a
         vigência significa concordar com o texto novo.
       </p>
+      <p>
+        Quem já usa o AVANEST é avisado no painel e pode aceitar o texto novo ali mesmo. Cada aceite
+        fica registrado com a data, a hora, a versão do texto aceito, o endereço IP e o navegador.
+      </p>
 
-      <h2>13. Foro</h2>
+      <h2>14. Foro</h2>
       <p>
         Aplica-se a lei brasileira. Fica eleito o foro da comarca de Campo Mourão, Paraná, para
         dirimir questões oriundas destes termos.

@@ -5485,6 +5485,7 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
 .admDialogo h2{margin:0;font-size:18px}
 .admDialogoTexto{font-size:14px;line-height:1.55;display:grid;gap:var(--esp-2)}
 .admDialogoTexto p{margin:0}
+.admDialogoTexto a{color:var(--cor-marca);text-decoration:underline;text-underline-offset:2px;font-weight:700}
 .admDialogoAcoes{display:flex;justify-content:flex-end;gap:var(--esp-2);flex-wrap:wrap}
 .primaryClinical.admPerigo{background:var(--cor-perigo)}
 .primaryClinical.admPerigo:hover:not(:disabled){background:var(--cor-perigo-forte)}

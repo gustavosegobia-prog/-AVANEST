@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useCaptcha } from "@/components/turnstile";
 import { senhaRecusada } from "@/lib/senha-recusada";
 import { registrarConversao } from "@/lib/anuncios";
+import { VERSAO_DOS_TERMOS } from "@/lib/termos";
 
 // Três modos. Com token, o e-mail vem do convite e não pode ser trocado — a
 // conta precisa nascer no endereço convidado. Com plano, o visitante digita o
@@ -54,7 +55,11 @@ export function SignUpForm({ token, email, plano = "", origem = "" }: { token: s
         // noutro aparelho —, e só então a organização nasce. Um cookie, um
         // parâmetro na URL ou um estado de tela não atravessam isso; o
         // metadado do usuário atravessa, porque anda junto da conta.
-        ...(origem ? { data: { origem } } : {}),
+        //
+        // A versão dos Termos aceita vai junto, pelo mesmo motivo: o banco a
+        // grava como prova no instante em que a conta nasce (gatilho
+        // aceite_no_cadastro). O botão só existe com a caixa marcada.
+        data: { ...(origem ? { origem } : {}), termos_versao: VERSAO_DOS_TERMOS },
       },
     });
     if (error) {

@@ -72,7 +72,7 @@ test("a origem é gravada na conta, e não num cookie", () => {
   // de confirmação é aberto no computador, e só então a organização nasce. Um
   // cookie ou um parâmetro de URL não sobrevivem a isso.
   assert.match(ler("app/criar-conta/sign-up-form.tsx"),
-    /origem \? \{ data: \{ origem \} \}/);
+    /data: \{ \.\.\.\(origem \? \{ origem \} : \{\}\)/);
 });
 
 test("a página promete o que o sistema cumpre, e com a mesma conta", () => {
