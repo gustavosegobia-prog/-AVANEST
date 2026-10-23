@@ -96,6 +96,32 @@ export function gradeDaAba(xml: string, compartilhados: string[]): string[][] {
   return grade.map((l) => l.map((c) => c ?? ""));
 }
 
+/** Todas as abas da planilha, na ordem do livro, cada uma em grade de textos. */
+export async function abasDoXlsx(arquivo: ArrayBuffer): Promise<Array<{ nome: string; grade: string[][] }>> {
+  const b = new Uint8Array(arquivo);
+  const zip = entradasDoZip(b);
+  const ler = async (nome: string) => { const e = zip.get(nome); return e ? lerEntrada(b, e) : ""; };
+  const livro = await ler("xl/workbook.xml");
+  const rels = await ler("xl/_rels/workbook.xml.rels");
+  const alvos = new Map([...rels.matchAll(/<Relationship\b([^>]*)\/?>/g)].map((m) => [
+    m[1].match(/\bId="([^"]+)"/)?.[1] ?? "", m[1].match(/Target="([^"]+)"/)?.[1] ?? "",
+  ]));
+  const abas = [...livro.matchAll(/<sheet\b([^>]*)\/?>/g)].map((m) => ({
+    nome: desescapar(m[1].match(/\bname="([^"]*)"/)?.[1] ?? ""),
+    alvo: alvos.get(m[1].match(/\br:id="([^"]+)"/)?.[1] ?? "") ?? "",
+  }));
+  if (!abas.length) abas.push({ nome: "", alvo: "worksheets/sheet1.xml" });
+  const compartilhados = textosCompartilhados(await ler("xl/sharedStrings.xml"));
+  const r: Array<{ nome: string; grade: string[][] }> = [];
+  for (const a of abas) {
+    if (!a.alvo) continue;
+    const xml = await ler(a.alvo.startsWith("/") ? a.alvo.slice(1) : `xl/${a.alvo.replace(/^\.\//, "")}`);
+    if (xml) r.push({ nome: a.nome, grade: gradeDaAba(xml, compartilhados) });
+  }
+  if (!r.length) throw new Error("Não achei nenhuma aba na planilha.");
+  return r;
+}
+
 /** A primeira aba da planilha, em grade de textos. */
 export async function gradeDoXlsx(arquivo: ArrayBuffer): Promise<string[][]> {
   const b = new Uint8Array(arquivo);
