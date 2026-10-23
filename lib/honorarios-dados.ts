@@ -14,7 +14,11 @@ export type LinhaVersao = {
   observacoes?: string | null; publicada_em?: string | null;
 };
 export type LinhaValorPorte = { versao_id: string; porte: number; valor: number | string };
-export type LinhaValorProcedimento = { versao_id: string; tuss_codigo: string; valor: number | string };
+/** Uma linha da tabela do plano: o código com o porte que o plano dá e/ou um valor fixo. */
+export type LinhaValorProcedimento = {
+  versao_id: string; tuss_codigo: string; valor: number | string | null;
+  porte_anestesico?: number | null; descricao?: string | null;
+};
 export type LinhaEdicao = {
   id: string; nome: string; edicao: string; ano: number | null; fonte: string; situacao: "em_conferencia" | "vigente" | "encerrada";
   vigencia_inicio: string | null; vigencia_fim: string | null;
@@ -31,7 +35,12 @@ export function versaoDeContrato(
   const valoresPorPorte: Partial<Record<number, number>> = {};
   for (const p of porPorte) if (p.versao_id === v.id) valoresPorPorte[p.porte] = Number(p.valor);
   const valoresPorProcedimento: Record<string, number> = {};
-  for (const p of porProcedimento) if (p.versao_id === v.id) valoresPorProcedimento[p.tuss_codigo] = Number(p.valor);
+  const portesPorProcedimento: Record<string, Porte> = {};
+  for (const p of porProcedimento) {
+    if (p.versao_id !== v.id) continue;
+    if (p.valor != null && p.valor !== "") valoresPorProcedimento[p.tuss_codigo] = Number(p.valor);
+    if (p.porte_anestesico != null) portesPorProcedimento[p.tuss_codigo] = p.porte_anestesico as Porte;
+  }
   return {
     id: v.id,
     contratoId: contrato.id,
@@ -50,6 +59,7 @@ export function versaoDeContrato(
     ajustesCumulativos: v.ajustes_cumulativos,
     valoresPorPorte,
     valoresPorProcedimento,
+    portesPorProcedimento,
   };
 }
 

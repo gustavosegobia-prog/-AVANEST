@@ -139,10 +139,17 @@ const [ct] = await como(U.finA, `insert into contratos (institution_id, operador
 const [cv1] = await como(U.finA, `insert into contrato_versoes (contrato_id, institution_id, versao, vigencia_inicio, vigencia_fim, referencia, cbhpm_edicao_id, multiplos_percentuais, urgencia_percentual)
   values ($1,$2,1,'2026-01-01','2026-06-30','cbhpm',$3,'{100,50}',30) returning id`, [ct.id, INST.A, ed.id]);
 await como(U.finA, `insert into contrato_valores_porte (versao_id, institution_id, porte, valor) values ($1,$2,3,600)`, [cv1.id, INST.A]);
+// A tabela do plano: o código com o porte que o plano dá, com valor fixo, ou os dois.
+await como(U.finA, `insert into contrato_valores_procedimento (versao_id, institution_id, tuss_codigo, descricao, porte_anestesico) values ($1,$2,'90000001','PROCEDIMENTO FICTÍCIO',4)`, [cv1.id, INST.A]);
+await como(U.finA, `insert into contrato_valores_procedimento (versao_id, institution_id, tuss_codigo, valor) values ($1,$2,'90000002',750)`, [cv1.id, INST.A]);
+await falha(U.finA, `insert into contrato_valores_procedimento (versao_id, institution_id, tuss_codigo) values ($1,$2,'90000003')`, /check/, [cv1.id, INST.A]);
+await falha(U.finA, `insert into contrato_valores_procedimento (versao_id, institution_id, tuss_codigo, porte_anestesico) values ($1,$2,'90000004',9)`, /check/, [cv1.id, INST.A]);
+ok("Tabela do plano: código com porte anestésico e/ou valor; sem nenhum dos dois, ou porte fora de AN0–AN8, é recusado");
 await como(U.finA, `update contrato_versoes set situacao = 'vigente' where id = $1`, [cv1.id]);
 const [pub] = await como(U.finA, `select publicada_por from contrato_versoes where id = $1`, [cv1.id]);
 assert.equal(pub.publicada_por, U.finA);
 await falha(U.finA, `update contrato_valores_porte set valor = 700 where versao_id = $1`, /não mudam/, [cv1.id]);
+await falha(U.finA, `update contrato_valores_procedimento set porte_anestesico = 5 where versao_id = $1`, /não mudam/, [cv1.id]);
 await falha(U.finA, `update contrato_versoes set reajuste_percentual = 10 where id = $1`, /não muda/, [cv1.id]);
 ok("Contrato: versão publicada registra quem publicou e não muda (nem valores nem reajuste)");
 const [cv2] = await como(U.finA, `insert into contrato_versoes (contrato_id, institution_id, versao, vigencia_inicio, referencia, cbhpm_edicao_id, reajuste_percentual)

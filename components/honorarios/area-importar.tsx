@@ -7,26 +7,29 @@ import { Icone } from "@/components/icone";
 import { gradeDoCsv } from "@/lib/centro-importar";
 import {
   compararVersoes, impressaoDigital, lerCbhpm, lerCorrespondencias, lerDasAbas, lerPortesDeReferencia, lerTabelaTuss,
-  lerValoresDoContrato, situacaoDoCodigo, type ComparacaoDeVersoes, type Leitura,
+  lerTabelaDoPlano, situacaoDoCodigo, type ComparacaoDeVersoes, type ItemDaTabelaDoPlano, type Leitura,
 } from "@/lib/importar-tabelas";
+import { nomeSimples } from "@/lib/honorarios";
 import { emLotes, lerEmPaginas, rotuloDoPorte, versaoDoNome, type Area } from "@/lib/honorarios-telas";
 import { abasDoXlsx } from "@/lib/xlsx-leitura";
 import { Aviso, Recusa, Vazio, dataBr, dataHoraBr, dinheiro, exigir, mensagemDoBanco } from "./comum";
+import { criarRascunho, rascunhoDoContrato } from "./rascunho";
 import type { DadosDasTabelas } from "./tipos";
 import estilos from "./honorarios.module.css";
 
 export type TipoDeImportacao = "tuss" | "cbhpm" | "cbhpm_portes" | "contrato" | "correspondencia";
+/** Na tabela do plano, o destino é o contrato (ou "novo"); nas da CBHPM, a edição. */
 export type PedidoDeImportacao = { tipo: TipoDeImportacao; destinoId?: string };
 
 const TIPOS: Array<{ id: TipoDeImportacao; rotulo: string; ajuda: string; colunas: string }> = [
   { id: "tuss", rotulo: "TUSS — Tabela 22 da ANS", ajuda: "O arquivo oficial da ANS. Entra como versão em conferência; o cálculo só usa depois de publicada.",
     colunas: "Código do Termo, Termo, Data de início de vigência, Data de fim de vigência, Data de fim de implantação" },
+  { id: "contrato", rotulo: "Tabela de um plano de saúde", ajuda: "A tabela que o plano manda: o código TUSS com o porte anestésico do plano e/ou o valor, e o valor de cada porte. Entra num rascunho do contrato, para conferir antes de publicar.",
+    colunas: "Código TUSS, Descrição, Porte anestésico e Valor — o código com o porte e/ou o valor; ou só o porte (AN0 a AN8) com o valor dele" },
   { id: "cbhpm", rotulo: "CBHPM — procedimentos e porte anestésico", ajuda: "Do arquivo que a clínica licenciou, para uma edição em conferência.",
     colunas: "Código, Procedimento (descrição), Porte anestésico (AN0 a AN8; vazio quando não tem)" },
   { id: "cbhpm_portes", rotulo: "CBHPM — valor de referência dos portes", ajuda: "O valor de cada porte AN0 a AN8, para uma edição em conferência.",
     colunas: "Porte, Valor" },
-  { id: "contrato", rotulo: "Valores de um contrato", ajuda: "Para uma versão de contrato em rascunho: valor por porte ou valor fixo por código TUSS.",
-    colunas: "Porte anestésico ou Código TUSS (um dos dois por linha), Valor" },
   { id: "correspondencia", rotulo: "Correspondência TUSS ↔ CBHPM", ajuda: "Entram como propostas: só valem no cálculo depois de validadas uma a uma.",
     colunas: "Código TUSS, Código CBHPM" },
 ];
@@ -55,7 +58,7 @@ export function AreaImportar({
   onAbrir: (a: Area) => void;
 }) {
   const tipos = TIPOS.filter((t) => t.id !== "tuss" || dados.superAdmin);
-  const [tipo, setTipo] = useState<TipoDeImportacao>(pedido?.tipo ?? (dados.superAdmin ? "tuss" : "cbhpm"));
+  const [tipo, setTipo] = useState<TipoDeImportacao>(pedido?.tipo ?? "contrato");
   const [destino, setDestino] = useState(pedido?.destinoId ?? "");
   const [previa, setPrevia] = useState<Previa | null>(null);
   const [lendo, setLendo] = useState(false);
@@ -69,9 +72,12 @@ export function AreaImportar({
   // Só dos portes de referência: a partir de quando e de onde.
   const [portesInicio, setPortesInicio] = useState("");
   const [portesFonte, setPortesFonte] = useState("");
+  // Só da tabela do plano: o nome do plano novo e se a tabela substitui a do rascunho.
+  const [novoPlano, setNovoPlano] = useState("");
+  const [substituir, setSubstituir] = useState(true);
 
   const destinos = destinosDo(tipo, dados);
-  const destinoValido = tipo === "tuss" || destinos.some((d) => d.id === destino);
+  const destinoValido = tipo === "tuss" || (destinos.some((d) => d.id === destino) && (destino !== "novo" || novoPlano.trim().length > 1));
 
   function trocarTipo(t: TipoDeImportacao) {
     setTipo(t);
@@ -143,6 +149,9 @@ export function AreaImportar({
         if (dados.tuss.some((t) => t.versao === tussVersao.trim())) throw new Recusa(`A versão ${tussVersao.trim()} já foi importada.`);
         if (!tussOrigem.trim()) throw new Recusa("Informe a origem do arquivo.");
       }
+      if (tipo === "contrato" && destino === "novo" && dados.operadoras.some((o) => nomeSimples(o.nome) === nomeSimples(novoPlano))) {
+        throw new Recusa(`Já existe o plano “${novoPlano.trim()}”: escolha-o na lista.`);
+      }
       if (tipo === "cbhpm_portes" && (!/^\d{4}-\d{2}-\d{2}$/.test(portesInicio) || !portesFonte.trim())) {
         throw new Recusa("Informe a partir de quando valem os valores e de onde eles vêm.");
       }
@@ -197,10 +206,30 @@ export function AreaImportar({
         exigir(await supabase.from("cbhpm_portes").upsert(linhas, { onConflict: "edicao_id,porte,vigencia_inicio" }));
         avancar(linhas.length);
       } else if (tipo === "contrato") {
-        const lidos = itens as Array<{ tipo: "porte"; porte: number; valor: number } | { tipo: "procedimento"; tussCodigo: string; valor: number }>;
-        const porte = lidos.flatMap((x) => x.tipo === "porte" ? [{ versao_id: destino, institution_id: dados.institutionId, porte: x.porte, valor: x.valor }] : []);
-        const proc = lidos.flatMap((x) => x.tipo === "procedimento" ? [{ versao_id: destino, institution_id: dados.institutionId, tuss_codigo: x.tussCodigo, valor: x.valor }] : []);
+        const lidos = itens as ItemDaTabelaDoPlano[];
+        // Plano novo: o plano e o contrato geral dele. Depois, sempre um
+        // rascunho — o que já existe, ou o próximo, copiado da última versão.
+        let contratoId = destino;
+        if (destino === "novo") {
+          const op = exigir(await supabase.from("operadoras").insert({ institution_id: dados.institutionId, nome: novoPlano.trim() })
+            .select("id").single()) as { id: string };
+          const ct = exigir(await supabase.from("contratos").insert({ institution_id: dados.institutionId, operadora_id: op.id, identificacao: "Contrato geral" })
+            .select("id").single()) as { id: string };
+          contratoId = ct.id;
+        }
+        const temValores = lidos.some((x) => x.tipo === "porte" || x.valor != null);
+        const versaoId = rascunhoDoContrato(dados, contratoId)?.id
+          ?? await criarRascunho(supabase, dados, contratoId, temValores ? "propria" : undefined);
+        destinoId = versaoId;
+        const porte = lidos.flatMap((x) => x.tipo === "porte" ? [{ versao_id: versaoId, institution_id: dados.institutionId, porte: x.porte, valor: x.valor }] : []);
+        const proc = lidos.flatMap((x) => x.tipo === "procedimento" ? [{
+          versao_id: versaoId, institution_id: dados.institutionId, tuss_codigo: x.tussCodigo,
+          descricao: x.descricao, porte_anestesico: x.porte, valor: x.valor,
+        }] : []);
         if (porte.length) { exigir(await supabase.from("contrato_valores_porte").upsert(porte, { onConflict: "versao_id,porte" })); avancar(porte.length); }
+        // A tabela nova do plano substitui a do rascunho: o código que o plano
+        // tirou não fica para trás, copiado da versão anterior.
+        if (substituir && proc.length) exigir(await supabase.from("contrato_valores_procedimento").delete().eq("versao_id", versaoId));
         for (const lote of emLotes(proc, 500)) {
           exigir(await supabase.from("contrato_valores_procedimento").upsert(lote, { onConflict: "versao_id,tuss_codigo" }));
           avancar(lote.length);
@@ -266,13 +295,25 @@ export function AreaImportar({
               <Aviso tom="atencao">{SEM_DESTINO[tipo]}</Aviso>
             ) : (
               <label className={`clinicalField ${estilos.campoMedio}`}>
-                <span>{tipo === "contrato" ? "Versão do contrato (rascunho)" : "Edição da CBHPM"}</span>
+                <span>{tipo === "contrato" ? "Plano de saúde" : "Edição da CBHPM"}</span>
                 <select value={destino} onChange={(e) => { setDestino(e.target.value); setPrevia(null); }} disabled={!!gravando}>
                   <option value="">Escolha</option>
                   {destinos.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}
                 </select>
               </label>
             )
+          )}
+          {tipo === "contrato" && destino === "novo" && (
+            <label className={`clinicalField obrigatorio ${estilos.campoMedio}`}>
+              <span>Nome do plano</span>
+              <input value={novoPlano} onChange={(e) => setNovoPlano(e.target.value)} placeholder="Como aparece na Produção (ex.: Unimed)" disabled={!!gravando} />
+            </label>
+          )}
+          {tipo === "contrato" && destino && destino !== "novo" && (
+            <label className="admFiltroMarca">
+              <input type="checkbox" checked={substituir} onChange={(e) => setSubstituir(e.target.checked)} disabled={!!gravando} />
+              <span>Substituir a tabela de procedimentos do rascunho pela do arquivo (o código que não vier no arquivo sai do rascunho)</span>
+            </label>
           )}
 
           <div className={estilos.arquivo}>
@@ -340,13 +381,13 @@ export function AreaImportar({
 }
 
 const LEITOR: Record<TipoDeImportacao, (g: string[][]) => Leitura<unknown>> = {
-  tuss: lerTabelaTuss, cbhpm: lerCbhpm, cbhpm_portes: lerPortesDeReferencia, contrato: lerValoresDoContrato, correspondencia: lerCorrespondencias,
+  tuss: lerTabelaTuss, cbhpm: lerCbhpm, cbhpm_portes: lerPortesDeReferencia, contrato: lerTabelaDoPlano, correspondencia: lerCorrespondencias,
 };
 
 const SEM_DESTINO: Record<Exclude<TipoDeImportacao, "tuss">, string> = {
   cbhpm: "Crie uma edição da CBHPM (área CBHPM e portes): os procedimentos entram numa edição em conferência.",
   cbhpm_portes: "Crie uma edição da CBHPM (área CBHPM e portes): os valores entram numa edição em conferência.",
-  contrato: "Os valores entram numa versão de contrato em rascunho. Crie a versão na área Convênios e contratos.",
+  contrato: "Escolha o plano de saúde, ou “Novo plano de saúde”.",
   correspondencia: "Crie uma edição da CBHPM antes: cada correspondência liga um código TUSS a um código de uma edição.",
 };
 
@@ -356,12 +397,18 @@ function destinosDo(tipo: TipoDeImportacao, dados: DadosDasTabelas): Array<{ id:
   }
   if (tipo === "correspondencia") return dados.edicoes.map((e) => ({ id: e.id, nome: `${e.nome} ${e.edicao}` }));
   if (tipo === "contrato") {
-    const contrato = new Map(dados.contratos.map((c) => [c.id, c]));
     const operadora = new Map(dados.operadoras.map((o) => [o.id, o.nome]));
-    return dados.versoes.filter((v) => v.situacao === "rascunho").map((v) => {
-      const c = contrato.get(v.contrato_id);
-      return { id: v.id, nome: `${c ? operadora.get(c.operadora_id) ?? "" : ""} · ${c?.identificacao ?? ""} · versão ${v.versao}` };
-    });
+    const local = new Map(dados.locais.map((l) => [l.id, l.nome]));
+    const planos = dados.contratos.filter((c) => c.ativo).map((c) => {
+      const rascunho = rascunhoDoContrato(dados, c.id);
+      const versoes = dados.versoes.filter((v) => v.contrato_id === c.id).length;
+      return {
+        id: c.id,
+        nome: `${operadora.get(c.operadora_id) ?? ""} · ${c.identificacao}${c.local_id ? ` (${local.get(c.local_id) ?? "hospital"})` : ""} — ${
+          rascunho ? `no rascunho da versão ${rascunho.versao}` : `cria a versão ${versoes + 1} em rascunho`}`,
+      };
+    }).sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
+    return [...planos, { id: "novo", nome: "Novo plano de saúde…" }];
   }
   return [];
 }
@@ -371,7 +418,7 @@ function mensagemDePronto(tipo: TipoDeImportacao, n: number, versao: string): { 
   if (tipo === "tuss") return { texto: `TUSS ${versao} importada com ${q} códigos, em conferência. Confira e publique na Consulta TUSS.`, area: "tuss" };
   if (tipo === "cbhpm") return { texto: `${q} procedimentos gravados na edição.`, area: "cbhpm" };
   if (tipo === "cbhpm_portes") return { texto: `${q} valores de porte gravados na edição.`, area: "cbhpm" };
-  if (tipo === "contrato") return { texto: `${q} valores gravados no rascunho do contrato.`, area: "contratos" };
+  if (tipo === "contrato") return { texto: `${q} linhas da tabela do plano gravadas no rascunho do contrato. Confira e publique em Planos de saúde.`, area: "contratos" };
   return { texto: `${q} linhas lidas; as novas entraram como propostas, para validar uma a uma.`, area: "cbhpm" };
 }
 
@@ -443,7 +490,12 @@ function celulasDaAmostra(tipo: TipoDeImportacao, x: unknown) {
   if (tipo === "tuss") return <><td data-rotulo="Código" className={estilos.codigo}>{o.codigo}</td><td data-rotulo="Descrição" data-largo>{o.descricao}</td><td data-rotulo="Início" className={estilos.semQuebra}>{dataBr(o.inicioVigencia as string)}</td></>;
   if (tipo === "cbhpm") return <><td data-rotulo="Código" className={estilos.codigo}>{o.codigo}</td><td data-rotulo="Procedimento" data-largo>{o.descricao}</td><td data-rotulo="Porte">{o.porte == null ? "Sem porte" : rotuloDoPorte(o.porte as number)}</td></>;
   if (tipo === "cbhpm_portes") return <><td data-rotulo="Porte">{rotuloDoPorte(o.porte as number)}</td><td data-rotulo="Valor" className={estilos.numero}>{dinheiro(o.valor)}</td></>;
-  if (tipo === "contrato") return <><td data-rotulo="Porte ou código" className={estilos.codigo}>{o.tipo === "porte" ? rotuloDoPorte(o.porte as number) : o.tussCodigo}</td><td data-rotulo="Valor" className={estilos.numero}>{dinheiro(o.valor)}</td></>;
+  if (tipo === "contrato") return <>
+    <td data-rotulo="Código TUSS" className={estilos.codigo}>{o.tipo === "porte" ? "—" : o.tussCodigo}</td>
+    <td data-rotulo="Descrição" data-largo>{o.tipo === "porte" ? "Valor do porte" : o.descricao ?? "—"}</td>
+    <td data-rotulo="Porte">{o.porte == null ? "—" : rotuloDoPorte(o.porte as number)}</td>
+    <td data-rotulo="Valor" className={estilos.numero}>{dinheiro(o.valor)}</td>
+  </>;
   return <><td data-rotulo="TUSS" className={estilos.codigo}>{o.tussCodigo}</td><td data-rotulo="CBHPM" className={estilos.codigo}>{o.cbhpmCodigo}</td></>;
 }
 

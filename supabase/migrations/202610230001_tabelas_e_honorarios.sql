@@ -545,12 +545,19 @@ create table if not exists public.contrato_valores_porte (
   unique (versao_id, porte)
 );
 
+-- A tabela do plano de saúde, código a código: o porte anestésico que o
+-- plano dá ao procedimento (vale antes da correspondência com a CBHPM) e/ou
+-- um valor fixo de honorário. A descrição é a que veio na tabela do plano;
+-- a oficial continua sendo a da TUSS.
 create table if not exists public.contrato_valores_procedimento (
   id uuid primary key default gen_random_uuid(),
   versao_id uuid not null references public.contrato_versoes(id) on delete restrict,
   institution_id uuid not null references public.instituicoes(id) on delete cascade,
   tuss_codigo text not null check (tuss_codigo ~ '^[0-9]+$'),
-  valor numeric(12,2) not null check (valor >= 0),
+  descricao text,
+  porte_anestesico smallint check (porte_anestesico between 0 and 8),
+  valor numeric(12,2) check (valor >= 0),
+  check (valor is not null or porte_anestesico is not null),
   unique (versao_id, tuss_codigo)
 );
 

@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   codigoDaCelula, compararVersoes, dataDaCelula, impressaoDigital, lerCbhpm, lerCorrespondencias, lerDasAbas,
-  lerPortesDeReferencia, lerTabelaTuss, lerValoresDoContrato, porteDaCelula, situacaoDoCodigo, valorDaCelula,
+  lerPortesDeReferencia, lerTabelaDoPlano, lerTabelaTuss, porteDaCelula, situacaoDoCodigo, valorDaCelula,
 } from "./importar-tabelas.ts";
 import { abasDoXlsx } from "./xlsx-leitura.ts";
 import { zip } from "./zip-de-teste.ts";
@@ -161,25 +161,45 @@ describe("importação: CBHPM, portes, contratos e correspondências", () => {
     assert.equal(r.erros.length, 2, "AN1 repetido nas duas linhas");
   });
 
-  it("contrato: porte ou código TUSS, nunca os dois", () => {
-    const r = lerValoresDoContrato([
-      ["Porte", "Código TUSS", "Valor"],
-      ["AN3", "", "600"],
-      ["", "90000001", "750,00"],
-      ["AN4", "90000002", "1"],
-      ["", "", "5"],
-      ["AN5", "", "caro"],
+  it("tabela do plano: código com o porte do plano e/ou valor, e o valor de cada porte", () => {
+    // O desenho comum das tabelas que os planos mandam, com dados fictícios.
+    const r = lerTabelaDoPlano([
+      ["TABELA DE HONORÁRIOS — PLANO FICTÍCIO"],
+      ["Código", "Descrição do procedimento", "Porte anestésico", "Valor (R$)"],
+      ["9.000.000-1", "PROCEDIMENTO FICTÍCIO UM", "3", ""],
+      ["90000002", "PROCEDIMENTO FICTÍCIO DOIS", "", "750,00"],
+      ["90000003", "PROCEDIMENTO FICTÍCIO TRÊS", "AN5", "1.200,00"],
+      ["", "", "AN3", "600"],
+      ["90000004", "SEM PORTE NEM VALOR", "", ""],
+      ["90000005", "PORTE CIRÚRGICO NA COLUNA ERRADA", "3C", ""],
+      ["", "", "AN4", ""],
+      ["ABC", "CÓDIGO INVÁLIDO", "2", ""],
     ]);
+    assert.equal(r.linhaDoTitulo, 2);
     assert.deepEqual(r.itens, [
+      { tipo: "procedimento", tussCodigo: "90000001", descricao: "PROCEDIMENTO FICTÍCIO UM", porte: 3, valor: null },
+      { tipo: "procedimento", tussCodigo: "90000002", descricao: "PROCEDIMENTO FICTÍCIO DOIS", porte: null, valor: 750 },
+      { tipo: "procedimento", tussCodigo: "90000003", descricao: "PROCEDIMENTO FICTÍCIO TRÊS", porte: 5, valor: 1200 },
       { tipo: "porte", porte: 3, valor: 600 },
-      { tipo: "procedimento", tussCodigo: "90000001", valor: 750 },
     ]);
-    assert.deepEqual(r.erros.map((e) => e.linha), [4, 5, 6]);
+    assert.deepEqual(r.erros.map((e) => e.linha), [7, 8, 9, 10]);
+    assert.match(r.erros[0].mensagem, /sem porte anestésico e sem valor/);
+    assert.match(r.erros[1].mensagem, /não é porte anestésico/);
+    assert.match(r.erros[2].mensagem, /AN4 sem valor/);
   });
 
-  it("contrato sem coluna de porte nem de código para", () => {
-    const r = lerValoresDoContrato([["Valor"], ["10"]]);
-    assert.match(r.erros[0].mensagem, /Porte anestésico.*Código TUSS/);
+  it("tabela do plano: o porte anestésico vale antes da coluna de porte cirúrgico", () => {
+    const r = lerTabelaDoPlano([
+      ["Código", "Procedimento", "Porte", "Porte anestésico"],
+      ["90000001", "PROCEDIMENTO FICTÍCIO", "10B", "4"],
+    ]);
+    assert.deepEqual(r.erros, []);
+    assert.equal(r.itens[0].porte, 4);
+  });
+
+  it("tabela do plano sem código nem porte, ou sem porte nem valor, para", () => {
+    assert.match(lerTabelaDoPlano([["Valor"], ["10"]]).erros[0].mensagem, /Código TUSS.*Porte anestésico/);
+    assert.match(lerTabelaDoPlano([["Código TUSS", "Descrição"], ["90000001", "X"]]).erros[0].mensagem, /Porte anestésico.*Valor/);
   });
 
   it("correspondências viram propostas, uma por código TUSS", () => {

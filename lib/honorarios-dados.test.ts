@@ -20,13 +20,15 @@ describe("honorários: das linhas do banco para o cálculo", () => {
   it("numeric em texto vira número, e cada valor fica com a sua versão", () => {
     const v = versaoDeContrato(versao(), contrato, operadora,
       [{ versao_id: "v1", porte: 3, valor: "600.00" }, { versao_id: "v2", porte: 3, valor: "999" }],
-      [{ versao_id: "v1", tuss_codigo: "90000002", valor: "750.50" }]);
+      [{ versao_id: "v1", tuss_codigo: "90000002", valor: "750.50" },
+        { versao_id: "v1", tuss_codigo: "90000003", valor: null, porte_anestesico: 4, descricao: "COMO O PLANO ESCREVEU" }]);
     assert.equal(v.operadora, "Unimed Fictícia");
     assert.equal(v.reajustePercentual, 10);
     assert.equal(v.urgenciaPercentual, 30);
     assert.deepEqual(v.multiplosPercentuais, [100, 50]);
     assert.deepEqual(v.valoresPorPorte, { 3: 600 });
-    assert.deepEqual(v.valoresPorProcedimento, { "90000002": 750.5 });
+    assert.deepEqual(v.valoresPorProcedimento, { "90000002": 750.5 }, "linha só com porte não vira valor zero");
+    assert.deepEqual(v.portesPorProcedimento, { "90000003": 4 });
   });
 
   it("urgência e múltiplos vazios continuam vazios (o contrato não prevê)", () => {

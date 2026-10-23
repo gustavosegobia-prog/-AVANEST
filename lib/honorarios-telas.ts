@@ -10,8 +10,8 @@ export type Area = "tuss" | "cbhpm" | "contratos" | "importar" | "regras" | "pen
 export const AREAS: Array<{ id: Area; rotulo: string }> = [
   { id: "pendencias", rotulo: "Divergências e pendências" },
   { id: "tuss", rotulo: "Consulta TUSS" },
-  { id: "cbhpm", rotulo: "CBHPM e portes" },
-  { id: "contratos", rotulo: "Convênios e contratos" },
+  { id: "contratos", rotulo: "Planos de saúde" },
+  { id: "cbhpm", rotulo: "Procedimentos e portes (CBHPM)" },
   { id: "importar", rotulo: "Importar arquivo" },
   { id: "regras", rotulo: "Regras de cálculo" },
   { id: "historico", rotulo: "Histórico" },
@@ -234,7 +234,7 @@ export function descreverAlteracao(a: LinhaDeAuditoria): { oQue: string; detalhe
     contratos: `o contrato ${x.identificacao ?? ""}`,
     contrato_versoes: `a versão ${x.versao ?? ""} do contrato`,
     contrato_valores_porte: `o valor do AN${x.porte ?? "?"}`,
-    contrato_valores_procedimento: `o valor do ${x.tuss_codigo ?? "procedimento"}`,
+    contrato_valores_procedimento: `o ${x.tuss_codigo ?? "procedimento"} na tabela do plano`,
   } as Record<string, string>)[a.tabela] ?? a.tabela;
   const verbo = a.acao === "insert" ? "Cadastrou"
     : a.acao === "delete" ? "Apagou"
@@ -246,7 +246,11 @@ export function descreverAlteracao(a: LinhaDeAuditoria): { oQue: string; detalhe
     : "Alterou";
   let detalhe = "";
   const campoDoValor = a.tabela === "cbhpm_portes" ? "valor_referencia" : "valor";
-  if (/valores|portes/.test(a.tabela)) {
+  const doProcedimento = (y: Record<string, unknown>) =>
+    [y.porte_anestesico != null ? `AN${y.porte_anestesico}` : "", y.valor != null ? real(y.valor) : ""].filter(Boolean).join(" · ") || "—";
+  if (a.tabela === "contrato_valores_procedimento") {
+    detalhe = a.acao === "update" ? `${doProcedimento(v)} → ${doProcedimento(n)}` : doProcedimento(x);
+  } else if (/valores|portes/.test(a.tabela)) {
     detalhe = a.acao === "update" ? `${real(v[campoDoValor])} → ${real(n[campoDoValor])}` : real(x[campoDoValor]);
   } else if (a.acao === "update" && !situacaoNova) {
     const mudou = Object.keys(n).filter((k) => !["created_at", "publicada_em", "publicada_por", "validada_em", "validada_por"].includes(k)

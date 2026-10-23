@@ -12,8 +12,8 @@ import type { DadosDasTabelas } from "./tipos";
 import estilos from "./honorarios.module.css";
 
 const ORIGEM = {
-  valor_fixo_do_contrato: "Valor fixo do contrato",
-  porte_do_contrato: "Porte negociado no contrato",
+  valor_fixo_do_contrato: "Valor fixo da tabela do plano",
+  porte_do_contrato: "Valor do porte no contrato",
   referencia_cbhpm: "Referência da CBHPM",
 } as const;
 
@@ -31,7 +31,8 @@ export function AreaRegras({ dados, versoes }: { dados: DadosDasTabelas; versoes
         <ol className={estilos.passos}>
           <li><strong>Código TUSS</strong><span>Cada procedimento precisa de um código da TUSS em uso, ativo na data da anestesia.</span></li>
           <li><strong>Contrato</strong><span>A versão publicada do convênio que vale na data. O contrato do hospital vence o geral; dois gerais ao mesmo tempo ficam pendentes.</span></li>
-          <li><strong>Valor de cada procedimento</strong><span>Na ordem: valor fixo do procedimento no contrato; valor do porte negociado; valor de referência da CBHPM com o reajuste do contrato. O porte vem da correspondência TUSS ↔ CBHPM validada.</span></li>
+          <li><strong>Porte anestésico</strong><span>O que a tabela do plano dá ao código. Se o código não está na tabela do plano, o da CBHPM, pela correspondência TUSS ↔ CBHPM validada.</span></li>
+          <li><strong>Valor de cada procedimento</strong><span>Na ordem: valor fixo do procedimento na tabela do plano; valor do porte no contrato; valor de referência da CBHPM com o reajuste do contrato.</span></li>
           <li><strong>Procedimentos múltiplos</strong><span>Do maior valor para o menor, cada um pelo percentual que o contrato diz.</span></li>
           <li><strong>Urgência, adicionais e redutores</strong><span>Somados sobre o subtotal, ou um sobre o outro, como o contrato definir. Valores fixos entram por último.</span></li>
           <li><strong>Centavos</strong><span>A conta é feita em centavos, arredondando cada passo para o centavo.</span></li>
@@ -41,7 +42,7 @@ export function AreaRegras({ dados, versoes }: { dados: DadosDasTabelas; versoes
           <ul className={estilos.listaSimples}>
             <li>Sem TUSS publicada, sem código escolhido, código inexistente, substituído ou fora da vigência.</li>
             <li>Convênio sem contrato na data, ou com dois contratos possíveis.</li>
-            <li>Sem correspondência validada, procedimento sem porte, porte sem valor.</li>
+            <li>Código fora da tabela do plano e sem correspondência validada com a CBHPM; procedimento sem porte; porte sem valor.</li>
             <li>Urgência ou mais de um procedimento quando o contrato não prevê.</li>
             <li>O mesmo procedimento duas vezes, ou já lançado para o paciente no dia.</li>
           </ul>
@@ -166,7 +167,8 @@ function Resultado({ r }: { r: ResultadoDoHonorario }) {
                   <td data-rotulo="Ordem" className={estilos.numero}>{l.ordem}</td>
                   <td data-rotulo="TUSS" data-largo><span className={estilos.codigo}>{l.tussCodigo}</span>{l.descricao && <small className={estilos.linhaFraca}>{l.descricao}</small>}</td>
                   <td data-rotulo="CBHPM" className={estilos.codigo}>{l.cbhpmCodigo ?? "—"}</td>
-                  <td data-rotulo="Porte">{l.porte == null ? "—" : rotuloDoPorte(l.porte)}</td>
+                  <td data-rotulo="Porte">{l.porte == null ? "—" : rotuloDoPorte(l.porte)}
+                    {l.porteDe && <small className={estilos.linhaFraca}>{l.porteDe === "contrato" ? "da tabela do plano" : "da CBHPM"}</small>}</td>
                   <td data-rotulo="Base" className={estilos.numero}>{dinheiro(l.base)}</td>
                   <td data-rotulo="Origem">{ORIGEM[l.origem]}</td>
                   <td data-rotulo="%" className={estilos.numero}>{percentual(l.percentual)}</td>

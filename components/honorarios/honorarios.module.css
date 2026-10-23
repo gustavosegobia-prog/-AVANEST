@@ -81,6 +81,11 @@
 }
 .tabelaRolagem { overflow-x: auto; border-radius: var(--raio-2); }
 .tabelaRolagem :global(.admTabela) { min-width: 560px; }
+/* A tabela de um plano passa de mil linhas: no computador, rola dentro da
+   caixa, com o título das colunas parado no alto. */
+.tabelaLonga { max-height: 560px; overflow-y: auto; border: 1px solid var(--cor-borda); border-radius: var(--raio-3); }
+.tabelaLonga :global(.admTabela) { border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.tabelaLonga :global(.admTabela) thead th { position: sticky; top: 0; z-index: 1; }
 .codigo { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 0.01em; white-space: nowrap; }
 .numero { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .semQuebra { white-space: nowrap; }
@@ -235,6 +240,7 @@ ol.listaSimples { list-style: decimal; }
 /* Celular: a tabela vira cartões (regra do painel, em globals.css); aqui só
    o que é desta tela — texto longo e ações ocupam a linha inteira. */
 @media (max-width: 760px) {
+  .tabelaLonga { max-height: none; overflow: visible; border: 0; border-radius: 0; }
   .tabelaRolagem :global(.admTabela) { min-width: 0; }
   .tabelaRolagem td[data-largo] { grid-column: 1 / -1; }
   .tabelaRolagem td.acoesDaLinha { grid-column: 1 / -1; text-align: left; white-space: normal; }

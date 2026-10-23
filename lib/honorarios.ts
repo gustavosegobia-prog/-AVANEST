@@ -74,6 +74,11 @@ export type VersaoDeContrato = {
   valoresPorPorte: Partial<Record<number, number>>;
   /** Valor fixo por código TUSS, em reais. */
   valoresPorProcedimento: Record<string, number>;
+  /**
+   * O porte anestésico que a tabela do plano dá a cada código TUSS. Vale
+   * antes da correspondência com a CBHPM: é o plano dizendo o porte dele.
+   */
+  portesPorProcedimento: Record<string, Porte>;
 };
 
 export type EdicaoCbhpm = {
@@ -125,6 +130,8 @@ export type LinhaDoCalculo = {
   descricao: string | null;
   cbhpmCodigo: string | null;
   porte: Porte | null;
+  /** De onde veio o porte: a tabela do plano (contrato) ou a CBHPM. */
+  porteDe: "contrato" | "cbhpm" | null;
   base: number;
   origem: OrigemDaBase;
   percentual: number;
@@ -301,39 +308,50 @@ export function calcularHonorario(a: Anestesia, t: Tabelas, outros: JaLancado[] 
       const descricao = t.tuss?.codigos.get(codigo)?.descricao ?? null;
       const fixo = contrato.valoresPorProcedimento[codigo];
       if (fixo != null) {
-        linhas.push({ ordem: i + 1, tussCodigo: codigo, descricao, cbhpmCodigo: null, porte: null, base: centavos(fixo), origem: "valor_fixo_do_contrato" });
+        linhas.push({ ordem: i + 1, tussCodigo: codigo, descricao, cbhpmCodigo: null, porte: null, porteDe: null, base: centavos(fixo), origem: "valor_fixo_do_contrato" });
         return;
       }
-      if (!edicao) {
-        pendencias.push({ tipo: "sem_edicao_cbhpm", codigo, texto: `O contrato não tem valor fixo para ${codigo} nem edição da CBHPM para achar o porte.` });
-        return;
-      }
-      const cor = t.correspondencias.find((c) => c.tussCodigo === codigo && c.cbhpmEdicaoId === edicao.id);
-      if (!cor) {
-        pendencias.push({ tipo: "sem_correspondencia", codigo, texto: `O código ${codigo} não tem correspondência validada com a ${edicao.edicao}.` });
-        return;
-      }
-      if (!edicao.procedimentos.has(cor.cbhpmCodigo)) {
-        pendencias.push({ tipo: "codigo_cbhpm_inexistente", codigo, texto: `O código CBHPM ${cor.cbhpmCodigo} não está na ${edicao.edicao}.` });
-        return;
-      }
-      const porte = edicao.procedimentos.get(cor.cbhpmCodigo) ?? null;
-      if (porte == null) {
-        pendencias.push({ tipo: "sem_porte", codigo, texto: `O procedimento ${cor.cbhpmCodigo} não tem porte anestésico na ${edicao.edicao}.` });
-        return;
+      // O porte: primeiro o que a tabela do plano dá ao código; sem ele, o da
+      // CBHPM, pela correspondência validada. Nunca um porte suposto.
+      let porte: Porte | null = contrato.portesPorProcedimento[codigo] ?? null;
+      let porteDe: "contrato" | "cbhpm" = "contrato";
+      let cbhpmCodigo: string | null = null;
+      if (porte != null) {
+        regra.push(`Porte do ${codigo} pela tabela do contrato: AN${porte}.`);
+      } else {
+        porteDe = "cbhpm";
+        if (!edicao) {
+          pendencias.push({ tipo: "sem_edicao_cbhpm", codigo, texto: `O contrato não tem valor fixo nem porte para ${codigo} na tabela dele, nem edição da CBHPM para achar o porte.` });
+          return;
+        }
+        const cor = t.correspondencias.find((c) => c.tussCodigo === codigo && c.cbhpmEdicaoId === edicao.id);
+        if (!cor) {
+          pendencias.push({ tipo: "sem_correspondencia", codigo, texto: `O código ${codigo} não está na tabela do contrato nem tem correspondência validada com a ${edicao.edicao}.` });
+          return;
+        }
+        if (!edicao.procedimentos.has(cor.cbhpmCodigo)) {
+          pendencias.push({ tipo: "codigo_cbhpm_inexistente", codigo, texto: `O código CBHPM ${cor.cbhpmCodigo} não está na ${edicao.edicao}.` });
+          return;
+        }
+        cbhpmCodigo = cor.cbhpmCodigo;
+        porte = edicao.procedimentos.get(cor.cbhpmCodigo) ?? null;
+        if (porte == null) {
+          pendencias.push({ tipo: "sem_porte", codigo, texto: `O procedimento ${cor.cbhpmCodigo} não tem porte anestésico na ${edicao.edicao}.` });
+          return;
+        }
       }
       const negociado = contrato.valoresPorPorte[porte];
       if (negociado != null) {
-        linhas.push({ ordem: i + 1, tussCodigo: codigo, descricao, cbhpmCodigo: cor.cbhpmCodigo, porte, base: centavos(negociado), origem: "porte_do_contrato" });
+        linhas.push({ ordem: i + 1, tussCodigo: codigo, descricao, cbhpmCodigo, porte, porteDe, base: centavos(negociado), origem: "porte_do_contrato" });
         return;
       }
-      if (contrato.referencia === "cbhpm") {
+      if (contrato.referencia === "cbhpm" && edicao) {
         const ref = edicao.portes
           .filter((p) => p.porte === porte && p.vigenciaInicio <= a.data)
           .sort((x, y) => y.vigenciaInicio.localeCompare(x.vigenciaInicio))[0];
         if (ref) {
           const base = Math.round(centavos(ref.valor) * (1 + contrato.reajustePercentual / 100));
-          linhas.push({ ordem: i + 1, tussCodigo: codigo, descricao, cbhpmCodigo: cor.cbhpmCodigo, porte, base, origem: "referencia_cbhpm" });
+          linhas.push({ ordem: i + 1, tussCodigo: codigo, descricao, cbhpmCodigo, porte, porteDe, base, origem: "referencia_cbhpm" });
           return;
         }
       }
@@ -442,7 +460,13 @@ export function problemasDaVersao(v: VersaoDeContrato): string[] {
   if (v.referencia === "cbhpm" && !v.cbhpmEdicaoId) p.push("Contrato pela CBHPM precisa da edição da CBHPM.");
   const portes = Object.entries(v.valoresPorPorte);
   if (v.referencia === "propria" && !portes.length && !Object.keys(v.valoresPorProcedimento).length) {
-    p.push("Contrato com tabela própria precisa de valores por porte ou por procedimento.");
+    p.push(Object.keys(v.portesPorProcedimento).length
+      ? "A tabela dá o porte de cada procedimento, mas falta o valor de cada porte (AN0 a AN8)."
+      : "Contrato com tabela própria precisa de valores por porte ou por procedimento.");
+  }
+  for (const [codigo, porte] of Object.entries(v.portesPorProcedimento)) {
+    if (!/^\d+$/.test(codigo)) p.push(`Código ${codigo} inválido: o código TUSS tem só números.`);
+    if (!(Number.isInteger(porte) && porte >= 0 && porte <= 8)) p.push(`Porte do código ${codigo} fora de AN0 a AN8.`);
   }
   for (const [porte, valor] of portes) {
     if (!/^[0-8]$/.test(porte)) p.push(`Porte AN${porte} não existe: os portes vão de AN0 a AN8.`);

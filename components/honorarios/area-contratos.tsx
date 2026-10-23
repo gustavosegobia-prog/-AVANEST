@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { CabecalhoDeSecao, Dialogo, Gaveta } from "@/components/admin-ui";
 import { Icone } from "@/components/icone";
-import { problemasDaVersao, type Ajuste, type VersaoDeContrato } from "@/lib/honorarios";
-import { NOME_DA_SITUACAO_DA_VERSAO, proximaVersao } from "@/lib/honorarios-dados";
+import { nomeSimples, problemasDaVersao, type Ajuste, type Porte, type VersaoDeContrato } from "@/lib/honorarios";
+import { NOME_DA_SITUACAO_DA_VERSAO } from "@/lib/honorarios-dados";
 import { emLotes, rotuloDoPorte } from "@/lib/honorarios-telas";
 import { Aviso, Etiqueta, Recusa, Vazio, dataBr, dinheiro, exigir, lerNumero, percentual, useAcao, type Tom } from "./comum";
 import type { PedidoDeImportacao } from "./area-importar";
+import { criarRascunho } from "./rascunho";
 import type { DadosDasTabelas, LinhaContrato, LinhaOperadora, LinhaVersao } from "./tipos";
 import estilos from "./honorarios.module.css";
 
@@ -36,20 +37,25 @@ export function AreaContratos({
 
   return (
     <section className="admSecao">
-      <CabecalhoDeSecao titulo="Convênios e contratos"
-        descricao="Cada convênio com o seu contrato, e cada contrato com as versões que valeram. Não há fórmula universal: vale o que a versão diz."
+      <CabecalhoDeSecao titulo="Planos de saúde"
+        descricao="A tabela de cada plano (convênio) e o contrato com ele, versão por versão. Não há fórmula universal: vale o que a versão diz."
         acao={dados.podeEditar ? (
-          <button type="button" className="primaryClinical compact" onClick={() => setNovoConvenio(true)}>Novo convênio</button>
+          <div className={estilos.acoesDaLinha}>
+            <button type="button" className="outlineClinical" onClick={() => setNovoConvenio(true)}>Novo plano</button>
+            <button type="button" className={`primaryClinical compact ${estilos.comIcone}`} onClick={() => onImportar({ tipo: "contrato" })}>
+              <Icone nome="enviar" tamanho={16} /> Importar tabela de um plano
+            </button>
+          </div>
         ) : undefined} />
 
       {dados.operadoras.length === 0 ? (
-        <Vazio titulo="Nenhum convênio cadastrado.">
-          Cadastre o convênio com o mesmo nome usado na Produção (ex.: Unimed). O cálculo acha o contrato pelo nome,
-          sem diferenciar maiúsculas e acentos.
+        <Vazio titulo="Nenhum plano de saúde cadastrado.">
+          Importe a tabela que o plano mandou (código TUSS, porte anestésico e valor) ou cadastre o plano com o mesmo
+          nome usado na Produção (ex.: Unimed). O cálculo acha o contrato pelo nome, sem diferenciar maiúsculas e acentos.
         </Vazio>
       ) : (
         <div className={estilos.duasColunas}>
-          <nav className={estilos.listaDeConvenios} aria-label="Convênios e contratos">
+          <nav className={estilos.listaDeConvenios} aria-label="Planos de saúde e contratos">
             {dados.operadoras.map((o) => {
               const contratos = dados.contratos.filter((c) => c.operadora_id === o.id);
               return (
@@ -114,29 +120,7 @@ function Contrato({
 
   async function novaVersao() {
     await acao.executar(async () => {
-      const supabase = createClient();
-      const p = proximaVersao(dados.versoes, contrato.id, dados.hoje);
-      const b = p.base;
-      const edicaoPublicada = dados.edicoes.find((e) => e.situacao === "vigente");
-      const criada = exigir(await supabase.from("contrato_versoes").insert({
-        contrato_id: contrato.id, institution_id: dados.institutionId, versao: p.versao, vigencia_inicio: p.vigenciaInicio,
-        referencia: b?.referencia ?? (edicaoPublicada ? "cbhpm" : "propria"),
-        cbhpm_edicao_id: b ? b.cbhpm_edicao_id : edicaoPublicada?.id ?? null,
-        reajuste_percentual: b?.reajuste_percentual ?? 0, urgencia_percentual: b?.urgencia_percentual ?? null,
-        multiplos_percentuais: b?.multiplos_percentuais ?? null, ajustes: b?.ajustes ?? [],
-        ajustes_cumulativos: b?.ajustes_cumulativos ?? false, situacao: "rascunho",
-        observacoes: b ? `Copiada da versão ${b.versao}.` : null,
-      }).select("id").single()) as { id: string };
-      // Os valores da versão anterior vêm junto: o reajuste começa do que valia.
-      if (b) {
-        const porte = dados.valoresPorPorte.filter((v) => v.versao_id === b.id)
-          .map((v) => ({ versao_id: criada.id, institution_id: dados.institutionId, porte: v.porte, valor: v.valor }));
-        const proc = dados.valoresPorProcedimento.filter((v) => v.versao_id === b.id)
-          .map((v) => ({ versao_id: criada.id, institution_id: dados.institutionId, tuss_codigo: v.tuss_codigo, valor: v.valor }));
-        if (porte.length) exigir(await supabase.from("contrato_valores_porte").insert(porte));
-        for (const lote of emLotes(proc, 500)) exigir(await supabase.from("contrato_valores_procedimento").insert(lote));
-      }
-      setVersaoId(criada.id);
+      setVersaoId(await criarRascunho(createClient(), dados, contrato.id));
     });
     onAtualizar();
   }
@@ -159,6 +143,10 @@ function Contrato({
           <div className={estilos.acoesDaLinha}>
             <button type="button" className="outlineClinical compacto" onClick={alternarAtivo} disabled={acao.ocupado}>
               {contrato.ativo ? "Desativar contrato" : "Reativar contrato"}
+            </button>
+            <button type="button" className={`outlineClinical compacto ${estilos.comIcone}`} disabled={acao.ocupado}
+              onClick={() => onImportar({ tipo: "contrato", destinoId: contrato.id })}>
+              <Icone nome="enviar" tamanho={14} /> Importar tabela do plano
             </button>
             {!doContrato.some((v) => v.situacao === "rascunho") && (
               <button type="button" className="primaryClinical compact" onClick={novaVersao} disabled={acao.ocupado}>
@@ -187,7 +175,7 @@ function Contrato({
 
       {linha && montada && (
         linha.situacao === "rascunho" && dados.podeEditar
-          ? <Rascunho key={linha.id} dados={dados} linha={linha} montada={montada} onImportar={onImportar}
+          ? <Rascunho key={linha.id} dados={dados} linha={linha} montada={montada}
               onAtualizar={onAtualizar} onApagada={() => { setVersaoId(null); onAtualizar(); }} />
           : <VersaoPublicada key={linha.id} dados={dados} linha={linha} montada={montada} onAtualizar={onAtualizar} />
       )}
@@ -209,7 +197,9 @@ function VersaoPublicada({
   const [fim, setFim] = useState(linha.vigencia_fim ?? dados.hoje);
   const acao = useAcao();
   const edicao = dados.edicoes.find((e) => e.id === linha.cbhpm_edicao_id);
-  const procedimentos = Object.entries(montada.valoresPorProcedimento).sort(([a], [b]) => a.localeCompare(b));
+  const [filtro, setFiltro] = useState("");
+  const tabela = tabelaDoPlano(dados, linha.id, montada);
+  const visiveis = filtrar(tabela, filtro);
 
   async function confirmar() {
     const ok = await acao.executar(async () => {
@@ -244,16 +234,25 @@ function VersaoPublicada({
           </div>
         ))}
       </div>
-      <h4 className={estilos.subtitulo}>Valores fixos por procedimento {procedimentos.length > 0 && <span className="admContagem">{procedimentos.length}</span>}</h4>
-      {procedimentos.length === 0 ? <p className="admTextoFraco">Nenhum valor fixo por procedimento.</p> : (
-        <div className={estilos.tabelaRolagem}>
-          <table className="admTabela">
-            <thead><tr><th>Código TUSS</th><th>Valor</th></tr></thead>
-            <tbody>{procedimentos.map(([codigo, valor]) => (
-              <tr key={codigo}><td data-rotulo="Código TUSS" className={estilos.codigo}>{codigo}</td><td data-rotulo="Valor" className={estilos.numero}>{dinheiro(valor)}</td></tr>
-            ))}</tbody>
-          </table>
-        </div>
+      <h4 className={estilos.subtitulo}>Tabela de procedimentos {tabela.length > 0 && <span className="admContagem">{tabela.length.toLocaleString("pt-BR")}</span>}</h4>
+      {tabela.length === 0 ? <p className="admTextoFraco">Nenhum procedimento na tabela desta versão: o porte vem da CBHPM.</p> : (
+        <>
+          <BuscaNaTabela filtro={filtro} onFiltro={setFiltro} />
+          <div className={`${estilos.tabelaRolagem} ${estilos.tabelaLonga}`}>
+            <table className="admTabela">
+              <thead><tr><th>Código TUSS</th><th>Descrição (como veio na tabela)</th><th>Porte anestésico</th><th>Valor fixo</th></tr></thead>
+              <tbody>{visiveis.slice(0, LIMITE_DA_TABELA).map(({ x }) => (
+                <tr key={x.codigo}>
+                  <td data-rotulo="Código TUSS" className={estilos.codigo}>{x.codigo}</td>
+                  <td data-rotulo="Descrição" data-largo>{x.descricao || "—"}</td>
+                  <td data-rotulo="Porte">{x.porte === "" ? "—" : rotuloDoPorte(Number(x.porte))}</td>
+                  <td data-rotulo="Valor fixo" className={estilos.numero}>{x.valor === "" ? "—" : dinheiro(lerNumero(x.valor))}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <Mostrando visiveis={visiveis.length} total={tabela.length} />
+        </>
       )}
       {linha.observacoes && <p className="admAjuda">Observações: {linha.observacoes}</p>}
       {dados.podeEditar && linha.situacao === "vigente" && (
@@ -278,12 +277,56 @@ function VersaoPublicada({
 type Formulario = {
   inicio: string; fim: string; referencia: "cbhpm" | "propria"; edicao: string; reajuste: string;
   urgencia: string; multiplos: string; ajustes: Array<{ nome: string; tipo: Ajuste["tipo"]; valor: string; quando: Ajuste["quando"] }>;
-  cumulativos: boolean; observacoes: string; portes: Record<number, string>; procedimentos: Array<{ codigo: string; valor: string }>;
+  cumulativos: boolean; observacoes: string; portes: Record<number, string>; procedimentos: LinhaDaTabela[];
 };
+
+/** Uma linha da tabela do plano no formulário: o código, o porte que o plano dá e/ou um valor fixo. */
+type LinhaDaTabela = { codigo: string; descricao: string; porte: string; valor: string };
+
+const LIMITE_DA_TABELA = 100;
+
+/** A tabela do plano desta versão, em ordem de código, com a descrição que veio no arquivo. */
+function tabelaDoPlano(dados: DadosDasTabelas, versaoId: string, v: VersaoDeContrato): LinhaDaTabela[] {
+  const descricao = new Map(dados.valoresPorProcedimento.filter((x) => x.versao_id === versaoId).map((x) => [x.tuss_codigo, x.descricao ?? ""]));
+  const codigos = [...new Set([...Object.keys(v.valoresPorProcedimento), ...Object.keys(v.portesPorProcedimento)])].sort();
+  return codigos.map((codigo) => ({
+    codigo, descricao: descricao.get(codigo) ?? "",
+    porte: v.portesPorProcedimento[codigo] != null ? String(v.portesPorProcedimento[codigo]) : "",
+    valor: texto(v.valoresPorProcedimento[codigo]),
+  }));
+}
+
+/** As linhas que a busca mostra, com a posição de cada uma. Linha nova (sem código) aparece sempre. */
+function filtrar(linhas: LinhaDaTabela[], filtro: string) {
+  const termo = nomeSimples(filtro);
+  const digitos = filtro.replace(/\D/g, "");
+  return linhas.map((x, i) => ({ x, i })).filter(({ x }) => !x.codigo || !termo
+    || (digitos && x.codigo.includes(digitos)) || nomeSimples(x.descricao).includes(termo));
+}
+
+function BuscaNaTabela({ filtro, onFiltro }: { filtro: string; onFiltro: (f: string) => void }) {
+  return (
+    <label className="admBusca">
+      <span className="sr-only">Buscar na tabela</span>
+      <Icone nome="busca" tamanho={16} />
+      <input type="search" value={filtro} onChange={(e) => onFiltro(e.target.value)} placeholder="Código ou parte da descrição" />
+    </label>
+  );
+}
+
+function Mostrando({ visiveis, total }: { visiveis: number; total: number }) {
+  if (visiveis <= LIMITE_DA_TABELA && visiveis === total) return null;
+  return (
+    <p className="admTextoFraco">
+      {visiveis > LIMITE_DA_TABELA ? `Mostrando ${LIMITE_DA_TABELA} de ${visiveis.toLocaleString("pt-BR")}. Busque para achar os demais.`
+        : `${visiveis.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")} na busca.`}
+    </p>
+  );
+}
 
 const texto = (n: number | null | undefined) => (n == null ? "" : String(n).replace(".", ","));
 
-function formularioDe(linha: LinhaVersao, v: VersaoDeContrato): Formulario {
+function formularioDe(dados: DadosDasTabelas, linha: LinhaVersao, v: VersaoDeContrato): Formulario {
   return {
     inicio: linha.vigencia_inicio, fim: linha.vigencia_fim ?? "", referencia: linha.referencia, edicao: linha.cbhpm_edicao_id ?? "",
     reajuste: texto(v.reajustePercentual), urgencia: texto(v.urgenciaPercentual),
@@ -291,7 +334,7 @@ function formularioDe(linha: LinhaVersao, v: VersaoDeContrato): Formulario {
     ajustes: v.ajustes.map((a) => ({ nome: a.nome, tipo: a.tipo, valor: texto(a.valor), quando: a.quando })),
     cumulativos: v.ajustesCumulativos, observacoes: linha.observacoes ?? "",
     portes: Object.fromEntries(Object.entries(v.valoresPorPorte).map(([p, n]) => [Number(p), texto(n)])),
-    procedimentos: Object.entries(v.valoresPorProcedimento).sort(([a], [b]) => a.localeCompare(b)).map(([codigo, n]) => ({ codigo, valor: texto(n) })),
+    procedimentos: tabelaDoPlano(dados, linha.id, v),
   };
 }
 
@@ -307,13 +350,18 @@ function versaoDoFormulario(f: Formulario, base: VersaoDeContrato): { versao: Ve
   const portes: Partial<Record<number, number>> = {};
   for (const p of PORTES) { const n = num(f.portes[p] ?? "", rotuloDoPorte(p)); if (n !== null) portes[p] = n; }
   const procedimentos: Record<string, number> = {};
+  const portesDoPlano: Record<string, Porte> = {};
+  const vistos = new Set<string>();
   for (const x of f.procedimentos) {
     const codigo = x.codigo.replace(/\D/g, "");
-    if (!codigo && !x.valor.trim()) continue;
-    if (!codigo) { erros.push("Há valor de procedimento sem código TUSS."); continue; }
-    if (procedimentos[codigo] != null) erros.push(`Código ${codigo} repetido nos valores por procedimento.`);
+    if (!codigo && !x.valor.trim() && !x.porte) continue;
+    if (!codigo) { erros.push("Há linha da tabela sem código TUSS."); continue; }
+    if (vistos.has(codigo)) erros.push(`Código ${codigo} repetido na tabela.`);
+    vistos.add(codigo);
     const n = num(x.valor, `Procedimento ${codigo}`);
-    if (n === null) erros.push(`Procedimento ${codigo} sem valor.`); else procedimentos[codigo] = n;
+    if (n === null && !x.porte) { erros.push(`Código ${codigo} sem porte e sem valor.`); continue; }
+    if (n !== null) procedimentos[codigo] = n;
+    if (x.porte) portesDoPlano[codigo] = Number(x.porte) as Porte;
   }
   const versao: VersaoDeContrato = {
     ...base, vigenciaInicio: f.inicio, vigenciaFim: f.fim || null, referencia: f.referencia,
@@ -322,6 +370,7 @@ function versaoDoFormulario(f: Formulario, base: VersaoDeContrato): { versao: Ve
     multiplosPercentuais: multiplos && multiplos.every(Number.isFinite) ? multiplos : multiplos ? [NaN] : null,
     ajustes: f.ajustes.map((a) => ({ nome: a.nome.trim(), tipo: a.tipo, valor: lerNumero(a.valor) ?? NaN, quando: a.quando })),
     ajustesCumulativos: f.cumulativos, valoresPorPorte: portes, valoresPorProcedimento: procedimentos,
+    portesPorProcedimento: portesDoPlano,
   };
   return { versao, erros };
 }
@@ -329,20 +378,21 @@ function versaoDoFormulario(f: Formulario, base: VersaoDeContrato): { versao: Ve
 const chaveDaVersao = (v: VersaoDeContrato, observacoes: string) => JSON.stringify([
   v.vigenciaInicio, v.vigenciaFim, v.referencia, v.referencia === "cbhpm" ? v.cbhpmEdicaoId : null, v.reajustePercentual,
   v.urgenciaPercentual, v.multiplosPercentuais, v.ajustes.map((a) => [a.nome, a.tipo, a.valor, a.quando]), v.ajustesCumulativos,
-  Object.entries(v.valoresPorPorte).sort(), Object.entries(v.valoresPorProcedimento).sort(), observacoes.trim(),
+  Object.entries(v.valoresPorPorte).sort(), Object.entries(v.valoresPorProcedimento).sort(),
+  Object.entries(v.portesPorProcedimento).sort(), observacoes.trim(),
 ]);
 
 function Rascunho({
-  dados, linha, montada, onImportar, onAtualizar, onApagada,
+  dados, linha, montada, onAtualizar, onApagada,
 }: {
   dados: DadosDasTabelas;
   linha: LinhaVersao;
   montada: VersaoDeContrato;
-  onImportar: (p: PedidoDeImportacao) => void;
   onAtualizar: () => void;
   onApagada: () => void;
 }) {
-  const [f, setF] = useState<Formulario>(() => formularioDe(linha, montada));
+  const [f, setF] = useState<Formulario>(() => formularioDe(dados, linha, montada));
+  const [filtro, setFiltro] = useState("");
   const [salvo, setSalvo] = useState(false);
   const [confirmar, setConfirmar] = useState<"publicar" | "apagar" | null>(null);
   const [descricoes, setDescricoes] = useState<Map<string, string | null>>(new Map());
@@ -354,19 +404,24 @@ function Rascunho({
   const vigenteTuss = dados.tuss.find((t) => t.situacao === "vigente");
   const mudar = (x: Partial<Formulario>) => { setF({ ...f, ...x }); setSalvo(false); };
 
-  // A descrição oficial de cada código, e o aviso do que não está na TUSS em uso.
+  // A descrição oficial de cada código, e o aviso do que não está na TUSS em
+  // uso. Cada código se pergunta uma vez só: a tabela de um plano passa de mil.
   const codigos = f.procedimentos.map((p) => p.codigo.replace(/\D/g, "")).filter(Boolean).join(",");
+  const perguntados = useRef(new Set<string>());
   useEffect(() => {
-    const lista = [...new Set(codigos.split(",").filter(Boolean))];
-    if (!vigenteTuss || !lista.length) return;
+    if (!vigenteTuss) return;
+    const faltam = [...new Set(codigos.split(",").filter(Boolean))].filter((c) => !perguntados.current.has(c));
+    if (!faltam.length) return;
     let valendo = true;
     const espera = setTimeout(async () => {
-      const achados = new Map<string, string | null>(lista.map((c) => [c, null]));
-      for (const lote of emLotes(lista, 200)) {
+      for (const c of faltam) perguntados.current.add(c);
+      const achados = new Map<string, string | null>(faltam.map((c) => [c, null]));
+      for (const lote of emLotes(faltam, 200)) {
         const { data } = await createClient().from("tuss_codigos").select("codigo, descricao").eq("versao_id", vigenteTuss.id).in("codigo", lote);
         for (const c of (data ?? []) as Array<{ codigo: string; descricao: string }>) achados.set(c.codigo, c.descricao);
       }
-      if (valendo) setDescricoes(achados);
+      if (valendo) setDescricoes((antes) => new Map([...antes, ...achados]));
+      else for (const c of faltam) perguntados.current.delete(c);
     }, 400);
     return () => { valendo = false; clearTimeout(espera); };
   }, [codigos, vigenteTuss]);
@@ -387,8 +442,14 @@ function Rascunho({
       const semPorte = PORTES.filter((p) => versao.valoresPorPorte[p] == null);
       if (portes.length) exigir(await supabase.from("contrato_valores_porte").upsert(portes, { onConflict: "versao_id,porte" }));
       if (semPorte.length) exigir(await supabase.from("contrato_valores_porte").delete().eq("versao_id", linha.id).in("porte", semPorte));
-      const novos = Object.entries(versao.valoresPorProcedimento).map(([tuss_codigo, valor]) => ({ versao_id: linha.id, institution_id: dados.institutionId, tuss_codigo, valor }));
-      const sairam = Object.keys(montada.valoresPorProcedimento).filter((c) => versao.valoresPorProcedimento[c] == null);
+      const descricaoDe = new Map(f.procedimentos.map((x) => [x.codigo.replace(/\D/g, ""), x.descricao.trim() || null]));
+      const naTabela = [...new Set([...Object.keys(versao.valoresPorProcedimento), ...Object.keys(versao.portesPorProcedimento)])];
+      const novos = naTabela.map((tuss_codigo) => ({
+        versao_id: linha.id, institution_id: dados.institutionId, tuss_codigo, descricao: descricaoDe.get(tuss_codigo) ?? null,
+        porte_anestesico: versao.portesPorProcedimento[tuss_codigo] ?? null, valor: versao.valoresPorProcedimento[tuss_codigo] ?? null,
+      }));
+      const antes = [...new Set([...Object.keys(montada.valoresPorProcedimento), ...Object.keys(montada.portesPorProcedimento)])];
+      const sairam = antes.filter((c) => !naTabela.includes(c));
       for (const lote of emLotes(sairam, 200)) exigir(await supabase.from("contrato_valores_procedimento").delete().eq("versao_id", linha.id).in("tuss_codigo", lote));
       for (const lote of emLotes(novos, 500)) exigir(await supabase.from("contrato_valores_procedimento").upsert(lote, { onConflict: "versao_id,tuss_codigo" }));
     });
@@ -413,6 +474,7 @@ function Rascunho({
   }
 
   const fora = vigenteTuss ? f.procedimentos.map((p) => p.codigo.replace(/\D/g, "")).filter((c) => c && descricoes.get(c) === null) : [];
+  const visiveis = filtrar(f.procedimentos, filtro);
 
   return (
     <div className={estilos.bloco}>
@@ -504,23 +566,39 @@ function Rascunho({
       </fieldset>
 
       <fieldset className="admCampos">
-        <legend className={estilos.legenda}>Valores fixos por procedimento (vencem o valor do porte)</legend>
+        <legend className={estilos.legenda}>Tabela de procedimentos do plano {f.procedimentos.length > 0 && <span className="admContagem">{f.procedimentos.length.toLocaleString("pt-BR")}</span>}</legend>
+        <p className="admAjuda">
+          O porte anestésico que o plano dá a cada código vale antes da CBHPM. O valor fixo, quando houver, vence o valor do porte.
+        </p>
+        {f.procedimentos.length > 0 && <BuscaNaTabela filtro={filtro} onFiltro={setFiltro} />}
         {f.procedimentos.length > 0 && (
-          <div className={estilos.tabelaRolagem}>
+          <div className={`${estilos.tabelaRolagem} ${estilos.tabelaLonga}`}>
             <table className="admTabela">
-              <thead><tr><th>Código TUSS</th><th>Descrição oficial</th><th>Valor (R$)</th><th><span className="sr-only">Ações</span></th></tr></thead>
+              <thead><tr><th>Código TUSS</th><th>Descrição</th><th>Porte anestésico</th><th>Valor fixo (R$)</th><th><span className="sr-only">Ações</span></th></tr></thead>
               <tbody>
-                {f.procedimentos.map((x, i) => {
+                {visiveis.slice(0, LIMITE_DA_TABELA).map(({ x, i }) => {
                   const codigo = x.codigo.replace(/\D/g, "");
-                  const descricao = descricoes.get(codigo);
+                  const oficial = descricoes.get(codigo);
+                  const trocar = (y: Partial<LinhaDaTabela>) => mudar({ procedimentos: f.procedimentos.map((z, j) => j === i ? { ...z, ...y } : z) });
                   return (
                     <tr key={i}>
                       <td data-rotulo="Código TUSS"><input className={estilos.celulaCampo} inputMode="numeric" aria-label="Código TUSS" value={x.codigo}
-                        onChange={(e) => mudar({ procedimentos: f.procedimentos.map((y, j) => j === i ? { ...y, codigo: e.target.value } : y) })} /></td>
-                      <td data-rotulo="Descrição oficial" data-largo>{!codigo ? "—" : descricao === undefined ? "…" : descricao === null
-                        ? <Etiqueta tom="perigo">Não está na TUSS em uso</Etiqueta> : descricao}</td>
-                      <td data-rotulo="Valor (R$)"><input className={estilos.celulaCampo} inputMode="decimal" aria-label={`Valor do ${codigo || "procedimento"}`} value={x.valor}
-                        onChange={(e) => mudar({ procedimentos: f.procedimentos.map((y, j) => j === i ? { ...y, valor: e.target.value } : y) })} /></td>
+                        onChange={(e) => trocar({ codigo: e.target.value })} /></td>
+                      <td data-rotulo="Descrição" data-largo>
+                        {!codigo ? "—" : oficial === null ? <Etiqueta tom="perigo">Não está na TUSS em uso</Etiqueta> : oficial ?? (x.descricao || "…")}
+                        {oficial && x.descricao && nomeSimples(x.descricao) !== nomeSimples(oficial) && (
+                          <small className={estilos.linhaFraca}>Na tabela do plano: {x.descricao}</small>
+                        )}
+                      </td>
+                      <td data-rotulo="Porte anestésico">
+                        <select className={estilos.celulaCampo} aria-label={`Porte anestésico do ${codigo || "procedimento"}`} value={x.porte}
+                          onChange={(e) => trocar({ porte: e.target.value })}>
+                          <option value="">—</option>
+                          {PORTES.map((p) => <option key={p} value={p}>{rotuloDoPorte(p)}</option>)}
+                        </select>
+                      </td>
+                      <td data-rotulo="Valor fixo (R$)"><input className={estilos.celulaCampo} inputMode="decimal" aria-label={`Valor fixo do ${codigo || "procedimento"}`} value={x.valor}
+                        placeholder="—" onChange={(e) => trocar({ valor: e.target.value })} /></td>
                       <td data-rotulo="Ações" className={estilos.acoesDaLinha}><button type="button" className="outlineClinical compacto"
                         onClick={() => mudar({ procedimentos: f.procedimentos.filter((_, j) => j !== i) })}>Remover</button></td>
                     </tr>
@@ -530,17 +608,14 @@ function Rascunho({
             </table>
           </div>
         )}
+        <Mostrando visiveis={visiveis.length} total={f.procedimentos.length} />
         <div className={estilos.camposEmLinha}>
-          <button type="button" className="outlineClinical compacto" onClick={() => mudar({ procedimentos: [...f.procedimentos, { codigo: "", valor: "" }] })}>
+          <button type="button" className="outlineClinical compacto"
+            onClick={() => mudar({ procedimentos: [{ codigo: "", descricao: "", porte: "", valor: "" }, ...f.procedimentos] })}>
             Adicionar procedimento
           </button>
-          <button type="button" className="outlineClinical compacto" disabled={alterado}
-            title={alterado ? "Salve o rascunho antes de importar" : undefined}
-            onClick={() => onImportar({ tipo: "contrato", destinoId: linha.id })}>
-            Importar valores de planilha
-          </button>
         </div>
-        {fora.length > 0 && <Aviso tom="atencao">{fora.length === 1 ? `O código ${fora[0]} não está` : `${fora.length} códigos não estão`} na TUSS em uso: o cálculo deixa pendente.</Aviso>}
+        {fora.length > 0 && <Aviso tom="atencao">{fora.length === 1 ? `O código ${fora[0]} não está` : `${fora.length.toLocaleString("pt-BR")} códigos não estão`} na TUSS em uso: o cálculo deixa pendente.</Aviso>}
       </fieldset>
 
       <label className="clinicalField"><span>Observações</span>

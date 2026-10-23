@@ -96,7 +96,7 @@ export function TabelasEHonorarios({
           {dados && (
             <dl className={estilos.resumo}>
               <div><dt>TUSS em uso</dt><dd>{vigente ? vigente.versao : "nenhuma"}</dd></div>
-              <div><dt>Convênios</dt><dd>{dados.operadoras.filter((o) => o.ativo).length}</dd></div>
+              <div><dt>Planos</dt><dd>{dados.operadoras.filter((o) => o.ativo).length}</dd></div>
               <div><dt>Pendências</dt><dd className={pendencias.some((p) => p.gravidade === "alta") ? estilos.resumoAlerta : undefined}>{pendencias.length}</dd></div>
             </dl>
           )}

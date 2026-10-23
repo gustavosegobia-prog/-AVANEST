@@ -33,8 +33,8 @@ export function AreaCbhpm({
 
   return (
     <section className="admSecao">
-      <CabecalhoDeSecao titulo="CBHPM e portes"
-        descricao="Edições da CBHPM da clínica, o porte anestésico de cada procedimento e o valor de referência de cada porte."
+      <CabecalhoDeSecao titulo="Procedimentos e portes anestésicos (CBHPM)"
+        descricao="A tabela dos procedimentos com o porte anestésico de cada um e o valor de referência de cada porte, pela CBHPM da clínica. Vale para o código que a tabela do plano não trouxer."
         acao={dados.podeEditar ? (
           <button type="button" className="primaryClinical compact" onClick={() => setNova(true)}>Nova edição</button>
         ) : undefined} />

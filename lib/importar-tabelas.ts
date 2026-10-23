@@ -321,47 +321,57 @@ export function lerPortesDeReferencia(grade: string[][]): Leitura<PorteDeReferen
 
 // ── Valores de contrato ────────────────────────────────────────────────────
 
-export type ValorDeContratoLido =
+export type ItemDaTabelaDoPlano =
   | { tipo: "porte"; porte: number; valor: number }
-  | { tipo: "procedimento"; tussCodigo: string; valor: number };
+  | { tipo: "procedimento"; tussCodigo: string; descricao: string | null; porte: number | null; valor: number | null };
 
-const CAMPOS_CONTRATO = {
-  porte: { titulos: ["Porte anestésico", "Porte anestesico", "Porte", "AN"], obrigatorio: false },
-  codigo: { titulos: ["Código TUSS", "Codigo TUSS", "Código", "Codigo", "TUSS"], obrigatorio: false },
-  valor: { titulos: ["Valor", "Valor negociado", "Honorário", "Honorario", "R$"], obrigatorio: true },
+const CAMPOS_PLANO = {
+  codigo: { titulos: ["Código TUSS", "Codigo TUSS", "Código", "Codigo", "TUSS", "Cód"], obrigatorio: false },
+  descricao: { titulos: ["Descrição", "Descricao", "Procedimento", "Termo", "Descrição do procedimento"], obrigatorio: false },
+  porte: { titulos: ["Porte anestésico", "Porte anestesico", "Porte an", "Porte", "AN"], obrigatorio: false },
+  valor: { titulos: ["Valor", "Valor negociado", "Honorário", "Honorario", "Valor do honorário", "R$"], obrigatorio: false },
 };
 
 /**
- * A tabela de um contrato: cada linha é um porte (AN0–AN8) OU um código TUSS
- * com valor fixo, e o valor. Linha com os dois, ou com nenhum, é erro.
+ * A tabela de um plano de saúde, como o plano manda. Cada linha é:
+ * - um procedimento: o código TUSS com o porte anestésico que o PLANO dá a ele
+ *   e/ou um valor fixo de honorário (a descrição vem junto, se houver); ou
+ * - o valor de um porte: só o porte (AN0–AN8) e o valor dele.
+ * Código sem porte e sem valor, ou porte sem valor e sem código, é erro.
  */
-export function lerValoresDoContrato(grade: string[][]): Leitura<ValorDeContratoLido> {
-  const achado = acharColunas(grade, CAMPOS_CONTRATO);
+export function lerTabelaDoPlano(grade: string[][]): Leitura<ItemDaTabelaDoPlano> {
+  const achado = acharColunas(grade, CAMPOS_PLANO);
   if ("faltam" in achado) return semColunas(achado.faltam);
   const { linha: titulo, colunas: c } = achado;
-  if (c.porte < 0 && c.codigo < 0) return semColunas(["Porte anestésico” ou “Código TUSS"]);
+  if (c.codigo < 0 && c.porte < 0) return semColunas(["Código TUSS” ou “Porte anestésico"]);
+  if (c.porte < 0 && c.valor < 0) return semColunas(["Porte anestésico” ou “Valor"]);
   const erros: ErroDeLinha[] = [];
-  const lidos: Array<ValorDeContratoLido & { linha: number }> = [];
+  const lidos: Array<ItemDaTabelaDoPlano & { linha: number }> = [];
   let total = 0;
   for (let i = titulo + 1; i < grade.length; i++) {
     const l = grade[i];
     if (vazia(l)) continue;
     total++;
     const n = i + 1;
-    const textoPorte = celula(l, c.porte).trim();
     const textoCodigo = celula(l, c.codigo).trim();
-    const valor = valorDaCelula(celula(l, c.valor));
-    if (textoPorte && textoCodigo) { erros.push({ linha: n, mensagem: "Informe o porte OU o código TUSS, não os dois." }); continue; }
-    if (!textoPorte && !textoCodigo) { erros.push({ linha: n, mensagem: "Sem porte e sem código TUSS." }); continue; }
-    if (valor == null) { erros.push({ linha: n, mensagem: `Valor “${celula(l, c.valor)}” ilegível.` }); continue; }
-    if (textoPorte) {
-      const porte = porteDaCelula(textoPorte);
-      if (porte == null) { erros.push({ linha: n, mensagem: `Porte “${textoPorte}” fora de AN0 a AN8.` }); continue; }
-      lidos.push({ linha: n, tipo: "porte", porte, valor });
-    } else {
+    const textoPorte = celula(l, c.porte).trim();
+    const textoValor = celula(l, c.valor).trim();
+    const porte = porteDaCelula(textoPorte);
+    const valor = valorDaCelula(textoValor);
+    if (porte === undefined) {
+      erros.push({ linha: n, mensagem: `Porte “${textoPorte}” não é porte anestésico (AN0 a AN8): confira se a coluna é a do porte anestésico.` });
+      continue;
+    }
+    if (valor === undefined) { erros.push({ linha: n, mensagem: `Valor “${textoValor}” ilegível.` }); continue; }
+    if (textoCodigo) {
       const tussCodigo = codigoDaCelula(textoCodigo);
       if (!tussCodigo) { erros.push({ linha: n, mensagem: `Código TUSS “${textoCodigo}” não é só número.` }); continue; }
-      lidos.push({ linha: n, tipo: "procedimento", tussCodigo, valor });
+      if (porte == null && valor == null) { erros.push({ linha: n, mensagem: `Código ${tussCodigo} sem porte anestésico e sem valor.` }); continue; }
+      lidos.push({ linha: n, tipo: "procedimento", tussCodigo, descricao: celula(l, c.descricao).trim() || null, porte, valor });
+    } else {
+      if (porte == null) { erros.push({ linha: n, mensagem: "Linha sem código TUSS e sem porte." }); continue; }
+      if (valor == null) { erros.push({ linha: n, mensagem: `Porte AN${porte} sem valor.` }); continue; }
+      lidos.push({ linha: n, tipo: "porte", porte, valor });
     }
   }
   const itens = semRepetidos(lidos, (x) => (x.tipo === "porte" ? `AN${x.porte}` : x.tussCodigo), erros, "Item");

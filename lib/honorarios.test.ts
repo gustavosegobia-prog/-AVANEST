@@ -24,7 +24,7 @@ const contrato = (x: Partial<VersaoDeContrato> = {}): VersaoDeContrato => ({
   vigenciaInicio: "2026-01-01", vigenciaFim: null, situacao: "vigente",
   referencia: "cbhpm", cbhpmEdicaoId: "ed1", reajustePercentual: 0,
   urgenciaPercentual: null, multiplosPercentuais: null, ajustes: [], ajustesCumulativos: false,
-  valoresPorPorte: {}, valoresPorProcedimento: {}, ...x,
+  valoresPorPorte: {}, valoresPorProcedimento: {}, portesPorProcedimento: {}, ...x,
 });
 
 const tabelas = (contratos: VersaoDeContrato[], extra: Partial<Tabelas> = {}): Tabelas => ({
@@ -83,6 +83,58 @@ describe("honorários: o cálculo segue o contrato", () => {
     assert.equal(nomeSimples(" UNIMED  fictícia "), "unimed ficticia");
     const r = calcularHonorario(anestesia({ convenio: "UNIMED ficticia" }), tabelas([contrato({ valoresPorPorte: { 3: 600 } })]));
     assert.equal(r.valorPrevisto, 600);
+  });
+});
+
+describe("honorários: a tabela do plano de saúde", () => {
+  // O plano manda a tabela dele: o código TUSS com o porte anestésico que ELE
+  // dá, e o valor de cada porte. Não depende de correspondência com a CBHPM.
+  const plano = (x: Partial<VersaoDeContrato> = {}) => contrato({
+    referencia: "propria", cbhpmEdicaoId: null, portesPorProcedimento: { "90000001": 4 }, valoresPorPorte: { 4: 900 }, ...x,
+  });
+
+  it("o porte vem da tabela do plano, sem correspondência nem CBHPM", () => {
+    const r = calcularHonorario(anestesia(), tabelas([plano()], { correspondencias: [], cbhpm: new Map() }));
+    assert.equal(r.situacao, "calculado");
+    assert.equal(r.valorPrevisto, 900);
+    assert.equal(r.memoria.linhas[0].porte, 4);
+    assert.equal(r.memoria.linhas[0].porteDe, "contrato");
+    assert.equal(r.memoria.linhas[0].cbhpmCodigo, null);
+  });
+
+  it("o porte do plano vence o porte da CBHPM para o mesmo código", () => {
+    // Na CBHPM fictícia, 90000001 → C1 → AN3. O plano diz AN4.
+    const r = calcularHonorario(anestesia(), tabelas([plano({ referencia: "cbhpm", cbhpmEdicaoId: "ed1", valoresPorPorte: {} })]));
+    // Pela CBHPM seria AN3 (R$ 400 de referência). Pelo plano é AN4, e a
+    // edição fictícia não tem valor para o AN4: fica pendente, sem usar o AN3.
+    assert.equal(r.valorPrevisto, null);
+    assert.deepEqual(r.pendencias.map((p) => p.tipo), ["sem_valor"]);
+    assert.match(r.pendencias[0].texto, /AN4/);
+    const comValor = calcularHonorario(anestesia(), tabelas([plano({ referencia: "cbhpm", cbhpmEdicaoId: "ed1", valoresPorPorte: { 4: 700 } })]));
+    assert.equal(comValor.valorPrevisto, 700);
+    assert.equal(comValor.memoria.linhas[0].porte, 4);
+  });
+
+  it("valor fixo do procedimento ainda vence o porte do plano", () => {
+    const r = calcularHonorario(anestesia(), tabelas([plano({ valoresPorProcedimento: { "90000001": 1234 } })]));
+    assert.equal(r.valorPrevisto, 1234);
+    assert.equal(r.memoria.linhas[0].origem, "valor_fixo_do_contrato");
+  });
+
+  it("código fora da tabela do plano usa a correspondência da CBHPM, se houver", () => {
+    const r = calcularHonorario(anestesia({ procedimentos: ["90000002"] }),
+      tabelas([plano({ referencia: "cbhpm", cbhpmEdicaoId: "ed1", valoresPorPorte: { 5: 1000 } })]));
+    assert.equal(r.valorPrevisto, 1000);
+    assert.equal(r.memoria.linhas[0].porteDe, "cbhpm");
+    const sem = calcularHonorario(anestesia({ procedimentos: ["90000002"] }), tabelas([plano()]));
+    assert.deepEqual(sem.pendencias.map((p) => p.tipo), ["sem_edicao_cbhpm"]);
+  });
+
+  it("tabela com o porte de cada código, mas sem o valor dos portes, não publica", () => {
+    assert.deepEqual(problemasDaVersao(plano({ valoresPorPorte: {} })),
+      ["A tabela dá o porte de cada procedimento, mas falta o valor de cada porte (AN0 a AN8)."]);
+    assert.deepEqual(problemasDaVersao(plano()), []);
+    assert.ok(problemasDaVersao(plano({ portesPorProcedimento: { "90000001": 9 as 8 } })).some((x) => /fora de AN0 a AN8/.test(x)));
   });
 });
 

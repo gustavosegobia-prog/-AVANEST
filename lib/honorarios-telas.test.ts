@@ -11,7 +11,7 @@ const versao = (x: Partial<VersaoDeContrato> = {}): VersaoDeContrato => ({
   id: "v1", contratoId: "c1", operadora: "Unimed Fictícia", localId: null, versao: 1,
   vigenciaInicio: "2026-01-01", vigenciaFim: null, situacao: "vigente", referencia: "cbhpm", cbhpmEdicaoId: "ed1",
   reajustePercentual: 0, urgenciaPercentual: null, multiplosPercentuais: null, ajustes: [], ajustesCumulativos: false,
-  valoresPorPorte: {}, valoresPorProcedimento: {}, ...x,
+  valoresPorPorte: {}, valoresPorProcedimento: {}, portesPorProcedimento: {}, ...x,
 });
 
 const estado = (x: Partial<EstadoDasTabelas> = {}): EstadoDasTabelas => ({

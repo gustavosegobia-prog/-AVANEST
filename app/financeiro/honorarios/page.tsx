@@ -57,7 +57,7 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
       daClinica<LinhaVersao>("contrato_versoes",
         "id, contrato_id, versao, vigencia_inicio, vigencia_fim, referencia, cbhpm_edicao_id, reajuste_percentual, urgencia_percentual, multiplos_percentuais, ajustes, ajustes_cumulativos, situacao, observacoes, publicada_em"),
       daClinica<LinhaValorPorte>("contrato_valores_porte", "versao_id, porte, valor"),
-      daClinica<LinhaValorProcedimento>("contrato_valores_procedimento", "versao_id, tuss_codigo, valor"),
+      daClinica<LinhaValorProcedimento>("contrato_valores_procedimento", "versao_id, tuss_codigo, valor, porte_anestesico, descricao"),
       supabase.from("locais_atendimento").select("id, nome, nome_fantasia")
         .eq("institution_id", inst).is("owner_id", null).eq("ativo", true).order("nome"),
       supabase.from("importacoes_tabelas")
