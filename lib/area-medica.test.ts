@@ -80,6 +80,26 @@ describe("pendências verificadas", () => {
   it("pendência resolvida some: a avaliação concluída não aparece", () => {
     assert.equal(pendenciasVerificadas([av({ status: "concluida" })], [], HOJE).length, 0);
   });
+  it("o médico que abre a avaliação direto, sem a recepção dar entrada: a consulta não vira pendência", () => {
+    const ontem = "2026-09-29";
+    const feita = av({ patient_id: "pac", status: "concluida", created_at: "2026-09-29T13:00:00Z", concluida_at: "2026-09-29T13:40:00Z" });
+    // Agendada ontem, sem chegada nem falta, mas o paciente foi avaliado ontem.
+    assert.equal(pendenciasVerificadas([feita], [c({ patient_id: "pac", data: ontem })], HOJE).length, 0);
+    // A avaliação ligada à consulta também resolve, mesmo com a agenda parada em "agendado".
+    assert.equal(pendenciasVerificadas([], [c({ data: ontem, avaliacao_id: "qualquer" })], HOJE).length, 0);
+    // Chegou hoje e o médico abriu a avaliação sem ligar ao agendamento: não é "sem avaliação".
+    const aberta = av({ patient_id: "hoje", created_at: "2026-09-30T12:00:00Z", updated_at: "2026-09-30T12:00:00Z" });
+    assert.deepEqual(pendenciasVerificadas([aberta], [c({ patient_id: "hoje", status: "presente" })], HOJE).map((x) => x.tipo), ["avaliacao_aberta"]);
+  });
+  it("avaliação de antes da consulta não resolve: quem volta para reavaliação continua na fila", () => {
+    const antiga = av({ patient_id: "volta", status: "concluida", created_at: "2026-09-10T13:00:00Z", concluida_at: "2026-09-10T14:00:00Z" });
+    assert.deepEqual(pendenciasVerificadas([antiga], [c({ patient_id: "volta", data: "2026-09-29" })], HOJE).map((x) => x.tipo), ["consulta_sem_desfecho"]);
+    assert.deepEqual(pendenciasVerificadas([antiga], [c({ patient_id: "volta", status: "presente" })], HOJE).map((x) => x.tipo), ["chegou_sem_avaliacao"]);
+  });
+  it("o paciente avaliado por um colega também não fica sem desfecho", () => {
+    const doColega = av({ patient_id: "pc", created_by: "colega", status: "concluida", created_at: "2026-09-29T13:00:00Z", concluida_at: "2026-09-29T13:30:00Z" });
+    assert.equal(pendenciasVerificadas([], [c({ patient_id: "pc", data: "2026-09-29" })], HOJE, [doColega]).length, 0);
+  });
 });
 
 describe("período e identificação", () => {

@@ -18,6 +18,7 @@
 // assinatura) é declarado como indisponível, e não como zero.
 
 import { etapaDaConsulta, FORA_DO_FLUXO, horaDoInstante, momentoBr, type Andamento, type ConsultaDaAgenda, type Etapa } from "./recepcao.ts";
+import { dataLocal } from "./data-local.ts";
 
 export type AvaliacaoResumo = {
   id: string;
@@ -180,9 +181,44 @@ export type Pendencia = {
 /** Consultas passadas sem chegada nem falta: só as dos últimos 30 dias. */
 export const JANELA_SEM_DESFECHO = 30;
 
+/**
+ * Os dias em que cada paciente teve avaliação aberta ou concluída, no fuso do
+ * serviço. É o que diz que a consulta aconteceu quando a agenda não diz.
+ */
+function diasComAvaliacao(avaliacoes: AvaliacaoResumo[]): Map<string, string[]> {
+  const m = new Map<string, string[]>();
+  for (const a of avaliacoes) {
+    const dias = [a.created_at, a.concluida_at].filter((x): x is string => Boolean(x)).map((x) => dataLocal(new Date(x)));
+    m.set(a.patient_id, [...(m.get(a.patient_id) ?? []), ...dias]);
+  }
+  return m;
+}
+
+/**
+ * A consulta já foi atendida pelo médico, mesmo sem a recepção ter registrado
+ * a chegada: a avaliação está ligada a ela, ou o mesmo paciente teve avaliação
+ * aberta ou concluída do dia da consulta em diante.
+ *
+ * Pedido de 23/10/2026: o médico que atende sozinho abre a avaliação direto e
+ * não dá entrada no paciente (é papel da recepção). As consultas dele viravam
+ * "sem chegada nem falta" no dia seguinte, e a lista de pendências enchia de
+ * casos resolvidos. Avaliação de antes do dia da consulta não conta: o
+ * paciente que volta para reavaliação não some da fila por causa da antiga.
+ */
+function consultaAtendida(c: ConsultaDaAgenda, dias: Map<string, string[]>): boolean {
+  return Boolean(c.avaliacao_id) || (dias.get(c.patient_id) ?? []).some((d) => d >= c.data);
+}
+
+/**
+ * `atendidas` é onde se procura se o paciente foi avaliado — todas as
+ * avaliações que a pessoa pode ler, e não só as do escopo: o paciente atendido
+ * por um colega também não está "sem desfecho".
+ */
 export function pendenciasVerificadas(
   avaliacoes: AvaliacaoResumo[], consultas: ConsultaDaAgenda[], hoje: string,
+  atendidas: AvaliacaoResumo[] = avaliacoes,
 ): Pendencia[] {
+  const dias = diasComAvaliacao(atendidas);
   const lista: Pendencia[] = [];
   for (const a of paraRetomar(avaliacoes)) {
     lista.push({
@@ -194,7 +230,8 @@ export function pendenciasVerificadas(
   }
   const limite = somar(hoje, -JANELA_SEM_DESFECHO);
   for (const c of consultas) {
-    if (c.status === "presente" && !c.avaliacao_id && c.data <= hoje) {
+    if (consultaAtendida(c, dias)) continue;
+    if (c.status === "presente" && c.data <= hoje) {
       lista.push({
         id: `ch-${c.id}`, tipo: "chegou_sem_avaliacao", patientId: c.patient_id,
         motivo: "Chegada registrada pela recepção, sem avaliação iniciada",

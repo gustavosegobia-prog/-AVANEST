@@ -138,7 +138,7 @@ export function AreaMedica({
   // Antes a mesma avaliação aparecia três vezes, com três botões.
   const pacientesDeHoje = new Set(doDiaDeHoje.filter((c) => !FORA_DO_FLUXO(c.status)).map((c) => c.patient_id));
   const outrasAbertas = retomar.filter((a) => !pacientesDeHoje.has(a.patient_id));
-  const pendencias = pendenciasVerificadas(avaliacoesNoEscopo, consultasNoEscopo, hoje);
+  const pendencias = pendenciasVerificadas(avaliacoesNoEscopo, consultasNoEscopo, hoje, avaliacoes);
 
   const intervalo = intervaloDoPeriodo(periodo, hoje);
   const termo = busca.trim().toLowerCase();
