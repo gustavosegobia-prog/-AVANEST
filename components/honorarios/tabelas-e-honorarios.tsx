@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icone, type NomeDoIcone } from "@/components/icone";
 import { versaoDeContrato } from "@/lib/honorarios-dados";
-import { AREAS, pendenciasDasTabelas, type Area, type EstadoDasTabelas } from "@/lib/honorarios-telas";
+import { AREAS, pendenciasDasTabelas, primeirosPassos, type Area, type EstadoDasTabelas } from "@/lib/honorarios-telas";
 import type { DadosDasTabelas } from "./tipos";
 import { AreaPendencias } from "./area-pendencias";
 import { AreaTuss } from "./area-tuss";
@@ -14,6 +14,7 @@ import { AreaContratos } from "./area-contratos";
 import { AreaImportar, type PedidoDeImportacao } from "./area-importar";
 import { AreaRegras } from "./area-regras";
 import { AreaHistorico } from "./area-historico";
+import { PrimeirosPassos } from "./primeiros-passos";
 import estilos from "./honorarios.module.css";
 
 // A casca de "Tabelas e honorários": o título, o menu das sete áreas e a área
@@ -78,6 +79,10 @@ export function TabelasEHonorarios({
     return pendenciasDasTabelas(estado);
   }, [dados, versoes]);
 
+  const passos = useMemo(() => dados
+    ? primeirosPassos({ tuss: dados.tuss, versoes: dados.versoes, honorariosCalculados: dados.honorariosCalculados })
+    : [], [dados]);
+
   const vigente = dados?.tuss.find((t) => t.situacao === "vigente");
   const atualizar = () => router.refresh();
 
@@ -106,7 +111,8 @@ export function TabelasEHonorarios({
           Em conferência: só você vê esta área até ela ser liberada para o Financeiro das clínicas.
         </p>
 
-        {naoInstalado || !dados ? <NaoInstalado /> : (
+        {naoInstalado || !dados ? <NaoInstalado /> : (<>
+          <PrimeirosPassos passos={passos} onAbrir={abrir} onImportar={importar} />
           <div className="financeLayout">
             <nav className="financeTarefas menuLateral" aria-label="Áreas de Tabelas e honorários">
               {AREAS.map((a) => {
@@ -127,7 +133,7 @@ export function TabelasEHonorarios({
                   Sua conta não tem o Financeiro desta organização: as tabelas da clínica não abrem nem se gravam por aqui.
                 </p>
               )}
-              {area === "pendencias" && <AreaPendencias pendencias={pendencias} onAbrir={abrir} />}
+              {area === "pendencias" && <AreaPendencias pendencias={pendencias} onAbrir={abrir} onImportar={importar} />}
               {area === "tuss" && <AreaTuss dados={dados} onImportar={importar} onAtualizar={atualizar} />}
               {area === "cbhpm" && <AreaCbhpm dados={dados} onImportar={importar} onAtualizar={atualizar} />}
               {area === "contratos" && <AreaContratos dados={dados} versoes={versoes} onImportar={importar} onAtualizar={atualizar} />}
@@ -139,7 +145,7 @@ export function TabelasEHonorarios({
               {area === "historico" && <AreaHistorico dados={dados} />}
             </div>
           </div>
-        )}
+        </>)}
       </main>
     </div>
   );

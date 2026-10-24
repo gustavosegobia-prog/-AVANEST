@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { VersaoDeContrato } from "./honorarios.ts";
 import {
-  descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, versaoDoNome, type EstadoDasTabelas,
+  descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, primeirosPassos, versaoDoNome, type EstadoDasTabelas,
 } from "./honorarios-telas.ts";
 
 // Dados fictícios.
@@ -102,7 +102,9 @@ describe("tabelas e honorários: pendências", () => {
     const p = pendenciasDasTabelas(estado({ versoes: [versao({ vigenciaFim: "2026-06-30" })] }));
     assert.ok(p.some((x) => x.chave === "sem-contrato-o1"));
     const semContrato = pendenciasDasTabelas(estado({ contratos: [], versoes: [] }));
-    assert.match(semContrato.find((x) => x.chave === "sem-contrato-o1")?.detalhe ?? "", /Cadastre o contrato/);
+    const item = semContrato.find((x) => x.chave === "sem-contrato-o1");
+    assert.match(item?.detalhe ?? "", /Importe a tabela do plano/);
+    assert.deepEqual(item?.acao, { rotulo: "Importar a tabela do plano", importar: "contrato" });
     const inativo = pendenciasDasTabelas(estado({ operadoras: [{ id: "o1", nome: "X", ativo: false }], contratos: [], versoes: [] }));
     assert.ok(!inativo.some((x) => x.chave.startsWith("sem-contrato")));
   });
@@ -135,5 +137,31 @@ describe("tabelas e honorários: histórico", () => {
     const c = descreverAlteracao({ tabela: "contratos", acao: "update",
       dados_anteriores: { identificacao: "Geral", ativo: true }, dados_novos: { identificacao: "Geral", ativo: false } });
     assert.equal(c.detalhe, "Campos: ativo");
+  });
+});
+
+describe("honorários: primeiros passos", () => {
+  const tuss = (situacao: "em_conferencia" | "vigente" | "substituida") => [{ id: "t1", versao: "202609", situacao }];
+  it("do zero: importar a TUSS é o primeiro clique, e o plano vem importado", () => {
+    const p = primeirosPassos({ tuss: [], versoes: [], honorariosCalculados: 0 });
+    assert.deepEqual(p.map((x) => [x.chave, x.feito, x.acao]), [
+      ["tuss", false, { rotulo: "Importar a TUSS", importar: "tuss" }],
+      ["plano", false, { rotulo: "Importar a tabela do plano", importar: "contrato" }],
+      ["calculo", false, { rotulo: "Abrir o simulador", area: "regras" }],
+    ]);
+  });
+  it("o que já foi importado leva a conferir e publicar", () => {
+    const p = primeirosPassos({ tuss: tuss("em_conferencia"), versoes: [{ situacao: "rascunho" }], honorariosCalculados: 0 });
+    assert.deepEqual(p[0].acao, { rotulo: "Conferir e publicar", area: "tuss" });
+    assert.deepEqual(p[1].acao, { rotulo: "Conferir e publicar", area: "contratos" });
+  });
+  it("feito é feito: TUSS publicada, plano publicado e um cálculo", () => {
+    const p = primeirosPassos({ tuss: tuss("vigente"), versoes: [{ situacao: "vigente" }], honorariosCalculados: 1 });
+    assert.deepEqual(p.map((x) => x.feito), [true, true, true]);
+  });
+  it("a pendência da TUSS leva direto à importação", () => {
+    const [semTuss] = pendenciasDasTabelas(estado({ tuss: [] }));
+    assert.equal(semTuss.chave, "tuss-sem-vigente");
+    assert.deepEqual(semTuss.acao, { rotulo: "Importar a TUSS", importar: "tuss" });
   });
 });

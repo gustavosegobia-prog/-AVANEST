@@ -378,6 +378,19 @@ export function lerTabelaDoPlano(grade: string[][]): Leitura<ItemDaTabelaDoPlano
   return { itens, erros: erros.sort(porLinha), total, linhaDoTitulo: titulo + 1 };
 }
 
+/**
+ * O modelo da tabela de um plano, para baixar e preencher (Importar arquivo).
+ * Traz os títulos que lerTabelaDoPlano reconhece e uma linha para o valor de
+ * cada porte, AN0 a AN8, com o valor em branco; os procedimentos entram
+ * embaixo, um código TUSS por linha. Porte deixado em branco aparece na
+ * prévia como "Porte ANx sem valor": é o lembrete do que falta.
+ */
+export function modeloDaTabelaDoPlano(): string {
+  const linhas = [["Código TUSS", "Descrição", "Porte anestésico", "Valor"]];
+  for (let porte = 0; porte <= 8; porte++) linhas.push(["", `Valor do porte AN${porte}`, `AN${porte}`, ""]);
+  return linhas.map((l) => l.join(";")).join("\r\n") + "\r\n";
+}
+
 // ── Correspondências TUSS ↔ CBHPM ──────────────────────────────────────────
 
 export type CorrespondenciaLida = { tussCodigo: string; cbhpmCodigo: string };

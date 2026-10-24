@@ -50,4 +50,6 @@ export type DadosDasTabelas = {
   importacoes: LinhaImportacao[];
   correspondenciasPropostas: number;
   producaoPendente: number;
+  /** Anestesias com o honorário já calculado (o 3º dos primeiros passos). */
+  honorariosCalculados: number;
 };

@@ -81,7 +81,15 @@ export type PendenciaDaTabela = {
   area: Area;
   titulo: string;
   detalhe: string;
+  /**
+   * O botão do item: o que ele diz e, quando o caminho é importar um arquivo,
+   * o quê. Sem ele, o botão leva à área, com o nome dela.
+   */
+  acao?: AcaoDaTela;
 };
+
+/** Um botão que leva aonde se resolve: a uma área, ou à importação já com o tipo escolhido. */
+export type AcaoDaTela = { rotulo: string; area?: Area; importar?: "tuss" | "contrato" };
 
 export type EstadoDasTabelas = {
   hoje: string;
@@ -110,6 +118,7 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: "tuss-sem-vigente", gravidade: "alta", area: "tuss",
       titulo: "Nenhuma versão da TUSS publicada",
       detalhe: "Sem a TUSS, nenhum código é conferido e todo honorário fica pendente.",
+      acao: { rotulo: "Importar a TUSS", importar: "tuss" },
     });
   }
   for (const t of e.tuss.filter((x) => x.situacao === "em_conferencia")) {
@@ -117,6 +126,7 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: `tuss-conferencia-${t.id}`, gravidade: "media", area: "tuss",
       titulo: `TUSS ${t.versao} aguardando publicação`,
       detalhe: "Importada e ainda em conferência: o cálculo continua usando a versão publicada.",
+      acao: { rotulo: "Conferir e publicar" },
     });
   }
 
@@ -165,6 +175,7 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: `rascunho-${v.id}`, gravidade: "baixa", area: "contratos",
       titulo: `${nomeDoContrato(v.contratoId)} — versão ${v.versao} em rascunho`,
       detalhe: problemas.length ? problemas.join(" ") : "Pronta para publicar.",
+      acao: { rotulo: "Conferir e publicar" },
     });
   }
 
@@ -191,7 +202,8 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
         titulo: `${o.nome} sem contrato valendo hoje`,
         detalhe: contratos.length
           ? "Há contrato cadastrado, mas nenhuma versão publicada cobre a data de hoje."
-          : "Cadastre o contrato e publique uma versão para o cálculo usar.",
+          : "Importe a tabela do plano e publique a versão para o cálculo usar.",
+        ...(contratos.length ? {} : { acao: { rotulo: "Importar a tabela do plano", importar: "contrato" as const } }),
       });
     }
   }
@@ -205,6 +217,55 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
   }
 
   return r.sort((a, b) => PESO[a.gravidade] - PESO[b.gravidade]);
+}
+
+// ── Primeiros passos ───────────────────────────────────────────────────────
+
+export type PassoInicial = {
+  chave: "tuss" | "plano" | "calculo";
+  titulo: string;
+  detalhe: string;
+  feito: boolean;
+  acao: AcaoDaTela;
+};
+
+/**
+ * O caminho mais curto até o primeiro honorário calculado: a TUSS publicada,
+ * a tabela de um plano publicada e um cálculo feito. Cada passo diz o próximo
+ * clique — importar, ou conferir e publicar o que já foi importado. A CBHPM e
+ * as correspondências ficam de fora: com o porte na tabela do plano, não são
+ * necessárias.
+ */
+export function primeirosPassos(e: {
+  tuss: EstadoDasTabelas["tuss"];
+  versoes: Array<{ situacao: string }>;
+  honorariosCalculados: number;
+}): PassoInicial[] {
+  const tussPublicada = e.tuss.some((t) => t.situacao === "vigente");
+  const tussEmConferencia = e.tuss.some((t) => t.situacao === "em_conferencia");
+  const planoPublicado = e.versoes.some((v) => v.situacao !== "rascunho");
+  const planoEmRascunho = e.versoes.some((v) => v.situacao === "rascunho");
+  return [
+    {
+      chave: "tuss", titulo: "Publicar a TUSS", feito: tussPublicada,
+      detalhe: "A Tabela 22 da ANS: é ela que confere cada código.",
+      acao: tussEmConferencia && !tussPublicada
+        ? { rotulo: "Conferir e publicar", area: "tuss" }
+        : { rotulo: "Importar a TUSS", importar: "tuss" },
+    },
+    {
+      chave: "plano", titulo: "Publicar a tabela de um plano", feito: planoPublicado,
+      detalhe: "O código TUSS com o porte do plano e/ou o valor, e o valor de cada porte.",
+      acao: planoEmRascunho && !planoPublicado
+        ? { rotulo: "Conferir e publicar", area: "contratos" }
+        : { rotulo: "Importar a tabela do plano", importar: "contrato" },
+    },
+    {
+      chave: "calculo", titulo: "Calcular o primeiro honorário", feito: e.honorariosCalculados > 0,
+      detalhe: "Teste no simulador; depois, na Produção, use “Calcular honorário” numa anestesia.",
+      acao: { rotulo: "Abrir o simulador", area: "regras" },
+    },
+  ];
 }
 
 // ── Histórico ──────────────────────────────────────────────────────────────

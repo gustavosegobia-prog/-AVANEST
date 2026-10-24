@@ -46,7 +46,7 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
     return { data: linhas };
   };
 
-  const [pode, edicoes, portes, operadoras, contratos, versoes, porPorte, porProcedimento, locais, importacoes, propostas, pendentes] =
+  const [pode, edicoes, portes, operadoras, contratos, versoes, porPorte, porProcedimento, locais, importacoes, propostas, pendentes, calculados] =
     await Promise.all([
       supabase.rpc("pode_tabelas_honorarios", { p_institution_id: inst }),
       daClinica<LinhaEdicaoCompleta>("cbhpm_edicoes",
@@ -67,6 +67,8 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
         .eq("institution_id", inst).eq("situacao", "proposta"),
       supabase.from("producao_do_dia").select("id", { count: "exact", head: true })
         .eq("institution_id", inst).eq("honorario_situacao", "pendente").not("enviado_em", "is", null),
+      supabase.from("producao_do_dia").select("id", { count: "exact", head: true })
+        .eq("institution_id", inst).not("honorario_calculado_em", "is", null),
     ]);
 
   const dados: DadosDasTabelas = {
@@ -87,6 +89,7 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
     importacoes: (importacoes.data ?? []) as LinhaImportacao[],
     correspondenciasPropostas: propostas.count ?? 0,
     producaoPendente: pendentes.count ?? 0,
+    honorariosCalculados: calculados.count ?? 0,
   };
 
   return <TabelasEHonorarios naoInstalado={false} dados={dados} areaInicial={ehArea(area) ? area : "pendencias"} />;
