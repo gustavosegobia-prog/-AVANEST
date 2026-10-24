@@ -11,6 +11,7 @@ import { lerDinheiro } from "@/lib/dinheiro";
 import { camposDaBaixa, type SituacaoDaProducao } from "@/lib/baixa-da-producao";
 import { chaveDoPagador, grafiaConhecida, rotulosDePagador } from "@/lib/financeiro-indicadores";
 import { HonorarioDaAnestesia, SeloDoHonorario } from "@/components/honorarios/honorario-da-anestesia";
+import { resumoDoHonorarioDoMes } from "@/lib/honorarios-telas";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -666,6 +667,9 @@ export function ProducaoDoMes({
     return () => { vivo = false; };
   }, []);
   const comHonorario = superAdmin && itens.some((i) => i.honorario_situacao !== undefined);
+  // O honorário previsto do mês pelas tabelas dos planos: o que já tem valor,
+  // e quantas anestesias faltam calcular ou estão pendentes.
+  const honorarioDoMes = useMemo(() => resumoDoHonorarioDoMes(itens), [itens]);
 
   useEffect(() => {
     let vivo = true;
@@ -892,6 +896,20 @@ export function ProducaoDoMes({
           <OlhoValores oculto={oculto} onAlternar={alternar} />
         </div>
       </section>
+
+      {comHonorario && itens.length > 0 && (
+        <section className="clinicalPanel producaoHonorarioMes" aria-label="Honorário previsto no mês">
+          <div>
+            <span>Honorário previsto pelas tabelas dos planos</span>
+            <strong>{mascara(money(honorarioDoMes.previsto))}</strong>
+          </div>
+          <p>
+            {plural(honorarioDoMes.calculadas, "anestesia calculada", "anestesias calculadas")}
+            {honorarioDoMes.pendentes > 0 && <> · <b className="pendente">{plural(honorarioDoMes.pendentes, "pendente", "pendentes")}</b></>}
+            {honorarioDoMes.semCalculo > 0 && <> · {plural(honorarioDoMes.semCalculo, "sem cálculo", "sem cálculo")} — use “Calcular honorário” em cada uma</>}
+          </p>
+        </section>
+      )}
 
       <section className="clinicalPanel">
         <div className="panelTitle">

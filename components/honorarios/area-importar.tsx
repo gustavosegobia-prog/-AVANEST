@@ -8,6 +8,7 @@ import { gradeDoCsv } from "@/lib/centro-importar";
 import {
   compararVersoes, impressaoDigital, lerCbhpm, lerCorrespondencias, lerDasAbas, lerPortesDeReferencia, lerTabelaTuss,
   lerTabelaDoPlano, situacaoDoCodigo, type ComparacaoDeVersoes, type ItemDaTabelaDoPlano, type Leitura,
+  modeloDaTabelaDoPlano,
 } from "@/lib/importar-tabelas";
 import { nomeSimples } from "@/lib/honorarios";
 import { emLotes, lerEmPaginas, rotuloDoPorte, versaoDoNome, type Area } from "@/lib/honorarios-telas";
@@ -267,6 +268,18 @@ export function AreaImportar({
   }
 
   const info = TIPOS.find((t) => t.id === tipo)!;
+
+  // O modelo da tabela do plano, gerado aqui mesmo. O BOM faz o Excel abrir
+  // os acentos em UTF-8; o importador aceita o arquivo de volta com ou sem ele.
+  function baixarModelo() {
+    const blob = new Blob(["\ufeff" + modeloDaTabelaDoPlano()], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo-tabela-do-plano.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   const podeGravar = previa && !previa.jaImportado && previa.leitura.itens.length > 0 && destinoValido && !gravando;
 
   return (
@@ -318,6 +331,18 @@ export function AreaImportar({
 
           <div className={estilos.arquivo}>
             <p className="admAjuda">Colunas que o arquivo precisa ter, em qualquer ordem: <strong>{info.colunas}</strong>.</p>
+            {tipo === "contrato" && (
+              <div className={estilos.modelo}>
+                <p>
+                  Não tem a tabela nesse formato? Baixe o modelo, abra no Excel e preencha: um código TUSS por
+                  linha, com o porte que o plano dá (ex.: 3) e/ou o valor fixo; e, nas linhas AN0 a AN8, o
+                  valor de cada porte (ex.: 450,00). Apague as linhas de porte que o plano não usa.
+                </p>
+                <button type="button" className={`outlineClinical compacto ${estilos.comIcone}`} onClick={baixarModelo}>
+                  <Icone nome="nota" tamanho={15} /> Baixar modelo da planilha
+                </button>
+              </div>
+            )}
             <label className={`outlineClinical ${estilos.botaoArquivo}${!destinoValido || gravando ? ` ${estilos.desligado}` : ""}`}>
               <Icone nome="enviar" tamanho={16} />
               {lendo ? "Lendo o arquivo…" : previa ? "Escolher outro arquivo" : "Escolher arquivo (.xlsx ou .csv)"}

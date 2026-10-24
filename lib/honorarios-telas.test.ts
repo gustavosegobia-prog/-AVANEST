@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { VersaoDeContrato } from "./honorarios.ts";
 import {
-  descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, versaoDoNome, type EstadoDasTabelas,
+  descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, primeirosPassos, padroesDaBusca, codigosSugeridos, resumoDoHonorarioDoMes, versaoDoNome, type EstadoDasTabelas,
 } from "./honorarios-telas.ts";
 
 // Dados fictícios.
@@ -102,7 +102,9 @@ describe("tabelas e honorários: pendências", () => {
     const p = pendenciasDasTabelas(estado({ versoes: [versao({ vigenciaFim: "2026-06-30" })] }));
     assert.ok(p.some((x) => x.chave === "sem-contrato-o1"));
     const semContrato = pendenciasDasTabelas(estado({ contratos: [], versoes: [] }));
-    assert.match(semContrato.find((x) => x.chave === "sem-contrato-o1")?.detalhe ?? "", /Cadastre o contrato/);
+    const item = semContrato.find((x) => x.chave === "sem-contrato-o1");
+    assert.match(item?.detalhe ?? "", /Importe a tabela do plano/);
+    assert.deepEqual(item?.acao, { rotulo: "Importar a tabela do plano", importar: "contrato" });
     const inativo = pendenciasDasTabelas(estado({ operadoras: [{ id: "o1", nome: "X", ativo: false }], contratos: [], versoes: [] }));
     assert.ok(!inativo.some((x) => x.chave.startsWith("sem-contrato")));
   });
@@ -135,5 +137,81 @@ describe("tabelas e honorários: histórico", () => {
     const c = descreverAlteracao({ tabela: "contratos", acao: "update",
       dados_anteriores: { identificacao: "Geral", ativo: true }, dados_novos: { identificacao: "Geral", ativo: false } });
     assert.equal(c.detalhe, "Campos: ativo");
+  });
+});
+
+describe("honorários: primeiros passos", () => {
+  const tuss = (situacao: "em_conferencia" | "vigente" | "substituida") => [{ id: "t1", versao: "202609", situacao }];
+  it("do zero: importar a TUSS é o primeiro clique, e o plano vem importado", () => {
+    const p = primeirosPassos({ tuss: [], versoes: [], honorariosCalculados: 0 });
+    assert.deepEqual(p.map((x) => [x.chave, x.feito, x.acao]), [
+      ["tuss", false, { rotulo: "Importar a TUSS", importar: "tuss" }],
+      ["plano", false, { rotulo: "Importar a tabela do plano", importar: "contrato" }],
+      ["calculo", false, { rotulo: "Abrir o simulador", area: "regras" }],
+    ]);
+  });
+  it("o que já foi importado leva a conferir e publicar", () => {
+    const p = primeirosPassos({ tuss: tuss("em_conferencia"), versoes: [{ situacao: "rascunho" }], honorariosCalculados: 0 });
+    assert.deepEqual(p[0].acao, { rotulo: "Conferir e publicar", area: "tuss" });
+    assert.deepEqual(p[1].acao, { rotulo: "Conferir e publicar", area: "contratos" });
+  });
+  it("feito é feito: TUSS publicada, plano publicado e um cálculo", () => {
+    const p = primeirosPassos({ tuss: tuss("vigente"), versoes: [{ situacao: "vigente" }], honorariosCalculados: 1 });
+    assert.deepEqual(p.map((x) => x.feito), [true, true, true]);
+  });
+  it("a pendência da TUSS leva direto à importação", () => {
+    const [semTuss] = pendenciasDasTabelas(estado({ tuss: [] }));
+    assert.equal(semTuss.chave, "tuss-sem-vigente");
+    assert.deepEqual(semTuss.acao, { rotulo: "Importar a TUSS", importar: "tuss" });
+  });
+});
+
+describe("honorários: da ficha ao código TUSS", () => {
+  it("o procedimento escrito na ficha vira trechos tolerantes a acento", () => {
+    assert.deepEqual(padroesDaBusca("Colecistectomia videolaparoscópica"), ["%c_l_c_%", "%v_d__l%"]);
+    assert.deepEqual(padroesDaBusca("Cesárea"), ["%c_s_r_%"]);
+    assert.deepEqual(padroesDaBusca("Punção lombar para raqui"), ["%p_n___%", "%l_mb_r%", "%r_q__%"]);
+    assert.deepEqual(padroesDaBusca("de da e 12"), []);
+    assert.deepEqual(padroesDaBusca(null), []);
+  });
+  it("o trecho casa com a descrição oficial, com ou sem acento", () => {
+    const casa = (padrao: string, texto: string) =>
+      new RegExp(`^${padrao.replace(/%/g, ".*").replace(/_/g, ".")}$`, "i").test(texto);
+    const [p1, p2] = padroesDaBusca("Colecistectomia videolaparoscópica");
+    const tuss = "COLECISTECTOMIA COM COLANGIOGRAFIA POR VIDEOLAPAROSCOPIA";
+    assert.ok(casa(p1, tuss) && casa(p2, tuss));
+    assert.ok(casa(padroesDaBusca("cesarea")[0], "CESARIANA (PARTO CESÁREO)"));
+  });
+  it("sugere os códigos da anotação mais recente com o mesmo procedimento", () => {
+    const anteriores = [
+      { id: "a1", data: "2026-09-01", procedimento: "COLECISTECTOMIA VIDEOLAPAROSCÓPICA" },
+      { id: "a2", data: "2026-10-05", procedimento: "colecistectomia  videolaparoscopica" },
+      { id: "a3", data: "2026-10-20", procedimento: "Colecistectomia videolaparoscópica" },
+      { id: "b1", data: "2026-10-21", procedimento: "Herniorrafia" },
+    ];
+    const procs = [
+      { producao_id: "a1", ordem: 1, tuss_codigo: "90000001", descricao: "ANTIGO" },
+      { producao_id: "a2", ordem: 2, tuss_codigo: "90000003", descricao: "SEGUNDO" },
+      { producao_id: "a2", ordem: 1, tuss_codigo: "90000002", descricao: "PRINCIPAL" },
+      { producao_id: "b1", ordem: 1, tuss_codigo: "90000009", descricao: "OUTRO" },
+    ];
+    // a3 é mais recente, mas não tem código: vale a2, na ordem escolhida.
+    assert.deepEqual(codigosSugeridos({ id: "x", procedimento: "Colecistectomia Videolaparoscópica" }, anteriores, procs), {
+      data: "2026-10-05",
+      codigos: [{ codigo: "90000002", descricao: "PRINCIPAL" }, { codigo: "90000003", descricao: "SEGUNDO" }],
+    });
+    assert.equal(codigosSugeridos({ id: "x", procedimento: "Artroscopia" }, anteriores, procs), null);
+    assert.equal(codigosSugeridos({ id: "x", procedimento: null }, anteriores, procs), null);
+    // A própria anotação não se sugere.
+    assert.equal(codigosSugeridos({ id: "b1", procedimento: "Herniorrafia" }, anteriores, procs), null);
+  });
+  it("o total do mês soma o que tem valor e conta o que falta", () => {
+    assert.deepEqual(resumoDoHonorarioDoMes([
+      { honorario_situacao: "calculado", honorario_valor_previsto: "1230.50" },
+      { honorario_situacao: "conferido", honorario_valor_previsto: 800 },
+      { honorario_situacao: "pendente", honorario_valor_previsto: null },
+      { honorario_situacao: "nao_calculado" },
+      {},
+    ]), { previsto: 2030.5, calculadas: 2, pendentes: 1, semCalculo: 2 });
   });
 });

@@ -3,7 +3,7 @@
 // arquivo da ANS, os lotes de gravação e a lista de pendências das tabelas.
 // Tudo puro, para ser testado (lib/honorarios-telas.test.ts).
 
-import { problemasDaVersao, type VersaoDeContrato } from "./honorarios.ts";
+import { nomeSimples, problemasDaVersao, type VersaoDeContrato } from "./honorarios.ts";
 
 export type Area = "tuss" | "cbhpm" | "contratos" | "importar" | "regras" | "pendencias" | "historico";
 
@@ -81,7 +81,15 @@ export type PendenciaDaTabela = {
   area: Area;
   titulo: string;
   detalhe: string;
+  /**
+   * O botão do item: o que ele diz e, quando o caminho é importar um arquivo,
+   * o quê. Sem ele, o botão leva à área, com o nome dela.
+   */
+  acao?: AcaoDaTela;
 };
+
+/** Um botão que leva aonde se resolve: a uma área, ou à importação já com o tipo escolhido. */
+export type AcaoDaTela = { rotulo: string; area?: Area; importar?: "tuss" | "contrato" };
 
 export type EstadoDasTabelas = {
   hoje: string;
@@ -110,6 +118,7 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: "tuss-sem-vigente", gravidade: "alta", area: "tuss",
       titulo: "Nenhuma versão da TUSS publicada",
       detalhe: "Sem a TUSS, nenhum código é conferido e todo honorário fica pendente.",
+      acao: { rotulo: "Importar a TUSS", importar: "tuss" },
     });
   }
   for (const t of e.tuss.filter((x) => x.situacao === "em_conferencia")) {
@@ -117,6 +126,7 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: `tuss-conferencia-${t.id}`, gravidade: "media", area: "tuss",
       titulo: `TUSS ${t.versao} aguardando publicação`,
       detalhe: "Importada e ainda em conferência: o cálculo continua usando a versão publicada.",
+      acao: { rotulo: "Conferir e publicar" },
     });
   }
 
@@ -165,6 +175,7 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: `rascunho-${v.id}`, gravidade: "baixa", area: "contratos",
       titulo: `${nomeDoContrato(v.contratoId)} — versão ${v.versao} em rascunho`,
       detalhe: problemas.length ? problemas.join(" ") : "Pronta para publicar.",
+      acao: { rotulo: "Conferir e publicar" },
     });
   }
 
@@ -191,7 +202,8 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
         titulo: `${o.nome} sem contrato valendo hoje`,
         detalhe: contratos.length
           ? "Há contrato cadastrado, mas nenhuma versão publicada cobre a data de hoje."
-          : "Cadastre o contrato e publique uma versão para o cálculo usar.",
+          : "Importe a tabela do plano e publique a versão para o cálculo usar.",
+        ...(contratos.length ? {} : { acao: { rotulo: "Importar a tabela do plano", importar: "contrato" as const } }),
       });
     }
   }
@@ -205,6 +217,123 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
   }
 
   return r.sort((a, b) => PESO[a.gravidade] - PESO[b.gravidade]);
+}
+
+// ── Primeiros passos ───────────────────────────────────────────────────────
+
+export type PassoInicial = {
+  chave: "tuss" | "plano" | "calculo";
+  titulo: string;
+  detalhe: string;
+  feito: boolean;
+  acao: AcaoDaTela;
+};
+
+/**
+ * O caminho mais curto até o primeiro honorário calculado: a TUSS publicada,
+ * a tabela de um plano publicada e um cálculo feito. Cada passo diz o próximo
+ * clique — importar, ou conferir e publicar o que já foi importado. A CBHPM e
+ * as correspondências ficam de fora: com o porte na tabela do plano, não são
+ * necessárias.
+ */
+export function primeirosPassos(e: {
+  tuss: EstadoDasTabelas["tuss"];
+  versoes: Array<{ situacao: string }>;
+  honorariosCalculados: number;
+}): PassoInicial[] {
+  const tussPublicada = e.tuss.some((t) => t.situacao === "vigente");
+  const tussEmConferencia = e.tuss.some((t) => t.situacao === "em_conferencia");
+  const planoPublicado = e.versoes.some((v) => v.situacao !== "rascunho");
+  const planoEmRascunho = e.versoes.some((v) => v.situacao === "rascunho");
+  return [
+    {
+      chave: "tuss", titulo: "Publicar a TUSS", feito: tussPublicada,
+      detalhe: "A Tabela 22 da ANS: é ela que confere cada código.",
+      acao: tussEmConferencia && !tussPublicada
+        ? { rotulo: "Conferir e publicar", area: "tuss" }
+        : { rotulo: "Importar a TUSS", importar: "tuss" },
+    },
+    {
+      chave: "plano", titulo: "Publicar a tabela de um plano", feito: planoPublicado,
+      detalhe: "O código TUSS com o porte do plano e/ou o valor, e o valor de cada porte.",
+      acao: planoEmRascunho && !planoPublicado
+        ? { rotulo: "Conferir e publicar", area: "contratos" }
+        : { rotulo: "Importar a tabela do plano", importar: "contrato" },
+    },
+    {
+      chave: "calculo", titulo: "Calcular o primeiro honorário", feito: e.honorariosCalculados > 0,
+      detalhe: "Teste no simulador; depois, na Produção, use “Calcular honorário” numa anestesia.",
+      acao: { rotulo: "Abrir o simulador", area: "regras" },
+    },
+  ];
+}
+
+// ── A anestesia da Produção e o código TUSS ────────────────────────────────
+
+const PALAVRAS_VAZIAS = new Set(["para", "pela", "pelo", "pelas", "pelos", "sobre", "entre", "outros", "outras"]);
+
+/**
+ * O procedimento como foi escrito na ficha ("Colecistectomia
+ * videolaparoscópica") vira até três trechos para procurar na descrição da
+ * TUSS ("COLECISTECTOMIA … POR VIDEOLAPAROSCOPIA"), todos exigidos. Cada
+ * trecho é o começo de uma palavra, com vogais, acentos e ç trocados por "_"
+ * (um caractere qualquer no ilike): quem escreveu "cesarea" acha "CESÁREA", e
+ * o começo da palavra acha "videolaparoscopia" a partir de "videolaparoscópica".
+ */
+export function padroesDaBusca(texto: string | null | undefined): string[] {
+  const palavras = String(texto ?? "").toLowerCase().split(/[^0-9a-zà-ÿ]+/)
+    .filter((p) => p.length >= 4 && !/^\d+$/.test(p) && !PALAVRAS_VAZIAS.has(nomeSimples(p)));
+  const r: string[] = [];
+  for (const palavra of palavras) {
+    const raiz = palavra.slice(0, 6).replace(/[aeiouà-öø-ÿ]/g, "_");
+    const padrao = `%${raiz}%`;
+    if (!r.includes(padrao)) r.push(padrao);
+    if (r.length === 3) break;
+  }
+  return r;
+}
+
+export type CodigoEscolhido = { codigo: string; descricao: string };
+
+/**
+ * Os códigos que o médico já usou para o mesmo procedimento escrito, na
+ * anotação mais recente que tem código. "O mesmo" é pela forma simples do
+ * texto: maiúscula, acento e espaço não importam. É sugestão — a tela mostra
+ * de onde veio, e nada é calculado sem o médico conferir.
+ */
+export function codigosSugeridos(
+  atual: { id: string; procedimento: string | null },
+  anteriores: Array<{ id: string; data: string; procedimento: string | null }>,
+  procedimentos: Array<{ producao_id: string; ordem: number; tuss_codigo: string | null; descricao: string | null }>,
+): { codigos: CodigoEscolhido[]; data: string } | null {
+  const chave = nomeSimples(atual.procedimento);
+  if (!chave) return null;
+  const mesmos = anteriores
+    .filter((a) => a.id !== atual.id && nomeSimples(a.procedimento) === chave)
+    .sort((a, b) => b.data.localeCompare(a.data));
+  for (const a of mesmos) {
+    const codigos = procedimentos
+      .filter((p) => p.producao_id === a.id && p.tuss_codigo)
+      .sort((x, y) => x.ordem - y.ordem)
+      .map((p) => ({ codigo: p.tuss_codigo as string, descricao: p.descricao ?? "" }));
+    if (codigos.length) return { codigos, data: a.data };
+  }
+  return null;
+}
+
+/** O honorário previsto do mês na Produção: o que já tem valor, e o que falta. */
+export function resumoDoHonorarioDoMes(itens: Array<{
+  honorario_situacao?: string | null; honorario_valor_previsto?: number | string | null;
+}>): { previsto: number; calculadas: number; pendentes: number; semCalculo: number } {
+  let previsto = 0, calculadas = 0, pendentes = 0, semCalculo = 0;
+  for (const i of itens) {
+    if (i.honorario_situacao === "calculado" || i.honorario_situacao === "conferido") {
+      calculadas++;
+      previsto += Number(i.honorario_valor_previsto ?? 0) || 0;
+    } else if (i.honorario_situacao === "pendente") pendentes++;
+    else semCalculo++;
+  }
+  return { previsto: Math.round(previsto * 100) / 100, calculadas, pendentes, semCalculo };
 }
 
 // ── Histórico ──────────────────────────────────────────────────────────────

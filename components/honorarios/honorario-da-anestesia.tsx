@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Gaveta } from "@/components/admin-ui";
 import { Icone } from "@/components/icone";
-import type { Memoria, Pendencia } from "@/lib/honorarios";
-import { rotuloDoPorte } from "@/lib/honorarios-telas";
+import { nomeSimples, type Memoria, type Pendencia } from "@/lib/honorarios";
+import { codigosSugeridos, padroesDaBusca, rotuloDoPorte } from "@/lib/honorarios-telas";
 import { Etiqueta, dataBr, dinheiro, mensagemDoBanco, Recusa } from "./comum";
 import estilos from "./honorarios.module.css";
 
@@ -47,8 +47,12 @@ export function HonorarioDaAnestesia({
   const [calculando, setCalculando] = useState(false);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  // De quando é a sugestão de códigos (a última anotação com o mesmo procedimento).
+  const [sugeridoDe, setSugeridoDe] = useState<string | null>(null);
 
-  // Os códigos já escolhidos e a versão da TUSS em uso.
+  // Os códigos já escolhidos e a versão da TUSS em uso. Sem código ainda: os
+  // da última anotação com o mesmo procedimento escrito, como sugestão; e,
+  // sem sugestão, a busca já começa pelo procedimento da ficha.
   useEffect(() => {
     let valendo = true;
     void (async () => {
@@ -59,11 +63,24 @@ export function HonorarioDaAnestesia({
       ]);
       if (!valendo) return;
       setTussId((tuss.data as { id: string } | null)?.id ?? null);
-      setCodigos(((procs.data ?? []) as Array<{ tuss_codigo: string | null; descricao: string | null }>)
-        .filter((p) => p.tuss_codigo).map((p) => ({ codigo: p.tuss_codigo as string, descricao: p.descricao ?? "" })));
+      const salvos = ((procs.data ?? []) as Array<{ tuss_codigo: string | null; descricao: string | null }>)
+        .filter((p) => p.tuss_codigo).map((p) => ({ codigo: p.tuss_codigo as string, descricao: p.descricao ?? "" }));
+      if (salvos.length || !anestesia.procedimento?.trim()) {
+        setCodigos(salvos);
+        return;
+      }
+      const sugestao = await sugestaoDeCodigos(anestesia);
+      if (!valendo) return;
+      if (sugestao) {
+        setCodigos(sugestao.codigos);
+        setSugeridoDe(sugestao.data);
+      } else {
+        setCodigos([]);
+        setBusca(anestesia.procedimento);
+      }
     })();
     return () => { valendo = false; };
-  }, [anestesia.id]);
+  }, [anestesia]);
 
   // A busca na TUSS em uso: o começo do código, ou um pedaço da descrição.
   useEffect(() => {
@@ -71,11 +88,22 @@ export function HonorarioDaAnestesia({
     if (!tussId || termo.length < 3) return;
     let valendo = true;
     const espera = setTimeout(async () => {
-      const q = createClient().from("tuss_codigos").select("codigo, descricao").eq("versao_id", tussId).eq("situacao", "ativo");
-      const digitos = termo.replace(/\D/g, "");
-      const { data } = await (/^[\d.\s-]+$/.test(termo) ? q.like("codigo", `${digitos}%`) : q.ilike("descricao", `%${termo.replace(/[%_]/g, "")}%`))
-        .order("codigo").limit(8);
-      if (valendo) setAchados((data ?? []) as Codigo[]);
+      const base = () => createClient().from("tuss_codigos").select("codigo, descricao").eq("versao_id", tussId).eq("situacao", "ativo");
+      let achados: Codigo[] = [];
+      if (/^[\d.\s-]+$/.test(termo)) {
+        const { data } = await base().like("codigo", `${termo.replace(/\D/g, "")}%`).order("codigo").limit(8);
+        achados = (data ?? []) as Codigo[];
+      } else {
+        // Todas as palavras primeiro; sem resultado, com uma palavra a menos.
+        const padroes = padroesDaBusca(termo);
+        for (let n = padroes.length; n > 0 && !achados.length && valendo; n--) {
+          let q = base();
+          for (const p of padroes.slice(0, n)) q = q.ilike("descricao", p);
+          const { data } = await q.order("codigo").limit(8);
+          achados = (data ?? []) as Codigo[];
+        }
+      }
+      if (valendo) setAchados(achados);
     }, 250);
     return () => { valendo = false; clearTimeout(espera); };
   }, [busca, tussId]);
@@ -83,6 +111,7 @@ export function HonorarioDaAnestesia({
   function adicionar(c: Codigo) {
     if (codigos?.some((x) => x.codigo === c.codigo)) return;
     setCodigos([...(codigos ?? []), c]);
+    setSugeridoDe(null);
     setBusca("");
     setAchados([]);
     setResultado(null);
@@ -144,11 +173,17 @@ export function HonorarioDaAnestesia({
                   <span className={estilos.codigo}>{c.codigo}</span>
                   <span>{c.descricao || "—"}</span>
                   <button type="button" className="outlineClinical compacto" aria-label={`Tirar ${c.codigo}`}
-                    onClick={() => { setCodigos(codigos.filter((x) => x.codigo !== c.codigo)); setResultado(null); }}>Tirar</button>
+                    onClick={() => { setCodigos(codigos.filter((x) => x.codigo !== c.codigo)); setResultado(null); setSugeridoDe(null); }}>Tirar</button>
                 </li>
               ))}
             </ol>
           )}
+          {sugeridoDe && codigos?.length ? (
+            <p className="admNota" role="status">
+              <Icone nome="alerta" tamanho={14} />
+              Sugerido pelo que você usou em {dataBr(sugeridoDe)} para o mesmo procedimento. Confira antes de calcular.
+            </p>
+          ) : null}
           <label className="admBusca">
             <span className="sr-only">Buscar código TUSS</span>
             <Icone nome="busca" tamanho={16} />
@@ -206,6 +241,28 @@ export function HonorarioDaAnestesia({
       </div>
     </Gaveta>
   );
+}
+
+/**
+ * Os códigos da última anotação do médico com o mesmo procedimento escrito.
+ * Só as anotações dele: a Produção é pessoal, e quem tem o Financeiro também
+ * lê as enviadas dos colegas.
+ */
+async function sugestaoDeCodigos(anestesia: AnestesiaDaProducao) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: anteriores } = await supabase.from("producao_do_dia").select("id, data, procedimento")
+    .eq("perfil_id", user.id).neq("id", anestesia.id).not("procedimento", "is", null)
+    .order("data", { ascending: false }).limit(300);
+  const lista = (anteriores ?? []) as Array<{ id: string; data: string; procedimento: string | null }>;
+  const chave = nomeSimples(anestesia.procedimento);
+  const candidatos = lista.filter((a) => nomeSimples(a.procedimento) === chave);
+  if (!candidatos.length) return null;
+  const { data: procs } = await supabase.from("producao_procedimentos").select("producao_id, ordem, tuss_codigo, descricao")
+    .in("producao_id", candidatos.slice(0, 20).map((c) => c.id));
+  return codigosSugeridos(anestesia, candidatos,
+    (procs ?? []) as Array<{ producao_id: string; ordem: number; tuss_codigo: string | null; descricao: string | null }>);
 }
 
 /** O selo do honorário na linha da Produção. */

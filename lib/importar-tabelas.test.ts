@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import {
   codigoDaCelula, compararVersoes, dataDaCelula, impressaoDigital, lerCbhpm, lerCorrespondencias, lerDasAbas,
   lerPortesDeReferencia, lerTabelaDoPlano, lerTabelaTuss, porteDaCelula, situacaoDoCodigo, valorDaCelula,
+  modeloDaTabelaDoPlano,
 } from "./importar-tabelas.ts";
 import { abasDoXlsx } from "./xlsx-leitura.ts";
 import { zip } from "./zip-de-teste.ts";
+import { gradeDoCsv } from "./centro-importar.ts";
 
 // Planilhas fictícias: códigos 9000000x, descrições "FICTÍCIO", valores redondos.
 
@@ -217,5 +219,28 @@ describe("importação: impressão digital", () => {
     assert.match(a, /^[0-9a-f]{64}$/);
     assert.equal(a, await impressaoDigital(new TextEncoder().encode("arquivo fictício")));
     assert.notEqual(a, await impressaoDigital(new TextEncoder().encode("arquivo fictício.")));
+  });
+});
+
+describe("importação: modelo da tabela do plano", () => {
+  it("o modelo baixado é lido pelo próprio importador, e o que falta preencher aparece", () => {
+    const vazio = lerTabelaDoPlano(gradeDoCsv(modeloDaTabelaDoPlano()));
+    assert.equal(vazio.linhaDoTitulo, 1);
+    assert.equal(vazio.itens.length, 0);
+    assert.deepEqual(vazio.erros.map((e) => e.mensagem), [0, 1, 2, 3, 4, 5, 6, 7, 8].map((p) => `Porte AN${p} sem valor.`));
+  });
+  it("preenchido, vira porte com valor e procedimento com o porte do plano", () => {
+    const linhas = modeloDaTabelaDoPlano().trimEnd().split("\r\n")
+      .map((l) => (l.endsWith(";AN3;") ? l + "450,00" : l.endsWith(";AN4;") ? l + "1.250,50" : l))
+      .filter((l) => !/;AN[0-2,5-8];$/.test(l));
+    linhas.push("90000001;PROCEDIMENTO FICTICIO;3;", "90000002;OUTRO FICTICIO;;980,00");
+    const lido = lerTabelaDoPlano(gradeDoCsv(linhas.join("\r\n")));
+    assert.deepEqual(lido.erros, []);
+    assert.deepEqual(lido.itens, [
+      { tipo: "porte", porte: 3, valor: 450 },
+      { tipo: "porte", porte: 4, valor: 1250.5 },
+      { tipo: "procedimento", tussCodigo: "90000001", descricao: "PROCEDIMENTO FICTICIO", porte: 3, valor: null },
+      { tipo: "procedimento", tussCodigo: "90000002", descricao: "OUTRO FICTICIO", porte: null, valor: 980 },
+    ]);
   });
 });

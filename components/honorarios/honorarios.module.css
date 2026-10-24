@@ -26,6 +26,28 @@
 
 .conteudo { display: grid; gap: var(--esp-5); min-width: 0; }
 
+/* Primeiros passos: os três cliques até o primeiro honorário calculado. */
+.primeirosPassos {
+  display: grid; gap: var(--esp-3); margin: var(--esp-5) 0; padding: var(--esp-4) var(--esp-5) var(--esp-5);
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-2);
+}
+.primeirosPassos h2 { margin: 0; font-size: 16px; }
+.primeirosPassos ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--esp-3); }
+.primeirosPassos li {
+  display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: var(--esp-3); align-items: start;
+  padding: var(--esp-3); background: var(--cor-superficie-suave); border: 1px solid var(--cor-borda); border-radius: var(--raio-2);
+}
+.primeirosPassos li.passoAtual { background: var(--cor-superficie); border-color: color-mix(in srgb, var(--cor-marca) 50%, var(--cor-borda)); }
+.primeirosPassos strong { display: block; font-size: 15px; }
+.primeirosPassos p { margin: 2px 0 var(--esp-2); color: var(--cor-tinta-fraca); font-size: 13.5px; line-height: 1.45; }
+.passoNumero {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; font-variant-numeric: tabular-nums; background: var(--cor-marca-suave); color: var(--cor-marca);
+}
+.passoFeito .passoNumero { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
+.passoOk { font-size: 13px; font-weight: 800; color: var(--cor-sucesso); }
+@media (max-width: 960px) { .primeirosPassos ol { grid-template-columns: 1fr; } }
+
 .naoInstalado {
   display: flex; gap: var(--esp-4); align-items: flex-start; margin-top: var(--esp-5);
   padding: var(--esp-5) var(--esp-6); border-radius: var(--raio-3);
@@ -205,6 +227,11 @@ td.acoesDaLinha > * + * { margin-left: var(--esp-2); }
 .tipo:has(input:focus-visible) { box-shadow: var(--foco); }
 .tipoAtivo { border-color: var(--cor-marca); background: var(--cor-marca-suave); }
 .arquivo { display: grid; gap: var(--esp-2); justify-items: start; }
+.modelo {
+  display: grid; gap: var(--esp-2); justify-items: start; max-width: 72ch; padding: var(--esp-3);
+  background: var(--cor-superficie-suave); border: 1px solid var(--cor-borda); border-radius: var(--raio-2);
+}
+.modelo p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--cor-tinta); }
 .botaoArquivo { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; height: var(--alt-botao); }
 .botaoArquivo:has(input:focus-visible) { box-shadow: var(--foco); }
 .desligado { opacity: 0.55; cursor: not-allowed; }
