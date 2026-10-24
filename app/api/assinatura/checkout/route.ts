@@ -4,12 +4,7 @@ import { enforceRateLimit, validateMutationRequest } from "@/lib/request-securit
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { provedorAtivo } from "@/lib/pagamentos";
 import { normalizarCupom } from "@/lib/pagamentos/cupom";
-
-// A data de vigência dos documentos publicados. Fica junto do código que
-// grava o aceite para não sair de sincronia com o texto: mudou /termos ou
-// /privacidade, muda aqui, e os aceites novos passam a apontar para a versão
-// nova sem mexer nos antigos.
-const VERSAO_DOCUMENTOS = "2026-10-15";
+import { VERSAO_DOS_TERMOS, ipDaRequisicao, navegadorDaRequisicao } from "@/lib/termos";
 
 // Abre o checkout da assinatura mensal.
 //
@@ -122,11 +117,24 @@ export async function POST(request: NextRequest) {
   const { error: erroAceite } = await admin.rpc("registrar_aceite_termos", {
     p_institution_id: perfil.institution_id,
     p_perfil_id: perfil.id,
-    p_versao: VERSAO_DOCUMENTOS,
+    p_versao: VERSAO_DOS_TERMOS,
   });
   if (erroAceite) {
     console.error("[assinatura/checkout] aceite", erroAceite);
     return NextResponse.json({ error: "Não foi possível registrar o aceite dos termos." }, { status: 500 });
+  }
+  // E a prova da pessoa (aceites_de_termos), com IP e navegador. Quem já
+  // aceitou esta versão — no cadastro ou no painel — não ganha outra linha.
+  // Falhar aqui não impede o pagamento: o carimbo da organização acima já foi.
+  const { data: jaAceitou, error: erroLeitura } = await admin.from("aceites_de_termos")
+    .select("id").eq("user_id", user.id).eq("versao", VERSAO_DOS_TERMOS).limit(1);
+  if (!erroLeitura && !jaAceitou?.length) {
+    const { error } = await admin.from("aceites_de_termos").insert({
+      user_id: user.id, email: user.email ?? null, institution_id: perfil.institution_id,
+      versao: VERSAO_DOS_TERMOS, origem: "pagamento",
+      ip: ipDaRequisicao(request.headers), navegador: navegadorDaRequisicao(request.headers),
+    });
+    if (error) console.error("[assinatura/checkout] prova do aceite", error);
   }
 
   // O cupom é procurado DE NOVO aqui, pelo código, e nunca aceito pronto do
