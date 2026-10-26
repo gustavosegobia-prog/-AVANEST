@@ -19,10 +19,11 @@ test("entrada: Área médica, local e data, Nova avaliação e as três seções
   assert.doesNotMatch(painel, /Documentos mais recentes/, "o atalho desabilitado sem explicação voltou");
 });
 
-test("pendências verificadas separadas de lembretes e do que não é registrado", () => {
+test("pendências: só o que vem dos registros, sem painéis de texto fixo", () => {
   assert.match(tela, /aria-label="Pendências verificadas"/);
-  assert.match(tela, /aria-label="Lembretes gerais"/);
-  assert.match(tela, /aria-label="Informações indisponíveis"/);
+  // Lembretes fixos e a lista do que o sistema não registra só davam volume
+  // (pedido de 26/10): não voltam para a tela.
+  assert.doesNotMatch(tela, /Lembretes gerais|Informações indisponíveis/);
   assert.match(tela, /Nenhuma pendência nos registros \{nomeDoEscopo === "na equipe" \? "da equipe" : "dos seus pacientes"\}\./);
   assert.doesNotMatch(tela + painel, /orientacoes_enviadas/, "o envio não é registrado: não pode virar contagem");
   assert.doesNotMatch(painel, /action="ENVIAR"/);
