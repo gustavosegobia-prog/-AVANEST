@@ -21,13 +21,16 @@ const PORTES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
  * licenciou ou por cadastro de quem tem autorização.
  */
 export function AreaCbhpm({
-  dados, onImportar, onAtualizar,
+  dados, focoInicial, onImportar, onAtualizar,
 }: {
   dados: DadosDasTabelas;
+  /** A edição que a pendência apontou; sem ela, a primeira. */
+  focoInicial?: string;
   onImportar: (p: PedidoDeImportacao) => void;
   onAtualizar: () => void;
 }) {
-  const [escolhida, setEscolhida] = useState<string | null>(dados.edicoes[0]?.id ?? null);
+  const [escolhida, setEscolhida] = useState<string | null>(
+    dados.edicoes.find((e) => e.id === focoInicial)?.id ?? dados.edicoes[0]?.id ?? null);
   const [nova, setNova] = useState(false);
   const edicao = dados.edicoes.find((e) => e.id === escolhida) ?? null;
 
@@ -462,11 +465,14 @@ function Correspondencias({
     return () => { valendo = false; clearTimeout(espera); };
   }, [situacao, busca, recarregar, dados.institutionId]);
 
+  // Apagar some com a proposta de vez: pede confirmação, com os dois códigos.
+  const [apagando, setApagando] = useState<Correspondencia | null>(null);
   async function mudar(c: Correspondencia, para: "validada" | "revogada" | "apagar") {
     const ok = await acao.executar(async () => {
       const t = createClient().from("tuss_cbhpm_correspondencias");
       exigir(para === "apagar" ? await t.delete().eq("id", c.id) : await t.update({ situacao: para }).eq("id", c.id));
     });
+    setApagando(null);
     if (ok) { setRecarregar((n) => n + 1); onAtualizar(); }
   }
   async function adicionar() {
@@ -530,7 +536,7 @@ function Correspondencias({
                     <td data-rotulo="Ações" className={estilos.acoesDaLinha}>
                       {c.situacao === "proposta" && <>
                         <button type="button" className="primaryClinical compact" onClick={() => mudar(c, "validada")} disabled={acao.ocupado}>Validar</button>
-                        <button type="button" className="outlineClinical compacto" onClick={() => mudar(c, "apagar")} disabled={acao.ocupado}>Apagar</button>
+                        <button type="button" className="outlineClinical compacto" onClick={() => setApagando(c)} disabled={acao.ocupado}>Apagar</button>
                       </>}
                       {c.situacao === "validada" && (
                         <button type="button" className="outlineClinical compacto" onClick={() => mudar(c, "revogada")} disabled={acao.ocupado}>Revogar</button>
@@ -543,6 +549,12 @@ function Correspondencias({
           </table>
           {lista.length === 100 && <p className="admTextoFraco">Mostrando 100. Busque pelo código para achar os demais.</p>}
         </div>
+      )}
+      {apagando && (
+        <Dialogo titulo={`Apagar a proposta ${apagando.tuss_codigo} ↔ ${apagando.cbhpm_codigo}?`} confirmar="Apagar" perigo
+          ocupado={acao.ocupado} erro={acao.erro} onConfirmar={() => void mudar(apagando, "apagar")} onCancelar={() => setApagando(null)}>
+          <p>A proposta sai da lista. Enquanto não houver correspondência validada, o código TUSS fica pendente no cálculo.</p>
+        </Dialogo>
       )}
       {dados.podeEditar && dados.edicoes.length > 0 && (
         <fieldset className={`admCampos ${estilos.novoItem}`}>

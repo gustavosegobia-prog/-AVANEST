@@ -1,6 +1,8 @@
 /* Tabelas e honorários. Usa as peças do painel (financeTarefas, admTabela,
    clinicalField…) e só acrescenta o que é desta tela. Cores só dos tokens. */
 
+/* O fundo do painel, e não o cinza do navegador: o texto fraco foi medido nele. */
+.fundo { min-height: 100vh; background: var(--cor-fundo); }
 .pagina { max-width: 1440px; }
 
 .cabecalho {
@@ -17,7 +19,7 @@
 }
 .resumo dt { font-size: 12px; color: var(--cor-tinta-fraca); font-weight: 700; }
 .resumo dd { margin: 0; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.resumo dd.resumoAlerta { color: var(--cor-perigo); }
+.resumo dd.resumoNota { font-size: 12.5px; font-weight: 650; color: var(--cor-tinta-fraca); }
 
 .restrito {
   display: inline-flex; align-items: center; gap: 6px; margin: var(--esp-2) 0 0;
@@ -25,6 +27,28 @@
 }
 
 .conteudo { display: grid; gap: var(--esp-5); min-width: 0; }
+
+/* Primeiros passos: os três cliques até o primeiro honorário calculado. */
+.primeirosPassos {
+  display: grid; gap: var(--esp-3); margin: var(--esp-5) 0; padding: var(--esp-4) var(--esp-5) var(--esp-5);
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-2);
+}
+.primeirosPassos h2 { margin: 0; font-size: 16px; }
+.primeirosPassos ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--esp-3); }
+.primeirosPassos li {
+  display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: var(--esp-3); align-items: start;
+  padding: var(--esp-3); background: var(--cor-superficie-suave); border: 1px solid var(--cor-borda); border-radius: var(--raio-2);
+}
+.primeirosPassos li.passoAtual { background: var(--cor-superficie); border-color: color-mix(in srgb, var(--cor-marca) 50%, var(--cor-borda)); }
+.primeirosPassos strong { display: block; font-size: 15px; }
+.primeirosPassos p { margin: 2px 0 var(--esp-2); color: var(--cor-tinta-fraca); font-size: 13.5px; line-height: 1.45; }
+.passoNumero {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; font-variant-numeric: tabular-nums; background: var(--cor-marca-suave); color: var(--cor-marca);
+}
+.passoFeito .passoNumero { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
+.passoOk { font-size: 13px; font-weight: 800; color: var(--cor-sucesso); }
+@media (max-width: 960px) { .primeirosPassos ol { grid-template-columns: 1fr; } }
 
 .naoInstalado {
   display: flex; gap: var(--esp-4); align-items: flex-start; margin-top: var(--esp-5);
@@ -86,6 +110,8 @@
 .tabelaLonga { max-height: 560px; overflow-y: auto; border: 1px solid var(--cor-borda); border-radius: var(--raio-3); }
 .tabelaLonga :global(.admTabela) { border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
 .tabelaLonga :global(.admTabela) thead th { position: sticky; top: 0; z-index: 1; }
+/* Dentro do painel, a caixa da tabela não vira um segundo cartão: só a linha de cima e a de baixo. */
+.painel .tabelaLonga { border-width: 1px 0; border-radius: 0; }
 .codigo { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 0.01em; white-space: nowrap; }
 .numero { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .semQuebra { white-space: nowrap; }
@@ -118,7 +144,7 @@ td.acoesDaLinha > * + * { margin-left: var(--esp-2); }
 .painelTopo h3 { margin: 0; font-size: 18px; letter-spacing: -0.01em; }
 .painelTopo p { margin: 4px 0 0; color: var(--cor-tinta-fraca); font-size: 13.5px; line-height: 1.5; }
 .bloco { display: grid; gap: var(--esp-3); min-width: 0; }
-.bloco h4 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: var(--esp-2); }
+.bloco h3, .bloco h4 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: var(--esp-2); }
 .blocoTopo { display: flex; justify-content: space-between; align-items: center; gap: var(--esp-3); flex-wrap: wrap; }
 .painel .bloco + .bloco { padding-top: var(--esp-4); border-top: 1px solid var(--cor-borda); }
 
@@ -156,6 +182,8 @@ td.acoesDaLinha > * + * { margin-left: var(--esp-2); }
   border-radius: var(--raio-1); background: var(--cor-superficie); color: var(--cor-tinta); font-variant-numeric: tabular-nums;
 }
 .celulaCampo:focus-visible { outline: 0; box-shadow: var(--foco); }
+/* O texto de exemplo dos campos com o contraste do texto fraco (4,5:1), não o cinza claro do navegador. */
+.pagina input::placeholder, .celulaCampo::placeholder { color: var(--cor-tinta-fraca); opacity: 1; }
 
 .conferencia {
   display: flex; gap: var(--esp-2); align-items: flex-start; padding: var(--esp-3) var(--esp-4); border-radius: var(--raio-2);
@@ -163,6 +191,7 @@ td.acoesDaLinha > * + * { margin-left: var(--esp-2); }
 }
 .conferencia > svg { flex: none; margin-top: 2px; color: var(--cor-atencao); }
 .conferencia ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.5; }
+.conferencia p { margin: 2px 0 0; line-height: 1.5; }
 .conferenciaOk { background: var(--cor-sucesso-suave); }
 .conferenciaOk > svg { color: var(--cor-sucesso); }
 .conferencia .acoesDaLinha { justify-content: flex-start; margin-top: var(--esp-2); }
@@ -205,11 +234,23 @@ td.acoesDaLinha > * + * { margin-left: var(--esp-2); }
 .tipo:has(input:focus-visible) { box-shadow: var(--foco); }
 .tipoAtivo { border-color: var(--cor-marca); background: var(--cor-marca-suave); }
 .arquivo { display: grid; gap: var(--esp-2); justify-items: start; }
+.modelo {
+  display: grid; gap: var(--esp-2); justify-items: start; max-width: 72ch; padding: var(--esp-3);
+  background: var(--cor-superficie-suave); border: 1px solid var(--cor-borda); border-radius: var(--raio-2);
+}
+.modelo p { margin: 0; max-width: 65ch; font-size: 13.5px; line-height: 1.5; color: var(--cor-tinta); }
 .botaoArquivo { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; height: var(--alt-botao); }
 .botaoArquivo:has(input:focus-visible) { box-shadow: var(--foco); }
 .desligado { opacity: 0.55; cursor: not-allowed; }
 .progresso { display: grid; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; }
-.progresso progress { width: 100%; height: 8px; accent-color: var(--cor-marca); }
+/* Desenhada aqui: a barra nativa sai verde do navegador, fora da paleta. */
+.progresso progress {
+  appearance: none; width: 100%; height: 8px; border: 0; border-radius: var(--raio-cheio);
+  background: var(--cor-superficie-suave); overflow: hidden;
+}
+.progresso progress::-webkit-progress-bar { background: var(--cor-superficie-suave); border-radius: var(--raio-cheio); }
+.progresso progress::-webkit-progress-value { background: var(--cor-marca); border-radius: var(--raio-cheio); transition: width var(--transicao); }
+.progresso progress::-moz-progress-bar { background: var(--cor-marca); border-radius: var(--raio-cheio); }
 
 .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--esp-2); margin: 0; }
 .numeros div { padding: var(--esp-3) var(--esp-4); border-radius: var(--raio-2); background: var(--cor-superficie-suave); }
@@ -281,12 +322,57 @@ ol.listaSimples { list-style: decimal; }
 }
 .achados button:hover { background: var(--cor-superficie-suave); }
 .achados button:focus-visible { outline: 0; box-shadow: var(--foco); }
+/* O selo é pequeno na linha, mas o toque não: a área de clique passa dos 44 px. */
 .selo {
-  display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; padding: 2px 9px; min-height: 26px; width: fit-content;
+  position: relative; display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 10px; min-height: 30px; width: fit-content;
   border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-cheio); background: var(--cor-superficie);
   color: var(--cor-tinta); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer;
 }
+.selo::after { content: ""; position: absolute; inset: -7px -2px; }
 .selo:hover { background: var(--cor-superficie-suave); }
 .selo:focus-visible { outline: 0; box-shadow: var(--foco); }
 .seloOk { border-color: transparent; background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
 .seloPendente { border-color: transparent; background: var(--cor-atencao-suave); color: var(--cor-atencao); }
+
+/* Códigos escolhidos: subir na ordem e remover, lado a lado. */
+.acoesDoCodigo { display: inline-flex; gap: var(--esp-2); }
+
+/* De onde sai o valor: uma linha por código, os números alinhados à direita. */
+.memoria { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.memoria th, .memoria td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--cor-borda); }
+.memoria thead th { font-size: 12px; font-weight: 750; color: var(--cor-tinta-fraca); background: var(--cor-superficie-suave); }
+.memoria th.numero, .memoria td.numero { text-align: right; }
+.memoria tfoot th, .memoria tfoot td { border-bottom: 0; font-weight: 650; color: var(--cor-tinta-fraca); }
+.memoria tfoot th { text-align: right; }
+.memoria tfoot tr:last-child th, .memoria tfoot tr:last-child td { font-weight: 800; color: var(--cor-tinta); border-top: 1px solid var(--cor-borda-forte); }
+.memoriaEstreita { display: none; }
+.resultado { min-width: 0; }
+
+/* Calcular o mês: uma linha por anestesia, conferir e calcular todas. */
+.lote { list-style: none; margin: 0; padding: 0; display: grid; border: 1px solid var(--cor-borda); border-radius: var(--raio-2); }
+.lote li {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) minmax(150px, auto); gap: var(--esp-3); align-items: start;
+  padding: var(--esp-3) var(--esp-4);
+}
+.lote li + li { border-top: 1px solid var(--cor-borda); }
+.lote input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--cor-marca); }
+.loteFeita { background: color-mix(in srgb, var(--cor-sucesso-suave) 45%, transparent); }
+.loteQuem { display: grid; gap: 2px; min-width: 0; font-size: 14px; }
+.loteCodigos { display: flex; flex-wrap: wrap; gap: 4px var(--esp-3); margin-top: 4px; font-size: 13px; }
+.loteCodigos em { font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--cor-atencao); }
+.loteDesfecho { display: grid; gap: 2px; justify-items: end; text-align: right; font-size: 13.5px; }
+.textoOk { display: inline-flex; align-items: center; gap: 5px; color: var(--cor-sucesso); font-variant-numeric: tabular-nums; }
+.textoAtencao { color: var(--cor-atencao); font-weight: 700; }
+span.textoAtencao { display: inline-flex; align-items: flex-start; gap: 5px; text-align: left; }
+span.textoAtencao svg { flex: none; margin-top: 2px; }
+@media (max-width: 560px) {
+  .memoriaLarga { display: none; }
+  .memoriaEstreita { display: block; }
+  .memoria th, .memoria td { padding: 8px 6px; }
+  .resumoPrevisto { flex-basis: 100% !important; }
+  .lote li { grid-template-columns: 24px minmax(0, 1fr); }
+  .loteDesfecho { grid-column: 2; justify-items: start; text-align: left; }
+  .loteDesfecho:empty { display: none; }
+  .codigosEscolhidos li { grid-template-columns: auto auto minmax(0, 1fr); }
+  .acoesDoCodigo { grid-column: 2 / -1; }
+}

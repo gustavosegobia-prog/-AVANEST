@@ -119,7 +119,7 @@ export function tabelasDoCalculo(x: {
 }
 
 export const NOME_DA_SITUACAO_DA_VERSAO: Record<LinhaVersao["situacao"], string> = {
-  rascunho: "Rascunho", vigente: "Vigente", encerrada: "Encerrada",
+  rascunho: "Rascunho", vigente: "Publicada", encerrada: "Encerrada",
 };
 export const NOME_DA_SITUACAO_DA_EDICAO: Record<LinhaEdicao["situacao"], string> = {
   em_conferencia: "Em conferência", vigente: "Publicada", encerrada: "Encerrada",

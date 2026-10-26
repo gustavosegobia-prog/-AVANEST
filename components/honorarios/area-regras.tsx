@@ -27,8 +27,9 @@ export function AreaRegras({ dados, versoes }: { dados: DadosDasTabelas; versoes
     <section className="admSecao">
       <CabecalhoDeSecao titulo="Regras de cálculo"
         descricao="O valor previsto segue o contrato do convênio, na data da anestesia. O que o contrato não disser fica pendente." />
+      <Simulador dados={dados} versoes={versoes} />
       <div className={estilos.duasColunasIguais}>
-        <ol className={estilos.passos}>
+        <ol className={estilos.passos} aria-label="Como o valor é calculado">
           <li><strong>Código TUSS</strong><span>Cada procedimento precisa de um código da TUSS em uso, ativo na data da anestesia.</span></li>
           <li><strong>Contrato</strong><span>A versão publicada do convênio que vale na data. O contrato do hospital vence o geral; dois gerais ao mesmo tempo ficam pendentes.</span></li>
           <li><strong>Porte anestésico</strong><span>O que a tabela do plano dá ao código. Se o código não está na tabela do plano, o da CBHPM, pela correspondência TUSS ↔ CBHPM validada.</span></li>
@@ -38,7 +39,7 @@ export function AreaRegras({ dados, versoes }: { dados: DadosDasTabelas; versoes
           <li><strong>Centavos</strong><span>A conta é feita em centavos, arredondando cada passo para o centavo.</span></li>
         </ol>
         <div className={estilos.bloco}>
-          <h4>Fica pendente, sem valor presumido</h4>
+          <h3>Fica pendente, sem valor presumido</h3>
           <ul className={estilos.listaSimples}>
             <li>Sem TUSS publicada, sem código escolhido, código inexistente, substituído ou fora da vigência.</li>
             <li>Convênio sem contrato na data, ou com dois contratos possíveis.</li>
@@ -49,7 +50,6 @@ export function AreaRegras({ dados, versoes }: { dados: DadosDasTabelas; versoes
           <p className="admAjuda">Calculado o valor, ele fica guardado com a memória do cálculo. Tabela atualizada depois não muda o que já foi calculado.</p>
         </div>
       </div>
-      <Simulador dados={dados} versoes={versoes} />
     </section>
   );
 }
@@ -64,7 +64,7 @@ function Simulador({ dados, versoes }: { dados: DadosDasTabelas; versoes: Versao
     setResultado(null);
     await acao.executar(async () => {
       const codigos = f.codigos.map((c) => c.replace(/\D/g, "")).filter(Boolean);
-      if (!f.convenio.trim()) throw new Recusa("Informe o convênio.");
+      if (!f.convenio.trim()) throw new Recusa("Escolha o plano de saúde.");
       if (!codigos.length) throw new Recusa("Informe ao menos um código TUSS.");
       const informado = lerNumero(f.informado);
       if (informado !== null && !(informado >= 0)) throw new Recusa("O valor anotado não é um número válido.");
@@ -106,7 +106,7 @@ function Simulador({ dados, versoes }: { dados: DadosDasTabelas; versoes: Versao
         </div>
       </header>
       <div className={estilos.camposEmLinha}>
-        <label className={`clinicalField ${estilos.campoMedio}`}><span>Convênio</span>
+        <label className={`clinicalField ${estilos.campoMedio}`}><span>Plano de saúde</span>
           <input list="convenios-do-simulador" value={f.convenio} onChange={(e) => setF({ ...f, convenio: e.target.value })} placeholder="Como aparece na Produção" />
           <datalist id="convenios-do-simulador">{convenios.map((c) => <option key={c} value={c} />)}</datalist></label>
         <label className="clinicalField"><span>Hospital</span>

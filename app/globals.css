@@ -1403,6 +1403,8 @@ button:disabled{cursor:not-allowed}
    destrutiva so contornada em vermelho — nunca a mais pesada da tela. */
 .primaryClinical{border-radius:var(--raio-1);height:var(--alt-botao);padding:0 var(--esp-6);box-shadow:none;background:var(--cor-marca);transition:background var(--transicao)}
 .primaryClinical:hover:not(:disabled){background:var(--cor-marca-forte)}
+/* O box-shadow:none acima (e o do .compact) apagava o anel de foco do teclado. */
+.primaryClinical:focus-visible,.primaryClinical.compact:focus-visible{box-shadow:var(--foco)}
 .primaryClinical.compact{height:var(--alt-botao-compacto);padding:0 var(--esp-4)}
 .primaryClinical:disabled{opacity:.55;cursor:not-allowed}
 .outlineClinical{border-radius:var(--raio-1);height:var(--alt-botao-compacto);display:inline-flex;align-items:center;padding:0 var(--esp-4);border-color:var(--cor-borda-forte);color:var(--cor-tinta);background:var(--cor-superficie);transition:background var(--transicao)}
@@ -3629,6 +3631,22 @@ button:disabled{cursor:not-allowed}
 .plantaoOlho:hover{opacity:1;background:var(--cor-superficie-suave)}
 .plantaoOlho:focus-visible{outline:0;box-shadow:var(--foco);opacity:1}
 .plantaoMetrics .metricCard,.financeMetrics .metricCard{position:relative}
+/* Honorário previsto do mês na Produção (só o super-admin, enquanto o módulo é conferido). */
+/* O honorário previsto do mês: o valor, em quantas anestesias ele se baseia,
+   a diferença para o anotado e o botão que calcula o que falta. */
+.producaoHonorarioMes{display:grid;grid-template-columns:minmax(220px,auto) minmax(0,1fr) auto;align-items:center;gap:var(--esp-3) var(--esp-6);padding:var(--esp-4) var(--esp-5)}
+.producaoHonorarioValor{display:grid;gap:2px}
+.producaoHonorarioValor span{font-size:13px;font-weight:700;color:var(--cor-tinta-fraca)}
+.producaoHonorarioValor strong{font-size:26px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--cor-tinta)}
+.producaoHonorarioValor small{font-size:13px;font-weight:650;color:var(--cor-tinta-fraca)}
+.producaoHonorarioDetalhe{display:grid;gap:4px;min-width:0}
+.producaoHonorarioDetalhe p{margin:0;font-size:14px;line-height:1.45;color:var(--cor-tinta-fraca);max-width:62ch}
+.producaoHonorarioDetalhe b{font-variant-numeric:tabular-nums;color:var(--cor-tinta)}
+.producaoHonorarioDetalhe .pendente{color:var(--cor-atencao)}
+@media(max-width:860px){
+  .producaoHonorarioMes{grid-template-columns:minmax(0,1fr)}
+  .producaoHonorarioMes>button{justify-self:start}
+}
 
 /* ── Indicadores do Financeiro ───────────────────────────────────────────── */
 
@@ -5393,6 +5411,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 .admBusca input{width:100%;height:var(--alt-botao-compacto);border:1px solid var(--cor-borda-forte);border-radius:var(--raio-1);
   background:var(--cor-superficie);color:var(--cor-tinta);padding:0 12px 0 34px;font:inherit}
 .admFiltros select:focus-visible,.admBusca input:focus-visible{outline:0;box-shadow:var(--foco)}
+.admBusca input::placeholder{color:var(--cor-tinta-fraca);opacity:1}
 .admFiltros .admFiltroMarca{display:flex;align-items:center;gap:6px;height:var(--alt-botao-compacto);font-size:13.5px}
 .admFiltros .admFiltroMarca span{font-size:13.5px;text-transform:none;letter-spacing:0;font-weight:600;color:var(--cor-tinta)}
 .admContador{margin:0;font-size:12.5px;color:var(--cor-tinta-fraca)}

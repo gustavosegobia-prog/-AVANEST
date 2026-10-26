@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icone, type NomeDoIcone } from "@/components/icone";
 import { versaoDeContrato } from "@/lib/honorarios-dados";
-import { AREAS, pendenciasDasTabelas, type Area, type EstadoDasTabelas } from "@/lib/honorarios-telas";
+import { AREAS, pendenciasDasTabelas, primeirosPassos, type Area, type EstadoDasTabelas } from "@/lib/honorarios-telas";
 import type { DadosDasTabelas } from "./tipos";
 import { AreaPendencias } from "./area-pendencias";
 import { AreaTuss } from "./area-tuss";
@@ -14,11 +14,15 @@ import { AreaContratos } from "./area-contratos";
 import { AreaImportar, type PedidoDeImportacao } from "./area-importar";
 import { AreaRegras } from "./area-regras";
 import { AreaHistorico } from "./area-historico";
+import { PrimeirosPassos } from "./primeiros-passos";
+import { dinheiro } from "./comum";
 import estilos from "./honorarios.module.css";
 
 // A casca de "Tabelas e honorários": o título, o menu das sete áreas e a área
 // aberta. Os dados pequenos chegam do servidor (app/financeiro/honorarios);
 // depois de gravar, `atualizar()` relê a página sem perder a área aberta.
+
+const MES = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "America/Sao_Paulo" });
 
 const ICONE_DA_AREA: Record<Area, NomeDoIcone> = {
   pendencias: "alerta", tuss: "busca", cbhpm: "nota", contratos: "assinatura",
@@ -34,12 +38,16 @@ export function TabelasEHonorarios({
 }) {
   const router = useRouter();
   const [area, setArea] = useState<Area>(areaInicial);
+  // O item que a pendência apontou (a edição da CBHPM, o contrato). Entra na
+  // chave da área: chegar por outra pendência abre a área de novo, no item novo.
+  const [foco, setFoco] = useState<string | undefined>(undefined);
   // Quem pede uma importação de outra área (o botão "Importar procedimentos"
   // da CBHPM, por exemplo) já chega com o tipo e o destino escolhidos.
   const [pedido, setPedido] = useState<PedidoDeImportacao | null>(null);
 
-  function abrir(a: Area) {
+  function abrir(a: Area, item?: string) {
     setArea(a);
+    setFoco(item);
     // A área fica no endereço: recarregar ou mandar o link abre no mesmo lugar.
     try { window.history.replaceState(null, "", `?area=${a}`); } catch { /* segue sem o endereço */ }
     window.scrollTo({ top: 0 });
@@ -78,11 +86,15 @@ export function TabelasEHonorarios({
     return pendenciasDasTabelas(estado);
   }, [dados, versoes]);
 
+  const passos = useMemo(() => dados
+    ? primeirosPassos({ tuss: dados.tuss, versoes: dados.versoes, honorariosCalculados: dados.honorariosCalculados })
+    : [], [dados]);
+
   const vigente = dados?.tuss.find((t) => t.situacao === "vigente");
   const atualizar = () => router.refresh();
 
   return (
-    <div className="fcFundo temaApp">
+    <div className={`fcFundo temaApp ${estilos.fundo}`}>
       <main className={`fcPagina ${estilos.pagina}`}>
         <header className="fcTopo">
           <Link href="/dashboard" className="fcVoltar"><Icone nome="voltar" tamanho={18} /> Painel</Link>
@@ -95,9 +107,18 @@ export function TabelasEHonorarios({
           </div>
           {dados && (
             <dl className={estilos.resumo}>
-              <div><dt>TUSS em uso</dt><dd>{vigente ? vigente.versao : "nenhuma"}</dd></div>
-              <div><dt>Planos</dt><dd>{dados.operadoras.filter((o) => o.ativo).length}</dd></div>
-              <div><dt>Pendências</dt><dd className={pendencias.some((p) => p.gravidade === "alta") ? estilos.resumoAlerta : undefined}>{pendencias.length}</dd></div>
+              <div><dt>TUSS publicada</dt><dd>{vigente ? vigente.versao : "nenhuma"}</dd></div>
+              <div><dt>Planos de saúde</dt><dd>{dados.operadoras.filter((o) => o.ativo).length}</dd></div>
+              {/* O que o módulo entrega: o previsto do mês na sua Produção, com a
+                  cobertura — o número sozinho pareceria o total do mês. */}
+              <div className={estilos.resumoPrevisto}>
+                <dt>Previsto em {MES.format(new Date(`${dados.hoje}T12:00:00`))}</dt>
+                <dd>{dinheiro(dados.previstoDoMes.previsto)}</dd>
+                <dd className={estilos.resumoNota}>
+                  {dados.previstoDoMes.total === 0 ? "nenhuma anestesia anotada"
+                    : `em ${dados.previstoDoMes.calculadas} de ${dados.previstoDoMes.total} anestesias`}
+                </dd>
+              </div>
             </dl>
           )}
         </header>
@@ -106,7 +127,8 @@ export function TabelasEHonorarios({
           Em conferência: só você vê esta área até ela ser liberada para o Financeiro das clínicas.
         </p>
 
-        {naoInstalado || !dados ? <NaoInstalado /> : (
+        {naoInstalado || !dados ? <NaoInstalado /> : (<>
+          <PrimeirosPassos passos={passos} onAbrir={abrir} onImportar={importar} />
           <div className="financeLayout">
             <nav className="financeTarefas menuLateral" aria-label="Áreas de Tabelas e honorários">
               {AREAS.map((a) => {
@@ -127,10 +149,12 @@ export function TabelasEHonorarios({
                   Sua conta não tem o Financeiro desta organização: as tabelas da clínica não abrem nem se gravam por aqui.
                 </p>
               )}
-              {area === "pendencias" && <AreaPendencias pendencias={pendencias} onAbrir={abrir} />}
+              {area === "pendencias" && <AreaPendencias pendencias={pendencias} onAbrir={abrir} onImportar={importar} />}
               {area === "tuss" && <AreaTuss dados={dados} onImportar={importar} onAtualizar={atualizar} />}
-              {area === "cbhpm" && <AreaCbhpm dados={dados} onImportar={importar} onAtualizar={atualizar} />}
-              {area === "contratos" && <AreaContratos dados={dados} versoes={versoes} onImportar={importar} onAtualizar={atualizar} />}
+              {area === "cbhpm" && <AreaCbhpm key={foco ?? "cbhpm"} dados={dados} focoInicial={foco} onImportar={importar} onAtualizar={atualizar} />}
+              {area === "contratos" && (
+                <AreaContratos key={foco ?? "contratos"} dados={dados} versoes={versoes} focoInicial={foco} onImportar={importar} onAtualizar={atualizar} />
+              )}
               {area === "importar" && (
                 <AreaImportar key={pedido ? `${pedido.tipo}-${pedido.destinoId ?? ""}` : "novo"} dados={dados}
                   pedido={pedido} onAtualizar={atualizar} onAbrir={abrir} />
@@ -139,7 +163,7 @@ export function TabelasEHonorarios({
               {area === "historico" && <AreaHistorico dados={dados} />}
             </div>
           </div>
-        )}
+        </>)}
       </main>
     </div>
   );
