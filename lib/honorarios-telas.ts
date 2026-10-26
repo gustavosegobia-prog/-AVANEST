@@ -88,8 +88,12 @@ export type PendenciaDaTabela = {
   acao?: AcaoDaTela;
 };
 
-/** Um botão que leva aonde se resolve: a uma área, ou à importação já com o tipo escolhido. */
-export type AcaoDaTela = { rotulo: string; area?: Area; importar?: "tuss" | "contrato" };
+/**
+ * Um botão que leva aonde se resolve: a uma área — já no item certo (`foco`:
+ * a edição, ou o contrato) —, à importação com o tipo escolhido, ou a outra
+ * tela do sistema (`href`).
+ */
+export type AcaoDaTela = { rotulo: string; area?: Area; importar?: "tuss" | "contrato"; foco?: string; href?: string };
 
 export type EstadoDasTabelas = {
   hoje: string;
@@ -151,12 +155,14 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
         detalhe: edicoesUsadas.has(ed.id)
           ? "Há contrato publicado que depende dela, e o cálculo não usa edição em conferência."
           : "Confira os procedimentos e os portes e publique a edição.",
+        acao: { rotulo: "Conferir e publicar", foco: ed.id },
       });
     } else if (ed.situacao === "vigente" && ed.portes === 0 && edicoesUsadas.has(ed.id)) {
       r.push({
         chave: `cbhpm-sem-portes-${ed.id}`, gravidade: "alta", area: "cbhpm",
         titulo: `CBHPM ${ed.edicao} sem valor de referência dos portes`,
         detalhe: "Contrato pela CBHPM sem valor negociado para o porte fica pendente.",
+        acao: { rotulo: "Cadastrar os portes", foco: ed.id },
       });
     }
   }
@@ -166,16 +172,17 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: "correspondencias-propostas", gravidade: "media", area: "cbhpm",
       titulo: `${e.correspondenciasPropostas} ${e.correspondenciasPropostas === 1 ? "correspondência" : "correspondências"} TUSS ↔ CBHPM aguardando validação`,
       detalhe: "Só a correspondência validada entra no cálculo. Código sem ela fica pendente.",
+      acao: { rotulo: "Validar" },
     });
   }
 
   for (const v of e.versoes.filter((x) => x.situacao === "rascunho")) {
     const problemas = problemasDaVersao(v);
     r.push({
-      chave: `rascunho-${v.id}`, gravidade: "baixa", area: "contratos",
+      chave: `rascunho-${v.id}`, gravidade: "media", area: "contratos",
       titulo: `${nomeDoContrato(v.contratoId)} — versão ${v.versao} em rascunho`,
-      detalhe: problemas.length ? problemas.join(" ") : "Pronta para publicar.",
-      acao: { rotulo: "Conferir e publicar" },
+      detalhe: problemas.length ? problemas.join(" ") : "Pronta para publicar: até lá, o cálculo não usa esta versão.",
+      acao: { rotulo: "Conferir e publicar", foco: v.contratoId },
     });
   }
 
@@ -187,8 +194,25 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
         chave: `vence-${v.id}`, gravidade: "media", area: "contratos",
         titulo: `${nomeDoContrato(v.contratoId)} vence ${faltam === 0 ? "hoje" : `em ${faltam} ${faltam === 1 ? "dia" : "dias"}`}`,
         detalhe: "Sem a próxima versão, as anestesias depois do vencimento ficam sem contrato.",
+        acao: { rotulo: "Abrir o contrato", foco: v.contratoId },
       });
     }
+  }
+
+  // Nenhum plano com versão publicada: com a TUSS em dia, ainda assim nenhum
+  // honorário sai. Sem este item a lista dizia "nada pendente".
+  if (vigenteTuss && !e.versoes.some((v) => v.situacao !== "rascunho")) {
+    const rascunho = e.versoes.find((v) => v.situacao === "rascunho");
+    r.push({
+      chave: "sem-plano-publicado", gravidade: "alta", area: "contratos",
+      titulo: "Nenhum plano de saúde com tabela publicada",
+      detalhe: rascunho
+        ? "Há tabela importada esperando publicação: até publicar, todo honorário fica pendente."
+        : "Importe a tabela de um plano e publique: sem ela, todo honorário fica pendente.",
+      acao: rascunho
+        ? { rotulo: "Conferir e publicar", foco: rascunho.contratoId }
+        : { rotulo: "Importar a tabela do plano", importar: "contrato" },
+    });
   }
 
   // Convênio ativo sem nenhuma versão valendo hoje.
@@ -203,7 +227,9 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
         detalhe: contratos.length
           ? "Há contrato cadastrado, mas nenhuma versão publicada cobre a data de hoje."
           : "Importe a tabela do plano e publique a versão para o cálculo usar.",
-        ...(contratos.length ? {} : { acao: { rotulo: "Importar a tabela do plano", importar: "contrato" as const } }),
+        acao: contratos.length
+          ? { rotulo: "Abrir o contrato", foco: contratos[0] }
+          : { rotulo: "Importar a tabela do plano", importar: "contrato" },
       });
     }
   }
@@ -213,6 +239,7 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: "producao-pendente", gravidade: "alta", area: "pendencias",
       titulo: `${e.producaoPendente} ${e.producaoPendente === 1 ? "anestesia enviada" : "anestesias enviadas"} com honorário pendente`,
       detalhe: "O valor não é presumido: resolva a tabela ou o código e calcule de novo.",
+      acao: { rotulo: "Ver na Produção", href: "/dashboard?area=plantoes&aba=producao" },
     });
   }
 
@@ -321,19 +348,43 @@ export function codigosSugeridos(
   return null;
 }
 
-/** O honorário previsto do mês na Produção: o que já tem valor, e o que falta. */
+export type ResumoDoHonorarioDoMes = {
+  /** Soma do honorário previsto das anestesias já calculadas. */
+  previsto: number;
+  calculadas: number; pendentes: number; semCalculo: number; total: number;
+  /** Nas calculadas que têm valor anotado: o que a tabela dá a mais (+) ou a menos (−) que o anotado. */
+  diferenca: number;
+  /** Quantas calculadas têm valor anotado para comparar. */
+  comparadas: number;
+};
+
+/**
+ * O honorário previsto do mês na Produção. O total é PARCIAL enquanto houver
+ * anestesia sem cálculo ou pendente — por isso volta junto quantas entraram
+ * nele, e a diferença para o que foi anotado só nas que dá para comparar.
+ */
 export function resumoDoHonorarioDoMes(itens: Array<{
-  honorario_situacao?: string | null; honorario_valor_previsto?: number | string | null;
-}>): { previsto: number; calculadas: number; pendentes: number; semCalculo: number } {
-  let previsto = 0, calculadas = 0, pendentes = 0, semCalculo = 0;
+  honorario_situacao?: string | null; honorario_valor_previsto?: number | string | null; valor?: number | string | null;
+}>): ResumoDoHonorarioDoMes {
+  let previsto = 0, diferenca = 0, calculadas = 0, pendentes = 0, semCalculo = 0, comparadas = 0;
   for (const i of itens) {
     if (i.honorario_situacao === "calculado" || i.honorario_situacao === "conferido") {
       calculadas++;
-      previsto += Number(i.honorario_valor_previsto ?? 0) || 0;
+      const tabela = Number(i.honorario_valor_previsto ?? 0) || 0;
+      previsto += tabela;
+      const anotado = Number(i.valor ?? 0) || 0;
+      if (anotado > 0) { comparadas++; diferenca += tabela - anotado; }
     } else if (i.honorario_situacao === "pendente") pendentes++;
     else semCalculo++;
   }
-  return { previsto: Math.round(previsto * 100) / 100, calculadas, pendentes, semCalculo };
+  const centavos = (n: number) => Math.round(n * 100) / 100;
+  return { previsto: centavos(previsto), calculadas, pendentes, semCalculo, total: itens.length, diferenca: centavos(diferenca), comparadas };
+}
+
+/** O selo diz "tabela × anotado" quando os dois existem e não batem (mais de um centavo). */
+export function divergeDoAnotado(previsto: number | string | null | undefined, anotado: number | string | null | undefined): boolean {
+  const t = Number(previsto ?? NaN), a = Number(anotado ?? 0);
+  return Number.isFinite(t) && a > 0 && Math.abs(t - a) >= 0.01;
 }
 
 // ── Histórico ──────────────────────────────────────────────────────────────

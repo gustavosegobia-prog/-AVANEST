@@ -11,7 +11,7 @@ import estilos from "./honorarios.module.css";
 
 const SITUACAO: Record<LinhaTussVersao["situacao"], [string, Tom]> = {
   em_conferencia: ["Em conferência", "atencao"],
-  vigente: ["Em uso", "ok"],
+  vigente: ["Publicada", "ok"],
   substituida: ["Substituída", "neutra"],
 };
 

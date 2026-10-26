@@ -12,7 +12,7 @@ import estilos from "./honorarios.module.css";
  */
 export function PrimeirosPassos({ passos, onAbrir, onImportar }: {
   passos: PassoInicial[];
-  onAbrir: (a: Area) => void;
+  onAbrir: (a: Area, foco?: string) => void;
   onImportar: (p: PedidoDeImportacao) => void;
 }) {
   if (passos.every((p) => p.feito)) return null;
@@ -45,8 +45,14 @@ export function PrimeirosPassos({ passos, onAbrir, onImportar }: {
   );
 }
 
-/** Leva aonde o botão diz: à importação com o tipo escolhido, ou à área. */
-export function seguir(acao: AcaoDaTela, onAbrir: (a: Area) => void, onImportar: (p: PedidoDeImportacao) => void, area?: Area) {
-  if (acao.importar) onImportar({ tipo: acao.importar });
-  else onAbrir(acao.area ?? area ?? "pendencias");
+/**
+ * Leva aonde o botão diz: a outra tela do painel, a importação com o tipo
+ * escolhido, ou a área — já no item que a pendência apontou (`foco`).
+ */
+export function seguir(
+  acao: AcaoDaTela, onAbrir: (a: Area, foco?: string) => void, onImportar: (p: PedidoDeImportacao) => void, area?: Area,
+) {
+  if (acao.href) window.location.assign(acao.href);
+  else if (acao.importar) onImportar({ tipo: acao.importar });
+  else onAbrir(acao.area ?? area ?? "pendencias", acao.foco);
 }

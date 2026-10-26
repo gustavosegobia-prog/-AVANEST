@@ -347,8 +347,16 @@ export function AreaImportar({
               <Icone nome="enviar" tamanho={16} />
               {lendo ? "Lendo o arquivo…" : previa ? "Escolher outro arquivo" : "Escolher arquivo (.xlsx ou .csv)"}
               <input type="file" accept=".xlsx,.csv,text/csv" className="sr-only" disabled={!destinoValido || lendo || !!gravando}
+                aria-describedby={!destinoValido ? "arquivo-travado" : undefined}
                 onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void ler(f); }} />
             </label>
+            {!destinoValido && destinos.length > 0 && (
+              <p className="admAjuda" id="arquivo-travado">
+                {tipo !== "contrato" ? "Escolha a edição da CBHPM acima para liberar o arquivo."
+                  : destino === "novo" ? "Escreva o nome do plano acima para liberar o arquivo."
+                  : "Escolha o plano de saúde acima para liberar o arquivo."}
+              </p>
+            )}
           </div>
 
           {erro && <p className="clinicalError" role="alert">{erro}</p>}
@@ -410,8 +418,8 @@ const LEITOR: Record<TipoDeImportacao, (g: string[][]) => Leitura<unknown>> = {
 };
 
 const SEM_DESTINO: Record<Exclude<TipoDeImportacao, "tuss">, string> = {
-  cbhpm: "Crie uma edição da CBHPM (área CBHPM e portes): os procedimentos entram numa edição em conferência.",
-  cbhpm_portes: "Crie uma edição da CBHPM (área CBHPM e portes): os valores entram numa edição em conferência.",
+  cbhpm: "Crie uma edição em “Procedimentos e portes (CBHPM)”: os procedimentos entram numa edição em conferência.",
+  cbhpm_portes: "Crie uma edição em “Procedimentos e portes (CBHPM)”: os valores entram numa edição em conferência.",
   contrato: "Escolha o plano de saúde, ou “Novo plano de saúde”.",
   correspondencia: "Crie uma edição da CBHPM antes: cada correspondência liga um código TUSS a um código de uma edição.",
 };

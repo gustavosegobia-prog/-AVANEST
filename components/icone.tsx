@@ -58,6 +58,8 @@ const TRACOS = {
   dinheiro: <><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.8"/></>,
   boia: <><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="m6 6 3.5 3.5"/><path d="m18 6-3.5 3.5"/><path d="m6 18 3.5-3.5"/><path d="m18 18-3.5-3.5"/></>,
   calendario: <><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3.5v3"/><path d="M16 3.5v3"/><path d="M8 13.5h3"/><path d="M8 17h8"/></>,
+  subir: <><path d="M12 19.5v-15"/><path d="m6 10.5 6-6 6 6"/></>,
+  avancar: <><path d="M4.5 12h15"/><path d="m13.5 6 6 6-6 6"/></>,
 } as const;
 
 export function Icone({ nome, tamanho = 16, rotulo, className }: Props) {

@@ -11,6 +11,7 @@ import { lerDinheiro } from "@/lib/dinheiro";
 import { camposDaBaixa, type SituacaoDaProducao } from "@/lib/baixa-da-producao";
 import { chaveDoPagador, grafiaConhecida, rotulosDePagador } from "@/lib/financeiro-indicadores";
 import { HonorarioDaAnestesia, SeloDoHonorario } from "@/components/honorarios/honorario-da-anestesia";
+import { CalcularOMes } from "@/components/honorarios/calcular-o-mes";
 import { resumoDoHonorarioDoMes } from "@/lib/honorarios-telas";
 
 // Produção do dia: o caderninho do bolso do pijama.
@@ -655,6 +656,9 @@ export function ProducaoDoMes({
    */
   const [superAdmin, setSuperAdmin] = useState(false);
   const [conferindo, setConferindo] = useState<Producao | null>(null);
+  // A lista do "Calcular o mês" é tirada na hora de abrir: calcular muda os
+  // itens, e a lista não pode se refazer no meio da conta.
+  const [loteDoMes, setLoteDoMes] = useState<Producao[] | null>(null);
   useEffect(() => {
     let vivo = true;
     void (async () => {
@@ -670,6 +674,17 @@ export function ProducaoDoMes({
   // O honorário previsto do mês pelas tabelas dos planos: o que já tem valor,
   // e quantas anestesias faltam calcular ou estão pendentes.
   const honorarioDoMes = useMemo(() => resumoDoHonorarioDoMes(itens), [itens]);
+  const temHonorario = (i: Producao) => i.honorario_situacao === "calculado" || i.honorario_situacao === "conferido";
+  // O que o "Calcular o mês" lista: tudo que ainda não tem valor, pendente inclusive.
+  const semHonorario = useMemo(() => itens.filter((i) => !temHonorario(i)), [itens]);
+  // A próxima do mês que nunca foi calculada, depois da que está aberta.
+  const proximaSemCalculo = (atual: Producao) => {
+    const k = itens.findIndex((x) => x.id === atual.id);
+    return [...itens.slice(k + 1), ...itens.slice(0, Math.max(k, 0))]
+      .find((x) => x.id !== atual.id && !temHonorario(x) && x.honorario_situacao !== "pendente") ?? null;
+  };
+  const guardarHonorario = (id: string, campos: Partial<Producao>) =>
+    setItens((lista) => lista.map((x) => (x.id === id ? { ...x, ...campos } : x)));
 
   useEffect(() => {
     let vivo = true;
@@ -898,16 +913,41 @@ export function ProducaoDoMes({
       </section>
 
       {comHonorario && itens.length > 0 && (
+        // O total é PARCIAL enquanto faltar anestesia: o painel diz em quantas
+        // ele se baseia, e a diferença para o anotado só onde dá para comparar.
         <section className="clinicalPanel producaoHonorarioMes" aria-label="Honorário previsto no mês">
-          <div>
+          <div className="producaoHonorarioValor">
             <span>Honorário previsto pelas tabelas dos planos</span>
             <strong>{mascara(money(honorarioDoMes.previsto))}</strong>
+            <small>
+              {honorarioDoMes.calculadas === honorarioDoMes.total
+                ? `Em todas as ${honorarioDoMes.total} anestesias do mês`
+                : `Em ${honorarioDoMes.calculadas} de ${honorarioDoMes.total} anestesias · total parcial`}
+            </small>
           </div>
-          <p>
-            {plural(honorarioDoMes.calculadas, "anestesia calculada", "anestesias calculadas")}
-            {honorarioDoMes.pendentes > 0 && <> · <b className="pendente">{plural(honorarioDoMes.pendentes, "pendente", "pendentes")}</b></>}
-            {honorarioDoMes.semCalculo > 0 && <> · {plural(honorarioDoMes.semCalculo, "sem cálculo", "sem cálculo")} — use “Calcular honorário” em cada uma</>}
-          </p>
+          <div className="producaoHonorarioDetalhe">
+            {honorarioDoMes.comparadas > 0 && (
+              <p>
+                {Math.abs(honorarioDoMes.diferenca) < 0.01
+                  ? <>Nas {plural(honorarioDoMes.comparadas, "calculada", "calculadas")} com valor anotado, a tabela bate com o que você anotou.</>
+                  : <>Nas {plural(honorarioDoMes.comparadas, "calculada", "calculadas")} com valor anotado, a tabela dá{" "}
+                    <b className={honorarioDoMes.diferenca > 0 ? "maior" : "menor"}>{mascara(money(Math.abs(honorarioDoMes.diferenca)))} a {honorarioDoMes.diferenca > 0 ? "mais" : "menos"}</b>{" "}
+                    que o anotado.</>}
+              </p>
+            )}
+            {(honorarioDoMes.pendentes > 0 || honorarioDoMes.semCalculo > 0) && (
+              <p>
+                {honorarioDoMes.pendentes > 0 && <b className="pendente">{plural(honorarioDoMes.pendentes, "pendente", "pendentes")} de tabela ou código</b>}
+                {honorarioDoMes.pendentes > 0 && honorarioDoMes.semCalculo > 0 && " · "}
+                {honorarioDoMes.semCalculo > 0 && plural(honorarioDoMes.semCalculo, "sem cálculo", "sem cálculo")}
+              </p>
+            )}
+          </div>
+          {semHonorario.length > 0 && (
+            <button type="button" className="primaryClinical compact" onClick={() => setLoteDoMes(semHonorario)}>
+              Calcular o mês ({semHonorario.length})
+            </button>
+          )}
         </section>
       )}
 
@@ -1140,7 +1180,8 @@ export function ProducaoDoMes({
                   {i.convenio}{i.procedimento ? ` · ${i.procedimento}` : ""}
                 </small>
                 {comHonorario && (
-                  <SeloDoHonorario situacao={i.honorario_situacao} valor={i.honorario_valor_previsto} onAbrir={() => setConferindo(i)} />
+                  <SeloDoHonorario situacao={i.honorario_situacao} valor={i.honorario_valor_previsto} anotado={i.valor}
+                    paciente={i.paciente} mascarar={mascara} onAbrir={() => setConferindo(i)} />
                 )}
               </span>
               <select value={i.local_id ?? ""} aria-label={`Hospital de ${i.paciente}`}
@@ -1183,9 +1224,17 @@ export function ProducaoDoMes({
           })}
         </section>
       )}
-      {conferindo && (
-        <HonorarioDaAnestesia anestesia={conferindo} onFechar={() => setConferindo(null)}
-          onCalculado={(id, campos) => setItens((lista) => lista.map((x) => (x.id === id ? { ...x, ...campos } : x)))} />
+      {conferindo && (() => {
+        const proxima = proximaSemCalculo(conferindo);
+        return (
+          <HonorarioDaAnestesia key={conferindo.id} anestesia={conferindo} onFechar={() => setConferindo(null)}
+            onCalculado={guardarHonorario} onProxima={proxima ? () => setConferindo(proxima) : undefined} />
+        );
+      })()}
+      {loteDoMes && (
+        <CalcularOMes anestesias={loteDoMes} rotuloDoMes={`${nomeMes.charAt(0).toUpperCase()}${nomeMes.slice(1)} de ${ano}`} mascarar={mascara}
+          onFechar={() => setLoteDoMes(null)} onCalculado={guardarHonorario}
+          onEscolherCodigo={(a) => { setLoteDoMes(null); setConferindo(itens.find((x) => x.id === a.id) ?? null); }} />
       )}
     </>
   );

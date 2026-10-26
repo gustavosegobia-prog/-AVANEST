@@ -16,7 +16,7 @@ const NOME_DA_GRAVIDADE: Record<Gravidade, string> = { alta: "Impede o cálculo"
  */
 export function AreaPendencias({ pendencias, onAbrir, onImportar }: {
   pendencias: PendenciaDaTabela[];
-  onAbrir: (a: Area) => void;
+  onAbrir: (a: Area, foco?: string) => void;
   onImportar: (p: PedidoDeImportacao) => void;
 }) {
   return (
@@ -25,7 +25,7 @@ export function AreaPendencias({ pendencias, onAbrir, onImportar }: {
         descricao="Enquanto um item daqui estiver aberto, o honorário que depende dele fica pendente — nenhum valor é presumido." />
       {pendencias.length === 0 ? (
         <Vazio titulo="Nada pendente nas tabelas.">
-          A TUSS está publicada, e cada convênio ativo tem contrato valendo hoje.
+          A TUSS está publicada, e cada plano de saúde ativo tem tabela valendo hoje.
         </Vazio>
       ) : (
         <ul className={estilos.pendencias}>

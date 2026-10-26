@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { hoje } from "@/lib/data-local";
-import { ehArea, faltaInstalar, lerEmPaginas } from "@/lib/honorarios-telas";
+import { hoje, ultimoDiaDoMes } from "@/lib/data-local";
+import { ehArea, faltaInstalar, lerEmPaginas, resumoDoHonorarioDoMes } from "@/lib/honorarios-telas";
 import { TabelasEHonorarios } from "@/components/honorarios/tabelas-e-honorarios";
 import type {
   DadosDasTabelas, LinhaContrato, LinhaEdicaoCompleta, LinhaImportacao, LinhaOperadora, LinhaPorteDeReferencia,
@@ -31,6 +31,8 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
   if (perfil.super_admin !== true) redirect("/dashboard");
   const inst = perfil.institution_id as string;
   const { area } = await searchParams;
+  const dia = hoje();
+  const mes = dia.slice(0, 7);
 
   const tuss = await supabase.from("tuss_versoes")
     .select("id, tabela, versao, publicada_em, origem, arquivo_nome, arquivo_sha256, situacao, total_codigos, importada_em, vigente_desde")
@@ -46,7 +48,7 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
     return { data: linhas };
   };
 
-  const [pode, edicoes, portes, operadoras, contratos, versoes, porPorte, porProcedimento, locais, importacoes, propostas, pendentes, calculados] =
+  const [pode, edicoes, portes, operadoras, contratos, versoes, porPorte, porProcedimento, locais, importacoes, propostas, pendentes, calculados, doMes] =
     await Promise.all([
       supabase.rpc("pode_tabelas_honorarios", { p_institution_id: inst }),
       daClinica<LinhaEdicaoCompleta>("cbhpm_edicoes",
@@ -69,11 +71,16 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
         .eq("institution_id", inst).eq("honorario_situacao", "pendente").not("enviado_em", "is", null),
       supabase.from("producao_do_dia").select("id", { count: "exact", head: true })
         .eq("institution_id", inst).not("honorario_calculado_em", "is", null),
+      // O previsto do mês na Produção de quem abre: o mesmo número do painel de lá.
+      lerEmPaginas<{ honorario_situacao: string | null; honorario_valor_previsto: string | null; valor: string | null }>((de, ate) =>
+        supabase.from("producao_do_dia").select("honorario_situacao, honorario_valor_previsto, valor")
+          .eq("perfil_id", user.id).gte("data", `${mes}-01`).lte("data", ultimoDiaDoMes(mes))
+          .order("id").range(de, ate) as unknown as PromiseLike<{ data: Array<{ honorario_situacao: string | null; honorario_valor_previsto: string | null; valor: string | null }> | null; error: unknown }>),
     ]);
 
   const dados: DadosDasTabelas = {
     institutionId: inst,
-    hoje: hoje(),
+    hoje: dia,
     superAdmin: true,
     podeEditar: pode.data === true,
     tuss: (tuss.data ?? []) as LinhaTussVersao[],
@@ -90,6 +97,7 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
     correspondenciasPropostas: propostas.count ?? 0,
     producaoPendente: pendentes.count ?? 0,
     honorariosCalculados: calculados.count ?? 0,
+    previstoDoMes: resumoDoHonorarioDoMes(doMes.linhas),
   };
 
   return <TabelasEHonorarios naoInstalado={false} dados={dados} areaInicial={ehArea(area) ? area : "pendencias"} />;

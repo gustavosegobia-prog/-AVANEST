@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { VersaoDeContrato } from "./honorarios.ts";
 import {
-  descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, primeirosPassos, padroesDaBusca, codigosSugeridos, resumoDoHonorarioDoMes, versaoDoNome, type EstadoDasTabelas,
+  descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, primeirosPassos, padroesDaBusca, codigosSugeridos, divergeDoAnotado, resumoDoHonorarioDoMes, versaoDoNome, type EstadoDasTabelas,
 } from "./honorarios-telas.ts";
 
 // Dados fictícios.
@@ -109,10 +109,32 @@ describe("tabelas e honorários: pendências", () => {
     assert.ok(!inativo.some((x) => x.chave.startsWith("sem-contrato")));
   });
 
-  it("produção enviada com honorário pendente é grave", () => {
+  it("produção enviada com honorário pendente é grave e leva à Produção", () => {
     const p = pendenciasDasTabelas(estado({ producaoPendente: 2 }));
     assert.equal(p[0].chave, "producao-pendente");
     assert.match(p[0].titulo, /2 anestesias enviadas/);
+    assert.equal(p[0].acao?.href, "/dashboard?area=plantoes&aba=producao");
+  });
+
+  it("sem nenhum plano publicado, não diz que está tudo em ordem", () => {
+    const nenhum = pendenciasDasTabelas(estado({ operadoras: [], contratos: [], versoes: [] }));
+    assert.equal(nenhum[0]?.chave, "sem-plano-publicado");
+    assert.deepEqual(nenhum[0]?.acao, { rotulo: "Importar a tabela do plano", importar: "contrato" });
+    const soRascunho = pendenciasDasTabelas(estado({ versoes: [versao({ situacao: "rascunho" })] }));
+    assert.deepEqual(soRascunho.find((x) => x.chave === "sem-plano-publicado")?.acao, { rotulo: "Conferir e publicar", foco: "c1" });
+    assert.ok(!pendenciasDasTabelas(estado()).some((x) => x.chave === "sem-plano-publicado"));
+    assert.ok(!pendenciasDasTabelas(estado({ tuss: [], versoes: [] })).some((x) => x.chave === "sem-plano-publicado"),
+      "sem TUSS, a pendência da TUSS vem antes");
+  });
+
+  it("cada botão leva ao item exato, e não ao primeiro da lista", () => {
+    const p = pendenciasDasTabelas(estado({
+      edicoes: [{ id: "ed1", edicao: "A", situacao: "vigente", portes: 9 }, { id: "ed2", edicao: "B", situacao: "em_conferencia", portes: 0 }],
+      contratos: [{ id: "c1", operadora_id: "o1", identificacao: "Geral", ativo: true }, { id: "c2", operadora_id: "o1", identificacao: "Hospital", ativo: true }],
+      versoes: [versao(), versao({ id: "v9", contratoId: "c2", situacao: "rascunho" })],
+    }));
+    assert.equal(p.find((x) => x.chave === "cbhpm-conferencia-ed2")?.acao?.foco, "ed2");
+    assert.equal(p.find((x) => x.chave === "rascunho-v9")?.acao?.foco, "c2");
   });
 });
 
@@ -212,6 +234,27 @@ describe("honorários: da ficha ao código TUSS", () => {
       { honorario_situacao: "pendente", honorario_valor_previsto: null },
       { honorario_situacao: "nao_calculado" },
       {},
-    ]), { previsto: 2030.5, calculadas: 2, pendentes: 1, semCalculo: 2 });
+    ]), { previsto: 2030.5, calculadas: 2, pendentes: 1, semCalculo: 2, total: 5, diferenca: 0, comparadas: 0 });
+  });
+  it("a diferença para o anotado só conta as calculadas que têm valor anotado", () => {
+    const r = resumoDoHonorarioDoMes([
+      { honorario_situacao: "calculado", honorario_valor_previsto: 1000, valor: 900 },
+      { honorario_situacao: "conferido", honorario_valor_previsto: "450.10", valor: "500" },
+      { honorario_situacao: "calculado", honorario_valor_previsto: 300, valor: 0 },
+      { honorario_situacao: "pendente", valor: 700 },
+    ]);
+    assert.equal(r.previsto, 1750.1);
+    assert.equal(r.comparadas, 2);
+    assert.equal(r.diferenca, 50.1, "+100 de uma, −49,90 da outra");
+    assert.equal(r.total, 4);
+  });
+  it("o selo só aponta divergência quando há valor anotado e ele não bate", () => {
+    assert.ok(divergeDoAnotado(1000, 900));
+    assert.ok(divergeDoAnotado("1000.00", "999.98"));
+    assert.ok(!divergeDoAnotado(1000, "1000.00"));
+    assert.ok(!divergeDoAnotado(1000, 1000.004), "menos de um centavo não é divergência");
+    assert.ok(!divergeDoAnotado(1000, null));
+    assert.ok(!divergeDoAnotado(1000, 0));
+    assert.ok(!divergeDoAnotado(null, 900));
   });
 });

@@ -1,6 +1,7 @@
 // As linhas que a página de "Tabelas e honorários" lê do banco
 // (migração 202610230011), como o Supabase as devolve: numeric em texto.
 
+import type { ResumoDoHonorarioDoMes } from "@/lib/honorarios-telas";
 import type {
   LinhaContrato, LinhaEdicao, LinhaOperadora, LinhaValorPorte, LinhaValorProcedimento, LinhaVersao,
 } from "@/lib/honorarios-dados";
@@ -52,4 +53,6 @@ export type DadosDasTabelas = {
   producaoPendente: number;
   /** Anestesias com o honorário já calculado (o 3º dos primeiros passos). */
   honorariosCalculados: number;
+  /** O honorário previsto na Produção de quem abre, no mês corrente. */
+  previstoDoMes: ResumoDoHonorarioDoMes;
 };

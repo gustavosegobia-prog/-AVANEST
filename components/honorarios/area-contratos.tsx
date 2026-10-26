@@ -22,18 +22,31 @@ const PORTES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
  * é versão nova, e a antiga continua explicando o que foi calculado com ela.
  */
 export function AreaContratos({
-  dados, versoes, onImportar, onAtualizar,
+  dados, versoes, focoInicial, onImportar, onAtualizar,
 }: {
   dados: DadosDasTabelas;
   versoes: VersaoDeContrato[];
+  /** O contrato que a pendência apontou; sem ele, o primeiro da lista. */
+  focoInicial?: string;
   onImportar: (p: PedidoDeImportacao) => void;
   onAtualizar: () => void;
 }) {
-  const [contratoId, setContratoId] = useState<string | null>(dados.contratos[0]?.id ?? null);
+  const [contratoId, setContratoId] = useState<string | null>(
+    dados.contratos.find((c) => c.id === focoInicial)?.id ?? dados.contratos[0]?.id ?? null);
   const [novoConvenio, setNovoConvenio] = useState(false);
   const [novoContrato, setNovoContrato] = useState<LinhaOperadora | null>(null);
   const contrato = dados.contratos.find((c) => c.id === contratoId) ?? null;
   const nomeDoLocal = new Map(dados.locais.map((l) => [l.id, l.nome]));
+  const detalhe = useRef<HTMLDivElement>(null);
+
+  // No celular a lista fica em cima e o contrato embaixo: escolher (ou chegar
+  // por uma pendência) leva a tela até o contrato, senão o toque parece não fazer nada.
+  const mostrarDetalhe = () => requestAnimationFrame(() => {
+    if (!window.matchMedia("(max-width: 860px)").matches) return;
+    const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    detalhe.current?.scrollIntoView({ behavior: suave ? "smooth" : "auto", block: "start" });
+  });
+  useEffect(() => { if (focoInicial) mostrarDetalhe(); }, [focoInicial]);
 
   return (
     <section className="admSecao">
@@ -41,7 +54,7 @@ export function AreaContratos({
         descricao="A tabela de cada plano (convênio) e o contrato com ele, versão por versão. Não há fórmula universal: vale o que a versão diz."
         acao={dados.podeEditar ? (
           <div className={estilos.acoesDaLinha}>
-            <button type="button" className="outlineClinical" onClick={() => setNovoConvenio(true)}>Novo plano</button>
+            <button type="button" className="outlineClinical" onClick={() => setNovoConvenio(true)}>Novo plano de saúde</button>
             <button type="button" className={`primaryClinical compact ${estilos.comIcone}`} onClick={() => onImportar({ tipo: "contrato" })}>
               <Icone nome="enviar" tamanho={16} /> Importar tabela de um plano
             </button>
@@ -67,7 +80,7 @@ export function AreaContratos({
                   </div>
                   {contratos.map((c) => (
                     <button type="button" key={c.id} className={`${estilos.contratoItem}${c.id === contratoId ? ` ${estilos.contratoAtivo}` : ""}`}
-                      aria-current={c.id === contratoId ? "true" : undefined} onClick={() => setContratoId(c.id)}>
+                      aria-current={c.id === contratoId ? "true" : undefined} onClick={() => { setContratoId(c.id); mostrarDetalhe(); }}>
                       <span>{c.identificacao}</span>
                       <small>{c.local_id ? nomeDoLocal.get(c.local_id) ?? "Hospital" : "Todos os hospitais"}{!c.ativo ? " · inativo" : ""}</small>
                     </button>
@@ -81,7 +94,7 @@ export function AreaContratos({
               );
             })}
           </nav>
-          <div className={estilos.detalhe}>
+          <div className={estilos.detalhe} ref={detalhe}>
             {contrato ? (
               <Contrato key={contrato.id} dados={dados} contrato={contrato} versoes={versoes}
                 onImportar={onImportar} onAtualizar={onAtualizar} />
@@ -125,10 +138,13 @@ function Contrato({
     onAtualizar();
   }
 
+  // Desativar tira o contrato do cálculo: pede confirmação. Reativar, não.
+  const [desativando, setDesativando] = useState(false);
   async function alternarAtivo() {
     const ok = await acao.executar(async () => {
       exigir(await createClient().from("contratos").update({ ativo: !contrato.ativo }).eq("id", contrato.id));
     });
+    setDesativando(false);
     if (ok) onAtualizar();
   }
 
@@ -141,7 +157,8 @@ function Contrato({
         </div>
         {dados.podeEditar && (
           <div className={estilos.acoesDaLinha}>
-            <button type="button" className="outlineClinical compacto" onClick={alternarAtivo} disabled={acao.ocupado}>
+            <button type="button" className="outlineClinical compacto" disabled={acao.ocupado}
+              onClick={() => (contrato.ativo ? setDesativando(true) : void alternarAtivo())}>
               {contrato.ativo ? "Desativar contrato" : "Reativar contrato"}
             </button>
             <button type="button" className={`outlineClinical compacto ${estilos.comIcone}`} disabled={acao.ocupado}
@@ -178,6 +195,14 @@ function Contrato({
           ? <Rascunho key={linha.id} dados={dados} linha={linha} montada={montada}
               onAtualizar={onAtualizar} onApagada={() => { setVersaoId(null); onAtualizar(); }} />
           : <VersaoPublicada key={linha.id} dados={dados} linha={linha} montada={montada} onAtualizar={onAtualizar} />
+      )}
+
+      {desativando && (
+        <Dialogo titulo={`Desativar ${operadora?.nome ?? "o contrato"} · ${contrato.identificacao}?`} confirmar="Desativar" perigo
+          ocupado={acao.ocupado} erro={acao.erro} onConfirmar={() => void alternarAtivo()} onCancelar={() => setDesativando(false)}>
+          <p>A partir de agora o cálculo não usa este contrato: as anestesias deste plano ficam pendentes até haver outro valendo.</p>
+          <p>Os honorários já calculados não mudam, e o contrato pode ser reativado depois.</p>
+        </Dialogo>
       )}
     </article>
   );
@@ -621,10 +646,19 @@ function Rascunho({
       <label className="clinicalField"><span>Observações</span>
         <input value={f.observacoes} onChange={(e) => mudar({ observacoes: e.target.value })} placeholder="Número do aditivo, quem negociou, etc." /></label>
 
-      <div className={problemas.length ? estilos.conferencia : `${estilos.conferencia} ${estilos.conferenciaOk}`} aria-live="polite">
-        <Icone nome={problemas.length ? "alerta" : "confirmado"} tamanho={16} />
+      {/* Verde só quando não sobra nada: alteração sem salvar ou código fora
+          da TUSS ainda são avisos, mesmo que não impeçam publicar. */}
+      <div className={problemas.length || alterado || fora.length ? estilos.conferencia : `${estilos.conferencia} ${estilos.conferenciaOk}`} aria-live="polite">
+        <Icone nome={problemas.length || fora.length ? "alerta" : alterado ? "relogio" : "confirmado"} tamanho={16} />
         {problemas.length ? (
           <div><strong>Antes de publicar</strong><ul>{problemas.map((p) => <li key={p}>{p}</li>)}</ul></div>
+        ) : alterado ? (
+          <strong>Há alterações sem salvar: salve o rascunho para publicar.</strong>
+        ) : fora.length ? (
+          <div>
+            <strong>Pode publicar, com ressalva.</strong>
+            <p>{fora.length === 1 ? "1 código não está" : `${fora.length.toLocaleString("pt-BR")} códigos não estão`} na TUSS em uso: as anestesias com {fora.length === 1 ? "ele ficam" : "eles ficam"} pendentes.</p>
+          </div>
         ) : <strong>Pronta para publicar.</strong>}
       </div>
 
@@ -670,7 +704,7 @@ function NovoConvenio({ dados, onFechar, onCriado }: { dados: DadosDasTabelas; o
     if (ok) onCriado();
   }
   return (
-    <Gaveta titulo="Novo convênio" onPedirFechar={onFechar}
+    <Gaveta titulo="Novo plano de saúde" onPedirFechar={onFechar}
       rodape={<>
         <button type="button" className="outlineClinical" onClick={onFechar}>Cancelar</button>
         <button type="button" className="primaryClinical compact" onClick={criar} disabled={acao.ocupado}>{acao.ocupado ? "Salvando…" : "Cadastrar"}</button>
