@@ -250,21 +250,6 @@ export function pendenciasVerificadas(
   return lista;
 }
 
-/** Lembretes da rotina: não vêm dos dados de nenhum paciente, e a tela diz isso. */
-export const LEMBRETES_GERAIS = [
-  { titulo: "Medicamentos de uso contínuo", texto: "Revise anticoagulantes e agonistas de GLP-1 durante a anamnese." },
-  { titulo: "Exames e pareceres", texto: "Confira exames e pareceres solicitados antes de concluir a avaliação." },
-];
-export const ORIGEM_DOS_LEMBRETES =
-  "Lembrete fixo do AVANEST para a rotina. Não é uma verificação dos dados de nenhum paciente e não substitui o julgamento clínico.";
-
-/** O que o sistema não registra — e por isso não vira pendência nem contagem. */
-export const INFORMACOES_INDISPONIVEIS = [
-  { titulo: "Envio das orientações", texto: "Os atalhos de WhatsApp, e-mail e SMS abrem o aplicativo, mas o envio não é registrado. O AVANEST não sabe se a mensagem saiu." },
-  { titulo: "Leitura pelo paciente", texto: "Não há confirmação de leitura: gerar o documento não quer dizer que ele foi entregue ou lido." },
-  { titulo: "Assinatura", texto: "A assinatura é feita no papel impresso; o sistema não registra documento assinado." },
-];
-
 // ── Identificação ──────────────────────────────────────────────────────────
 
 /** "***.456.789-**" — o suficiente para distinguir homônimos sem expor o CPF inteiro. */

@@ -8,7 +8,7 @@ import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { dataLocal } from "@/lib/data-local";
 import {
   andamentoPelasAvaliacoes, avaliacaoNoEscopo, consultaNoEscopo, cpfMascarado, destaqueDoDia, etapaMedica, semMedico,
-  INFORMACOES_INDISPONIVEIS, intervaloDoPeriodo, LEMBRETES_GERAIS, momentoRelativo, ORIGEM_DOS_LEMBRETES, paraRetomar,
+  intervaloDoPeriodo, momentoRelativo, paraRetomar,
   pendenciasVerificadas, resumoDoDia,
   type AvaliacaoResumo, type Escopo, type Periodo, type Pendencia,
 } from "@/lib/area-medica";
@@ -492,19 +492,6 @@ export function AreaMedica({
                     })}
                   </ol>
                 )}
-              </section>
-              <section className="clinicalPanel medLembretes" aria-label="Lembretes gerais">
-                <div className="panelTitle"><strong>Lembretes gerais</strong><span>não se referem a um paciente</span></div>
-                <ul>
-                  {LEMBRETES_GERAIS.map((l) => <li key={l.titulo}><strong>{l.titulo}</strong><span>{l.texto}</span></li>)}
-                </ul>
-                <p className="campoDica">{ORIGEM_DOS_LEMBRETES}</p>
-              </section>
-              <section className="clinicalPanel medLembretes" aria-label="Informações indisponíveis">
-                <div className="panelTitle"><strong>Informações indisponíveis</strong><span>o sistema não registra — por isso não viram pendência nem contagem</span></div>
-                <ul>
-                  {INFORMACOES_INDISPONIVEIS.map((l) => <li key={l.titulo}><strong>{l.titulo}</strong><span>{l.texto}</span></li>)}
-                </ul>
               </section>
             </>
           )}
