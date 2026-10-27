@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
-  TERMOS_VALEM_PARA_QUEM_JA_USAVA, VERSAO_DOS_TERMOS, dataPorExtenso, ipDaRequisicao,
+  CANCELAR_SEM_MULTA, CONSEQUENCIA_DA_COPIA, TERMOS_VALEM_PARA_QUEM_JA_USAVA, VERSAO_DOS_TERMOS, dataPorExtenso, ipDaRequisicao,
   navegadorDaRequisicao, precisaAceitar,
 } from "./termos.ts";
 
@@ -48,4 +49,22 @@ test("termos: cadastro, pagamento e as páginas usam a mesma versão", async () 
     assert.match(ler(pagina), /vigencia=\{dataPorExtenso\(VERSAO_DOS_TERMOS\)\}/, pagina);
   }
   assert.match(ler("app/termos/page.tsx"), /Propriedade intelectual e confidencialidade/);
+});
+
+test("termos: na hora de confirmar, a consequência da cópia e o cancelar sem multa", () => {
+  const ler = (c: string) => readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+  // O resumo só pode dizer o que os Termos dizem: mudou lá, este teste avisa.
+  const termos = ler("app/termos/page.tsx").replace(/\s+/g, " ");
+  assert.match(termos, /suspensão imediata do acesso e obriga a indenizar as perdas e danos/);
+  assert.match(termos, /Não há multa nem fidelidade/);
+  assert.match(CONSEQUENCIA_DA_COPIA, /suspensão imediata do acesso/);
+  assert.match(CONSEQUENCIA_DA_COPIA, /indenizar os prejuízos/);
+  assert.match(CONSEQUENCIA_DA_COPIA, /período grátis, na assinatura ou depois/);
+  assert.match(CANCELAR_SEM_MULTA, /não tem multa nem fidelidade/);
+  // Os três lugares onde se confirma: cadastro, assinatura e o aviso do painel.
+  for (const arquivo of ["app/criar-conta/sign-up-form.tsx", "app/assinatura/assinar-button.tsx", "components/aceite-dos-termos.tsx"]) {
+    const fonte = ler(arquivo);
+    assert.match(fonte, /\{CONSEQUENCIA_DA_COPIA\}/, `${arquivo} sem a consequência da cópia`);
+    assert.match(fonte, /\{CANCELAR_SEM_MULTA\}/, `${arquivo} sem o cancelar sem multa`);
+  }
 });

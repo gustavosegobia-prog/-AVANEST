@@ -7,7 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useCaptcha } from "@/components/turnstile";
 import { senhaRecusada } from "@/lib/senha-recusada";
 import { registrarConversao } from "@/lib/anuncios";
-import { VERSAO_DOS_TERMOS } from "@/lib/termos";
+import { CANCELAR_SEM_MULTA, CONSEQUENCIA_DA_COPIA, VERSAO_DOS_TERMOS } from "@/lib/termos";
 
 // Três modos. Com token, o e-mail vem do convite e não pode ser trocado — a
 // conta precisa nascer no endereço convidado. Com plano, o visitante digita o
@@ -142,8 +142,11 @@ export function SignUpForm({ token, email, plano = "", origem = "" }: { token: s
       {/* Caixa de marcar, não aviso passivo: o aceite tem de ser um ato. O
           registro com data e versão é gravado no servidor na hora de abrir o
           pagamento — aqui a pessoa já sabe com o que está concordando. */}
+      <p className="aceiteResumo" id="aceite-resumo">
+        {CONSEQUENCIA_DA_COPIA} {CANCELAR_SEM_MULTA}
+      </p>
       <label className="aceiteTermos">
-        <input type="checkbox" checked={aceite} onChange={e=>setAceite(e.target.checked)} required />
+        <input type="checkbox" checked={aceite} onChange={e=>setAceite(e.target.checked)} required aria-describedby="aceite-resumo" />
         <span>
           Li e concordo com os <Link href="/termos" target="_blank">Termos de Uso</Link> e a{" "}
           <Link href="/privacidade" target="_blank">Política de Privacidade</Link>.

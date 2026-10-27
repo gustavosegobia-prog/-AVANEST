@@ -2345,6 +2345,10 @@ button:disabled{cursor:not-allowed}
 .aceiteTermos{display:flex;align-items:flex-start;gap:9px;margin:var(--esp-3) 0 0;font-size:12.5px;line-height:1.5;color:var(--cor-tinta-fraca);cursor:pointer}
 .aceiteTermos input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--cor-marca);cursor:pointer}
 .aceiteTermos a{color:var(--cor-marca);font-weight:650}
+/* O que pesa no aceite, escrito antes da caixa: copiar custa, cancelar não. */
+.aceiteResumo{margin:var(--esp-3) 0 0;padding:10px 12px;border-radius:var(--raio-1);background:var(--cor-superficie-suave);
+  border:1px solid var(--cor-borda);font-size:12.5px;line-height:1.5;color:var(--cor-tinta)}
+.aceiteResumo b{font-weight:700}
 
 /* O quadro do CAPTCHA. Em `interaction-only` ele fica com altura zero na
    imensa maioria das entradas — só ocupa espaço quando de fato desafia. Por
