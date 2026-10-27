@@ -326,6 +326,7 @@ export function DashboardClient({
   tutorialNoPrimeiroAcesso = false,
   testeAte,
   abaDaEscala,
+  tarefaDoFinanceiro,
   plantaoEmFoco,
   abaDoChat,
   avisos = [],
@@ -380,6 +381,8 @@ export function DashboardClient({
   testeAte?: string | null;
   /** Aba em que a Escala abre quando o endereço pede — ver app/dashboard/page.tsx. */
   abaDaEscala?: "escala" | "producao" | "trocas";
+  /** Tarefa em que o Financeiro abre quando o endereço pede (só "producao"). */
+  tarefaDoFinanceiro?: "producao";
   /** O plantão que a notificação tocada pediu para abrir. */
   plantaoEmFoco?: string;
   /** Janela de conversa a abrir quando o endereço pede. Mesma razão. */
@@ -1156,7 +1159,7 @@ export function DashboardClient({
         <RecepcaoView perfilId={perfil.id} institutionId={perfil.institution_id}
           pacientes={pacientes} agendamentos={agendamentos} erroExterno={open ? "" : error}
           onNovoPaciente={()=>setOpen(true)} onAtualizar={()=>router.refresh()} />
-      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()} nomeDaOrganizacao={organizacao?.nome??null} carregadoEm={carregadoEm}/>
+      ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()} nomeDaOrganizacao={organizacao?.nome??null} carregadoEm={carregadoEm} tarefaInicial={tarefaDoFinanceiro}/>
       : <AdminView perfil={perfil} organizacao={organizacao} perfis={perfis} auditoria={auditoria} localAtivo={localAtivo} onRefresh={()=>router.refresh()} abrirEm={aberturaDoAdmin} onAberturaAtendida={esquecerAberturaDoAdmin} comCentro={podeMapaCirurgico}/>}
 
       {/* A janela compartilhada (components/janela.tsx): contorno por fora,
@@ -1276,9 +1279,9 @@ export function DashboardClient({
   );
 }
 
-function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,producaoDaReceita=[],despesas=[],perfis=[],ehGrupo=false,onRefresh,nomeDaOrganizacao=null,carregadoEm=null}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];producaoDaReceita?:ProducaoBruta[];despesas?:Despesa[];perfis?:PerfilGerenciado[];ehGrupo?:boolean;onRefresh:()=>void;nomeDaOrganizacao?:string|null;
+function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos,convenioValores,producaoDaReceita=[],despesas=[],perfis=[],ehGrupo=false,onRefresh,nomeDaOrganizacao=null,carregadoEm=null,tarefaInicial}:{perfil:Perfil;pacientes:Paciente[];avaliacoes:Avaliacao[];financeiro:Financeiro[];pagamentos:Pagamento[];periodos:Periodo[];convenioValores:ConvenioValor[];producaoDaReceita?:ProducaoBruta[];despesas?:Despesa[];perfis?:PerfilGerenciado[];ehGrupo?:boolean;onRefresh:()=>void;nomeDaOrganizacao?:string|null;
   /** Quando o servidor leu estes dados (ISO) — o "atualizado em" do cabeçalho. */
-  carregadoEm?:string|null}) {
+  carregadoEm?:string|null;tarefaInicial?:string}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const [configOpen,setConfigOpen]=useState(false);
@@ -1309,7 +1312,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // abre o Financeiro pela primeira vez — ou reabre depois de um mês — quer
   // saber "o que precisa da minha atenção", não cair direto numa lista de
   // atendimentos que pode nem ter nada. Ver o painel "visao-geral" abaixo.
-  const [tarefa,setTarefa]=useState("visao-geral");
+  const [tarefa,setTarefa]=useState(tarefaInicial??"visao-geral");
   // Qual número do topo está com a composição aberta (a gaveta lateral).
   const [composicaoAberta,setComposicaoAberta]=useState<TipoDeComposicao|null>(null);
   const fecharComposicao=useCallback(()=>setComposicaoAberta(null),[]);

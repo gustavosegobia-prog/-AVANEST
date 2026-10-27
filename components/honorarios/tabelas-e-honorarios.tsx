@@ -12,20 +12,21 @@ import { AreaTuss } from "./area-tuss";
 import { AreaCbhpm } from "./area-cbhpm";
 import { AreaContratos } from "./area-contratos";
 import { AreaImportar, type PedidoDeImportacao } from "./area-importar";
+import { AreaCodigos } from "./area-codigos";
 import { AreaRegras } from "./area-regras";
 import { AreaHistorico } from "./area-historico";
 import { PrimeirosPassos } from "./primeiros-passos";
 import { dinheiro } from "./comum";
 import estilos from "./honorarios.module.css";
 
-// A casca de "Tabelas e honorários": o título, o menu das sete áreas e a área
+// A casca de "Tabelas e honorários": o título, o menu das oito áreas e a área
 // aberta. Os dados pequenos chegam do servidor (app/financeiro/honorarios);
 // depois de gravar, `atualizar()` relê a página sem perder a área aberta.
 
 const MES = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "America/Sao_Paulo" });
 
 const ICONE_DA_AREA: Record<Area, NomeDoIcone> = {
-  pendencias: "alerta", tuss: "busca", cbhpm: "nota", contratos: "assinatura",
+  pendencias: "alerta", tuss: "busca", cbhpm: "nota", contratos: "assinatura", codigos: "etiqueta",
   importar: "enviar", regras: "calculadora", historico: "relogio",
 };
 
@@ -161,6 +162,7 @@ export function TabelasEHonorarios({
               {area === "contratos" && (
                 <AreaContratos key={foco ?? "contratos"} dados={dados} versoes={versoes} focoInicial={foco} onImportar={importar} onAtualizar={atualizar} />
               )}
+              {area === "codigos" && <AreaCodigos dados={dados} />}
               {area === "importar" && (
                 <AreaImportar key={pedido ? `${pedido.tipo}-${pedido.destinoId ?? ""}` : "novo"} dados={dados}
                   pedido={pedido} onAtualizar={atualizar} onAbrir={abrir} />

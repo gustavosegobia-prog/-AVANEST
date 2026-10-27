@@ -7,7 +7,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 
 // As três partes, na ordem em que vão para o banco.
-const MIG = ["202610230011_tabelas_e_honorarios.sql", "202610230012_contratos_e_tabelas_dos_planos.sql", "202610230013_honorario_na_producao.sql"]
+const MIG = ["202610230011_tabelas_e_honorarios.sql", "202610230012_contratos_e_tabelas_dos_planos.sql", "202610230013_honorario_na_producao.sql",
+  "202610270001_honorario_pelo_financeiro.sql"]
   .map((f) => readFileSync(new URL(`../migrations/${f}`, import.meta.url), "utf8")).join("\n");
 const db = new PGlite({ extensions: { pg_trgm } });
 
@@ -242,9 +243,52 @@ assert.equal((await como(U.medA, `select count(*)::int as n from storage.objects
 assert.equal((await como(U.medA, `select count(*)::int as n from tuss_versoes`))[0].n, 2);
 assert.equal((await como(U.medA, `select count(*)::int as n from importacoes_tabelas`))[0].n, 0);
 ok("Políticas novas não quebram as leituras de quem não é super-admin (storage, TUSS, importações)");
-for (const f of ["procedimento_da_producao", "protege_honorario_da_producao", "contrato_versao_protegida", "correspondencia_protegida"]) {
+for (const f of ["procedimento_da_producao", "protege_honorario_da_producao", "contrato_versao_protegida", "correspondencia_protegida", "lista_da_clinica_atualizada"]) {
   await falha(U.medA, `select public.${f}()`, /permission denied|trigger functions can only be called as triggers/);
 }
 ok("Funções de gatilho não ficam ao alcance da API");
+
+// ── Parte 4: o código sai no Financeiro ─────────────────────────────────────
+const [marca] = await como(U.finA, `insert into marcas_da_clinica (institution_id, nome, tuss_codigo, descricao) values ($1,'Bloqueio de teste','90000009','BLOQUEIO FICTICIO') returning id`, [INST.A]);
+const [dic] = await como(U.finA, `insert into procedimentos_da_clinica (institution_id, chave, nome, codigos) values ($1,'colecistectomia videolaparoscopica','Colecistectomia videolaparoscópica','[{"codigo":"90000001","descricao":"PROCEDIMENTO FICTICIO UM"}]') returning id, atualizado_por`, [INST.A]);
+assert.equal(dic.atualizado_por, U.finA);
+assert.equal((await como(U.medA, `select nome from marcas_da_clinica`)).length, 1);
+assert.equal((await como(U.medA, `select chave from procedimentos_da_clinica`)).length, 1);
+ok("Listas da clínica: o Financeiro cadastra marca e procedimento; o médico da clínica lê");
+await falha(U.medA, `insert into marcas_da_clinica (institution_id, nome, tuss_codigo) values ($1,'Do médico','90000001')`, /row-level security/, [INST.A]);
+await falha(U.medA, `insert into procedimentos_da_clinica (institution_id, chave, nome, codigos) values ($1,'x','x','[{"codigo":"1"}]')`, /row-level security/, [INST.A]);
+assert.equal((await como(U.finB, `select * from marcas_da_clinica`)).length, 0);
+assert.equal((await como(U.finB, `select * from procedimentos_da_clinica`)).length, 0);
+await falha(U.finB, `insert into marcas_da_clinica (institution_id, nome, tuss_codigo) values ($1,'Invasão','90000001')`, /row-level security/, [INST.A]);
+ok("Listas da clínica: o médico não grava; outra clínica não lê nem grava");
+await falha(U.finA, `insert into marcas_da_clinica (institution_id, nome, tuss_codigo) values ($1,'Bloqueio de teste','90000010')`, /duplicate key|unique/, [INST.A]);
+await falha(U.finA, `insert into procedimentos_da_clinica (institution_id, chave, nome, codigos) values ($1,'y','y','[]')`, /check/, [INST.A]);
+ok("Listas da clínica: marca com o mesmo nome e procedimento sem código são recusados");
+assert.ok((await como(null, `select 1 from auditoria where tabela = 'marcas_da_clinica' and acao = 'insert'`)).length >= 1);
+ok("Listas da clínica: cada mudança fica na auditoria");
+
+const [pm] = await como(U.medA, `insert into producao_do_dia (institution_id, perfil_id, data, paciente, convenio, procedimento, urgencia, marcas)
+  values ($1,$2,'2026-03-12','PACIENTE FICTICIO DOIS','Unimed Teste','Colecistectomia videolaparoscópica',true,array[$3]::uuid[]) returning id, marcas`, [INST.A, U.medA, marca.id]);
+assert.deepEqual(pm.marcas, [marca.id]);
+await como(null, `update producao_do_dia set honorario_situacao = 'calculado' where id = $1`, [pm.id]);
+await como(U.medA, `update producao_do_dia set marcas = '{}' where id = $1`, [pm.id]);
+assert.equal((await como(U.medA, `select honorario_situacao from producao_do_dia where id = $1`, [pm.id]))[0].honorario_situacao, "nao_calculado");
+ok("Marcas: o médico marca na anotação, e mudar as marcas desfaz o cálculo anterior");
+
+await falha(U.finA, `insert into producao_procedimentos (producao_id, ordem, tuss_codigo) values ($1,1,'90000001')`, /row-level security/, [pm.id]);
+ok("Financeiro: antes do envio, não grava código na anestesia do médico");
+await como(U.medA, `update producao_do_dia set enviado_em = now() where id = $1`, [pm.id]);
+await como(U.finA, `delete from producao_procedimentos where producao_id = $1`, [pm.id]);
+await como(U.finA, `insert into producao_procedimentos (producao_id, ordem, tuss_codigo) values ($1,1,'90000001'),($1,2,'90000009')`, [pm.id]);
+const doFin = await como(U.medA, `select ordem, tuss_codigo, perfil_id from producao_procedimentos where producao_id = $1 order by ordem`, [pm.id]);
+assert.deepEqual(doFin.map((d) => [d.ordem, d.tuss_codigo, d.perfil_id]), [[1, "90000001", U.medA], [2, "90000009", U.medA]]);
+ok("Financeiro: depois do envio, grava os códigos; a anestesia continua do médico, que vê o que foi posto");
+await falha(U.finB, `insert into producao_procedimentos (producao_id, ordem, tuss_codigo) values ($1,3,'90000002')`, /row-level security/, [pm.id]);
+await falha(U.medA2, `insert into producao_procedimentos (producao_id, ordem, tuss_codigo) values ($1,3,'90000002')`, /row-level security/, [pm.id]);
+ok("Financeiro de outra clínica e o colega não gravam código na anestesia enviada");
+// Sem política de update para o Financeiro, o update não acha a linha: nada muda.
+await como(U.finA, `update producao_do_dia set urgencia = false, marcas = '{}' where id = $1`, [pm.id]);
+assert.equal((await como(U.medA, `select urgencia from producao_do_dia where id = $1`, [pm.id]))[0].urgencia, true);
+ok("Financeiro: a urgência e as marcas são do médico — o Financeiro não as muda");
 
 console.log(`\n${passou} verificações passaram.`);

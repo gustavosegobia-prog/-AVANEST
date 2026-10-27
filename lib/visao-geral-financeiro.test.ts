@@ -49,7 +49,8 @@ test("a navegação ganhou sete grupos, sem perder nenhuma aba antiga", () => {
 
 test("o Financeiro abre em Visão geral, não mais em Lançamentos", () => {
   const tela = ler("app/dashboard/dashboard-client.tsx");
-  assert.match(tela, /const \[tarefa,setTarefa\]=useState\("visao-geral"\);/,
+  // Só o endereço que pede outra tarefa (?area=financeiro&aba=producao) muda a porta de entrada.
+  assert.match(tela, /const \[tarefa,setTarefa\]=useState\(tarefaInicial\?\?"visao-geral"\);/,
     "o Financeiro voltou a abrir direto em Lançamentos");
 });
 

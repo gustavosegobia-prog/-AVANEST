@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { VersaoDeContrato } from "./honorarios.ts";
 import {
-  descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, primeirosPassos, padroesDaBusca, codigosSugeridos, divergeDoAnotado, resumoDoHonorarioDoMes, versaoDoNome, type EstadoDasTabelas,
+  codigosDaAnestesia, codigosPeloNome, entradaDaLista, filtrarDaLista, problemaDaMarca, descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, primeirosPassos, padroesDaBusca, codigosSugeridos, divergeDoAnotado, resumoDoHonorarioDoMes, versaoDoNome, type EstadoDasTabelas,
 } from "./honorarios-telas.ts";
 
 // Dados fictícios.
@@ -110,11 +110,11 @@ describe("tabelas e honorários: pendências", () => {
     assert.ok(!inativo.some((x) => x.chave.startsWith("sem-contrato")));
   });
 
-  it("produção enviada com honorário pendente é grave e leva à Produção", () => {
+  it("produção enviada com honorário pendente é grave e leva à Produção da equipe, no Financeiro", () => {
     const p = pendenciasDasTabelas(estado({ producaoPendente: 2 }));
     assert.equal(p[0].chave, "producao-pendente");
     assert.match(p[0].titulo, /2 anestesias enviadas/);
-    assert.equal(p[0].acao?.href, "/dashboard?area=plantoes&aba=producao");
+    assert.equal(p[0].acao?.href, "/dashboard?area=financeiro&aba=producao");
   });
 
   it("sem nenhum plano publicado, não diz que está tudo em ordem", () => {
@@ -283,5 +283,52 @@ describe("tabelas e honorários: liberado às clínicas", () => {
     const pagina = ler("app/financeiro/honorarios/page.tsx");
     assert.match(pagina, /pode_tabelas_honorarios/, "quem não tem o Financeiro continua de fora");
     assert.match(ler("components/honorarios/tabelas-e-honorarios.tsx"), /Em desenvolvimento\./);
+  });
+});
+
+describe("honorários: o código sai no Financeiro", () => {
+  const marcas = [
+    { id: "m-bloqueio", nome: "Bloqueio", tuss_codigo: "90000009" },
+    { id: "m-cateter", nome: "Cateter", tuss_codigo: "90000008", ativo: false },
+  ];
+  it("os códigos da anestesia: os do procedimento e um a mais por marca, sem repetir", () => {
+    assert.deepEqual(codigosDaAnestesia(["90000001", "90000002"], ["m-bloqueio"], marcas), ["90000001", "90000002", "90000009"]);
+    assert.deepEqual(codigosDaAnestesia(["90000009"], ["m-bloqueio"], marcas), ["90000009"], "a marca não repete o código já escolhido");
+    assert.deepEqual(codigosDaAnestesia([], ["m-cateter"], marcas), ["90000008"], "marca desativada continua valendo para quem marcou");
+    assert.deepEqual(codigosDaAnestesia(["90000001"], ["m-sumiu"], marcas), ["90000001"], "marca que não existe é ignorada");
+    assert.deepEqual(codigosDaAnestesia(["9000.0001"], null, marcas), ["90000001"]);
+  });
+  it("pelo nome escrito na ficha, a lista da clínica dá o código", () => {
+    const lista = [{ chave: "colecistectomia videolaparoscopica", nome: "Colecistectomia videolaparoscópica", codigos: [{ codigo: "90000001", descricao: "COLE" }] }];
+    assert.deepEqual(codigosPeloNome("COLECISTECTOMIA  Videolaparoscópica", lista), [{ codigo: "90000001", descricao: "COLE" }]);
+    assert.equal(codigosPeloNome("Herniorrafia", lista), null);
+    assert.equal(codigosPeloNome("", lista), null);
+  });
+  it("a conferência ensina a lista: o nome da ficha e os códigos válidos", () => {
+    assert.deepEqual(entradaDaLista(" Cesárea ", [{ codigo: "90000020", descricao: "CESARIANA" }, { codigo: "abc", descricao: "" }]),
+      { chave: "cesarea", nome: "Cesárea", codigos: [{ codigo: "90000020", descricao: "CESARIANA" }] });
+    assert.equal(entradaDaLista(null, [{ codigo: "90000020", descricao: "" }]), null);
+    assert.equal(entradaDaLista("Cesárea", []), null);
+  });
+
+  it("a busca na lista acha pelo nome sem acento ou pelo começo do código", () => {
+    const lista = [
+      { chave: "cesarea", nome: "Cesárea", codigos: [{ codigo: "31309127", descricao: "" }] },
+      { chave: "colecistectomia videolaparoscopica", nome: "Colecistectomia VLP", codigos: [{ codigo: "31005497", descricao: "" }] },
+    ];
+    assert.deepEqual(filtrarDaLista(lista, "CESÁ").map((p) => p.nome), ["Cesárea"]);
+    assert.deepEqual(filtrarDaLista(lista, "videolap").map((p) => p.nome), ["Colecistectomia VLP"]);
+    assert.deepEqual(filtrarDaLista(lista, "3100").map((p) => p.nome), ["Colecistectomia VLP"]);
+    assert.equal(filtrarDaLista(lista, "  ").length, 2);
+  });
+
+  it("a marca precisa de nome, de código e de nome que não repete", () => {
+    const existentes = [{ id: "m1", nome: "Bloqueio periférico" }];
+    assert.match(problemaDaMarca({ nome: " ", tuss_codigo: "1" }, existentes) ?? "", /Dê um nome/);
+    assert.match(problemaDaMarca({ nome: "x".repeat(61), tuss_codigo: "1" }, existentes) ?? "", /60 letras/);
+    assert.match(problemaDaMarca({ nome: "Cateter", tuss_codigo: "" }, existentes) ?? "", /código TUSS/);
+    assert.match(problemaDaMarca({ nome: "BLOQUEIO PERIFÉRICO", tuss_codigo: "1" }, existentes) ?? "", /Já existe/);
+    assert.equal(problemaDaMarca({ id: "m1", nome: "Bloqueio periférico", tuss_codigo: "1" }, existentes), null);
+    assert.equal(problemaDaMarca({ nome: "Cateter peridural", tuss_codigo: "31602231" }, existentes), null);
   });
 });

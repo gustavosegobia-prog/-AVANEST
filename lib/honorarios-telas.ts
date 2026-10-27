@@ -5,12 +5,13 @@
 
 import { nomeSimples, problemasDaVersao, type VersaoDeContrato } from "./honorarios.ts";
 
-export type Area = "tuss" | "cbhpm" | "contratos" | "importar" | "regras" | "pendencias" | "historico";
+export type Area = "tuss" | "cbhpm" | "contratos" | "codigos" | "importar" | "regras" | "pendencias" | "historico";
 
 export const AREAS: Array<{ id: Area; rotulo: string }> = [
   { id: "pendencias", rotulo: "Divergências e pendências" },
   { id: "tuss", rotulo: "Consulta TUSS" },
   { id: "contratos", rotulo: "Planos de saúde" },
+  { id: "codigos", rotulo: "Códigos e marcas" },
   { id: "cbhpm", rotulo: "Procedimentos e portes (CBHPM)" },
   { id: "importar", rotulo: "Importar arquivo" },
   { id: "regras", rotulo: "Regras de cálculo" },
@@ -249,7 +250,7 @@ export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
       chave: "producao-pendente", gravidade: "alta", area: "pendencias",
       titulo: `${e.producaoPendente} ${e.producaoPendente === 1 ? "anestesia enviada" : "anestesias enviadas"} com honorário pendente`,
       detalhe: "O valor não é presumido: resolva a tabela ou o código e calcule de novo.",
-      acao: { rotulo: "Ver na Produção", href: "/dashboard?area=plantoes&aba=producao" },
+      acao: { rotulo: "Ver na Produção da equipe", href: "/dashboard?area=financeiro&aba=producao" },
     });
   }
 
@@ -305,7 +306,7 @@ export function primeirosPassos(e: {
     },
     {
       chave: "calculo", titulo: "Calcular o primeiro honorário", feito: e.honorariosCalculados > 0,
-      detalhe: "Teste no simulador; depois, na Produção, use “Calcular honorário” numa anestesia.",
+      detalhe: "Teste no simulador; depois, em Financeiro → Produção da equipe, use “Conferir códigos” na produção enviada.",
       acao: { rotulo: "Abrir o simulador", area: "regras" },
     },
   ];
@@ -361,6 +362,72 @@ export function codigosSugeridos(
       .map((p) => ({ codigo: p.tuss_codigo as string, descricao: p.descricao ?? "" }));
     if (codigos.length) return { codigos, data: a.data };
   }
+  return null;
+}
+
+// ── O código sai no Financeiro (migração 202610270001) ──────────────────────
+
+export type MarcaDaClinica = { id: string; nome: string; tuss_codigo: string; descricao?: string | null; ativo?: boolean; ordem?: number };
+export type ProcedimentoDaClinica = { chave: string; nome: string; codigos: CodigoEscolhido[] };
+
+/**
+ * Os códigos que entram na conta da anestesia: os dos procedimentos, na
+ * ordem escolhida, e depois um por marca que o médico marcou (urgência não é
+ * marca: é regra do contrato). Código repetido entra uma vez só. Marca que
+ * não existe mais na clínica é ignorada; a desativada continua valendo para
+ * quem já a tinha marcado.
+ */
+export function codigosDaAnestesia(
+  procedimentos: string[], marcasDaAnestesia: readonly string[] | null | undefined, marcasDaClinica: MarcaDaClinica[],
+): string[] {
+  const porId = new Map(marcasDaClinica.map((m) => [m.id, m.tuss_codigo]));
+  const todos = [...procedimentos, ...(marcasDaAnestesia ?? []).map((id) => porId.get(id) ?? "")];
+  return [...new Set(todos.map((c) => c.replace(/\D/g, "")).filter(Boolean))];
+}
+
+/** Os códigos da lista da clínica para o procedimento como foi escrito na ficha. */
+export function codigosPeloNome(procedimento: string | null | undefined, lista: ProcedimentoDaClinica[]): CodigoEscolhido[] | null {
+  const chave = nomeSimples(procedimento);
+  if (!chave) return null;
+  const achado = lista.find((p) => p.chave === chave);
+  return achado && achado.codigos.length ? achado.codigos : null;
+}
+
+/** A linha da lista da clínica que a conferência ensina: o nome da ficha → os códigos escolhidos. */
+export function entradaDaLista(procedimento: string | null | undefined, codigos: CodigoEscolhido[]): ProcedimentoDaClinica | null {
+  const chave = nomeSimples(procedimento);
+  const validos = codigos.filter((c) => /^\d+$/.test(c.codigo));
+  if (!chave || !validos.length) return null;
+  return { chave: chave.slice(0, 200), nome: String(procedimento).trim().slice(0, 200), codigos: validos.slice(0, 20) };
+}
+
+/**
+ * A lista da clínica filtrada pelo que se digitou na busca: um pedaço do
+ * nome (sem acento nem caixa) ou o começo de um dos códigos.
+ */
+export function filtrarDaLista<T extends ProcedimentoDaClinica>(lista: T[], termo: string): T[] {
+  const t = nomeSimples(termo);
+  if (!t) return lista;
+  const digitos = /^[\d.\s-]+$/.test(termo.trim()) ? termo.replace(/\D/g, "") : "";
+  return lista.filter((p) => digitos
+    ? p.codigos.some((c) => c.codigo.startsWith(digitos))
+    : p.chave.includes(t));
+}
+
+/**
+ * O que impede gravar a marca, em português; null quando pode. O nome não
+ * repete na clínica (sem diferenciar maiúscula e acento: "Bloqueio" e
+ * "bloqueio" confundiriam o médico na Produção).
+ */
+export function problemaDaMarca(
+  marca: { id?: string; nome: string; tuss_codigo: string }, existentes: Array<{ id: string; nome: string }>,
+): string | null {
+  const nome = marca.nome.trim();
+  if (!nome) return "Dê um nome à marca, como o médico vai ver na Produção.";
+  if (nome.length > 60) return "O nome da marca passa de 60 letras: encurte.";
+  if (!/^\d+$/.test(marca.tuss_codigo)) return "Escolha o código TUSS que a marca puxa.";
+  const chave = nomeSimples(nome);
+  if (existentes.some((x) => x.id !== marca.id && nomeSimples(x.nome) === chave)) return `Já existe a marca “${nome}”.`;
   return null;
 }
 

@@ -215,7 +215,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "plantoes",
       alvo: '[data-secao="producao"]',
       titulo: "Produção do dia",
-      texto: "Escala → Produção. Anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos. Em cada linha, Calcular honorário mostra o valor pela tabela do plano — ainda em desenvolvimento.",
+      texto: "Escala → Produção. Anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos. Marque se foi urgência e as marcas da clínica (um bloqueio, um cateter): o Financeiro dá o código pelo nome do procedimento. Calcular honorário mostra o valor pela tabela do plano — ainda em desenvolvimento.",
     });
     etapas.push({
       area: "plantoes",
@@ -267,7 +267,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "financeiro",
       alvo: '[data-secao="honorarios"]',
       titulo: "Tabelas e honorários",
-      texto: "Financeiro → Tabelas e honorários, ainda em desenvolvimento. Importe a tabela de cada plano — código TUSS, porte anestésico e valor — e o honorário previsto de cada anestesia da Produção sai pela regra do contrato. Confira o valor com o contrato antes de cobrar.",
+      texto: "Financeiro → Tabelas e honorários, ainda em desenvolvimento. Importe a tabela de cada plano — código TUSS, porte anestésico e valor. Em Códigos e marcas, cadastre as marcas e o código de cada procedimento; na Produção da equipe, Conferir códigos calcula o honorário do que a equipe enviou. Confira o valor com o contrato antes de cobrar.",
     });
     etapas.push({
       area: "financeiro",
