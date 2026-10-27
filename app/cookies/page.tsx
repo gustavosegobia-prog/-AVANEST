@@ -16,63 +16,83 @@ export const metadata: Metadata = paginaPublica({
 // lib/evolucao/fila.ts, lib/tema.ts, lib/anuncios.ts, public/sw.js…). Quem
 // criar um cookie novo, ou uma chave nova no localStorage, acrescenta a linha
 // aqui no mesmo commit — lib/cookies.test.ts confere as principais.
+//
+// O QUE APARECE E O QUE NÃO APARECE (27/10/2026). A página mostra o que é,
+// para quê e por quanto tempo — o que a LGPD e o guia da ANPD pedem. Dos
+// cookies de verdade ela mostra o nome, porque é por ele que a pessoa os acha
+// e apaga no navegador. As chaves internas do armazenamento local ficam em
+// `chaves`, que NÃO é desenhado na tela: servem ao teste, e na página só
+// diziam como o sistema funciona por dentro, sem ajudar quem lê.
 
-type Linha = { nome: string; onde: string; para: string; duracao: string };
+type Linha = {
+  oque: string;
+  cookie?: string;
+  /** Nomes no código, para o teste conferir. Nunca aparecem na página. */
+  chaves?: string[];
+  onde: string;
+  para: string;
+  duracao: string;
+};
 
 const NECESSARIOS: Linha[] = [
   {
-    nome: "sb-…-auth-token",
+    oque: "Sessão de login",
+    cookie: "sb-…-auth-token",
     onde: "Cookie do AVANEST (gerado pelo Supabase, nosso provedor de login)",
-    para: "Manter você conectado com segurança. Pode vir dividido em partes (.0, .1) e, durante a troca de senha, acompanhado de um “-code-verifier”.",
+    para: "Manter você conectado com segurança.",
     duracao: "Até você sair da conta; renovado enquanto você usa",
   },
   {
-    nome: "avanest_local",
+    oque: "Local de atendimento",
+    cookie: "avanest_local",
     onde: "Cookie do AVANEST",
     para: "Lembrar o hospital escolhido em “Onde você vai atender hoje?”, para a ficha sair com o nome dele e mostrar só as fichas daquele local.",
     duracao: "30 dias",
   },
   {
-    nome: "avanest:evolucao-fila:…",
+    oque: "Lançamentos da ficha ainda não enviados",
+    chaves: ["avanest:evolucao-fila:"],
     onde: "Armazenamento local do navegador",
     para: "Guardar os lançamentos da ficha anestésica até o servidor confirmar que recebeu — no centro cirúrgico a rede cai, e nada pode se perder. Contém dados da ficha.",
     duracao: "Apagado assim que o servidor confirma",
   },
   {
-    nome: "avanest:cookies-de-anuncio",
+    oque: "Sua escolha sobre anúncios",
+    chaves: ["avanest:cookies-de-anuncio"],
     onde: "Armazenamento local do navegador",
     para: "Lembrar a sua escolha sobre a medição de anúncios, para não perguntar de novo.",
     duracao: "Até você mudar a escolha ou limpar o navegador",
   },
   {
-    nome: "avanest-arquivos-v1",
-    onde: "Cache do aplicativo (service worker)",
+    oque: "Arquivos do aplicativo",
+    chaves: ["avanest-arquivos-v1"],
+    onde: "Cache do aplicativo no aparelho",
     para: "Guardar os arquivos do próprio site — código e ícones — para o aplicativo abrir rápido. Nunca guarda páginas, fichas nem dados de pacientes.",
     duracao: "Até a próxima versão do site",
   },
 ];
 
 const PREFERENCIAS: Linha[] = [
-  { nome: "avanest:tema", onde: "Armazenamento local", para: "Tema claro ou escuro.", duracao: "Até você mudar" },
-  { nome: "avanest_tutorial_v3", onde: "Armazenamento local", para: "Se você já viu o tutorial de boas-vindas.", duracao: "Até limpar o navegador" },
-  { nome: "avanest_esconder_valores", onde: "Armazenamento local", para: "Esconder ou mostrar os valores do financeiro na tela.", duracao: "Até você mudar" },
-  { nome: "avanest:painel:…, avanest:evo-pre, avanest:escala-impressa", onde: "Armazenamento local", para: "Painéis abertos ou recolhidos e o modelo de impressão da escala.", duracao: "Até você mudar" },
-  { nome: "avanest:evo-favoritos:…, avanest.doses.favoritos", onde: "Armazenamento local", para: "Medicamentos favoritos na ficha e na calculadora de doses.", duracao: "Até você mudar" },
-  { nome: "avanest-instalar-convite, avanest-push-convite", onde: "Armazenamento local", para: "Quando voltar a sugerir instalar o aplicativo ou ligar as notificações.", duracao: "7 e 14 dias" },
-  { nome: "avanest:tv-tema", onde: "Armazenamento local", para: "Fundo claro ou escuro na TV do centro cirúrgico.", duracao: "Até você mudar" },
-  { nome: "avanest:abertura", onde: "Armazenamento da sessão", para: "Se a abertura da marca já passou nesta visita.", duracao: "Até fechar a aba" },
-  { nome: "avanest:tv-recarregou-para, avanest:tv-voltar-tela-cheia", onde: "Armazenamento da sessão", para: "A versão do site pela qual a TV do centro cirúrgico já recarregou, e se ela estava em tela cheia.", duracao: "Até fechar a aba" },
+  { oque: "Tema claro ou escuro", chaves: ["avanest:tema"], onde: "Armazenamento local", para: "Abrir o sistema com o tema que você escolheu.", duracao: "Até você mudar" },
+  { oque: "Tutorial de boas-vindas", chaves: ["avanest_tutorial_v3"], onde: "Armazenamento local", para: "Não mostrar de novo o tutorial que você já viu.", duracao: "Até limpar o navegador" },
+  { oque: "Valores do financeiro", chaves: ["avanest_esconder_valores"], onde: "Armazenamento local", para: "Esconder ou mostrar os valores na tela.", duracao: "Até você mudar" },
+  { oque: "Arrumação da tela", chaves: ["avanest:painel:", "avanest:evo-pre", "avanest:escala-impressa"], onde: "Armazenamento local", para: "Painéis abertos ou recolhidos e o modelo de impressão da escala.", duracao: "Até você mudar" },
+  { oque: "Medicamentos favoritos", chaves: ["avanest:evo-favoritos:", "avanest.doses.favoritos"], onde: "Armazenamento local", para: "Os favoritos da ficha e da calculadora de doses.", duracao: "Até você mudar" },
+  { oque: "Aplicativo e notificações", chaves: ["avanest-instalar-convite", "avanest-push-convite"], onde: "Armazenamento local", para: "Quando voltar a sugerir instalar o aplicativo ou ligar as notificações.", duracao: "7 e 14 dias" },
+  { oque: "TV do centro cirúrgico", chaves: ["avanest:tv-tema", "avanest:tv-recarregou-para", "avanest:tv-voltar-tela-cheia"], onde: "Armazenamento local e da sessão", para: "Fundo claro ou escuro, e voltar à tela cheia depois que a TV se atualiza sozinha.", duracao: "O fundo, até você mudar; o resto, até fechar a aba" },
+  { oque: "Abertura da marca", chaves: ["avanest:abertura"], onde: "Armazenamento da sessão", para: "Não repetir a animação de abertura na mesma visita.", duracao: "Até fechar a aba" },
 ];
 
 const ANUNCIOS: Linha[] = [
   {
-    nome: "_gcl_au",
+    oque: "Medição do Google Ads",
+    cookie: "_gcl_au",
     onde: "Cookie do Google no domínio do AVANEST",
     para: "Ligar uma visita ou um cadastro ao anúncio do Google que a trouxe.",
     duracao: "90 dias",
   },
   {
-    nome: "Cookies do Google nos domínios dele",
+    oque: "Cookies do Google nos domínios dele",
     onde: "Google (por exemplo google.com e doubleclick.net)",
     para: "A mesma medição, do lado do Google, conforme a política de privacidade dele.",
     duracao: "Definida pelo Google",
@@ -85,12 +105,12 @@ function Tabela({ titulo, linhas }: { titulo: string; linhas: Linha[] }) {
       <table className="legalTabela">
         <caption className="sr-only">{titulo}</caption>
         <thead>
-          <tr><th scope="col">Nome</th><th scope="col">Onde fica</th><th scope="col">Para quê</th><th scope="col">Por quanto tempo</th></tr>
+          <tr><th scope="col">O quê</th><th scope="col">Onde fica</th><th scope="col">Para quê</th><th scope="col">Por quanto tempo</th></tr>
         </thead>
         <tbody>
           {linhas.map((l) => (
-            <tr key={l.nome}>
-              <th scope="row"><code translate="no">{l.nome}</code></th>
+            <tr key={l.oque}>
+              <th scope="row">{l.oque}{l.cookie && <> <code translate="no">{l.cookie}</code></>}</th>
               <td data-rotulo="Onde fica">{l.onde}</td>
               <td data-rotulo="Para quê">{l.para}</td>
               <td data-rotulo="Por quanto tempo">{l.duracao}</td>
@@ -107,7 +127,7 @@ export default function CookiesPage() {
     <PaginaLegal
       titulo="Política de Cookies"
       resumo="Quais cookies e dados guardados no navegador o AVANEST usa, para quê, por quanto tempo — e como mudar a sua escolha."
-      vigencia="14 de outubro de 2026"
+      vigencia="27 de outubro de 2026"
     >
       <div className="legalEmResumo">
         <p><b>Em resumo</b></p>
@@ -161,8 +181,8 @@ export default function CookiesPage() {
       <Tabela titulo="Cookies de medição de anúncios" linhas={ANUNCIOS} />
       <ul>
         <li>
-          <b>Nunca dentro do sistema.</b> Lá os endereços das páginas levam identificadores de
-          pacientes e avaliações, e o código do Google não é carregado — nem para quem aceitou.
+          <b>Nunca dentro do sistema.</b> Lá ficam os dados de pacientes, e o código do Google não é
+          carregado — nem para quem aceitou.
         </li>
         <li>
           <b>Só para medir.</b> O código é configurado sem remarketing, sem anúncio personalizado e sem
