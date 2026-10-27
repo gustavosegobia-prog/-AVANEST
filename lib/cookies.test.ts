@@ -12,23 +12,33 @@ const ler = (c: string) => fs.readFileSync(new URL(`../${c}`, import.meta.url), 
 const politica = ler("app/cookies/page.tsx");
 
 test("a política de cookies lista o que o sistema grava, com os nomes do código", () => {
-  assert.ok(politica.includes(`nome: "${COOKIE_LOCAL}"`), COOKIE_LOCAL);
+  // Os cookies de verdade aparecem pelo nome; as chaves do armazenamento
+  // local ficam em `chaves`, que o teste lê e a página não mostra.
+  const tem = (nome: string) => politica.includes(`"${nome}"`);
+  assert.ok(politica.includes(`cookie: "${COOKIE_LOCAL}"`), COOKIE_LOCAL);
   assert.equal(COOKIE_LOCAL_MAX_AGE, 60 * 60 * 24 * 30, "a política diz 30 dias para o cookie do local");
-  assert.ok(politica.includes(`nome: "${CHAVE_DO_TEMA}"`), CHAVE_DO_TEMA);
-  assert.ok(politica.includes(`nome: "${CHAVE_DO_TEMA_DA_TV}"`), CHAVE_DO_TEMA_DA_TV);
+  assert.ok(tem(CHAVE_DO_TEMA), CHAVE_DO_TEMA);
+  assert.ok(tem(CHAVE_DO_TEMA_DA_TV), CHAVE_DO_TEMA_DA_TV);
   for (const chave of ler("components/centro/painel-tv.tsx").matchAll(/const CHAVE_[A-Z_]+ = "(avanest:[^"]+)"/g)) {
-    assert.ok(politica.includes(chave[1]), `a TV do centro cirúrgico: ${chave[1]}`);
+    assert.ok(tem(chave[1]), `a TV do centro cirúrgico: ${chave[1]}`);
   }
-  assert.ok(politica.includes(`nome: "${CHAVE_DO_CONSENTIMENTO}"`), CHAVE_DO_CONSENTIMENTO);
+  assert.ok(tem(CHAVE_DO_CONSENTIMENTO), CHAVE_DO_CONSENTIMENTO);
 
   const fila = ler("lib/evolucao/fila.ts").match(/`(avanest:evolucao-fila:)\$\{/);
-  assert.ok(fila && politica.includes(`nome: "${fila[1]}…"`), "a fila da ficha");
+  assert.ok(fila && tem(fila[1]), "a fila da ficha");
 
   const tutorial = ler("lib/tutorial.ts").match(/CHAVE_TUTORIAL = "([^"]+)"/);
-  assert.ok(tutorial && politica.includes(tutorial[1]), "o tutorial");
+  assert.ok(tutorial && tem(tutorial[1]), "o tutorial");
 
   const deposito = ler("public/sw.js").match(/const DEPOSITO = "([^"]+)"/);
-  assert.ok(deposito && politica.includes(`nome: "${deposito[1]}"`), "o cache do service worker");
+  assert.ok(deposito && tem(deposito[1]), "o cache do service worker");
+});
+
+test("a política de cookies não mostra os nomes internos do armazenamento", () => {
+  // Quem lê precisa saber o que é, para quê e por quanto tempo. As chaves
+  // internas só contavam como o sistema funciona por dentro.
+  assert.doesNotMatch(politica, /l\.chaves/, "a tabela não desenha `chaves`");
+  assert.doesNotMatch(politica, /code-verifier|identificadores de pacientes/);
 });
 
 test("a política de cookies tem o painel de escolha e é página pública", () => {
