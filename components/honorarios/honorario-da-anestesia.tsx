@@ -1,29 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { Gaveta } from "@/components/admin-ui";
 import { Icone } from "@/components/icone";
-import { divergeDoAnotado, padroesDaBusca, rotuloDoPorte } from "@/lib/honorarios-telas";
+import { divergeDoAnotado, rotuloDoPorte, type MarcaDaClinica } from "@/lib/honorarios-telas";
 import { Etiqueta, dataBr, dinheiro, mensagemDoBanco } from "./comum";
 import {
-  calcularNoServidor, codigosSalvos, gravarCodigos, sugestoesDeCodigos, tussEmUso, type Codigo, type Resultado,
+  calcularNoServidor, codigosSalvos, conferirNoServidor, ensinarProcedimento, gravarCodigos, marcasDaClinica,
+  sugestoesDeCodigos, tussEmUso, type Codigo, type Modo, type Resultado, type Sugestao,
 } from "./calculo-da-anestesia";
+import { BuscaNaTuss, CodigosEscolhidos } from "./escolha-de-codigos";
 import estilos from "./honorarios.module.css";
 
 // Conferir o honorário de uma anestesia da Produção: escolher os códigos TUSS
-// dos procedimentos, marcar se foi urgência e calcular. A conta é feita no
-// servidor (app/api/honorarios/calcular), com o contrato do convênio — que o
-// médico não abre —, e o resultado volta com o que faltou, se faltou.
+// dos procedimentos, marcar se foi urgência e as marcas da clínica, e
+// calcular. A conta é feita no servidor (app/api/honorarios/calcular), com o
+// contrato do convênio — que o médico não abre —, e o resultado volta com o
+// que faltou, se faltou.
+//
+// Dois modos. O médico, na Produção dele, marca a urgência e as marcas. O
+// Financeiro, na produção que a equipe enviou, fecha os códigos e confere: a
+// urgência e as marcas aparecem como o médico deixou, e cada conferência
+// ensina a lista da clínica (o nome do procedimento → os códigos).
 
 export type AnestesiaDaProducao = {
   id: string; data: string; paciente: string; convenio: string; procedimento: string | null;
   /** O valor que o médico anotou: o resultado diz quanto a tabela dá a mais ou a menos. */
   valor?: number | string | null;
   urgencia?: boolean | null; honorario_situacao?: string | null; honorario_valor_previsto?: number | string | null;
+  /** As marcas da clínica que o médico marcou (cada uma puxa um código a mais). */
+  marcas?: string[] | null;
+  /** Quem anotou — o Financeiro vê a produção da equipe inteira. */
+  profissional?: string | null;
 };
 
-export type CamposDoHonorario = { honorario_situacao: string; honorario_valor_previsto: number | null; urgencia: boolean };
+export type CamposDoHonorario = {
+  honorario_situacao: string; honorario_valor_previsto: number | null; urgencia?: boolean; marcas?: string[];
+};
+
+/** O texto do que veio pronto: da lista da clínica, ou de uma anotação anterior. */
+export function origemDaSugestao(s: Sugestao): string {
+  return s.daLista
+    ? "Código da lista da clínica para este procedimento."
+    : `Sugerido pelo que foi usado em ${dataBr(s.data)} para o mesmo procedimento.`;
+}
 
 const ORIGEM = {
   valor_fixo_do_contrato: "Valor fixo da tabela do plano",
@@ -32,24 +52,31 @@ const ORIGEM = {
 } as const;
 
 export function HonorarioDaAnestesia({
-  anestesia, onFechar, onCalculado, onProxima,
+  anestesia, modo = "medico", onFechar, onCalculado, onProxima, onConferida,
 }: {
   anestesia: AnestesiaDaProducao;
+  modo?: Modo;
   onFechar: () => void;
   onCalculado: (id: string, campos: CamposDoHonorario) => void;
   /** A próxima anestesia do mês ainda sem cálculo; ausente quando não há. */
   onProxima?: () => void;
+  /** Financeiro: o honorário desta anestesia foi dado por conferido. */
+  onConferida?: (id: string) => void;
 }) {
+  const doFinanceiro = modo === "financeiro";
   const [codigos, setCodigos] = useState<Codigo[] | null>(null);
   const [urgencia, setUrgencia] = useState(Boolean(anestesia.urgencia));
+  const [marcas, setMarcas] = useState<string[]>(anestesia.marcas ?? []);
+  const [listaDeMarcas, setListaDeMarcas] = useState<MarcaDaClinica[]>([]);
+  const [conferindo, setConferindo] = useState(false);
+  const [conferida, setConferida] = useState(false);
   const [busca, setBusca] = useState("");
-  const [achados, setAchados] = useState<Codigo[]>([]);
   const [tussId, setTussId] = useState<string | null | undefined>(undefined);
   const [calculando, setCalculando] = useState(false);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<Resultado | null>(null);
-  // De quando é a sugestão de códigos (a última anotação com o mesmo procedimento).
-  const [sugeridoDe, setSugeridoDe] = useState<string | null>(null);
+  // De onde vieram os códigos sugeridos: a lista da clínica ou uma anotação anterior.
+  const [sugestao, setSugestao] = useState<Sugestao | null>(null);
 
   // Os códigos já escolhidos e a versão da TUSS em uso. Sem código ainda: os
   // da última anotação com o mesmo procedimento escrito, como sugestão; e,
@@ -57,72 +84,38 @@ export function HonorarioDaAnestesia({
   useEffect(() => {
     let valendo = true;
     void (async () => {
-      const [salvos, tuss] = await Promise.all([codigosSalvos([anestesia.id]), tussEmUso()]);
+      const [salvos, tuss, daClinica] = await Promise.all([codigosSalvos([anestesia.id]), tussEmUso(), marcasDaClinica()]);
       if (!valendo) return;
       setTussId(tuss);
+      setListaDeMarcas(daClinica);
       const deles = salvos.get(anestesia.id) ?? [];
       if (deles.length || !anestesia.procedimento?.trim()) {
         setCodigos(deles);
         return;
       }
-      const sugestao = (await sugestoesDeCodigos([anestesia])).get(anestesia.id);
+      const achada = (await sugestoesDeCodigos([anestesia], modo)).get(anestesia.id);
       if (!valendo) return;
-      if (sugestao) {
-        setCodigos(sugestao.codigos);
-        setSugeridoDe(sugestao.data);
+      if (achada) {
+        setCodigos(achada.codigos);
+        setSugestao(achada);
       } else {
         setCodigos([]);
         setBusca(anestesia.procedimento);
       }
     })();
     return () => { valendo = false; };
-  }, [anestesia]);
-
-  // A busca na TUSS em uso: o começo do código, ou um pedaço da descrição.
-  useEffect(() => {
-    const termo = busca.trim();
-    if (!tussId || termo.length < 3) return;
-    let valendo = true;
-    const espera = setTimeout(async () => {
-      const base = () => createClient().from("tuss_codigos").select("codigo, descricao").eq("versao_id", tussId).eq("situacao", "ativo");
-      let achados: Codigo[] = [];
-      if (/^[\d.\s-]+$/.test(termo)) {
-        const { data } = await base().like("codigo", `${termo.replace(/\D/g, "")}%`).order("codigo").limit(8);
-        achados = (data ?? []) as Codigo[];
-      } else {
-        // Todas as palavras primeiro; sem resultado, com uma palavra a menos.
-        const padroes = padroesDaBusca(termo);
-        for (let n = padroes.length; n > 0 && !achados.length && valendo; n--) {
-          let q = base();
-          for (const p of padroes.slice(0, n)) q = q.ilike("descricao", p);
-          const { data } = await q.order("codigo").limit(8);
-          achados = (data ?? []) as Codigo[];
-        }
-      }
-      if (valendo) setAchados(achados);
-    }, 250);
-    return () => { valendo = false; clearTimeout(espera); };
-  }, [busca, tussId]);
+  }, [anestesia, modo]);
 
   /** Mudou o código, mudou a conta: o resultado antigo sai da tela. */
   function mudarCodigos(novos: Codigo[]) {
     setCodigos(novos);
-    setSugeridoDe(null);
+    setSugestao(null);
     setResultado(null);
   }
 
   function adicionar(c: Codigo) {
     if (codigos?.some((x) => x.codigo === c.codigo)) return;
     mudarCodigos([...(codigos ?? []), c]);
-    setBusca("");
-    setAchados([]);
-  }
-
-  function subir(i: number) {
-    if (!codigos || i === 0) return;
-    const novos = [...codigos];
-    [novos[i - 1], novos[i]] = [novos[i], novos[i - 1]];
-    mudarCodigos(novos);
   }
 
   async function calcular() {
@@ -131,10 +124,17 @@ export function HonorarioDaAnestesia({
     setResultado(null);
     try {
       await gravarCodigos(anestesia.id, codigos ?? [], tussId ?? null);
-      const r = await calcularNoServidor(anestesia.id, urgencia);
+      // A urgência e as marcas vão só pelo médico: no Financeiro ficam como ele deixou.
+      const r = doFinanceiro
+        ? await calcularNoServidor(anestesia.id)
+        : await calcularNoServidor(anestesia.id, urgencia, marcas);
       setResultado(r);
-      setSugeridoDe(null);
-      onCalculado(anestesia.id, { honorario_situacao: r.situacao, honorario_valor_previsto: r.valorPrevisto, urgencia });
+      setSugestao(null);
+      setConferida(false);
+      if (doFinanceiro) void ensinarProcedimento(anestesia.procedimento, codigos ?? []);
+      onCalculado(anestesia.id, doFinanceiro
+        ? { honorario_situacao: r.situacao, honorario_valor_previsto: r.valorPrevisto }
+        : { honorario_situacao: r.situacao, honorario_valor_previsto: r.valorPrevisto, urgencia, marcas });
     } catch (e) {
       setErro(mensagemDoBanco(e, "Não foi possível calcular agora."));
     } finally {
@@ -142,19 +142,47 @@ export function HonorarioDaAnestesia({
     }
   }
 
+  /** Financeiro: dá por conferido o honorário que acabou de sair. */
+  async function conferir() {
+    setConferindo(true);
+    setErro("");
+    try {
+      const feitas = await conferirNoServidor([anestesia.id]);
+      if (feitas.includes(anestesia.id)) {
+        setConferida(true);
+        onConferida?.(anestesia.id);
+      }
+    } catch (e) {
+      setErro(mensagemDoBanco(e, "Não foi possível conferir agora."));
+    } finally {
+      setConferindo(false);
+    }
+  }
+
   const m = resultado?.memoria;
   const anotado = Number(anestesia.valor ?? 0) || 0;
   const previsto = resultado?.valorPrevisto ?? null;
+  // As marcas que aparecem: as ativas, e a desativada que esta anestesia já tinha.
+  const marcasNaTela = listaDeMarcas.filter((x) => x.ativo !== false || marcas.includes(x.id));
+  const nomesMarcados = listaDeMarcas.filter((x) => marcas.includes(x.id)).map((x) => x.nome);
+  const podeConferir = doFinanceiro && resultado?.situacao === "calculado" && !conferida;
 
-  // Depois de calcular, o rodapé fecha o assunto: pronto, ou a próxima do mês.
-  const rodape = resultado ? (onProxima ? <>
-    <button type="button" className="outlineClinical" onClick={onFechar}>Pronto</button>
-    <button type="button" className={`primaryClinical compact ${estilos.comIcone}`} onClick={onProxima}>
-      Próxima sem cálculo <Icone nome="avancar" tamanho={16} />
-    </button>
-  </> : (
-    <button type="button" className="primaryClinical compact" onClick={onFechar}>Pronto</button>
-  )) : <>
+  // Depois de calcular, o rodapé fecha o assunto: conferir (no Financeiro),
+  // pronto, ou a próxima.
+  const rodape = resultado ? <>
+    <button type="button" className={onProxima || podeConferir ? "outlineClinical" : "primaryClinical compact"} onClick={onFechar}>Pronto</button>
+    {podeConferir && (
+      <button type="button" className={`${onProxima ? "outlineClinical" : "primaryClinical compact"} ${estilos.comIcone}`}
+        onClick={() => void conferir()} disabled={conferindo}>
+        <Icone nome="confirmado" tamanho={16} /> {conferindo ? "Conferindo…" : "Marcar como conferido"}
+      </button>
+    )}
+    {onProxima && (
+      <button type="button" className={`primaryClinical compact ${estilos.comIcone}`} onClick={onProxima}>
+        {doFinanceiro ? "Próxima" : "Próxima sem cálculo"} <Icone nome="avancar" tamanho={16} />
+      </button>
+    )}
+  </> : <>
     <button type="button" className="outlineClinical" onClick={onFechar}>Fechar</button>
     <button type="button" className={`primaryClinical compact ${estilos.comIcone}`} onClick={calcular} disabled={calculando || !codigos?.length}>
       <Icone nome="calculadora" tamanho={16} /> {calculando ? "Calculando…" : "Calcular honorário"}
@@ -163,7 +191,10 @@ export function HonorarioDaAnestesia({
 
   return (
     <Gaveta titulo="Honorário da anestesia" onPedirFechar={onFechar}
-      subtitulo={<>{anestesia.paciente} · {dataBr(anestesia.data)} · {anestesia.convenio}{anestesia.procedimento ? ` · ${anestesia.procedimento}` : ""}</>}
+      subtitulo={<>
+        {anestesia.paciente} · {dataBr(anestesia.data)} · {anestesia.convenio}{anestesia.procedimento ? ` · ${anestesia.procedimento}` : ""}
+        {anestesia.profissional ? ` · ${anestesia.profissional}` : ""}
+      </>}
       rodape={rodape}>
       <div className="admCampos">
         {tussId === null && (
@@ -179,60 +210,49 @@ export function HonorarioDaAnestesia({
           {codigos === null ? <p className="admTextoFraco" role="status">Carregando…</p> : codigos.length === 0 ? (
             <p className="admTextoFraco">Nenhum código escolhido ainda.</p>
           ) : (
-            <ol className={estilos.codigosEscolhidos}>
-              {codigos.map((c, i) => (
-                <li key={c.codigo}>
-                  <span className={estilos.codigo}>{c.codigo}</span>
-                  <span>{c.descricao || "—"}</span>
-                  <span className={estilos.acoesDoCodigo}>
-                    {i > 0 && (
-                      <button type="button" className={`outlineClinical compacto ${estilos.comIcone}`}
-                        aria-label={`Subir ${c.codigo} para ${i}º`} onClick={() => subir(i)}>
-                        <Icone nome="subir" tamanho={14} /> Subir
-                      </button>
-                    )}
-                    <button type="button" className="outlineClinical compacto" aria-label={`Remover ${c.codigo}`}
-                      onClick={() => mudarCodigos(codigos.filter((x) => x.codigo !== c.codigo))}>Remover</button>
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <CodigosEscolhidos codigos={codigos} onMudar={mudarCodigos} />
           )}
-          {sugeridoDe && codigos?.length ? (
+          {sugestao && codigos?.length ? (
             <p className="admNota" role="status">
               <Icone nome="alerta" tamanho={14} />
-              Sugerido pelo que você usou em {dataBr(sugeridoDe)} para o mesmo procedimento. Confira antes de calcular.
+              {origemDaSugestao(sugestao)} Confira antes de calcular.
             </p>
           ) : null}
-          <label className="admBusca">
-            <span className="sr-only">Buscar código TUSS</span>
-            <Icone nome="busca" tamanho={16} />
-            <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} disabled={!tussId}
-              placeholder="Código TUSS ou nome do procedimento" />
-          </label>
-          {busca.trim().length >= 3 && achados.length > 0 && (
-            <ul className={estilos.achados} aria-label="Códigos encontrados: escolha para acrescentar">
-              {achados.map((c) => (
-                <li key={c.codigo}>
-                  <button type="button" onClick={() => adicionar(c)}>
-                    <span className={estilos.codigo}>{c.codigo}</span><span>{c.descricao}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <BuscaNaTuss tussId={tussId} busca={busca} onBusca={setBusca} onEscolher={adicionar} />
         </div>
 
-        <label className={estilos.marca}>
-          <input type="checkbox" checked={urgencia} onChange={(e) => { setUrgencia(e.target.checked); setResultado(null); }} />
-          <span>Foi urgência</span>
-        </label>
+        {doFinanceiro ? (
+          // No Financeiro, a urgência e as marcas são as do médico.
+          <p className={estilos.marcadoPeloMedico}>
+            <b>Marcado pelo médico:</b>{" "}
+            {[urgencia ? "urgência" : "", ...nomesMarcados].filter(Boolean).join(" · ") || "nada"}
+          </p>
+        ) : (
+          <fieldset className={estilos.marcas}>
+            <legend className="sr-only">Urgência e marcas</legend>
+            <label className={estilos.marca}>
+              <input type="checkbox" checked={urgencia} onChange={(e) => { setUrgencia(e.target.checked); setResultado(null); }} />
+              <span>Foi urgência</span>
+            </label>
+            {marcasNaTela.map((x) => (
+              <label key={x.id} className={estilos.marca}>
+                <input type="checkbox" checked={marcas.includes(x.id)}
+                  onChange={(e) => { setMarcas(e.target.checked ? [...marcas, x.id] : marcas.filter((id) => id !== x.id)); setResultado(null); }} />
+                <span>{x.nome}</span>
+              </label>
+            ))}
+          </fieldset>
+        )}
 
         {erro && <p className="clinicalError" role="alert">{erro}</p>}
 
         {resultado && m && (
           <div className={estilos.resultado} aria-live="polite">
-            <p className={estilos.salvo}><Icone nome="confirmado" tamanho={15} /> Guardado na sua produção</p>
+            <p className={estilos.salvo}>
+              <Icone nome="confirmado" tamanho={15} />
+              {doFinanceiro ? `Guardado na produção${anestesia.profissional ? ` de ${anestesia.profissional}` : ""}` : "Guardado na sua produção"}
+              {conferida && " · conferido"}
+            </p>
             <div className={estilos.resultadoTopo}>
               <div>
                 <span>Valor previsto pela tabela</span>
@@ -245,7 +265,7 @@ export function HonorarioDaAnestesia({
             {previsto != null && divergeDoAnotado(previsto, anotado) && (
               <p className="admNota">
                 <Icone nome="alerta" tamanho={14} />
-                Você anotou {dinheiro(anotado)}: a tabela dá {dinheiro(Math.abs(previsto - anotado))}
+                {doFinanceiro ? "O médico anotou" : "Você anotou"} {dinheiro(anotado)}: a tabela dá {dinheiro(Math.abs(previsto - anotado))}
                 {previsto > anotado ? " a mais." : " a menos."}
               </p>
             )}

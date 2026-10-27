@@ -3535,6 +3535,13 @@ button:disabled{cursor:not-allowed}
    linha que ainda não foi criada. */
 .producaoNovo{padding-left:12px}
 .producaoNovo>button{grid-column:5/-1;height:38px}
+/* Urgência e marcas da clínica: toques de liga-desliga na linha de baixo. */
+.producaoNovo>.producaoNovoMarcas{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+.producaoChip{min-height:34px;padding:0 14px;border:1px solid var(--cor-borda-forte);border-radius:999px;background:var(--cor-superficie);
+  color:var(--cor-tinta-fraca);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+.producaoChip[aria-pressed=true]{background:var(--cor-marca-suave);border-color:var(--cor-marca);color:var(--cor-marca-forte)}
+.producaoChip:focus-visible{outline:0;box-shadow:var(--foco)}
+@media(pointer:coarse){.producaoChip{min-height:44px}}
 
 @media(max-width:1100px){
   .producaoItem,.producaoNovo{grid-template-columns:1.6fr 1fr 1.3fr .85fr .95fr 32px;gap:6px}
@@ -3544,6 +3551,8 @@ button:disabled{cursor:not-allowed}
   .producaoItem .producaoNome,.producaoNovo .producaoNome{grid-column:1/-1}
   .producaoApagar{justify-self:end}
   .producaoNovo>button{grid-column:1/-1}
+  /* No celular o botão desce para o fim: as caixinhas vêm antes de anotar. */
+  .producaoNovo>button{order:1}
 }
 
 /* --- As duas notas do mês ----------------------------------------------
@@ -3647,6 +3656,9 @@ button:disabled{cursor:not-allowed}
 .producaoHonorarioDetalhe p{margin:0;font-size:14px;line-height:1.45;color:var(--cor-tinta-fraca);max-width:62ch}
 .producaoHonorarioDetalhe b{font-variant-numeric:tabular-nums;color:var(--cor-tinta)}
 .producaoHonorarioDetalhe .pendente{color:var(--cor-atencao)}
+.producaoHonorarioAcoes{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+@media(max-width:860px){.producaoHonorarioAcoes{justify-content:flex-start}}
+.producaoRecado{margin:0 0 12px;font-size:14px;font-weight:700;color:var(--cor-sucesso)}
 .producaoEmDesenvolvimento{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-style:normal;
   background:var(--cor-atencao-suave);color:var(--cor-atencao);font-size:11.5px;font-weight:800;vertical-align:1px}
 @media(max-width:860px){

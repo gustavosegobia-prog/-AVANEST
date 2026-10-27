@@ -196,6 +196,9 @@ export default async function DashboardPage({
   const abaDaEscala = ["escala", "producao", "trocas"].includes(aba ?? "")
     ? aba as "escala" | "producao" | "trocas"
     : undefined;
+  // No Financeiro, "producao" é a Produção da equipe: o aviso de honorário
+  // pendente em Tabelas e honorários leva direto à lista que se confere.
+  const tarefaDoFinanceiro = initialView === "financeiro" && aba === "producao" ? "producao" : undefined;
   // O PLANTÃO QUE A NOTIFICAÇÃO PEDIU PARA ABRIR.
   //
   // "Ao tocar numa notificação de plantão, abrir diretamente o plantão
@@ -491,6 +494,7 @@ export default async function DashboardPage({
       trocasEsperando={trocasEsperando ?? 0}
       testeAte={testeAte}
       abaDaEscala={abaDaEscala}
+      tarefaDoFinanceiro={tarefaDoFinanceiro}
       plantaoEmFoco={plantaoEmFoco}
       abaDoChat={abaDoChat}
       avisos={avisosVisiveis}

@@ -368,6 +368,7 @@ ol.listaSimples { list-style: decimal; }
 .loteQuem { display: grid; gap: 2px; min-width: 0; font-size: 14px; }
 .loteCodigos { display: flex; flex-wrap: wrap; gap: 4px var(--esp-3); margin-top: 4px; font-size: 13px; }
 .loteCodigos em { font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--cor-atencao); }
+.loteMarcas { font-size: 12.5px; font-weight: 700; color: var(--cor-marca-forte); }
 .loteDesfecho { display: grid; gap: 2px; justify-items: end; text-align: right; font-size: 13.5px; }
 .textoOk { display: inline-flex; align-items: center; gap: 5px; color: var(--cor-sucesso); font-variant-numeric: tabular-nums; }
 .textoAtencao { color: var(--cor-atencao); font-weight: 700; }
@@ -384,3 +385,12 @@ span.textoAtencao svg { flex: none; margin-top: 2px; }
   .codigosEscolhidos li { grid-template-columns: auto auto minmax(0, 1fr); }
   .acoesDoCodigo { grid-column: 2 / -1; }
 }
+
+/* Urgência e marcas da clínica: caixinhas lado a lado, quebrando linha. */
+.marcas { display: flex; flex-wrap: wrap; gap: 0 var(--esp-5); margin: 0; padding: 0; border: 0; min-width: 0; }
+.marcadoPeloMedico { margin: 0; font-size: 14px; color: var(--cor-tinta-fraca); }
+.marcadoPeloMedico b { color: var(--cor-tinta); }
+
+/* Códigos e marcas: os códigos de cada procedimento da lista, um por linha. */
+.codigoDaLista { display: block; }
+.codigoDaLista + .codigoDaLista { margin-top: 6px; }

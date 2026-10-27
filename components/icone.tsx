@@ -60,6 +60,8 @@ const TRACOS = {
   calendario: <><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3.5v3"/><path d="M16 3.5v3"/><path d="M8 13.5h3"/><path d="M8 17h8"/></>,
   subir: <><path d="M12 19.5v-15"/><path d="m6 10.5 6-6 6 6"/></>,
   avancar: <><path d="M4.5 12h15"/><path d="m13.5 6 6 6-6 6"/></>,
+  // As marcas da clínica: o que o médico marca e puxa um código a mais.
+  etiqueta: <><path d="M3.5 12.3V4.5a1 1 0 0 1 1-1h7.8l8.2 8.2a1.4 1.4 0 0 1 0 2l-6.8 6.8a1.4 1.4 0 0 1-2 0z"/><circle cx="8.2" cy="8.2" r="1.4"/></>,
 } as const;
 
 export function Icone({ nome, tamanho = 16, rotulo, className }: Props) {

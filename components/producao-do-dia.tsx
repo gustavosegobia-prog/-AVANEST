@@ -12,7 +12,8 @@ import { camposDaBaixa, type SituacaoDaProducao } from "@/lib/baixa-da-producao"
 import { chaveDoPagador, grafiaConhecida, rotulosDePagador } from "@/lib/financeiro-indicadores";
 import { HonorarioDaAnestesia, SeloDoHonorario } from "@/components/honorarios/honorario-da-anestesia";
 import { CalcularOMes } from "@/components/honorarios/calcular-o-mes";
-import { resumoDoHonorarioDoMes } from "@/lib/honorarios-telas";
+import { conferirNoServidor, marcasDaClinica } from "@/components/honorarios/calculo-da-anestesia";
+import { resumoDoHonorarioDoMes, type MarcaDaClinica } from "@/lib/honorarios-telas";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -44,6 +45,8 @@ export type Producao = {
    * migração não foi aplicada — e aí a linha não mostra o honorário.
    */
   urgencia?: boolean;
+  /** As marcas da clínica que o médico marcou (migração 202610270001). */
+  marcas?: string[] | null;
   honorario_situacao?: string;
   honorario_valor_previsto?: number | string | null;
 };
@@ -281,8 +284,19 @@ export function ProducaoDoDia({
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
-  const vazio = { paciente: "", convenio: "Particular", procedimento: "", valor: "" };
+  const vazio = { paciente: "", convenio: "Particular", procedimento: "", valor: "", urgencia: false, marcas: [] as string[] };
   const [novo, setNovo] = useState(vazio);
+  // A urgência e as marcas da clínica (um bloqueio, um cateter): cada marca
+  // puxa um código a mais no Financeiro. Marca-se na hora de anotar, que é
+  // quando se lembra.
+  const [marcasDisponiveis, setMarcasDisponiveis] = useState<MarcaDaClinica[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    void marcasDaClinica().then((m) => { if (vivo) setMarcasDisponiveis(m.filter((x) => x.ativo !== false)); });
+    return () => { vivo = false; };
+  }, []);
+  const alternarMarca = (id: string) =>
+    setNovo((n) => ({ ...n, marcas: n.marcas.includes(id) ? n.marcas.filter((x) => x !== id) : [...n.marcas, id] }));
   const [lendoFoto, setLendoFoto] = useState(false);
   const [avisoFoto, setAvisoFoto] = useState("");
   // O texto que saiu da foto, guardado só quando algum campo não foi achado.
@@ -406,12 +420,15 @@ export function ProducaoDoDia({
       convenio: grafiaConhecida(novo.convenio, conveniosConhecidos),
       procedimento: novo.procedimento.trim() || null,
       valor: lerValor(novo.valor),
+      urgencia: novo.urgencia,
+      ...(novo.marcas.length ? { marcas: novo.marcas } : {}),
     });
     setSalvando(false);
     if (error) { setErro("Não foi possível salvar a anotação."); return; }
     // Convênio e procedimento ficam: numa sala de cirurgia o caso seguinte
     // costuma ser do mesmo convênio, e limpar tudo obrigaria a redigitar.
-    setNovo({ ...novo, paciente: "", valor: "" });
+    // A urgência e as marcas são de cada paciente: voltam desmarcadas.
+    setNovo({ ...novo, paciente: "", valor: "", urgencia: false, marcas: [] });
     setAvisoFoto("");
     void carregar();
     document.getElementById("producao-paciente")?.focus();
@@ -576,6 +593,14 @@ export function ProducaoDoDia({
         <button className="primaryClinical compact" disabled={salvando || !novo.paciente.trim()}>
           {salvando ? "Salvando…" : "+ Anotar"}
         </button>
+        <div className="producaoNovoMarcas" role="group" aria-label="Urgência e marcas do paciente">
+          <button type="button" className="producaoChip" aria-pressed={novo.urgencia}
+            onClick={() => setNovo((n) => ({ ...n, urgencia: !n.urgencia }))}>Urgência</button>
+          {marcasDisponiveis.map((m) => (
+            <button type="button" key={m.id} className="producaoChip" aria-pressed={novo.marcas.includes(m.id)}
+              onClick={() => alternarMarca(m.id)}>{m.nome}</button>
+          ))}
+        </div>
       </form>
     </div>
   );
@@ -660,6 +685,14 @@ export function ProducaoDoMes({
   // itens, e a lista não pode se refazer no meio da conta.
   const [loteDoMes, setLoteDoMes] = useState<Producao[] | null>(null);
   const comHonorario = itens.some((i) => i.honorario_situacao !== undefined);
+  // Os nomes das marcas, para a linha dizer o que foi marcado.
+  const [nomesDasMarcas, setNomesDasMarcas] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    if (!comHonorario) return;
+    let vivo = true;
+    void marcasDaClinica().then((m) => { if (vivo) setNomesDasMarcas(new Map(m.map((x) => [x.id, x.nome]))); });
+    return () => { vivo = false; };
+  }, [comHonorario]);
   // O honorário previsto do mês pelas tabelas dos planos: o que já tem valor,
   // e quantas anestesias faltam calcular ou estão pendentes.
   const honorarioDoMes = useMemo(() => resumoDoHonorarioDoMes(itens), [itens]);
@@ -1167,6 +1200,8 @@ export function ProducaoDoMes({
                 <strong>{i.paciente}</strong>
                 <small>
                   {i.convenio}{i.procedimento ? ` · ${i.procedimento}` : ""}
+                  {i.urgencia ? " · urgência" : ""}
+                  {(i.marcas ?? []).map((id) => nomesDasMarcas.get(id)).filter(Boolean).map((n) => ` · ${n}`).join("")}
                 </small>
                 {comHonorario && (
                   <SeloDoHonorario situacao={i.honorario_situacao} valor={i.honorario_valor_previsto} anotado={i.valor}
@@ -1248,11 +1283,24 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
     id: string; data: string; paciente: string; convenio: string;
     procedimento: string | null; valor: number; situacao: string;
     profissional: string; enviado_em: string;
+    // O honorário (Tabelas e honorários): lido à parte, depois da lista.
+    urgencia?: boolean; marcas?: string[] | null;
+    honorario_situacao?: string; honorario_valor_previsto?: number | string | null;
   };
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const { oculto, alternar, mascara } = useValoresOcultos();
+  /**
+   * O código sai aqui (27/10/2026): o médico anota o procedimento, a urgência
+   * e as marcas; o Financeiro confere os códigos — que já vêm pelo nome do
+   * procedimento —, calcula e dá por conferido o valor que vai para a cobrança.
+   */
+  const [abertaNoHonorario, setAbertaNoHonorario] = useState<Linha | null>(null);
+  const [filaDeCodigos, setFilaDeCodigos] = useState<Linha[] | null>(null);
+  const [conferindoTodas, setConferindoTodas] = useState(false);
+  const [recado, setRecado] = useState("");
+  const [nomesDasMarcas, setNomesDasMarcas] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     let vivo = true;
@@ -1267,10 +1315,52 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
         return;
       }
       setErro("");
-      setLinhas((data ?? []) as Linha[]);
+      const recebidas = (data ?? []) as Linha[];
+      setLinhas(recebidas);
+      // O honorário de cada uma, pela política que já deixa o Financeiro ler o
+      // que foi enviado. Sem as colunas no banco, a lista segue como era.
+      if (!recebidas.length) return;
+      const extras = new Map<string, Partial<Linha>>();
+      for (let i = 0; i < recebidas.length; i += 100) {
+        const { data: deles, error: semHonorario } = await createClient().from("producao_do_dia")
+          .select("id, urgencia, marcas, honorario_situacao, honorario_valor_previsto")
+          .in("id", recebidas.slice(i, i + 100).map((l) => l.id));
+        if (semHonorario) return;
+        for (const d of (deles ?? []) as Array<Partial<Linha> & { id: string }>) extras.set(d.id, d);
+      }
+      if (!vivo) return;
+      setLinhas((ls) => ls.map((l) => ({ ...l, ...extras.get(l.id) })));
+      const marcas = await marcasDaClinica();
+      if (vivo) setNomesDasMarcas(new Map(marcas.map((m) => [m.id, m.nome])));
     })();
     return () => { vivo = false; };
   }, [mes]);
+
+  const comHonorario = linhas.some((l) => l.honorario_situacao !== undefined);
+  const honorario = useMemo(() => resumoDoHonorarioDoMes(linhas), [linhas]);
+  const semCodigoConferido = linhas.filter((l) => l.honorario_situacao !== "calculado" && l.honorario_situacao !== "conferido");
+  const paraConferir = linhas.filter((l) => l.honorario_situacao === "calculado");
+  const nConferidas = linhas.filter((l) => l.honorario_situacao === "conferido").length;
+  const guardar = (id: string, campos: Partial<Linha>) =>
+    setLinhas((ls) => ls.map((l) => (l.id === id ? { ...l, ...campos } : l)));
+  const proximaDaFila = (atual: Linha) => {
+    const k = linhas.findIndex((x) => x.id === atual.id);
+    return [...linhas.slice(k + 1), ...linhas.slice(0, Math.max(k, 0))]
+      .find((x) => x.id !== atual.id && x.honorario_situacao !== "calculado" && x.honorario_situacao !== "conferido") ?? null;
+  };
+
+  async function conferirCalculadas() {
+    setConferindoTodas(true); setErro(""); setRecado("");
+    try {
+      const feitas = await conferirNoServidor(paraConferir.map((l) => l.id));
+      setLinhas((ls) => ls.map((l) => (feitas.includes(l.id) ? { ...l, honorario_situacao: "conferido" } : l)));
+      setRecado(`${plural(feitas.length, "honorário conferido", "honorários conferidos")}: é o valor que vai para a cobrança.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível conferir agora.");
+    } finally {
+      setConferindoTodas(false);
+    }
+  }
 
   const porConvenio = useMemo(() => {
     const rotulos = rotulosDePagador(linhas.map((l) => l.convenio));
@@ -1302,6 +1392,43 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
         </div>
       </section>
 
+      {comHonorario && linhas.length > 0 && (
+        <section className="clinicalPanel producaoHonorarioMes" aria-label="Honorário da produção enviada">
+          <div className="producaoHonorarioValor">
+            <span>Honorário pelas tabelas dos planos <em className="producaoEmDesenvolvimento">em desenvolvimento</em></span>
+            <strong>{mascara(money(honorario.previsto))}</strong>
+            <small>
+              {honorario.calculadas === honorario.total
+                ? `Em todas as ${honorario.total} anestesias enviadas`
+                : `Em ${honorario.calculadas} de ${honorario.total} anestesias · total parcial`}
+            </small>
+          </div>
+          <div className="producaoHonorarioDetalhe">
+            <p>
+              {nConferidas > 0 && <b>{plural(nConferidas, "conferida", "conferidas")}</b>}
+              {nConferidas > 0 && (paraConferir.length > 0 || semCodigoConferido.length > 0) && " · "}
+              {paraConferir.length > 0 && <>{plural(paraConferir.length, "calculada a conferir", "calculadas a conferir")}</>}
+              {paraConferir.length > 0 && semCodigoConferido.length > 0 && " · "}
+              {semCodigoConferido.length > 0 && <b className="pendente">{plural(semCodigoConferido.length, "sem valor calculado", "sem valor calculado")}</b>}
+            </p>
+            <p>O código sai pelo nome do procedimento; a urgência e as marcas são as do médico.</p>
+          </div>
+          <div className="producaoHonorarioAcoes">
+            {semCodigoConferido.length > 0 && (
+              <button type="button" className="primaryClinical compact" onClick={() => setFilaDeCodigos(semCodigoConferido)}>
+                Conferir códigos ({semCodigoConferido.length})
+              </button>
+            )}
+            {paraConferir.length > 0 && (
+              <button type="button" className="outlineClinical" disabled={conferindoTodas} onClick={() => void conferirCalculadas()}>
+                {conferindoTodas ? "Conferindo…" : `Marcar ${paraConferir.length} como conferidas`}
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+      {recado && <p className="producaoRecado" role="status">{recado}</p>}
+
       <section className="clinicalPanel">
         <div className="panelTitle">
           <strong>Produção da equipe em {mesEmMaiusculas(nomeMes)} de {ano}</strong>
@@ -1321,7 +1448,16 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
               {doConvenio.map((l) => (
                 <div className="producaoRecebidaLinha" key={l.id}>
                   <span><strong>{l.paciente}</strong>
-                    <small>{l.procedimento || "procedimento não informado"}</small></span>
+                    <small>
+                      {l.procedimento || "procedimento não informado"}
+                      {l.urgencia ? " · urgência" : ""}
+                      {(l.marcas ?? []).map((id) => nomesDasMarcas.get(id)).filter(Boolean).map((n) => ` · ${n}`).join("")}
+                    </small>
+                    {comHonorario && (
+                      <SeloDoHonorario situacao={l.honorario_situacao} valor={l.honorario_valor_previsto} anotado={l.valor}
+                        paciente={l.paciente} mascarar={mascara} onAbrir={() => setAbertaNoHonorario(l)} />
+                    )}
+                  </span>
                   <span className="producaoQuem">{l.profissional}</span>
                   <span className="producaoQuando">
                     {Number(l.data.slice(8, 10))}/{l.data.slice(5, 7)}
@@ -1332,6 +1468,20 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
             </div>
           ))}
       </section>
+      {abertaNoHonorario && (() => {
+        const proxima = proximaDaFila(abertaNoHonorario);
+        return (
+          <HonorarioDaAnestesia key={abertaNoHonorario.id} modo="financeiro" anestesia={abertaNoHonorario}
+            onFechar={() => setAbertaNoHonorario(null)} onCalculado={guardar}
+            onConferida={(id) => guardar(id, { honorario_situacao: "conferido" })}
+            onProxima={proxima ? () => setAbertaNoHonorario(proxima) : undefined} />
+        );
+      })()}
+      {filaDeCodigos && (
+        <CalcularOMes modo="financeiro" anestesias={filaDeCodigos} rotuloDoMes={`${nomeMes.charAt(0).toUpperCase()}${nomeMes.slice(1)} de ${ano}`}
+          mascarar={mascara} onFechar={() => setFilaDeCodigos(null)} onCalculado={guardar}
+          onEscolherCodigo={(a) => { setFilaDeCodigos(null); setAbertaNoHonorario(linhas.find((x) => x.id === a.id) ?? null); }} />
+      )}
     </>
   );
 }

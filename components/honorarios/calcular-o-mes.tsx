@@ -4,17 +4,23 @@ import { useEffect, useState } from "react";
 import { Gaveta } from "@/components/admin-ui";
 import { Icone } from "@/components/icone";
 import { dataBr, dinheiro, mensagemDoBanco } from "./comum";
+import type { MarcaDaClinica } from "@/lib/honorarios-telas";
 import {
-  calcularNoServidor, codigosSalvos, gravarCodigos, sugestoesDeCodigos, tussEmUso, type Codigo,
+  calcularNoServidor, codigosSalvos, ensinarProcedimento, gravarCodigos, marcasDaClinica, sugestoesDeCodigos, tussEmUso,
+  type Codigo, type Modo, type Sugestao,
 } from "./calculo-da-anestesia";
 import type { AnestesiaDaProducao, CamposDoHonorario } from "./honorario-da-anestesia";
 import estilos from "./honorarios.module.css";
 
 // Calcular o mês inteiro sem abrir uma gaveta por anestesia: a lista do que
-// falta, cada uma com os códigos já gravados ou sugeridos pelo que o médico
-// usou antes para o mesmo procedimento. Ele confere, desmarca o que não está
-// certo e calcula todas, uma depois da outra. Sem código, a linha leva à
-// gaveta de uma anestesia para escolher.
+// falta, cada uma com os códigos já gravados ou sugeridos pelo nome do
+// procedimento (a lista da clínica, ou o que já foi usado antes). Quem
+// calcula confere, desmarca o que não está certo e calcula todas, uma depois
+// da outra. Sem código, a linha leva à gaveta de uma anestesia para escolher.
+//
+// No Financeiro, é a fila "Conferir códigos" da produção que a equipe enviou:
+// a urgência e as marcas são as do médico, e cada código calculado ensina a
+// lista da clínica.
 
 type Desfecho =
   | { tipo: "calculado"; valor: number; aviso: string | null }
@@ -24,15 +30,16 @@ type Desfecho =
 type Linha = {
   anestesia: AnestesiaDaProducao;
   codigos: Codigo[];
-  /** De quando é a sugestão; nulo quando os códigos já estavam gravados. */
-  sugeridoDe: string | null;
+  /** De onde vieram os códigos sugeridos; nulo quando já estavam gravados. */
+  sugestao: Sugestao | null;
   marcada: boolean;
   desfecho?: Desfecho;
 };
 
-export function CalcularOMes({ anestesias, rotuloDoMes, mascarar, onFechar, onCalculado, onEscolherCodigo }: {
+export function CalcularOMes({ anestesias, modo = "medico", rotuloDoMes, mascarar, onFechar, onCalculado, onEscolherCodigo }: {
   /** As anestesias do mês sem cálculo ou pendentes, na ordem da Produção. */
   anestesias: AnestesiaDaProducao[];
+  modo?: Modo;
   rotuloDoMes: string;
   mascarar: (s: string) => string;
   onFechar: () => void;
@@ -43,26 +50,29 @@ export function CalcularOMes({ anestesias, rotuloDoMes, mascarar, onFechar, onCa
   const [tussId, setTussId] = useState<string | null | undefined>(undefined);
   const [andamento, setAndamento] = useState<{ feitas: number; de: number } | null>(null);
   const [terminou, setTerminou] = useState(false);
+  const [listaDeMarcas, setListaDeMarcas] = useState<MarcaDaClinica[]>([]);
+  const doFinanceiro = modo === "financeiro";
 
   // Uma leitura só para a lista inteira: os códigos gravados e, para as que
   // não têm, a sugestão pela última anotação com o mesmo procedimento.
   useEffect(() => {
     let valendo = true;
     void (async () => {
-      const [salvos, tuss] = await Promise.all([codigosSalvos(anestesias.map((a) => a.id)), tussEmUso()]);
+      const [salvos, tuss, daClinica] = await Promise.all([codigosSalvos(anestesias.map((a) => a.id)), tussEmUso(), marcasDaClinica()]);
       const semCodigo = anestesias.filter((a) => !salvos.get(a.id)?.length);
-      const sugestoes = await sugestoesDeCodigos(semCodigo);
+      const sugestoes = await sugestoesDeCodigos(semCodigo, modo);
       if (!valendo) return;
       setTussId(tuss);
+      setListaDeMarcas(daClinica);
       setLinhas(anestesias.map((a) => {
         const deles = salvos.get(a.id);
         const s = sugestoes.get(a.id);
         const codigos = deles?.length ? deles : s?.codigos ?? [];
-        return { anestesia: a, codigos, sugeridoDe: deles?.length ? null : s?.data ?? null, marcada: codigos.length > 0 };
+        return { anestesia: a, codigos, sugestao: deles?.length ? null : s ?? null, marcada: codigos.length > 0 };
       }));
     })();
     return () => { valendo = false; };
-  }, [anestesias]);
+  }, [anestesias, modo]);
 
   const marcadas = linhas?.filter((l) => l.marcada && l.codigos.length && l.desfecho?.tipo !== "calculado") ?? [];
   const calculando = andamento !== null && !terminou;
@@ -79,20 +89,21 @@ export function CalcularOMes({ anestesias, rotuloDoMes, mascarar, onFechar, onCa
       let desfecho: Desfecho;
       try {
         // Os sugeridos ainda não estão gravados: gravam-se agora, na ordem da lista.
-        if (l.sugeridoDe) await gravarCodigos(l.anestesia.id, l.codigos, tussId ?? null);
-        const urgencia = Boolean(l.anestesia.urgencia);
-        const r = await calcularNoServidor(l.anestesia.id, urgencia);
+        if (l.sugestao) await gravarCodigos(l.anestesia.id, l.codigos, tussId ?? null);
+        // A urgência e as marcas ficam como o médico deixou: a conta lê do banco.
+        const r = await calcularNoServidor(l.anestesia.id);
         desfecho = r.situacao === "calculado" && r.valorPrevisto != null
           ? { tipo: "calculado", valor: r.valorPrevisto, aviso: r.mensagem }
           : { tipo: "pendente", texto: r.mensagem || r.pendencias[0]?.texto || "Pendente de conferência" };
-        onCalculado(l.anestesia.id, { honorario_situacao: r.situacao, honorario_valor_previsto: r.valorPrevisto, urgencia });
+        if (doFinanceiro) void ensinarProcedimento(l.anestesia.procedimento, l.codigos);
+        onCalculado(l.anestesia.id, { honorario_situacao: r.situacao, honorario_valor_previsto: r.valorPrevisto });
       } catch (e) {
         desfecho = { tipo: "erro", texto: mensagemDoBanco(e, "Não foi possível calcular agora.") };
       }
       // O que não calculou sai da marcação: o motivo fica na linha, e marcar
       // de novo é tentar de novo.
       setLinhas((ls) => ls?.map((x) => (x.anestesia.id === l.anestesia.id
-        ? { ...x, desfecho, marcada: false, sugeridoDe: desfecho.tipo === "erro" ? x.sugeridoDe : null } : x)) ?? null);
+        ? { ...x, desfecho, marcada: false, sugestao: desfecho.tipo === "erro" ? x.sugestao : null } : x)) ?? null);
       setAndamento({ feitas: n + 1, de: fila.length });
     }
     setTerminou(true);
@@ -105,7 +116,7 @@ export function CalcularOMes({ anestesias, rotuloDoMes, mascarar, onFechar, onCa
   const semCodigo = linhas?.filter((l) => !l.codigos.length).length ?? 0;
 
   return (
-    <Gaveta titulo="Calcular o mês" largura="larga" onPedirFechar={onFechar}
+    <Gaveta titulo={doFinanceiro ? "Conferir códigos" : "Calcular o mês"} largura="larga" onPedirFechar={onFechar}
       subtitulo={<>{rotuloDoMes} · {anestesias.length} {anestesias.length === 1 ? "anestesia sem honorário calculado" : "anestesias sem honorário calculado"}</>}
       rodape={terminou && !marcadas.length ? (
         <button type="button" className="primaryClinical compact" onClick={onFechar}>Pronto</button>
@@ -123,8 +134,11 @@ export function CalcularOMes({ anestesias, rotuloDoMes, mascarar, onFechar, onCa
           <p className="clinicalError">A TUSS ainda não foi publicada: sem ela, o código do procedimento não é conferido.</p>
         )}
         <p className="admAjuda">
-          Os códigos <b>sugeridos</b> vêm do que você usou antes para o mesmo procedimento. Desmarque o que não estiver certo;
-          o que ficar marcado é gravado e calculado, uma anestesia depois da outra.
+          {doFinanceiro
+            ? <>Os códigos saem pelo <b>nome do procedimento</b>: da lista da clínica ou do que já foi usado antes. A urgência e as marcas
+              são as que o médico marcou. Desmarque o que não estiver certo; o que ficar marcado é gravado, calculado e ensina a lista.</>
+            : <>Os códigos <b>sugeridos</b> vêm da lista da clínica ou do que você usou antes para o mesmo procedimento. Desmarque o que
+              não estiver certo; o que ficar marcado é gravado e calculado, uma anestesia depois da outra.</>}
         </p>
         <p className="admNota">
           <span className={estilos.seloDesenvolvimento}>Em desenvolvimento</span>
@@ -158,8 +172,15 @@ export function CalcularOMes({ anestesias, rotuloDoMes, mascarar, onFechar, onCa
                   <div className={estilos.loteQuem}>
                     <strong>{a.paciente}</strong>
                     <span className={estilos.linhaFraca}>
-                      {dataBr(a.data).slice(0, 5)} · {a.convenio}{a.procedimento ? ` · ${a.procedimento}` : ""}{a.urgencia ? " · urgência" : ""}
+                      {dataBr(a.data).slice(0, 5)} · {a.convenio}{a.procedimento ? ` · ${a.procedimento}` : ""}
+                      {a.profissional ? ` · ${a.profissional}` : ""}
                     </span>
+                    {(a.urgencia || a.marcas?.length) ? (
+                      <span className={estilos.loteMarcas}>
+                        {[a.urgencia ? "urgência" : "", ...listaDeMarcas.filter((x) => a.marcas?.includes(x.id)).map((x) => `${x.nome} (+${x.tuss_codigo})`)]
+                          .filter(Boolean).join(" · ")}
+                      </span>
+                    ) : null}
                     {l.codigos.length > 0 && (
                       <span className={estilos.loteCodigos}>
                         {l.codigos.map((c, i) => (
@@ -167,7 +188,7 @@ export function CalcularOMes({ anestesias, rotuloDoMes, mascarar, onFechar, onCa
                             <b className={estilos.codigo}>{c.codigo}</b>{i === 0 && l.codigos.length > 1 ? " (principal)" : ""}
                           </span>
                         ))}
-                        {l.sugeridoDe && <em>sugerido pelo de {dataBr(l.sugeridoDe).slice(0, 5)}</em>}
+                        {l.sugestao && <em>{l.sugestao.daLista ? "pela lista da clínica" : `sugerido pelo de ${dataBr(l.sugestao.data).slice(0, 5)}`}</em>}
                       </span>
                     )}
                   </div>
