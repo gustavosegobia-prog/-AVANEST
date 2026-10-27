@@ -89,7 +89,7 @@ export default function EscoresPage() {
       />
       <header className="avnNav">
         <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
-        <nav>
+        <nav aria-label="Principal">
           <a className="avnLogin" href="/recursos">
             <span className="avnSoLargo">O que o sistema faz</span>
             <span className="avnSoEstreito">Recursos</span>

@@ -27,6 +27,14 @@ const PRIVADO = [
   "/calculos",
   "/atualizar-senha",
   "/recuperar-senha",
+  // O convite mostra o e-mail de quem foi convidado: nunca vai para a busca.
+  "/convite/",
+  "/comecar",
+  "/duas-etapas",
+  "/evolucao",
+  "/financeiro",
+  "/centro-cirurgico",
+  "/crises",
 ];
 
 export default function robots(): MetadataRoute.Robots {

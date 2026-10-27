@@ -64,7 +64,7 @@ export default function IndiceDeLeePage() {
 
         <section className="recBloco">
           <h2>Como ler o resultado</h2>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: Como ler o resultado">
             <table>
               <thead>
                 <tr><th>Pontos</th><th>Classe</th><th>Evento cardíaco maior</th></tr>

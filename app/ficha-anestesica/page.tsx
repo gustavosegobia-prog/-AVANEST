@@ -207,7 +207,7 @@ export default function FichaAnestesicaPage() {
             a avaliação e a prescrição pré-anestésicas, a evolução clínica e o tratamento intra e
             pós-anestésico. Cada fase tem a sua ficha:
           </p>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: As três fichas da anestesia">
             <table>
               <thead>
                 <tr><th>Ficha</th><th>Quando</th><th>O que registra</th><th>Norma</th></tr>
@@ -239,7 +239,7 @@ export default function FichaAnestesicaPage() {
         <section className="recBloco" id="intraoperatorio">
           <h2>O que a ficha de anestesia do intraoperatório deve conter</h2>
           <p>O Anexo III lista o conteúdo mínimo da ficha de anestesia:</p>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: O que a ficha de anestesia do intraoperatório deve conter">
             <table>
               <thead><tr><th>Item</th><th>O que registrar</th></tr></thead>
               <tbody>
@@ -250,7 +250,7 @@ export default function FichaAnestesicaPage() {
             </table>
           </div>
           <h3 className="conteudoSubtitulo">De quanto em quanto tempo registrar</h3>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: De quanto em quanto tempo registrar">
             <table>
               <thead><tr><th>Intervalo máximo</th><th>Parâmetros</th></tr></thead>
               <tbody>

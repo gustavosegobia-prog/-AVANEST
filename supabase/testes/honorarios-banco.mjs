@@ -8,7 +8,7 @@ import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 
 // As três partes, na ordem em que vão para o banco.
 const MIG = ["202610230011_tabelas_e_honorarios.sql", "202610230012_contratos_e_tabelas_dos_planos.sql", "202610230013_honorario_na_producao.sql",
-  "202610270001_honorario_pelo_financeiro.sql"]
+  "202610270001_honorario_pelo_financeiro.sql", "202610280001_desempenho_das_politicas.sql"]
   .map((f) => readFileSync(new URL(`../migrations/${f}`, import.meta.url), "utf8")).join("\n");
 const db = new PGlite({ extensions: { pg_trgm } });
 

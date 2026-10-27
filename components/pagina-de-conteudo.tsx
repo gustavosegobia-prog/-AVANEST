@@ -42,7 +42,7 @@ export function PaginaDeConteudo({
     <main className="avnLanding">
       <header className="avnNav">
         <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
-        <nav>
+        <nav aria-label="Principal">
           <a className="avnLogin" href="/recursos">
             <span className="avnSoLargo">O que o sistema faz</span>
             <span className="avnSoEstreito">Recursos</span>
@@ -96,7 +96,7 @@ export function PaginaDeConteudo({
 
       <section className="escOutros">
         <h2>Leia também</h2>
-        <nav className="escOutrosLinks">
+        <nav className="escOutrosLinks" aria-label="Leia também">
           {PAGINAS_DE_CONTEUDO.filter((p) => p.href !== atual).map((p) => (
             <Link key={p.href} href={p.href}>{p.nome}</Link>
           ))}

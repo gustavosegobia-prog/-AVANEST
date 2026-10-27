@@ -22,7 +22,7 @@ export function PaginaLegal({
     <main className="legalPage">
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
-        <nav>
+        <nav aria-label="Principal">
           <a className="avnLogin" href="/planos">Planos</a>
           <a className="avnPrimary" href="/login">Login</a>
         </nav>
@@ -33,7 +33,7 @@ export function PaginaLegal({
         <p className="legalResumo">{resumo}</p>
         <p className="legalVigencia">Em vigor desde {vigencia}.</p>
         {children}
-        <nav className="legalOutros">
+        <nav className="legalOutros" aria-label="Outros documentos">
           <Link href="/termos">Termos de Uso</Link>
           <Link href="/privacidade">Política de Privacidade</Link>
           <Link href="/cookies">Política de Cookies</Link>

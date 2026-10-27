@@ -7,6 +7,9 @@ export const metadata: Metadata = paginaPublica({
   titulo: "Criar conta no AVANEST",
   descricao: "Crie sua conta no AVANEST e comece a usar a avaliação pré-anestésica, a escala do serviço e o controle financeiro em um sistema só.",
   caminho: "/criar-conta",
+  // Sem convite e sem plano ela mostra só o aviso de que o cadastro é por
+  // convite: não responde a busca nenhuma. Quem procura começar acha /2meses.
+  semIndice: true,
 });
 
 import { redirect } from "next/navigation";

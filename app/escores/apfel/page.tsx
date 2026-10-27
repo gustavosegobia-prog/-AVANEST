@@ -63,7 +63,7 @@ export default function ApfelPage() {
 
         <section className="recBloco">
           <h2>Como ler o resultado</h2>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: Como ler o resultado">
             <table>
               <thead>
                 <tr><th>Fatores</th><th>Incidência esperada de NVPO</th></tr>

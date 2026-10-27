@@ -33,9 +33,15 @@ export function paginaPublica(a: {
   caminho: string;
   /** Guia de conteúdo (og:type article) em vez de página do produto. */
   artigo?: boolean;
+  /**
+   * Fora da busca, mas com os links seguidos: página que existe para quem
+   * chega por um botão, e não para quem pesquisa (/criar-conta).
+   */
+  semIndice?: boolean;
 }): Metadata {
   return {
     title: a.titulo,
+    ...(a.semIndice ? { robots: { index: false, follow: true } } : {}),
     description: a.descricao,
     // O canonical fica aqui, e nunca no layout: no Next ele é herdado, e um
     // canonical no layout apontaria todas as páginas para a capa.

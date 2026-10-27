@@ -164,7 +164,7 @@ export default function HomePage() {
           o logo nasce à direita do começo do título. */}
       <header className="avnNav avnNavCapa">
         <AppLogo />
-        <nav>
+        <nav aria-label="Principal">
           {/* Dois rótulos para o mesmo link, e o CSS escolhe. No celular, "O que
               o sistema faz" quebrava em TRÊS linhas e o botão subia por cima do
               logo. Encurtar para todo mundo custaria a frase que explica o

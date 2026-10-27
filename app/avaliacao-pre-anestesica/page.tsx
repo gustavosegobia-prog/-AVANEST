@@ -169,10 +169,10 @@ export default function AvaliacaoPreAnestesicaPage() {
             A resolução usa os dois nomes, para dois momentos diferentes. A diferença está em
             quando e onde o paciente é visto.
           </p>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: Consulta pré-anestésica ou avaliação pré-anestésica?">
             <table>
               <thead>
-                <tr><th></th><th>Consulta pré-anestésica</th><th>Avaliação pré-anestésica</th></tr>
+                <tr><th><span className="sr-only">Aspecto</span></th><th>Consulta pré-anestésica</th><th>Avaliação pré-anestésica</th></tr>
               </thead>
               <tbody>
                 <tr><td><strong>Quando</strong></td>
@@ -203,7 +203,7 @@ export default function AvaliacaoPreAnestesicaPage() {
             emergência) e a <strong>ficha de consulta ou avaliação pré-anestésica</strong>, que
             deve ter estes itens:
           </p>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: O que a ficha de avaliação pré-anestésica deve conter">
             <table>
               <thead>
                 <tr><th>Item</th><th>O que registrar</th></tr>
@@ -229,7 +229,7 @@ export default function AvaliacaoPreAnestesicaPage() {
           <p>
             A própria resolução traz a tabela, dentro do item de jejum da ficha:
           </p>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: Quanto tempo de jejum antes da anestesia?">
             <table>
               <thead>
                 <tr><th>Alimento</th><th>Jejum mínimo</th></tr>
@@ -270,7 +270,7 @@ export default function AvaliacaoPreAnestesicaPage() {
             critérios maiores e menores. É ela que a resolução usa para recomendar monitorização
             hemodinâmica avançada no paciente de alto risco e no de risco intermediário.
           </p>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: Estratificação de risco: ASA, escores e o critério do CFM">
             <table>
               <thead>
                 <tr><th>Risco</th><th>Critérios</th></tr>

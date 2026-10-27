@@ -67,7 +67,7 @@ export default function StopBangPage() {
 
         <section className="recBloco">
           <h2>Como ler o resultado</h2>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: Como ler o resultado">
             <table>
               <thead>
                 <tr><th>Pontos</th><th>Risco</th><th>O que costuma decorrer</th></tr>
@@ -110,7 +110,7 @@ export default function StopBangPage() {
             São oito perguntas de sim ou não. Cada &quot;sim&quot; vale um ponto, e o
             total vai de 0 a 8. Quatro vêm da conversa e quatro do próprio cadastro:
           </p>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: Como calcular o STOP-Bang?">
             <table>
               <thead>
                 <tr><th>Letra</th><th>Critério</th><th>Como conferir</th></tr>
