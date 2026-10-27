@@ -82,12 +82,13 @@ export function TabelasEHonorarios({
       versoes,
       correspondenciasPropostas: dados.correspondenciasPropostas,
       producaoPendente: dados.producaoPendente,
+      mantemATuss: dados.superAdmin,
     };
     return pendenciasDasTabelas(estado);
   }, [dados, versoes]);
 
   const passos = useMemo(() => dados
-    ? primeirosPassos({ tuss: dados.tuss, versoes: dados.versoes, honorariosCalculados: dados.honorariosCalculados })
+    ? primeirosPassos({ tuss: dados.tuss, versoes: dados.versoes, honorariosCalculados: dados.honorariosCalculados, mantemATuss: dados.superAdmin })
     : [], [dados]);
 
   const vigente = dados?.tuss.find((t) => t.situacao === "vigente");
@@ -122,9 +123,14 @@ export function TabelasEHonorarios({
             </dl>
           )}
         </header>
-        <p className={estilos.restrito}>
-          <Icone nome="cadeado" tamanho={14} />
-          Em conferência: só você vê esta área até ela ser liberada para o Financeiro das clínicas.
+        {/* Liberado para todos ainda em desenvolvimento: o aviso fica no alto,
+            à vista, e não escondido num rodapé. */}
+        <p className={estilos.emDesenvolvimento} role="note">
+          <Icone nome="ampulheta" tamanho={16} />
+          <span>
+            <b>Em desenvolvimento.</b> O cálculo do honorário ainda está sendo ajustado: use o valor como previsão e
+            confira com o contrato do plano antes de cobrar. Achou algo errado? Conte pelo balão de conversa.
+          </span>
         </p>
 
         {naoInstalado || !dados ? <NaoInstalado /> : (<>

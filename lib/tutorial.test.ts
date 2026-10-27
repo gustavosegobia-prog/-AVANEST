@@ -277,3 +277,11 @@ test("os alvos das etapas novas existem na interface", () => {
   assert.match(fonte, /fichaAnestesica: podeFichaAnestesica, mapaCirurgico: podeMapaCirurgico/,
     "o painel precisa passar ao tutorial o que a pessoa tem");
 });
+
+test("Tabelas e honorários: ensinado ao Financeiro, com o aviso de desenvolvimento", () => {
+  const passo = passosDoTutorial(tudo).find((e) => e.titulo === "Tabelas e honorários");
+  assert.ok(passo, "quem tem o Financeiro aprende onde ficam as tabelas dos planos");
+  assert.equal(passo!.area, "financeiro");
+  assert.match(passo!.texto, /em desenvolvimento/);
+  assert.ok(!passosDoTutorial(medico).some((e) => e.titulo === "Tabelas e honorários"), "sem Financeiro, sem a etapa");
+});

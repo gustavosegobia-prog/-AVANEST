@@ -17,9 +17,11 @@ export const metadata: Metadata = {
 // Tabelas e honorários: TUSS, CBHPM, contratos dos convênios e as regras do
 // cálculo do honorário anestésico (migração 202610230011, lib/honorarios.ts).
 //
-// Enquanto amadurece, só o super-admin abre — o padrão dos módulos novos
-// (PRODUCT.md). A trava de verdade continua sendo o banco: as tabelas da
-// clínica só se leem com pode_tabelas_honorarios(), e a TUSS só se grava como
+// Liberado para o Financeiro de cada clínica (27/10/2026), ainda com o aviso
+// de "em desenvolvimento" no alto. Quem entra: quem tem o Financeiro da
+// própria organização (pode_tabelas_honorarios) e o super-admin. A trava de
+// verdade continua sendo o banco: as tabelas da clínica só se leem com
+// pode_tabelas_honorarios(), e a TUSS — que vale para todas — só se grava como
 // super-admin. Sem a migração aplicada, a página diz isso em vez de quebrar.
 export default async function TabelasEHonorariosPage({ searchParams }: { searchParams: Promise<{ area?: string }> }) {
   const supabase = await createClient();
@@ -28,8 +30,12 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
   const { data: perfil } = await supabase
     .from("perfis").select("id, institution_id, status, super_admin").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) redirect("/dashboard");
-  if (perfil.super_admin !== true) redirect("/dashboard");
+  const superAdmin = perfil.super_admin === true;
   const inst = perfil.institution_id as string;
+  if (!superAdmin) {
+    const { data: pode } = await supabase.rpc("pode_tabelas_honorarios", { p_institution_id: inst });
+    if (pode !== true) redirect("/dashboard");
+  }
   const { area } = await searchParams;
   const dia = hoje();
   const mes = dia.slice(0, 7);
@@ -81,7 +87,7 @@ export default async function TabelasEHonorariosPage({ searchParams }: { searchP
   const dados: DadosDasTabelas = {
     institutionId: inst,
     hoje: dia,
-    superAdmin: true,
+    superAdmin,
     podeEditar: pode.data === true,
     tuss: (tuss.data ?? []) as LinhaTussVersao[],
     edicoes: edicoes.data ?? [],
