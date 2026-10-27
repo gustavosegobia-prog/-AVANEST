@@ -8,7 +8,7 @@ export const metadata: Metadata = paginaPublica({
   descricao: "Crie sua conta no AVANEST e comece a usar a avaliação pré-anestésica, a escala do serviço e o controle financeiro em um sistema só.",
   caminho: "/criar-conta",
   // Sem convite e sem plano ela mostra só o aviso de que o cadastro é por
-  // convite: não responde a busca nenhuma. Quem procura começar acha /2meses.
+  // convite: não responde a busca nenhuma. Quem procura começar acha /15dias.
   semIndice: true,
 });
 
@@ -17,8 +17,8 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 import { SignUpForm } from "./sign-up-form";
-import { MESES_DE_TESTE, dataPorExtenso, fimDoTeste } from "@/lib/teste-gratis";
-import { origemDoLink } from "@/lib/link-da-campanha";
+import { OFERTA_DO_TESTE, dataPorExtenso, fimDoTeste } from "@/lib/teste-gratis";
+import { CAMINHO_DA_CAMPANHA, origemDoLink } from "@/lib/link-da-campanha";
 
 const PAPEIS: Record<string, string> = {
   admin: "Administrador", medico: "Anestesiologista",
@@ -31,7 +31,7 @@ export default async function CriarContaPage({
   searchParams: Promise<{ convite?: string; plano?: string; origem?: string }>;
 }) {
   const { convite: token, plano, origem: origemBruta } = await searchParams;
-  // A campanha dos dois meses. Sem plano e sem convite, era aqui que a pessoa
+  // A campanha do teste grátis. Sem plano e sem convite, era aqui que a pessoa
   // batia na parede do "cadastro por convite" — a promessa da capa não tinha
   // porta. Ver lib/link-da-campanha.ts.
   const origem = origemBruta ? origemDoLink(origemBruta) : "";
@@ -67,7 +67,7 @@ export default async function CriarContaPage({
                 {planoData.preco_por_profissional != null
                   ? <>por <b>{reais(Number(planoData.preco_por_profissional))} por anestesiologista/mês</b></>
                   : <>por <b>{reais(Number(planoData.preco_mensal))}/mês</b></>}
-                {" "}— com <b>{MESES_DE_TESTE} meses grátis</b>: a primeira cobrança só vence quando eles acabarem.
+                {" "}— com <b>{OFERTA_DO_TESTE}</b>: a primeira cobrança só vence quando eles acabarem.
                 {" "}Depois de criar a conta você escolhe individual ou grupo e cadastra o cartão.
               </p>
             ) : (
@@ -80,8 +80,8 @@ export default async function CriarContaPage({
     );
   }
 
-  // A CAMPANHA DOS DOIS MESES. A pessoa cria a conta, escolhe individual ou
-  // grupo e cadastra o cartão; a primeira cobrança só vence no fim dos 2 meses.
+  // A CAMPANHA DO TESTE GRÁTIS. A pessoa cria a conta, escolhe individual ou
+  // grupo e cadastra o cartão; a primeira cobrança só vence no fim do teste.
   // Este ramo é a porta que faltava — sem ele o caminho terminava no muro do
   // "cadastro por convite" logo abaixo, e a promessa da capa não levava a
   // lugar nenhum.
@@ -97,7 +97,7 @@ export default async function CriarContaPage({
           <div className="avnLoginContent">
             <h1>Criar sua conta grátis</h1>
             <p>
-              <b>{MESES_DE_TESTE} meses grátis</b>, até <b>{ate}</b>. Depois de criar a conta você
+              <b>{OFERTA_DO_TESTE}</b>, até <b>{ate}</b>. Depois de criar a conta você
               cadastra o cartão, e a primeira cobrança só vence nesse dia. Cancele antes e não paga nada.
             </p>
             <SignUpForm token="" email="" origem={origem} />
@@ -120,8 +120,8 @@ export default async function CriarContaPage({
             {/* Quem chegou aqui sem convite e não faz parte de equipe nenhuma
                 — o anestesiologista que quer conhecer o sistema — batia nesta
                 parede sem saída. O teste grátis é a porta dele. */}
-            <p>Ainda não usa o AVANEST? Crie a sua conta pelo teste de {MESES_DE_TESTE} meses grátis.</p>
-            <Link className="avnLoginSubmit avnCampanhaBotao" href="/2meses?de=cadastro">Começar o teste grátis</Link>
+            <p>Ainda não usa o AVANEST? Crie a sua conta pelo teste de {OFERTA_DO_TESTE}.</p>
+            <Link className="avnLoginSubmit avnCampanhaBotao" href={`${CAMINHO_DA_CAMPANHA}?de=cadastro`}>Começar o teste grátis</Link>
             <Link className="avnLoginCancel" href="/login">Voltar para o login</Link>
           </div>
         </section>

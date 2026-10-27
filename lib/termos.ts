@@ -10,11 +10,14 @@
 // avisado no painel e tem 30 dias (item "Alterações" dos Termos) antes de o
 // texto novo valer sem aceite.
 
-/** 23/10/2026: cláusula de propriedade intelectual e confidencialidade. */
-export const VERSAO_DOS_TERMOS = "2026-10-23";
+/**
+ * 27/10/2026: período grátis de 15 dias (item 6), no lugar dos dois meses.
+ * 23/10/2026: cláusula de propriedade intelectual e confidencialidade.
+ */
+export const VERSAO_DOS_TERMOS = "2026-10-27";
 
 /** Para quem já usava o AVANEST antes desta versão: o texto novo vale do aceite ou desta data, o que vier primeiro. */
-export const TERMOS_VALEM_PARA_QUEM_JA_USAVA = "2026-11-22";
+export const TERMOS_VALEM_PARA_QUEM_JA_USAVA = "2026-11-26";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
   "agosto", "setembro", "outubro", "novembro", "dezembro"];

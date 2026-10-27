@@ -1,5 +1,5 @@
 -- ============================================================================
--- Revisão de 28/10/2026: o que o painel de desempenho do Supabase aponta.
+-- Revisão de 27/10/2026: o que o painel de desempenho do Supabase aponta.
 --
 -- 1. Três políticas chamavam auth.uid() direto. O Postgres reavalia a função
 --    a cada linha lida; dentro de um (select ...) ela vira um valor só por

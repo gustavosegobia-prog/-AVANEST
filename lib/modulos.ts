@@ -76,7 +76,7 @@ export function areasLiberadas<T extends string>(
 }
 
 /**
- * O que o teste grátis de dois meses abre.
+ * O que o teste grátis abre (era de dois meses; 15 dias desde 27/10/2026).
  *
  * "Use por 2 meses grátis" não é "use o sistema inteiro por dois meses": o
  * teste mostra o TRABALHO CLÍNICO — a ficha anestésica e a escala —, e a

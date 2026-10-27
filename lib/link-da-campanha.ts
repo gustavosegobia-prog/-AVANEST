@@ -1,7 +1,9 @@
 // ===========================================================================
-// O link da campanha dos dois meses
+// O link da campanha do teste grátis
 // ===========================================================================
-// "Use por 2 meses grátis e após, se gostar, assine."
+// Desde 27/10/2026: "15 dias grátis". Era "/2meses" (dois meses grátis), e o
+// endereço antigo redireciona para o novo (next.config.ts): link que já foi no
+// direct, em anúncio ou em post continua chegando.
 //
 // A promessa já estava na capa e no /planos, mas NÃO HAVIA PORTA. /criar-conta
 // sem convite e sem plano respondia "Cadastro por convite — peça o link a quem
@@ -13,16 +15,16 @@
 // Ele vai no direct do Instagram, e quase sempre lido no telefone. Um endereço
 // com interrogação e igual no meio parece rastreador, é impossível de ditar em
 // voz alta e o Instagram o encurta com reticências no meio. "avanest.com.br/
-// 2meses" cabe na mensagem inteiro, diz o que é antes de ser clicado e pode
+// 15dias" cabe na mensagem inteiro, diz o que é antes de ser clicado e pode
 // ser repetido por telefone.
 // ===========================================================================
 
 /** O endereço curto. É este que vai na mensagem. */
-export const CAMINHO_DA_CAMPANHA = "/2meses";
+export const CAMINHO_DA_CAMPANHA = "/15dias";
 export const LINK_DA_CAMPANHA = `https://www.avanest.com.br${CAMINHO_DA_CAMPANHA}`;
 
 /** Quando não vem `?de=`, a origem é o próprio link. */
-export const ORIGEM_PADRAO = "2meses";
+export const ORIGEM_PADRAO = "15dias";
 
 /**
  * De onde a pessoa veio, como vai ficar guardado.

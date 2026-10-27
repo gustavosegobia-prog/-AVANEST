@@ -65,10 +65,10 @@ export function PaginaDeConteudo({
         {comAcao && (
           <div className="conteudoAcao">
             <div className="avnActions">
-              <a className="avnPrimary" href={teste}>Começar 2 meses grátis</a>
+              <a className="avnPrimary" href={teste}>Começar 15 dias grátis</a>
               <a className="avnSecondary" href="/planos">Ver planos</a>
             </div>
-            <p>Primeira cobrança só depois dos 2 meses. Cancele antes e não paga nada.</p>
+            <p>Primeira cobrança só depois dos 15 dias. Cancele antes e não paga nada.</p>
           </div>
         )}
         {indice && (
@@ -87,7 +87,7 @@ export function PaginaDeConteudo({
         <h2>{fim.titulo}</h2>
         <p>{fim.texto}</p>
         <div className="avnActions">
-          <a className="avnPrimary" href={teste}>Começar 2 meses grátis</a>
+          <a className="avnPrimary" href={teste}>Começar 15 dias grátis</a>
           <a className="avnSecondary" href={fim.link?.href ?? "/recursos"}>
             {fim.link?.rotulo ?? "Ver todos os recursos"}
           </a>

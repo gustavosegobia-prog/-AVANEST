@@ -217,7 +217,7 @@ export function PlanosAdminClient({
 
         <p className="campanhaAjuda">
           <b>Os meses grátis daqui não entram mais no checkout.</b> A oferta é o
-          teste de 2 meses, para todo mundo: quem assina durante o teste paga a
+          teste de 15 dias, para todo mundo: quem assina durante o teste paga a
           primeira vez quando ele acaba, e quem assina depois paga na hora. Somar
           os meses da campanha dava até quatro meses a quem assinava no fim do
           teste.

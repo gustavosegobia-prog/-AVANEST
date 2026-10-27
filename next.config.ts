@@ -76,6 +76,12 @@ const IMPRESSAO_EMBUTIVEL = [
 const VERSAO_DO_SITE = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || "local";
 
 const nextConfig: NextConfig = {
+  // O teste grátis era de dois meses, e o link da campanha era /2meses. Desde
+  // 27/10/2026 são 15 dias, em /15dias; o endereço antigo continua chegando
+  // (o ?de= de quem mandou o link vai junto).
+  async redirects() {
+    return [{ source: "/2meses", destination: "/15dias", permanent: true }];
+  },
   env: { VERSAO_DO_SITE },
   async headers() {
     return [

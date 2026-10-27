@@ -93,8 +93,8 @@ export default function TermosPage() {
 
       <h2>6. Período grátis</h2>
       <p>
-        Novas organizações têm <b>2 meses grátis</b>, que vão até o último dia do segundo mês
-        seguinte ao cadastro. Para começar, o responsável pela organização escolhe o plano e
+        Novas organizações têm <b>15 dias grátis</b>, contados do dia seguinte ao cadastro até o
+        fim do 15º dia. Para começar, o responsável pela organização escolhe o plano e
         cadastra o cartão na página do provedor de pagamento. Nada é cobrado durante o período
         grátis; a primeira cobrança vence ao fim dele, no valor do plano escolhido, e a data
         aparece antes da confirmação e no e-mail de boas-vindas. No período grátis o sistema fica

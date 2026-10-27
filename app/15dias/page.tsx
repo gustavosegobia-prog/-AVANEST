@@ -4,10 +4,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppLogo } from "@/components/app-logo";
 import { createClient } from "@/utils/supabase/server";
-import { MESES_DE_TESTE, dataPorExtenso, fimDoTeste } from "@/lib/teste-gratis";
+import { DIAS_DE_TESTE, OFERTA_DO_TESTE, dataPorExtenso, fimDoTeste } from "@/lib/teste-gratis";
 import { CAMINHO_DA_CAMPANHA, origemDoLink } from "@/lib/link-da-campanha";
 
-// A porta da campanha dos dois meses.
+// A porta da campanha do teste grátis — 15 dias desde 27/10/2026 (era /2meses,
+// que redireciona para cá).
 //
 // Existe porque NÃO HAVIA PORTA: a promessa estava na capa e no /planos, mas
 // /criar-conta sem convite e sem plano respondia "Cadastro por convite — peça
@@ -18,21 +19,21 @@ import { CAMINHO_DA_CAMPANHA, origemDoLink } from "@/lib/link-da-campanha";
 // os planos e não tem preço. Ela chega pelo direct do Instagram, é lida no
 // telefone em poucos segundos, e tudo que não leva ao botão está competindo
 // com ele. O preço está a um clique dali para frente, na hora em que ele
-// importa — que é quando os dois meses acabam.
+// importa — que é quando o teste acaba.
 //
 // O QUE ELA NÃO ESCONDE: que o cartão é cadastrado no início. Desde 15/10/2026
-// os 2 meses começam com o cartão, e a primeira cobrança vence no fim deles.
+// o teste começa com o cartão, e a primeira cobrança vence no fim dele.
 // Dizer isso antes do botão — com a data — é o que evita a surpresa no
 // cadastro e a contestação no fim; uma reclamação vinda do Instagram volta
 // pelo mesmo caminho, em público.
 
 export const metadata: Metadata = paginaPublica({
-  titulo: "2 meses grátis no AVANEST, sistema para anestesiologistas",
-  descricao: "Crie sua conta e use o AVANEST por 2 meses grátis, com o sistema completo. O cartão é cadastrado no início e a primeira cobrança só vence depois dos 2 meses.",
+  titulo: "15 dias grátis no AVANEST, sistema para anestesiologistas",
+  descricao: "Crie sua conta e use o AVANEST por 15 dias grátis, com o sistema completo. O cartão é cadastrado no início e a primeira cobrança só vence depois dos 15 dias.",
   caminho: CAMINHO_DA_CAMPANHA,
 });
 
-export default async function DoisMesesPage({
+export default async function TesteGratisPage({
   searchParams,
 }: {
   searchParams: Promise<{ de?: string }>;
@@ -47,7 +48,7 @@ export default async function DoisMesesPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect("/dashboard");
 
-  // A data por extenso, e não "60 dias": "até 30 de novembro" é uma promessa
+  // A data por extenso, e não só "15 dias": "até 12 de novembro" é uma promessa
   // que a pessoa consegue conferir. A conta é a MESMA de quem cria a conta de
   // verdade — lib/teste-gratis.ts —, então a data desta página é a data que
   // vai valer, e não uma estimativa de propaganda.
@@ -62,14 +63,14 @@ export default async function DoisMesesPage({
         </div>
         <div className="avnLoginContent avnCampanha">
           <p className="avnCampanhaSelo">Teste grátis</p>
-          <h1>Use por {MESES_DE_TESTE} meses grátis.<br/>Só paga se continuar.</h1>
+          <h1>Use por {OFERTA_DO_TESTE}.<br/>Só paga se continuar.</h1>
           <p className="avnCampanhaLead">
             Você cadastra o cartão no início, e a primeira cobrança só vence em <b>{ate}</b>,
             criando a conta hoje. Cancele antes e não paga nada. Sem fidelidade.
           </p>
 
           {/* OS SEIS MÓDULOS, uma linha cada: lida no telefone, a lista mostra
-              tudo o que entra nos 2 meses sem empurrar o botão para longe. */}
+              tudo o que entra no teste sem empurrar o botão para longe. */}
           <ul className="avnCampanhaLista">
             <li><b>Recepção</b>
               <span>A agenda do dia por médico e por hospital.</span></li>
@@ -85,14 +86,14 @@ export default async function DoisMesesPage({
               <span>O que você fez, recebeu e tem a receber, e o fechamento do grupo.</span></li>
           </ul>
 
-          {/* O ESCOPO, dito ANTES do botão. Com o cartão cadastrado, os 2 meses
-              já são da assinatura: o sistema inteiro, e não só uma parte. */}
+          {/* O ESCOPO, dito ANTES do botão. Com o cartão cadastrado, o teste
+              já é da assinatura: o sistema inteiro, e não só uma parte. */}
           <p className="avnCampanhaEscopo">
-            Nos {MESES_DE_TESTE} meses você usa o sistema completo, com os seis módulos.
+            Nos {DIAS_DE_TESTE} dias você usa o sistema completo, com os seis módulos.
           </p>
 
           <Link className="avnLoginSubmit avnCampanhaBotao" href={`/criar-conta?origem=${origem}`}>
-            Começar meus {MESES_DE_TESTE} meses grátis
+            Começar meus {OFERTA_DO_TESTE}
           </Link>
           <p className="avnCampanhaRodape">
             Para não ser cobrado, cancele antes de {ate} em Admin › Assinatura, sem falar com

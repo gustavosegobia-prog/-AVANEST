@@ -1,6 +1,13 @@
 // ===========================================================================
-// Dois meses grátis — desde 15/10/2026, com o cartão cadastrado no início
+// 15 dias grátis — desde 27/10/2026, com o cartão cadastrado no início
 // ===========================================================================
+// Em 27/10/2026 o teste passou de dois meses para 15 dias (pedido do
+// Gustavo). Quem já estava em teste segue com a data que tinha: o prazo é
+// gravado no cadastro (instituicoes.assinatura_ate) e nada aqui o recalcula.
+//
+// O texto abaixo é a história dos dois meses, e o que ele diz sobre prazo que
+// aparece, aviso e dado que não se apaga continua valendo.
+//
 // A campanha começou como "use por 2 meses grátis e após, se gostar, assine",
 // sem cartão. Em 15/10/2026 mudou: os 2 meses continuam grátis, mas quem
 // cria uma organização cadastra o cartão antes de entrar, e a primeira
@@ -26,7 +33,7 @@
 //      escrita, não o dado — ver os Termos de Uso, seção "Guarda e exclusão".
 //
 // ---------------------------------------------------------------------------
-// POR QUE POR MÊS FECHADO, E NÃO POR 60 DIAS CORRIDOS
+// (HISTÓRIA, ATÉ 27/10/2026) POR QUE POR MÊS FECHADO, E NÃO POR 60 DIAS CORRIDOS
 //
 // O valor deste sistema chega atrasado. A pessoa faz o plantão em outubro,
 // emite a nota em novembro e recebe em dezembro; é só no terceiro momento que
@@ -40,25 +47,30 @@
 // dois meses e dois dias.
 // ===========================================================================
 
-/** Quantos meses cheios o teste dura, além do mês em que a pessoa entrou. */
-export const MESES_DE_TESTE = 2;
+/** Quantos dias o teste dura, contados a partir do dia do cadastro. */
+export const DIAS_DE_TESTE = 15;
+
+/** A oferta como ela aparece escrita: "15 dias grátis". */
+export const OFERTA_DO_TESTE = `${DIAS_DE_TESTE} dias grátis`;
 
 /**
- * Até quando vai o teste de quem se cadastra agora.
+ * Até quando vai o teste de quem se cadastra agora: o fim do 15º dia depois
+ * do cadastro.
  *
  * Devolve o ÚLTIMO INSTANTE do último dia, e não a meia-noite do primeiro: com
- * a meia-noite, quem abrisse o sistema às nove da manhã do dia 30 encontraria
- * a conta já vencida — um dia a menos do que o combinado, no dia em que a
- * pessoa está justamente decidindo se assina.
+ * a meia-noite, quem abrisse o sistema às nove da manhã do último dia
+ * encontraria a conta já vencida — um dia a menos do que o combinado, no dia
+ * em que a pessoa está justamente decidindo se assina. O dia do cadastro não
+ * conta: quem entra às 22h não perde o dia.
+ *
+ * A mesma conta está no banco, em `fim_do_teste_gratis()` (migração
+ * 202610280002) — o teste de lib/teste-gratis.test.ts confere as duas.
  */
 export function fimDoTeste(entrouEm: Date): Date {
-  // Dia 0 do mês seguinte ao último = o último dia do último mês. É a forma de
-  // não precisar saber quantos dias tem cada mês nem se o ano é bissexto.
-  const fim = new Date(Date.UTC(
-    entrouEm.getUTCFullYear(), entrouEm.getUTCMonth() + MESES_DE_TESTE + 1, 0,
+  return new Date(Date.UTC(
+    entrouEm.getUTCFullYear(), entrouEm.getUTCMonth(), entrouEm.getUTCDate() + DIAS_DE_TESTE,
     23, 59, 59, 999,
   ));
-  return fim;
 }
 
 /**
@@ -84,10 +96,11 @@ export type EstadoDoTeste =
 /**
  * A partir de quantos dias restantes a tela começa a falar.
  *
- * Quinze dias porque é o tempo de conversar com o contador, olhar o preço e
- * decidir sem pressa. Avisar no último dia não é avisar, é cobrar.
+ * Cinco dias num teste de quinze: o bastante para olhar o preço e decidir sem
+ * pressa, sem a faixa ocupar a tela desde o primeiro dia. Avisar no último dia
+ * não é avisar, é cobrar.
  */
-export const DIAS_PARA_AVISAR = 15;
+export const DIAS_PARA_AVISAR = 5;
 
 export function estadoDoTeste(ate: Date, agora: Date): EstadoDoTeste {
   const dias = diasQueFaltam(ate, agora);
@@ -111,7 +124,7 @@ const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
 export const CARTAO_NO_CADASTRO_DESDE = new Date("2026-10-15T17:35:00Z");
 
 /**
- * Esta organização ainda precisa cadastrar o cartão para começar os 2 meses?
+ * Esta organização ainda precisa cadastrar o cartão para começar o teste?
  *
  * Só o teste nascido depois do corte. Cadastrado o cartão, o Stripe confirma o
  * checkout, o banco grava a assinatura como 'ativo' com a validade no fim do

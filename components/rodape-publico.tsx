@@ -34,7 +34,7 @@ export function RodapePublico() {
           <Link href="/recursos">O que o AVANEST faz</Link>
           <Link href="/avaliacao-pre-anestesica-digital">Avaliação pré-anestésica digital</Link>
           <Link href="/planos">Planos e preços</Link>
-          <Link href="/2meses">2 meses grátis</Link>
+          <Link href="/15dias">15 dias grátis</Link>
           <Link href="/app">Instalar no celular</Link>
           <Link href="/login">Entrar</Link>
         </nav>

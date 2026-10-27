@@ -5,7 +5,8 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
 import { Icone } from "@/components/icone";
-import { MESES_DE_TESTE } from "@/lib/teste-gratis";
+import { DIAS_DE_TESTE, OFERTA_DO_TESTE } from "@/lib/teste-gratis";
+import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
 import { RodapePublico } from "@/components/rodape-publico";
 
 // Vitrine pública de preços.
@@ -23,7 +24,7 @@ const TRILHA = [{ nome: "Início", caminho: "/" }, { nome: "Planos e preços", c
 export const metadata: Metadata = paginaPublica({
   titulo: "Planos e preços do sistema para anestesiologistas | AVANEST",
   descricao:
-    "Escala, avaliação pré-anestésica, produção e fluxo de caixa, do anestesiologista sozinho ao grupo inteiro. 2 meses grátis: a primeira cobrança vem depois.",
+    "Escala, avaliação pré-anestésica, produção e fluxo de caixa, do anestesiologista sozinho ao grupo inteiro. 15 dias grátis: a primeira cobrança vem depois.",
   caminho: "/planos",
 });
 
@@ -60,12 +61,12 @@ const perguntas = () => [
     r: "Cancelando nos primeiros 14 dias depois da cobrança, o valor daquele mês é devolvido pela mesma forma de pagamento. Depois disso o mês em curso não é reembolsado, mas o acesso continua até o fim dele e não há nova cobrança. A tela mostra em que dia do mês você está antes de confirmar o cancelamento.",
   },
   {
-    p: `Como funcionam os ${MESES_DE_TESTE} meses grátis?`,
+    p: `Como funcionam os ${OFERTA_DO_TESTE}?`,
     r:
-      `Você cria a conta, escolhe o plano e cadastra o cartão. Os ${MESES_DE_TESTE} primeiros meses são grátis, com o sistema completo, ` +
+      `Você cria a conta, escolhe o plano e cadastra o cartão. Os ${DIAS_DE_TESTE} primeiros dias são grátis, com o sistema completo, ` +
       `e a primeira cobrança só vence quando eles acabam — a data aparece antes de você confirmar e no e-mail de boas-vindas. ` +
       `Para não ser cobrado, cancele antes em Admin › Assinatura, sem falar com ninguém. ` +
-      `Não é desconto: depois dos ${MESES_DE_TESTE} meses, o preço mensal é o do seu plano. Se cancelar, nada é apagado: os dados ficam guardados.`,
+      `Não é desconto: depois dos ${DIAS_DE_TESTE} dias, o preço mensal é o do seu plano. Se cancelar, nada é apagado: os dados ficam guardados.`,
   },
   {
     p: "Como escolho o plano certo?",
@@ -173,22 +174,22 @@ export default async function PlanosPage() {
         {/* UMA OFERTA SÓ, dita uma vez. Antes eram quatro frases de grátis ao
             mesmo tempo — a faixa da campanha, "use por 2 meses", um selo em
             cada cartão e uma nota embaixo de cada preço — e a pessoa não sabia
-            se eram dois meses ou quatro, nem se precisava de cartão. São dois,
-            com o cartão cadastrado no início e a primeira cobrança no fim deles.
+            quanto tempo era, nem se precisava de cartão. Desde 27/10/2026 são
+            15 dias, com o cartão no início e a primeira cobrança no fim deles.
             Quem chega direto no /planos por um link nunca viu a capa, então a
             oferta está aqui também. */}
         <p className="planosCampanha">
           <Icone nome="estrela" tamanho={18} />
           <span>
-            <b>{MESES_DE_TESTE} meses grátis</b> com o sistema completo. O cartão é cadastrado no
-            início e a primeira cobrança só vence depois dos {MESES_DE_TESTE} meses.
+            <b>{OFERTA_DO_TESTE}</b> com o sistema completo. O cartão é cadastrado no
+            início e a primeira cobrança só vence depois dos {DIAS_DE_TESTE} dias.
           </span>
         </p>
         {/* A SAÍDA dita aqui, ao lado da oferta: quem cadastra o cartão quer
             saber, antes, que pode cancelar sem ser cobrado. */}
         <p className="planosTeste">
-          Cancele antes do fim dos {MESES_DE_TESTE} meses e nada é cobrado.{" "}
-          <Link href="/2meses?de=planos">Começar os {MESES_DE_TESTE} meses grátis</Link>
+          Cancele antes do fim dos {DIAS_DE_TESTE} dias e nada é cobrado.{" "}
+          <Link href={`${CAMINHO_DA_CAMPANHA}?de=planos`}>Começar os {OFERTA_DO_TESTE}</Link>
         </p>
         <p className="planosLead">
           Do anestesiologista que trabalha sozinho ao grupo de anestesia com recepção,

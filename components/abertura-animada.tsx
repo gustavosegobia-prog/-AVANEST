@@ -58,7 +58,7 @@
  * uma linha do tempo só, igual para todo mundo.
  */
 // AS PÁGINAS PÚBLICAS NÃO TOCAM A ABERTURA. Quem chega ao /planos ou ao
-// /2meses por um anúncio veio ler um preço ou apertar um botão, e quase dois
+// /15dias por um anúncio veio ler um preço ou apertar um botão, e quase dois
 // segundos de cortina branca antes disso é o tempo em que se fecha a aba.
 //
 // A CAPA E AS PÁGINAS DE CONTEÚDO ENTRARAM NA LISTA pelo mesmo motivo, visto
@@ -69,7 +69,7 @@
 // E A FOLHA DE IMPRESSÃO (…/imprimir) também não: ela abre para imprimir, e a
 // marca por dois segundos era só espera — a janela de imprimir já está vindo.
 const PAGINAS_SEM_ABERTURA = [
-  "planos", "2meses", "recursos", "privacidade", "termos", "escores", "app", "criar-conta",
+  "planos", "15dias", "recursos", "privacidade", "termos", "escores", "app", "criar-conta",
   "avaliacao-pre-anestesica", "avaliacao-pre-anestesica-digital", "ficha-anestesica",
   "escala-medica",
 ];

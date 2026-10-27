@@ -8111,7 +8111,7 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 }
 
 
-/* Revisão de 28/10/2026 (acessibilidade). As tabelas largas rolam para o lado
+/* Revisão de 27/10/2026 (acessibilidade). As tabelas largas rolam para o lado
    no celular e agora recebem o foco do teclado (tabIndex): o contorno mostra
    onde ele está. O cinza de apoio do site público (--avn-muted) subiu de
    4,2:1 para 5,3:1 sobre o fundo claro. */

@@ -35,7 +35,7 @@ test("cada página pública declara o próprio endereço na prévia do link", ()
   // anestesiologia", e o crédito de cada compartilhamento ia para a capa.
   assert.doesNotMatch(ler("app/layout.tsx"), /^\s*url: "\/",$/m);
   const paginas = [
-    "app/page.tsx", "app/recursos/page.tsx", "app/planos/page.tsx", "app/2meses/page.tsx",
+    "app/page.tsx", "app/recursos/page.tsx", "app/planos/page.tsx", "app/15dias/page.tsx",
     "app/escores/page.tsx", "app/escores/stop-bang/page.tsx", "app/escores/apfel/page.tsx",
     "app/escores/indice-de-lee/page.tsx", "app/escores/classificacao-asa/page.tsx",
     "app/avaliacao-pre-anestesica/page.tsx", "app/ficha-anestesica/page.tsx",
