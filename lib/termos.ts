@@ -28,6 +28,20 @@ export function dataPorExtenso(iso: string): string {
   return `${Number(m[3])} de ${mes} de ${m[1]}`;
 }
 
+// O QUE SE DIZ NA HORA DE CONFIRMAR. Na caixa de "Li e concordo" (cadastro e
+// assinatura) e no aviso do painel, as duas consequências que mais pesam vão
+// escritas, e não só no link: copiar o sistema custa caro, e cancelar não
+// custa nada. É resumo do que JÁ está nos Termos (itens 12 e 5) — o teste
+// confere que a página continua dizendo o mesmo; mudou lá, muda aqui.
+
+/** Item 12: o que acontece com quem copia, revende ou cria concorrente. */
+export const CONSEQUENCIA_DA_COPIA =
+  "Copiar, revender ou usar o AVANEST para criar um produto concorrente, no período grátis, na assinatura ou depois, "
+  + "leva à suspensão imediata do acesso e obriga a indenizar os prejuízos (item 12 dos Termos).";
+
+/** Item 5: cancelar é livre. */
+export const CANCELAR_SEM_MULTA = "Cancelar a assinatura não tem multa nem fidelidade (item 5).";
+
 /** Falta aceitar a versão atual: nenhum dos aceites guardados é dela. */
 export function precisaAceitar(versoesAceitas: readonly string[], atual: string = VERSAO_DOS_TERMOS): boolean {
   return !versoesAceitas.includes(atual);

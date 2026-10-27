@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { comDesconto, descreverCupom, normalizarCupom, type Cupom } from "@/lib/pagamentos/cupom";
+import { CANCELAR_SEM_MULTA, CONSEQUENCIA_DA_COPIA } from "@/lib/termos";
 
 // Abre o checkout do provedor de pagamento. Vai daqui qual plano se quer, o aceite dos
 // documentos e o CÓDIGO do cupom, nunca quanto custa: o preço é decidido e congelado no
@@ -130,9 +131,13 @@ export function AssinarButton({
       )}
       {erroCupom && <p className="clinicalError" role="alert">{erroCupom}</p>}
 
+      <p className="aceiteResumo" id="aceite-resumo">
+        {CONSEQUENCIA_DA_COPIA} {CANCELAR_SEM_MULTA}
+      </p>
       <label className="aceiteTermos">
         <input
           type="checkbox"
+          aria-describedby="aceite-resumo"
           checked={aceite}
           onChange={(evento) => { setAceite(evento.target.checked); setErro(""); }}
         />

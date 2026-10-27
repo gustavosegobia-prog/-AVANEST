@@ -235,3 +235,45 @@ test("o tutorial abre sozinho só no primeiro acesso, uma vez por conta", () => 
   assert.equal(abreTutorialSozinho({ criadaEm: "2026-09-24T20:58:00Z", vistoEm: undefined }), false);
   assert.equal(abreTutorialSozinho({ criadaEm: null, vistoEm: undefined }), false);
 });
+
+// ===========================================================================
+// O que entrou depois: ficha da sala, crises e centro cirúrgico
+// ===========================================================================
+
+test("a ficha anestésica e o centro cirúrgico só para quem os tem", () => {
+  const comTudo = { ...tudo, fichaAnestesica: true, mapaCirurgico: true };
+  const titulos = (p: Parameters<typeof passosDoTutorial>[0]) => passosDoTutorial(p).map((e) => e.titulo);
+  for (const t of ["Ficha anestésica, na sala", "Fim da cirurgia", "Centro cirúrgico"]) {
+    assert.ok(titulos(comTudo).includes(t), `falta a etapa "${t}"`);
+    assert.ok(!titulos(tudo).includes(t), `"${t}" aparece para quem não tem`);
+  }
+  // A ficha é da área médica; o centro mora no menu do nome, como o fecho.
+  const etapas = passosDoTutorial(comTudo);
+  assert.equal(etapas.find((e) => e.titulo === "Ficha anestésica, na sala")!.area, "medico");
+  assert.equal(etapas.find((e) => e.titulo === "Centro cirúrgico")!.alvo, ".userMenuTrigger");
+  assert.equal(passosDoTutorial({ ...recepcao, fichaAnestesica: true }).some((e) => e.titulo.startsWith("Ficha anestésica")), false,
+    "sem a área Médico, nada de ficha");
+});
+
+test("todo médico aprende onde ficam os protocolos de crise", () => {
+  const passo = passosDoTutorial(medico).find((e) => e.titulo === "Manejo de crises");
+  assert.ok(passo);
+  assert.equal(passo!.alvo, '[data-secao="crises"]');
+  assert.match(passo!.texto, /peso/);
+  assert.ok(!passosDoTutorial(recepcao).some((e) => e.titulo === "Manejo de crises"));
+});
+
+test("o tutorial não fala do que saiu da tela", () => {
+  const texto = passosDoTutorial({ ...tudo, fichaAnestesica: true, mapaCirurgico: true })
+    .map((e) => `${e.titulo} ${e.texto}`).join(" ");
+  assert.doesNotMatch(texto, /lembretes gerais/i, "os lembretes gerais saíram da área médica em 26/10");
+});
+
+test("os alvos das etapas novas existem na interface", () => {
+  const fonte = ["components/area-medica.tsx", "app/dashboard/dashboard-client.tsx"]
+    .map((f) => readFileSync(f, "utf8")).join("\n");
+  assert.match(fonte, /data-secao="ficha"/);
+  assert.match(fonte, /data-secao="crises"/);
+  assert.match(fonte, /fichaAnestesica: podeFichaAnestesica, mapaCirurgico: podeMapaCirurgico/,
+    "o painel precisa passar ao tutorial o que a pessoa tem");
+});

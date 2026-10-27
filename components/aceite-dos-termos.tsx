@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Dialogo } from "@/components/admin-ui";
-import { TERMOS_VALEM_PARA_QUEM_JA_USAVA, VERSAO_DOS_TERMOS, dataPorExtenso, precisaAceitar } from "@/lib/termos";
+import {
+  CANCELAR_SEM_MULTA, CONSEQUENCIA_DA_COPIA, TERMOS_VALEM_PARA_QUEM_JA_USAVA, VERSAO_DOS_TERMOS, dataPorExtenso, precisaAceitar,
+} from "@/lib/termos";
 
 // O pedido de aceite de um texto novo dos Termos, no painel.
 //
@@ -69,6 +71,7 @@ export function AceiteDosTermos() {
         nele — telas, textos, protocolos e modelos — não podem ser copiados para distribuir ou
         vender, nem usados para criar um produto concorrente, no período grátis ou na assinatura.
       </p>
+      <p className="aceiteResumo"><b>{CONSEQUENCIA_DA_COPIA}</b> {CANCELAR_SEM_MULTA}</p>
       <p>
         Imprimir os documentos e os protocolos para a equipe continua normal, e os seus dados
         continuam seus.

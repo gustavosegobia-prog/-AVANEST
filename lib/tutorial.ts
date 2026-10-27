@@ -53,7 +53,18 @@ export type Etapa = {
   alvo?: string;
 };
 
-export type Papel = { role: string; areas: string[]; nome: string };
+export type Papel = {
+  role: string; areas: string[]; nome: string;
+  /**
+   * A ficha anestésica está liberada para esta pessoa. Ela depende da
+   * organização e do acesso clínico, e não só da área Médico — por isso vem
+   * à parte: ensinar a abrir uma ficha que não aparece no menu é o erro que a
+   * regra do alto deste arquivo proíbe.
+   */
+  fichaAnestesica?: boolean;
+  /** O mapa do centro cirúrgico está ligado para a casa e a pessoa pode vê-lo. */
+  mapaCirurgico?: boolean;
+};
 
 /** O primeiro nome, para o "Bem-vindo" não gritar o nome inteiro do cadastro. */
 const primeiroNome = (nome: string) => {
@@ -142,12 +153,34 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "medico",
       alvo: '[data-secao="pendencias"]',
       titulo: "Pendências e avaliações",
-      texto: "Na coluna ao lado: Pendências mostra só o que os registros comprovam — avaliação começada e não concluída, paciente que chegou sem avaliação —, separado dos lembretes gerais. Avaliações guarda tudo o que já foi feito, com busca; nas concluídas, \"Ver documentos\" abre a ficha, o termo e as orientações para imprimir.",
+      texto: "Na coluna ao lado: Pendências mostra só o que os registros comprovam — avaliação começada e não concluída, paciente que chegou sem avaliação. Avaliações guarda tudo o que já foi feito, com busca; nas concluídas, \"Ver documentos\" abre a ficha, o termo e as orientações para imprimir.",
     });
     etapas.push({
       area: "medico",
       titulo: "No fim, três papéis",
-      texto: "Concluída a avaliação saem a ficha, o termo de consentimento e as orientações ao paciente, prontos para imprimir. O medicamento que precisa ser suspenso já sai com o prazo escrito.",
+      texto: "Concluída a avaliação saem a ficha, o termo de consentimento e as orientações ao paciente, prontos para imprimir. O medicamento que precisa ser suspenso já sai com o prazo escrito. Se o hospital tiver e-mail do prontuário cadastrado, a ficha também vai para lá, e Reenviar ao prontuário fica na mesma tela.",
+    });
+    // A sala de cirurgia vem depois do consultório, como no dia: primeiro a
+    // avaliação, depois a anestesia, e a crise por último — consulta rápida.
+    if (papel.fichaAnestesica) {
+      etapas.push({
+        area: "medico",
+        alvo: '[data-secao="ficha"]',
+        titulo: "Ficha anestésica, na sala",
+        texto: "Ficha anestésica abre a folha da sala, feita para o tablet. Busque o paciente e toque em Abrir ficha. Os sinais vitais entram com um toque no gráfico, e arrastar repete o valor nas colunas seguintes. As doses vêm sugeridas pelo peso, de adulto ou de criança, e você muda o que quiser. Tudo é salvo enquanto você registra.",
+      });
+      etapas.push({
+        area: "medico",
+        alvo: '[data-secao="ficha"]',
+        titulo: "Fim da cirurgia",
+        texto: "Foto do monitor lê os sinais direto da tela do monitor. Saída da sala (RPA ou UTI) encerra o tempo da anestesia, e Encerrar ficha deixa a folha pronta para imprimir em A4 ou salvar em PDF. Dose lançada depois do fim pede o horário em que foi dada.",
+      });
+    }
+    etapas.push({
+      area: "medico",
+      alvo: '[data-secao="crises"]',
+      titulo: "Manejo de crises",
+      texto: "Manejo de crises em anestesia abre os protocolos — parada cardíaca, anafilaxia, via aérea, hemorragia, obstetrícia e outros —, por categoria ou pela busca de protocolo ou sinal. Preencha idade e peso no alto e as doses já saem calculadas para aquele paciente. A Calculadora de doses abre por cima, com o mesmo paciente.",
     });
   }
 
@@ -256,13 +289,22 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "admin",
       alvo: '[data-secao="organizacao"]',
       titulo: "Locais de atendimento",
-      texto: "Admin → Organização e locais → Locais de atendimento. Cadastre cada hospital com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. Sem local cadastrado a escala não tem onde pendurar o plantão. Os dados da organização também ficam aqui.",
+      texto: "Admin → Organização e locais → Locais de atendimento. Cadastre cada hospital com o logo: é ele que aparece no cabeçalho da ficha, do termo e dos relatórios. O e-mail do prontuário, se o hospital quiser, recebe cada avaliação concluída. Sem local cadastrado a escala não tem onde pendurar o plantão.",
     });
     etapas.push({
       area: "admin",
       alvo: '[data-secao="historico"]',
       titulo: "Documentos, plano e histórico",
       texto: "Documentos e termos guarda o termo de consentimento, com as versões. Plano e cobrança mostra a assinatura. O histórico registra quem fez o quê, com filtros para investigar — é consulta, não rotina.",
+    });
+  }
+
+  // ── Centro cirúrgico: mora no menu do nome, e só onde está ligado ────────
+  if (papel.mapaCirurgico) {
+    etapas.push({
+      alvo: ".userMenuTrigger",
+      titulo: "Centro cirúrgico",
+      texto: "No menu do seu nome, Centro cirúrgico abre o mapa do dia por sala, com a etapa de cada paciente, da entrada em sala à alta da RPA. Modo TV põe o quadro na TV do corredor. Quem monta o mapa ainda tem Importar mapa, que lê a planilha, o PDF ou a foto do mapa do hospital, e o Relatório do mês.",
     });
   }
 

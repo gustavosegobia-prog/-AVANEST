@@ -1266,7 +1266,8 @@ export function DashboardClient({
           leva o painel para a área de que ela fala: ler "em Médico você faz a
           avaliação" olhando para o Financeiro não ensina nada. */}
       <TutorialInicial
-        papel={{ role: perfil.role, nome: perfil.nome, areas: allowedViews }}
+        papel={{ role: perfil.role, nome: perfil.nome, areas: allowedViews,
+          fichaAnestesica: podeFichaAnestesica, mapaCirurgico: podeMapaCirurgico }}
         abrirSozinho={tutorialNoPrimeiroAcesso}
         onIrPara={(area) => changeView(area as DashboardView)}
       />
