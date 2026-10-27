@@ -25,7 +25,7 @@ test("o link é curto o bastante para caber num direct", () => {
   // Ele é lido no telefone, dentro do Instagram, que corta o meio do endereço
   // com reticências. Um /criar-conta?origem=instagram viraria "avanest.com.br/
   // criar-co…gram" na tela de quem recebe.
-  assert.equal(LINK_DA_CAMPANHA, "https://www.avanest.com.br/2meses");
+  assert.equal(LINK_DA_CAMPANHA, "https://www.avanest.com.br/15dias");
   // O que aparece na mensagem é o endereço sem o "https://" — é essa metade
   // que precisa caber antes das reticências.
   assert.ok(LINK_DA_CAMPANHA.replace(/^https:\/\//, "").length <= 26);
@@ -63,7 +63,7 @@ test("o que vem da barra de endereços não entra cru na conta", () => {
 
 test("o link só ganha ?de= quando há o que medir", () => {
   assert.equal(linkComOrigem(), LINK_DA_CAMPANHA);
-  assert.equal(linkComOrigem("2meses"), LINK_DA_CAMPANHA);
+  assert.equal(linkComOrigem("15dias"), LINK_DA_CAMPANHA);
   assert.equal(linkComOrigem("Instagram"), `${LINK_DA_CAMPANHA}?de=instagram`);
 });
 
@@ -79,14 +79,14 @@ test("a página promete o que o sistema cumpre, e com a mesma conta", () => {
   // A data por extenso sai de lib/teste-gratis.ts, que é quem o banco copia.
   // Escrita à mão na propaganda, ela seria uma data diferente da que a conta
   // realmente recebe.
-  const pagina = ler("app/2meses/page.tsx");
+  const pagina = ler("app/15dias/page.tsx");
   assert.match(pagina, /fimDoTeste\(new Date\(\)\)/);
-  assert.match(pagina, /MESES_DE_TESTE/);
-  // O CARTÃO, dito antes do botão e com a data: desde 15/10/2026 os 2 meses
-  // começam com o cartão cadastrado. Descobrir isso só no cadastro é sentir
+  assert.match(pagina, /DIAS_DE_TESTE|OFERTA_DO_TESTE/);
+  // O CARTÃO, dito antes do botão e com a data: desde 15/10/2026 o teste
+  // começa com o cartão cadastrado. Descobrir isso só no cadastro é sentir
   // que faltou combinar — e a data é o que evita a contestação no fim.
   const cartao = pagina.indexOf("Você cadastra o cartão no início");
-  const botao = pagina.indexOf("Começar meus {MESES_DE_TESTE} meses grátis");
+  const botao = pagina.indexOf("Começar meus {OFERTA_DO_TESTE}");
   assert.ok(cartao > 0 && cartao < botao, "a condição do cartão precisa vir antes do botão");
   assert.doesNotMatch(pagina, /Sem cartão de crédito/, "a promessa antiga voltou");
   // E a saída: cancelar antes não custa nada, e nada é apagado.
@@ -94,10 +94,17 @@ test("a página promete o que o sistema cumpre, e com a mesma conta", () => {
   assert.match(pagina, /Nada é apagado/);
 });
 
+test("o link antigo (/2meses) continua chegando", () => {
+  // Ele já foi em direct, anúncio e post: o endereço antigo redireciona para o
+  // novo, de forma permanente, com o ?de= junto.
+  assert.match(ler("next.config.ts"),
+    /\{ source: "\/2meses", destination: "\/15dias", permanent: true \}/);
+});
+
 test("quem já tem conta não lê propaganda", () => {
   // É o caso do próprio anestesiologista testando o link antes de mandar, e o
   // de quem clica de novo no direct semanas depois.
-  assert.match(ler("app/2meses/page.tsx"), /if \(user\) redirect\("\/dashboard"\)/);
+  assert.match(ler("app/15dias/page.tsx"), /if \(user\) redirect\("\/dashboard"\)/);
 });
 
 test("o cadastro pela campanha não promete pagamento nenhum", () => {
@@ -105,5 +112,5 @@ test("o cadastro pela campanha não promete pagamento nenhum", () => {
   // sair da aba. Dizer ali "concluir a assinatura" desmente o "sem cartão" que
   // a trouxe.
   assert.match(ler("app/criar-conta/sign-up-form.tsx"),
-    /origem \? " começar seus 2 meses grátis\."/);
+    /origem \? ` começar seus \$\{OFERTA_DO_TESTE\}\.`/);
 });

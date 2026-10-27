@@ -17,7 +17,7 @@ export default async function RetornoPage() {
 
   const { data } = await supabase.rpc("minha_assinatura");
   const assinatura = Array.isArray(data) ? data[0] : data;
-  // Quem acabou de cadastrar o cartão para começar os 2 meses só entra quando o
+  // Quem acabou de cadastrar o cartão para começar o teste só entra quando o
   // aviso do Stripe chegar e a assinatura ficar ativa — até lá, "confirmando".
   const { data: perfil } = await supabase.from("perfis").select("institution_id").eq("id", user.id).maybeSingle();
   const { data: org } = perfil?.institution_id

@@ -38,7 +38,7 @@ export function idValido(id: string): boolean {
 // até o cadastro. Lista de PERMITIDAS, e não de proibidas: uma tela nova do
 // sistema que ninguém lembrou de proibir ficaria exposta; aqui ela nasce fora.
 const PUBLICAS = [
-  "/recursos", "/planos", "/2meses", "/escores", "/avaliacao-pre-anestesica",
+  "/recursos", "/planos", "/15dias", "/escores", "/avaliacao-pre-anestesica",
   "/avaliacao-pre-anestesica-digital", "/ficha-anestesica", "/escala-medica", "/app",
   "/criar-conta", "/termos", "/privacidade", "/cookies",
 ];

@@ -23,7 +23,7 @@ const REVISADO_EM = "2026-10-10";
 const TITULO = "Avaliação pré-anestésica digital no celular";
 const DESCRICAO =
   "Avaliação pré-anestésica em nove etapas, com Lee, STOP-Bang e Apfel calculados e ficha, "
-  + "termo e orientações impressos. 2 meses grátis.";
+  + "termo e orientações impressos. 15 dias grátis.";
 
 export const metadata: Metadata = paginaPublica({
   titulo: `${TITULO} | AVANEST`,

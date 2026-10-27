@@ -24,7 +24,7 @@ const REVISADO_EM = "2026-10-10";
 const TITULO = "Escala médica online para grupos e plantões";
 const DESCRICAO =
   "Escala médica por hospital e turno, com troca de plantão registrada, aviso no celular, "
-  + "impressão em uma folha e fechamento do mês. 2 meses grátis.";
+  + "impressão em uma folha e fechamento do mês. 15 dias grátis.";
 
 export const metadata: Metadata = paginaPublica({
   titulo: `${TITULO} | AVANEST`,

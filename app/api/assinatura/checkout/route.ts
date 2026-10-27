@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
   }
   const reserva = Array.isArray(reservaData) ? reservaData[0] : reservaData;
   const valorMensal = Number(reserva?.preco ?? 0);
-  // OS 2 MESES GRÁTIS SÃO O TESTE, e são dois no total. Quem assina durante o
+  // O PERÍODO GRÁTIS É O TESTE (15 dias desde 27/10/2026), e vale uma vez. Quem assina durante o
   // teste só paga quando ele acaba — os dias que faltam não se perdem; quem
   // assina depois paga na hora. Antes, os meses da campanha eram somados de
   // novo aqui, e quem assinava no fim do teste ganhava quatro meses.

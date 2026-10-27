@@ -9,11 +9,12 @@ import { faltaCartao } from "@/lib/teste-gratis";
 const WHATSAPP = "https://wa.me/5541997870810";
 
 // A PRIMEIRA FRASE QUE A PESSOA LÊ ao ser trazida para cá. É o fim de um
-// caminho: ela criou a conta, usou dois meses, e o sistema a trouxe. Dizer
-// "período de teste" seria falar do sistema; dizer "2 meses" é falar do que
+// caminho: ela criou a conta, usou o teste, e o sistema a trouxe. Dizer
+// "período de teste" seria falar do sistema; dizer "teste grátis" é falar do que
 // foi combinado com ela na capa.
 const MOTIVOS: Record<string, string> = {
-  trial: "Seus 2 meses de teste terminaram.",
+  // Sem o número de dias: quem entrou antes de 27/10/2026 teve dois meses.
+  trial: "Seu teste grátis terminou.",
   ativo: "Sua assinatura venceu.",
   suspenso: "Sua assinatura está suspensa.",
   cancelado: "Sua assinatura foi cancelada.",
@@ -63,7 +64,7 @@ export default async function AssinaturaPage({
   const planos = (planosData ?? []) as Plano[];
   const vagas = (Array.isArray(vagasData) ? vagasData[0] : vagasData) as Vagas | null;
 
-  // A organização nova começa aqui: os 2 meses grátis abrem com o cartão
+  // A organização nova começa aqui: o teste grátis abre com o cartão
   // cadastrado. Até lá ela não está "liberada", mesmo com a data no futuro.
   const { data: org } = perfil?.institution_id
     ? await supabase.from("instituicoes").select("plano, created_at").eq("id", perfil.institution_id).maybeSingle()
@@ -83,8 +84,8 @@ export default async function AssinaturaPage({
     ?? planos.find((p) => p.codigo === assinatura.plano_codigo);
 
   // O valor mostrado espelha o que reservar_plano cobra no checkout. A
-  // campanha antiga não aparece mais para o cliente (a oferta é só o teste de
-  // 2 meses), mas uma organização antiga que tenha preço contratado continua
+  // campanha antiga não aparece mais para o cliente (a oferta é só o teste
+  // grátis), mas uma organização antiga que tenha preço contratado continua
   // vendo — e pagando — o valor dela.
   const campanhaVale = Boolean(vagas?.ativa) && Number(vagas?.meses_gratis ?? 0) > 0;
   const alvoNaCampanha = Boolean(alvo) && alvo!.codigo === vagas?.plano_codigo;
@@ -116,7 +117,7 @@ export default async function AssinaturaPage({
         <div className="avnLoginContent">
           <h1>
             {semCartao
-              ? "Cadastre o cartão para começar seus 2 meses grátis."
+              ? "Cadastre o cartão para começar seu teste grátis."
               : liberada
                 ? situacao === "trial" ? "Você está no teste grátis." : "Sua assinatura está ativa."
                 : MOTIVOS[situacao] ?? "Assinatura inativa."}

@@ -59,13 +59,14 @@ test("a organização nasce com data de fim do teste", () => {
 
 test("a promessa aparece na capa e na página de planos, com a condição do cartão", () => {
   // Quem chega direto no /planos por um link nunca viu a capa, e é ali que
-  // está olhando número. Desde 15/10/2026 a oferta é "2 meses grátis, com o
+  // está olhando número. Desde 27/10/2026 a oferta é "15 dias grátis, com o
   // cartão cadastrado e a primeira cobrança no fim deles" — e "sem cartão"
   // não pode sobrar em tela nenhuma de quem ainda vai se cadastrar.
-  for (const tela of ["app/page.tsx", "app/planos/page.tsx", "app/2meses/page.tsx", "app/criar-conta/page.tsx",
+  for (const tela of ["app/page.tsx", "app/planos/page.tsx", "app/15dias/page.tsx", "app/criar-conta/page.tsx",
     "app/escala-medica/page.tsx", "app/avaliacao-pre-anestesica-digital/page.tsx", "components/pagina-de-conteudo.tsx"]) {
     const codigo = ler(tela);
-    assert.match(codigo, /2 meses|dois primeiros meses|\{MESES_DE_TESTE\} meses/, `a promessa sumiu de ${tela}`);
+    assert.match(codigo, /15 dias|\{DIAS_DE_TESTE\} dias|OFERTA_DO_TESTE/, `a promessa sumiu de ${tela}`);
+    assert.doesNotMatch(codigo, /2 meses grátis|MESES_DE_TESTE/, `${tela} ainda promete os dois meses`);
     assert.match(codigo, /primeira cobrança/i, `${tela} não diz quando vem a primeira cobrança`);
     assert.doesNotMatch(codigo, /sem cartão|sem cadastrar cartão/i, `${tela} ainda promete "sem cartão"`);
   }
@@ -165,16 +166,17 @@ test("a tela diz o que a assinatura abre", () => {
 test("a página de planos diz a saída ao lado da oferta", () => {
   // Quem cadastra o cartão quer saber, antes, que pode cancelar sem ser cobrado.
   const planos = ler("app/planos/page.tsx");
-  assert.match(planos, /Cancele antes do fim dos \{MESES_DE_TESTE\} meses e nada é cobrado/);
+  assert.match(planos, /Cancele antes do fim dos \{DIAS_DE_TESTE\} dias e nada é cobrado/);
 });
 
 test("a tela de assinatura recebe quem veio do fim do teste", () => {
-  // O pedido era "no fim dos 2 meses, uma mensagem e o redirecionamento". O
+  // O pedido era "no fim do teste, uma mensagem e o redirecionamento". O
   // redirecionamento é o `liberada === false` do painel; a mensagem é esta, e
-  // ela fala do que foi combinado na capa — "2 meses" —, não do vocabulário
-  // do sistema.
+  // ela fala do que foi combinado na capa — o teste grátis —, não do
+  // vocabulário do sistema. Sem número de dias: quem entrou antes de
+  // 27/10/2026 teve dois meses, e quem entra agora tem quinze.
   const tela = ler("app/assinatura/page.tsx");
-  assert.match(tela, /trial: "Seus 2 meses de teste terminaram\."/);
+  assert.match(tela, /trial: "Seu teste grátis terminou\."/);
   // E a promessa que sustenta a campanha: nada é apagado.
   assert.match(tela, /Nada é apagado enquanto a assinatura estiver parada/);
 });

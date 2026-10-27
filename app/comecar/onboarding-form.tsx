@@ -45,9 +45,9 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
       p_rqe: texto("rqe") || null,
     });
     if (error) { setErro(error.message); setBusy(false); return; }
-    // Toda organização nova passa pela assinatura antes de entrar: os 2 meses
-    // grátis começam com o cartão cadastrado, e a primeira cobrança só vence
-    // no fim deles. Quem veio da vitrine com um plano já chega com ele marcado.
+    // Toda organização nova passa pela assinatura antes de entrar: o teste
+    // grátis começa com o cartão cadastrado, e a primeira cobrança só vence
+    // no fim dele. Quem veio da vitrine com um plano já chega com ele marcado.
     router.replace(plano ? `/assinatura?plano=${encodeURIComponent(plano)}` : "/assinatura");
     router.refresh();
   }

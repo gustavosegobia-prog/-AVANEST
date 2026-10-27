@@ -34,12 +34,13 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   { caminho: "/escores/apfel", prioridade: 0.8, frequencia: "monthly" },
   { caminho: "/escores/indice-de-lee", prioridade: 0.8, frequencia: "monthly" },
   { caminho: "/escores/classificacao-asa", prioridade: 0.8, frequencia: "monthly" },
-  // A porta da campanha dos dois meses. Diferente do /comecar logo abaixo, ela
+  // A porta da campanha do teste grátis (15 dias; era /2meses, que agora
+  // redireciona para cá). Diferente do /comecar logo abaixo, ela
   // é pública de verdade: o redirecionamento dela só acontece para quem já tem
-  // sessão, e o buscador chega anônimo. Entra também porque "2 meses grátis" é
+  // sessão, e o buscador chega anônimo. Entra também porque "15 dias grátis" é
   // uma busca que vale a pena responder com a página que cadastra, e não com a
   // de preços.
-  { caminho: "/2meses", prioridade: 0.7, frequencia: "monthly" },
+  { caminho: "/15dias", prioridade: 0.7, frequencia: "monthly" },
   // `/comecar` NÃO entra, e é a regra escrita no topo deste arquivo sendo
   // cumprida: a página exige sessão e redireciona para /login quando não há.
   // O buscador chega anônimo, leva o redirecionamento, e o Search Console
@@ -50,7 +51,7 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   // destino de um link dentro do e-mail da escala, aberto no aparelho por quem
   // às vezes ainda não entrou no sistema uma vez sequer.
   { caminho: "/app", prioridade: 0.6, frequencia: "monthly" },
-  // `/criar-conta` saiu (revisão de 28/10/2026): sem convite e sem plano ela é
+  // `/criar-conta` saiu (revisão de 27/10/2026): sem convite e sem plano ela é
   // só o aviso "Cadastro por convite", e está marcada para fora da busca.
   { caminho: "/login", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/termos", prioridade: 0.3, frequencia: "yearly" },

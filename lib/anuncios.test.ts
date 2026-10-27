@@ -15,7 +15,7 @@ test("a tag do Google Ads nunca entra no sistema", () => {
 });
 
 test("as páginas públicas e o caminho do cadastro aceitam a tag", () => {
-  for (const c of ["/", "/planos", "/2meses", "/criar-conta", "/escores/stop-bang",
+  for (const c of ["/", "/planos", "/15dias", "/criar-conta", "/escores/stop-bang",
     "/avaliacao-pre-anestesica-digital", "/escala-medica", "/ficha-anestesica", "/privacidade", "/cookies"])
     assert.equal(rotaAceitaAnuncios(c), true, c);
 });
