@@ -37,7 +37,7 @@ export function PaginaDeEscore({
     <main className="avnLanding">
       <header className="avnNav">
         <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
-        <nav>
+        <nav aria-label="Principal">
           {/* Dois rótulos, e o CSS escolhe — o mesmo arranjo da capa. O texto
               longo não cabe em 390px junto com "Ver planos", e a barra passava
               a empurrar a página inteira 25px para o lado. */}
@@ -111,7 +111,7 @@ export function PaginaDeEscore({
 
       <section className="escOutros">
         <h2>Outros escores</h2>
-        <nav className="escOutrosLinks">
+        <nav className="escOutrosLinks" aria-label="Outros escores">
           {ESCORES_DO_MENU.filter((e) => e.href !== atual).map((e) => (
             <Link key={e.href} href={e.href}>{e.nome}</Link>
           ))}

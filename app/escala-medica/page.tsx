@@ -134,10 +134,10 @@ export default function EscalaMedicaPage() {
             A planilha resolve a montagem. O problema começa depois, quando a escala muda e cada
             um tem uma versão diferente dela.
           </p>
-          <div className="escTabela">
+          <div className="escTabela" tabIndex={0} role="region" aria-label="Tabela: Escala médica em planilha ou em sistema?">
             <table>
               <thead>
-                <tr><th></th><th>Planilha e grupo de mensagens</th><th>AVANEST</th></tr>
+                <tr><th><span className="sr-only">Aspecto</span></th><th>Planilha e grupo de mensagens</th><th>AVANEST</th></tr>
               </thead>
               <tbody>
                 <tr><td><strong>Troca de plantão</strong></td>

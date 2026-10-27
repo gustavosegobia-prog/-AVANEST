@@ -199,7 +199,7 @@ export default function InstalarNoCelular() {
     <main className="avnLanding">
       <header className="avnNav">
         <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
-        <nav>
+        <nav aria-label="Principal">
           <a className="avnLogin" href="/login">Login</a>
         </nav>
       </header>

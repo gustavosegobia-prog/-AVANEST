@@ -50,7 +50,8 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   // destino de um link dentro do e-mail da escala, aberto no aparelho por quem
   // às vezes ainda não entrou no sistema uma vez sequer.
   { caminho: "/app", prioridade: 0.6, frequencia: "monthly" },
-  { caminho: "/criar-conta", prioridade: 0.5, frequencia: "monthly" },
+  // `/criar-conta` saiu (revisão de 28/10/2026): sem convite e sem plano ela é
+  // só o aviso "Cadastro por convite", e está marcada para fora da busca.
   { caminho: "/login", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/termos", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/privacidade", prioridade: 0.3, frequencia: "yearly" },

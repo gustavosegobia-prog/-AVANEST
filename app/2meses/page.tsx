@@ -27,7 +27,7 @@ import { CAMINHO_DA_CAMPANHA, origemDoLink } from "@/lib/link-da-campanha";
 // pelo mesmo caminho, em público.
 
 export const metadata: Metadata = paginaPublica({
-  titulo: "2 meses grátis no AVANEST",
+  titulo: "2 meses grátis no AVANEST, sistema para anestesiologistas",
   descricao: "Crie sua conta e use o AVANEST por 2 meses grátis, com o sistema completo. O cartão é cadastrado no início e a primeira cobrança só vence depois dos 2 meses.",
   caminho: CAMINHO_DA_CAMPANHA,
 });

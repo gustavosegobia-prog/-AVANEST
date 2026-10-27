@@ -21,9 +21,9 @@ import { RodapePublico } from "@/components/rodape-publico";
 const TRILHA = [{ nome: "Início", caminho: "/" }, { nome: "Planos e preços", caminho: "/planos" }];
 
 export const metadata: Metadata = paginaPublica({
-  titulo: "Planos e preços | AVANEST",
+  titulo: "Planos e preços do sistema para anestesiologistas | AVANEST",
   descricao:
-    "Escala, avaliação pré-anestésica, produção e fluxo de caixa — do anestesiologista sozinho ao grupo inteiro. 2 meses grátis: a primeira cobrança só vence depois deles.",
+    "Escala, avaliação pré-anestésica, produção e fluxo de caixa, do anestesiologista sozinho ao grupo inteiro. 2 meses grátis: a primeira cobrança vem depois.",
   caminho: "/planos",
 });
 
@@ -162,7 +162,7 @@ export default async function PlanosPage() {
     <main className="avnLanding planosPage">
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
-        <nav>
+        <nav aria-label="Principal">
           <a className="avnLogin" href="/login">Login</a>
           <a className="avnPrimary" href="#planos">Ver planos</a>
         </nav>

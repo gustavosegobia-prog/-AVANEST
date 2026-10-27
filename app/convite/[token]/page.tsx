@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
@@ -7,6 +8,13 @@ import { AcceptInviteForm } from "./accept-invite-form";
 const PAPEIS: Record<string, string> = {
   admin: "Administrador", medico: "Anestesiologista",
   recepcao: "Recepção", financeiro: "Financeiro",
+};
+
+// O convite mostra o e-mail de quem foi convidado. Link pessoal, nunca busca:
+// fora do índice aqui e fora do rastreio em app/robots.ts.
+export const metadata: Metadata = {
+  title: "Convite para o AVANEST",
+  robots: { index: false, follow: false },
 };
 
 export default async function ConvitePage({ params }: { params: Promise<{ token: string }> }) {
