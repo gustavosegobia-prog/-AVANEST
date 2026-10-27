@@ -229,14 +229,14 @@ export default function HomePage() {
             <div className="avnTelaBarra" aria-hidden="true"><i /><i /><i /><span>avanest.com.br</span></div>
             <Image
               src="/capa/avaliacao-computador.webp" width={1600} height={1025} priority
-              sizes="(min-width: 1101px) 52vw, calc(100vw - 40px)"
+              sizes="(min-width: 1101px) 52vw, (min-width: 1000px) 46vw, calc(100vw - 40px)"
               alt="Avaliação pré-anestésica no AVANEST: as nove etapas, a identificação da paciente e o IMC e o peso ideal calculados (dados fictícios)"
             />
           </figure>
           <figure className="avnTelaCelular">
             <Image
               src="/capa/avaliacao-celular.webp" width={780} height={1688}
-              sizes="(min-width: 1600px) 260px, (min-width: 1101px) 200px, 34vw"
+              sizes="(min-width: 1600px) 260px, (min-width: 1101px) 200px, (min-width: 1000px) 128px, 34vw"
               alt="No celular, o Índice de Lee calculado a partir da cirurgia e da creatinina (dados fictícios)"
             />
           </figure>

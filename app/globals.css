@@ -6349,8 +6349,33 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .avnModulosLista{max-width:none;grid-template-columns:repeat(2,auto);grid-template-rows:repeat(3,auto);
   grid-auto-flow:column;justify-content:start;column-gap:36px}
 @media(min-width:1101px){.avnModulosLista li{font-size:17.5px}}
-@media(max-width:700px),(min-width:1101px) and (max-width:1340px){
+@media(max-width:700px),(min-width:1000px) and (max-width:1340px){
   .avnModulosLista{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-flow:row}
+}
+
+/* O TABLET DEITADO (1000 a 1100px: o iPad de 10,2" dá 1080, o mini 1024).
+   As duas colunas só começavam em 1101px, e nesta faixa as telas caíam para
+   baixo do texto: o lado direito do destaque ficava vazio, só o azul, e o
+   sistema só aparecia rolando a página. Aqui o texto e as telas dividem a
+   largura como no notebook, com medidas que cabem na metade da tela: título
+   menor, os módulos em uma coluna e os botões podendo quebrar linha. Sem
+   altura mínima — no iPad grande em pé (1024 de largura) a tela inteira de
+   altura deixaria um vão em cima e embaixo. */
+@media(min-width:1000px) and (max-width:1100px){
+  .avnHero.avnHeroComTelas{
+    grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:center;
+    column-gap:36px;padding:0 28px 24px;
+  }
+  .avnHeroComTelas .avnHeroContent{width:auto;margin:0;padding:44px 0 20px}
+  .avnHeroComTelas h1{width:auto;max-width:none;font-size:38px;margin:16px 0 18px}
+  .avnHeroComTelas .avnLead{max-width:none;font-size:17px}
+  .avnOferta{max-width:none}
+  .avnOferta .avnActions{flex-wrap:wrap;gap:10px}
+  .avnCapa .avnOferta .avnPrimary,.avnCapa .avnOferta .avnSecondary{padding:0 16px}
+  .avnHeroTelas{width:auto;margin:0;padding:24px 0}
+  .avnTelaCelular{left:-30px;right:auto;bottom:-6px;width:128px;padding:5px;border-radius:22px}
+  .avnTelaCelular img{border-radius:17px}
+  .avnTelaLegenda{margin-top:18px;text-align:right}
 }
 
 /* O sistema por dentro: cada módulo com a tela real ao lado. No computador
