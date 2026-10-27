@@ -139,7 +139,7 @@ a,button,input,select,textarea,label,summary,[role=button]{touch-action:manipula
 .loginPage,.dashboardPage{min-height:100vh;padding:40px;display:grid;place-items:center;background:var(--blue);position:relative;overflow:hidden}.loginPage:before,.dashboardPage:before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;background:var(--yellow);border:var(--border);right:-140px;top:-160px}.loginBack{position:absolute;left:32px;top:28px;color:white;font-weight:900;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid white;z-index:2}.loginCard,.dashboardCard{width:min(560px,100%);background:white;border:var(--border);box-shadow:12px 12px 0 var(--black);padding:46px;position:relative;z-index:1}.loginCard h1,.dashboardCard h1{font-size:clamp(48px,7vw,76px);line-height:.86;letter-spacing:-.055em;margin:34px 0 24px;font-weight:900}.loginCard h1 span,.dashboardCard h1 span{color:var(--red)}.loginCard>p,.dashboardCard>p{line-height:1.5}.loginForm{display:grid;gap:10px;margin-top:30px}.loginForm label{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.1em}.loginForm input{width:100%;border:3px solid var(--black);background:var(--paper);padding:15px;font:inherit;margin-bottom:8px}.loginForm input:focus{outline:4px solid var(--yellow);outline-offset:1px}.loginForm .btn{margin-top:12px;cursor:pointer}.loginForm .btn:disabled{opacity:.65;cursor:wait}.loginError{background:#ffe2e2;border:2px solid var(--red);padding:10px;font-weight:700}.loginNotice{background:var(--yellow);border:3px solid var(--black);padding:14px;margin:24px 0}.dashboardCard .btn{margin-top:20px}@media(max-width:560px){.loginPage,.dashboardPage{padding:72px 18px 30px}.loginCard,.dashboardCard{padding:28px}.loginBack{left:18px;top:22px}}
 
 :root{--avn-navy:#071c2f;--avn-navy2:#0d2a42;--avn-teal:#43c8b8;--avn-ink:var(--cor-tinta);--avn-muted:#667888;--avn-bg:#f2f6f8;--avn-line:#dce5eb}
-.avnLanding,.avnShell{min-height:100vh;background:var(--avn-bg);color:var(--avn-ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.avnNav,.avnTopbar{background:var(--avn-navy);color:#fff;display:flex;align-items:center;justify-content:space-between}.avnNav{height:108px;padding:0 max(28px,calc((100vw - 1180px)/2));border-bottom:1px solid #ffffff2b}.avnTopbar{height:82px;padding:0 30px}.avnBrand{display:inline-flex;align-items:center;gap:14px}.avnMark{width:54px;height:54px;border:2px solid var(--avn-teal);border-radius:15px;display:grid;place-items:center;color:var(--avn-teal)}.avnBrand strong{display:block;font-size:23px;letter-spacing:.13em}.avnBrand small{display:block;margin-top:5px;color:#82a6be;font-size:9px;letter-spacing:.28em}.avnNav nav,.avnTopbarMeta{display:flex;gap:12px;align-items:center}.avnPrimary,.avnSecondary,.avnLogin,.avnButton{min-height:48px;border-radius:12px;padding:0 25px;display:inline-flex;align-items:center;justify-content:center;font-weight:750;border:0;cursor:pointer}.avnPrimary,.avnButton{background:var(--avn-teal);color:#062c2a}.avnSecondary,.avnLogin{border:1px solid #ffffff59;color:#fff;background:#ffffff0d}.avnHero{min-height:710px;position:relative;background:var(--avn-navy);color:#fff}.avnOverlay{position:absolute;inset:0;background:linear-gradient(90deg,#041626fa 0%,#041626e0 48%,#0416264d)}.avnHeroContent{position:relative;z-index:1;width:min(1180px,calc(100% - 56px));margin:auto;padding:130px 0 80px}.avnEyebrow{font-size:13px;font-weight:800;letter-spacing:.3em;color:var(--avn-teal)}.avnHero h1{font-size:clamp(44px,5vw,68px);line-height:1.05;letter-spacing:-.035em;margin:24px 0 28px}.avnLead{font-size:20px;line-height:1.8;color:#c5d4df;max-width:780px}.avnActions{display:flex;gap:18px;margin:38px 0}.avnBenefits{list-style:none;display:flex;flex-wrap:wrap;gap:24px 34px;margin:50px 0 0;padding:0;color:var(--avn-teal);font-weight:900}.avnBenefits span{color:#d9e5ec;margin-left:8px}
+.avnLanding,.avnShell{min-height:100vh;background:var(--avn-bg);color:var(--avn-ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.avnNav,.avnTopbar{background:var(--avn-navy);color:#fff;display:flex;align-items:center;justify-content:space-between}.avnNav{height:108px;padding:0 max(28px,calc((100vw - var(--avn-caixa,1180px))/2));border-bottom:1px solid #ffffff2b}.avnTopbar{height:82px;padding:0 30px}.avnBrand{display:inline-flex;align-items:center;gap:14px}.avnMark{width:54px;height:54px;border:2px solid var(--avn-teal);border-radius:15px;display:grid;place-items:center;color:var(--avn-teal)}.avnBrand strong{display:block;font-size:23px;letter-spacing:.13em}.avnBrand small{display:block;margin-top:5px;color:#82a6be;font-size:9px;letter-spacing:.28em}.avnNav nav,.avnTopbarMeta{display:flex;gap:12px;align-items:center}.avnPrimary,.avnSecondary,.avnLogin,.avnButton{min-height:48px;border-radius:12px;padding:0 25px;display:inline-flex;align-items:center;justify-content:center;font-weight:750;border:0;cursor:pointer}.avnPrimary,.avnButton{background:var(--avn-teal);color:#062c2a}.avnSecondary,.avnLogin{border:1px solid #ffffff59;color:#fff;background:#ffffff0d}.avnHero{min-height:710px;position:relative;background:var(--avn-navy);color:#fff}.avnOverlay{position:absolute;inset:0;background:linear-gradient(90deg,#041626fa 0%,#041626e0 48%,#0416264d)}.avnHeroContent{position:relative;z-index:1;width:min(var(--avn-caixa,1180px),calc(100% - 56px));margin:auto;padding:130px 0 80px}.avnEyebrow{font-size:13px;font-weight:800;letter-spacing:.3em;color:var(--avn-teal)}.avnHero h1{font-size:clamp(44px,5vw,68px);line-height:1.05;letter-spacing:-.035em;margin:24px 0 28px}.avnLead{font-size:20px;line-height:1.8;color:#c5d4df;max-width:780px}.avnActions{display:flex;gap:18px;margin:38px 0}.avnBenefits{list-style:none;display:flex;flex-wrap:wrap;gap:24px 34px;margin:50px 0 0;padding:0;color:var(--avn-teal);font-weight:900}.avnBenefits span{color:#d9e5ec;margin-left:8px}
 /* Os três incisos do topo: um traço curto marca cada um, o rótulo carrega
    o peso e a descrição vem em peso normal. Antes os dois estavam em 900 e
    a linha inteira gritava — sem hierarquia, o olho não sabe onde pousar. */
@@ -152,7 +152,7 @@ a,button,input,select,textarea,label,summary,[role=button]{touch-action:manipula
    onde todos os três quebram, era o que fazia a lista parecer torta. */
 .avnBenefits li::before{content:"";position:absolute;left:0;top:.72em;
   width:16px;height:2px;background:var(--avn-teal)}
-.avnBenefits span{font-weight:450;letter-spacing:.005em}.avnInfo{padding:90px max(28px,calc((100vw - 1180px)/2));background:#fff}.avnInfo>p{color:#209d90;font-size:12px;font-weight:850;letter-spacing:.28em}.avnInfo h2{font-size:42px;margin:15px 0 42px}.avnGrid,.avnStats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.avnGrid article,.avnStat,.avnPanel,.avnAssessmentCard,.avnSteps{padding:26px;border:1px solid var(--avn-line);border-radius:16px;background:#fff}.avnGrid article b{color:#209d90}.avnGrid p{line-height:1.7;color:var(--avn-muted)}
+.avnBenefits span{font-weight:450;letter-spacing:.005em}.avnInfo{padding:90px max(28px,calc((100vw - var(--avn-caixa,1180px))/2));background:#fff}.avnInfo>p{color:#209d90;font-size:12px;font-weight:850;letter-spacing:.28em}.avnInfo h2{font-size:42px;margin:15px 0 42px}.avnGrid,.avnStats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.avnGrid article,.avnStat,.avnPanel,.avnAssessmentCard,.avnSteps{padding:26px;border:1px solid var(--avn-line);border-radius:16px;background:#fff}.avnGrid article b{color:#209d90}.avnGrid p{line-height:1.7;color:var(--avn-muted)}
 /* Menor e mais quieto do que era. Ele fica no canto, sobre o mesmo espaço
    dos dois botões, e em 13px com peso 800 disputava a atenção com eles —
    numa página de venda, quem tem de chamar é o botão, não o selo da rede
@@ -1851,7 +1851,7 @@ button:disabled{cursor:not-allowed}
 .planosHero{
   background:linear-gradient(160deg,var(--avn-navy) 0%,#0d2a42 100%);
   color:#fff;
-  padding:clamp(48px,7vw,88px) max(20px,calc((100vw - 1180px)/2)) clamp(40px,6vw,72px);
+  padding:clamp(48px,7vw,88px) max(20px,calc((100vw - var(--avn-caixa,1180px))/2)) clamp(40px,6vw,72px);
   text-align:center;
 }
 .planosHero h1{
@@ -1891,7 +1891,7 @@ button:disabled{cursor:not-allowed}
 .planosGrade{
   display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:var(--esp-5);align-items:stretch;
-  width:min(1180px,calc(100% - 40px));margin:clamp(-40px,-4vw,-28px) auto 0;
+  width:min(var(--avn-caixa,1180px),calc(100% - 40px));margin:clamp(-40px,-4vw,-28px) auto 0;
   padding-bottom:clamp(48px,6vw,72px);position:relative;z-index:1;
 }
 
@@ -1962,7 +1962,7 @@ button:disabled{cursor:not-allowed}
 
 .planosIncluso{
   background:var(--cor-superficie);border-top:1px solid var(--avn-line);
-  padding:clamp(44px,6vw,72px) max(20px,calc((100vw - 1180px)/2));
+  padding:clamp(44px,6vw,72px) max(20px,calc((100vw - var(--avn-caixa,1180px))/2));
 }
 .planosIncluso h2{font-size:clamp(22px,3vw,32px);margin:0 0 var(--esp-6);text-align:center}
 .planosIncluso ul{
@@ -2174,7 +2174,7 @@ button:disabled{cursor:not-allowed}
 
    Sem imagem de fundo: a home tem a foto e o impacto; aqui a pessoa veio ler.
    Fundo claro segura melhor sete blocos de texto seguidos. */
-.recHero{padding:74px max(28px,calc((100vw - 1180px)/2)) 20px;background:#fff}
+.recHero{padding:74px max(28px,calc((100vw - var(--avn-caixa,1180px))/2)) 20px;background:#fff}
 .recHero h1{font-size:clamp(34px,4vw,52px);line-height:1.08;letter-spacing:-.03em;
   margin:16px 0 22px;max-width:900px}
 .recHero .avnLead{color:var(--avn-muted)}
@@ -2196,7 +2196,7 @@ button:disabled{cursor:not-allowed}
    Sem isto, "CRM 49131-PR" cola no nome de cima. */
 @media(max-width:560px){.escAutoria{gap:7px 12px}}
 
-.recBloco{padding:34px max(28px,calc((100vw - 1180px)/2));background:#fff}
+.recBloco{padding:34px max(28px,calc((100vw - var(--avn-caixa,1180px))/2));background:#fff}
 /* O título da seção fica ancorado numa barra de cor, e não centralizado: são
    sete blocos, e a barra dá ao olho onde recomeçar a cada rolagem. */
 .recBloco h2{font-size:27px;letter-spacing:-.02em;margin:0 0 20px;
@@ -2223,7 +2223,7 @@ button:disabled{cursor:not-allowed}
 .recGrade h3{font-size:16.5px;line-height:1.35;margin:0 0 9px;letter-spacing:-.01em}
 .recGrade p{margin:0;line-height:1.72;color:var(--avn-muted);font-size:14.5px}
 
-.recFim{padding:70px max(28px,calc((100vw - 1180px)/2)) 84px;
+.recFim{padding:70px max(28px,calc((100vw - var(--avn-caixa,1180px))/2)) 84px;
   background:var(--avn-navy);color:#fff}
 .recFim h2{font-size:clamp(26px,3vw,38px);letter-spacing:-.025em;margin:0 0 16px;max-width:820px}
 .recFim p{color:#c5d4df;line-height:1.8;max-width:760px;margin:0;font-size:17px}
@@ -2239,7 +2239,7 @@ button:disabled{cursor:not-allowed}
    Quem chega aqui vem do Google querendo a conta, não a nossa apresentação.
    Por isso a calculadora vem antes do texto e ocupa a largura toda: se ela
    ficar abaixo da dobra, a página perde para o resultado seguinte da busca. */
-.escCorpo{padding:8px max(28px,calc((100vw - 1180px)/2)) 26px;background:#fff}
+.escCorpo{padding:8px max(28px,calc((100vw - var(--avn-caixa,1180px))/2)) 26px;background:#fff}
 
 .escCalc{border:1px solid var(--avn-line);border-radius:18px;padding:22px;background:#fff}
 /* auto-fit para os oito critérios do STOP-Bang caberem em duas ou três colunas
@@ -2299,11 +2299,11 @@ button:disabled{cursor:not-allowed}
   .escAsaItem dd{margin:0}
 }
 
-.escAviso{padding:22px max(28px,calc((100vw - 1180px)/2));background:#fdf1e3}
+.escAviso{padding:22px max(28px,calc((100vw - var(--avn-caixa,1180px))/2));background:#fdf1e3}
 .escAviso p{margin:0;max-width:900px;line-height:1.75;color:#7a4408;font-size:15px}
 
 .escGrade{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));
-  gap:16px;padding:8px max(28px,calc((100vw - 1180px)/2)) 30px;background:#fff}
+  gap:16px;padding:8px max(28px,calc((100vw - var(--avn-caixa,1180px))/2)) 30px;background:#fff}
 .escCartao{display:block;padding:24px;border:1px solid var(--avn-line);border-radius:16px;
   background:#fff;color:inherit;text-decoration:none;transition:border-color .12s}
 .escCartao:hover{border-color:var(--avn-teal)}
@@ -2312,7 +2312,7 @@ button:disabled{cursor:not-allowed}
 .escCartao h2{font-size:21px;letter-spacing:-.02em;margin:10px 0 9px}
 .escCartao p{margin:0;line-height:1.72;color:var(--avn-muted);font-size:14.5px}
 
-.escOutros{padding:26px max(28px,calc((100vw - 1180px)/2));background:#fff;
+.escOutros{padding:26px max(28px,calc((100vw - var(--avn-caixa,1180px))/2));background:#fff;
   border-top:1px solid var(--avn-line)}
 .escOutros h2{font-size:15px;letter-spacing:.04em;text-transform:uppercase;
   color:var(--avn-muted);margin:0 0 12px}
@@ -6237,7 +6237,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
     radial-gradient(700px 480px at 0% 100%,#0b3049 0%,transparent 60%),
     var(--avn-navy);
 }
-.avnHeroTelas{position:relative;width:min(1180px,calc(100% - 40px));margin:0 auto;padding:4px 0 0}
+.avnHeroTelas{position:relative;width:min(var(--avn-caixa,1180px),calc(100% - 40px));margin:0 auto;padding:4px 0 0}
 .avnTelaComputador{margin:0;border-radius:14px;overflow:hidden;background:#fff;
   box-shadow:0 34px 80px -24px #000000b3,0 0 0 1px #ffffff24}
 .avnTelaBarra{display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;background:#e8eef3;border-bottom:1px solid #d3dde6}
@@ -6290,7 +6290,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .avnBeneficios{margin-top:30px}
 }
 
-.avnPerfis{padding:72px max(20px,calc((100vw - 1180px)/2)) 24px;background:#fff}
+.avnPerfis{padding:72px max(20px,calc((100vw - var(--avn-caixa,1180px))/2)) 24px;background:#fff}
 .avnPerfisSobre{margin:0;color:#11776c;font-size:12px;font-weight:850;letter-spacing:.28em}
 .avnPerfis h2{margin:12px 0 28px;font-size:clamp(26px,3.2vw,38px);line-height:1.15;color:var(--avn-ink)}
 .avnPerfisGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
@@ -6340,7 +6340,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
    o lado da tela alterna, e o olho desce em zigue-zague; no celular, o texto
    e logo abaixo a tela. A moldura não corta o que passa da borda (a segunda
    tela do financeiro), por isso os cantos ficam na barra e na imagem. */
-.avnModulos{padding:88px max(20px,calc((100vw - 1180px)/2)) 80px;background:var(--avn-bg)}
+.avnModulos{padding:88px max(20px,calc((100vw - var(--avn-caixa,1180px))/2)) 80px;background:var(--avn-bg)}
 .avnModulos>h2{max-width:820px;margin:0;font-size:clamp(28px,3.4vw,44px);line-height:1.12;
   letter-spacing:-.025em;color:var(--avn-ink);text-wrap:balance}
 .avnModulosLead{max-width:680px;margin:18px 0 0;color:#40546a;font-size:18px;line-height:1.6}
@@ -6391,7 +6391,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 
 /* O fechamento: a oferta de novo, para quem leu até o fim. Azul da marca,
    para não se confundir com o rodapé preto logo abaixo. */
-.avnFechamento{padding:80px max(20px,calc((100vw - 1180px)/2));color:#fff;background:var(--avn-navy2)}
+.avnFechamento{padding:80px max(20px,calc((100vw - var(--avn-caixa,1180px))/2));color:#fff;background:var(--avn-navy2)}
 .avnFechamento h2{margin:0;font-size:clamp(28px,3.4vw,44px);line-height:1.12;letter-spacing:-.025em;color:#fff}
 .avnFechamento p{max-width:620px;margin:16px 0 0;color:#c5d4df;font-size:18px;line-height:1.6}
 .avnFechamento .avnActions{margin:30px 0 0;flex-wrap:wrap}
@@ -6656,7 +6656,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
    Três colunas de links em vez de uma fila: com nove destinos a fila quebrava
    no meio de um nome, e a regra antiga de `footer` ainda tem altura fixa de
    125px — por isso a altura volta a `auto` aqui. */
-.rodapePublico{display:block;height:auto;padding:44px max(28px,calc((100vw - 1180px)/2)) 28px;
+.rodapePublico{display:block;height:auto;padding:44px max(28px,calc((100vw - var(--avn-caixa,1180px))/2)) 28px;
   font-weight:500;letter-spacing:0;text-align:left}
 .rodapeColunas{display:grid;grid-template-columns:repeat(3,max-content);gap:24px 72px}
 .rodapeColunas nav{display:flex;flex-direction:column;align-items:flex-start}
@@ -8032,3 +8032,61 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 .envioProntuario p{font-size:13px;line-height:1.45;margin:6px 0 10px;color:#3d5164}
 .envioProntuario .envioOk{color:var(--cor-sucesso);font-weight:600}
 .localFormDica{grid-column:1/-1;margin:-6px 0 0;font-size:12.5px;line-height:1.45;color:#5a7086}
+
+/* ══ Monitores grandes (1600px ou mais) ═══════════════════════════════════
+   No monitor de 1920 a capa parava numa caixa de 1400px, com título de 56px:
+   mais de 250px vazios de cada lado e o texto pequeno para a distância de uma
+   mesa. A partir de 1600px a caixa cresce até 1640px, e o que se lê cresce
+   junto — título, texto, botões, a barra e as telas do sistema. Acima disso
+   a caixa para de crescer: esticar até a borda de um 4K espalharia a página.
+   As outras páginas públicas usam a caixa de --avn-caixa (1180px no notebook),
+   que aqui vai a 1400px. */
+@media(min-width:1600px){
+  :root{--avn-caixa:1400px}
+  .avnCapa{--avn-moldura:max(64px,calc((100vw - 1640px)/2))}
+
+  /* A barra do topo: mais alta, com a marca e os botões no tamanho da tela. */
+  .avnNav{height:80px}
+  .avnBrand,.avnNav .avnBrand{--marca:30px}
+  .avnNav nav{gap:14px}
+  .avnNav nav a{min-height:48px;padding:0 24px;border-radius:12px;font-size:17px}
+
+  /* O destaque da capa. */
+  .avnHero.avnHeroComTelas{column-gap:clamp(64px,5vw,104px);min-height:max(760px,calc(100svh - 80px))}
+  .avnCapa .avnEyebrow{font-size:15px}
+  .avnHeroComTelas h1{max-width:820px;font-size:clamp(58px,3.6vw,70px);margin:20px 0 24px}
+  .avnHeroComTelas .avnLead{max-width:680px;font-size:22px;line-height:1.6}
+  .avnModulosLista{column-gap:48px}
+  .avnModulosLista li{font-size:21px}
+  .avnBeneficios{margin-top:36px;gap:14px}
+  .avnOferta{margin-top:44px;max-width:720px}
+  .avnCapa .avnPrimary,.avnCapa .avnSecondary{min-height:58px;padding:0 32px;border-radius:14px;font-size:19px}
+  .avnOfertaApoio{font-size:17px}
+  .avnAjuda{font-size:16px}
+  .avnTelaCelular{width:clamp(210px,13vw,260px)}
+  .avnTelaLegenda{font-size:14.5px}
+
+  /* As seções de baixo acompanham. */
+  .avnPerfis h2,.avnModulos>h2,.avnFechamento h2{font-size:clamp(44px,2.9vw,56px)}
+  .avnPerfisGrade{gap:28px}
+  .avnPerfisGrade article{padding:36px}
+  .avnPerfisGrade h3{font-size:26px}
+  .avnPerfilQuem,.avnPerfisGrade ul{font-size:17.5px}
+  .avnPerfilBotao{min-height:54px;padding:0 26px;font-size:17px}
+  .avnModulosLead,.avnFechamento p{max-width:760px;font-size:20px}
+  .avnModuloTexto h3{font-size:36px}
+  .avnModuloTexto>p{font-size:19px}
+  .avnModuloTexto ul{font-size:17.5px}
+  .avnModulosNota{font-size:15.5px}
+  .avnFechamento p{max-width:720px}
+
+  /* Recursos, escores e as páginas de venda: a caixa já cresceu; o texto dos
+     cartões acompanha, para não sobrar cartão largo com letra miúda. */
+  .recHero h1{max-width:1120px;font-size:clamp(52px,3.3vw,64px)}
+  .recBloco h2{font-size:32px}
+  .recGrade{gap:20px}
+  .recGrade article{padding:28px 30px}
+  .recGrade h3{font-size:19px}
+  .recGrade p{font-size:16.5px}
+}
+
