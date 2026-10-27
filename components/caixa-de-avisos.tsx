@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { DIAS_ADIADO, chaveDoAviso, podeAdiar, quantosPedemResposta, type Aviso } from "@/lib/avisos";
+import { DIAS_ADIADO, chaveDeVisto, chaveDoAviso, podeAdiar, quantosPedemResposta, type Aviso } from "@/lib/avisos";
 import { Icone } from "@/components/icone";
 
 // A caixa de avisos: o sino da barra do topo.
@@ -16,6 +16,9 @@ import { Icone } from "@/components/icone";
 // já é verdade nas tabelas de troca, chat e suporte: uma troca pendente é um
 // aviso porque está pendente, e para de ser no instante em que alguém responde.
 // O motivo inteiro está em lib/avisos.ts.
+//
+// Abrir um lembrete (dinheiro, confirmação) leva à tela certa e o tira do
+// sino: é o "visto", que volta sozinho se a conta mudar.
 
 // Um ícone por origem do aviso, todos do mesmo conjunto de traços do resto da
 // interface. Eram emoji, e emoji não é ilustração confiável: cada sistema
@@ -65,7 +68,7 @@ function quandoFoi(iso: string, agora = Date.now()): string {
 }
 
 export function CaixaDeAvisos({
-  avisos, onIr, onResponderTroca, onAdiar,
+  avisos: todosOsAvisos, onIr, onResponderTroca, onAdiar, onVisto,
 }: {
   avisos: Aviso[];
   /** Leva para a área do aviso. O clique tem de RESOLVER, não só informar. */
@@ -90,7 +93,17 @@ export function CaixaDeAvisos({
    * grava a decisão — a pendência continua, o lembrete cala pelo prazo, e volta.
    */
   onAdiar?: (aviso: Aviso) => Promise<void>;
+  /**
+   * O lembrete foi aberto: quem foi até a tela já sabe dele, e ele sai do
+   * sino. Grava o que o aviso dizia (lib/avisos.ts, chaveDeVisto): se a conta
+   * mudar, ele volta. Só para os lembretes que podem ser adiados.
+   */
+  onVisto?: (aviso: Aviso) => Promise<void>;
 }) {
+  // Os vistos nesta tela somem na hora, sem esperar o servidor: o clique leva
+  // para outra área, e o sino seguiria mostrando o que a pessoa acabou de abrir.
+  const [vistosAgora, setVistosAgora] = useState<ReadonlySet<string>>(new Set());
+  const avisos = todosOsAvisos.filter((a) => !vistosAgora.has(chaveDeVisto(a)));
   const [aberta, setAberta] = useState(false);
   const [lidos, setLidos] = useState(false);
   /** Qual troca está sendo respondida agora, para travar os dois botões dela. */
@@ -214,7 +227,14 @@ export function CaixaDeAvisos({
               >
                 <button
                   type="button" role="menuitem" className="avisoAbrir"
-                  onClick={() => { setAberta(false); onIr(a); }}
+                  onClick={() => {
+                    setAberta(false);
+                    if (podeAdiar(a) && onVisto) {
+                      setVistosAgora((antes) => new Set(antes).add(chaveDeVisto(a)));
+                      void onVisto(a);
+                    }
+                    onIr(a);
+                  }}
                 >
                   <span className="avisoIcone" aria-hidden="true"><Icone nome={ICONE[a.tipo] ?? "conversa"} tamanho={17} /></span>
                   <span className="avisoTexto">

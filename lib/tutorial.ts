@@ -167,7 +167,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
         area: "medico",
         alvo: '[data-secao="ficha"]',
         titulo: "Ficha anestésica, na sala",
-        texto: "Ficha anestésica abre a folha da sala, feita para o tablet. Busque o paciente e toque em Abrir ficha. Os sinais vitais entram com um toque no gráfico, e arrastar repete o valor nas colunas seguintes. As doses vêm sugeridas pelo peso, de adulto ou de criança, e você muda o que quiser. Tudo é salvo enquanto você registra.",
+        texto: "Na sala, toque aqui em Ficha anestésica: abre a folha feita para o tablet. Busque o paciente e toque em Abrir ficha. Os sinais vitais entram com um toque no gráfico, e arrastar repete o valor nas colunas seguintes. As doses vêm sugeridas pelo peso, de adulto ou de criança, e você muda o que quiser. Tudo é salvo enquanto você registra.",
       });
       etapas.push({
         area: "medico",
@@ -180,7 +180,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "medico",
       alvo: '[data-secao="crises"]',
       titulo: "Manejo de crises",
-      texto: "Manejo de crises em anestesia abre os protocolos — parada cardíaca, anafilaxia, via aérea, hemorragia, obstetrícia e outros —, por categoria ou pela busca de protocolo ou sinal. Preencha idade e peso no alto e as doses já saem calculadas para aquele paciente. A Calculadora de doses abre por cima, com o mesmo paciente.",
+      texto: "Manejo de crises fica aqui e abre os protocolos — parada cardíaca, anafilaxia, via aérea, hemorragia, obstetrícia e outros —, por categoria ou pela busca de protocolo ou sinal. Preencha idade e peso no alto e as doses já saem calculadas para aquele paciente. A Calculadora de doses abre por cima, com o mesmo paciente.",
     });
   }
 

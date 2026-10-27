@@ -59,7 +59,7 @@ const ChatFlutuante = dynamic(() => import("@/components/chat-flutuante").then((
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
 import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
 import { iniciais, plural } from "@/lib/escala";
-import { DIAS_ADIADO, chaveDoAviso, type Aviso } from "@/lib/avisos";
+import { DIAS_ADIADO, DIAS_VISTO, chaveDeVisto, chaveDoAviso, type Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { nomeDoLocal, type LocalDisponivel } from "@/lib/local-ativo";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
@@ -930,6 +930,16 @@ export function DashboardClient({
             });
             if (error) { window.alert(`Não consegui adiar: ${error.message}`); return; }
             router.refresh();
+          }}
+          // Abrir o lembrete o tira do sino (lib/avisos.ts, Visto). O erro é
+          // engolido: um visto que não gravou faz o lembrete voltar no próximo
+          // carregamento — chato, e nada além disso.
+          onVisto={async (aviso) => {
+            await createClient().from("avisos_adiados").upsert({
+              perfil_id: perfil.id,
+              chave: chaveDeVisto(aviso),
+              ate: somarDias(hoje(), DIAS_VISTO),
+            });
           }}
           onIr={(aviso) => {
             // O clique tem de RESOLVER, não só informar. Um aviso que abre uma
