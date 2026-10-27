@@ -215,7 +215,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "plantoes",
       alvo: '[data-secao="producao"]',
       titulo: "Produção do dia",
-      texto: "Escala → Produção. Anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos.",
+      texto: "Escala → Produção. Anote quem você anestesiou: paciente, convênio e cirurgia numa linha. Dá para fotografar a ficha de internação e os campos vêm preenchidos. Em cada linha, Calcular honorário mostra o valor pela tabela do plano — ainda em desenvolvimento.",
     });
     etapas.push({
       area: "plantoes",
@@ -262,6 +262,12 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       alvo: '[data-secao="valores"]',
       titulo: "Fechamento e configuração",
       texto: "Fechamento do mês tranca a competência e registra na auditoria. Extrato de pagamentos lista o que entrou. E Valores por convênio é onde se cadastra quanto vale cada um — enquanto essa tabela estiver vazia, todo atendimento entra valendo R$ 0,00.",
+    });
+    etapas.push({
+      area: "financeiro",
+      alvo: '[data-secao="honorarios"]',
+      titulo: "Tabelas e honorários",
+      texto: "Financeiro → Tabelas e honorários, ainda em desenvolvimento. Importe a tabela de cada plano — código TUSS, porte anestésico e valor — e o honorário previsto de cada anestesia da Produção sai pela regra do contrato. Confira o valor com o contrato antes de cobrar.",
     });
     etapas.push({
       area: "financeiro",

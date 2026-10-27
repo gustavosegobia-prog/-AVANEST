@@ -169,6 +169,10 @@ export function HonorarioDaAnestesia({
         {tussId === null && (
           <p className="clinicalError">A TUSS ainda não foi publicada: sem ela, o código do procedimento não é conferido.</p>
         )}
+        <p className="admNota">
+          <span className={estilos.seloDesenvolvimento}>Em desenvolvimento</span>
+          O valor é uma previsão pela tabela do plano: confira com o contrato antes de cobrar.
+        </p>
         <div className={estilos.bloco}>
           <h3>Procedimentos (código TUSS)</h3>
           <p className="admAjuda">O principal primeiro. Com mais de um, o contrato diz quanto vale cada um.</p>

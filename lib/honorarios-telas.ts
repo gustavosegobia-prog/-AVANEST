@@ -106,6 +106,13 @@ export type EstadoDasTabelas = {
   correspondenciasPropostas: number;
   /** Anestesias enviadas ao Financeiro com o honorário pendente (Etapa 5). */
   producaoPendente: number;
+  /**
+   * Quem pode importar e publicar a TUSS — o AVANEST (super-admin), porque a
+   * TUSS vale para todas as clínicas. Para a clínica, versão nova em
+   * conferência não é pendência dela, e TUSS ausente não se resolve com um
+   * botão de importar que ela não tem. Ausente: como antes (true).
+   */
+  mantemATuss?: boolean;
 };
 
 const PESO: Record<Gravidade, number> = { alta: 0, media: 1, baixa: 2 };
@@ -117,15 +124,18 @@ const PESO: Record<Gravidade, number> = { alta: 0, media: 1, baixa: 2 };
 export function pendenciasDasTabelas(e: EstadoDasTabelas): PendenciaDaTabela[] {
   const r: PendenciaDaTabela[] = [];
   const vigenteTuss = e.tuss.find((t) => t.situacao === "vigente");
+  const mantemATuss = e.mantemATuss !== false;
   if (!vigenteTuss) {
     r.push({
       chave: "tuss-sem-vigente", gravidade: "alta", area: "tuss",
       titulo: "Nenhuma versão da TUSS publicada",
-      detalhe: "Sem a TUSS, nenhum código é conferido e todo honorário fica pendente.",
-      acao: { rotulo: "Importar a TUSS", importar: "tuss" },
+      detalhe: mantemATuss
+        ? "Sem a TUSS, nenhum código é conferido e todo honorário fica pendente."
+        : "A TUSS é publicada pelo AVANEST para todas as clínicas. Até lá, todo honorário fica pendente.",
+      ...(mantemATuss ? { acao: { rotulo: "Importar a TUSS", importar: "tuss" as const } } : {}),
     });
   }
-  for (const t of e.tuss.filter((x) => x.situacao === "em_conferencia")) {
+  for (const t of e.tuss.filter((x) => mantemATuss && x.situacao === "em_conferencia")) {
     r.push({
       chave: `tuss-conferencia-${t.id}`, gravidade: "media", area: "tuss",
       titulo: `TUSS ${t.versao} aguardando publicação`,
@@ -267,13 +277,19 @@ export function primeirosPassos(e: {
   tuss: EstadoDasTabelas["tuss"];
   versoes: Array<{ situacao: string }>;
   honorariosCalculados: number;
+  /** Ver EstadoDasTabelas.mantemATuss. Ausente: true. */
+  mantemATuss?: boolean;
 }): PassoInicial[] {
   const tussPublicada = e.tuss.some((t) => t.situacao === "vigente");
   const tussEmConferencia = e.tuss.some((t) => t.situacao === "em_conferencia");
   const planoPublicado = e.versoes.some((v) => v.situacao !== "rascunho");
   const planoEmRascunho = e.versoes.some((v) => v.situacao === "rascunho");
   return [
-    {
+    e.mantemATuss === false ? {
+      chave: "tuss", titulo: "A TUSS publicada", feito: tussPublicada,
+      detalhe: "A Tabela 22 da ANS, publicada pelo AVANEST para todas as clínicas: é ela que confere cada código.",
+      acao: { rotulo: "Consultar a TUSS", area: "tuss" },
+    } : {
       chave: "tuss", titulo: "Publicar a TUSS", feito: tussPublicada,
       detalhe: "A Tabela 22 da ANS: é ela que confere cada código.",
       acao: tussEmConferencia && !tussPublicada

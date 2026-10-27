@@ -650,27 +650,16 @@ export function ProducaoDoMes({
   const [dataDaBaixa, setDataDaBaixa] = useState(hojeLocal());
   const [salvandoBaixa, setSalvandoBaixa] = useState(false);
   /**
-   * O honorário previsto de cada anestesia (Tabelas e honorários). Enquanto o
-   * módulo é conferido, só o super-admin vê; e só depois que o banco tem as
-   * colunas — antes disso a linha continua exatamente como era.
+   * O honorário previsto de cada anestesia (Tabelas e honorários). Aberto a
+   * todos desde 27/10/2026, com a etiqueta de "em desenvolvimento"; e só
+   * depois que o banco tem as colunas — antes disso a linha continua
+   * exatamente como era.
    */
-  const [superAdmin, setSuperAdmin] = useState(false);
   const [conferindo, setConferindo] = useState<Producao | null>(null);
   // A lista do "Calcular o mês" é tirada na hora de abrir: calcular muda os
   // itens, e a lista não pode se refazer no meio da conta.
   const [loteDoMes, setLoteDoMes] = useState<Producao[] | null>(null);
-  useEffect(() => {
-    let vivo = true;
-    void (async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from("perfis").select("super_admin").eq("id", user.id).maybeSingle();
-      if (vivo) setSuperAdmin((data as { super_admin?: boolean } | null)?.super_admin === true);
-    })();
-    return () => { vivo = false; };
-  }, []);
-  const comHonorario = superAdmin && itens.some((i) => i.honorario_situacao !== undefined);
+  const comHonorario = itens.some((i) => i.honorario_situacao !== undefined);
   // O honorário previsto do mês pelas tabelas dos planos: o que já tem valor,
   // e quantas anestesias faltam calcular ou estão pendentes.
   const honorarioDoMes = useMemo(() => resumoDoHonorarioDoMes(itens), [itens]);
@@ -917,7 +906,7 @@ export function ProducaoDoMes({
         // ele se baseia, e a diferença para o anotado só onde dá para comparar.
         <section className="clinicalPanel producaoHonorarioMes" aria-label="Honorário previsto no mês">
           <div className="producaoHonorarioValor">
-            <span>Honorário previsto pelas tabelas dos planos</span>
+            <span>Honorário previsto pelas tabelas dos planos <em className="producaoEmDesenvolvimento">em desenvolvimento</em></span>
             <strong>{mascara(money(honorarioDoMes.previsto))}</strong>
             <small>
               {honorarioDoMes.calculadas === honorarioDoMes.total

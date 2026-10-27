@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { VersaoDeContrato } from "./honorarios.ts";
 import {
   descreverAlteracao, emLotes, ehArea, faltaInstalar, lerEmPaginas, pendenciasDasTabelas, primeirosPassos, padroesDaBusca, codigosSugeridos, divergeDoAnotado, resumoDoHonorarioDoMes, versaoDoNome, type EstadoDasTabelas,
@@ -256,5 +257,31 @@ describe("honorários: da ficha ao código TUSS", () => {
     assert.ok(!divergeDoAnotado(1000, null));
     assert.ok(!divergeDoAnotado(1000, 0));
     assert.ok(!divergeDoAnotado(null, 900));
+  });
+});
+
+describe("tabelas e honorários: liberado às clínicas", () => {
+  it("a clínica não recebe pendência nem botão da TUSS, que é do AVANEST", () => {
+    const comNova = estado({ tuss: [{ id: "t1", versao: "202609", situacao: "vigente" }, { id: "t2", versao: "202610", situacao: "em_conferencia" }] });
+    assert.ok(pendenciasDasTabelas(comNova).some((p) => p.chave === "tuss-conferencia-t2"), "o AVANEST vê a versão nova");
+    assert.ok(!pendenciasDasTabelas({ ...comNova, mantemATuss: false }).some((p) => p.chave.startsWith("tuss-conferencia")),
+      "a clínica não vê pendência que não pode resolver");
+    const semTuss = pendenciasDasTabelas(estado({ tuss: [], mantemATuss: false })).find((p) => p.chave === "tuss-sem-vigente");
+    assert.equal(semTuss?.acao, undefined, "sem botão de importar para quem não importa");
+    assert.match(semTuss?.detalhe ?? "", /publicada pelo AVANEST/);
+  });
+  it("o primeiro passo da clínica é consultar a TUSS, e não importar", () => {
+    const [tuss] = primeirosPassos({ tuss: [], versoes: [], honorariosCalculados: 0, mantemATuss: false });
+    assert.deepEqual(tuss.acao, { rotulo: "Consultar a TUSS", area: "tuss" });
+    const [doAvanest] = primeirosPassos({ tuss: [], versoes: [], honorariosCalculados: 0 });
+    assert.deepEqual(doAvanest.acao, { rotulo: "Importar a TUSS", importar: "tuss" });
+  });
+  it("a página, a API e a Produção não exigem mais o super-admin", () => {
+    const ler = (c: string) => readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+    assert.doesNotMatch(ler("app/api/honorarios/calcular/route.ts"), /super_admin !== true/);
+    assert.doesNotMatch(ler("components/producao-do-dia.tsx"), /superAdmin && itens\.some/);
+    const pagina = ler("app/financeiro/honorarios/page.tsx");
+    assert.match(pagina, /pode_tabelas_honorarios/, "quem não tem o Financeiro continua de fora");
+    assert.match(ler("components/honorarios/tabelas-e-honorarios.tsx"), /Em desenvolvimento\./);
   });
 });

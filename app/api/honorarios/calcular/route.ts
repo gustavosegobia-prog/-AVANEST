@@ -19,7 +19,8 @@ import { faltaInstalar } from "@/lib/honorarios-telas";
 // honorário (gatilho protege_honorario_da_producao): na tela, ninguém o
 // escreve à mão.
 //
-// Enquanto o módulo é conferido, só o super-admin calcula.
+// Liberado para todo médico (27/10/2026), com o aviso de "em desenvolvimento"
+// na tela. Cada um só calcula a própria Produção (conferido abaixo).
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -36,9 +37,8 @@ export async function POST(request: NextRequest) {
   if (excedeu) return excedeu;
 
   const { data: perfil } = await supabase
-    .from("perfis").select("institution_id, status, super_admin").eq("id", user.id).maybeSingle();
+    .from("perfis").select("institution_id, status").eq("id", user.id).maybeSingle();
   if (!perfil || perfil.status !== "ativo" || !perfil.institution_id) return erro("Conta sem organização ativa.", 403);
-  if (perfil.super_admin !== true) return erro("O cálculo do honorário ainda está em conferência.", 403);
 
   const corpo = await request.json().catch(() => null) as { producaoId?: unknown; urgencia?: unknown } | null;
   const producaoId = typeof corpo?.producaoId === "string" && UUID.test(corpo.producaoId) ? corpo.producaoId : null;

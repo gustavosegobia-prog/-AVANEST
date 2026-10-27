@@ -1937,10 +1937,12 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
           });
         })()}
         {/* Tabelas e honorários (TUSS, CBHPM, contratos) mora numa página
-            própria e, enquanto é conferida, só o super-admin vê o caminho. */}
-        {perfil.super_admin===true&&<Link href="/financeiro/honorarios" className="finMenuLink">
+            própria. Aberta a quem tem o Financeiro, ainda em desenvolvimento:
+            a etiqueta diz isso antes do clique. */}
+        <Link href="/financeiro/honorarios" className="finMenuLink" data-secao="honorarios">
           <Icone nome="calculadora" tamanho={18}/><span>Tabelas e honorários</span>
-        </Link>}
+          <small className="finMenuDesenvolvimento">em desenvolvimento</small>
+        </Link>
       </nav>
 
       <div className="financeConteudo">

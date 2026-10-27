@@ -126,6 +126,10 @@ export function CalcularOMes({ anestesias, rotuloDoMes, mascarar, onFechar, onCa
           Os códigos <b>sugeridos</b> vêm do que você usou antes para o mesmo procedimento. Desmarque o que não estiver certo;
           o que ficar marcado é gravado e calculado, uma anestesia depois da outra.
         </p>
+        <p className="admNota">
+          <span className={estilos.seloDesenvolvimento}>Em desenvolvimento</span>
+          Os valores são uma previsão pela tabela de cada plano: confira com o contrato antes de cobrar.
+        </p>
 
         {andamento && (
           <div className={estilos.progresso} role="status">
