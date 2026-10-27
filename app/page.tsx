@@ -236,7 +236,7 @@ export default function HomePage() {
           <figure className="avnTelaCelular">
             <Image
               src="/capa/avaliacao-celular.webp" width={780} height={1688}
-              sizes="(min-width: 1101px) 200px, 34vw"
+              sizes="(min-width: 1600px) 260px, (min-width: 1101px) 200px, 34vw"
               alt="No celular, o Índice de Lee calculado a partir da cirurgia e da creatinina (dados fictícios)"
             />
           </figure>
@@ -297,11 +297,11 @@ export default function HomePage() {
             <figure className={`avnModuloTela ${m.tablet ? "avnModuloTablet" : ""}`}>
               {!m.tablet && <div className="avnTelaBarra" aria-hidden="true"><i /><i /><i /><span>avanest.com.br</span></div>}
               <Image src={m.tela[0]} width={m.tela[1]} height={m.tela[2]} alt={m.alt} loading="lazy"
-                sizes="(min-width: 1101px) 640px, calc(100vw - 40px)" />
+                sizes="(min-width: 1600px) 900px, (min-width: 1101px) 640px, calc(100vw - 40px)" />
               {m.segunda && (
                 <span className="avnModuloSegunda">
                   <Image src={m.segunda[0]} width={m.segunda[1]} height={m.segunda[2]} alt={m.segunda[3]} loading="lazy"
-                    sizes="(min-width: 1101px) 300px, 45vw" />
+                    sizes="(min-width: 1600px) 400px, (min-width: 1101px) 300px, 45vw" />
                 </span>
               )}
             </figure>
