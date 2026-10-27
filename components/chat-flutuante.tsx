@@ -114,6 +114,7 @@ export function ChatFlutuante({ perfil, abrirEm = null }: {
 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [recolhida, setRecolhida] = useState(false);
 
   const fimDaSala = useRef<HTMLDivElement | null>(null);
   const fimDaConversa = useRef<HTMLDivElement | null>(null);
@@ -237,6 +238,28 @@ export function ChatFlutuante({ perfil, abrirEm = null }: {
     if (aberto && aba === "equipe") fimDaSala.current?.scrollIntoView({ block: "end" });
   }, [aberto, aba, mensagens.length]);
 
+  // O BALÃO SAI DA FRENTE ENQUANTO A TELA DESCE. No celular ele fica no canto
+  // de baixo, e a lista corre por baixo dele: parava em cima do "Enviar ao
+  // financeiro", com o número do botão escondido. Descendo, o balão recolhe;
+  // subindo, ele volta — o gesto de quem procura alguma coisa. Ouve a rolagem
+  // de qualquer parte da tela (captura no documento), mas não a do próprio
+  // painel de conversas, e só a vertical: arrastar a fileira de abas para o
+  // lado não mexe nele. O CSS só aplica até 900px de largura.
+  useEffect(() => {
+    const posicoes = new WeakMap<Element, number>();
+    function aoRolar(evento: Event) {
+      const alvo = evento.target === document ? document.scrollingElement : evento.target;
+      if (!(alvo instanceof Element) || alvo.closest(".chatPainel")) return;
+      const y = alvo.scrollTop;
+      const antes = posicoes.get(alvo) ?? y;
+      posicoes.set(alvo, y);
+      if (Math.abs(y - antes) < 6) return;
+      setRecolhida(y > antes && y > 80);
+    }
+    document.addEventListener("scroll", aoRolar, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", aoRolar, { capture: true });
+  }, []);
+
   useEffect(() => {
     if (chamadoAberto) fimDaConversa.current?.scrollIntoView({ block: "end" });
   }, [chamadoAberto, conversa.length]);
@@ -332,7 +355,7 @@ export function ChatFlutuante({ perfil, abrirEm = null }: {
     <>
       <button
         type="button"
-        className={`chatBolha${total > 0 ? " temNovidade" : ""}`}
+        className={`chatBolha${total > 0 ? " temNovidade" : ""}${recolhida && !aberto ? " recolhida" : ""}`}
         onClick={() => setAberto((estava) => !estava)}
         aria-expanded={aberto}
         aria-label={total > 0 ? `Conversas — ${total} não lida(s)` : "Conversas"}
