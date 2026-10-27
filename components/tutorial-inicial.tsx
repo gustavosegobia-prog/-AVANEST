@@ -169,8 +169,14 @@ export function TutorialInicial({
        * cujo trabalho é trocar de seção. Um `data-acao` — como o + Novo
        * paciente — abriria um diálogo por cima do tutorial e o esconderia
        * atrás do que ele estava explicando.
+       *
+       * E nunca num link para outra página — Ficha anestésica, Manejo de
+       * crises, Tabelas e honorários. O clique trocava de página, o painel
+       * saía da tela e o tutorial sumia junto, no meio do caminho. Ali ele só
+       * mostra onde fica e segue orientando.
        */
-      if (!jaAbriu && el instanceof HTMLElement && alvo.startsWith("[data-secao=")) {
+      const outraPagina = el.closest("a[href]") !== null;
+      if (!jaAbriu && el instanceof HTMLElement && alvo.startsWith("[data-secao=") && !outraPagina) {
         jaAbriu = true;
         el.click();
       }

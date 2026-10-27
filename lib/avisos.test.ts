@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, quantosPedemResposta, type EntradaDeAvisos, type TrocaParaAviso, podeAdiar, chaveDoAviso, semOsAdiados, type Aviso } from "./avisos.ts";
+import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, quantosPedemResposta, type EntradaDeAvisos, type TrocaParaAviso, podeAdiar, chaveDoAviso, chaveDeVisto, semOsAdiados, type Aviso } from "./avisos.ts";
 
 const EU = "eu-1";
 const LUCAS = "lucas-1";
@@ -471,6 +471,46 @@ test("sem nenhum adiamento, a lista passa inteira", () => {
   const a: Aviso = { id: "1", tipo: "a_receber", area: "producao", acao: true,
     quando: "2026-09-01T10:00:00Z", titulo: "x", detalhe: "y" };
   assert.equal(semOsAdiados([a], new Map(), "2026-09-01").length, 1);
+});
+
+// ===========================================================================
+// Visto
+// ===========================================================================
+
+test("lembrete visto some do sino enquanto disser a mesma coisa", () => {
+  // Clicar leva à tela certa; quem foi até lá já sabe do lembrete.
+  const a: Aviso = { id: "confirmar", tipo: "a_confirmar", area: "plantoes", acao: true,
+    quando: "2026-10-27T10:00:00Z", titulo: "29 plantões esperando sua confirmação",
+    detalhe: "Só o que você confirmar entra no fechamento do mês" };
+  const vistos = new Map([[chaveDeVisto(a), "2026-11-26"]]);
+  assert.equal(semOsAdiados([a], vistos, "2026-10-27").length, 0);
+});
+
+test("mudou a conta, o lembrete visto volta", () => {
+  // Mais um plantão a confirmar, outro valor sem cobrança: é coisa nova, e o
+  // sino precisa dizer.
+  const antes: Aviso = { id: "faturar-2026-09", tipo: "a_faturar", area: "producao", acao: true,
+    quando: "2026-10-27T10:00:00Z", titulo: "6 pacientes de setembro de 2026 sem cobrança",
+    detalhe: "R$ 3.200,00 anotados e ainda não faturados" };
+  const vistos = new Map([[chaveDeVisto(antes), "2026-11-26"]]);
+  const depois: Aviso = { ...antes, titulo: "7 pacientes de setembro de 2026 sem cobrança",
+    detalhe: "R$ 3.900,00 anotados e ainda não faturados" };
+  assert.equal(semOsAdiados([depois], vistos, "2026-10-28").length, 1);
+});
+
+test("sem mudança nenhuma, o visto volta depois do prazo", () => {
+  const a: Aviso = { id: "plantao-2026-09", tipo: "plantao_a_faturar", area: "plantoes", acao: true,
+    quando: "2026-10-27T10:00:00Z", titulo: "1 plantão de setembro de 2026 sem nota", detalhe: "R$ 1.400,00 a emitir" };
+  const vistos = new Map([[chaveDeVisto(a), "2026-11-26"]]);
+  assert.equal(semOsAdiados([a], vistos, "2026-11-26").length, 0, "no último dia, ainda calado");
+  assert.equal(semOsAdiados([a], vistos, "2026-11-27").length, 1, "no dia seguinte, volta");
+});
+
+test("o visto não se confunde com o adiamento do mesmo aviso", () => {
+  const a: Aviso = { id: "receber-2026-08", tipo: "a_receber", area: "producao", acao: true,
+    quando: "2026-10-27T10:00:00Z", titulo: "x", detalhe: "y" };
+  assert.notEqual(chaveDeVisto(a), chaveDoAviso(a));
+  assert.ok(chaveDeVisto(a).startsWith("visto:"));
 });
 
 // ---------------------------------------------------------------------------

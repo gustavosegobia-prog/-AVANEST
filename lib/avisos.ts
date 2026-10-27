@@ -509,12 +509,31 @@ export function semOsAdiados(
   hoje: string,
 ): Aviso[] {
   return avisos.filter((a) => {
-    const ate = adiados.get(chaveDoAviso(a));
     // Sem adiamento, ou já vencido: o aviso volta. `ate` é o último dia
-    // ESCONDIDO, então ele reaparece no dia seguinte.
-    return !ate || ate < hoje;
+    // ESCONDIDO, então ele reaparece no dia seguinte. Vale o mesmo para o
+    // visto, que só cala o aviso enquanto ele disser a mesma coisa.
+    const calado = (ate: string | undefined) => Boolean(ate) && (ate as string) >= hoje;
+    return !calado(adiados.get(chaveDoAviso(a))) && !calado(adiados.get(chaveDeVisto(a)));
   });
 }
+
+// ===========================================================================
+// Visto
+// ===========================================================================
+// Clicar no lembrete leva à tela certa, e quem foi até lá já sabe dele: o
+// lembrete sai do sino (27/10/2026, pedido do Gustavo). Não é apagar — a
+// pendência continua — e por isso o visto guarda o que o aviso DIZIA. Mais um
+// plantão a confirmar, outro valor sem cobrança: o texto muda, a chave não bate
+// e o aviso volta. Sem mudança nenhuma, volta depois de DIAS_VISTO.
+//
+// Só os lembretes que podem ser adiados ganham visto. O pedido de troca
+// continua até alguém assumir ou recusar: do outro lado há um colega esperando.
+
+/** Quantos dias um lembrete visto fica calado se nada mudar. */
+export const DIAS_VISTO = 30;
+
+/** A chave do visto: o aviso e o que ele dizia quando foi aberto. */
+export const chaveDeVisto = (aviso: Aviso) => `visto:${chaveDoAviso(aviso)}:${aviso.titulo} | ${aviso.detalhe}`;
 
 /** "Volta em 08/09" — o que a tela diz depois de adiar. */
 export function quandoVolta(ate: string): string {
