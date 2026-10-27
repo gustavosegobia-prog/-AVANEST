@@ -2567,6 +2567,17 @@ button:disabled{cursor:not-allowed}
   .chatPainel{right:8px;left:8px;bottom:74px;width:auto;height:min(74vh,calc(100vh - 110px))}
 }
 
+/* Descendo a tela, o balão recolhe para baixo da borda e não tapa o que está
+   no canto (o "Enviar ao financeiro" da produção, por exemplo); subindo, ele
+   volta. Quem chega nele pelo teclado o vê mesmo recolhido. Ver o efeito em
+   components/chat-flutuante.tsx. */
+@media(max-width:900px){
+  .chatBolha{transition:transform .22s ease,opacity .22s ease}
+  .chatBolha.recolhida{transform:translateY(calc(100% + 28px));opacity:0;pointer-events:none}
+  .chatBolha.recolhida:focus-visible{transform:none;opacity:1;pointer-events:auto}
+}
+@media(prefers-reduced-motion:reduce){.chatBolha{transition:none}}
+
 /* Na impressão o balão não existe: ele não faz parte da ficha do paciente. */
 @media print{.chatBolha,.chatPainel{display:none !important}}
 
