@@ -12,6 +12,7 @@ import {
 import { mesEmMaiusculas, plantoesEscrito } from "@/lib/escala";
 import { folhaDaNota, nomeDaFolhaDaNota } from "@/lib/nota-do-contador";
 import { baixarXLSX } from "@/lib/xlsx";
+import { MarcaDaguaDoUsuario } from "@/components/marca-dagua-do-usuario";
 
 // A conta de UMA pessoa, mesmo dentro de um grupo.
 //
@@ -451,6 +452,7 @@ export function MeuFinanceiro({
 
   return (
     <>
+      <MarcaDaguaDoUsuario />
       {erro && <p className="clinicalError">{erro}</p>}
       {aviso && <p className="financeSuccess" role="status">{aviso}</p>}
 
