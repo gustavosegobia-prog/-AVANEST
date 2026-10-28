@@ -109,6 +109,7 @@ import { AceiteDosTermos } from "@/components/aceite-dos-termos";
 import { RecepcaoView } from "@/components/recepcao";
 import { AreaMedica } from "@/components/area-medica";
 import { Janela, useTravaDeRolagem } from "@/components/janela";
+import { MarcaDaguaDoUsuario } from "@/components/marca-dagua-do-usuario";
 const PreferenciasDeAvisoPainel = dynamic(
   () => import("@/components/preferencias-de-aviso").then((m) => m.PreferenciasDeAvisoPainel),
   { ssr: false, loading: carregando("as preferências") });
@@ -1853,6 +1854,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   }
 
   return <div className="clinicalMain financeMain">
+    <MarcaDaguaDoUsuario />
     <section className="financeHeading"><div><h1>Financeiro</h1><ContextoDaCompetencia organizacao={nomeDaOrganizacao} competencia={period} estado={estadoFechamento} carregadoEm={carregadoEm} onAtualizar={onRefresh}/></div><div className="financeHeadingActions"><label><span>Competência</span><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/></label><button className="outlineClinical" disabled={!periodItems.length} title={periodItems.length?undefined:"Sem lançamentos na competência selecionada"} onClick={exportCsv}><Icone nome="imprimir" tamanho={15}/> Exportar CSV</button>{(perfil.role==="admin"||perfil.role==="owner")&&<button className="outlineClinical" onClick={openPriceConfig}>Configurar valores das consultas</button>}<OlhoValores oculto={oculto} onAlternar={alternar}/></div></section>
     {message&&<p className={message.includes("não foi")?"clinicalError":"financeSuccess"}>{message}</p>}
     {/* OS QUATRO NÚMEROS DO TOPO, em todas as abas: Recebido | A receber |

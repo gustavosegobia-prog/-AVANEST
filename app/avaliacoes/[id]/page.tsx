@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { MarcaDaguaDoUsuario } from "@/components/marca-dagua-do-usuario";
 import { AssessmentForm } from "./assessment-form";
 
 export default async function AssessmentPage({
@@ -27,5 +28,5 @@ export default async function AssessmentPage({
     .eq("id", avaliacao.patient_id)
     .single();
   if (!paciente) notFound();
-  return <AssessmentForm avaliacao={avaliacao} paciente={paciente} perfil={perfil} />;
+  return <><AssessmentForm avaliacao={avaliacao} paciente={paciente} perfil={perfil} /><MarcaDaguaDoUsuario /></>;
 }

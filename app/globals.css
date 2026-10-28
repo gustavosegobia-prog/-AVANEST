@@ -2578,6 +2578,25 @@ button:disabled{cursor:not-allowed}
 }
 @media(prefers-reduced-motion:reduce){.chatBolha{transition:none}}
 
+/* ══ Marca d'água de quem está usando (components/marca-dagua-do-usuario.tsx)
+   O nome, o CRM e a hora repetidos bem clarinhos sobre a tela: nenhum site
+   consegue impedir o print, mas assim ele sai assinado. Presa à janela, para
+   aparecer em qualquer ponto da rolagem, e acima das janelas abertas. A
+   máscara desenha o texto; a cor é a do texto do tema, escura no claro e
+   clara no escuro. Não pega toque. No papel, só a do protocolo de crise. */
+.marcaDoUsuario{position:fixed;inset:0;z-index:9000;pointer-events:none;
+  background-color:var(--cor-tinta,#0f2438);opacity:.05;
+  -webkit-mask-image:var(--marca-do-usuario);mask-image:var(--marca-do-usuario);
+  -webkit-mask-size:var(--marca-do-usuario-tamanho);mask-size:var(--marca-do-usuario-tamanho);
+  -webkit-mask-repeat:repeat;mask-repeat:repeat;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{
+  .marcaDoUsuario{display:none}
+  /* visibility: o PDF do protocolo esconde tudo que não é o protocolo
+     (intercorrencias.module.css), e a marca ia junto. */
+  .marcaDoUsuario.naImpressao{display:block;visibility:visible;opacity:.07}
+}
+
 /* Na impressão o balão não existe: ele não faz parte da ficha do paciente. */
 @media print{.chatBolha,.chatPainel{display:none !important}}
 
@@ -6725,8 +6744,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   font-size:12.5px;opacity:.7}
 @media(max-width:700px){
   .rodapePublico{padding:34px 20px 26px}
-  .rodapeColunas{grid-template-columns:1fr 1fr;gap:22px 18px}
-  .rodapeColunas a{min-height:44px}
 }
 
 /* Os cartões da capa levam à página do assunto. */
@@ -7971,8 +7988,17 @@ button.evoPFAsaN:disabled{cursor:default}
 /* Rodapé público no tablet: três colunas de largura fixa com 72px de vão
    passavam da margem direita entre 700 e 900px. Agora podem encolher. */
 .rodapeColunas{grid-template-columns:repeat(3,minmax(0,max-content));column-gap:clamp(28px,6vw,72px)}
+/* No celular as três colunas lado a lado, em letra menor (pedido de
+   28/10/2026). Em duas colunas, com "Empresa" embaixo e 44px por link, o
+   rodapé passava de uma tela e meia. As colunas têm a largura do conteúdo
+   (o título "Para anestesiologistas" é o mais largo) e os nomes longos
+   quebram linha dentro da coluna. */
 @media(max-width:700px){
-  .rodapeColunas{grid-template-columns:1fr 1fr;column-gap:18px}
+  .rodapePublico{padding:28px 16px 22px}
+  .rodapeColunas{grid-template-columns:repeat(3,auto);justify-content:space-between;gap:0 12px}
+  .rodapeColunas b{margin-bottom:4px;font-size:9.5px;letter-spacing:.03em}
+  .rodapeColunas a{min-height:32px;font-size:12.5px;line-height:1.25;padding:3px 0}
+  .rodapeEmpresa{margin-top:18px;padding-top:14px;font-size:11px}
 }
 
 /* Financeiro: as ações do topo (competência, exportar, configurar, olho)
