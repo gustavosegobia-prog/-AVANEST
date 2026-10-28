@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import estilos from "./intercorrencias.module.css";
 import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS } from "@/lib/intercorrencias/catalogo";
-import { APROVACOES, aprovado, dataDaAprovacao } from "@/lib/intercorrencias/aprovacao";
+import { aprovado } from "@/lib/intercorrencias/aprovacao";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, type DadosDoPaciente } from "./paciente";
@@ -45,13 +45,6 @@ function lerFavoritos(): string[] {
  * médico (super-admin), marcado como em validação.
  */
 const LIBERADOS = PROTOCOLOS.filter((p) => aprovado(p));
-
-/** O rodapé: quem aprovou quantos protocolos, e quantos ainda esperam aprovação. */
-const aprovacoes = APROVACOES.map((a) => {
-  const n = PROTOCOLOS.filter((p) => aprovado(p, [a])).length;
-  return `${n} protocolos aprovados por ${a.responsavel}, ${a.crm}, em ${dataDaAprovacao(a)}.`;
-}).join(" ");
-const emValidacao = PROTOCOLOS.length - LIBERADOS.length;
 
 export function Intercorrencias({
   dados, set, aoAbrirCalculadora, daFicha = false, titulo = "Intercorrências anestésicas", previa = false,
@@ -226,15 +219,6 @@ export function Intercorrencias({
             </section>
           ) : null}
         </div>
-      </div>
-
-      <div className={`${estilos.rodapes} ${estilos.naoImprimir}`}>
-        <p className={estilos.rodape}>
-          Os protocolos seguem diretrizes publicadas, citadas no fim de cada um. {aprovacoes}
-          {emValidacao > 0 && (previa
-            ? ` ${emValidacao} em validação, visíveis só nesta prévia e marcados na lista.`
-            : " Os demais estão em preparação e só entram depois da aprovação.")} Confira apresentação, via e dose antes de administrar.
-        </p>
       </div>
     </div>
   );
