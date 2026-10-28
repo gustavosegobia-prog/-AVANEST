@@ -77,7 +77,6 @@
 .grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .lateral { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; min-width: 0; }
 .principal { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
-.rodapes { display: grid; gap: 6px; padding-top: 4px; }
 .barraPaciente { min-width: 0; }
 
 /* As categorias: uma lista que se abre ali mesmo, mostrando os protocolos. Abrir
