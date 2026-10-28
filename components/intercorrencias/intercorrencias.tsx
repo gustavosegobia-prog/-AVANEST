@@ -5,7 +5,6 @@ import { flushSync } from "react-dom";
 import estilos from "./intercorrencias.module.css";
 import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS } from "@/lib/intercorrencias/catalogo";
 import { aprovado } from "@/lib/intercorrencias/aprovacao";
-import { MarcaDaguaDoUsuario } from "@/components/marca-dagua-do-usuario";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, type DadosDoPaciente } from "./paciente";
@@ -221,7 +220,6 @@ export function Intercorrencias({
           ) : null}
         </div>
       </div>
-      <MarcaDaguaDoUsuario naImpressao />
     </div>
   );
 }

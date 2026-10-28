@@ -2578,25 +2578,6 @@ button:disabled{cursor:not-allowed}
 }
 @media(prefers-reduced-motion:reduce){.chatBolha{transition:none}}
 
-/* ══ Marca d'água de quem está usando (components/marca-dagua-do-usuario.tsx)
-   O nome, o CRM e a hora repetidos bem clarinhos sobre a tela: nenhum site
-   consegue impedir o print, mas assim ele sai assinado. Presa à janela, para
-   aparecer em qualquer ponto da rolagem, e acima das janelas abertas. A
-   máscara desenha o texto; a cor é a do texto do tema, escura no claro e
-   clara no escuro. Não pega toque. No papel, só a do protocolo de crise. */
-.marcaDoUsuario{position:fixed;inset:0;z-index:9000;pointer-events:none;
-  background-color:var(--cor-tinta,#0f2438);opacity:.05;
-  -webkit-mask-image:var(--marca-do-usuario);mask-image:var(--marca-do-usuario);
-  -webkit-mask-size:var(--marca-do-usuario-tamanho);mask-size:var(--marca-do-usuario-tamanho);
-  -webkit-mask-repeat:repeat;mask-repeat:repeat;
-  -webkit-print-color-adjust:exact;print-color-adjust:exact}
-@media print{
-  .marcaDoUsuario{display:none}
-  /* visibility: o PDF do protocolo esconde tudo que não é o protocolo
-     (intercorrencias.module.css), e a marca ia junto. */
-  .marcaDoUsuario.naImpressao{display:block;visibility:visible;opacity:.07}
-}
-
 /* Na impressão o balão não existe: ele não faz parte da ficha do paciente. */
 @media print{.chatBolha,.chatPainel{display:none !important}}
 

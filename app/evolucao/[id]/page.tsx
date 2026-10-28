@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { exigirAcessoAEvolucao, localDaSessao } from "@/lib/evolucao/acesso";
 import { FolhaAnestesica } from "@/components/evolucao/folha-anestesica";
 import type { Registro } from "@/lib/evolucao/registros";
-import { MarcaDaguaDoUsuario } from "@/components/marca-dagua-do-usuario";
 import type { RegraDeDose } from "@/lib/evolucao/doses";
 
 export const metadata: Metadata = {
@@ -43,7 +42,7 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
     || (Array.isArray(p.permissoes) && (p.permissoes.includes("medico") || p.permissoes.includes("todos"))))
     .map((p) => ({ id: p.id, nome: p.nome, crm: p.crm ?? "" }));
 
-  return (<>
+  return (
     <FolhaAnestesica
       folhaInicial={folha}
       paciente={paciente}
@@ -54,6 +53,5 @@ export default async function FolhaPage({ params }: { params: Promise<{ id: stri
       instituicao={instituicao?.nome ?? ""}
       localDaSessao={local}
     />
-    <MarcaDaguaDoUsuario />
-  </>);
+  );
 }
