@@ -6,7 +6,6 @@ import { BrandMark } from "@/components/brand-mark";
 import estilos from "./calculos.module.css";
 import { type Compartilhado } from "./modulos-extras";
 import { Doses } from "./modulo-doses";
-import { MarcaDaguaDoUsuario } from "@/components/marca-dagua-do-usuario";
 
 // A aba é só a calculadora de doses: o que o manejo de crises usa. As outras
 // calculadoras (gasometria, eletrólitos, gap osmolar, débito cardíaco, PCA e
@@ -30,7 +29,6 @@ export function CalculosClient() {
       <div className={estilos.conteudo}>
         <Doses dados={dados} set={set} />
       </div>
-      <MarcaDaguaDoUsuario naImpressao />
     </main>
   );
 }
