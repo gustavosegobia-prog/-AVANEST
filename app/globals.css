@@ -6036,6 +6036,14 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .clinicalDark .financeTarefaContador.neutro{color:var(--cor-tinta)}
 .clinicalDark .financeTarefas button.active .financeTarefaContador{color:var(--cor-marca-contraste)}
 .medAcao{white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+/* Continuar e Excluir lado a lado. Excluir fica em contorno apagado e só
+   avermelha sob o mouse: a ação comum é continuar, e a confirmação já é vermelha. */
+.medAcoes{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
+.medExcluir{min-height:var(--alt-botao-compacto);border:1px solid var(--cor-borda-forte);border-radius:10px;background:transparent;
+  color:var(--cor-tinta-fraca);font:inherit;font-size:14px;font-weight:700;padding:0 14px;cursor:pointer;white-space:nowrap}
+.medExcluir:hover:not(:disabled){border-color:var(--cor-perigo);color:var(--cor-perigo)}
+.medExcluir:focus-visible{outline:0;box-shadow:var(--foco)}
+.medExcluir:disabled{opacity:.45;cursor:not-allowed}
 .medSemAcao{font-size:12.5px;color:var(--cor-tinta-fraca)}
 .medAgenda{padding:0}
 .medAgendaBarra{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;padding:14px 20px;border-bottom:1px solid var(--cor-borda)}
@@ -6099,6 +6107,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .medConsulta{grid-template-columns:56px minmax(0,1fr)}
   .medConsulta>.recEtapa,.medConsulta>.medAcao,.medConsulta>.medSemAcao{grid-column:2}
   .medLinha .medAcao{justify-self:start}
+  .medLinha>.medAcoes{justify-self:start;justify-content:flex-start}
   .medAgendaBarra,.medPeriodo,.medRecorte{padding-left:16px;padding-right:16px}
   .medEscopo .escalaVisoes{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .medCampo{flex:1 1 140px}
