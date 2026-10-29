@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
+import { NOME_DO_PAPEL_NO_CONVITE } from "@/lib/convite-mensagem";
 import { AcceptInviteForm } from "./accept-invite-form";
 
-const PAPEIS: Record<string, string> = {
-  admin: "Administrador", medico: "Anestesiologista",
-  recepcao: "Recepção", financeiro: "Financeiro",
-};
+// O nome da função é o mesmo da mensagem do WhatsApp (lib/convite-mensagem.ts).
+// Com a lista copiada aqui, a função Centro cirúrgico aparecia como "centro".
+const PAPEIS = NOME_DO_PAPEL_NO_CONVITE;
 
 // O convite mostra o e-mail de quem foi convidado. Link pessoal, nunca busca:
 // fora do índice aqui e fora do rastreio em app/robots.ts.
