@@ -138,3 +138,24 @@ test("cada médico entra nos pacientes dele: sem seletor de recorte, médico ind
   assert.match(rec, /"Trocar médico…" : "Indicar médico…"/);
   assert.match(painel, /<select name="medico_id" key=\{medicos\.length\} required=\{medicos\.length>0\}/);
 });
+
+test("avaliação em andamento: excluir direto da lista, com confirmação", () => {
+  // Pedido de 29/10/2026: quem desistiu da avaliação não precisa abri-la para
+  // achar o botão. As duas listas de abertas ganham "Excluir" ao lado de
+  // "Continuar avaliação", e a rota é a mesma do formulário.
+  assert.equal(tela.match(/className="medExcluir"/g)?.length, 2, "Outras avaliações em aberto e a lista de Avaliações");
+  assert.match(tela, /fetch\(`\/api\/avaliacoes\/\$\{aExcluir\.id\}`, \{ method: "DELETE" \}\)/);
+  assert.match(tela, /<Dialogo titulo=\{`Excluir a avaliação de \$\{aExcluir\.nome\}\?`\} confirmar="Excluir avaliação" confirmando="Excluindo…" perigo/);
+  assert.match(tela, /Esta ação não poderá ser desfeita\./);
+  // Só quem a rota aceita vê o botão: os mesmos três papéis do formulário.
+  const rota = ler("app/api/avaliacoes/[id]/route.ts");
+  assert.match(rota, /\["medico", "admin", "owner"\]\.includes\(actor\.role\)/);
+  assert.match(painel, /podeExcluir=\{\["medico","admin","owner"\]\.includes\(perfil\.role\)\}/);
+  assert.match(form, /\["medico","admin","owner"\]\.includes\(perfil\.role\)&&!confirmDelete/);
+  assert.match(tela, /const pedirExclusao = podeExcluir\s*\? /);
+  // Excluir só aparece onde a avaliação está em andamento; a concluída segue
+  // pelos documentos.
+  assert.match(tela, /a\.status === "rascunho"\s*\? \(\s*<span className="medAcoes">/);
+  const css = ler("app/globals.css");
+  assert.match(css, /\.medLinha>\.medAcoes\{justify-self:start;justify-content:flex-start\}/, "no celular os dois botões alinham à esquerda");
+});

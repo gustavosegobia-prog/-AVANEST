@@ -14,6 +14,7 @@ import {
 } from "@/lib/area-medica";
 import { dataPorExtenso, horaCurta, NOME_DA_ETAPA, proximaDataComConsultas, FORA_DO_FLUXO, type Etapa } from "@/lib/recepcao";
 import { AvisoFlutuante } from "@/components/aviso-flutuante";
+import { Dialogo } from "@/components/admin-ui";
 
 // A área médica: o dia, as avaliações e as pendências. Os documentos saem de
 // cada avaliação concluída ("Ver documentos"), sem seção própria.
@@ -44,13 +45,15 @@ const ICONE_DA_ETAPA: Partial<Record<Etapa, Parameters<typeof Icone>[0]["nome"]>
 };
 
 export function AreaMedica({
-  perfilId, perfilEhMedico, podeFichaAnestesica = false, pacientes, avaliacoes, agendamentos, locais, localAtivo, ocupado, erro, falhasDeCarga,
+  perfilId, perfilEhMedico, podeFichaAnestesica = false, podeExcluir = false, pacientes, avaliacoes: avaliacoesRecebidas, agendamentos, locais, localAtivo, ocupado, erro, falhasDeCarga,
   onNovaAvaliacao, onAbrirAvaliacao, onRecarregar,
 }: {
   perfilId: string;
   perfilEhMedico: boolean;
   /** A ficha anestésica está liberada (organização + acesso clínico): ganha um item no menu. */
   podeFichaAnestesica?: boolean;
+  /** Médico, administrador ou dono — os mesmos que a rota de exclusão aceita. */
+  podeExcluir?: boolean;
   pacientes: PacienteDaAreaMedica[];
   avaliacoes: AvaliacaoDaAreaMedica[];
   agendamentos: ConsultaDaAreaMedica[];
@@ -90,6 +93,41 @@ export function AreaMedica({
   // a lista para o filtro valer.
   const [situacaoInicial, setSituacaoInicial] = useState<{ v: string; n: number }>({ v: "todas", n: 0 });
   const nomeDoEscopo = pessoa === "meus" ? "nos seus pacientes" : "na equipe";
+
+  // Excluir a avaliação em andamento direto da lista (pedido de 29/10/2026):
+  // quem desistiu dela não precisa abrir para achar o botão. A rota é a mesma
+  // do formulário, que confere quem pede e apaga no servidor. A excluída some
+  // na hora; a recarga depois confirma com o banco.
+  const [aExcluir, setAExcluir] = useState<{ id: string; nome: string } | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroAoExcluir, setErroAoExcluir] = useState("");
+  const [excluidas, setExcluidas] = useState<Set<string>>(new Set());
+  const [avisoExcluida, setAvisoExcluida] = useState("");
+  const avaliacoes = useMemo(() => avaliacoesRecebidas.filter((a) => !excluidas.has(a.id)), [avaliacoesRecebidas, excluidas]);
+  const pedirExclusao = podeExcluir
+    ? (id: string, nome: string) => { setErroAoExcluir(""); setAvisoExcluida(""); setAExcluir({ id, nome }); }
+    : undefined;
+  async function excluir() {
+    if (!aExcluir) return;
+    setExcluindo(true); setErroAoExcluir("");
+    try {
+      const resposta = await fetch(`/api/avaliacoes/${aExcluir.id}`, { method: "DELETE" });
+      const corpo = await resposta.json().catch(() => ({}));
+      // 404 é "não encontrada ou já removida": some da lista do mesmo jeito.
+      if (!resposta.ok && resposta.status !== 404) {
+        setErroAoExcluir(corpo.error || "Não foi possível excluir a avaliação. Tente novamente.");
+        return;
+      }
+      setExcluidas((s) => new Set(s).add(aExcluir.id));
+      setAvisoExcluida(`Avaliação de ${aExcluir.nome} excluída.`);
+      setAExcluir(null);
+      onRecarregar();
+    } catch {
+      setErroAoExcluir("Sem conexão com o servidor. Confira a internet e tente de novo.");
+    } finally {
+      setExcluindo(false);
+    }
+  }
 
   // Nomes de quem atende e de quem registrou — só id e nome.
   const [nomes, setNomes] = useState<Map<string, string>>(new Map());
@@ -224,6 +262,13 @@ export function AreaMedica({
       </section>
 
       {erro && erro !== erroFechado && <AvisoFlutuante tipo="erro" texto={erro} onFechar={() => setErroFechado(erro)} />}
+      {avisoExcluida && <AvisoFlutuante tipo="ok" texto={avisoExcluida} onFechar={() => setAvisoExcluida("")} />}
+      {aExcluir && (
+        <Dialogo titulo={`Excluir a avaliação de ${aExcluir.nome}?`} confirmar="Excluir avaliação" confirmando="Excluindo…" perigo
+          ocupado={excluindo} erro={erroAoExcluir} onConfirmar={() => void excluir()} onCancelar={() => setAExcluir(null)}>
+          <p>Tudo o que já foi preenchido nela será apagado. Esta ação não poderá ser desfeita. O cadastro do paciente e o agendamento continuam.</p>
+        </Dialogo>
+      )}
       {falhasDeCarga.length > 0 && (
         <p className="clinicalError" role="alert">
           Não foi possível carregar {falhasDeCarga.join(" e ")} agora — o que aparece abaixo pode estar incompleto.{" "}
@@ -339,11 +384,17 @@ export function AreaMedica({
                             {outroLocal && <Icone nome="alerta" tamanho={12} />}
                             {a.local_atendimento_id ? `${outroLocal ? "Outro local: " : ""}${localPorId.get(a.local_atendimento_id) ?? "Local"}` : "Local não registrado"}
                           </span>
-                          <button type="button" className="outlineClinical medAcao" disabled={ocupado}
-                            onClick={() => abrir(`retomar-${a.id}`, a.patient_id, undefined, a.id)}
-                            aria-label={`Continuar a avaliação de ${nome}${outroLocal ? `, feita em ${localPorId.get(a.local_atendimento_id!) ?? "outro local"}` : ""}`}>
-                            {ocupado && tocado === `retomar-${a.id}` ? "Abrindo…" : "Continuar avaliação"}
-                          </button>
+                          <span className="medAcoes">
+                            <button type="button" className="outlineClinical medAcao" disabled={ocupado}
+                              onClick={() => abrir(`retomar-${a.id}`, a.patient_id, undefined, a.id)}
+                              aria-label={`Continuar a avaliação de ${nome}${outroLocal ? `, feita em ${localPorId.get(a.local_atendimento_id!) ?? "outro local"}` : ""}`}>
+                              {ocupado && tocado === `retomar-${a.id}` ? "Abrindo…" : "Continuar avaliação"}
+                            </button>
+                            {pedirExclusao && (
+                              <button type="button" className="medExcluir" disabled={ocupado} aria-label={`Excluir a avaliação de ${nome}`}
+                                onClick={() => pedirExclusao(a.id, nome)}>Excluir</button>
+                            )}
+                          </span>
                         </li>
                       );
                     })}
@@ -454,7 +505,7 @@ export function AreaMedica({
             <Avaliacoes key={situacaoInicial.n} situacaoInicial={situacaoInicial.v} avaliacoes={avaliacoesNoEscopo} total={avaliacoes.length} pacientePorId={pacientePorId}
               identificacao={identificacao} locais={locais} localPorId={localPorId} quem={quem} quando={quando}
               ocupado={ocupado} tocado={tocado} nomeDoEscopo={perfilEhMedico ? (pessoa === "meus" ? "Meus pacientes" : "Equipe") : null}
-              onAbrir={(chave, ...a) => abrir(chave, ...a)} onNova={onNovaAvaliacao} />
+              onAbrir={(chave, ...a) => abrir(chave, ...a)} onNova={onNovaAvaliacao} onExcluir={pedirExclusao} />
           )}
 
           {secao === "pendencias" && (
@@ -535,13 +586,15 @@ function AcaoDaConsulta({ c, nome, av, aberta, quem, ocupado, abrindo, destacar,
 
 function Avaliacoes({
   avaliacoes, total, pacientePorId, identificacao, locais, localPorId, quem, quando, ocupado, tocado, nomeDoEscopo,
-  situacaoInicial, onAbrir, onNova,
+  situacaoInicial, onAbrir, onNova, onExcluir,
 }: {
   avaliacoes: AvaliacaoDaAreaMedica[]; total: number; pacientePorId: Map<string, PacienteDaAreaMedica>;
   identificacao: (id: string) => string; locais: LocalDisponivel[]; localPorId: Map<string, string>;
   quem: (id: string | null | undefined) => string | null; quando: (iso: string) => string;
   ocupado: boolean; tocado: string | null; nomeDoEscopo: string | null; situacaoInicial: string;
   onAbrir: (chave: string, patientId: string, appointmentId?: string, assessmentId?: string | null) => void; onNova: () => void;
+  /** Só chega para quem pode excluir (médico, administrador ou dono). */
+  onExcluir?: (id: string, nome: string) => void;
 }) {
   const [q, setQ] = useState("");
   const [situacao, setSituacao] = useState(situacaoInicial);
@@ -617,10 +670,18 @@ function Avaliacoes({
             {feita
               ? <Link className="outlineClinical medAcao" href={`/avaliacoes/${a.id}/documentos`} aria-label={`Ver documentos de ${p?.nome ?? "paciente"}`}>Ver documentos</Link>
               : a.status === "rascunho"
-                ? <button type="button" className="outlineClinical medAcao" disabled={ocupado} aria-label={`Continuar a avaliação de ${p?.nome ?? "paciente"}`}
-                    onClick={() => onAbrir(`lista-${a.id}`, a.patient_id, undefined, a.id)}>
-                    {ocupado && tocado === `lista-${a.id}` ? "Abrindo…" : "Continuar avaliação"}
-                  </button>
+                ? (
+                  <span className="medAcoes">
+                    <button type="button" className="outlineClinical medAcao" disabled={ocupado} aria-label={`Continuar a avaliação de ${p?.nome ?? "paciente"}`}
+                      onClick={() => onAbrir(`lista-${a.id}`, a.patient_id, undefined, a.id)}>
+                      {ocupado && tocado === `lista-${a.id}` ? "Abrindo…" : "Continuar avaliação"}
+                    </button>
+                    {onExcluir && (
+                      <button type="button" className="medExcluir" disabled={ocupado} aria-label={`Excluir a avaliação de ${p?.nome ?? "paciente"}`}
+                        onClick={() => onExcluir(a.id, p?.nome ?? "paciente não localizado")}>Excluir</button>
+                    )}
+                  </span>
+                )
                 : <span className="medSemAcao">Sem ação</span>}
           </div>
         );

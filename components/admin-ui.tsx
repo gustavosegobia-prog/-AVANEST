@@ -91,11 +91,13 @@ export function Gaveta({
 
 /** Confirmação com o texto do que vai acontecer. */
 export function Dialogo({
-  titulo, children, confirmar, cancelar = "Voltar", perigo = false, ocupado = false, erro, onConfirmar, onCancelar,
+  titulo, children, confirmar, confirmando = "Salvando…", cancelar = "Voltar", perigo = false, ocupado = false, erro, onConfirmar, onCancelar,
 }: {
   titulo: string;
   children: React.ReactNode;
   confirmar: string;
+  /** O que o botão diz enquanto trabalha. */
+  confirmando?: string;
   cancelar?: string;
   perigo?: boolean;
   ocupado?: boolean;
@@ -121,7 +123,7 @@ export function Dialogo({
           <button type="button" className="outlineClinical" onClick={onCancelar} disabled={ocupado} data-foco-inicial>{cancelar}</button>
           <button type="button" className={perigo ? "primaryClinical compact admPerigo" : "primaryClinical compact"}
             onClick={onConfirmar} disabled={ocupado}>
-            {ocupado ? "Salvando…" : confirmar}
+            {ocupado ? confirmando : confirmar}
           </button>
         </div>
       </section>

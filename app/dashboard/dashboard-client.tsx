@@ -1103,7 +1103,7 @@ export function DashboardClient({
            Avaliações, Pendências e Documentos. Abrir e iniciar avaliação
            continuam sendo `openAssessment`, e o cadastro, o PatientModal. */
         <AreaMedica perfilId={perfil.id} perfilEhMedico={perfil.atuacao_medica ?? perfil.role==="medico"}
-          podeFichaAnestesica={podeFichaAnestesica}
+          podeFichaAnestesica={podeFichaAnestesica} podeExcluir={["medico","admin","owner"].includes(perfil.role)}
           pacientes={pacientes} avaliacoes={avaliacoes.map(a=>({...a,created_by:a.created_by??null,concluida_at:a.concluida_at??null,local_atendimento_id:a.local_atendimento_id??null}))}
           agendamentos={agendamentos} locais={locais} localAtivo={localAtivo}
           ocupado={busy} erro={error} falhasDeCarga={falhasDeCarga}
