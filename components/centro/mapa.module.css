@@ -68,7 +68,22 @@
 .fila { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .salaLivre { margin: 0; padding: 14px 6px; font-size: 14px; color: var(--cor-tinta-fraca); text-align: center; }
 
-.cartao { display: grid; gap: 3px; padding: 12px 14px 12px 14px;
+/* Os cartões no mesmo nível (pedido de 29/10/2026). Cada sala era uma coluna
+   solta, e cada cartão tinha a altura do próprio texto: um procedimento em
+   duas linhas empurrava a sala inteira para baixo, e o 2º paciente de uma sala
+   ficava na altura do meio do 2º da sala ao lado. Agora o quadro tem linhas
+   (--linhas, contado no componente), cada sala ocupa todas pela subgrade, e o
+   1º paciente de todas as salas fica na mesma linha, com a mesma altura; os
+   botões descem para o pé do cartão. Navegador sem subgrade fica como antes. */
+@supports (grid-template-rows: subgrid) {
+  .quadro { align-items: stretch; }
+  .coluna { display: grid; grid-template-rows: subgrid; grid-row: span var(--linhas, 2); row-gap: 8px; align-content: start; }
+  .fila { display: contents; }
+  .fila > li { display: flex; min-width: 0; }
+  .fila > li > .cartao { flex: 1; }
+}
+
+.cartao { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 12px 14px;
   border: 1px solid var(--cor-borda); border-left: 5px solid var(--faixa); border-radius: 12px; background: var(--cor-superficie); }
 .linhaDoTopo { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; min-width: 0; }
 .linhaDoTopo .chip { margin-left: auto; }
@@ -87,7 +102,7 @@
 .motivo { margin: 4px 0 0; font-size: 13.5px; color: var(--cor-perigo-forte); }
 .etapa_cancelado .paciente, .etapa_cancelado .procedimento { text-decoration: line-through; text-decoration-color: var(--cor-tinta-fraca); }
 .etapa_cancelado { opacity: .85; }
-.acoesDoCartao { display: flex; gap: 8px; margin-top: 8px; }
+.acoesDoCartao { display: flex; gap: 8px; margin-top: auto; padding-top: 8px; }
 .passo { flex: 1; min-height: 44px; }
 .editar { min-height: 44px; }
 /* Subir e descer na fila: ao lado da hora, que é o que a posição muda. */

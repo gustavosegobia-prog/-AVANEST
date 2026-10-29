@@ -236,7 +236,11 @@ export function MapaCirurgico({
               )}
             </div>
           ) : (
-            <div className={estilos.quadro}>
+            // As linhas do quadro: o cabeçalho e uma por posição na fila da
+            // sala mais cheia. Cada sala ocupa todas, e o 1º paciente de todas
+            // as salas fica na mesma linha, com a mesma altura (mapa.module.css).
+            <div className={estilos.quadro}
+              style={{ ["--linhas" as string]: 1 + Math.max(1, ...colunas.map((c) => c.casos.length)) }}>
               {colunas.map((col) => (
                 <section key={col.sala?.id ?? "sem-sala"} className={estilos.coluna} aria-label={col.sala?.nome ?? "Sem sala"}>
                   <header className={estilos.cabecaDaColuna}>
@@ -248,7 +252,8 @@ export function MapaCirurgico({
                     )}
                   </header>
                   {col.casos.length ? (
-                    <ol className={estilos.fila}>
+                    // role: com display: contents, o Safari deixa de anunciar a lista.
+                    <ol className={estilos.fila} role="list">
                       {col.casos.map((c, i) => (
                         <li key={c.id}>
                           <Cartao caso={c} agora={agora} anestesista={apelido(c.anestesista_id)} podeMontar={podeMontar}
