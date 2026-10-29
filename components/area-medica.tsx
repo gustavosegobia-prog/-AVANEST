@@ -444,13 +444,9 @@ export function AreaMedica({
                   </ol>
                 )}
               </section>
-
-              {pendencias.length > 0 && (
-                <p className="medAvisoPendencias">
-                  <Icone nome="alerta" tamanho={14} /> {pendencias.length === 1 ? "1 pendência verificada" : `${pendencias.length} pendências verificadas`} {nomeDoEscopo}.{" "}
-                  <button type="button" className="linkLimpo medLinkToque" onClick={() => irParaSecao("pendencias", "Pendências")}>Ver pendências</button>
-                </p>
-              )}
+              {/* Sem o aviso "N pendências verificadas" aqui embaixo (pedido de
+                  29/10/2026): o item Pendências do menu já mostra o número, em
+                  âmbar, em todas as larguras — no celular, como aba no alto. */}
             </>
           )}
 

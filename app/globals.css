@@ -6053,7 +6053,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .medVazio{display:grid;gap:12px;justify-items:center;padding:28px 20px}
 .medVazio p{margin:0;text-align:center}
 .medVazio>div{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-.medAvisoPendencias{display:flex;align-items:center;gap:6px;margin:var(--esp-3) 0 0;font-size:13.5px;color:var(--cor-atencao)}
 .medTranquilo{display:flex;align-items:center;gap:8px;margin:0;padding:18px 20px;color:var(--cor-sucesso);font-weight:700}
 .medRecorte{margin:0;padding:10px 20px;font-size:13px;color:var(--cor-tinta-fraca)}
 .medRecorte b{color:var(--cor-tinta)}
@@ -6153,7 +6152,6 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
    de pendências perdiam a cor que diz o que são. */
 .clinicalDark .clinicalMain p.clinicalError{color:var(--cor-perigo-forte)}
 .clinicalDark .clinicalMain p.financeSuccess{color:var(--cor-sucesso)}
-.clinicalDark .clinicalMain p.medAvisoPendencias{color:var(--cor-atencao)}
 .clinicalDark .clinicalPanel.medProximo{background:var(--cor-marca-suave);border-color:transparent}
 
 /* --- Escala no celular: o mês pessoal em barras -------------------------
