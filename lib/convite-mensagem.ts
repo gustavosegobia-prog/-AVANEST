@@ -13,11 +13,12 @@ export const ONDE_TRABALHA: Record<string, string> = {
   financeiro: "É onde ficam o faturamento do serviço e o controle dos recebimentos.",
   admin: "É onde ficam a equipe, os locais de atendimento e a organização do serviço.",
   owner: "É onde ficam a equipe, os locais de atendimento e a organização do serviço.",
+  centro: "É onde fica o mapa do centro cirúrgico do dia, sala por sala.",
 };
 
 export const NOME_DO_PAPEL_NO_CONVITE: Record<string, string> = {
   medico: "Anestesiologista", recepcao: "Recepção", financeiro: "Financeiro",
-  admin: "Administrador", owner: "Proprietário",
+  admin: "Administrador", owner: "Proprietário", centro: "Centro cirúrgico",
 };
 
 export const linkDoConvite = (origem: string, token: string) => `${origem}/convite/${token}`;

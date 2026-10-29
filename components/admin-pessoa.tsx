@@ -522,7 +522,11 @@ export function NovaPessoa({
   const [crm, setCrm] = useState("");
   const [rqe, setRqe] = useState("");
   const [role, setRole] = useState(papeis.includes("medico") ? "medico" : papeis[0] ?? "medico");
-  const [forma, setForma] = useState<Forma>("email");
+  // O link é o padrão desde 29/10/2026. O e-mail do convite sai do Supabase,
+  // em inglês ("You have been invited"), e no Gmail caiu no spam: a
+  // enfermeira convidada não achou nenhum dos três envios. O link vai pelo
+  // WhatsApp, vale por dias e não depende de filtro de ninguém.
+  const [forma, setForma] = useState<Forma>("link");
   const [dias, setDias] = useState(7);
   const [outraPessoa, setOutraPessoa] = useState(false);
   const [erros, setErros] = useState<Record<string, string>>({});
@@ -536,7 +540,7 @@ export function NovaPessoa({
   const duplicados = possiveisDuplicados({ email, crm }, equipe, convites);
   const medico = atuacao === "sim" || role === "medico";
   const sujo = passo !== "feito" && Boolean(nome || email || crm || rqe);
-  const formasPossiveis: Forma[] = semEmail ? ["sem_conta"] : role === "medico" ? ["email", "link", "sem_conta"] : ["email", "link"];
+  const formasPossiveis: Forma[] = semEmail ? ["sem_conta"] : role === "medico" ? ["link", "email", "sem_conta"] : ["link", "email"];
   const formaFinal = formasPossiveis.includes(forma) ? forma : formasPossiveis[0];
   const previa: Pessoa = {
     id: "nova", nome, email: email || null, role: formaFinal === "sem_conta" ? "medico" : role, status: "ativo",
@@ -596,7 +600,7 @@ export function NovaPessoa({
       setResultado({
         mensagem: formaFinal === "sem_conta"
           ? `${nome.trim()} cadastrado sem acesso. Já pode ser escalado e não recebe login.`
-          : `Convite enviado para ${email.trim()}. ${nome.trim()} aparece na equipe como "Convite pendente" até criar a senha.`,
+          : `Convite enviado para ${email.trim()}. ${nome.trim()} aparece na equipe como "Convite pendente" até criar a senha. O e-mail vem em inglês ("You have been invited") e pode cair no spam ou em Promoções: avise a pessoa para procurar lá.`,
       });
       setPasso("feito");
     } finally {
@@ -678,8 +682,8 @@ export function NovaPessoa({
         <fieldset className="admFormas">
           <legend>Como a pessoa vai entrar</legend>
           {([
-            ["email", "Convidar por e-mail", "O AVANEST envia um e-mail com o link para a pessoa criar a senha. O cadastro já aparece na equipe como “Convite pendente”."],
-            ["link", "Gerar link de convite", "Você copia o link e envia por WhatsApp ou onde preferir. Ele só vale para este e-mail e expira na data escolhida. Nome, profissão e CRM são preenchidos pela pessoa ao aceitar."],
+            ["link", "Gerar link de convite (recomendado)", "Você copia o link e envia por WhatsApp ou onde preferir. Ele só vale para este e-mail e expira na data escolhida. Nome, profissão e CRM são preenchidos pela pessoa ao aceitar."],
+            ["email", "Convidar por e-mail", "O e-mail sai em inglês, de um endereço do Supabase, e muitas vezes cai no spam ou em Promoções. Use só se não tiver como mandar o link para a pessoa. O cadastro já aparece na equipe como “Convite pendente”."],
             ["sem_conta", "Cadastrar profissional sem acesso ao sistema", "A pessoa participa dos processos permitidos, como a escala e o faturamento, mas não terá login: não há e-mail, senha nem convite. Se um dia precisar de acesso, dá para convidar depois sem perder plantões."],
           ] as [Forma, string, string][]).map(([valor, titulo, texto]) => {
             const possivel = formasPossiveis.includes(valor);

@@ -16,14 +16,14 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
+import { NOME_DO_PAPEL_NO_CONVITE } from "@/lib/convite-mensagem";
 import { SignUpForm } from "./sign-up-form";
 import { OFERTA_DO_TESTE, dataPorExtenso, fimDoTeste } from "@/lib/teste-gratis";
 import { CAMINHO_DA_CAMPANHA, origemDoLink } from "@/lib/link-da-campanha";
 
-const PAPEIS: Record<string, string> = {
-  admin: "Administrador", medico: "Anestesiologista",
-  recepcao: "Recepção", financeiro: "Financeiro",
-};
+// O nome da função é o mesmo da mensagem do WhatsApp (lib/convite-mensagem.ts).
+// Com a lista copiada aqui, a função Centro cirúrgico aparecia como "centro".
+const PAPEIS = NOME_DO_PAPEL_NO_CONVITE;
 
 export default async function CriarContaPage({
   searchParams,
