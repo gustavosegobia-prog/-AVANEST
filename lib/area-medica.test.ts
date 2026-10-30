@@ -77,6 +77,14 @@ describe("pendências verificadas", () => {
       ["consulta_sem_desfecho", "ver_na_agenda", null],
     ]);
   });
+  it("a avaliação excluída solta a consulta: chegou sem avaliação, até a consulta ser cancelada", () => {
+    // O luis, 29/10/2026: a avaliação em andamento foi excluída, o banco
+    // desligou a consulta (avaliacao_id nulo) e a chegada de 23/10 voltou
+    // para Pendências. Cancelada a consulta, a pendência sai.
+    const solta = c({ data: "2026-09-23", status: "presente", status_at: "2026-09-23T22:47:00Z" });
+    assert.deepEqual(pendenciasVerificadas([], [solta], HOJE).map((x) => [x.tipo, x.agendamentoId]), [["chegou_sem_avaliacao", solta.id]]);
+    assert.equal(pendenciasVerificadas([], [{ ...solta, status: "cancelado" }], HOJE).length, 0);
+  });
   it("pendência resolvida some: a avaliação concluída não aparece", () => {
     assert.equal(pendenciasVerificadas([av({ status: "concluida" })], [], HOJE).length, 0);
   });

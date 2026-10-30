@@ -6044,6 +6044,9 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .medExcluir:hover:not(:disabled){border-color:var(--cor-perigo);color:var(--cor-perigo)}
 .medExcluir:focus-visible{outline:0;box-shadow:var(--foco)}
 .medExcluir:disabled{opacity:.45;cursor:not-allowed}
+.medCancelarJunto{display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:12px;border:1px solid var(--cor-borda);
+  border-radius:var(--raio-1);font-size:14px;line-height:1.45;cursor:pointer}
+.medCancelarJunto input{flex:none;width:20px;height:20px;margin:1px 0 0;accent-color:var(--cor-marca)}
 .medSemAcao{font-size:12.5px;color:var(--cor-tinta-fraca)}
 .medAgenda{padding:0}
 .medAgendaBarra{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;padding:14px 20px;border-bottom:1px solid var(--cor-borda)}
