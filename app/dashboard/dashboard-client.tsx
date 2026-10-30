@@ -1104,6 +1104,7 @@ export function DashboardClient({
            continuam sendo `openAssessment`, e o cadastro, o PatientModal. */
         <AreaMedica perfilId={perfil.id} perfilEhMedico={perfil.atuacao_medica ?? perfil.role==="medico"}
           podeFichaAnestesica={podeFichaAnestesica} podeExcluir={["medico","admin","owner"].includes(perfil.role)}
+          podeCancelarConsulta={["recepcao","medico","admin","owner"].includes(perfil.role)||(Array.isArray(perfil.permissoes)&&perfil.permissoes.some((x)=>x==="medico"||x==="todos"))}
           pacientes={pacientes} avaliacoes={avaliacoes.map(a=>({...a,created_by:a.created_by??null,concluida_at:a.concluida_at??null,local_atendimento_id:a.local_atendimento_id??null}))}
           agendamentos={agendamentos} locais={locais} localAtivo={localAtivo}
           ocupado={busy} erro={error} falhasDeCarga={falhasDeCarga}

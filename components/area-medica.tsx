@@ -45,7 +45,7 @@ const ICONE_DA_ETAPA: Partial<Record<Etapa, Parameters<typeof Icone>[0]["nome"]>
 };
 
 export function AreaMedica({
-  perfilId, perfilEhMedico, podeFichaAnestesica = false, podeExcluir = false, pacientes, avaliacoes: avaliacoesRecebidas, agendamentos, locais, localAtivo, ocupado, erro, falhasDeCarga,
+  perfilId, perfilEhMedico, podeFichaAnestesica = false, podeExcluir = false, podeCancelarConsulta = false, pacientes, avaliacoes: avaliacoesRecebidas, agendamentos: agendamentosRecebidos, locais, localAtivo, ocupado, erro, falhasDeCarga,
   onNovaAvaliacao, onAbrirAvaliacao, onRecarregar,
 }: {
   perfilId: string;
@@ -54,6 +54,8 @@ export function AreaMedica({
   podeFichaAnestesica?: boolean;
   /** Médico, administrador ou dono — os mesmos que a rota de exclusão aceita. */
   podeExcluir?: boolean;
+  /** Pode mudar a situação da consulta (a mesma regra do banco para a agenda). */
+  podeCancelarConsulta?: boolean;
   pacientes: PacienteDaAreaMedica[];
   avaliacoes: AvaliacaoDaAreaMedica[];
   agendamentos: ConsultaDaAreaMedica[];
@@ -102,11 +104,52 @@ export function AreaMedica({
   const [excluindo, setExcluindo] = useState(false);
   const [erroAoExcluir, setErroAoExcluir] = useState("");
   const [excluidas, setExcluidas] = useState<Set<string>>(new Set());
-  const [avisoExcluida, setAvisoExcluida] = useState("");
+  const [avisoDaAcao, setAvisoDaAcao] = useState("");
+  const [erroDaAcao, setErroDaAcao] = useState("");
+  // A consulta ligada à avaliação excluída fica na agenda, solta, e o paciente
+  // que "chegou" voltava para Pendências como chegada sem avaliação (o luis,
+  // 29/10/2026). Quem exclui pode cancelar a consulta junto; quem já excluiu
+  // cancela pela própria pendência. É a mesma troca de situação da recepção.
+  const [cancelarJunto, setCancelarJunto] = useState(false);
+  const [aCancelar, setACancelar] = useState<{ id: string; nome: string; data: string } | null>(null);
+  const [cancelando, setCancelando] = useState(false);
+  const [erroAoCancelar, setErroAoCancelar] = useState("");
+  const [canceladas, setCanceladas] = useState<Set<string>>(new Set());
   const avaliacoes = useMemo(() => avaliacoesRecebidas.filter((a) => !excluidas.has(a.id)), [avaliacoesRecebidas, excluidas]);
-  const pedirExclusao = podeExcluir
-    ? (id: string, nome: string) => { setErroAoExcluir(""); setAvisoExcluida(""); setAExcluir({ id, nome }); }
+  // O banco desliga a consulta da avaliação apagada; aqui, o mesmo, até a recarga.
+  const agendamentos = useMemo(() => agendamentosRecebidos.map((c) =>
+    canceladas.has(c.id) ? { ...c, status: "cancelado" }
+      : c.avaliacao_id && excluidas.has(c.avaliacao_id) ? { ...c, avaliacao_id: null } : c),
+  [agendamentosRecebidos, canceladas, excluidas]);
+  const dataBr = (iso: string) => iso.split("-").reverse().join("/");
+  const consultaAberta = (c: ConsultaDaAreaMedica) => ["agendado", "confirmado", "presente"].includes(c.status);
+  const consultaDaExcluida = aExcluir
+    ? (podeCancelarConsulta ? agendamentos.find((c) => c.avaliacao_id === aExcluir.id && consultaAberta(c)) : undefined)
     : undefined;
+  const pedirExclusao = podeExcluir
+    ? (id: string, nome: string) => { setErroAoExcluir(""); setAvisoDaAcao(""); setErroDaAcao(""); setCancelarJunto(false); setAExcluir({ id, nome }); }
+    : undefined;
+  async function cancelarConsulta(id: string): Promise<string | null> {
+    const { error } = await createClient().rpc("registrar_presenca", { p_agendamento_id: id, p_status: "cancelado" });
+    if (error) return error.message;
+    setCanceladas((s) => new Set(s).add(id));
+    return null;
+  }
+  async function confirmarCancelamento() {
+    if (!aCancelar) return;
+    setCancelando(true); setErroAoCancelar("");
+    try {
+      const falha = await cancelarConsulta(aCancelar.id);
+      if (falha) { setErroAoCancelar(falha); return; }
+      setAvisoDaAcao(`Consulta de ${aCancelar.nome} cancelada.`);
+      setACancelar(null);
+      onRecarregar();
+    } catch {
+      setErroAoCancelar("Sem conexão com o servidor. Confira a internet e tente de novo.");
+    } finally {
+      setCancelando(false);
+    }
+  }
   async function excluir() {
     if (!aExcluir) return;
     setExcluindo(true); setErroAoExcluir("");
@@ -119,7 +162,12 @@ export function AreaMedica({
         return;
       }
       setExcluidas((s) => new Set(s).add(aExcluir.id));
-      setAvisoExcluida(`Avaliação de ${aExcluir.nome} excluída.`);
+      // A avaliação já saiu: se a consulta não cancelar, isso vira aviso, e
+      // não volta a pergunta da exclusão.
+      const consulta = cancelarJunto ? consultaDaExcluida : undefined;
+      const falha = consulta ? await cancelarConsulta(consulta.id).catch(() => "sem conexão com o servidor") : null;
+      setAvisoDaAcao(`Avaliação de ${aExcluir.nome} excluída${consulta && !falha ? ", e a consulta cancelada" : ""}.`);
+      if (falha) setErroDaAcao(`A consulta de ${dataBr(consulta!.data)} não foi cancelada: ${falha}`);
       setAExcluir(null);
       onRecarregar();
     } catch {
@@ -262,11 +310,30 @@ export function AreaMedica({
       </section>
 
       {erro && erro !== erroFechado && <AvisoFlutuante tipo="erro" texto={erro} onFechar={() => setErroFechado(erro)} />}
-      {avisoExcluida && <AvisoFlutuante tipo="ok" texto={avisoExcluida} onFechar={() => setAvisoExcluida("")} />}
+      {avisoDaAcao && <AvisoFlutuante tipo="ok" texto={avisoDaAcao} onFechar={() => setAvisoDaAcao("")} />}
+      {erroDaAcao && <AvisoFlutuante tipo="erro" texto={erroDaAcao} onFechar={() => setErroDaAcao("")} />}
       {aExcluir && (
         <Dialogo titulo={`Excluir a avaliação de ${aExcluir.nome}?`} confirmar="Excluir avaliação" confirmando="Excluindo…" perigo
           ocupado={excluindo} erro={erroAoExcluir} onConfirmar={() => void excluir()} onCancelar={() => setAExcluir(null)}>
-          <p>Tudo o que já foi preenchido nela será apagado. Esta ação não poderá ser desfeita. O cadastro do paciente e o agendamento continuam.</p>
+          <p>Tudo o que já foi preenchido nela será apagado. Esta ação não poderá ser desfeita. O cadastro do paciente continua.</p>
+          {consultaDaExcluida && (
+            <label className="medCancelarJunto">
+              <input type="checkbox" checked={cancelarJunto} disabled={excluindo} onChange={(e) => setCancelarJunto(e.target.checked)} />
+              <span>
+                <b>Cancelar também a consulta de {dataBr(consultaDaExcluida.data)}.</b>{" "}
+                Sem isso, ela continua na agenda, à espera de uma nova avaliação.
+              </span>
+            </label>
+          )}
+        </Dialogo>
+      )}
+      {aCancelar && (
+        <Dialogo titulo={`Cancelar a consulta de ${aCancelar.nome}?`} confirmar="Cancelar consulta" confirmando="Cancelando…" perigo
+          ocupado={cancelando} erro={erroAoCancelar} onConfirmar={() => void confirmarCancelamento()} onCancelar={() => setACancelar(null)}>
+          <p>
+            A consulta de {dataBr(aCancelar.data)} fica como cancelada na agenda e sai das pendências. Use quando a avaliação
+            não vai acontecer. O cadastro do paciente continua.
+          </p>
         </Dialogo>
       )}
       {falhasDeCarga.length > 0 && (
@@ -519,6 +586,9 @@ export function AreaMedica({
                     {pendencias.map((p) => {
                       const nome = pacientePorId.get(p.patientId)?.nome ?? "Paciente não localizado";
                       const rotulo = p.acao === "continuar" ? "Continuar avaliação" : p.acao === "iniciar" ? "Iniciar avaliação" : "Ver na agenda";
+                      // Chegou e não vai ser avaliado: a consulta se encerra aqui mesmo.
+                      const consulta = p.tipo === "chegou_sem_avaliacao" && podeCancelarConsulta
+                        ? agendamentos.find((c) => c.id === p.agendamentoId) : undefined;
                       return (
                         <li key={p.id} className="medLinha">
                           <span className="medQuem">
@@ -530,10 +600,18 @@ export function AreaMedica({
                               {p.localId ? ` · ${localPorId.get(p.localId) ?? "Local"}` : ""}
                             </small>
                           </span>
-                          <button type="button" className="outlineClinical medAcao" disabled={ocupado && p.acao !== "ver_na_agenda"}
-                            aria-label={`${rotulo} de ${nome}`} onClick={() => abrirPendencia(p)}>
-                            {ocupado && tocado === p.id ? "Abrindo…" : rotulo}
-                          </button>
+                          <span className="medAcoes">
+                            <button type="button" className="outlineClinical medAcao" disabled={ocupado && p.acao !== "ver_na_agenda"}
+                              aria-label={`${rotulo} de ${nome}`} onClick={() => abrirPendencia(p)}>
+                              {ocupado && tocado === p.id ? "Abrindo…" : rotulo}
+                            </button>
+                            {consulta && (
+                              <button type="button" className="medExcluir" disabled={ocupado} aria-label={`Cancelar a consulta de ${nome}`}
+                                onClick={() => { setErroAoCancelar(""); setAvisoDaAcao(""); setErroDaAcao(""); setACancelar({ id: consulta.id, nome, data: consulta.data }); }}>
+                                Cancelar consulta
+                              </button>
+                            )}
+                          </span>
                         </li>
                       );
                     })}

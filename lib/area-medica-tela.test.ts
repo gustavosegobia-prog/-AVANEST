@@ -143,7 +143,7 @@ test("avaliação em andamento: excluir direto da lista, com confirmação", () 
   // Pedido de 29/10/2026: quem desistiu da avaliação não precisa abri-la para
   // achar o botão. As duas listas de abertas ganham "Excluir" ao lado de
   // "Continuar avaliação", e a rota é a mesma do formulário.
-  assert.equal(tela.match(/className="medExcluir"/g)?.length, 2, "Outras avaliações em aberto e a lista de Avaliações");
+  assert.equal(tela.match(/className="medExcluir" disabled=\{ocupado\} aria-label=\{`Excluir a avaliação/g)?.length, 2, "Outras avaliações em aberto e a lista de Avaliações");
   assert.match(tela, /fetch\(`\/api\/avaliacoes\/\$\{aExcluir\.id\}`, \{ method: "DELETE" \}\)/);
   assert.match(tela, /<Dialogo titulo=\{`Excluir a avaliação de \$\{aExcluir\.nome\}\?`\} confirmar="Excluir avaliação" confirmando="Excluindo…" perigo/);
   assert.match(tela, /Esta ação não poderá ser desfeita\./);
@@ -158,4 +158,21 @@ test("avaliação em andamento: excluir direto da lista, com confirmação", () 
   assert.match(tela, /a\.status === "rascunho"\s*\? \(\s*<span className="medAcoes">/);
   const css = ler("app/globals.css");
   assert.match(css, /\.medLinha>\.medAcoes\{justify-self:start;justify-content:flex-start\}/, "no celular os dois botões alinham à esquerda");
+});
+
+test("consulta solta depois de excluir a avaliação: cancelar junto, ou pela pendência", () => {
+  // Excluída a avaliação, a consulta que tinha chegada voltava para Pendências
+  // como "chegada sem avaliação" (29/10/2026). Cancelar usa a mesma troca de
+  // situação da recepção, que confere a permissão no banco.
+  assert.match(tela, /rpc\("registrar_presenca", \{ p_agendamento_id: id, p_status: "cancelado" \}\)/);
+  assert.match(recepcao, /rpc\("registrar_presenca", \{ p_agendamento_id: c\.id, p_status: destino \}\)/);
+  // No diálogo da exclusão a caixa começa desmarcada: excluir não cancela nada sozinho.
+  assert.match(tela, /setCancelarJunto\(false\); setAExcluir\(\{ id, nome \}\)/);
+  assert.match(tela, /Cancelar também a consulta de \{dataBr\(consultaDaExcluida\.data\)\}\./);
+  // Na pendência, o botão só aparece na chegada sem avaliação.
+  assert.match(tela, /p\.tipo === "chegou_sem_avaliacao" && podeCancelarConsulta/);
+  assert.match(tela, /<Dialogo titulo=\{`Cancelar a consulta de \$\{aCancelar\.nome\}\?`\} confirmar="Cancelar consulta" confirmando="Cancelando…" perigo/);
+  // Quem vê o botão é quem a regra da agenda deixa mudar a situação
+  // (equipe_acessa_agendamentos e area_extra_edita).
+  assert.match(painel, /podeCancelarConsulta=\{\["recepcao","medico","admin","owner"\]\.includes\(perfil\.role\)\|\|\(Array\.isArray\(perfil\.permissoes\)&&perfil\.permissoes\.some\(\(x\)=>x==="medico"\|\|x==="todos"\)\)\}/);
 });
