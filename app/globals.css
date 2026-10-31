@@ -2996,7 +2996,33 @@ button:disabled{cursor:not-allowed}
 
    E a altura passa a ser automática. Barra de altura fixa com conteúdo em duas
    linhas é precisamente o defeito que estava aqui. */
-@media(max-width:1400px){
+/* A LINHA DE BAIXO VIROU UMA FAIXA GROSSA (31/10/2026). Num monitor de 1366 a
+   barra tinha 88 px: a linha do local inteira para um nome de três palavras,
+   com a faixa de abas ocupando só 460 px da de cima. O local voltou para o lado
+   da marca, que é onde quem usa procura — e a medição foi refeita com a barra
+   de hoje (cinco abas, sino e menu do usuário):
+
+   - de 1101 a 1400 px, uma linha só: marca, local, abas, canto. Em 1101 sobram
+     mais de 200 px para o local, e "HOSPITAL SANTA CASA" cabe inteiro;
+   - de 861 a 1100 px, o local desce para logo abaixo do AVANEST, no lugar do
+     slogan (que já some nessa largura), e as abas e o canto ficam ao lado,
+     centrados nas duas linhas. Continua sendo uma faixa só, e não duas. De
+     861 a 900 as letras somem e ele fica ao lado do Λ;
+   - abaixo de 861 px ele volta para a linha de baixo: ao lado do Λ, mesmo um
+     nome de três palavras tirava das abas os 466 px de que elas precisam, e o
+     Admin sumia atrás da rolagem.
+
+   O teto do nome em cada faixa é a conta do que sobra para as abas na menor
+   largura dela; nome maior corta com reticências (o inteiro está no title).
+
+   No celular (até 700 px) vale o bloco do fim do arquivo: marca, local e menu
+   em cima, as áreas numa linha delas. */
+@media(min-width:1101px) and (max-width:1400px){
+  .clinicalTopbar>.orgBadge{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%}
+  .clinicalTopbar>.orgBadge strong{max-width:none}
+}
+@media(max-width:1100px){
+  /* A base de antes, que o celular (bloco do fim do arquivo) continua usando. */
   .clinicalTopbar{height:auto;min-height:56px;padding-top:8px;padding-bottom:8px;
     grid-template-columns:auto minmax(0,1fr) auto;
     grid-template-areas:"marca abas canto" "local local local";
@@ -3007,6 +3033,21 @@ button:disabled{cursor:not-allowed}
   .clinicalTopbar>.orgBadge{grid-area:local;display:flex;align-items:center;gap:6px;
     min-width:0;margin:0;padding:0;border-left:0;justify-self:start;max-width:100%}
   .clinicalTopbar>.orgBadge strong{max-width:none;font-size:12.5px}
+}
+@media(min-width:861px) and (max-width:1100px){
+  .clinicalTopbar{padding-top:7px;padding-bottom:7px;
+    grid-template-areas:"marca abas canto" "local abas canto";gap:0 var(--esp-2)}
+  /* O nome AVANEST encosta no alto do Λ, e o local sobe para o vão embaixo
+     dele, ao lado do Λ: os dois juntos ocupam pouco mais que a altura do Λ. */
+  .clinicalBrand{align-self:start;justify-self:start;align-items:flex-start}
+  /* Alinhado ao nome AVANEST: a largura do Λ e o vão até as letras. */
+  .clinicalTopbar>.orgBadge{align-self:start;gap:5px;margin:-16px 0 0 calc(38px + 12px - 7px);padding:1px 7px}
+  .clinicalTopbar>.orgBadge strong{max-width:200px}
+}
+/* Sem as letras (de 861 a 900 px, só o Λ), o local fica centrado ao lado dele. */
+@media(min-width:861px) and (max-width:900px){
+  .clinicalTopbar>.orgBadge{margin-top:-32px}
+  .clinicalTopbar>.orgBadge strong{max-width:160px}
 }
 
 @media(max-width:760px){
