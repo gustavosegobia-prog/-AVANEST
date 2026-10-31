@@ -6942,6 +6942,18 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoRotuloLinha{font-size:11.5px;font-weight:700}
 .evoValorLinha{font-size:12.5px;font-weight:700;fill:var(--cor-tinta)!important}
 .evoValorLinha.pendente{opacity:.5}
+/* A linha pronta de SpO₂, EtCO₂ e temperatura: o último valor repetido, apagado,
+   em cada coluna vazia. A de agora ganha o contorno tracejado do ponto pronto
+   do gráfico; o "?" (sinal nunca lançado) sai na cor da marca, pedindo o valor. */
+.evoLinhaPronta{cursor:ns-resize}
+.evoValorLinha.pronto{fill:var(--cor-tinta-fraca)!important;opacity:.5;font-weight:600}
+.evoLinhaPronta.agora .evoValorLinha.pronto{opacity:.85}
+.evoLinhaPronta.pede .evoValorLinha.pronto{fill:var(--cor-marca)!important;opacity:1;font-weight:800}
+.evoLinhaProntaAlvo{fill:var(--cor-marca);fill-opacity:.07;stroke:var(--cor-marca);stroke-opacity:.5;stroke-width:1.2;stroke-dasharray:3 3}
+.evoLinhaPronta.ajustando .evoLinhaProntaAlvo{fill-opacity:.16;stroke-opacity:1}
+.evoLinhaPronta.ajustando .evoValorLinha.pronto{fill:var(--cor-marca-forte)!important;opacity:1;font-weight:800}
+.evoBalaoAjuste rect{fill:var(--cor-marca)}
+.evoBalaoAjuste text{fill:var(--cor-marca-contraste,#fff)!important;font-size:13px;font-weight:800}
 /* Valor de SpO2/EtCO2/temperatura puxado pela linha: as colunas que vão receber. */
 .evoRepetindo rect{fill:color-mix(in srgb,var(--cor-marca) 12%,transparent);stroke:var(--cor-marca);stroke-width:1;stroke-dasharray:3 3}
 .evoHora{font-size:11px;font-weight:600}

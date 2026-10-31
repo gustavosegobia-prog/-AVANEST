@@ -198,3 +198,70 @@ export function colunasProntas(vigentes: readonly Registro[], pre: { pa?: string
   }
   return saida;
 }
+
+// ---------------------------------------------------------------------------
+// A linha pronta de SpO₂, EtCO₂ e temperatura
+// ---------------------------------------------------------------------------
+/**
+ * Um valor pronto numa faixa de SpO₂, EtCO₂ ou temperatura: o último lançado,
+ * repetido na coluna que ainda não tem valor. `valor: null` é a coluna de
+ * agora de um sinal que nunca foi lançado — ali a folha pede o valor.
+ */
+export type ProntoDaLinha = { parametro: Parametro; ms: number; valor: number | null };
+
+/**
+ * Por onde começa o arraste de um sinal que nunca foi lançado ("?"). Como o
+ * ponto neutro do gráfico, só serve para ter o que arrastar: nunca vira
+ * registro sem o dedo levar o valor até o do monitor.
+ */
+export const PONTO_NEUTRO_DA_LINHA: Partial<Record<Parametro, number>> = { spo2: 98, etco2: 35, temp: 36 };
+
+/** O quanto um passo do arraste muda o valor: 1 % de SpO₂, 1 mmHg de EtCO₂, 0,1 °C. */
+export const PASSO_DA_LINHA: Partial<Record<Parametro, number>> = { spo2: 1, etco2: 1, temp: 0.1 };
+
+/**
+ * O valor depois de arrastar `passos` para cima (positivo) ou para baixo
+ * (negativo), dentro da faixa possível do sinal. A temperatura anda de 0,1 em
+ * 0,1 e sai sem o erro de vírgula flutuante (36,1, e não 36,099999).
+ */
+export function ajustarNaLinha(p: Parametro, base: number, passos: number): number {
+  const passo = PASSO_DA_LINHA[p] ?? 1;
+  const casas = passo < 1 ? 1 : 0;
+  const v = Number((base + passos * passo).toFixed(casas));
+  return Math.min(PARAMETROS[p].max, Math.max(PARAMETROS[p].min, v));
+}
+
+/**
+ * A linha pronta das faixas de SpO₂, EtCO₂ e temperatura (pedido de
+ * 31/10/2026): em cada coluna do intervalo que ainda não tem aquele sinal, o
+ * último valor lançado aparece repetido, tracejado. Um toque lança o mesmo
+ * valor; arrastar para cima aumenta, para baixo diminui, e soltar lança.
+ *
+ * As colunas são as da própria faixa — as de `colunasParaRepetir` em
+ * lib/evolucao/grafico.ts —, e o horário de cada uma é o mesmo do toque na
+ * linha: o meio da coluna, nunca depois de `ateMs`.
+ *
+ * Antes do primeiro valor não há o que repetir, e a coluna fica vazia. A
+ * exceção é a coluna de agora de um sinal ainda sem valor nenhum: ali vai o
+ * "?", que pede o valor. Como na pressão, nada grava sozinho.
+ */
+export function linhasProntas(vigentes: readonly Registro[],
+  o: { inicioMs: number; ateMs: number; intervaloMin: number }): ProntoDaLinha[] {
+  const passo = o.intervaloMin * 60000;
+  const primeira = Math.floor(o.inicioMs / passo);
+  const ultima = Math.floor(o.ateMs / passo);
+  const saida: ProntoDaLinha[] = [];
+  for (const p of EM_LINHA) {
+    const pts = pontosDe(vigentes, p).map((pt) => ({ t: Date.parse(pt.momento), v: pt.valor }));
+    const ocupadas = new Set(pts.map((x) => Math.floor(x.t / passo)));
+    for (let c = primeira; c <= ultima; c++) {
+      if (ocupadas.has(c)) continue;
+      const inicio = c * passo;
+      const ms = Math.round(Math.min(inicio + passo / 2, o.ateMs) / 60000) * 60000;
+      const antes = pts.filter((x) => x.t < inicio).pop();
+      if (antes) saida.push({ parametro: p, ms, valor: antes.v });
+      else if (c === ultima && pts.length === 0) saida.push({ parametro: p, ms, valor: null });
+    }
+  }
+  return saida;
+}
