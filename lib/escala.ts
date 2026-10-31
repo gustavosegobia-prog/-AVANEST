@@ -1,4 +1,5 @@
 import { feriadosDoMes } from "./feriados.ts";
+import type { BlocoDaLista, ListaParaPdf } from "./lista-pdf.ts";
 
 // ===========================================================================
 // Escala: as contas e os formatos, longe da tela
@@ -1379,21 +1380,14 @@ export function folhaDeFaturamento(
   itens: ItemDeFaturamento[], nomeMes: string, ano: number, impressoEm: Date,
   instituicao?: Instituicao | null,
 ): { titulo: string; corpo: string } {
-  const titulo = `Faturamento para nota — ${mesEmMaiusculas(nomeMes)} de ${ano}`;
-
-  const porLocal = new Map<string, ItemDeFaturamento[]>();
-  for (const i of itens) {
-    const k = i.local?.trim() || "Sem hospital";
-    porLocal.set(k, [...(porLocal.get(k) ?? []), i]);
-  }
+  const titulo = tituloDoFaturamento(nomeMes, ano);
 
   // O rótulo do total muda com quem paga: o que ainda não foi decidido não é
   // "a faturar" — dizer isso ali convidaria a somar na nota justamente o que
   // não pode entrar em nota nenhuma.
   const tabela = (lista: ItemDeFaturamento[], pendente = false) => {
     const soma = lista.reduce((s, i) => s + Number(i.valor), 0);
-    const linhas = [...lista]
-      .sort((a, b) => a.data.localeCompare(b.data))
+    const linhas = lista
       .map((i) => "<tr>"
         + `<td>${Number(i.data.slice(8, 10))}/${i.data.slice(5, 7)}</td>`
         + `<td>${escaparHTML(i.paciente)}</td>`
@@ -1406,44 +1400,111 @@ export function folhaDeFaturamento(
       + '<th>Convênio</th><th class="num">Valor</th></tr></thead>'
       + `<tbody>${linhas}</tbody>`
       + `<tfoot><tr class="total${pendente ? " pendente" : ""}"><td colspan="4">${
-        pendente ? "Total sem pagador definido" : "Total a faturar"}</td>`
+        totalDoFaturamento(pendente)}</td>`
       + `<td class="num">${escaparHTML(money(soma))}</td></tr></tfoot></table>`;
   };
 
-  const blocos = [...porLocal.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
-    .map(([local, doLocal]) => {
-      const somaLocal = doLocal.reduce((s, i) => s + Number(i.valor), 0);
-      const partes = ["direto", "hospital", "convenio", null].map((quem) => {
-        const lista = doLocal.filter((i) => (i.pagador ?? null) === quem);
-        if (lista.length === 0) return "";
-        const soma = lista.reduce((s, i) => s + Number(i.valor), 0);
-        const rotulo = quem === null
-          ? "Sem pagador definido — decida antes de emitir"
-          : ROTULO_PAGADOR[quem];
-        return `<h3${quem === null ? ' class="pendente"' : ""}>${escaparHTML(rotulo)}`
-          + ` <small>${plural(lista.length, "paciente", "pacientes")} · ${
-            escaparHTML(money(soma))}</small></h3>${tabela(lista, quem === null)}`;
-      }).join("");
-      return `<h2>${escaparHTML(local)} <small>${
-        plural(doLocal.length, "paciente", "pacientes")} · ${
-        escaparHTML(money(somaLocal))}</small></h2>${partes}`;
-    }).join("");
+  const blocos = gruposDoFaturamento(itens).map((g) => {
+    const partes = g.partes.map((p) =>
+      `<h3${p.quem === null ? ' class="pendente"' : ""}>${escaparHTML(p.rotulo)}`
+        + ` <small>${escaparHTML(p.detalhe)}</small></h3>${tabela(p.lista, p.quem === null)}`).join("");
+    return `<h2>${escaparHTML(g.local)} <small>${escaparHTML(g.detalhe)}</small></h2>${partes}`;
+  }).join("");
 
-  const total = itens.reduce((s, i) => s + Number(i.valor), 0);
-  const semPagador = itens.filter((i) => !i.pagador);
-  const pendente = semPagador.reduce((s, i) => s + Number(i.valor), 0);
-
-  const aviso = semPagador.length > 0
-    ? `<p class="sub pendente">${plural(semPagador.length, "paciente está", "pacientes estão")
-      } sem pagador definido, somando ${escaparHTML(money(pendente))}. Esse valor não entra em nota nenhuma enquanto não for decidido.</p>`
-    : "";
+  const pendente = avisoDoFaturamento(itens);
+  const aviso = pendente ? `<p class="sub pendente">${escaparHTML(pendente)}</p>` : "";
 
   const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
-<p class="sub">Atos anestésicos do mês, separados por hospital e por quem paga — um total por nota.</p>
-${aviso}${blocos || '<p class="sub">Nada anotado neste mês.</p>'}
-<div class="rodape"><span>${plural(itens.length, "paciente", "pacientes")} · ${
-    escaparHTML(money(total))}</span></div>`;
+<p class="sub">${SUBTITULO_DO_FATURAMENTO}</p>
+${aviso}${blocos || `<p class="sub">${NADA_NO_FATURAMENTO}</p>`}
+<div class="rodape"><span>${escaparHTML(resumoDoFaturamento(itens))}</span></div>`;
 
   return { titulo, corpo };
+}
+
+/**
+ * A MESMA folha de faturamento, em blocos para o PDF (ver `lib/lista-pdf.ts`).
+ *
+ * O agrupamento, os rótulos e as somas vêm dos mesmos ajudantes da folha em
+ * HTML: no iPhone sai o PDF, no computador a impressão do navegador, e as duas
+ * têm de dizer os mesmos números. Duas contas seriam duas verdades.
+ */
+export function faturamentoEmLista(
+  itens: ItemDeFaturamento[], nomeMes: string, ano: number, impressoEm: Date,
+): ListaParaPdf {
+  const blocos: BlocoDaLista[] = [];
+  const aviso = avisoDoFaturamento(itens);
+  if (aviso) blocos.push({ tipo: "aviso", texto: aviso });
+  for (const g of gruposDoFaturamento(itens)) {
+    blocos.push({ tipo: "secao", texto: g.local, detalhe: g.detalhe });
+    for (const p of g.partes) {
+      const pendente = p.quem === null;
+      blocos.push({ tipo: "subsecao", texto: p.rotulo, detalhe: p.detalhe, pendente });
+      blocos.push({
+        tipo: "tabela",
+        colunas: [
+          { titulo: "Dia", largura: 0.08 }, { titulo: "Paciente", largura: 0.31 },
+          { titulo: "Procedimento", largura: 0.31 }, { titulo: "Convênio", largura: 0.16 },
+          { titulo: "Valor", largura: 0.14, direita: true },
+        ],
+        linhas: p.lista.map((i) => [
+          `${Number(i.data.slice(8, 10))}/${i.data.slice(5, 7)}`, i.paciente, i.procedimento || "—",
+          i.convenio?.trim() || "Particular", money(i.valor),
+        ]),
+        total: { rotulo: totalDoFaturamento(pendente), valores: [money(p.soma)], pendente },
+      });
+    }
+  }
+  if (blocos.length === 0) blocos.push({ tipo: "paragrafo", texto: NADA_NO_FATURAMENTO });
+  return {
+    titulo: tituloDoFaturamento(nomeMes, ano), subtitulo: SUBTITULO_DO_FATURAMENTO,
+    blocos, rodape: resumoDoFaturamento(itens), impressoEm,
+  };
+}
+
+const tituloDoFaturamento = (nomeMes: string, ano: number) => `Faturamento para nota — ${mesEmMaiusculas(nomeMes)} de ${ano}`;
+const SUBTITULO_DO_FATURAMENTO = "Atos anestésicos do mês, separados por hospital e por quem paga — um total por nota.";
+const NADA_NO_FATURAMENTO = "Nada anotado neste mês.";
+const totalDoFaturamento = (pendente: boolean) => (pendente ? "Total sem pagador definido" : "Total a faturar");
+const resumoDoFaturamento = (itens: ItemDeFaturamento[]) =>
+  `${plural(itens.length, "paciente", "pacientes")} · ${money(itens.reduce((s, i) => s + Number(i.valor), 0))}`;
+
+/** O aviso do que ainda não tem pagador — ou nada, quando todos têm. */
+function avisoDoFaturamento(itens: ItemDeFaturamento[]): string {
+  const semPagador = itens.filter((i) => !i.pagador);
+  if (semPagador.length === 0) return "";
+  const pendente = semPagador.reduce((s, i) => s + Number(i.valor), 0);
+  return `${plural(semPagador.length, "paciente está", "pacientes estão")} sem pagador definido, somando ${
+    money(pendente)}. Esse valor não entra em nota nenhuma enquanto não for decidido.`;
+}
+
+/**
+ * Os blocos da folha: hospital, e dentro dele quem paga, cada um com a lista
+ * já em ordem de data e a própria soma.
+ */
+function gruposDoFaturamento(itens: ItemDeFaturamento[]) {
+  const porLocal = new Map<string, ItemDeFaturamento[]>();
+  for (const i of itens) {
+    const k = i.local?.trim() || "Sem hospital";
+    porLocal.set(k, [...(porLocal.get(k) ?? []), i]);
+  }
+  const somar = (lista: ItemDeFaturamento[]) => lista.reduce((s, i) => s + Number(i.valor), 0);
+  return [...porLocal.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
+    .map(([local, doLocal]) => ({
+      local,
+      detalhe: `${plural(doLocal.length, "paciente", "pacientes")} · ${money(somar(doLocal))}`,
+      partes: (["direto", "hospital", "convenio", null] as const).flatMap((quem) => {
+        const lista = doLocal.filter((i) => (i.pagador ?? null) === quem)
+          .sort((a, b) => a.data.localeCompare(b.data));
+        if (lista.length === 0) return [];
+        const soma = somar(lista);
+        return [{
+          quem,
+          rotulo: quem === null ? "Sem pagador definido — decida antes de emitir" : ROTULO_PAGADOR[quem],
+          detalhe: `${plural(lista.length, "paciente", "pacientes")} · ${money(soma)}`,
+          lista, soma,
+        }];
+      }),
+    }));
 }

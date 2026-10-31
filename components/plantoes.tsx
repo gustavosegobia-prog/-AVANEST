@@ -7,7 +7,7 @@ import { ProducaoDoDia, ProducaoDoMes, type Producao } from "@/components/produc
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { Icone, type NomeDoIcone } from "@/components/icone";
 import {
-  cssDasCores, faixa, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
+  cssDasCores, faixa, faturamentoEmLista, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, filtroDeHospital, iniciais, montarICS,
   mesEmMaiusculas, ordemDentroDoDia,
@@ -19,6 +19,7 @@ import {
   nomeDoArquivo, planilhaDeFaturamento, planilhaDePlantoes, planilhaPorConvenio,
 } from "@/lib/planilha";
 import { escalaEmPdf, tituloDaFolha } from "@/lib/escala-pdf";
+import { listaEmPdf } from "@/lib/lista-pdf";
 import { imagemEmJpeg } from "@/lib/imagem-jpeg";
 import type { ImagemJpeg } from "@/lib/pdf";
 import { baixarXLSX } from "@/lib/xlsx";
@@ -710,6 +711,17 @@ function baixar(nome: string, conteudo: string, tipo: string) {
   // aba até ela fechar. O atraso existe porque revogar antes de o download
   // começar cancela o próprio download no Safari.
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+/**
+ * iPhone ou iPad: onde o `@media print` da folha não é garantido, e a folha
+ * vai em PDF desenhado. O iPad se apresenta como Mac desde o iPadOS 13; o que
+ * o denuncia é a tela de toque, que Mac nenhum tem.
+ */
+function aparelhoDaApple(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iP(hone|od|ad)/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 /**
@@ -2252,15 +2264,26 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
    */
   function imprimirFaturamento(itens: Producao[]) {
     setErro(""); setAviso("");
-    const { titulo, corpo } = folhaDeFaturamento(
-      itens.map((i) => ({
-        data: i.data, paciente: i.paciente, convenio: i.convenio,
-        procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
-        local: (i.local_id && localPorId.get(i.local_id)) || lugarPeloPlantao(i.plantao_id),
-        pagador: i.pagador ?? null,
-      })),
-      MESES[m - 1], ano, new Date(),
-    );
+    const dados = itens.map((i) => ({
+      data: i.data, paciente: i.paciente, convenio: i.convenio,
+      procedimento: i.procedimento, valor: Number(i.valor), situacao: i.situacao,
+      local: (i.local_id && localPorId.get(i.local_id)) || lugarPeloPlantao(i.plantao_id),
+      pagador: i.pagador ?? null,
+    }));
+    // No iPhone e no iPad a folha sai em PDF desenhado, como a escala: lá a
+    // impressão do navegador entregou a folha sem estilo nenhum (30/10/2026),
+    // com as colunas coladas. Ver o cabeçalho de lib/lista-pdf.ts.
+    if (aparelhoDaApple()) {
+      const lista = faturamentoEmLista(dados, MESES[m - 1], ano, new Date());
+      void entregarPdf(`faturamento-${mes}.pdf`, lista.titulo, listaEmPdf(lista))
+        .then((como) => {
+          if (como === "baixado") setAviso("O faturamento foi baixado em PDF. Abra o arquivo para imprimir.");
+          else if (como === "compartilhado") setAviso("O faturamento saiu em PDF. Escolha \u201cImprimir\u201d na lista que abriu.");
+        })
+        .catch(() => setErro("Não deu para gerar o PDF do faturamento. Tente de novo."));
+      return;
+    }
+    const { titulo, corpo } = folhaDeFaturamento(dados, MESES[m - 1], ano, new Date());
     if (!imprimirFolha(titulo, corpo, "portrait")) {
       setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
     }
