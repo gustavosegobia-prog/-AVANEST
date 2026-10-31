@@ -5,8 +5,9 @@ import {
   EIXO_Y, colunasParaRepetir, marcasDeTempo, pontoDoToque, tempoParaX, valorParaY, yParaValor, type Escala,
 } from "@/lib/evolucao/grafico";
 import {
-  EM_LINHA, NO_GRAFICO, PARAMETROS, lacunaPadrao, marcaForte, periodosSemMonitorizacao, pontosDe, trechos,
-  type ColunaPronta, type Parametro, type Rascunho,
+  EM_LINHA, NO_GRAFICO, PARAMETROS, PONTO_NEUTRO_DA_LINHA, ajustarNaLinha, lacunaPadrao, marcaForte,
+  periodosSemMonitorizacao, pontosDe, trechos,
+  type ColunaPronta, type Parametro, type ProntoDaLinha, type Rascunho,
 } from "@/lib/evolucao/sinais";
 import { linhasDeGas, linhasDeLiquido, marcasDeEvento, pistasDeEventos } from "@/lib/evolucao/impressao";
 import { INFUSOES_DA_FOLHA, LIQUIDOS_DA_FOLHA } from "@/lib/evolucao/lista-da-folha";
@@ -37,12 +38,20 @@ import type { Registro } from "@/lib/evolucao/registros";
 // arrasta o ponto para cima ou para baixo até o valor do monitor e solta: vira
 // registro no horário daquela coluna — e a coluna seguinte continua lá para o
 // próximo. Tocar sem arrastar lança o mesmo valor. Nada grava antes de soltar.
+//
+// O MESMO NAS FAIXAS DE SpO₂, EtCO₂ E TEMPERATURA (pedido de 31/10/2026): a
+// coluna sem valor mostra o último, repetido e apagado (lib/evolucao/sinais.ts,
+// `linhasProntas`). Tocar lança igual; arrastar para cima aumenta, para baixo
+// diminui — 1 % de SpO₂, 1 mmHg de EtCO₂, 0,1 °C a cada passo —, e soltar
+// lança. O sinal que nunca foi lançado mostra "?" na coluna de agora: tocar
+// abre a janela que pede o valor.
 
 const FAIXA_HORAS = 22;
 const LINHA = 24;          // cada faixa: gases, infusões, líquidos, SpO₂, EtCO₂, temperatura
 const FAIXA_EVENTOS = 30;  // duas pistas de marcas
 const TIRA = 16;           // a tira vertical com o nome da seção, como no papel
 const TOQUE = 18;          // raio de acerto num ponto (dedo com luva)
+const PX_POR_PASSO = 8;    // arrastar na faixa de SpO₂/EtCO₂/temperatura: um passo a cada 8 px
 
 export type Toque = { ms: number; valor: number };
 export type AlvoDaFaixa =
@@ -78,7 +87,7 @@ const ROTULO_GAS: Record<string, string> = { o2: "O₂ L/min", ar: "Ar L/min", n
 
 export function GraficoSinais({
   atuais, idsPendentes, cabecalho, fimMs, agoraMs, aberta, intervalo, janelaInicio, janelaMinutos,
-  alturaGrade, somenteLeitura, colunas = [], onTocar, onTocarLinha, onTocarFaixa, onAbrirPonto, onAbrirRegistro, onMover,
+  alturaGrade, somenteLeitura, colunas = [], linha = [], onTocar, onTocarLinha, onTocarFaixa, onAbrirPonto, onAbrirRegistro, onMover,
   onLancar, onRepetir,
 }: {
   atuais: Registro[];
@@ -101,6 +110,8 @@ export function GraficoSinais({
   onMover: (r: Registro, t: Toque) => void;
   /** A linha pronta, coluna a coluna do intervalo (vazia: nada a arrastar). */
   colunas?: ColunaPronta[];
+  /** A linha pronta das faixas de SpO₂, EtCO₂ e temperatura (lib/evolucao/sinais.ts, `linhasProntas`). */
+  linha?: ProntoDaLinha[];
   /**
    * Soltou (ou tocou) um ponto da linha pronta: registra no horário da coluna.
    * `estimada`: a PAM calculada, lançada sem arrastar — grava como estimada.
@@ -117,6 +128,9 @@ export function GraficoSinais({
   const [largura, setLargura] = useState(800);
   const [arraste, setArraste] = useState<{ registro: Registro; x: number; y: number; ativo: boolean; x0: number; y0: number } | null>(null);
   const [puxando, setPuxando] = useState<{ p: Parametro; ms: number; y: number; y0: number; ativo: boolean } | null>(null);
+  // Um valor pronto da faixa de SpO₂, EtCO₂ ou temperatura sendo puxado para
+  // cima ou para baixo. `passos` é quanto andou: positivo para cima.
+  const [ajustando, setAjustando] = useState<{ r: ProntoDaLinha; faixa: number; y0: number; passos: number; ativo: boolean } | null>(null);
   // Um valor da linha de SpO₂, EtCO₂ ou temperatura sendo puxado para o lado.
   const [estendendo, setEstendendo] = useState<{
     p: Parametro; valor: number; registro: Registro; faixa: number; origemMs: number; x0: number; x: number; ativo: boolean;
@@ -285,7 +299,8 @@ export function GraficoSinais({
   // andado; só um ponto (da linha pronta ou já lançado) segura o dedo para
   // arrastar, e o resto da área rola a página normalmente.
   const toqueSimples = useRef<{ lx: number; ly: number; x0: number; y0: number } | null>(null);
-  const segurarDedo = useRef(false);
+  const segurarDedo = useRef<boolean | "vertical">(false);
+  const inicioDoDedo = useRef<{ x: number; y: number } | null>(null);
   const ANDOU = 10;
 
   // Prende o dedo no próprio gráfico (e não no traço desenhado embaixo dele):
@@ -325,6 +340,13 @@ export function GraficoSinais({
       setEstendendo({ ...naLinha, x0: lx, x: lx, ativo: false });
       return;
     }
+    // O valor pronto da linha: arrastar para cima ou para baixo ajusta.
+    const pronto = prontoDaLinhaNoToque(lx, ly);
+    if (pronto) {
+      prender(ev);
+      setAjustando({ ...pronto, y0: ly, passos: 0, ativo: false });
+      return;
+    }
     // O resto espera o dedo subir.
     toqueSimples.current = { lx, ly, x0: ev.clientX, y0: ev.clientY };
   }
@@ -342,6 +364,22 @@ export function GraficoSinais({
     if (!r || !Number.isFinite(valor)) return null;
     return { p: f.parametro, valor, registro: r, faixa: indice, origemMs: perto.m.ms };
   }
+
+  /** O valor pronto (SpO₂, EtCO₂, temperatura) sob o dedo, para ajustar e lançar. */
+  function prontoDaLinhaNoToque(lx: number, ly: number): { r: ProntoDaLinha; faixa: number } | null {
+    if (!onLancar || ly < FAIXA_HORAS || ly >= topoEventos) return null;
+    const indice = Math.floor((ly - FAIXA_HORAS) / LINHA);
+    const f = faixas[indice];
+    if (!f || f.modo !== "sinal" || !f.parametro) return null;
+    const perto = (prontosDaLinha.get(f.parametro) ?? [])
+      .map((r) => ({ r, d: Math.abs(x(r.ms) - lx) })).filter((o) => o.d <= 16).sort((a, b) => a.d - b.d)[0];
+    return perto ? { r: perto.r, faixa: indice } : null;
+  }
+  const mesmaColuna = (a: ProntoDaLinha, b: ProntoDaLinha) => a.parametro === b.parametro
+    && Math.floor(a.ms / (intervalo * 60000)) === Math.floor(b.ms / (intervalo * 60000));
+  /** O valor em ajuste: o pronto, mais os passos que o dedo andou. O "?" parte do ponto neutro. */
+  const valorEmAjuste = (a: NonNullable<typeof ajustando>) =>
+    ajustarNaLinha(a.r.parametro, a.r.valor ?? PONTO_NEUTRO_DA_LINHA[a.r.parametro] ?? 0, a.passos);
 
   /** As colunas que o arraste em curso vai preencher. */
   function colunasDoArraste(s: NonNullable<typeof estendendo>) {
@@ -393,6 +431,19 @@ export function GraficoSinais({
     if (f.alvo) onTocarFaixa(f.alvo(minutoDoX(lx)));
   }
 
+  // A linha pronta das faixas de SpO₂, EtCO₂ e temperatura, à vista. Com o zoom
+  // aberto as colunas ficam estreitas demais para um número em cada uma, e aí
+  // fica só a de agora — a última de cada sinal.
+  const prontosDaLinha = new Map<Parametro, ProntoDaLinha[]>();
+  if (!somenteLeitura && aberta) {
+    const passoDaColuna = (intervalo / janelaMinutos) * (largura - CALHA);
+    for (const p of EM_LINHA) {
+      const doSinal = linha.filter((r) => r.parametro === p && visivel(r.ms) && x(r.ms) >= CALHA + 12 && x(r.ms) <= largura - 12);
+      const cabeTodos = passoDaColuna >= (p === "temp" ? 34 : 24);
+      prontosDaLinha.set(p, cabeTodos ? doSinal : doSinal.slice(-1));
+    }
+  }
+
   // A linha pronta: em cada coluna do intervalo à vista, um ponto por
   // parâmetro. A última coluna é a de agora — só ela leva os números ao lado.
   const xColuna = (ms: number) => Math.min(Math.max(x(ms), CALHA + 8), largura - 8);
@@ -430,10 +481,14 @@ export function GraficoSinais({
     return melhor;
   }
 
-  /** Este ponto do gráfico se arrasta? (linha pronta ou ponto já lançado) */
-  function arrastavel(lx: number, ly: number): boolean {
+  /**
+   * Este ponto do gráfico se arrasta? (linha pronta ou ponto já lançado)
+   * "vertical": o valor pronto da faixa de SpO₂/EtCO₂/temperatura, que só se
+   * arrasta para cima e para baixo — de lado, o dedo continua rolando a folha.
+   */
+  function arrastavel(lx: number, ly: number): boolean | "vertical" {
     if (somenteLeitura || lx < CALHA) return false;
-    if (ly < topoGrade) return Boolean(valorDaLinhaNoToque(lx, ly));
+    if (ly < topoGrade) return valorDaLinhaNoToque(lx, ly) ? true : prontoDaLinhaNoToque(lx, ly) ? "vertical" : false;
     return Boolean(prontoNoToque(lx, ly) || pontoNoToque(lx, ly));
   }
 
@@ -447,9 +502,18 @@ export function GraficoSinais({
     const inicio = (ev: TouchEvent) => {
       const t = ev.touches[0];
       const r = el.getBoundingClientRect();
-      segurarDedo.current = ev.touches.length === 1 && Boolean(t) && ehArrastavel(t.clientX - r.left, t.clientY - r.top);
+      segurarDedo.current = ev.touches.length === 1 && t ? ehArrastavel(t.clientX - r.left, t.clientY - r.top) : false;
+      inicioDoDedo.current = t ? { x: t.clientX, y: t.clientY } : null;
     };
-    const mover = (ev: TouchEvent) => { if (segurarDedo.current && ev.cancelable) ev.preventDefault(); };
+    const mover = (ev: TouchEvent) => {
+      // O primeiro movimento decide o gesto inteiro (depois dele o navegador
+      // não deixa mais segurar a rolagem): mais de lado que de pé, rola.
+      if (segurarDedo.current === "vertical") {
+        const t = ev.touches[0], i = inicioDoDedo.current;
+        segurarDedo.current = !t || !i || Math.abs(t.clientY - i.y) >= Math.abs(t.clientX - i.x);
+      }
+      if (segurarDedo.current === true && ev.cancelable) ev.preventDefault();
+    };
     const fim = () => { segurarDedo.current = false; };
     el.addEventListener("touchstart", inicio, { passive: true });
     el.addEventListener("touchmove", mover, { passive: false });
@@ -468,6 +532,12 @@ export function GraficoSinais({
     if (estendendo) {
       const { lx } = local(ev);
       setEstendendo({ ...estendendo, x: lx, ativo: estendendo.ativo || Math.abs(lx - estendendo.x0) > 8 });
+      return;
+    }
+    if (ajustando) {
+      const { ly } = local(ev);
+      const ativo = ajustando.ativo || Math.abs(ly - ajustando.y0) > 6;
+      setAjustando({ ...ajustando, ativo, passos: ativo ? Math.round((ajustando.y0 - ly) / PX_POR_PASSO) : 0 });
       return;
     }
     if (puxando) {
@@ -497,6 +567,15 @@ export function GraficoSinais({
       setEstendendo(null);
       return;
     }
+    if (ajustando) {
+      const { r } = ajustando;
+      // Tocar lança o mesmo valor; o "?" sem arrastar abre a janela que pede o valor.
+      if (ajustando.ativo) onLancar?.(r.parametro, valorEmAjuste(ajustando), r.ms, false);
+      else if (r.valor !== null) onLancar?.(r.parametro, r.valor, r.ms, false);
+      else onTocarLinha(r.parametro, r.ms);
+      setAjustando(null);
+      return;
+    }
     if (puxando) {
       const r = prontas.find((c) => c.ms === puxando.ms)?.itens.find((x) => x.parametro === puxando.p);
       // O ponto neutro só vale arrastado; um toque nele abre a janela de sinais.
@@ -519,7 +598,7 @@ export function GraficoSinais({
         width={largura} height={altura} viewBox={`0 0 ${largura} ${altura}`}
         onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar}
         // O navegador assumiu o gesto (rolagem): não era toque nem arraste.
-        onPointerCancel={() => { toqueSimples.current = null; setArraste(null); setPuxando(null); setEstendendo(null); }}
+        onPointerCancel={() => { toqueSimples.current = null; setArraste(null); setPuxando(null); setEstendendo(null); setAjustando(null); }}
         // No toque, o navegador ainda solta um clique no mesmo lugar depois de
         // a janela abrir — e ele caía num campo (ou botão) da janela.
         onTouchEnd={(ev) => { if (ev.cancelable) ev.preventDefault(); }}
@@ -634,6 +713,28 @@ export function GraficoSinais({
               </g>
             );
           })()}
+
+          {/* A linha pronta de SpO₂, EtCO₂ e temperatura: o último valor, apagado, em cada coluna vazia. */}
+          {faixas.map((f, i) => {
+            if (f.modo !== "sinal" || !f.parametro) return null;
+            const doSinal = prontosDaLinha.get(f.parametro) ?? [];
+            const y0 = FAIXA_HORAS + i * LINHA;
+            // O contorno vai só na coluna de agora (ou na do fim da anestesia).
+            const colunaDeAgora = Math.floor(Math.min(agoraMs, fimMs ?? Infinity) / (intervalo * 60000));
+            return doSinal.map((r) => {
+              // Pela coluna, e não pelo objeto: a linha é recalculada enquanto o dedo arrasta.
+              const emAjuste = Boolean(ajustando?.ativo && mesmaColuna(ajustando.r, r));
+              const agora = Math.floor(r.ms / (intervalo * 60000)) === colunaDeAgora;
+              const valor = emAjuste ? valorEmAjuste(ajustando!) : r.valor;
+              const texto = valor === null ? "?" : r.parametro === "temp" ? fmt(valor, 1) : String(valor);
+              return (
+                <g key={`${r.parametro}${r.ms}`} className={`evoLinhaPronta${agora ? " agora" : ""}${emAjuste ? " ajustando" : ""}${r.valor === null ? " pede" : ""}`}>
+                  {(agora || emAjuste) && <rect className="evoLinhaProntaAlvo" x={x(r.ms) - 16} y={y0 + 2} width={32} height={LINHA - 4} rx={5} />}
+                  <text className="evoValorLinha pronto" x={x(r.ms)} y={y0 + LINHA / 2 + 4} textAnchor="middle">{texto}</text>
+                </g>
+              );
+            });
+          })}
 
           {/* Eventos: as marcas na faixa e a linha dos marcos descendo pelo gráfico */}
           {eventos.map((ev, i) => {
@@ -767,6 +868,21 @@ export function GraficoSinais({
           })()}
         </g>
         <line className="evoBorda" x1={CALHA} x2={CALHA} y1={0} y2={topoGrade + alturaGrade} />
+        {/* O valor em ajuste, num balão acima da faixa: o dedo cobre o número na própria faixa. */}
+        {ajustando?.ativo && (() => {
+          const v = valorEmAjuste(ajustando);
+          const { curto, unidade } = PARAMETROS[ajustando.r.parametro];
+          const texto = `${curto} ${ajustando.r.parametro === "temp" ? fmt(v, 1) : v} ${unidade}`;
+          const larg = texto.length * 7.6 + 16;
+          const cx = Math.min(Math.max(x(ajustando.r.ms), CALHA + larg / 2), largura - larg / 2);
+          const topo = Math.max(2, FAIXA_HORAS + ajustando.faixa * LINHA - 30);
+          return (
+            <g className="evoBalaoAjuste" aria-live="polite">
+              <rect x={cx - larg / 2} y={topo} width={larg} height={24} rx={12} />
+              <text x={cx} y={topo + 16.5} textAnchor="middle">{texto}</text>
+            </g>
+          );
+        })()}
       </svg>
     </div>
   );

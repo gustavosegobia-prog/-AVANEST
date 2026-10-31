@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
 import { janelaVisivel } from "@/lib/evolucao/grafico";
-import { colunasProntas, INTERVALOS, pamEstimadaCabe, PARAMETROS, pontosDe, type Parametro } from "@/lib/evolucao/sinais";
+import { colunasProntas, INTERVALOS, linhasProntas, pamEstimadaCabe, PARAMETROS, pontosDe, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
   administrados, agruparPorMedicamento, doseAcumulada, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
@@ -175,16 +175,27 @@ export function FolhaAnestesica({
     ? colunasProntas(atuais, { pa: preDaFicha.pa, pulso: preDaFicha.pulso },
       { inicioMs, ateMs: fimMs ?? agora, intervaloMin: folha.intervalo_minutos })
     : []), [aberta, agora, fimMs, inicioMs, atuais, preDaFicha.pa, preDaFicha.pulso, folha.intervalo_minutos]);
+  // E a das faixas de SpO₂, EtCO₂ e temperatura: o último valor repetido em
+  // cada coluna vazia, para tocar (lança igual) ou arrastar (ajusta).
+  const linha = useMemo(() => (aberta && agora > 0
+    ? linhasProntas(atuais, { inicioMs, ateMs: fimMs ?? agora, intervaloMin: folha.intervalo_minutos })
+    : []), [aberta, agora, fimMs, inicioMs, atuais, folha.intervalo_minutos]);
   // "✓ Igual" é da coluna de agora, e só com valor de verdade: o ponto neutro não entra.
   const colunaDeAgora = colunas.length && fimMs === null
     && colunas[colunas.length - 1].ms === Math.floor((agora + 30000) / passoMs) * passoMs ? colunas[colunas.length - 1] : null;
   const rascunhoReal = (colunaDeAgora?.itens ?? []).filter((r) => r.origem !== "padrao");
+  // O "✓ Igual" leva junto SpO₂, EtCO₂ e temperatura da coluna de agora: um
+  // toque repete a coluna inteira. O "?" (nunca lançado) não entra.
+  const linhaDeAgora = fimMs === null
+    ? linha.filter((r): r is typeof r & { valor: number } => r.valor !== null && Math.floor(r.ms / passoMs) === Math.floor(agora / passoMs))
+    : [];
   const textoDoRascunho = (() => {
     const v = (p: Parametro) => rascunhoReal.find((r) => r.parametro === p)?.valor;
     const partes = [
       v("pas") !== undefined || v("pad") !== undefined ? `PA ${v("pas") ?? "—"}/${v("pad") ?? "—"}` : null,
       v("pam") !== undefined ? `PAM ${v("pam")}` : null,
       v("fc") !== undefined ? `FC ${v("fc")}` : null,
+      ...linhaDeAgora.map((r) => `${PARAMETROS[r.parametro].curto} ${fmt(r.valor, 1)}`),
     ].filter(Boolean);
     return partes.join(" · ");
   })();
@@ -217,6 +228,19 @@ export function FolhaAnestesica({
   const temPamMedida = useCallback((iso: string) => !pamEstimadaCabe(atuais, iso), [atuais]);
 
   // ---- Ações -------------------------------------------------------------
+  /** "✓ Igual": a coluna de agora inteira — pressão e FC, e SpO₂, EtCO₂ e temperatura. */
+  function registrarIgual() {
+    const momentoDaPa = colunaDeAgora ? new Date(colunaDeAgora.ms).toISOString() : null;
+    if (momentoDaPa) for (const r of rascunhoReal) {
+      f.registrar({ tipo: "sinal", momento: momentoDaPa, dados: { parametro: r.parametro, valor: r.valor }, origem: r.estimada ? "estimado" : "manual" });
+    }
+    for (const r of linhaDeAgora) {
+      f.registrar({ tipo: "sinal", momento: new Date(r.ms).toISOString(), dados: { parametro: r.parametro, valor: r.valor }, origem: "manual" });
+    }
+    setAbrir(null);
+    setAviso({ texto: `${textoDoRascunho} às ${hora(momentoDaPa ?? new Date(linhaDeAgora[0].ms).toISOString())}`, desfazer: false });
+  }
+
   function registrarSinais(itens: NovoSinal[], momento: string) {
     for (const i of itens) {
       f.registrar({ tipo: "sinal", momento, dados: { parametro: i.parametro, valor: i.valor }, origem: i.origem });
@@ -460,25 +484,27 @@ export function FolhaAnestesica({
               </div>
               {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "sinais" })}>Lançar valores</button>}
               {aberta && <button type="button" className="evoBotao pequeno secundario" onClick={() => setAbrir({ tipo: "monitor" })}>Foto do monitor</button>}
-              {rascunhoReal.length > 0 && (
-                <button type="button" className="evoBotao pequeno evoIgual"
-                  title={rascunhoReal[0].origem === "pre" ? "Valores da avaliação pré-anestésica" : "Os mesmos valores da última coluna"}
-                  onClick={() => registrarSinais(rascunhoReal.map((r) => ({ parametro: r.parametro, valor: r.valor, origem: r.estimada ? "estimado" : "manual" })),
-                    new Date(colunaDeAgora!.ms).toISOString())}>
-                  ✓ {rascunhoReal[0].origem === "pre" ? "Da pré" : "Igual"}: {textoDoRascunho}
-                </button>
-              )}
+              {(rascunhoReal.length > 0 || linhaDeAgora.length > 0) && (() => {
+                const daPre = rascunhoReal[0]?.origem === "pre" && linhaDeAgora.length === 0;
+                return (
+                  <button type="button" className="evoBotao pequeno evoIgual"
+                    title={daPre ? "Valores da avaliação pré-anestésica" : "Os mesmos valores da última coluna"}
+                    onClick={registrarIgual}>
+                    ✓ {daPre ? "Da pré" : "Igual"}: {textoDoRascunho}
+                  </button>
+                );
+              })()}
             </div>
           </div>
 
           {colunas.length > 0 && (
-            <p className="evoDicaGrafico">Arraste os pontos tracejados de cada coluna até o valor do monitor e solte: lança naquele horário. Na linha de SpO₂, EtCO₂ ou temperatura, segure um valor e puxe para o lado para repetir nas colunas seguintes.</p>
+            <p className="evoDicaGrafico">Arraste os pontos tracejados de cada coluna até o valor do monitor e solte: lança naquele horário. Na SpO₂, no EtCO₂ e na temperatura o último valor já aparece em cada coluna: toque para lançar igual, ou arraste para cima (aumenta) ou para baixo (diminui) e solte.</p>
           )}
           {montado ? (
             <GraficoSinais
               atuais={atuais} idsPendentes={f.idsPendentes} cabecalho={dados} fimMs={fimMs} agoraMs={agora}
               aberta={aberta} intervalo={folha.intervalo_minutos} janelaInicio={janela.inicio} janelaMinutos={zoom}
-              alturaGrade={300} somenteLeitura={!aberta} colunas={colunas}
+              alturaGrade={300} somenteLeitura={!aberta} colunas={colunas} linha={linha}
               onLancar={(p, valor, ms, estimada) => {
                 const momento = new Date(ms).toISOString();
                 f.registrar({ tipo: "sinal", momento, dados: { parametro: p, valor }, origem: estimada ? "estimado" : "manual" });
