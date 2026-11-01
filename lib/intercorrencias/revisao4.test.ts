@@ -260,49 +260,67 @@ test("hipercalemia: agenda de glicemias (0 a 360 min) e de potássio (1, 2, 4, 6
   ]);
 });
 
-test("hipertermia maligna: dantroleno por peso real, frascos de 20 mg e de 250 mg separados", () => {
+test("hipertermia maligna: dantroleno por peso real, só o frasco de 20 mg (Ryanodex fora da calculadora)", () => {
   const hm = r("hipertermia-maligna");
   const ini = doseDe(hm, "dantroleno-inicial");
-  assert.deepEqual(ini.apresentacoes.map((a) => a.frasco), [
-    { quantidade: 20, unidade: "mg", diluenteMl: 60, volumeFinalMl: 60 },
-    { quantidade: 250, unidade: "mg", diluenteMl: 5, volumeFinalMl: 5 },
-  ]);
-  const esperado20 = { 14: [35, 105, 2, 120], 20: [50, 150, 3, 180], 40: [100, 300, 5, 300], 70: [175, 525, 9, 540], 100: [250, 750, 13, 780] } as const;
-  const esperado250 = { 14: [35, 0.7], 20: [50, 1], 40: [100, 2], 70: [175, 3.5], 100: [250, 5] } as const;
-  for (const kg of PESOS) {
-    const [mg, mL, frascos, diluente] = esperado20[kg];
-    const c20 = conta(hm, "dantroleno-inicial", PAC[kg], 0);
-    assert.deepEqual(c20.contas, [[mg, "mg", mL, "mL"]], `20 mg, ${kg} kg`);
-    assert.deepEqual(frascosDaDose(c20.bruto, ini.apresentacoes[0]), { frascos, quantidade: frascos * 20, unidade: "mg", diluenteMl: diluente, volumeFinalMl: frascos * 60 });
-    const c250 = conta(hm, "dantroleno-inicial", PAC[kg], 1);
-    assert.deepEqual(c250.contas, [[esperado250[kg][0], "mg", esperado250[kg][1], "mL"]], `250 mg, ${kg} kg`);
-    assert.deepEqual(frascosDaDose(c250.bruto, ini.apresentacoes[1]), { frascos: 1, quantidade: 250, unidade: "mg", diluenteMl: 5, volumeFinalMl: 5 });
-    // Manutenção 1 mg/kg.
-    assert.deepEqual(conta(hm, "dantroleno-manutencao", PAC[kg], 1).contas, [[kg, "mg", kg / 50, "mL"]], `manutenção ${kg} kg`);
+  // Decisão do responsável médico em 01/11/2026: o frasco de 250 mg sai até a confirmação de registro e disponibilidade.
+  for (const id of ["dantroleno-inicial", "dantroleno-manutencao"]) {
+    assert.deepEqual(doseDe(hm, id).apresentacoes.map((a) => a.frasco), [{ quantidade: 20, unidade: "mg", diluenteMl: 60, volumeFinalMl: 60 }], id);
   }
-  // 7,5 mL/kg (20 mg) e 0,05 mL/kg (250 mg), como no texto.
-  assert.equal(conta(hm, "dantroleno-inicial", PAC[70], 0).contas[0][2], 7.5 * 70);
-  assert.equal(conta(hm, "dantroleno-inicial", PAC[70], 1).contas[0][2], 0.05 * 70);
-  // Os preparos não se misturam.
-  const [p20, p250] = ini.apresentacoes;
+  assert.ok(!JSON.stringify(hm.medicamentos).includes("250 mg +"), "nenhuma apresentação de 250 mg na calculadora");
+  assert.ok(hm.notasDeDose!.some((x) => /Ryanodex.*fora da calculadora, por decisão do responsável médico em 01\/11\/2026/.test(x)));
+  const esperado = { 14: [35, 105, 2, 120], 20: [50, 150, 3, 180], 40: [100, 300, 5, 300], 70: [175, 525, 9, 540], 100: [250, 750, 13, 780] } as const;
+  for (const kg of PESOS) {
+    const [mg, mL, frascos, diluente] = esperado[kg];
+    const c = conta(hm, "dantroleno-inicial", PAC[kg]);
+    assert.deepEqual(c.contas, [[mg, "mg", mL, "mL"]], `${kg} kg`);
+    assert.deepEqual(frascosDaDose(c.bruto, ini.apresentacoes[0]), { frascos, quantidade: frascos * 20, unidade: "mg", diluenteMl: diluente, volumeFinalMl: frascos * 60 });
+    // Manutenção 1 mg/kg: kg mg = 3 × kg mL.
+    assert.deepEqual(conta(hm, "dantroleno-manutencao", PAC[kg]).contas, [[kg, "mg", 3 * kg, "mL"]], `manutenção ${kg} kg`);
+  }
+  // 7,5 mL/kg, como no texto.
+  assert.equal(conta(hm, "dantroleno-inicial", PAC[70]).contas[0][2], 7.5 * 70);
+  // O preparo é só o do frasco de 20 mg, e o alerta impede trocar por outra formulação.
+  const p20 = ini.apresentacoes[0];
   assert.match(p20.preparo!, /60 mL.*frasco de 20 mg/);
   assert.doesNotMatch(p20.preparo!, /\b5 mL|250 mg/);
-  assert.match(p250.preparo!, /5 mL.*frasco de 250 mg/);
-  assert.doesNotMatch(p250.preparo!, /60 mL|20 mg/);
-  for (const a of ini.apresentacoes) assert.equal(a.quantidade / a.mL, a.frasco!.quantidade / a.frasco!.volumeFinalMl, a.rotulo);
+  assert.equal(p20.quantidade / p20.mL, p20.frasco!.quantidade / p20.frasco!.volumeFinalMl);
+  assert.ok(hm.alertas!.some((x) => /Frasco de 20 mg: 60 mL.*nunca trocar os preparos/.test(x)));
   // Sem teto absoluto de 10 mg/kg; alto risco e peso obrigatório.
   assert.equal(ini.tetoAbsoluto, undefined);
   assert.ok(ini.cuidados!.some((x) => /10 mg\/kg não é teto absoluto/.test(x)));
   assert.ok(ini.altoRisco && doseDe(hm, "dantroleno-manutencao").altoRisco);
   assert.equal(conta(hm, "dantroleno-inicial", { idadeAnos: 40, pesoKg: null }).bloqueio, "Informe o peso para calcular.");
   assert.equal(frascosDaDose(conta(hm, "dantroleno-inicial", { idadeAnos: 40, pesoKg: null }).bruto, p20), null);
-  // O resfriamento: no passo só a diretriz escolhida (38 °C); a da EMHG (38,5 °C) fica nas diferenças entre as fontes.
+  // O resfriamento: no passo só a diretriz escolhida (38 °C, MHAUS, decisão do responsável); a EMHG nas diferenças.
   const resfriar = passosDe(hm, null).find((x) => x.texto.startsWith("Inicie o resfriamento"))!.detalhe!;
   assert.match(resfriar, /abaixo de 38 °C.*diretriz selecionada: MHAUS/);
   assert.doesNotMatch(resfriar, /38,5/);
   const d = hm.divergencias.find((x) => /resfriamento/.test(x.tema))!;
   assert.deepEqual(d.posicoes.map((x) => [x.referencia, x.texto]), [["mhaus-crise", "Abaixo de 38 °C."], ["emhg-2024-hm", "Abaixo de 38,5 °C."]]);
+  assert.match(d.escolha, /MHAUS \(38 °C\), decisão do responsável médico em 01\/11\/2026/);
   assert.ok(acharProtocolo("hipertermia-maligna")!.medicamentos[0].apresentacoes.every((a) => !a.frasco), "a versão 2 publicada não mudou");
+});
+
+test("lidocaína: a LAST avisa, e a PCR — FV/TV e o SAV pediátrico ganham o alerta no cartão de dose (rascunho)", () => {
+  assert.ok(r("toxicidade-anestesico-local").alertas!.includes("Lidocaína é anestésico local: na LAST, não usar como antiarrítmico — na arritmia ventricular, amiodarona."));
+  const aviso = "Suspeita de toxicidade por anestésico local (LAST): não usar lidocaína; preferir amiodarona.";
+  for (const [id, versao] of [["pcr-fv-tv", 4], ["sav-pediatrico", 3]] as const) {
+    const rascunho = r(id), publicado = acharProtocolo(id)!;
+    assert.equal(rascunho.versao, versao, id);
+    assert.equal(publicado.versao, versao - 1, id);
+    assert.ok(aprovado(publicado) && !aprovado(rascunho), id);
+    const lidocainas = rascunho.medicamentos.filter((d) => d.farmaco === "Lidocaína");
+    assert.ok(lidocainas.length > 0, id);
+    for (const d of lidocainas) assert.equal(d.cuidados![0], aviso, `${id}/${d.id}`);
+    assert.ok(publicado.medicamentos.filter((d) => d.farmaco === "Lidocaína").every((d) => !(d.cuidados ?? []).includes(aviso)), `${id}: a versão publicada não mudou`);
+    // Doses, apresentações e o resto do cartão iguais aos da versão publicada.
+    assert.deepEqual(rascunho.medicamentos.map((d) => [d.id, d.dose, d.apresentacoes]), publicado.medicamentos.map((d) => [d.id, d.dose, d.apresentacoes]), id);
+    assert.deepEqual(rascunho.agirAgora, publicado.agirAgora, id);
+    assert.ok(rascunho.relacionados!.some((x) => x.protocolo === "toxicidade-anestesico-local"), `${id}: atalho para a LAST`);
+  }
+  // Vindo da LAST, a prévia abre a PCR com o aviso.
+  assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === "pcr-fv-tv"), r("pcr-fv-tv"));
 });
 
 test("as doses que continuam são as da versão 2 — o que mudou é só o que o texto mandou", () => {

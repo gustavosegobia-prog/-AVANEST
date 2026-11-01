@@ -13,7 +13,8 @@
  */
 
 import type { Protocolo } from "../tipos.ts";
-import { EMBOLIA_PULMONAR } from "./cardiovascular.ts";
+import { EMBOLIA_PULMONAR, PCR_FV_TV } from "./cardiovascular.ts";
+import { SAV_PEDIATRICO } from "./sav-pediatrico.ts";
 import { DEPRESSAO_OPIOIDES } from "./opioides-e-bloqueio-residual.ts";
 import { HIPOTERMIA } from "./outras-emergencias.ts";
 import { RESPIRATORIO_V3 } from "./respiratorio.ts";
@@ -112,6 +113,29 @@ export const HIPOTERMIA_V3: Protocolo = {
   referencias: [...HIPOTERMIA.referencias, "erc-2021-circunstancias"],
 };
 
+// ---------------------------------------------------------------------------
+// Lidocaína na PCR e no SAV pediátrico — o aviso da LAST
+// ---------------------------------------------------------------------------
+// A LAST manda evitar lidocaína (é anestésico local) e o botão dela leva à PCR
+// — FV/TV, que oferece lidocaína como alternativa. Aprovado o aviso pelo
+// responsável médico em 01/11/2026 para entrar como rascunho: o cartão de dose
+// da lidocaína ganha o alerta, e o protocolo, o atalho para a LAST.
+const AVISO_LIDOCAINA = "Suspeita de toxicidade por anestésico local (LAST): não usar lidocaína; preferir amiodarona.";
+function comAvisoLidocaina(p: Protocolo, versao: number): Protocolo {
+  if (!p.medicamentos.some((d) => d.farmaco === "Lidocaína")) throw new Error(`${p.id}: sem lidocaína para avisar`);
+  const jaLiga = (p.relacionados ?? []).some((r) => r.protocolo === "toxicidade-anestesico-local");
+  return {
+    ...p,
+    versao,
+    atualizadoEm: PROPOSTA,
+    revisadoEm: PROPOSTA,
+    medicamentos: p.medicamentos.map((d) => (d.farmaco === "Lidocaína" ? { ...d, cuidados: [AVISO_LIDOCAINA, ...(d.cuidados ?? [])] } : d)),
+    relacionados: [...(p.relacionados ?? []), ...(jaLiga ? [] : [{ protocolo: "toxicidade-anestesico-local", texto: "Toxicidade por anestésico local (LAST)" }])],
+  };
+}
+export const PCR_FV_TV_V4 = comAvisoLidocaina(PCR_FV_TV, 4);
+export const SAV_PEDIATRICO_V3 = comAvisoLidocaina(SAV_PEDIATRICO, 3);
+
 /**
  * Os rascunhos em validação. A prévia do responsável médico os abre no lugar
  * da versão publicada. Os sete respiratórios (09 a 15) e os quatro obstétricos
@@ -122,5 +146,5 @@ export const HIPOTERMIA_V3: Protocolo = {
  */
 export const RASCUNHOS: readonly Protocolo[] = [
   EMBOLIA_PULMONAR_V2, DEPRESSAO_OPIOIDES_V3, HIPOTERMIA_V3, ...RESPIRATORIO_V3, ...OBSTETRICIA_NEONATAL_V3,
-  ...METABOLICAS_APOIO_V3,
+  ...METABOLICAS_APOIO_V3, PCR_FV_TV_V4, SAV_PEDIATRICO_V3,
 ];
