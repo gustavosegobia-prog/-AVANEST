@@ -180,7 +180,7 @@ export function passosDoTutorial(papel: Papel): Etapa[] {
       area: "medico",
       alvo: '[data-secao="crises"]',
       titulo: "Manejo de crises",
-      texto: "Manejo de crises fica aqui e abre os protocolos — parada cardíaca, anafilaxia, via aérea, hemorragia, obstetrícia e outros —, por categoria ou pela busca de protocolo ou sinal. Preencha idade e peso no alto e as doses já saem calculadas para aquele paciente. A Calculadora de doses abre por cima, com o mesmo paciente.",
+      texto: "Manejo de crises fica aqui e abre os protocolos — parada cardíaca, anafilaxia, via aérea, hemorragia, obstetrícia e outros —, por categoria ou pela busca de protocolo ou sinal. Preencha idade e peso no alto e as doses já saem calculadas para aquele paciente.",
     });
   }
 

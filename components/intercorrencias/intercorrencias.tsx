@@ -49,13 +49,12 @@ const LIBERADOS = PROTOCOLOS.filter((p) => aprovado(p));
 const emValidacao = (p: Protocolo) => (rascunhoDe(p.id) === p ? "corrigido, em validação" : "em validação");
 
 export function Intercorrencias({
-  dados, set, aoAbrirCalculadora, daFicha = false, titulo = "Intercorrências anestésicas", previa = false,
+  dados, set, daFicha = false, titulo = "Intercorrências anestésicas", previa = false,
 }: {
   /** "Manejo de crises em anestesia" no menu da área médica. */
   titulo?: string;
   dados: DadosDoPaciente;
   set: (c: string, v: string) => void;
-  aoAbrirCalculadora?: () => void;
   /** Aberto de dentro da ficha: os dados vieram do atendimento. */
   daFicha?: boolean;
   /** A prévia do responsável médico: mostra também os protocolos em validação, sem aprovação registrada. */
@@ -183,7 +182,6 @@ export function Intercorrencias({
               p={protocolo} dados={dados} set={set} daFicha={daFicha}
               favorito={favoritos.includes(protocolo.id)} aoFavoritar={() => alternarFavorito(protocolo.id)}
               aoVoltar={fechar} aoBuscar={buscarOutra}
-              aoAbrirCalculadora={aoAbrirCalculadora}
               aoAbrirProtocolo={(x) => { const alvo = disponiveis.find((p) => p.id === x); if (alvo) abrir(alvo); }}
               disponivel={disponivel}
             />
