@@ -84,6 +84,7 @@ export const TOXICIDADE_AL_V3: Protocolo = {
     "Adrenalina na LAST: dose inicial de até 1 mcg/kg, titulada. Não programar o bolus de 1 mg da PCR comum como primeira dose.",
     "Evitar vasopressina, betabloqueadores, bloqueadores dos canais de cálcio e novos anestésicos locais.",
     "Dose acumulada de emulsão lipídica em mL/kg, nunca em mg/kg.",
+    "Lidocaína é anestésico local: na LAST, não usar como antiarrítmico — na arritmia ventricular, amiodarona.",
     "Limite acumulado da emulsão lipídica: adulto 12 mL/kg (ASRA); criança 10 mL/kg (Tratado SAESP). O limite segue a faixa do paciente e não muda durante o cálculo.",
   ],
   medicamentos: [
@@ -314,14 +315,8 @@ const DANTROLENO_20MG: ApresentacaoDoProtocolo = {
   preparo: "60 mL de água estéril para injeção, sem conservante, em cada frasco de 20 mg, conforme a bula; agitar até clarear",
   frasco: { quantidade: 20, unidade: "mg", diluenteMl: 60, volumeFinalMl: 60 },
 };
-/** Ryanodex 250 mg: 5 mL de água estéril por frasco, 50 mg/mL. */
-const DANTROLENO_250MG: ApresentacaoDoProtocolo = {
-  rotulo: "Ryanodex — frasco de 250 mg + 5 mL de água estéril — 50 mg/mL (conferir disponibilidade e registro)",
-  quantidade: 250, unidade: "mg", mL: 5, vias: ["IV"],
-  preparo: "5 mL de água estéril em cada frasco de 250 mg, conforme a bula: 50 mg/mL",
-  frasco: { quantidade: 250, unidade: "mg", diluenteMl: 5, volumeFinalMl: 5 },
-};
-const NAO_MISTURAR = "Cada formulação com o próprio preparo: os 60 mL são do frasco de 20 mg; os 5 mL, do frasco de 250 mg. Nunca trocar.";
+// Ryanodex (250 mg em 5 mL) fora da calculadora: sem registro localizado na Anvisa; decisão do responsável médico em 01/11/2026.
+const NAO_MISTURAR = "Frasco de 20 mg: 60 mL de água estéril sem conservante. Outra formulação (como a de 250 mg) tem preparo próprio e não está habilitada: nunca trocar os preparos.";
 
 export const HIPERTERMIA_MALIGNA_V3: Protocolo = {
   ...HIPERTERMIA_MALIGNA,
@@ -371,7 +366,7 @@ export const HIPERTERMIA_MALIGNA_V3: Protocolo = {
   ],
   medicamentos: [
     dose(HIPERTERMIA_MALIGNA, "dantroleno-inicial", {
-      indicacao: "Dose inicial — peso real", apresentacoes: [DANTROLENO_20MG, DANTROLENO_250MG], altoRisco: true,
+      indicacao: "Dose inicial — peso real", apresentacoes: [DANTROLENO_20MG], altoRisco: true,
       repeticao: "Repetir conforme a resposta clínica e a persistência do hipermetabolismo, sem espera obrigatória de 10 a 15 minutos.",
       cuidados: [
         "10 mg/kg não é teto absoluto na HM confirmada: se forem necessárias doses maiores, reavaliar o diagnóstico e buscar apoio especializado.",
@@ -381,7 +376,7 @@ export const HIPERTERMIA_MALIGNA_V3: Protocolo = {
       referencias: ["mhaus-crise", "emhg-2024-hm", "manual-22"],
     }),
     dose(HIPERTERMIA_MALIGNA, "dantroleno-manutencao", {
-      indicacao: "Manutenção após o controle da crise", apresentacoes: [DANTROLENO_20MG, DANTROLENO_250MG], altoRisco: true,
+      indicacao: "Manutenção após o controle da crise", apresentacoes: [DANTROLENO_20MG], altoRisco: true,
       repeticao: "A cada 4 a 6 horas por pelo menos 24 horas, reavaliando a evolução e o risco de recrudescência.",
       cuidados: [NAO_MISTURAR],
       referencias: ["mhaus-dantroleno", "mhaus-crise"],
@@ -389,7 +384,7 @@ export const HIPERTERMIA_MALIGNA_V3: Protocolo = {
   ],
   notasDeDose: [
     "Frasco de 20 mg com 60 mL de água estéril sem conservante: cerca de 0,333 mg/mL; a dose inicial é de 7,5 mL/kg. A calculadora mostra os frascos e o volume.",
-    "Frasco de 250 mg (Ryanodex) com 5 mL de água estéril: 50 mg/mL; a dose inicial é de 0,05 mL/kg.",
+    "Frasco de 250 mg (Ryanodex: 5 mL de água estéril, 50 mg/mL): fora da calculadora, por decisão do responsável médico em 01/11/2026, até o serviço confirmar disponibilidade e registro no Brasil.",
     "Conferir no serviço a disponibilidade e o registro de cada apresentação antes de usá-la.",
   ],
   pensarEm: [
@@ -409,7 +404,7 @@ export const HIPERTERMIA_MALIGNA_V3: Protocolo = {
         { texto: "Abaixo de 38 °C.", referencia: "mhaus-crise" },
         { texto: "Abaixo de 38,5 °C.", referencia: "emhg-2024-hm" },
       ],
-      escolha: "O cartão segue a MHAUS (38 °C), como a versão 2; a escolha institucional definitiva é do responsável médico. Os dois valores não valem ao mesmo tempo.",
+      escolha: "O cartão segue a MHAUS (38 °C), decisão do responsável médico em 01/11/2026. A EMHG fica registrada aqui; os dois valores não valem ao mesmo tempo.",
     },
   ],
   referencias: ["mhaus-crise", "emhg-2024-hm", "saesp-hm", "manual-22", "mhaus-dantroleno", "saesp-tratado"],
