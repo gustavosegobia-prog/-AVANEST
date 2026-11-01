@@ -117,8 +117,10 @@ test("busca pelo nome, pelo sinônimo e pelo sinal, sem acento; previstos aparec
   assert.equal(estridor[0].tipo === "protocolo" && estridor[0].protocolo.id, "laringoespasmo");
   assert.match(estridor[0].tipo === "protocolo" ? estridor[0].porque : "", /sinal|sinônimo/);
   assert.ok(buscar("urticaria").some((a) => a.tipo === "protocolo" && a.protocolo.id === "anafilaxia"));
+  // A embolia pulmonar deixou de ser "em preparação" (minuta de 01/11/2026): a busca acha o protocolo.
   const tep = buscar("embolia pulmonar");
-  assert.ok(tep.some((a) => a.tipo === "previsto" && a.previsto.titulo === "Embolia pulmonar"));
+  assert.equal(tep[0].tipo === "protocolo" && tep[0].protocolo.id, "embolia-pulmonar");
+  assert.ok(!tep.some((a) => a.tipo === "previsto"));
   assert.deepEqual(buscar("  "), []);
   // O laringoespasmo pediátrico previsto é coberto pelo protocolo único, que fica só em Respiratório.
   assert.ok(!itensDaCategoria("pediatria").prontos.some((p) => p.id === "laringoespasmo"));
@@ -132,15 +134,17 @@ const contas = (p: ReturnType<typeof acha>, id: string, pac: PacienteDaConsulta,
   calcularDose(dose(p, id), p, pac, i).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume, c.unidadeVolume]);
 const vol = (p: ReturnType<typeof acha>, id: string, pac: PacienteDaConsulta) => calcularVolume(p.volumes.find((v) => v.id === id)!, pac);
 
-test("minuta de 15/10/2026: os 34 protocolos na versão 2, e toda seção de doses tem número ou nota", () => {
+test("minuta de 15/10/2026: os 34 protocolos (versão 2, ou 3 nos cardiovasculares de 01/11), e toda seção de doses tem número ou nota", () => {
   const minuta = Object.keys(APROVACOES[0].protocolos);
   assert.equal(minuta.length, 34);
+  const cardiovascularesDe0111 = Object.keys(APROVACOES[1].protocolos).filter((id) => minuta.includes(id));
+  assert.equal(cardiovascularesDe0111.length, 9);
   for (const id of minuta) {
     assert.ok(acharProtocolo(id), id);
-    assert.equal(acha(id).versao, 2, id);
+    assert.equal(acha(id).versao, cardiovascularesDe0111.includes(id) ? 3 : 2, id);
   }
   for (const p of PROTOCOLOS) {
-    if (minuta.includes(p.id)) assert.equal(p.atualizadoEm, "2026-10-15", p.id);
+    if (minuta.includes(p.id)) assert.equal(p.atualizadoEm, cardiovascularesDe0111.includes(p.id) ? "2026-11-01" : "2026-10-15", p.id);
     assert.ok(p.medicamentos.length + p.volumes.length + (p.notasDeDose?.length ?? 0) > 0 || p.id === "bloqueio-neuroaxial-alto", `${p.id}: seção de doses vazia`);
   }
   // A bibliografia geral é a da minuta: o Manual e o Tratado SAESP.
@@ -184,33 +188,16 @@ test("PCR do adulto: adrenalina depois do 2º choque, amiodarona ou lidocaína d
   assert.deepEqual(contas(fvtv, "lidocaina-pcr", adulto).map((c) => [c[0], c[2]]), [[70, 3.5], [105, 5.25]]);
   assert.deepEqual(contas(fvtv, "lidocaina-pcr-2", adulto).map((c) => c[0]), [35, 52.5]);
   assert.deepEqual(fvtv.volumes.map((v) => calcularVolume(v, { idadeAnos: 40, pesoKg: null }).texto), ["120 a 200 J", "360 J"]);
-  // O verso do cartão 01 do Manual (revisão de 01/11/2026): magnésio, cálcio e
-  // bicarbonato entram com a dose do livro, mas só com a indicação de cada um.
-  assert.deepEqual(contas(fvtv, "magnesio-pcr", adulto, 1).map((c) => [c[0], c[2]]), [[1, 2], [2, 4]]);
-  assert.deepEqual(contas(fvtv, "cloreto-de-calcio-pcr", adulto).map((c) => c[2]), [10]);
-  assert.deepEqual(contas(fvtv, "bicarbonato-pcr", adulto).map((c) => [c[0], c[1], c[2]]), [[70, "mEq", 70], [140, "mEq", 140]]);
-  assert.match(dose(fvtv, "magnesio-pcr").indicacao, /Torsades de pointes ou hipomagnesemia/);
-  assert.match(dose(fvtv, "cloreto-de-calcio-pcr").indicacao, /Hipercalemia, hipocalcemia ou intoxicação por bloqueador de canal de cálcio/);
-  assert.match(dose(fvtv, "bicarbonato-pcr").indicacao, /Hipercalemia ou intoxicação por antidepressivo tricíclico/);
-  assert.doesNotMatch(dose(fvtv, "bicarbonato-pcr").indicacao, /prolongada/, "não pelo tempo de RCP");
-  assert.match(fvtv.notasDeDose!.join(" "), /não são rotina/);
-  // Os 11 passos do cartão 01 do Manual, na ordem; o da gestante vem depois do 11.
-  const passos = passosDe(fvtv, "adulto").map((x) => x.texto);
-  assert.equal(passos.length, 11);
-  assert.match(passos[0], /pulso e pelos monitores/);
-  assert.match(passos[4], /Dar um choque/);
-  assert.match(passos[6], /^Com 2 minutos: choque, retomar a RCP e adrenalina 1 mg IV/);
-  assert.match(passos[7], /^Com 4 minutos: choque, retomar a RCP e amiodarona 300 mg IV/);
-  assert.match(passos[9], /5º ciclo: mais 150 mg de amiodarona/);
-  assert.match(passos[10], /ECMO/);
-  assert.equal(passosDe(fvtv, "gestante").length, 12);
+  assert.ok(!fvtv.medicamentos.some((m) => /cálcio|bicarbonato|magnésio/i.test(m.farmaco)));
+  // Minuta de 01/11/2026: o aviso de cálcio, bicarbonato e magnésio está em "Pensar em".
+  assert.match(fvtv.pensarEm.join(" "), /Não administrar bicarbonato, cálcio ou magnésio rotineiramente sem indicação específica/);
   // Criança: nenhuma dose do adulto serve, e o atalho aponta o SAV pediátrico.
   assert.equal(fvtv.medicamentos.filter((d) => doseServe(d, "pediatrico", 4)).length, 0);
   assert.ok(fvtv.veja?.some((v) => v.protocolo === "sav-pediatrico" && /2 J\/kg/.test(v.texto)));
   assert.match(passosDe(fvtv, "gestante").map((x) => x.texto).join(" "), /parto ressuscitativo/);
   // AESP/assistolia: só adrenalina; atropina e marca-passo não são rotina.
   assert.deepEqual(aesp.medicamentos.map((m) => m.id), ["adrenalina-pcr-aesp"]);
-  assert.match(aesp.notasDeDose!.join(" "), /Não indicar atropina nem marca-passo/);
+  assert.match(aesp.notasDeDose!.join(" "), /Não utilizar atropina ou marca-passo como tratamento rotineiro de assistolia estabelecida/);
   assert.deepEqual(fvtv.ritmos?.map((r) => [r.ritmo, r.chocavel]), [["fv", true], ["tv", true]]);
   assert.deepEqual(aesp.ritmos?.map((r) => [r.ritmo, r.chocavel]), [["aesp", false], ["assistolia", false]]);
   assert.equal(sav.ritmos?.length, 4);
@@ -256,7 +243,8 @@ test("isquemia e crise hipertensiva: metoprolol 2,5 mg, nitroglicerina 5 mcg/min
   // 50 mcg/kg/min = 0,3 mL/kg/h na de 10 mg/mL: 21 mL/h para 70 kg.
   assert.deepEqual(contas(has, "esmolol-infusao-hipertensao", adulto).map((c) => [c[2], c[3]]), [[21, "mL/h"]]);
   assert.deepEqual(contas(has, "hidralazina-hipertensao", adulto).map((c) => c[2]), [5]);
-  assert.match(has.notasDeDose!.join(" "), /formulário específico do serviço/);
+  assert.match(has.notasDeDose!.join(" "), /formulário pediátrico do serviço/);
+  assert.match(has.notasDeDose!.join(" "), /Não utilizar propofol em bolus como tratamento universal/);
 });
 
 test("hipotensão: efedrina, fenilefrina, noradrenalina em base e adrenalina de resgate; criança vai à bradicardia", () => {
@@ -283,7 +271,7 @@ test("taquiarritmia: adenosina 6 e 12 mg (criança por kg com teto), magnésio, 
   assert.equal(vol(taqui, "cardioversao-estreita", adulto).texto, "100 J");
   assert.equal(vol(taqui, "cardioversao-ped", crianca).texto, "8 a 16 J");
   assert.equal(vol(taqui, "cardioversao-ped-2", crianca).texto, "32 J");
-  assert.match(taqui.agirAgora.map((x) => `${x.texto} ${x.detalhe ?? ""}`).join(" "), /pré-excitada: não administrar amiodarona/);
+  assert.match(taqui.agirAgora.map((x) => `${x.texto} ${x.detalhe ?? ""}`).join(" "), /Não utilizar amiodarona IV nem bloqueadores do nó AV na fibrilação atrial pré-excitada/);
 });
 
 test("bradicardia: atropina 1 mg no adulto; na criança 0,02 mg/kg com mínimo de 0,1 e máximo de 0,5 mg; adrenalina 10 mcg/kg", () => {
@@ -338,7 +326,7 @@ test("hemorragia maciça: cálcio, tranexâmico do trauma, plasma por kg; plaque
   assert.deepEqual(contas(hemorragia, "cloreto-de-calcio-hemorragia-ped", crianca).map((c) => [c[0], c[2]]), [[320, 3.2]]);
   assert.deepEqual(contas(hemorragia, "tranexamico-trauma-bolus", adulto).map((c) => [c[0], c[1], c[2]]), [[1, "g", 20]]);
   assert.equal(vol(hemorragia, "plasma", crianca).texto, "240 mL");
-  assert.match(hemorragia.notasDeDose!.join(" "), /não usar 15 a 20 mL\/kg como padrão adulto/);
+  assert.match(hemorragia.notasDeDose!.join(" "), /Plaquetas — adultos: dose terapêutica conforme unidade por aférese ou pool institucional/);
   assert.ok(hemorragia.divergencias.some((d) => /tranexâmico/.test(d.tema) && /1 mg/.test(d.posicoes[0].texto)));
   assert.ok(hemorragia.veja?.some((v) => v.protocolo === "hemorragia-pos-parto"));
 });
@@ -459,13 +447,24 @@ test("aprovação médica registrada: nome, CRM e data, protocolo por protocolo 
   assert.equal(primeira.data, "2026-10-15");
   // Os 34 cartões da minuta de 15/10/2026 continuam aprovados na versão 2. Mudou o conteúdo de um deles?
   // Sobe a versão, e este teste lembra de registrar a nova aprovação.
-  for (const id of Object.keys(primeira.protocolos)) {
+  // A segunda: os 10 cardiovasculares da minuta de 01/11/2026 (9 na versão 3, a embolia pulmonar na 1).
+  const segunda = APROVACOES[1];
+  assert.equal(segunda.responsavel, "Gustavo Segobia da Silva");
+  assert.equal(segunda.crm, "CRM 49131");
+  assert.equal(segunda.data, "2026-11-01");
+  assert.deepEqual(Object.entries(segunda.protocolos).sort(), [
+    ["bradicardia", 3], ["embolia-gasosa-venosa", 3], ["embolia-pulmonar", 1], ["hemorragia-macica", 3], ["hipertensao", 3],
+    ["hipotensao", 3], ["isquemia-miocardica", 3], ["pcr-aesp-assistolia", 3], ["pcr-fv-tv", 3], ["taquiarritmia", 3],
+  ]);
+  // Cada protocolo aprovado está coberto pela aprovação da versão que está no ar.
+  for (const id of new Set([...Object.keys(primeira.protocolos), ...Object.keys(segunda.protocolos)])) {
     const p = acha(id);
-    assert.equal(aprovacaoDe(p), primeira, `${p.id}: versão ${p.versao} de ${p.atualizadoEm} sem aprovação registrada`);
+    const esperada = segunda.protocolos[id] !== undefined ? segunda : primeira;
+    assert.equal(aprovacaoDe(p), esperada, `${p.id}: versão ${p.versao} de ${p.atualizadoEm} sem aprovação registrada`);
   }
   // A aprovação não se estende sozinha a uma versão nova nem a um protocolo novo.
-  assert.equal(aprovado({ ...fvtv, versao: 3 }), false);
-  assert.equal(aprovado({ ...fvtv, atualizadoEm: "2026-11-01" }), false);
+  assert.equal(aprovado({ ...fvtv, versao: 4 }), false);
+  assert.equal(aprovado({ ...fvtv, atualizadoEm: "2026-11-02" }), false);
   for (const id of NOVOS) assert.equal(aprovado(acha(id)), false, id);
   // A tela marca os sem aprovação na lista e diz quantos são no rodapé.
   assert.equal(PROTOCOLOS.filter((p) => !aprovado(p)).length, 15);
@@ -473,7 +472,7 @@ test("aprovação médica registrada: nome, CRM e data, protocolo por protocolo 
 
 
 test("minuta preliminar de outubro de 2026: os 15 cartões revisados (versão 2), sem atribuir nada ao que não foi aberto", () => {
-  assert.equal(PROTOCOLOS.length, 49);
+  assert.equal(PROTOCOLOS.length, 50);
   for (const id of NOVOS) {
     const p = acha(id);
     assert.equal(p.versao, 2, id);
@@ -488,9 +487,9 @@ test("minuta preliminar de outubro de 2026: os 15 cartões revisados (versão 2)
       for (const r of d.referencias) assert.ok(acharReferencia(r)!.conferida || pendentes.has(r), `${d.id}: ${r} não conferida`);
     }
   }
-  // Só a embolia pulmonar continua em preparação no catálogo completo.
+  // Com a embolia pulmonar (01/11/2026), nada mais fica em preparação no catálogo completo.
   const previstos = CATEGORIAS.flatMap((c) => itensDaCategoria(c.id).previstos.map((x) => x.titulo));
-  assert.deepEqual(previstos, ["Embolia pulmonar"]);
+  assert.deepEqual(previstos, []);
   const ids = (q: string) => buscar(q).flatMap((a) => (a.tipo === "protocolo" ? [a.protocolo.id] : []));
   assert.equal(ids("naloxona")[0], "depressao-respiratoria-opioides");
   assert.equal(ids("TOF")[0], "bloqueio-neuromuscular-residual");
@@ -503,7 +502,7 @@ test("minuta preliminar de outubro de 2026: os 15 cartões revisados (versão 2)
 
 test("trava de liberação: sem aprovação, o protocolo fica em preparação para quem usa e só abre na prévia do responsável", async () => {
   const liberados = PROTOCOLOS.filter((p) => aprovado(p));
-  assert.equal(liberados.length, 34);
+  assert.equal(liberados.length, 35);
   // Para quem usa, os 15 voltam a "em preparação" no índice e não aparecem na busca.
   const emPreparacao = CATEGORIAS.flatMap((c) => itensDaCategoria(c.id, liberados).previstos.map((x) => x.titulo));
   for (const id of NOVOS) assert.ok(emPreparacao.includes(acha(id).titulo), id);

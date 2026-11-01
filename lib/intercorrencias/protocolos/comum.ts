@@ -107,10 +107,6 @@ export const MAGNESIO_20MG: ApresentacaoDoProtocolo = {
 export const CLORETO_DE_CALCIO_10: ApresentacaoDoProtocolo = {
   rotulo: "Cloreto de cálcio 10% — 100 mg/mL (ampola de 10 mL)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV", "IO"],
 };
-/** Bicarbonato de sódio 8,4%: 1 mEq por mL — a dose em mEq/kg é o volume em mL/kg. */
-export const BICARBONATO_84: ApresentacaoDoProtocolo = {
-  rotulo: "Bicarbonato de sódio 8,4% — 1 mEq/mL", quantidade: 1, unidade: "mEq", mL: 1, vias: ["IV", "IO"],
-};
 export const GLUCONATO_DE_CALCIO_10: ApresentacaoDoProtocolo = {
   rotulo: "Gluconato de cálcio 10% — 100 mg/mL (ampola de 10 mL)", quantidade: 100, unidade: "mg", mL: 1, vias: ["IV", "IO"],
 };
