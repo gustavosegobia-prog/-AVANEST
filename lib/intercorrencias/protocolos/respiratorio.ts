@@ -255,7 +255,8 @@ export const NAO_INTUBO_NAO_OXIGENO_V3: Protocolo = {
     "Falha de intubação, supraglótico e máscara; obstrução anatômica, edema, trauma, laringoespasmo, sangue e secreções.",
   ],
   depois: [
-    "Encaminhar para cuidados críticos, avaliar lesões laríngeas e traqueais, planejar a via aérea definitiva e documentar integralmente o evento.",
+    "Encaminhar para cuidados críticos com passagem estruturada: a avaliação de lesões laríngeas e traqueais e o plano da via aérea definitiva seguem com a equipe que assume depois da sala.",
+    "Documentar integralmente o evento.",
     "Realizar revisão do atendimento e oferecer apoio à equipe envolvida.",
   ],
   divergencias: [
@@ -347,8 +348,8 @@ export const LARINGOESPASMO_V3: Protocolo = {
     "Corpo estranho, edema laríngeo, anafilaxia, paralisia de pregas vocais, secreções, broncoespasmo e obstrução do tubo.",
   ],
   depois: [
-    "Manter observação respiratória.",
-    "Considerar edema pulmonar por pressão negativa diante de hipoxemia persistente, estertores, secreção espumosa ou infiltrados pulmonares.",
+    "Na sala: observação respiratória até a passagem de cuidado.",
+    "Na passagem à clínica cirúrgica (ou à UTI), que acompanha o paciente depois da sala: orientar a vigilância de edema pulmonar por pressão negativa diante de hipoxemia persistente, estertores, secreção espumosa ou infiltrados pulmonares.",
     "Registrar o evento, os medicamentos e a resposta.",
   ],
   relacionados: [
@@ -405,7 +406,8 @@ export const PRESSAO_VIAS_AEREAS_V3: Protocolo = {
     "Obstrução do tubo, tubo seletivo, broncoespasmo, laringoespasmo, rigidez torácica, auto-PEEP, pneumotórax, edema pulmonar, falha de circuito e compressão externa.",
   ],
   depois: [
-    "Monitorizar pressões respiratórias, volumes, gasometria e imagem quando indicadas.",
+    "Na sala: monitorizar pressões respiratórias, volumes, gasometria e imagem quando indicadas.",
+    "Na passagem à clínica cirúrgica (ou à UTI): informar a causa e o que ainda precisa ser acompanhado.",
     "Registrar a causa identificada e a intervenção eficaz.",
   ],
   relacionados: [
@@ -516,9 +518,9 @@ export const BRONCOESPASMO_V3: Protocolo = {
     "Anafilaxia, aspiração, obstrução mecânica, intubação seletiva, pneumotórax, auto-PEEP, edema pulmonar e ventilação inadequada.",
   ],
   depois: [
-    "Monitorização respiratória e hemodinâmica.",
-    "Avaliar a necessidade de UTI.",
-    "Investigar o fator desencadeante.",
+    "Na sala: monitorização respiratória e hemodinâmica.",
+    "Avaliar a necessidade de UTI e fazer a passagem estruturada à clínica cirúrgica (ou à UTI), que acompanha o paciente depois da sala.",
+    "Investigar o fator desencadeante; o que continuar depois da sala vai na passagem de cuidado.",
   ],
   divergencias: BRONCOESPASMO.divergencias.map((d) => (/criança/.test(d.tema) ? {
     ...d,
@@ -562,7 +564,7 @@ export const BRONCOASPIRACAO_V3: Protocolo = {
     { texto: "Avalie a descompressão gástrica e a continuidade da cirurgia.",
       detalhe: "Quando apropriado e após proteção da via aérea, considere sonda gástrica. A decisão de continuar ou interromper o procedimento deve considerar estabilidade, gravidade e urgência da cirurgia." },
     { texto: "Estabeleça monitorização e plano de acompanhamento.",
-      detalhe: "Avalie a evolução respiratória, a oxigenação, a necessidade de ventilação prolongada e a indicação de UTI." },
+      detalhe: "Avalie a evolução respiratória, a oxigenação, a necessidade de ventilação prolongada e a indicação de UTI. O acompanhamento depois da sala é da clínica cirúrgica (ou da UTI): entregar o plano na passagem de cuidado." },
   ],
   notasDeDose: [
     "Broncodilatadores: utilizar quando houver broncoespasmo clinicamente relevante.",
@@ -574,10 +576,10 @@ export const BRONCOASPIRACAO_V3: Protocolo = {
     "Pneumonite química, pneumonia aspirativa, broncoespasmo, atelectasia, edema pulmonar, obstrução por material particulado e síndrome do desconforto respiratório agudo.",
   ],
   depois: [
-    "Realizar avaliação clínica e respiratória seriada.",
-    "Solicitar gasometria e imagem pulmonar quando indicadas.",
+    "Na sala: avaliação clínica e respiratória seriada; gasometria e imagem pulmonar quando indicadas.",
+    "Na passagem à clínica cirúrgica (ou à UTI), que acompanha o paciente depois da sala: orientar a reavaliação respiratória seriada e a gasometria e a imagem quando indicadas.",
     "Não utilizar ausência de sintomas por apenas duas horas ou radiografia inicial normal como critérios universais de alta.",
-    "Definir recuperação anestésica, internação ou terapia intensiva de acordo com a evolução.",
+    "Definir o destino — recuperação anestésica, internação ou terapia intensiva — de acordo com a evolução.",
     "Registrar o evento, comunicar o paciente e revisar medidas preventivas para procedimentos futuros.",
   ],
   referencias: ["manual-15", "ahrq-aspiracao"],
