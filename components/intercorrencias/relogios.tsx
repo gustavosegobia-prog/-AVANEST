@@ -2,9 +2,12 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import estilos from "./intercorrencias.module.css";
-import { ALVOS_SPO2, alvoSpO2, formatarTempo, horaDe, horaParaMs, pcrMaterna, tranexamico } from "@/lib/intercorrencias/relogios";
+import {
+  agendaHipercalemia, ALVOS_SPO2, alvoSpO2, formatarTempo, horaDe, horaParaMs, lipidioAcumulado, pcrMaterna, sugestaoLipidio, tranexamico,
+} from "@/lib/intercorrencias/relogios";
+import { numero, populacaoDe } from "@/lib/intercorrencias/calculo";
 import type { Ferramenta } from "@/lib/intercorrencias/tipos";
-import type { DadosDoPaciente } from "./paciente";
+import { pacienteDe, type DadosDoPaciente } from "./paciente";
 
 /**
  * As ferramentas de tempo dos protocolos. O início de cada cronômetro e os
@@ -135,10 +138,115 @@ function Tranexamico({ dados, set }: { dados: DadosDoPaciente; set: (c: string, 
   );
 }
 
+/**
+ * Emulsão lipídica: o volume acumulado (bolus + infusões) contra o limite de
+ * 12 mL/kg. Os botões trazem o bolus e as taxas do regime do peso; ao trocar
+ * a taxa, o que já correu é somado e a nova taxa começa a contar.
+ */
+function Lipidio({ dados, set }: { dados: DadosDoPaciente; set: (c: string, v: string) => void }) {
+  const paciente = pacienteDe(dados);
+  const populacao = populacaoDe(paciente);
+  const n = (c: string) => Number(dados[c]) || 0;
+  const inicio = n("lipidio:inicio") || null;
+  const taxa = n("lipidio:taxa");
+  const agora = useAgora(inicio !== null && taxa > 0);
+  const titulo = "Emulsão lipídica 20%: volume acumulado";
+  if (populacao === "pediatrico" || populacao === "neonatal") {
+    return (
+      <div className={`${estilos.ferramenta} ${estilos.naoImprimir}`} role="group" aria-label={titulo}>
+        <div className={estilos.ferramentaTopo}><strong>{titulo}</strong></div>
+        <ul className={estilos.avisos}><li className={estilos.atencao}><span>Criança: cálculo da emulsão lipídica pendente de homologação — a ASRA usa limite de 12 mL/kg e o Tratado SAESP, 10 mL/kg. Sem cálculo automático até a política institucional única.</span></li></ul>
+      </div>
+    );
+  }
+  const sugestao = sugestaoLipidio(paciente.pesoKg);
+  if (!sugestao) {
+    return (
+      <div className={`${estilos.ferramenta} ${estilos.naoImprimir}`} role="group" aria-label={titulo}>
+        <div className={estilos.ferramentaTopo}><strong>{titulo}</strong></div>
+        <p className={estilos.miuda}>Informe o peso para o bolus, as taxas e o limite acumulado.</p>
+      </div>
+    );
+  }
+  const fecharSegmento = (agoraMs: number) => {
+    if (inicio && taxa > 0) set("lipidio:infundido", String(n("lipidio:infundido") + (taxa * (agoraMs - inicio)) / 3_600_000));
+  };
+  const iniciarTaxa = (mlH: number, agoraMs: number) => { fecharSegmento(agoraMs); set("lipidio:taxa", String(mlH)); set("lipidio:inicio", String(agoraMs)); };
+  const parar = (agoraMs: number) => { fecharSegmento(agoraMs); set("lipidio:taxa", ""); set("lipidio:inicio", ""); };
+  const zerar = () => {
+    if (!window.confirm("Zerar o volume acumulado de emulsão lipídica?")) return;
+    for (const c of ["lipidio:bolus", "lipidio:infundido", "lipidio:taxa", "lipidio:inicio"]) set(c, "");
+  };
+  const estado = lipidioAcumulado({
+    bolusMl: n("lipidio:bolus"), infundidoMl: n("lipidio:infundido"), taxaMlH: taxa, inicioMs: inicio, agoraMs: agora ?? inicio ?? 0, limiteMl: sugestao.limiteMl,
+  });
+  const algum = n("lipidio:bolus") > 0 || n("lipidio:infundido") > 0 || inicio !== null;
+  return (
+    <div className={`${estilos.ferramenta} ${estilos.naoImprimir}`} role="group" aria-label={titulo}>
+      <div className={estilos.ferramentaTopo}>
+        <strong>{titulo}</strong>
+        <b className={estilos.relogio}>{numero(estado.totalMl, 0)} mL</b>
+        {algum && <button type="button" className={estilos.botao} onClick={zerar}>Zerar</button>}
+      </div>
+      <div className={estilos.acoesFerramenta}>
+        <button type="button" className={`${estilos.botao} ${estilos.botaoForte}`}
+          onClick={() => set("lipidio:bolus", String(n("lipidio:bolus") + sugestao.bolusMl))}>
+          + Bolus de {numero(sugestao.bolusMl, 0)} mL
+        </button>
+        {sugestao.taxas.map((t) => (
+          <button key={t.rotulo} type="button" className={estilos.botao} aria-pressed={inicio !== null && taxa === t.mlH}
+            onClick={() => iniciarTaxa(t.mlH, Date.now())}>
+            {t.rotulo}: {numero(t.mlH, 0)} mL/h
+          </button>
+        ))}
+        {inicio && <button type="button" className={estilos.botao} onClick={() => parar(Date.now())}>Parar a infusão</button>}
+      </div>
+      <ul className={estilos.avisos}>
+        <li className={estilos[estado.nivel]}><span>{estado.mensagem}</span></li>
+        <li className={estilos.info}><span>{sugestao.regime === "abaixo-de-70"
+          ? "Abaixo de 70 kg: bolus de 1,5 mL/kg em 2 a 3 minutos e 0,25 mL/kg/min; instável, repetir o bolus ou dobrar a taxa."
+          : "A partir de 70 kg: cerca de 100 mL em 2 a 3 minutos e 250 mL em 15 a 20 minutos; instável, novo bolus e aumento da infusão."} Manter por mais de 15 minutos depois da estabilidade.</span></li>
+      </ul>
+    </div>
+  );
+}
+
+/** Hipercalemia: a agenda de glicemias e de potássio a partir da insulina. */
+function AgendaHipercalemia({ dados, set }: { dados: DadosDoPaciente; set: (c: string, v: string) => void }) {
+  return (
+    <Cronometro chave="cronometro:insulina" titulo="Controles depois da insulina" iniciar="Iniciar na insulina"
+      dica="Toque ao dar a insulina: a tela marca as glicemias de 0 a 360 minutos e o potássio em 1, 2, 4, 6 e 24 horas."
+      dados={dados} set={set}>
+      {(_s, inicio, agora) => {
+        const { itens, proximo } = agendaHipercalemia(inicio, agora);
+        return (
+          <>
+            <ul className={estilos.avisos}>
+              {proximo && (
+                <li className={estilos.atencao}><span>Próximo: {proximo.tipo.toLowerCase()} às {horaDe(proximo.ms)} ({proximo.minuto} min da insulina).</span></li>
+              )}
+              <li className={estilos.info}><span>Insulina às {horaDe(inicio)}. Glicemia antes do tratamento abaixo de 7 mmol/L (126 mg/dL): glicose 10%, 50 mL/h por 5 horas.</span></li>
+            </ul>
+            <ol className={estilos.agenda} aria-label="Controles">
+              {itens.map((x) => (
+                <li key={`${x.tipo}-${x.minuto}`} data-passou={x.passou || undefined} aria-current={proximo === x ? "step" : undefined}>
+                  <small>{x.tipo}{x.minuto >= 1440 ? " · 24 h" : ""}</small><b>{horaDe(x.ms)}</b>
+                </li>
+              ))}
+            </ol>
+          </>
+        );
+      }}
+    </Cronometro>
+  );
+}
+
 export function FerramentaDoProtocolo({ ferramenta, dados, set }: {
   ferramenta: Ferramenta; dados: DadosDoPaciente; set: (c: string, v: string) => void;
 }) {
   if (ferramenta === "cronometro-pcr-materna") return <PcrMaterna dados={dados} set={set} />;
   if (ferramenta === "cronometro-nascimento") return <Nascimento dados={dados} set={set} />;
+  if (ferramenta === "lipidio-acumulado") return <Lipidio dados={dados} set={set} />;
+  if (ferramenta === "agenda-hipercalemia") return <AgendaHipercalemia dados={dados} set={set} />;
   return <Tranexamico dados={dados} set={set} />;
 }

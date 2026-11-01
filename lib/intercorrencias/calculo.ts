@@ -17,7 +17,7 @@ import {
   calcular, converter, ESCREVER_POR, virgula, type Apresentacao, type Calculo, type DosePorKg, type Unidade,
 } from "../calculos/doses.ts";
 import { pesoDaDose, type PesoDaDose } from "../calculos/peso.ts";
-import type { DoseDoProtocolo, Populacao, Protocolo, VolumeDoProtocolo } from "./tipos.ts";
+import type { ApresentacaoDoProtocolo, DoseDoProtocolo, Populacao, Protocolo, VolumeDoProtocolo } from "./tipos.ts";
 
 export type PacienteDaConsulta = {
   /** Em anos, com fração (8 meses = 0,67). */
@@ -66,7 +66,7 @@ export function escreverFaixaDePeso(f: NonNullable<DoseDoProtocolo["faixaDePeso"
 }
 
 /** O peso cabe na faixa de peso da dose? Sem faixa ou sem peso, cabe. */
-export function pesoNaFaixa(d: DoseDoProtocolo, pesoKg: number | null): boolean {
+export function pesoNaFaixa(d: Pick<DoseDoProtocolo, "faixaDePeso">, pesoKg: number | null): boolean {
   const f = d.faixaDePeso;
   if (!f || !ok(pesoKg)) return true;
   return (f.aPartirDe === undefined || pesoKg >= f.aPartirDe) && (f.acimaDe === undefined || pesoKg > f.acimaDe)
@@ -310,15 +310,34 @@ export function calcularVolume(v: VolumeDoProtocolo, p: PacienteDaConsulta): Vol
   }
   const porKgV = faixa(v.porKg ?? {});
   // Ritmo de bomba por kg escreve-se "mL/kg/h", e não "mL/h/kg".
-  const porKgU = u === "mL/h" ? "mL/kg/h" : `${u}/kg`;
+  const porKgU = u === "mL/h" ? "mL/kg/h" : u === "mL/min" ? "mL/kg/min" : `${u}/kg`;
+  // Por minuto, o volume é pequeno: uma casa decimal (14 kg × 0,25 = 3,5 mL/min, e não 4).
+  const casas = u === "mL/min" ? 1 : 0;
   const base = `${porKgV.map((x) => numero(x, 2)).join(" a ")} ${porKgU}${v.maximo ? `, máximo de ${numero(v.maximo, 0)} ${u}` : ""}`;
   if (!ok(p.pesoKg)) return { volume: v, texto: "", base, bloqueio: "Informe o peso para calcular." };
   const conta = porKgV.map((x) => Math.min(x * p.pesoKg!, v.maximo ?? Infinity));
-  return { volume: v, texto: `${[...new Set(conta.map((x) => numero(x, 0)))].join(" a ")} ${u}`, base, bloqueio: null };
+  return { volume: v, texto: `${[...new Set(conta.map((x) => numero(x, casas)))].join(" a ")} ${u}`, base, bloqueio: null };
 }
 
-export function volumeServe(v: VolumeDoProtocolo, populacao: Populacao): boolean {
-  return FAIXA_DA_DOSE[v.populacao].includes(populacao);
+export function volumeServe(v: VolumeDoProtocolo, populacao: Populacao, pesoKg: number | null = null): boolean {
+  return FAIXA_DA_DOSE[v.populacao].includes(populacao) && pesoNaFaixa(v, pesoKg);
+}
+
+/**
+ * Os frascos de uma dose (dantroleno): quantos, o fármaco que somam, o
+ * diluente e o volume final de todos. Para a faixa de dose, conta o maior
+ * valor. Sem frasco cadastrado, ou sem a conta, nulo.
+ */
+export function frascosDaDose(conta: DoseCalculada, apresentacao: ApresentacaoDoProtocolo | undefined): { frascos: number; quantidade: number; unidade: string; diluenteMl: number; volumeFinalMl: number } | null {
+  const f = apresentacao?.frasco;
+  if (!f || conta.bloqueio || !conta.contas.length) return null;
+  const maior = Math.max(...conta.contas.map((c) => {
+    const v = converter(c.doseTotal, c.unidadeDose as Unidade, f.unidade);
+    return v === undefined ? NaN : v;
+  }));
+  if (!Number.isFinite(maior) || maior <= 0) return null;
+  const frascos = Math.ceil(maior / f.quantidade - 1e-9);
+  return { frascos, quantidade: frascos * f.quantidade, unidade: f.unidade, diluenteMl: frascos * f.diluenteMl, volumeFinalMl: frascos * f.volumeFinalMl };
 }
 
 /** Os passos que valem para a faixa: o da gestante só para a gestante. Sem faixa, todos. */

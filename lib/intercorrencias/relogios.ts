@@ -125,3 +125,82 @@ export function alvoSpO2(segundos: number): { minuto: number; faixa: string } | 
   for (const a of ALVOS_SPO2) if (segundos >= a.minuto * 60) alvo = a;
   return alvo;
 }
+
+// ---------------------------------------------------------------------------
+// Emulsão lipídica 20% na toxicidade por anestésico local (ASRA 2020)
+// ---------------------------------------------------------------------------
+/** O limite acumulado adotado: 12 mL/kg (ASRA). Só no adulto; na criança, pendente de homologação. */
+export const LIPIDIO_LIMITE_ML_KG = 12;
+
+export type SugestaoLipidio = {
+  regime: "abaixo-de-70" | "a-partir-de-70";
+  bolusMl: number;
+  taxas: Array<{ rotulo: string; mlH: number }>;
+  limiteMl: number;
+};
+
+/** O regime pelo peso: abaixo de 70 kg, por kg; a partir de 70 kg, o simplificado da ASRA. Sem peso, nulo. */
+export function sugestaoLipidio(pesoKg: number | null): SugestaoLipidio | null {
+  if (pesoKg === null || !Number.isFinite(pesoKg) || pesoKg <= 0) return null;
+  const limiteMl = LIPIDIO_LIMITE_ML_KG * pesoKg;
+  if (pesoKg < 70) {
+    return {
+      regime: "abaixo-de-70", bolusMl: 1.5 * pesoKg, limiteMl,
+      taxas: [{ rotulo: "0,25 mL/kg/min", mlH: 15 * pesoKg }, { rotulo: "Dobrada: 0,5 mL/kg/min", mlH: 30 * pesoKg }],
+    };
+  }
+  return {
+    regime: "a-partir-de-70", bolusMl: 100, limiteMl,
+    taxas: [{ rotulo: "250 mL em 15 min", mlH: 1000 }, { rotulo: "250 mL em 20 min", mlH: 750 }],
+  };
+}
+
+export type EstadoLipidio = {
+  /** O que a infusão em curso já correu. */
+  infusaoAtualMl: number;
+  totalMl: number;
+  restanteMl: number;
+  /** Quando a infusão em curso alcança o limite, se nada mudar. */
+  atingeEmMs: number | null;
+  nivel: "info" | "atencao" | "perigo";
+  mensagem: string;
+};
+
+/** Bolus somados + infusões já encerradas + a infusão em curso, contra o limite. */
+export function lipidioAcumulado(e: {
+  bolusMl: number; infundidoMl: number; taxaMlH: number; inicioMs: number | null; agoraMs: number; limiteMl: number;
+}): EstadoLipidio {
+  const corre = e.inicioMs !== null && e.taxaMlH > 0;
+  const infusaoAtualMl = corre ? (e.taxaMlH * Math.max(0, e.agoraMs - e.inicioMs!)) / 3_600_000 : 0;
+  const totalMl = e.bolusMl + e.infundidoMl + infusaoAtualMl;
+  const restanteMl = e.limiteMl - totalMl;
+  const atingeEmMs = corre && restanteMl > 0 ? e.agoraMs + (restanteMl / e.taxaMlH) * 3_600_000 : null;
+  const total = Math.round(totalMl), limite = Math.round(e.limiteMl);
+  if (restanteMl <= 0) {
+    return { infusaoAtualMl, totalMl, restanteMl, atingeEmMs, nivel: "perigo",
+      mensagem: `Limite acumulado atingido: ${total} de ${limite} mL (12 mL/kg). Parar ou reavaliar com o responsável antes de continuar.` };
+  }
+  return {
+    infusaoAtualMl, totalMl, restanteMl, atingeEmMs, nivel: totalMl >= 0.8 * e.limiteMl ? "atencao" : "info",
+    mensagem: `Acumulado: ${total} de ${limite} mL (12 mL/kg); restam ${Math.round(restanteMl)} mL${atingeEmMs ? `, alcançados às ${horaDe(atingeEmMs)} nesta taxa` : ""}.`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Hipercalemia: glicemia e potássio depois da insulina (UKKA 2026)
+// ---------------------------------------------------------------------------
+export const GLICEMIAS_MIN: readonly number[] = [0, 30, 60, 90, 120, 180, 240, 300, 360];
+export const POTASSIO_H: readonly number[] = [1, 2, 4, 6, 24];
+
+export type ControleHipercalemia = { tipo: "Glicemia" | "Potássio"; minuto: number; ms: number; passou: boolean };
+
+/** Os controles a partir da insulina, em ordem de horário; o próximo é o primeiro que não passou. */
+export function agendaHipercalemia(inicioMs: number, agoraMs: number): { itens: ControleHipercalemia[]; proximo: ControleHipercalemia | null } {
+  const itens: ControleHipercalemia[] = [
+    ...GLICEMIAS_MIN.map((m) => ({ tipo: "Glicemia" as const, minuto: m })),
+    ...POTASSIO_H.map((h) => ({ tipo: "Potássio" as const, minuto: h * 60 })),
+  ]
+    .map((x) => ({ ...x, ms: inicioMs + x.minuto * MIN, passou: agoraMs >= inicioMs + x.minuto * MIN + MIN }))
+    .sort((a, b) => a.minuto - b.minuto || (a.tipo === "Glicemia" ? -1 : 1));
+  return { itens, proximo: itens.find((x) => !x.passou) ?? null };
+}

@@ -18,6 +18,7 @@ import { DEPRESSAO_OPIOIDES } from "./opioides-e-bloqueio-residual.ts";
 import { HIPOTERMIA } from "./outras-emergencias.ts";
 import { RESPIRATORIO_V3 } from "./respiratorio.ts";
 import { OBSTETRICIA_NEONATAL_V3 } from "./obstetricia-neonatal.ts";
+import { METABOLICAS_APOIO_V3 } from "./metabolicas-apoio.ts";
 
 const PROPOSTA = "2026-11-01";
 
@@ -114,10 +115,12 @@ export const HIPOTERMIA_V3: Protocolo = {
 /**
  * Os rascunhos em validação. A prévia do responsável médico os abre no lugar
  * da versão publicada. Os sete respiratórios (09 a 15) e os quatro obstétricos
- * e neonatal (16 a 19) vêm das revisões de 01/11/2026, em
- * protocolos/respiratorio.ts e protocolos/obstetricia-neonatal.ts. O colapso
+ * e neonatal (16 a 19) e os seis da revisão 4 (20 a 24) vêm das revisões de
+ * 01/11/2026, em protocolos/respiratorio.ts, protocolos/obstetricia-neonatal.ts
+ * e protocolos/metabolicas-apoio.ts. O colapso
  * materno de lá substitui a proposta anterior (magnésio igual ao da Eclâmpsia).
  */
 export const RASCUNHOS: readonly Protocolo[] = [
   EMBOLIA_PULMONAR_V2, DEPRESSAO_OPIOIDES_V3, HIPOTERMIA_V3, ...RESPIRATORIO_V3, ...OBSTETRICIA_NEONATAL_V3,
+  ...METABOLICAS_APOIO_V3,
 ];
