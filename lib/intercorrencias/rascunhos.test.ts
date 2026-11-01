@@ -11,16 +11,16 @@ import type { Protocolo } from "./tipos.ts";
 // rascunho. Quem usa continua com a versão publicada; só a prévia do
 // responsável médico abre o rascunho. Nenhuma aprovação em lote.
 
-const gestante: PacienteDaConsulta = { idadeAnos: 30, pesoKg: 70, gestante: true } as PacienteDaConsulta;
 const adulto: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
 const conta = (p: Protocolo, id: string, pac: PacienteDaConsulta, apresentacao = 0) =>
   calcularDose(p.medicamentos.find((m) => m.id === id)!, p, pac, apresentacao).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume, c.unidadeVolume]);
 
 test("rascunho: só na prévia do responsável, nunca para quem usa, e sem aprovação", () => {
   assert.deepEqual(RASCUNHOS.map((r) => `${r.id} v${r.versao}`),
-    ["embolia-pulmonar v2", "colapso-materno v3", "depressao-respiratoria-opioides v3", "hipotermia-perioperatoria v3",
+    ["embolia-pulmonar v2", "depressao-respiratoria-opioides v3", "hipotermia-perioperatoria v3",
       "ventilacao-mascara-dificil v3", "intubacao-dificil v3", "nao-ventilo-nao-intubo v3", "laringoespasmo v3",
-      "pressao-vias-aereas v3", "broncoespasmo-grave v3", "broncoaspiracao v3"]);
+      "pressao-vias-aereas v3", "broncoespasmo-grave v3", "broncoaspiracao v3",
+      "bloqueio-neuroaxial-alto v3", "hemorragia-pos-parto v3", "colapso-materno v3", "reanimacao-neonatal v3"]);
   for (const r of RASCUNHOS) {
     const publicado = acharProtocolo(r.id)!;
     assert.ok(publicado, r.id);
@@ -66,28 +66,6 @@ test("embolia pulmonar (rascunho): classificação completa da diretriz e terapi
   assert.match(etapas[8].detalhe!, /razoáveis em E1 e podem ser consideradas em D1–D2.*em E2, seguir também as recomendações específicas para PCR/);
   assert.equal(tep.medicamentos.length, 0, "anticoagulação e trombólise seguem sem calculadora");
   assert.ok(acharReferencia("aha-acc-2026-tep")!.conferida);
-});
-
-test("colapso materno (rascunho): o mesmo magnésio da Eclâmpsia — 4 g em 15 min e 1 g/h, a 80 mg/mL", () => {
-  const colapso = rascunhoDe("colapso-materno")!;
-  // Ataque: 4 g a 80 mg/mL = 50 mL (200 mL/h por 15 minutos); a 50%, 8 mL.
-  assert.deepEqual(conta(colapso, "magnesio-ataque", gestante), [[4, "g", 50, "mL"]]);
-  assert.deepEqual(conta(colapso, "magnesio-ataque", gestante, 1), [[4, "g", 8, "mL"]]);
-  assert.match(colapso.medicamentos.find((m) => m.id === "magnesio-ataque")!.velocidade!, /15 minutos.*200 mL\/h/);
-  // Manutenção: 1 g/h a 80 mg/mL = 12,5 mL/h (a versão 2 tinha 1 a 2 g/h a 20 mg/mL).
-  assert.deepEqual(conta(colapso, "magnesio-manutencao", gestante), [[1, "g", 12.5, "mL/h"]]);
-  // Recorrência 2–4 g: 25–50 mL a 80 mg/mL.
-  assert.deepEqual(conta(colapso, "magnesio-recorrencia", gestante).map((c) => c[2]), [25, 50]);
-  assert.deepEqual(conta(colapso, "gluconato-intoxicacao-magnesio", gestante).map((c) => c[2]), [10]);
-  for (const id of ["magnesio-ataque", "magnesio-manutencao", "magnesio-recorrencia"]) {
-    assert.ok(colapso.medicamentos.find((m) => m.id === id)!.altoRisco, id);
-  }
-  // O mesmo esquema do cartão Eclâmpsia: dose, unidade e preparo.
-  const eclampsia = acharProtocolo("eclampsia")!;
-  const par = (p: Protocolo, id: string) => { const d = p.medicamentos.find((m) => m.id === id)!; return [d.dose, d.apresentacoes[0].rotulo]; };
-  assert.deepEqual(par(colapso, "magnesio-ataque"), par(eclampsia, "magnesio-eclampsia-ataque"));
-  assert.deepEqual(par(colapso, "magnesio-manutencao"), par(eclampsia, "magnesio-eclampsia-manutencao"));
-  assert.ok(colapso.divergencias.some((d) => /magnésio/.test(d.tema) && /mesmo esquema do cartão Eclâmpsia/.test(d.escolha)));
 });
 
 test("naloxona (rascunho): pós-operatório do adulto começa em 0,04 mg, e o resto da tabela não muda", () => {

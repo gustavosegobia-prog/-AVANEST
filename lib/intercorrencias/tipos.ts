@@ -55,7 +55,40 @@ export type Passo = {
    * que já estão na tela.
    */
   abre?: Relacionado;
+  /**
+   * O ramo a que o passo pertence, quando o protocolo se divide por uma
+   * escolha da tela (`Protocolo.ramos`: idade gestacional do recém-nascido).
+   * Escolhido o ramo, só os passos dele aparecem; sem escolha, todos.
+   */
+  ramo?: string;
 };
+
+/**
+ * Uma escolha que divide o protocolo em algoritmos independentes (recém-nascido
+ * de 34 semanas ou mais, ou menos de 34). A resposta fica nos dados do
+ * paciente (`campo`), e as doses não são calculadas antes dela.
+ */
+export type Ramos = {
+  campo: string;
+  pergunta: string;
+  opcoes: Array<{ id: string; rotulo: string }>;
+};
+
+/** Um quadro de consulta no Agir agora: lista ou tabela (metas de SpO2, parâmetros de ventilação). */
+export type Quadro = {
+  titulo: string;
+  itens?: string[];
+  tabela?: { colunas: string[]; linhas: string[][] };
+  /** Só neste ramo (`Protocolo.ramos`). */
+  ramo?: string;
+};
+
+/**
+ * Ferramenta de tempo do protocolo: o cronômetro desde o reconhecimento da
+ * PCR materna, a janela do ácido tranexâmico desde o nascimento e o
+ * cronômetro do nascimento com a meta de SpO2 do minuto.
+ */
+export type Ferramenta = "cronometro-pcr-materna" | "tranexamico-hpp" | "cronometro-nascimento";
 
 /**
  * Uma apresentação do protocolo: a da calculadora, mais as vias em que ela
@@ -189,6 +222,12 @@ export type Protocolo = {
   alertas?: string[];
   /** O material a separar (o kit do acesso frontal), listado no Agir agora. */
   material?: string[];
+  /** Quadros de consulta no Agir agora (tabela de SpO2, ventilação por idade gestacional). */
+  quadros?: Quadro[];
+  /** A escolha que divide o protocolo em ramos (idade gestacional). */
+  ramos?: Ramos;
+  /** A ferramenta de tempo do protocolo, no alto do Agir agora. */
+  ferramenta?: Ferramenta;
   /** Os ritmos do monitor que o protocolo ensina a reconhecer (PCR). */
   ritmos?: RitmoDoProtocolo[];
   /** AAAA-MM-DD da última revisão científica (fontes reabertas e conferidas). */

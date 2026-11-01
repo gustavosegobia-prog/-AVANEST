@@ -411,7 +411,8 @@ test("impressão: todas as etapas saem no papel; só os botões ficam de fora", 
   // O cartão inteiro é a área impressa; o Agir agora, o material e os alertas não têm a classe que some no papel.
   assert.match(tela, /className=\{`\$\{estilos\.modulo\} \$\{estilos\.impressao\}`\}/);
   const agir = tela.slice(tela.indexOf('<section id="agir"'), tela.indexOf("{temDoses && <section"));
-  assert.doesNotMatch(agir.replace(/<button[\s\S]*?<\/button>/g, ""), /naoImprimir/);
+  // Só os botões e o seletor de ramo (idade gestacional, um toque) ficam de fora do papel.
+  assert.doesNotMatch(agir.replace(/<button[\s\S]*?<\/button>/g, "").replace("${estilos.ramos} ${estilos.naoImprimir}", ""), /naoImprimir/);
   assert.match(agir, /estilos\.abrePasso\} \$\{estilos\.naoImprimir\}/);
   assert.match(agir, /<h4>Material<\/h4>/);
   assert.match(agir, /<h4>Alertas de segurança<\/h4>/);

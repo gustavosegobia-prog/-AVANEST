@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import estilos from "./intercorrencias.module.css";
 import {
-  calcularDose, calcularVolume, conferirPaciente, doseServe, numero, passosDe, populacaoDe, ROTULO_POPULACAO,
+  bloqueioDoRamo, calcularDose, calcularVolume, conferirPaciente, doseServe, numero, passosDe, populacaoDe, ramoDe, ROTULO_POPULACAO,
   volumeServe, type Alerta, type DoseCalculada, type PacienteDaConsulta,
 } from "@/lib/intercorrencias/calculo";
 import { acharProtocolo, CATEGORIAS, rascunhoDe } from "@/lib/intercorrencias/catalogo";
@@ -14,6 +14,7 @@ import type { DoseDoProtocolo, Passo, Protocolo, Referencia, VolumeDoProtocolo }
 import { Icone } from "@/components/icone";
 import { CamposDoPaciente, pacienteDe, resumoDoPaciente, type DadosDoPaciente } from "./paciente";
 import { RitmosNoMonitor } from "./ritmos";
+import { FerramentaDoProtocolo } from "./relogios";
 
 const DATA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo" });
 export const dataBr = (iso: string) => DATA.format(new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso));
@@ -58,15 +59,17 @@ function Avisos({ lista }: { lista: Alerta[] }) {
 const porMinuto = (d: DoseDoProtocolo) => (d.dose.por === "kg/min" ? "/min" : d.dose.por === "kg/h" ? "/h" : "");
 const periodo = (c: Calculo) => (c.por === "kg/min" || c.por === "min" ? "/min" : c.por === "kg/h" || c.por === "h" ? "/h" : "");
 
-function CartaoDose({ d, protocolo, paciente, semFaixa, confirmadas, aoConfirmar }: {
+function CartaoDose({ d, protocolo, paciente, semFaixa, semRamo, confirmadas, aoConfirmar }: {
   d: DoseDoProtocolo; protocolo: Protocolo; paciente: PacienteDaConsulta; semFaixa: boolean;
+  /** O protocolo pede uma escolha antes das doses (idade gestacional) e ela não foi feita: o texto do bloqueio. */
+  semRamo?: string;
   /** Soluções já conferidas ("rótulo|via"): conferir uma vez vale para todos os cartões que a usam. */
   confirmadas: string[]; aoConfirmar: (chave: string) => void;
 }) {
   const [indice, setIndice] = useState(0);
   const conta: DoseCalculada = calcularDose(d, protocolo, paciente, indice);
   const original = d.apresentacoes[indice] ?? d.apresentacoes[0];
-  const bloqueio = semFaixa ? "Informe a idade para calcular na faixa certa." : conta.bloqueio;
+  const bloqueio = semFaixa ? "Informe a idade para calcular na faixa certa." : semRamo ?? conta.bloqueio;
   const chave = `${original?.rotulo ?? "sem frasco"}|${d.via}`;
   const precisaConfirmar = d.altoRisco && original && !confirmadas.includes(chave);
   const varios = conta.contas.length > 1;
@@ -210,6 +213,10 @@ export function ProtocoloTela({
   const aprovacaoDoPublicado = publicado ? aprovacaoDe(publicado) : undefined;
   const paciente = pacienteDe(dados);
   const populacao = populacaoDe(paciente);
+  // Protocolo dividido por uma escolha (idade gestacional): sem ela, os dois ramos aparecem e as doses esperam.
+  const ramo = ramoDe(p, dados);
+  const semRamo = bloqueioDoRamo(p, dados);
+  const quadros = (p.quadros ?? []).filter((q) => !q.ramo || ramo === null || q.ramo === ramo);
   const categoria = CATEGORIAS.find((c) => c.id === p.categoria)!;
   const doses = p.medicamentos.filter((d) => populacao === null || doseServe(d, populacao, paciente.idadeAnos, paciente.pesoKg));
   const grupos = populacao === null
@@ -334,7 +341,18 @@ export function ProtocoloTela({
 
       <section id="agir" className={`${estilos.secao} ${estilos.agir}`} aria-labelledby="t-agir">
         <h3 id="t-agir"><Icone nome="alerta" tamanho={21} />Agir agora</h3>
-        {caminhos(passosDe(p, populacao)).map((c, i) => (
+        {p.ramos && (
+          <div className={`${estilos.ramos} ${estilos.naoImprimir}`} role="group" aria-label={p.ramos.pergunta}>
+            <strong>{p.ramos.pergunta}</strong>
+            {p.ramos.opcoes.map((o) => (
+              <button key={o.id} type="button" className={estilos.chip} aria-pressed={ramo === o.id}
+                onClick={() => set(p.ramos!.campo, ramo === o.id ? "" : o.id)}>{o.rotulo}</button>
+            ))}
+            {!ramo && <small>Sem a escolha, os dois algoritmos aparecem e as doses ficam bloqueadas.</small>}
+          </div>
+        )}
+        {p.ferramenta && <FerramentaDoProtocolo ferramenta={p.ferramenta} dados={dados} set={set} />}
+        {caminhos(passosDe(p, populacao, ramo)).map((c, i) => (
           <Fragment key={c.nome ?? i}>
             {c.nome && <h4 className={estilos.caminho}>{c.nome}</h4>}
             <ol className={estilos.passos}>
@@ -356,6 +374,18 @@ export function ProtocoloTela({
               ))}
             </ol>
           </Fragment>
+        ))}
+        {quadros.map((q) => (
+          <div key={q.titulo} className={estilos.extraAgir}>
+            <h4>{q.titulo}</h4>
+            {q.itens && <ul className={estilos.material}>{q.itens.map((x) => <li key={x}>{x}</li>)}</ul>}
+            {q.tabela && (
+              <table className={estilos.quadroTabela}>
+                <thead><tr>{q.tabela.colunas.map((x) => <th key={x} scope="col">{x}</th>)}</tr></thead>
+                <tbody>{q.tabela.linhas.map((l) => <tr key={l.join("|")}>{l.map((x, k) => <td key={k}>{x}</td>)}</tr>)}</tbody>
+              </table>
+            )}
+          </div>
         ))}
         {p.material && p.material.length > 0 && (
           <div className={estilos.extraAgir}>
@@ -392,7 +422,7 @@ export function ProtocoloTela({
             <div key={titulo ?? "todas"} className={`${estilos.doses} ${estilos.listaDoses}`}>
               {titulo && <h4 className={estilos.grupoDoses}>{titulo}</h4>}
               {lista.map((d) => (
-                <CartaoDose key={`${d.id}-${populacao}`} d={d} protocolo={p} paciente={paciente} semFaixa={populacao === null}
+                <CartaoDose key={`${d.id}-${populacao}`} d={d} protocolo={p} paciente={paciente} semFaixa={populacao === null} semRamo={semRamo}
                   confirmadas={confirmadas} aoConfirmar={(c) => setConfirmadas((v) => [...v, c])} />
               ))}
             </div>
@@ -407,7 +437,7 @@ export function ProtocoloTela({
                     <div key={v.id} className={estilos.volume}>
                       {v.rotulo && <strong className={estilos.volumeNome}>{v.rotulo}</strong>}
                       <small>{v.indicacao} · {c.base}</small>
-                      {c.bloqueio ? <span className={estilos.miuda}>{c.bloqueio}</span> : <b>{c.texto}</b>}
+                      {semRamo || c.bloqueio ? <span className={estilos.miuda}>{semRamo ?? c.bloqueio}</span> : <b>{c.texto}</b>}
                       {v.repeticao && <small>{v.repeticao}</small>}
                       <small>Fonte: {v.referencias.map(curta).join(" · ")}</small>
                     </div>
