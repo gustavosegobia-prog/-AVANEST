@@ -45,8 +45,12 @@ function lerFavoritos(): string[] {
  * médico (super-admin), marcado como em validação.
  */
 const LIBERADOS = PROTOCOLOS.filter((p) => aprovado(p));
-/** Na prévia: o rascunho de um protocolo publicado é uma correção; o resto, protocolo novo em validação. */
-const emValidacao = (p: Protocolo) => (rascunhoDe(p.id) === p ? "corrigido, em validação" : "em validação");
+/**
+ * Na prévia: só o protocolo novo, sem versão publicada, leva "em validação" no índice e na busca. A correção de um
+ * publicado (o rascunho) não leva rótulo (pedido do responsável médico, 01/11/2026); a versão e a situação ficam no
+ * rodapé do cartão.
+ */
+const emValidacao = (p: Protocolo) => (aprovado(p) || rascunhoDe(p.id) === p ? "" : "em validação");
 
 export function Intercorrencias({
   dados, set, daFicha = false, titulo = "Intercorrências anestésicas", previa = false,
@@ -156,7 +160,7 @@ export function Intercorrencias({
                           <li key={p.id}>
                             <button type="button" className={estilos.indiceSub}
                               aria-current={p.id === protocolo?.id ? "page" : undefined} onClick={() => abrir(p)}>
-                              {p.titulo}{!aprovado(p) && <small>{emValidacao(p)}</small>}
+                              {p.titulo}{emValidacao(p) && <small>{emValidacao(p)}</small>}
                             </button>
                           </li>
                         ))}
@@ -201,7 +205,7 @@ export function Intercorrencias({
                         <button type="button" className={estilos.linha} onClick={() => abrir(a.protocolo)}>
                           <span className={estilos.linhaTexto}>
                             <b>{a.protocolo.titulo}</b>
-                            <small>{nome(a.protocolo.categoria)} · achado por {a.porque}{aprovado(a.protocolo) ? "" : ` · ${emValidacao(a.protocolo)}`}</small>
+                            <small>{nome(a.protocolo.categoria)} · achado por {a.porque}{emValidacao(a.protocolo) && ` · ${emValidacao(a.protocolo)}`}</small>
                           </span>
                           <Icone nome="seta" tamanho={18} className={estilos.linhaSeta} />
                         </button>
