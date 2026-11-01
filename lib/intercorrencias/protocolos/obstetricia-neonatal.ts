@@ -87,9 +87,9 @@ export const RAQUI_TOTAL_V3: Protocolo = {
       detalhe: "Siga imediatamente o protocolo de PCR correspondente ao ritmo. Na gestante, aplicar o algoritmo de PCR materna e preparar parto ressuscitativo quando indicado.",
       abre: { protocolo: "pcr-aesp-assistolia", texto: "PCR — AESP/assistolia" } },
     { texto: "Mantenha o suporte cardiorrespiratório.",
-      detalhe: "Continue monitorizando até a regressão do bloqueio e a recuperação da função respiratória, hemodinâmica e neuromuscular." },
+      detalhe: "Continue monitorizando na sala até a regressão do bloqueio e a recuperação da função respiratória, hemodinâmica e neuromuscular, ou até a passagem estruturada à equipe que assume." },
     { texto: "Defina a monitorização após a estabilização.",
-      detalhe: "Considere recuperação anestésica prolongada ou UTI conforme gravidade, necessidade de ventilação e uso de vasoativos." },
+      detalhe: "Considere recuperação anestésica prolongada ou UTI conforme gravidade, necessidade de ventilação e uso de vasoativos, com passagem estruturada à equipe que acompanha o paciente depois da sala." },
   ],
   alertas: [
     "Com pulso: vasopressor titulado (fenilefrina, efedrina; adrenalina em pequenos bolus só por equipe experiente, com concentração validada). Sem pulso: RCP e adrenalina 1 mg IV/IO pelo algoritmo de PCR. Não confundir as duas situações.",
@@ -125,7 +125,7 @@ export const RAQUI_TOTAL_V3: Protocolo = {
   ],
   depois: [
     "Registrar técnica anestésica, fármaco, concentração, dose, horário, evolução do nível de bloqueio, suporte ventilatório, medicamentos administrados e recuperação.",
-    "Investigar a ocorrência de consciência durante a paralisia e informar o paciente.",
+    "Investigar a consciência durante a paralisia quando o paciente puder responder — na sala ou, a partir da passagem de cuidado, pela equipe que assume — e informar o paciente.",
   ],
   divergencias: [
     {
@@ -185,7 +185,7 @@ export const HEMORRAGIA_POS_PARTO_V3: Protocolo = {
     { texto: "Corrija os distúrbios associados.",
       detalhe: "Trate hipotermia, hipocalcemia e coagulopatia. Em hemorragia obstétrica significativa, utilize estratégia de reposição de fibrinogênio que busque concentração de pelo menos 2 g/L, conforme exames e protocolo." },
     { texto: "Reavalie continuamente e planeje a recuperação.",
-      detalhe: "Mantenha a quantificação das perdas, a monitorização da perfusão e a avaliação da necessidade de UTI." },
+      detalhe: "Mantenha a quantificação das perdas, a monitorização da perfusão e a avaliação da necessidade de UTI, e faça a passagem estruturada à obstetrícia (ou à UTI), que acompanha a paciente depois da sala." },
   ],
   medicamentos: [
     {
@@ -247,7 +247,7 @@ export const HEMORRAGIA_POS_PARTO_V3: Protocolo = {
     "Atonia uterina, rotura uterina, lacerações, retenção placentária, acretismo, coagulopatia, CIVD, hemorragia oculta e embolia por líquido amniótico.",
   ],
   depois: [
-    "Monitorar sinais vitais, perfusão, diurese, hemoglobina, coagulação, temperatura e complicações transfusionais.",
+    "Na passagem à obstetrícia (ou à UTI), que acompanha a paciente depois da sala: orientar a vigilância de sinais vitais, perfusão, diurese, hemoglobina, coagulação, temperatura e complicações transfusionais.",
     "Registrar perda total, tratamentos, hemocomponentes e procedimentos realizados.",
     "Realizar comunicação adequada com a paciente e a família.",
   ],
@@ -377,8 +377,8 @@ export const COLAPSO_MATERNO_V3: Protocolo = {
     "Hemorragia obstétrica, bloqueio neuraxial alto, toxicidade sistêmica por anestésico local, anafilaxia, embolia pulmonar, embolia por líquido amniótico, eclâmpsia, cardiomiopatia periparto, sepse e causas gerais de PCR.",
   ],
   depois: [
-    "Monitorização intensiva materna e neonatal.",
-    "Avaliação de lesões decorrentes da reanimação, de possíveis disfunções orgânicas e de causas reversíveis.",
+    "Passagem estruturada à UTI materna e à neonatologia, que assumem a monitorização intensiva depois da sala.",
+    "Na passagem, orientar a avaliação de lesões decorrentes da reanimação, de possíveis disfunções orgânicas e de causas reversíveis.",
     "Debriefing com a equipe e apoio à família.",
   ],
   divergencias: [
@@ -438,7 +438,7 @@ function algoritmo(ramo: string, caminho: string, termo: boolean): Passo[] {
     p("Considere hipovolemia quando houver suspeita de perda sanguínea.",
       "Avalie sinais de choque, hemorragia e falha de resposta às intervenções. Considere expansão de volume somente quando indicada."),
     p("Após a estabilização, inicie os cuidados pós-reanimação.",
-      "Monitorize oxigenação, frequência cardíaca, temperatura, glicemia e sinais neurológicos. Defina necessidade de UTI neonatal, suporte ventilatório e avaliação de encefalopatia hipóxico-isquêmica."),
+      "Monitorize oxigenação, frequência cardíaca, temperatura, glicemia e sinais neurológicos. Defina necessidade de UTI neonatal, suporte ventilatório e avaliação de encefalopatia hipóxico-isquêmica, com passagem estruturada à neonatologia, que assume o acompanhamento."),
   ];
 }
 
@@ -524,7 +524,7 @@ export const REANIMACAO_NEONATAL_V3: Protocolo = {
     "Ventilação ineficaz, obstrução de via aérea, apneia, prematuridade, hemorragia fetal, pneumotórax, hipovolemia, cardiopatias congênitas e complicações do nascimento.",
   ],
   depois: [
-    "Monitorização neonatal, glicemia, temperatura, sinais de encefalopatia, suporte respiratório e necessidade de UTI.",
+    "Na passagem à neonatologia (ou à UTI neonatal), que acompanha o recém-nascido depois da sala: orientar a monitorização, a glicemia, a temperatura, os sinais de encefalopatia, o suporte respiratório e a necessidade de UTI.",
     "Hipotermia terapêutica: para RN de idade gestacional ≥36 semanas com encefalopatia hipóxico-isquêmica moderada ou grave e critérios de elegibilidade, considerar tratamento em centro capacitado, iniciado dentro de seis horas e realizado segundo protocolo especializado.",
     "Não iniciar hipotermia terapêutica indiscriminadamente em qualquer recém-nascido submetido a reanimação.",
     "Registrar horários, FC, SpO2, intervenções, medicamentos, resposta e destino.",
