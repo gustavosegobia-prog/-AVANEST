@@ -6,7 +6,7 @@ import {
   calcularDose, calcularVolume, conferirPaciente, doseServe, numero, passosDe, populacaoDe, ROTULO_POPULACAO,
   volumeServe, type Alerta, type DoseCalculada, type PacienteDaConsulta,
 } from "@/lib/intercorrencias/calculo";
-import { acharProtocolo, CATEGORIAS } from "@/lib/intercorrencias/catalogo";
+import { acharProtocolo, CATEGORIAS, rascunhoDe } from "@/lib/intercorrencias/catalogo";
 import { acharReferencia, BIBLIOGRAFIA_GERAL } from "@/lib/intercorrencias/referencias";
 import { aprovacaoDe, dataDaAprovacao } from "@/lib/intercorrencias/aprovacao";
 import { ROTULO_NIVEL, type Calculo } from "@/lib/calculos/doses";
@@ -205,6 +205,9 @@ export function ProtocoloTela({
   useEffect(() => { topo.current?.scrollIntoView({ block: "start" }); }, []);
 
   const aprovacao = aprovacaoDe(p);
+  // Rascunho em validação: a versão publicada continua com quem usa.
+  const publicado = rascunhoDe(p.id) === p ? acharProtocolo(p.id) : undefined;
+  const aprovacaoDoPublicado = publicado ? aprovacaoDe(publicado) : undefined;
   const paciente = pacienteDe(dados);
   const populacao = populacaoDe(paciente);
   const categoria = CATEGORIAS.find((c) => c.id === p.categoria)!;
@@ -282,7 +285,9 @@ export function ProtocoloTela({
         {!aprovacao && (
           <p className={estilos.avisoValidacao}>
             <Icone nome="alerta" tamanho={17} />
-            <span>Em validação: só o responsável médico vê este protocolo. Não está liberado para uso clínico.</span>
+            <span>{publicado
+              ? <>Rascunho da versão {p.versao}, aguardando validação médica: só o responsável médico vê. Quem usa continua com a versão {publicado.versao}{aprovacaoDoPublicado ? `, aprovada em ${dataDaAprovacao(aprovacaoDoPublicado)}` : ", que também aguarda validação"}.</>
+              : "Em validação: só o responsável médico vê este protocolo. Não está liberado para uso clínico."}</span>
           </p>
         )}
       </header>

@@ -31,6 +31,7 @@ import { REANIMACAO_NEONATAL } from "./protocolos/reanimacao-neonatal.ts";
 import { SAV_PEDIATRICO } from "./protocolos/sav-pediatrico.ts";
 import { INTUBACAO_ESOFAGICA, PNEUMOTORAX } from "./protocolos/torax-e-tubo.ts";
 import { INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, VENTILACAO_MASCARA } from "./protocolos/via-aerea.ts";
+import { RASCUNHOS } from "./protocolos/rascunhos.ts";
 
 /**
  * Na ordem do Manual de Crises: as paradas primeiro. Depois, os cartões da
@@ -118,6 +119,14 @@ const COBRE: Record<string, string[]> = {
 };
 
 export const acharProtocolo = (id: string) => PROTOCOLOS.find((x) => x.id === id);
+
+/**
+ * O que a prévia do responsável médico abre: cada protocolo no rascunho em
+ * validação, quando há um (protocolos/rascunhos.ts), e na versão publicada,
+ * quando não há. Quem usa nunca vê rascunho.
+ */
+export const PROTOCOLOS_DA_PREVIA: Protocolo[] = PROTOCOLOS.map((p) => RASCUNHOS.find((r) => r.id === p.id) ?? p);
+export const rascunhoDe = (id: string) => RASCUNHOS.find((r) => r.id === id);
 
 export const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 

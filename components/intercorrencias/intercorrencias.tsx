@@ -3,7 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import estilos from "./intercorrencias.module.css";
-import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS } from "@/lib/intercorrencias/catalogo";
+import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS, PROTOCOLOS_DA_PREVIA } from "@/lib/intercorrencias/catalogo";
 import { aprovado } from "@/lib/intercorrencias/aprovacao";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
@@ -59,7 +59,8 @@ export function Intercorrencias({
   /** A prévia do responsável médico: mostra também os protocolos em validação, sem aprovação registrada. */
   previa?: boolean;
 }) {
-  const disponiveis = previa ? PROTOCOLOS : LIBERADOS;
+  // A prévia abre o rascunho em validação no lugar da versão publicada (protocolos/rascunhos.ts).
+  const disponiveis = previa ? PROTOCOLOS_DA_PREVIA : LIBERADOS;
   const disponivel = (x: string) => disponiveis.some((p) => p.id === x);
   const id = useId();
   const busca = useRef<HTMLInputElement>(null);
