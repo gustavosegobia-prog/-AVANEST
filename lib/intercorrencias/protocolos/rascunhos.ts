@@ -14,11 +14,10 @@
 
 import type { Protocolo } from "../tipos.ts";
 import { EMBOLIA_PULMONAR } from "./cardiovascular.ts";
-import { COLAPSO_MATERNO } from "./obstetricia.ts";
 import { DEPRESSAO_OPIOIDES } from "./opioides-e-bloqueio-residual.ts";
 import { HIPOTERMIA } from "./outras-emergencias.ts";
-import { MAGNESIO_50, MAGNESIO_80 } from "./comum.ts";
 import { RESPIRATORIO_V3 } from "./respiratorio.ts";
+import { OBSTETRICIA_NEONATAL_V3 } from "./obstetricia-neonatal.ts";
 
 const PROPOSTA = "2026-11-01";
 
@@ -54,63 +53,6 @@ export const EMBOLIA_PULMONAR_V2: Protocolo = {
     },
   ),
 };
-
-// ---------------------------------------------------------------------------
-// Colapso materno — o magnésio alinhado ao cartão Eclâmpsia
-// ---------------------------------------------------------------------------
-// A versão 2 (aprovada em 15/10) diz 4 g em 20 a 30 minutos e 1 a 2 g/h; o
-// cartão Eclâmpsia diz 4 g em 15 minutos e 1 g/h. Dois esquemas no mesmo app
-// são risco. Proposta: o da Eclâmpsia, ponto comum ao NICE e ao Manual de
-// Crises, com o preparo do Manual (8 g em 100 mL = 80 mg/mL).
-const dose = (p: Protocolo, id: string) => {
-  const d = p.medicamentos.find((m) => m.id === id);
-  if (!d) throw new Error(`${p.id}: dose ${id} não existe`);
-  return d;
-};
-export const COLAPSO_MATERNO_V3: Protocolo = {
-  ...COLAPSO_MATERNO,
-  versao: 3,
-  atualizadoEm: PROPOSTA,
-  revisadoEm: PROPOSTA,
-  medicamentos: COLAPSO_MATERNO.medicamentos.map((d) => {
-    if (d.id === "magnesio-ataque") return {
-      ...d, apresentacoes: [MAGNESIO_80, MAGNESIO_50], altoRisco: true,
-      velocidade: "Em 15 minutos (na solução de 80 mg/mL, 200 mL/h).",
-      cuidados: ["Na ampola de 50%, 4 g são 8 mL: diluir antes.", "Conferir em voz alta, com outra pessoa: concentração, gramas, mL e velocidade da bomba."],
-      referencias: ["nice-ng133", "manual-18", "manual-34"],
-    };
-    if (d.id === "magnesio-manutencao") return {
-      ...d, dose: { usual: 1, unidade: "g", por: "h" }, apresentacoes: [MAGNESIO_80], altoRisco: true,
-      repeticao: "Por 24 horas depois do parto ou da última convulsão, o que vier por último.",
-      cuidados: [
-        "Vigiar reflexo patelar, frequência respiratória, consciência e diurese.",
-        "Oligúria ou creatinina subindo: magnésio sérico e revisão da manutenção com a obstetrícia.",
-      ],
-      referencias: ["nice-ng133", "manual-34"],
-    };
-    if (d.id === "magnesio-recorrencia") return {
-      ...d, dose: { min: 2, max: 4, unidade: "g", por: "fixa" }, apresentacoes: [MAGNESIO_80, MAGNESIO_50], altoRisco: true,
-      velocidade: "Em 5 a 15 minutos.",
-      cuidados: ["Na ampola de 50%: diluir antes."],
-      referencias: ["nice-ng133", "ms-2022-alto-risco"],
-    };
-    if (d.id === "gluconato-intoxicacao-magnesio") return { ...d, velocidade: "Em 10 minutos.", cuidados: ["Parar a infusão de magnésio."] };
-    return d;
-  }),
-  divergencias: COLAPSO_MATERNO.divergencias.map((x) => (/magnésio/.test(x.tema) ? {
-    ...x,
-    posicoes: [
-      { texto: "4 g IV em 5 a 15 minutos; 1 g/h por 24 horas; recorrência, 2 a 4 g em 5 a 15 minutos.", referencia: "nice-ng133" },
-      { texto: "4 g em 15 minutos (200 mL/h da solução de 8 g em 100 mL); 1 g/h (12,5 mL/h); 2 g se as convulsões persistirem.", referencia: "manual-34" },
-      { texto: "Ataque de 4 g EV em 5 a 10 minutos; manutenção de 1 a 2 g/h; nova convulsão, 2 g.", referencia: "ms-2022-alto-risco" },
-    ],
-    escolha: "O cartão usa o mesmo esquema do cartão Eclâmpsia: 4 g em 15 minutos e 1 g/h, o ponto comum ao NICE e ao Manual de Crises, com o preparo do Manual.",
-  } : x)),
-  referencias: [...new Set([...COLAPSO_MATERNO.referencias, "nice-ng133", "manual-34"])],
-};
-// O ataque e a recorrência continuam com a mesma dose; a mudança é de tempo,
-// de ritmo e de preparo. Conferido aqui para o rascunho não nascer quebrado.
-dose(COLAPSO_MATERNO, "magnesio-ataque");
 
 // ---------------------------------------------------------------------------
 // Depressão respiratória por opioides — naloxona começando em 0,04 mg
@@ -171,9 +113,11 @@ export const HIPOTERMIA_V3: Protocolo = {
 
 /**
  * Os rascunhos em validação. A prévia do responsável médico os abre no lugar
- * da versão publicada. Os sete respiratórios (09 a 15) vêm da revisão de
- * 01/11/2026, em protocolos/respiratorio.ts.
+ * da versão publicada. Os sete respiratórios (09 a 15) e os quatro obstétricos
+ * e neonatal (16 a 19) vêm das revisões de 01/11/2026, em
+ * protocolos/respiratorio.ts e protocolos/obstetricia-neonatal.ts. O colapso
+ * materno de lá substitui a proposta anterior (magnésio igual ao da Eclâmpsia).
  */
 export const RASCUNHOS: readonly Protocolo[] = [
-  EMBOLIA_PULMONAR_V2, COLAPSO_MATERNO_V3, DEPRESSAO_OPIOIDES_V3, HIPOTERMIA_V3, ...RESPIRATORIO_V3,
+  EMBOLIA_PULMONAR_V2, DEPRESSAO_OPIOIDES_V3, HIPOTERMIA_V3, ...RESPIRATORIO_V3, ...OBSTETRICIA_NEONATAL_V3,
 ];

@@ -251,6 +251,32 @@
   border: 1px solid color-mix(in srgb, var(--cor-atencao) 45%, transparent);
 }
 .avisoValidacao svg { flex: 0 0 auto; margin-top: 2px; color: var(--cor-atencao); }
+/* A escolha que divide o protocolo (idade gestacional), no alto do Agir agora. */
+.ramos {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 20px;
+  border-bottom: 1px solid var(--cor-borda); background: var(--cor-superficie-suave);
+}
+.ramos > strong { font-size: 14px; color: var(--cor-tinta-forte); margin-right: 4px; }
+.ramos > small { flex-basis: 100%; font-size: 13px; color: var(--cor-tinta-fraca); }
+/* Ferramenta de tempo (PCR materna, nascimento, ácido tranexâmico). */
+.ferramenta { display: grid; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--cor-borda); }
+.ferramentaTopo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.ferramentaTopo > strong { font-size: 15px; color: var(--cor-tinta-forte); }
+.ferramentaTopo > .botao { margin-left: auto; }
+.relogio { font-size: 30px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--cor-perigo-forte); letter-spacing: -.01em; }
+.horarios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; }
+.horario { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.horario .campo { flex: 1 1 auto; }
+.metasSpO2 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.metasSpO2 li { display: grid; gap: 2px; text-align: center; border: 1px solid var(--cor-borda); border-radius: 10px; padding: 8px 4px; }
+.metasSpO2 small { font-size: 12px; color: var(--cor-tinta-fraca); }
+.metasSpO2 b { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--cor-tinta-forte); }
+.metasSpO2 li[aria-current="step"] { border-color: var(--cor-marca); background: var(--cor-marca-suave); }
+.metasSpO2 li[aria-current="step"] b { color: var(--cor-marca-forte); }
+/* Tabela de consulta (metas de SpO2). */
+.quadroTabela { border-collapse: collapse; width: 100%; max-width: 420px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.quadroTabela th, .quadroTabela td { border-bottom: 1px solid var(--cor-borda); padding: 7px 10px; text-align: left; }
+.quadroTabela th { font-size: 13px; color: var(--cor-tinta-fraca); font-weight: 700; }
 /* O passo que leva a outro protocolo ("declare CICO"): o botão fica no próprio passo. */
 .abrePasso { margin-top: 10px; }
 .abrePasso svg { transform: rotate(-90deg); }

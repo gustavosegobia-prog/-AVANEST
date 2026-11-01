@@ -322,6 +322,20 @@ export function volumeServe(v: VolumeDoProtocolo, populacao: Populacao): boolean
 }
 
 /** Os passos que valem para a faixa: o da gestante só para a gestante. Sem faixa, todos. */
-export function passosDe(protocolo: Protocolo, populacao: Populacao | null) {
-  return protocolo.agirAgora.filter((x) => !x.so || populacao === null || x.so.includes(populacao));
+export function passosDe(protocolo: Protocolo, populacao: Populacao | null, ramo: string | null = null) {
+  return protocolo.agirAgora.filter((x) => (!x.so || populacao === null || x.so.includes(populacao))
+    && (!x.ramo || ramo === null || x.ramo === ramo));
+}
+
+/** Sem a escolha do ramo (idade gestacional), nenhuma dose: o texto do bloqueio. */
+export function bloqueioDoRamo(protocolo: Protocolo, dados: Record<string, string | undefined>): string | undefined {
+  if (!protocolo.ramos || ramoDe(protocolo, dados) !== null) return undefined;
+  return `Selecione a ${protocolo.ramos.pergunta.toLowerCase()} para calcular.`;
+}
+
+/** O ramo escolhido (idade gestacional), se a resposta guardada nos dados é uma das opções. */
+export function ramoDe(protocolo: Protocolo, dados: Record<string, string | undefined>): string | null {
+  if (!protocolo.ramos) return null;
+  const v = dados[protocolo.ramos.campo];
+  return protocolo.ramos.opcoes.some((o) => o.id === v) ? v! : null;
 }
