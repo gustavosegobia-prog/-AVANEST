@@ -116,6 +116,8 @@ export const PREVISTOS: Previsto[] = [
 const COBRE: Record<string, string[]> = {
   laringoespasmo: ["Laringoespasmo pediátrico"],
   "embolia-pulmonar": ["Embolia pulmonar"],
+  // O título passa a "Não intubo, não oxigeno — CICO" no rascunho de 01/11/2026; o previsto antigo não pode voltar como "em preparação".
+  "nao-ventilo-nao-intubo": ["Não ventilo, não intubo"],
 };
 
 export const acharProtocolo = (id: string) => PROTOCOLOS.find((x) => x.id === id);

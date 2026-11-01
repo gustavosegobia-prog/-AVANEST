@@ -3,7 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import estilos from "./intercorrencias.module.css";
-import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS, PROTOCOLOS_DA_PREVIA } from "@/lib/intercorrencias/catalogo";
+import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS, PROTOCOLOS_DA_PREVIA, rascunhoDe } from "@/lib/intercorrencias/catalogo";
 import { aprovado } from "@/lib/intercorrencias/aprovacao";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
@@ -45,6 +45,8 @@ function lerFavoritos(): string[] {
  * médico (super-admin), marcado como em validação.
  */
 const LIBERADOS = PROTOCOLOS.filter((p) => aprovado(p));
+/** Na prévia: o rascunho de um protocolo publicado é uma correção; o resto, protocolo novo em validação. */
+const emValidacao = (p: Protocolo) => (rascunhoDe(p.id) === p ? "corrigido, em validação" : "em validação");
 
 export function Intercorrencias({
   dados, set, aoAbrirCalculadora, daFicha = false, titulo = "Intercorrências anestésicas", previa = false,
@@ -155,7 +157,7 @@ export function Intercorrencias({
                           <li key={p.id}>
                             <button type="button" className={estilos.indiceSub}
                               aria-current={p.id === protocolo?.id ? "page" : undefined} onClick={() => abrir(p)}>
-                              {p.titulo}{!aprovado(p) && <small>em validação</small>}
+                              {p.titulo}{!aprovado(p) && <small>{emValidacao(p)}</small>}
                             </button>
                           </li>
                         ))}
@@ -201,7 +203,7 @@ export function Intercorrencias({
                         <button type="button" className={estilos.linha} onClick={() => abrir(a.protocolo)}>
                           <span className={estilos.linhaTexto}>
                             <b>{a.protocolo.titulo}</b>
-                            <small>{nome(a.protocolo.categoria)} · achado por {a.porque}{aprovado(a.protocolo) ? "" : " · em validação"}</small>
+                            <small>{nome(a.protocolo.categoria)} · achado por {a.porque}{aprovado(a.protocolo) ? "" : ` · ${emValidacao(a.protocolo)}`}</small>
                           </span>
                           <Icone nome="seta" tamanho={18} className={estilos.linhaSeta} />
                         </button>
