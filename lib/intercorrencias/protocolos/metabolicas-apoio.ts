@@ -124,7 +124,8 @@ export const TOXICIDADE_AL_V3: Protocolo = {
     "Bloqueio neuraxial alto, anafilaxia, reação vasovagal, hipoglicemia, arritmia primária, toxicidade medicamentosa e eclâmpsia.",
   ],
   depois: [
-    "Observar após a estabilização, conforme a gravidade: pelo menos 2 horas após convulsão isolada (checklist ASRA); cerca de 4 a 6 horas após instabilidade cardiovascular; observação prolongada e cuidados críticos após PCR.",
+    "Na sala: manter a monitorização até a estabilidade.",
+    "Na passagem de cuidado à clínica cirúrgica (ou à UTI), que acompanha o paciente depois da sala, orientar a observação conforme a gravidade: pelo menos 2 horas após convulsão isolada (checklist ASRA); cerca de 4 a 6 horas após instabilidade cardiovascular; observação prolongada e cuidados críticos após PCR.",
     "Registrar anestésico administrado, concentração, dose acumulada, horário, local de injeção, manifestações, emulsão lipídica e resposta.",
   ],
   divergencias: [
@@ -207,6 +208,7 @@ export const HIPERCALEMIA_V3: Protocolo = {
       itens: [
         "Glicemia após a insulina: 0, 30, 60, 90, 120, 180, 240, 300 e 360 minutos.",
         "Potássio após tratamento de hipercalemia moderada ou grave: pelo menos em 1, 2, 4, 6 e 24 horas, antecipando as coletas se houver instabilidade.",
+        "Na sala, os controles que couberem nela; ao sair, entregar os horários seguintes à equipe da clínica cirúrgica (ou da UTI), que assume o acompanhamento.",
       ],
     },
     {
@@ -271,7 +273,8 @@ export const HIPERCALEMIA_V3: Protocolo = {
     "Insuficiência renal, acidose, rabdomiólise, hipertermia maligna, succinilcolina em pacientes suscetíveis, reperfusão tecidual, transfusão maciça, medicamentos e hemólise.",
   ],
   depois: [
-    "Acompanhar ECG, potássio, glicose, função renal e risco de recorrência.",
+    "Na sala: ECG, potássio e glicemia seriados até a passagem de cuidado.",
+    "Na passagem à clínica cirúrgica (ou à UTI): entregar os horários de glicemia (até 360 minutos da insulina) e de potássio (1, 2, 4, 6 e 24 horas), o risco de hipoglicemia e de recorrência, a função renal e a necessidade de diálise.",
     "Registrar causa, medicamentos administrados, doses, exames, resposta e necessidade de diálise.",
   ],
   divergencias: [
@@ -356,7 +359,7 @@ export const HIPERTERMIA_MALIGNA_V3: Protocolo = {
     { texto: "Mantenha a perfusão renal e o controle de volume.",
       detalhe: "Monitorize o débito urinário e trate a rabdomiólise quando presente. Não realizar expansão volêmica ou diurese forçada indiscriminadamente." },
     { texto: "Organize UTI e o tratamento pós-crise.",
-      detalhe: "Após a estabilização, continue o dantroleno quando indicado e monitore a recorrência da crise por pelo menos 24 horas." },
+      detalhe: "Após a estabilização, faça a passagem estruturada para a UTI, que assume o acompanhamento: manutenção do dantroleno quando indicada e vigilância da recorrência da crise por pelo menos 24 horas." },
   ],
   alertas: [
     "Dantroleno imediatamente: 2,5 mg/kg IV, repetido conforme a resposta, sem esperar obrigatoriamente 10 a 15 minutos.",
@@ -390,7 +393,7 @@ export const HIPERTERMIA_MALIGNA_V3: Protocolo = {
     "Reinalação de CO2, ventilação inadequada, falha de absorvedor, insuflação de CO2 em laparoscopia, sepse, tireotoxicose, síndrome neuroléptica maligna e outras causas de hipercapnia ou hipertermia.",
   ],
   depois: [
-    "Monitorização intensiva por pelo menos 24 horas, com atenção a recorrência, rabdomiólise, hipercalemia, insuficiência renal e coagulopatia.",
+    "Na passagem para a UTI: monitorização intensiva por pelo menos 24 horas, com atenção a recorrência, rabdomiólise, hipercalemia, insuficiência renal e coagulopatia.",
     "Registrar agentes utilizados, cronologia dos sinais, dose acumulada de dantroleno, tratamentos e resposta.",
     "Informar o paciente e os familiares sobre a suspeita de suscetibilidade à HM e a necessidade de investigação especializada.",
     "Registrar alerta de anestésicos desencadeantes para procedimentos futuros.",
@@ -496,7 +499,7 @@ export const DEPOIS_DA_CRISE_V3: Protocolo = {
     { texto: "Acione apoio médico experiente.",
       detalhe: "Solicite avaliação de profissional sênior ou do responsável pelo serviço quando necessário." },
     { texto: "Garanta a continuidade do cuidado.",
-      detalhe: "Defina monitorização, UTI, exames, tratamento adicional e transferência segura." },
+      detalhe: "Defina monitorização, UTI, exames, tratamento adicional e transferência segura, com passagem estruturada à clínica cirúrgica (ou à UTI), que assume o acompanhamento depois da sala." },
     { texto: "Se houver óbito, cumpra os procedimentos legais e institucionais aplicáveis.",
       detalhe: "A documentação, a notificação e o encaminhamento do corpo seguem as regras brasileiras e a natureza do óbito. Não indicar encaminhamento automático ao Instituto Médico-Legal em toda morte hospitalar." },
     { texto: "Preserve os medicamentos e os equipamentos relevantes.",
@@ -506,7 +509,7 @@ export const DEPOIS_DA_CRISE_V3: Protocolo = {
     { texto: "Organize a comunicação com familiares ou responsáveis autorizados.",
       detalhe: "A comunicação deve ser clara, coordenada e compatível com a confidencialidade e as regras assistenciais. Evite especulações ou afirmações prematuras sobre causalidade." },
     { texto: "Estabeleça um canal de acompanhamento.",
-      detalhe: "Defina o profissional ou a equipe responsável pela comunicação posterior." },
+      detalhe: "Defina, com a clínica cirúrgica e a instituição, o profissional ou a equipe responsável pela comunicação posterior. O anestesiologista acompanha o paciente na sala; depois dela, o acompanhamento é da clínica cirúrgica (ou da UTI)." },
     { texto: "Realize debriefing clínico estruturado.",
       detalhe: "Reúna a equipe para identificar necessidades imediatas, dificuldades técnicas, falhas de processo e medidas preventivas. Não obrigue os profissionais a compartilhar experiências emocionais pessoais em grupo." },
     { texto: "Complete os registros assistenciais.",

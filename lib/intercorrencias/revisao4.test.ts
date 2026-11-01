@@ -110,7 +110,7 @@ test("integridade do texto: trechos essenciais e ações críticas em destaque",
       "Desative ou remova o vaporizador.", "Dose inicial de referência: 2,5 mg/kg IV.",
       "Não aguarde obrigatoriamente 10 a 15 minutos entre doses se a crise continuar ativa.", "pelo menos 10 L/min",
       "Não atrase o dantroleno para trocar toda a máquina de anestesia.", "Não realizar expansão volêmica ou diurese forçada indiscriminadamente.",
-      "monitore a recorrência da crise por pelo menos 24 horas",
+      "vigilância da recorrência da crise por pelo menos 24 horas",
     ],
     "evento-sem-diagnostico": ["Triptase é exame de apoio diagnóstico, não medida que deve preceder a administração de adrenalina.",
       "São mecanismos distintos e exigem protocolos próprios."],
@@ -245,6 +245,7 @@ test("hipercalemia: agenda de glicemias (0 a 360 min) e de potássio (1, 2, 4, 6
   assert.deepEqual(r("hipercalemia").quadros![0].itens, [
     "Glicemia após a insulina: 0, 30, 60, 90, 120, 180, 240, 300 e 360 minutos.",
     "Potássio após tratamento de hipercalemia moderada ou grave: pelo menos em 1, 2, 4, 6 e 24 horas, antecipando as coletas se houver instabilidade.",
+    "Na sala, os controles que couberem nela; ao sair, entregar os horários seguintes à equipe da clínica cirúrgica (ou da UTI), que assume o acompanhamento.",
   ]);
 });
 
@@ -369,4 +370,20 @@ test("referências: as quatro fontes conferidas pelo responsável e as novas cad
       ...p.divergencias.flatMap((d) => d.posicoes.map((x) => x.referencia))];
     for (const id of usados) assert.ok(acharReferencia(id), `${p.id}: ${id}`);
   }
+});
+
+test("acompanhamento: o anestesiologista na sala; depois, passagem de cuidado à clínica cirúrgica (ou à UTI)", () => {
+  const depois = (id: string) => r(id).depois.join(" ");
+  assert.match(depois("toxicidade-anestesico-local"), /^Na sala: manter a monitorização até a estabilidade\. Na passagem de cuidado à clínica cirúrgica \(ou à UTI\), que acompanha o paciente depois da sala, orientar a observação/);
+  assert.match(depois("hipercalemia"), /Na passagem à clínica cirúrgica \(ou à UTI\): entregar os horários de glicemia \(até 360 minutos da insulina\) e de potássio \(1, 2, 4, 6 e 24 horas\)/);
+  assert.match(depois("hipertermia-maligna"), /^Na passagem para a UTI: monitorização intensiva por pelo menos 24 horas/);
+  assert.match(passosDe(r("hipertermia-maligna"), null)[11].detalhe!, /passagem estruturada para a UTI, que assume o acompanhamento/);
+  const resultado = passosDe(r("depois-da-crise"), null);
+  assert.match(resultado[1].detalhe!, /passagem estruturada à clínica cirúrgica \(ou à UTI\), que assume o acompanhamento depois da sala/);
+  assert.match(resultado[6].detalhe!, /O anestesiologista acompanha o paciente na sala; depois dela, o acompanhamento é da clínica cirúrgica \(ou da UTI\)/);
+  assert.ok(r("hipercalemia").quadros![0].itens!.some((x) => /ao sair, entregar os horários seguintes à equipe da clínica cirúrgica/.test(x)));
+  // Nenhum "Depois" dos seis manda o anestesiologista acompanhar o pós-operatório.
+  for (const p of METABOLICAS_APOIO_V3) assert.doesNotMatch(p.depois.join(" "), /^Acompanhar ECG|^Monitorização intensiva por/, p.id);
+  const relogios = readFileSync(new URL("../../components/intercorrencias/relogios.tsx", import.meta.url), "utf8");
+  assert.match(relogios, /Ao sair da sala, entregar os horários seguintes à equipe da clínica cirúrgica \(ou da UTI\), que assume o acompanhamento\./);
 });

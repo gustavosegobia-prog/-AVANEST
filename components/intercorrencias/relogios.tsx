@@ -215,7 +215,7 @@ function Lipidio({ dados, set }: { dados: DadosDoPaciente; set: (c: string, v: s
 function AgendaHipercalemia({ dados, set }: { dados: DadosDoPaciente; set: (c: string, v: string) => void }) {
   return (
     <Cronometro chave="cronometro:insulina" titulo="Controles depois da insulina" iniciar="Iniciar na insulina"
-      dica="Toque ao dar a insulina: a tela marca as glicemias de 0 a 360 minutos e o potássio em 1, 2, 4, 6 e 24 horas."
+      dica="Toque ao dar a insulina: a tela marca as glicemias de 0 a 360 minutos e o potássio em 1, 2, 4, 6 e 24 horas — os que passarem da sala vão na passagem de cuidado."
       dados={dados} set={set}>
       {(_s, inicio, agora) => {
         const { itens, proximo } = agendaHipercalemia(inicio, agora);
@@ -226,6 +226,7 @@ function AgendaHipercalemia({ dados, set }: { dados: DadosDoPaciente; set: (c: s
                 <li className={estilos.atencao}><span>Próximo: {proximo.tipo.toLowerCase()} às {horaDe(proximo.ms)} ({proximo.minuto} min da insulina).</span></li>
               )}
               <li className={estilos.info}><span>Insulina às {horaDe(inicio)}. Glicemia antes do tratamento abaixo de 7 mmol/L (126 mg/dL): glicose 10%, 50 mL/h por 5 horas.</span></li>
+              <li className={estilos.info}><span>Ao sair da sala, entregar os horários seguintes à equipe da clínica cirúrgica (ou da UTI), que assume o acompanhamento.</span></li>
             </ul>
             <ol className={estilos.agenda} aria-label="Controles">
               {itens.map((x) => (
