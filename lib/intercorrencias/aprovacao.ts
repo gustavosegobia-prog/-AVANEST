@@ -40,6 +40,19 @@ export const APROVACOES: readonly Aprovacao[] = [
     documento: "Minuta de validação AVANEST — protocolos de crise em anestesia, revisão de 15/10/2026",
     protocolos: Object.fromEntries(MINUTA_DE_15_10_2026.map((id) => [id, 2])),
   },
+  {
+    // Autorizada pelo responsável médico na conversa de 01/11/2026 ("já pode
+    // aprovar"), sobre o texto da minuta que ele mesmo enviou. Os 9 que já
+    // existiam passam à versão 3; a embolia pulmonar entra na versão 1.
+    responsavel: "Gustavo Segobia da Silva",
+    crm: "CRM 49131",
+    data: "2026-11-01",
+    documento: "AVANEST — Implementação dos 10 protocolos cardiovasculares, minuta de 01/11/2026",
+    protocolos: {
+      "pcr-fv-tv": 3, "pcr-aesp-assistolia": 3, "isquemia-miocardica": 3, "hemorragia-macica": 3, "embolia-gasosa-venosa": 3,
+      hipertensao: 3, hipotensao: 3, taquiarritmia: 3, bradicardia: 3, "embolia-pulmonar": 1,
+    },
+  },
 ];
 
 /** A aprovação que vale para este protocolo: a da versão dele, com conteúdo até a data da aprovação. */

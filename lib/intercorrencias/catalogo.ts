@@ -12,21 +12,19 @@ import { COLEGA_AFETADO, DEPOIS_DA_CRISE, DEZ_TS, PRE_INDUCAO, VERIFICACAO_APARE
 import { BRONCOASPIRACAO } from "./protocolos/broncoaspiracao.ts";
 import { BRADICARDIA_PEDIATRICA } from "./protocolos/bradicardia-pediatrica.ts";
 import { BRONCOESPASMO } from "./protocolos/broncoespasmo.ts";
+import { AUMENTO_ETCO2, DESSATURACAO, QUEDA_ETCO2 } from "./protocolos/diagnostico.ts";
+// Os 10 cardiovasculares, na versão da minuta de 01/11/2026 (protocolos/cardiovascular.ts).
 import {
-  AUMENTO_ETCO2, BRADICARDIA, DESSATURACAO, HIPERTENSAO, HIPOTENSAO, QUEDA_ETCO2, TAQUIARRITMIA,
-} from "./protocolos/diagnostico.ts";
+  BRADICARDIA, EMBOLIA_GASOSA, EMBOLIA_PULMONAR, HEMORRAGIA, HIPERTENSAO, HIPOTENSAO, ISQUEMIA, PCR_AESP, PCR_FV_TV, TAQUIARRITMIA,
+} from "./protocolos/cardiovascular.ts";
 import { HIPERCALEMIA, HIPERTERMIA_MALIGNA, TOXICIDADE_AL } from "./protocolos/diversos.ts";
-import { EMBOLIA_GASOSA } from "./protocolos/embolia-gasosa.ts";
-import { HEMORRAGIA } from "./protocolos/hemorragia.ts";
 import { COLAPSO_MATERNO, HEMORRAGIA_POS_PARTO, RAQUI_TOTAL } from "./protocolos/obstetricia.ts";
 import { ECLAMPSIA, EMBOLIA_AMNIOTICA, VIA_AEREA_GESTANTE } from "./protocolos/obstetricia-complementar.ts";
 import { BNM_RESIDUAL, DEPRESSAO_OPIOIDES } from "./protocolos/opioides-e-bloqueio-residual.ts";
 import {
   CONVULSAO, CRISE_ADRENAL, DELIRIO, FALHA_O2_ENERGIA, HIPOGLICEMIA, HIPOTERMIA, INCENDIO,
 } from "./protocolos/outras-emergencias.ts";
-import { ISQUEMIA } from "./protocolos/isquemia.ts";
 import { LARINGOESPASMO } from "./protocolos/laringoespasmo.ts";
-import { PCR_AESP, PCR_FV_TV } from "./protocolos/pcr.ts";
 import { PRESSAO_VIAS_AEREAS } from "./protocolos/pressao-vias-aereas.ts";
 import { REACAO_HEMOLITICA } from "./protocolos/reacao-hemolitica.ts";
 import { REANIMACAO_NEONATAL } from "./protocolos/reanimacao-neonatal.ts";
@@ -43,7 +41,7 @@ export const PROTOCOLOS: Protocolo[] = [
   VENTILACAO_MASCARA, INTUBACAO_DIFICIL, NAO_VENTILO_NAO_INTUBO, LARINGOESPASMO, PRESSAO_VIAS_AEREAS, BRONCOESPASMO,
   BRONCOASPIRACAO, RAQUI_TOTAL, HEMORRAGIA_POS_PARTO, COLAPSO_MATERNO, REANIMACAO_NEONATAL, TOXICIDADE_AL, HIPERCALEMIA,
   HIPERTERMIA_MALIGNA, DEZ_TS, DEPOIS_DA_CRISE, COLEGA_AFETADO,
-  DESSATURACAO, HIPERTENSAO, HIPOTENSAO, TAQUIARRITMIA, BRADICARDIA, AUMENTO_ETCO2, QUEDA_ETCO2,
+  DESSATURACAO, HIPERTENSAO, HIPOTENSAO, TAQUIARRITMIA, BRADICARDIA, EMBOLIA_PULMONAR, AUMENTO_ETCO2, QUEDA_ETCO2,
   VERIFICACAO_APARELHO, PRE_INDUCAO,
   HIPOGLICEMIA, HIPOTERMIA, CRISE_ADRENAL, CONVULSAO, INCENDIO, FALHA_O2_ENERGIA, DELIRIO, BRADICARDIA_PEDIATRICA,
   ECLAMPSIA, EMBOLIA_AMNIOTICA, VIA_AEREA_GESTANTE, DEPRESSAO_OPIOIDES, BNM_RESIDUAL, PNEUMOTORAX, INTUBACAO_ESOFAGICA,
@@ -116,6 +114,7 @@ export const PREVISTOS: Previsto[] = [
  */
 const COBRE: Record<string, string[]> = {
   laringoespasmo: ["Laringoespasmo pediátrico"],
+  "embolia-pulmonar": ["Embolia pulmonar"],
 };
 
 export const acharProtocolo = (id: string) => PROTOCOLOS.find((x) => x.id === id);

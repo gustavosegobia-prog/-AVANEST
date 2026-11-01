@@ -865,6 +865,15 @@ const LISTA: Referencia[] = [
     observacao: "Citada na minuta de validação AVANEST de 15/10/2026 (protocolos reescritos); o texto original não foi aberto no cadastro.",
   },
   {
+    id: "aha-acc-2026-tep",
+    titulo: "Guideline for the Evaluation and Management of Acute Pulmonary Embolism in Adults",
+    autoria: "AHA/ACC/ACCP/ACEP/CHEST/SCAI/SHM/SIR/SVM",
+    publicacao: "Diretriz conjunta, fevereiro de 2026",
+    ano: 2026,
+    localizacao: null, conferida: false,
+    observacao: "Citada na minuta “AVANEST — Implementação dos 10 protocolos cardiovasculares” (01/11/2026), com a classificação de gravidade de A a E; o texto original não foi aberto no cadastro.",
+  },
+  {
     id: "esaic-2022-sangramento",
     titulo: "Management of severe peri-operative bleeding: Guidelines from the European Society of Anaesthesiology and Intensive Care. Second update 2022",
     autoria: "Kietaibl S et al.",
