@@ -518,6 +518,8 @@ test("trava de liberação: sem aprovação, o protocolo fica em preparação pa
   // A barra do protocolo não tem mais o botão da calculadora (pedido do responsável médico, 01/11/2026): as doses já saem no cartão.
   assert.doesNotMatch(ler("components/intercorrencias/protocolo.tsx"), /aoAbrirCalculadora|Calculadora de doses/);
   assert.doesNotMatch(ler("app/crises/crises-client.tsx"), /aoAbrirCalculadora/);
+  // O índice e a busca não marcam mais "corrigido, em validação" no rascunho de um protocolo publicado (01/11/2026).
+  assert.doesNotMatch(ler("components/intercorrencias/intercorrencias.tsx"), /corrigido, em validação/);
 });
 
 test("hipoglicemia: glicose 10% — adulto 20 g em 15 min, criança e recém-nascido 0,2 g/kg; glucagon por peso", () => {
