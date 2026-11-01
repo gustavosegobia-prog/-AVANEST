@@ -214,13 +214,24 @@ test("sem calculadora onde a minuta não libera: embolia pulmonar, amiodarona co
   assert.deepEqual(dopa.contas.map((c) => [c.doseTotal, c.volume]), [[350, undefined], [1400, undefined]]);
 });
 
-test("referências: as da minuta existem; a diretriz de TEP de 2026 fica marcada como não conferida", () => {
+test("referências: as da minuta existem; TEP 2026 e perioperatória 2026 com o que foi e o que não foi conferido", () => {
   for (const [id] of ETAPAS) {
     for (const r of acha(id).referencias) assert.ok(acharReferencia(r), `${id}: ${r}`);
   }
+  // Correção das pendências científicas (01/11/2026): diretriz e classificação conferidas
+  // pelo responsável médico nas fontes oficiais; a leitura integral continua pendente.
   const tep = acharReferencia("aha-acc-2026-tep")!;
-  assert.equal(tep.conferida, false);
-  assert.equal(tep.localizacao, null);
+  assert.equal(tep.conferida, true);
+  assert.equal(tep.doi, "10.1161/CIR.0000000000001415");
+  assert.match(tep.autoria, /^Creager MA/);
+  assert.match(tep.localizacao ?? "", /A, B1–B2, C1–C3, D1–D2 e E1–E2/);
+  assert.match(tep.observacao ?? "", /Leitura integral e homologação clínica do protocolo pendentes/);
+  // A perioperatória de 2026 é reafirmação da de 2024: o ano muda, a conduta não.
+  const periop = acharReferencia("acc-aha-2024-perioperatorio")!;
+  assert.equal(periop.ano, 2026);
+  assert.match(periop.titulo, /^2026 AHA\/ACC\/ACS\/ASNC\/HRS\/SCA\/SCCT\/SCMR\/SVM Guideline for Perioperative/);
+  assert.match(periop.publicacao, /Reafirmação, em 29\/09\/2026, da diretriz de 2024/);
+  assert.match(periop.publicacao, /sem alteração das recomendações/);
   assert.ok(acha("embolia-pulmonar").referencias.includes("aha-acc-2026-tep"));
   assert.equal(acha("embolia-pulmonar").bibliografiaGeral, false);
 });

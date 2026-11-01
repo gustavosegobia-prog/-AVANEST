@@ -513,7 +513,7 @@ test("trava de liberação: sem aprovação, o protocolo fica em preparação pa
   // A prévia é só do super-admin; a ficha anestésica nunca mostra protocolo em validação.
   assert.match(ler("app/crises/crises-client.tsx"), /previa=\{superAdmin\}/);
   assert.doesNotMatch(ler("components/intercorrencias/na-ficha.tsx"), /previa/);
-  assert.match(ler("components/intercorrencias/intercorrencias.tsx"), /const disponiveis = previa \? PROTOCOLOS : LIBERADOS/);
+  assert.match(ler("components/intercorrencias/intercorrencias.tsx"), /const disponiveis = previa \? PROTOCOLOS_DA_PREVIA : LIBERADOS/);
   assert.match(ler("components/intercorrencias/protocolo.tsx"), /Não está liberado para uso clínico/);
 });
 
