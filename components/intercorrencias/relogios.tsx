@@ -151,15 +151,9 @@ function Lipidio({ dados, set }: { dados: DadosDoPaciente; set: (c: string, v: s
   const taxa = n("lipidio:taxa");
   const agora = useAgora(inicio !== null && taxa > 0);
   const titulo = "Emulsão lipídica 20%: volume acumulado";
-  if (populacao === "pediatrico" || populacao === "neonatal") {
-    return (
-      <div className={`${estilos.ferramenta} ${estilos.naoImprimir}`} role="group" aria-label={titulo}>
-        <div className={estilos.ferramentaTopo}><strong>{titulo}</strong></div>
-        <ul className={estilos.avisos}><li className={estilos.atencao}><span>Criança: cálculo da emulsão lipídica pendente de homologação — a ASRA usa limite de 12 mL/kg e o Tratado SAESP, 10 mL/kg. Sem cálculo automático até a política institucional única.</span></li></ul>
-      </div>
-    );
-  }
-  const sugestao = sugestaoLipidio(paciente.pesoKg);
+  // Criança: limite de 10 mL/kg (Tratado SAESP), política definida pelo responsável médico; adulto, 12 mL/kg (ASRA).
+  const crianca = populacao === "pediatrico" || populacao === "neonatal";
+  const sugestao = sugestaoLipidio(paciente.pesoKg, crianca);
   if (!sugestao) {
     return (
       <div className={`${estilos.ferramenta} ${estilos.naoImprimir}`} role="group" aria-label={titulo}>
@@ -178,7 +172,7 @@ function Lipidio({ dados, set }: { dados: DadosDoPaciente; set: (c: string, v: s
     for (const c of ["lipidio:bolus", "lipidio:infundido", "lipidio:taxa", "lipidio:inicio"]) set(c, "");
   };
   const estado = lipidioAcumulado({
-    bolusMl: n("lipidio:bolus"), infundidoMl: n("lipidio:infundido"), taxaMlH: taxa, inicioMs: inicio, agoraMs: agora ?? inicio ?? 0, limiteMl: sugestao.limiteMl,
+    bolusMl: n("lipidio:bolus"), infundidoMl: n("lipidio:infundido"), taxaMlH: taxa, inicioMs: inicio, agoraMs: agora ?? inicio ?? 0, limiteMl: sugestao.limiteMl, limiteRotulo: sugestao.limiteRotulo,
   });
   const algum = n("lipidio:bolus") > 0 || n("lipidio:infundido") > 0 || inicio !== null;
   return (
