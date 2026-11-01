@@ -118,6 +118,8 @@ const COBRE: Record<string, string[]> = {
   "embolia-pulmonar": ["Embolia pulmonar"],
   // O título passa a "Não intubo, não oxigeno — CICO" no rascunho de 01/11/2026; o previsto antigo não pode voltar como "em preparação".
   "nao-ventilo-nao-intubo": ["Não ventilo, não intubo"],
+  // Títulos novos dos rascunhos da revisão 4 (01/11/2026): o previsto antigo não volta como "em preparação".
+  "toxicidade-anestesico-local": ["Toxicidade sistêmica por anestésicos locais"],
 };
 
 export const acharProtocolo = (id: string) => PROTOCOLOS.find((x) => x.id === id);

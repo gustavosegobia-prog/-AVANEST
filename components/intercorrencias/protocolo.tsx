@@ -3,7 +3,8 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import estilos from "./intercorrencias.module.css";
 import {
-  bloqueioDoRamo, calcularDose, calcularVolume, conferirPaciente, doseServe, numero, passosDe, populacaoDe, ramoDe, ROTULO_POPULACAO,
+  bloqueioDoRamo, calcularDose, calcularVolume, conferirPaciente, doseServe, frascosDaDose, numero, passosDe, pesoNaFaixa, populacaoDe, ramoDe,
+  ROTULO_POPULACAO,
   volumeServe, type Alerta, type DoseCalculada, type PacienteDaConsulta,
 } from "@/lib/intercorrencias/calculo";
 import { acharProtocolo, CATEGORIAS, rascunhoDe } from "@/lib/intercorrencias/catalogo";
@@ -73,6 +74,7 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, semRamo, confirmadas, ao
   const chave = `${original?.rotulo ?? "sem frasco"}|${d.via}`;
   const precisaConfirmar = d.altoRisco && original && !confirmadas.includes(chave);
   const varios = conta.contas.length > 1;
+  const frascos = frascosDaDose(conta, original);
 
   return (
     <article className={estilos.dose} aria-label={`${d.farmaco}, ${d.indicacao}`}>
@@ -151,6 +153,14 @@ function CartaoDose({ d, protocolo, paciente, semFaixa, semRamo, confirmadas, ao
         <p className={estilos.preparo}>{conta.apresentacao.rotulo}</p>
       )}
       {original?.preparo && <p className={estilos.preparo}>Preparo: {original.preparo}</p>}
+      {/* Alto risco: os frascos, como o volume, só depois de conferir a concentração; no papel saem impressos. */}
+      {frascos && original?.frasco && !bloqueio && (
+        <p className={`${estilos.frascos} ${precisaConfirmar ? estilos.soImpressao : ""}`}>
+          <b>{frascos.frascos} {frascos.frascos === 1 ? "frasco" : "frascos"} de {numero(original.frasco.quantidade)} {original.frasco.unidade}</b> por dose
+          ({numero(frascos.quantidade)} {frascos.unidade}): {numero(original.frasco.diluenteMl)} mL de diluente em cada, {numero(frascos.diluenteMl)} mL ao todo;
+          volume final de cerca de {numero(frascos.volumeFinalMl)} mL.{d.repeticao ? ` Cada repetição: mais ${frascos.frascos} ${frascos.frascos === 1 ? "frasco" : "frascos"}.` : ""}
+        </p>
+      )}
       {d.repeticao && <p className={estilos.miuda}><b>Repetir:</b> {d.repeticao}</p>}
       {d.velocidade && <p className={estilos.miuda}><b>Ritmo:</b> {d.velocidade}</p>}
       <Avisos lista={conta.alertas} />
@@ -222,7 +232,8 @@ export function ProtocoloTela({
   const grupos = populacao === null
     ? [["Adulto", doses.filter((d) => d.populacao !== "pediatrico")], ["Criança", doses.filter((d) => d.populacao === "pediatrico")]] as const
     : [[null, doses]] as const;
-  const volumes = p.volumes.filter((v) => populacao === null || volumeServe(v, populacao));
+  // O regime do peso: abaixo de 70 kg e a partir de 70 kg não aparecem juntos quando o peso é conhecido.
+  const volumes = p.volumes.filter((v) => (populacao === null || volumeServe(v, populacao)) && pesoNaFaixa(v, paciente.pesoKg));
   // Choque, cristaloide e hemocomponentes, e os grupos com nome próprio (doses máximas de anestésico local).
   const nomeados = [...new Set(volumes.flatMap((v) => (v.grupo ? [v.grupo] : [])))];
   const gruposDeVolumes = [

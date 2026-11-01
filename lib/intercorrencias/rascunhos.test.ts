@@ -20,7 +20,9 @@ test("rascunho: só na prévia do responsável, nunca para quem usa, e sem aprov
     ["embolia-pulmonar v2", "depressao-respiratoria-opioides v3", "hipotermia-perioperatoria v3",
       "ventilacao-mascara-dificil v3", "intubacao-dificil v3", "nao-ventilo-nao-intubo v3", "laringoespasmo v3",
       "pressao-vias-aereas v3", "broncoespasmo-grave v3", "broncoaspiracao v3",
-      "bloqueio-neuroaxial-alto v3", "hemorragia-pos-parto v3", "colapso-materno v3", "reanimacao-neonatal v3"]);
+      "bloqueio-neuroaxial-alto v3", "hemorragia-pos-parto v3", "colapso-materno v3", "reanimacao-neonatal v3",
+      "toxicidade-anestesico-local v3", "hipercalemia v3", "hipertermia-maligna v3", "evento-sem-diagnostico v3",
+      "depois-da-crise v3", "colega-afetado v3"]);
   for (const r of RASCUNHOS) {
     const publicado = acharProtocolo(r.id)!;
     assert.ok(publicado, r.id);

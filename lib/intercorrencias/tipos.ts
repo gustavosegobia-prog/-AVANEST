@@ -8,7 +8,7 @@
  * DosePorKg, a mesma Apresentacao, o mesmo teto. Nenhuma fórmula nova.
  */
 
-import type { Apresentacao, DosePorKg, Teto } from "../calculos/doses.ts";
+import type { Apresentacao, DosePorKg, Teto, Unidade } from "../calculos/doses.ts";
 import type { BaseDePeso } from "../calculos/peso.ts";
 
 export type Categoria = "cardiovascular" | "respiratorio" | "medicamentos" | "obstetricia" | "pediatria" | "outras" | "apoio";
@@ -88,7 +88,12 @@ export type Quadro = {
  * PCR materna, a janela do ácido tranexâmico desde o nascimento e o
  * cronômetro do nascimento com a meta de SpO2 do minuto.
  */
-export type Ferramenta = "cronometro-pcr-materna" | "tranexamico-hpp" | "cronometro-nascimento";
+export type Ferramenta =
+  | "cronometro-pcr-materna" | "tranexamico-hpp" | "cronometro-nascimento"
+  /** O volume acumulado de emulsão lipídica contra o limite adotado. */
+  | "lipidio-acumulado"
+  /** Os horários de glicemia e de potássio depois da insulina na hipercalemia. */
+  | "agenda-hipercalemia";
 
 /**
  * Uma apresentação do protocolo: a da calculadora, mais as vias em que ela
@@ -104,6 +109,12 @@ export type ApresentacaoDoProtocolo = Apresentacao & {
    * mililitros ("noradrenalina 0,15 mg/kg em 50 mL" da criança).
    */
   porPeso?: true;
+  /**
+   * O frasco a reconstituir (dantroleno): quanto fármaco tem, quanto diluente
+   * leva e o volume final. A tela conta os frascos de cada dose e o diluente
+   * total, para não confundir volume de diluente com volume final.
+   */
+  frasco?: { quantidade: number; unidade: Unidade; diluenteMl: number; volumeFinalMl: number };
 };
 
 /**
@@ -120,7 +131,14 @@ export type VolumeDoProtocolo = {
   indicacao: string;
   populacao: "adulto" | "pediatrico" | "todas";
   /** "mL/h" é ritmo de bomba: por kg, a conta sai em mL/h ("15 mL/kg/h" da emulsão lipídica). */
-  unidade?: "mL" | "mL/h" | "J" | "unidades" | "mg";
+  /** "mL/min" e "mL/h" são ritmo: por kg, a conta sai por minuto ou por hora ("0,25 mL/kg/min" do lipídio). */
+  unidade?: "mL" | "mL/min" | "mL/h" | "J" | "unidades" | "mg";
+  /**
+   * Faixa de peso em que o volume vale (o regime do lipídio abaixo de 70 kg e
+   * o simplificado a partir de 70 kg). Com o peso, o de fora some; sem peso,
+   * os dois aparecem.
+   */
+  faixaDePeso?: { aPartirDe?: number; acimaDe?: number; abaixoDe?: number; ate?: number };
   porKg?: { min?: number; max?: number };
   fixo?: { min?: number; max?: number };
   maximo?: number;
