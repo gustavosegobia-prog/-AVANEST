@@ -184,8 +184,26 @@ test("PCR do adulto: adrenalina depois do 2º choque, amiodarona ou lidocaína d
   assert.deepEqual(contas(fvtv, "lidocaina-pcr", adulto).map((c) => [c[0], c[2]]), [[70, 3.5], [105, 5.25]]);
   assert.deepEqual(contas(fvtv, "lidocaina-pcr-2", adulto).map((c) => c[0]), [35, 52.5]);
   assert.deepEqual(fvtv.volumes.map((v) => calcularVolume(v, { idadeAnos: 40, pesoKg: null }).texto), ["120 a 200 J", "360 J"]);
-  assert.ok(!fvtv.medicamentos.some((m) => /cálcio|bicarbonato|magnésio/i.test(m.farmaco)));
+  // O verso do cartão 01 do Manual (revisão de 01/11/2026): magnésio, cálcio e
+  // bicarbonato entram com a dose do livro, mas só com a indicação de cada um.
+  assert.deepEqual(contas(fvtv, "magnesio-pcr", adulto, 1).map((c) => [c[0], c[2]]), [[1, 2], [2, 4]]);
+  assert.deepEqual(contas(fvtv, "cloreto-de-calcio-pcr", adulto).map((c) => c[2]), [10]);
+  assert.deepEqual(contas(fvtv, "bicarbonato-pcr", adulto).map((c) => [c[0], c[1], c[2]]), [[70, "mEq", 70], [140, "mEq", 140]]);
+  assert.match(dose(fvtv, "magnesio-pcr").indicacao, /Torsades de pointes ou hipomagnesemia/);
+  assert.match(dose(fvtv, "cloreto-de-calcio-pcr").indicacao, /Hipercalemia, hipocalcemia ou intoxicação por bloqueador de canal de cálcio/);
+  assert.match(dose(fvtv, "bicarbonato-pcr").indicacao, /Hipercalemia ou intoxicação por antidepressivo tricíclico/);
+  assert.doesNotMatch(dose(fvtv, "bicarbonato-pcr").indicacao, /prolongada/, "não pelo tempo de RCP");
   assert.match(fvtv.notasDeDose!.join(" "), /não são rotina/);
+  // Os 11 passos do cartão 01 do Manual, na ordem; o da gestante vem depois do 11.
+  const passos = passosDe(fvtv, "adulto").map((x) => x.texto);
+  assert.equal(passos.length, 11);
+  assert.match(passos[0], /pulso e pelos monitores/);
+  assert.match(passos[4], /Dar um choque/);
+  assert.match(passos[6], /^Com 2 minutos: choque, retomar a RCP e adrenalina 1 mg IV/);
+  assert.match(passos[7], /^Com 4 minutos: choque, retomar a RCP e amiodarona 300 mg IV/);
+  assert.match(passos[9], /5º ciclo: mais 150 mg de amiodarona/);
+  assert.match(passos[10], /ECMO/);
+  assert.equal(passosDe(fvtv, "gestante").length, 12);
   // Criança: nenhuma dose do adulto serve, e o atalho aponta o SAV pediátrico.
   assert.equal(fvtv.medicamentos.filter((d) => doseServe(d, "pediatrico", 4)).length, 0);
   assert.ok(fvtv.veja?.some((v) => v.protocolo === "sav-pediatrico" && /2 J\/kg/.test(v.texto)));
