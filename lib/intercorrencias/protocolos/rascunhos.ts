@@ -18,6 +18,7 @@ import { COLAPSO_MATERNO } from "./obstetricia.ts";
 import { DEPRESSAO_OPIOIDES } from "./opioides-e-bloqueio-residual.ts";
 import { HIPOTERMIA } from "./outras-emergencias.ts";
 import { MAGNESIO_50, MAGNESIO_80 } from "./comum.ts";
+import { RESPIRATORIO_V3 } from "./respiratorio.ts";
 
 const PROPOSTA = "2026-11-01";
 
@@ -168,5 +169,11 @@ export const HIPOTERMIA_V3: Protocolo = {
   referencias: [...HIPOTERMIA.referencias, "erc-2021-circunstancias"],
 };
 
-/** Os rascunhos em validação. A prévia do responsável médico os abre no lugar da versão publicada. */
-export const RASCUNHOS: readonly Protocolo[] = [EMBOLIA_PULMONAR_V2, COLAPSO_MATERNO_V3, DEPRESSAO_OPIOIDES_V3, HIPOTERMIA_V3];
+/**
+ * Os rascunhos em validação. A prévia do responsável médico os abre no lugar
+ * da versão publicada. Os sete respiratórios (09 a 15) vêm da revisão de
+ * 01/11/2026, em protocolos/respiratorio.ts.
+ */
+export const RASCUNHOS: readonly Protocolo[] = [
+  EMBOLIA_PULMONAR_V2, COLAPSO_MATERNO_V3, DEPRESSAO_OPIOIDES_V3, HIPOTERMIA_V3, ...RESPIRATORIO_V3,
+];

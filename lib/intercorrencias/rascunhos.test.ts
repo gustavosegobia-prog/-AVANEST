@@ -18,7 +18,9 @@ const conta = (p: Protocolo, id: string, pac: PacienteDaConsulta, apresentacao =
 
 test("rascunho: só na prévia do responsável, nunca para quem usa, e sem aprovação", () => {
   assert.deepEqual(RASCUNHOS.map((r) => `${r.id} v${r.versao}`),
-    ["embolia-pulmonar v2", "colapso-materno v3", "depressao-respiratoria-opioides v3", "hipotermia-perioperatoria v3"]);
+    ["embolia-pulmonar v2", "colapso-materno v3", "depressao-respiratoria-opioides v3", "hipotermia-perioperatoria v3",
+      "ventilacao-mascara-dificil v3", "intubacao-dificil v3", "nao-ventilo-nao-intubo v3", "laringoespasmo v3",
+      "pressao-vias-aereas v3", "broncoespasmo-grave v3", "broncoaspiracao v3"]);
   for (const r of RASCUNHOS) {
     const publicado = acharProtocolo(r.id)!;
     assert.ok(publicado, r.id);

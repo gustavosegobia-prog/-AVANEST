@@ -238,7 +238,8 @@ export function ProtocoloTela({
     <div ref={topo} className={`${estilos.modulo} ${estilos.impressao}`} style={{ scrollMarginTop: 80 }}>
       <p className={estilos.soImpressao}>
         AVANEST · Intercorrências anestésicas · impresso em {dataBr(new Date().toISOString())} · versão {p.versao}
-        {aprovacao ? ` · aprovada por ${aprovacao.responsavel}, ${aprovacao.crm}, em ${dataDaAprovacao(aprovacao)}` : " · sem aprovação registrada"}
+        {aprovacao ? ` · aprovada por ${aprovacao.responsavel}, ${aprovacao.crm}, em ${dataDaAprovacao(aprovacao)}`
+          : publicado ? " · corrigido, aguardando validação médica" : " · sem aprovação registrada"}
         <br />Paciente: {resumoDoPaciente(paciente)}{paciente.gestante ? " · gestante" : ""}
       </p>
 
@@ -279,14 +280,14 @@ export function ProtocoloTela({
           {aprovacao ? (
             <span>Aprovada por {aprovacao.responsavel}, {aprovacao.crm}, em {dataDaAprovacao(aprovacao)}</span>
           ) : (
-            <span className={estilos.semAprovacao}>Versão nova, sem aprovação registrada</span>
+            <span className={estilos.semAprovacao}>{publicado ? "Corrigido — aguardando validação médica" : "Versão nova, sem aprovação registrada"}</span>
           )}
         </div>
         {!aprovacao && (
           <p className={estilos.avisoValidacao}>
             <Icone nome="alerta" tamanho={17} />
             <span>{publicado
-              ? <>Rascunho da versão {p.versao}, aguardando validação médica: só o responsável médico vê. Quem usa continua com a versão {publicado.versao}{aprovacaoDoPublicado ? `, aprovada em ${dataDaAprovacao(aprovacaoDoPublicado)}` : ", que também aguarda validação"}.</>
+              ? <>Corrigido — aguardando validação médica. A versão {p.versao} é um rascunho que só o responsável médico vê; quem usa continua com a versão {publicado.versao}{aprovacaoDoPublicado ? `, aprovada em ${dataDaAprovacao(aprovacaoDoPublicado)}` : ", que também aguarda validação"}.</>
               : "Em validação: só o responsável médico vê este protocolo. Não está liberado para uso clínico."}</span>
           </p>
         )}
@@ -340,15 +341,34 @@ export function ProtocoloTela({
               {c.passos.map((x) => (
                 <li key={x.texto}>
                   <div>
-                    {x.so && <span className={estilos.soPara}>{x.so.map((s) => ROTULO_POPULACAO[s]).join(" / ")}</span>}
+                    {/* No caminho com título próprio ("B. Criança"), a etiqueta da faixa repetiria o título. */}
+                    {x.so && !x.caminho && <span className={estilos.soPara}>{x.so.map((s) => ROTULO_POPULACAO[s]).join(" / ")}</span>}
                     <b>{x.texto}</b>
                     {x.detalhe && <small>{x.detalhe}</small>}
+                    {x.abre && aoAbrirProtocolo && disponivel(x.abre.protocolo) && (
+                      <button type="button" className={`${estilos.botao} ${estilos.abrePasso} ${estilos.naoImprimir}`}
+                        onClick={() => aoAbrirProtocolo(x.abre!.protocolo)}>
+                        Abrir {x.abre.texto}<Icone nome="seta" tamanho={16} />
+                      </button>
+                    )}
                   </div>
                 </li>
               ))}
             </ol>
           </Fragment>
         ))}
+        {p.material && p.material.length > 0 && (
+          <div className={estilos.extraAgir}>
+            <h4>Material</h4>
+            <ul className={estilos.material}>{p.material.map((x) => <li key={x}>{x}</li>)}</ul>
+          </div>
+        )}
+        {p.alertas && p.alertas.length > 0 && (
+          <div className={estilos.extraAgir}>
+            <h4>Alertas de segurança</h4>
+            <Avisos lista={p.alertas.map((texto) => ({ nivel: "perigo", texto }))} />
+          </div>
+        )}
       </section>
 
       {temDoses && <section id="doses" className={temCalculo ? estilos.secaoAberta : estilos.secao} aria-labelledby="t-doses">
@@ -368,7 +388,7 @@ export function ProtocoloTela({
               ))}
             </div>
           )}
-          {grupos.map(([titulo, lista]) => (
+          {grupos.filter(([, lista]) => lista.length > 0).map(([titulo, lista]) => (
             <div key={titulo ?? "todas"} className={`${estilos.doses} ${estilos.listaDoses}`}>
               {titulo && <h4 className={estilos.grupoDoses}>{titulo}</h4>}
               {lista.map((d) => (

@@ -49,6 +49,12 @@ export type Passo = {
    * cada caminho e recomeça a numeração.
    */
   caminho?: string;
+  /**
+   * O passo leva a outro protocolo ("Se não for possível oxigenar, declare
+   * CICO"): um botão no próprio passo abre o destino, com os dados do paciente
+   * que já estão na tela.
+   */
+  abre?: Relacionado;
 };
 
 /**
@@ -176,6 +182,13 @@ export type Protocolo = {
   referencias: string[];
   veja?: VejaTambem[];
   relacionados?: Relacionado[];
+  /**
+   * Alertas de segurança do protocolo inteiro, em destaque ao fim do Agir
+   * agora ("não aplicar a técnica do adulto na criança pequena").
+   */
+  alertas?: string[];
+  /** O material a separar (o kit do acesso frontal), listado no Agir agora. */
+  material?: string[];
   /** Os ritmos do monitor que o protocolo ensina a reconhecer (PCR). */
   ritmos?: RitmoDoProtocolo[];
   /** AAAA-MM-DD da última revisão científica (fontes reabertas e conferidas). */
