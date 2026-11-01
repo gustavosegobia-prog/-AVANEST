@@ -419,8 +419,12 @@ test("impressão: todas as etapas saem no papel; só os botões ficam de fora", 
   // Sem idade, o papel leva os dois ramos do CICO.
   assert.equal(passosDe(r("nao-ventilo-nao-intubo"), null).length, 13);
   // O selo do rascunho.
-  assert.match(tela, /"Corrigido — aguardando validação médica"/);
-  assert.match(tela, /corrigido, aguardando validação médica/);
+  // A versão e o estado do rascunho ficam no fim do cartão, junto das referências; o topo não traz mais essas linhas.
+  const topo = tela.slice(tela.indexOf("<header className={estilos.protoTitulo}>"), tela.indexOf("</header>"));
+  assert.doesNotMatch(topo, /Versão \{p\.versao\}|Corrigido — aguardando validação médica/);
+  const refs = tela.slice(tela.indexOf('<section id="referencias"'));
+  assert.match(refs, /Versão \{p\.versao\} · conteúdo de \{dataBr\(p\.atualizadoEm\)\}/);
+  assert.match(refs, /rascunho em validação; quem usa continua com a versão/);
 });
 
 test("referências: SBA 2024 identificada pelo DOI; AHRQ pendente; toda referência dos sete existe", () => {

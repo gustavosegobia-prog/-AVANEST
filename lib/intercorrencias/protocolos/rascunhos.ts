@@ -13,10 +13,12 @@
  */
 
 import type { Protocolo } from "../tipos.ts";
-import { EMBOLIA_PULMONAR, PCR_FV_TV } from "./cardiovascular.ts";
+import { BRADICARDIA, EMBOLIA_GASOSA, EMBOLIA_PULMONAR, HEMORRAGIA, ISQUEMIA, PCR_FV_TV } from "./cardiovascular.ts";
+import { ANAFILAXIA } from "./anafilaxia.ts";
+import { ECLAMPSIA, EMBOLIA_AMNIOTICA } from "./obstetricia-complementar.ts";
 import { SAV_PEDIATRICO } from "./sav-pediatrico.ts";
-import { DEPRESSAO_OPIOIDES } from "./opioides-e-bloqueio-residual.ts";
-import { HIPOTERMIA } from "./outras-emergencias.ts";
+import { BNM_RESIDUAL, DEPRESSAO_OPIOIDES } from "./opioides-e-bloqueio-residual.ts";
+import { CONVULSAO, CRISE_ADRENAL, DELIRIO, HIPOGLICEMIA, HIPOTERMIA } from "./outras-emergencias.ts";
 import { RESPIRATORIO_V3 } from "./respiratorio.ts";
 import { OBSTETRICIA_NEONATAL_V3 } from "./obstetricia-neonatal.ts";
 import { METABOLICAS_APOIO_V3 } from "./metabolicas-apoio.ts";
@@ -136,6 +138,95 @@ function comAvisoLidocaina(p: Protocolo, versao: number): Protocolo {
 export const PCR_FV_TV_V4 = comAvisoLidocaina(PCR_FV_TV, 4);
 export const SAV_PEDIATRICO_V3 = comAvisoLidocaina(SAV_PEDIATRICO, 3);
 
+// ---------------------------------------------------------------------------
+// Acompanhamento na sala; depois, passagem de cuidado
+// ---------------------------------------------------------------------------
+// Regra do responsável médico (01/11/2026): o anestesiologista acompanha o
+// paciente na sala; depois dela, o cuidado é da clínica cirúrgica (na
+// gestante, da obstetrícia) ou da UTI. Nos cartões cujo "Depois" passava ao
+// anestesiologista um acompanhamento além da sala, o texto vira orientação na
+// passagem de cuidado. Só o "Depois" (e um detalhe de etapa) muda; doses e
+// etapas ficam como estão.
+const PCS = "Na passagem à clínica cirúrgica (ou à UTI), que acompanha o paciente depois da sala: orientar ";
+
+/** Troca itens do "Depois" e detalhes de etapas, exatamente; alvo que não existe é erro. */
+function trocarTextos(p: Protocolo, depois: Record<string, string>, detalhes: Record<string, string> = {}): Pick<Protocolo, "depois" | "agirAgora"> {
+  for (const k of Object.keys(depois)) if (!p.depois.includes(k)) throw new Error(`${p.id}: o "Depois" não tem "${k}"`);
+  for (const k of Object.keys(detalhes)) if (!p.agirAgora.some((x) => x.texto === k)) throw new Error(`${p.id}: não há a etapa "${k}"`);
+  return {
+    depois: p.depois.map((x) => depois[x] ?? x),
+    agirAgora: p.agirAgora.map((x) => (detalhes[x.texto] ? { ...x, detalhe: detalhes[x.texto] } : x)),
+  };
+}
+/** O mesmo rascunho, com a passagem de cuidado no lugar do acompanhamento além da sala. */
+const ajustar = (p: Protocolo, depois: Record<string, string>, detalhes?: Record<string, string>): Protocolo => ({ ...p, ...trocarTextos(p, depois, detalhes) });
+/** Um rascunho novo de um protocolo publicado, só com a passagem de cuidado. */
+const comPassagem = (p: Protocolo, versao: number, depois: Record<string, string>, detalhes?: Record<string, string>): Protocolo => ({
+  ...p, versao, atualizadoEm: PROPOSTA, revisadoEm: PROPOSTA, ...trocarTextos(p, depois, detalhes),
+});
+
+export const ISQUEMIA_V4 = comPassagem(ISQUEMIA, 4, {
+  "ECG seriado, troponina quando indicada, ecocardiografia, avaliação cardiológica e monitorização pós-operatória apropriada.":
+    `${PCS}ECG seriado, troponina quando indicada, ecocardiografia, avaliação cardiológica e monitorização pós-operatória apropriada.`,
+}, {
+  "Planeje acompanhamento pós-operatório intensivo quando necessário.":
+    "Solicite ECG e troponina seriados conforme indicação; o acompanhamento depois da sala é da clínica cirúrgica (ou da UTI), com passagem estruturada.",
+});
+export const HEMORRAGIA_V4 = comPassagem(HEMORRAGIA, 4, {
+  "Monitorar função renal, eletrólitos, sangramento residual, temperatura, coagulopatia e possíveis complicações transfusionais.":
+    `${PCS}a vigilância de função renal, eletrólitos, sangramento residual, temperatura, coagulopatia e possíveis complicações transfusionais.`,
+});
+export const ANAFILAXIA_V3 = comPassagem(ANAFILAXIA, 3, {
+  "Colher a triptase sem atrasar o suporte; registrar os tempos e obter a basal depois da recuperação.":
+    "Colher a triptase sem atrasar o suporte e registrar os tempos; a dosagem basal, depois da recuperação, vai como orientação na passagem de cuidado.",
+  "Alergologia, documentação e observação conforme a gravidade.":
+    `${PCS}a observação conforme a gravidade e o encaminhamento à alergologia; documentar o evento.`,
+});
+export const EMBOLIA_GASOSA_V4 = comPassagem(EMBOLIA_GASOSA, 4, {
+  "Monitorização intensiva, avaliação neurológica, acompanhamento cardiorrespiratório e investigação da fonte de entrada de gás.":
+    "Na passagem à UTI (ou à clínica cirúrgica), que acompanha o paciente depois da sala: orientar monitorização intensiva, avaliação neurológica, acompanhamento cardiorrespiratório e investigação da fonte de entrada de gás.",
+});
+export const BRADICARDIA_V4 = comPassagem(BRADICARDIA, 4, {
+  "Monitorização ECG, avaliação cardiológica, eletrólitos, investigação da causa e necessidade de estimulação definitiva.":
+    `${PCS}a monitorização do ECG, a avaliação cardiológica, os eletrólitos e a investigação da causa e da necessidade de estimulação definitiva.`,
+});
+export const HIPOGLICEMIA_V3 = comPassagem(HIPOGLICEMIA, 3, {
+  "Glicemia seriada por 24 a 48 horas nos de risco; infusão de glicose enquanto em jejum.":
+    `${PCS}glicemia seriada por 24 a 48 horas nos de risco e infusão de glicose enquanto em jejum.`,
+  "Sulfonilureia ou insulina de ação longa: observação prolongada.":
+    "Sulfonilureia ou insulina de ação longa: orientar observação prolongada na passagem de cuidado.",
+});
+export const CRISE_ADRENAL_V3 = comPassagem(CRISE_ADRENAL, 3, {
+  "Vigiar glicemia, sódio, potássio, pressão e perfusão; UTI se instável.":
+    "Na passagem à clínica cirúrgica (ou à UTI, se instável), que acompanha o paciente depois da sala: orientar a vigilância de glicemia, sódio, potássio, pressão e perfusão.",
+});
+export const CONVULSAO_V3 = comPassagem(CONVULSAO, 3, {
+  "EEG se não recupera a consciência (crise não convulsiva) ou se recebeu bloqueador neuromuscular.":
+    "Na passagem de cuidado: orientar EEG se não recupera a consciência (crise não convulsiva) ou se recebeu bloqueador neuromuscular.",
+  "Causa: eletrólitos, glicemia, gasometria; neuroimagem conforme o quadro; UTI no estado de mal.":
+    "Causa: eletrólitos, glicemia e gasometria na sala; neuroimagem conforme o quadro e UTI no estado de mal, pela passagem de cuidado.",
+});
+export const DELIRIO_V3 = comPassagem(DELIRIO, 3, {
+  "Reavaliar cognição e déficits neurológicos; rastrear delirium nos dias seguintes no adulto de risco.":
+    "Reavaliar na sala a cognição e os déficits neurológicos; na passagem, orientar o rastreio de delirium nos dias seguintes no adulto de risco.",
+  "Observação prolongada ou UTI conforme a causa; registrar o episódio e o que foi dado.":
+    "Orientar na passagem a observação prolongada ou a UTI conforme a causa; registrar o episódio e o que foi dado.",
+});
+export const ECLAMPSIA_V3 = comPassagem(ECLAMPSIA, 3, {
+  "Manter o magnésio por 24 horas depois do parto ou da última convulsão; UTI ou unidade de cuidado materno.":
+    "Na passagem à obstetrícia (UTI ou unidade de cuidado materno), que acompanha a paciente depois da sala: manter o magnésio por 24 horas depois do parto ou da última convulsão.",
+  "Vigiar reflexos, frequência respiratória, consciência, diurese e função renal; magnésio sérico se oligúria.":
+    "Orientar na passagem a vigilância de reflexos, frequência respiratória, consciência, diurese e função renal; magnésio sérico se oligúria.",
+});
+export const EMBOLIA_AMNIOTICA_V3 = comPassagem(EMBOLIA_AMNIOTICA, 3, {
+  "UTI materna; coagulação, gasometria e ecocardiograma seriados.":
+    "Passagem à UTI materna, que acompanha a paciente depois da sala, com coagulação, gasometria e ecocardiograma seriados.",
+});
+export const BNM_RESIDUAL_V3 = comPassagem(BNM_RESIDUAL, 3, {
+  "Reavaliar depois da reversão (quantitativo) e de novo se piorar; vigiar a recurarização.":
+    "Reavaliar na sala depois da reversão (quantitativo) e de novo se piorar; na passagem, orientar a vigilância da recurarização.",
+});
+
 /**
  * Os rascunhos em validação. A prévia do responsável médico os abre no lugar
  * da versão publicada. Os sete respiratórios (09 a 15) e os quatro obstétricos
@@ -145,6 +236,25 @@ export const SAV_PEDIATRICO_V3 = comAvisoLidocaina(SAV_PEDIATRICO, 3);
  * materno de lá substitui a proposta anterior (magnésio igual ao da Eclâmpsia).
  */
 export const RASCUNHOS: readonly Protocolo[] = [
-  EMBOLIA_PULMONAR_V2, DEPRESSAO_OPIOIDES_V3, HIPOTERMIA_V3, ...RESPIRATORIO_V3, ...OBSTETRICIA_NEONATAL_V3,
-  ...METABOLICAS_APOIO_V3, PCR_FV_TV_V4, SAV_PEDIATRICO_V3,
+  ajustar(EMBOLIA_PULMONAR_V2, {
+    "Monitorização intensiva, anticoagulação e duração conforme causa e risco, avaliação de complicações, acompanhamento cardiopulmonar e plano de prevenção secundária.":
+      "Na passagem à UTI (ou à clínica cirúrgica), que acompanha o paciente depois da sala: orientar monitorização intensiva, anticoagulação e duração conforme causa e risco, avaliação de complicações, acompanhamento cardiopulmonar e plano de prevenção secundária.",
+  }),
+  ajustar(DEPRESSAO_OPIOIDES_V3, {
+    "Monitorização contínua (SpO2 e, se possível, capnografia) por mais tempo que a ação do opioide.":
+      "Na passagem à clínica cirúrgica (ou à unidade monitorizada), que acompanha o paciente depois da sala: orientar monitorização contínua (SpO2 e, se possível, capnografia) por mais tempo que a ação do opioide.",
+    "Opioide neuraxial (morfina) ou de ação longa: unidade monitorizada; rever a analgesia multimodal.":
+      "Opioide neuraxial (morfina) ou de ação longa: passagem à unidade monitorizada; rever a analgesia multimodal.",
+  }),
+  ajustar(HIPOTERMIA_V3, {
+    "Recuperação: medir a cada 15 minutos; alta da sala só com 36,0 °C ou mais, mantendo o ar forçado.":
+      "Na passagem à recuperação anestésica (ou à equipe que assume): orientar a medida da temperatura a cada 15 minutos e a alta só com 36,0 °C ou mais, mantendo o ar forçado.",
+    "Conferir a recuperação respiratória e neuromuscular; vigiar arritmias e coagulação.":
+      "Antes de sair da sala, conferir a recuperação respiratória e neuromuscular; na passagem, orientar a vigilância de arritmias e coagulação.",
+    "Acidental grave: UTI, eletrólitos, glicemia e coagulação seriados; registrar a temperatura inicial e o método de reaquecimento.":
+      "Acidental grave: passagem à UTI, com eletrólitos, glicemia e coagulação seriados; registrar a temperatura inicial e o método de reaquecimento.",
+  }),
+  ...RESPIRATORIO_V3, ...OBSTETRICIA_NEONATAL_V3, ...METABOLICAS_APOIO_V3, PCR_FV_TV_V4, SAV_PEDIATRICO_V3,
+  ISQUEMIA_V4, HEMORRAGIA_V4, ANAFILAXIA_V3, EMBOLIA_GASOSA_V4, BRADICARDIA_V4,
+  HIPOGLICEMIA_V3, CRISE_ADRENAL_V3, CONVULSAO_V3, DELIRIO_V3, ECLAMPSIA_V3, EMBOLIA_AMNIOTICA_V3, BNM_RESIDUAL_V3,
 ];

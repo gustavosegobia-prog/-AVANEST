@@ -195,7 +195,7 @@ function tituloDosVolumes(lista: VolumeDoProtocolo[]): string {
 }
 
 export function ProtocoloTela({
-  p, dados, set, daFicha, favorito, aoFavoritar, aoVoltar, aoBuscar, aoAbrirCalculadora, aoAbrirProtocolo,
+  p, dados, set, daFicha, favorito, aoFavoritar, aoVoltar, aoBuscar, aoAbrirProtocolo,
   disponivel = (x) => Boolean(acharProtocolo(x)),
 }: {
   p: Protocolo;
@@ -206,7 +206,6 @@ export function ProtocoloTela({
   aoFavoritar: () => void;
   aoVoltar: () => void;
   aoBuscar: () => void;
-  aoAbrirCalculadora?: () => void;
   /** "Criança: use o SAV pediátrico" abre o outro protocolo. */
   aoAbrirProtocolo?: (id: string) => void;
   /** O protocolo de destino está liberado para quem usa? Sem aprovação, só na prévia do responsável. */
@@ -257,7 +256,7 @@ export function ProtocoloTela({
       <p className={estilos.soImpressao}>
         AVANEST · Intercorrências anestésicas · impresso em {dataBr(new Date().toISOString())} · versão {p.versao}
         {aprovacao ? ` · aprovada por ${aprovacao.responsavel}, ${aprovacao.crm}, em ${dataDaAprovacao(aprovacao)}`
-          : publicado ? " · corrigido, aguardando validação médica" : " · sem aprovação registrada"}
+          : publicado ? " · rascunho em validação" : " · sem aprovação registrada"}
         <br />Paciente: {resumoDoPaciente(paciente)}{paciente.gestante ? " · gestante" : ""}
       </p>
 
@@ -272,13 +271,8 @@ export function ProtocoloTela({
           aria-label={favorito ? "Tirar dos favoritos" : "Favoritar"}>
           <Icone nome="estrela" tamanho={18} /><span className={estilos.someNoCelular}>{favorito ? "Favorito" : "Favoritar"}</span>
         </button>
-        {aoAbrirCalculadora && (
-          <button type="button" className={estilos.botao} onClick={aoAbrirCalculadora} aria-label="Calculadora de doses">
-            <Icone nome="calculadora" tamanho={18} /><span className={estilos.someNoCelular}>Calculadora</span>
-          </button>
-        )}
         <button type="button" className={estilos.botao} onClick={() => window.print()} aria-label="Imprimir ou salvar em PDF">
-          <Icone nome="imprimir" tamanho={18} />PDF
+          <Icone nome="imprimir" tamanho={18} /><span className={estilos.someNoCelular}>PDF</span>
         </button>
       </div>
 
@@ -293,20 +287,11 @@ export function ProtocoloTela({
             <span key={x} className={`${estilos.faixa} ${x === populacao ? estilos.faixaAtiva : ""}`}>{ROTULO_POPULACAO[x]}</span>
           ))}
         </div>
-        <div className={estilos.linhaSelos}>
-          <span>Versão {p.versao} · conteúdo de {dataBr(p.atualizadoEm)}</span>
-          {aprovacao ? (
-            <span>Aprovada por {aprovacao.responsavel}, {aprovacao.crm}, em {dataDaAprovacao(aprovacao)}</span>
-          ) : (
-            <span className={estilos.semAprovacao}>{publicado ? "Corrigido — aguardando validação médica" : "Versão nova, sem aprovação registrada"}</span>
-          )}
-        </div>
-        {!aprovacao && (
+        {/* A versão e a aprovação ficam no fim do cartão, junto das referências (pedido do responsável médico, 01/11/2026). */}
+        {!aprovacao && !publicado && (
           <p className={estilos.avisoValidacao}>
             <Icone nome="alerta" tamanho={17} />
-            <span>{publicado
-              ? <>Corrigido — aguardando validação médica. A versão {p.versao} é um rascunho que só o responsável médico vê; quem usa continua com a versão {publicado.versao}{aprovacaoDoPublicado ? `, aprovada em ${dataDaAprovacao(aprovacaoDoPublicado)}` : ", que também aguarda validação"}.</>
-              : "Em validação: só o responsável médico vê este protocolo. Não está liberado para uso clínico."}</span>
+            <span>Em validação: só o responsável médico vê este protocolo. Não está liberado para uso clínico.</span>
           </p>
         )}
       </header>
@@ -503,6 +488,12 @@ export function ProtocoloTela({
       <section id="referencias" className={`${estilos.secao} ${estilos.secaoReferencias}`} aria-labelledby="t-refs">
         <h3 id="t-refs">Referências</h3>
         {p.revisadoEm && <p className={estilos.dataRevisao}>Revisão científica de {dataBr(p.revisadoEm)}</p>}
+        <p className={estilos.dataRevisao}>
+          Versão {p.versao} · conteúdo de {dataBr(p.atualizadoEm)}
+          {aprovacao ? ` · aprovada por ${aprovacao.responsavel}, ${aprovacao.crm}, em ${dataDaAprovacao(aprovacao)}`
+            : publicado ? ` · rascunho em validação; quem usa continua com a versão ${publicado.versao}${aprovacaoDoPublicado ? `, aprovada em ${dataDaAprovacao(aprovacaoDoPublicado)}` : ""}`
+              : " · sem aprovação registrada"}
+        </p>
         <ol className={estilos.referencias}>
           {[...new Set([...p.referencias, ...(p.bibliografiaGeral === false ? [] : BIBLIOGRAFIA_GERAL)])].map((id) => {
             const r = acharReferencia(id);
