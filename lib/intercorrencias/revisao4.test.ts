@@ -132,15 +132,17 @@ test("integridade do texto: trechos essenciais e ações críticas em destaque",
   assert.match(r("hipercalemia").alertas![0], /Nunca administrar cálcio e bicarbonato misturados/);
 });
 
-test("LAST: emulsão lipídica por peso (14, 20, 40, 70 e 100 kg), em mL/kg, criança pendente", () => {
+test("LAST: emulsão lipídica por peso (14, 20, 40, 70 e 100 kg), em mL/kg; criança com limite de 10 mL/kg (SAESP)", () => {
   const last = r("toxicidade-anestesico-local");
   const servem = (kg: number) => last.volumes.filter((v) => {
     const pop = populacaoDe(PAC[kg])!;
     return volumeServe(v, pop, PAC[kg].pesoKg);
   }).map((v) => [v.id, calcularVolume(v, PAC[kg]).texto]);
-  // Criança (14 e 20 kg): nenhum cálculo de lipídio — pendente de homologação.
-  assert.deepEqual(servem(14), []);
-  assert.deepEqual(servem(20), []);
+  // Criança (14 e 20 kg): o mesmo regime abaixo de 70 kg e o limite de 10 mL/kg (Tratado SAESP), decisão do responsável em 01/11/2026.
+  assert.deepEqual(servem(14), [["lipidio-bolus", "21 mL"], ["lipidio-infusao-min", "3,5 mL/min"], ["lipidio-infusao", "210 mL/h"],
+    ["lipidio-infusao-dobrada", "420 mL/h"], ["lipidio-teto-ped", "140 mL"]]);
+  assert.deepEqual(servem(20), [["lipidio-bolus", "30 mL"], ["lipidio-infusao-min", "5 mL/min"], ["lipidio-infusao", "300 mL/h"],
+    ["lipidio-infusao-dobrada", "600 mL/h"], ["lipidio-teto-ped", "200 mL"]]);
   // 40 kg: regime por kg — bolus 60 mL; 10 mL/min = 600 mL/h; dobrada 1200 mL/h; limite 480 mL.
   assert.deepEqual(servem(40), [["lipidio-bolus", "60 mL"], ["lipidio-infusao-min", "10 mL/min"], ["lipidio-infusao", "600 mL/h"],
     ["lipidio-infusao-dobrada", "1200 mL/h"], ["lipidio-teto", "480 mL"]]);
@@ -155,21 +157,27 @@ test("LAST: emulsão lipídica por peso (14, 20, 40, 70 e 100 kg), em mL/kg, cri
   // Sempre em mL/kg, nunca em mg/kg.
   for (const v of last.volumes) {
     assert.doesNotMatch(`${v.indicacao.replace("nunca em mg/kg", "")} ${calcularVolume(v, PAC[40]).base}`, /mg\/kg/, v.id);
-    assert.equal(v.populacao, "adulto", v.id);
   }
+  // Um limite por faixa, sem alternar: adulto 12 mL/kg, criança 10 mL/kg.
+  assert.deepEqual(last.volumes.filter((v) => /teto/.test(v.id)).map((v) => [v.id, v.populacao, v.porKg!.min, v.referencias[0]]),
+    [["lipidio-teto", "adulto", 12, "asra-2020-last"], ["lipidio-teto-ped", "pediatrico", 10, "saesp-tratado"]]);
   assert.match(calcularVolume(volDe(last, "lipidio-teto"), PAC[40]).base, /^12 mL\/kg$/);
   assert.match(volDe(last, "lipidio-teto").indicacao, /nunca em mg\/kg/);
   // A divergência dos limites fica registrada, sem alternar automaticamente.
   const d = last.divergencias.find((x) => /emulsão lipídica/.test(x.tema))!;
   assert.deepEqual(d.posicoes.map((x) => x.referencia), ["manual-20", "asra-2020-last", "saesp-tratado"]);
-  assert.match(d.escolha, /Criança: calculadora pendente de homologação/);
+  assert.match(d.escolha, /Criança: 10 mL\/kg \(Tratado SAESP\), política única definida pelo responsável médico/);
   assert.ok(!acharProtocolo("toxicidade-anestesico-local")!.volumes.every((v) => v.populacao === "adulto"), "a versão 2 publicada não mudou");
 });
 
 test("LAST: volume acumulado de lipídio contra 12 mL/kg, e adrenalina até 1 mcg/kg", () => {
   assert.equal(sugestaoLipidio(null), null);
-  assert.deepEqual(sugestaoLipidio(40), { regime: "abaixo-de-70", bolusMl: 60, limiteMl: 480,
+  assert.deepEqual(sugestaoLipidio(40), { regime: "abaixo-de-70", bolusMl: 60, limiteMl: 480, limiteRotulo: "12 mL/kg (ASRA)",
     taxas: [{ rotulo: "0,25 mL/kg/min", mlH: 600 }, { rotulo: "Dobrada: 0,5 mL/kg/min", mlH: 1200 }] });
+  // Criança de 20 kg: o mesmo regime, com o limite de 10 mL/kg (200 mL).
+  assert.deepEqual(sugestaoLipidio(20, true), { regime: "abaixo-de-70", bolusMl: 30, limiteMl: 200, limiteRotulo: "10 mL/kg (Tratado SAESP)",
+    taxas: [{ rotulo: "0,25 mL/kg/min", mlH: 300 }, { rotulo: "Dobrada: 0,5 mL/kg/min", mlH: 600 }] });
+  assert.equal(sugestaoLipidio(14, true)!.limiteMl, 140);
   assert.equal(sugestaoLipidio(70)!.regime, "a-partir-de-70");
   assert.equal(sugestaoLipidio(70)!.bolusMl, 100);
   assert.equal(sugestaoLipidio(100)!.limiteMl, 1200);
@@ -178,7 +186,10 @@ test("LAST: volume acumulado de lipídio contra 12 mL/kg, e adrenalina até 1 mc
   const e = lipidioAcumulado({ bolusMl: 200, infundidoMl: 0, taxaMlH: 1000, inicioMs: t0, agoraMs: t0 + 15 * 60_000, limiteMl: 840 });
   assert.equal(Math.round(e.totalMl), 450);
   assert.equal(e.nivel, "info");
-  assert.match(e.mensagem, /^Acumulado: 450 de 840 mL \(12 mL\/kg\); restam 390 mL, alcançados às 10:38 nesta taxa\.$/);
+  assert.match(e.mensagem, /^Acumulado: 450 de 840 mL — limite de 12 mL\/kg \(ASRA\); restam 390 mL, alcançados às 10:38 nesta taxa\.$/);
+  const crianca = lipidioAcumulado({ bolusMl: 60, infundidoMl: 150, taxaMlH: 0, inicioMs: null, agoraMs: t0, limiteMl: 200, limiteRotulo: "10 mL/kg (Tratado SAESP)" });
+  assert.equal(crianca.nivel, "perigo");
+  assert.match(crianca.mensagem, /^Limite acumulado atingido: 210 de 200 mL — 10 mL\/kg \(Tratado SAESP\)/);
   // Perto do limite, atenção; acima, perigo.
   assert.equal(lipidioAcumulado({ bolusMl: 700, infundidoMl: 0, taxaMlH: 0, inicioMs: null, agoraMs: t0, limiteMl: 840 }).nivel, "atencao");
   const passou = lipidioAcumulado({ bolusMl: 300, infundidoMl: 600, taxaMlH: 0, inicioMs: null, agoraMs: t0, limiteMl: 840 });
@@ -350,8 +361,10 @@ test("tela: volumes pelo peso, frascos do dantroleno e ferramenta do lipídio co
   assert.match(tela, /estilos\.frascos\} \$\{precisaConfirmar \? estilos\.soImpressao : ""\}/, "frascos só depois de conferir a concentração");
   const relogios = readFileSync(new URL("../../components/intercorrencias/relogios.tsx", import.meta.url), "utf8");
   for (const chave of ["lipidio:bolus", "lipidio:infundido", "lipidio:taxa", "lipidio:inicio", "cronometro:insulina"]) assert.ok(relogios.includes(`"${chave}"`), chave);
-  assert.match(relogios, /populacao === "pediatrico" \|\| populacao === "neonatal"/);
-  assert.match(relogios, /pendente de homologação/);
+  assert.match(relogios, /const crianca = populacao === "pediatrico" \|\| populacao === "neonatal";/);
+  assert.match(relogios, /sugestaoLipidio\(paciente\.pesoKg, crianca\)/);
+  assert.match(relogios, /limiteRotulo: sugestao\.limiteRotulo/);
+  assert.doesNotMatch(relogios, /pendente de homologação/);
   assert.match(relogios, /window\.confirm\("Zerar o volume acumulado de emulsão lipídica\?"\)/);
   assert.equal(r("toxicidade-anestesico-local").ferramenta, "lipidio-acumulado");
 });

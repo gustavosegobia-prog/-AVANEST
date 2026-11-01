@@ -13,8 +13,9 @@
  * aprovada em 15/10/2026. Nenhuma aprovação aqui.
  *
  * Calculadoras: o lipídio pelo regime do peso (abaixo de 70 kg e a partir de
- * 70 kg), com o volume acumulado contra 12 mL/kg; na criança, pendente de
- * homologação. A hipercalemia sem cálculo pediátrico até a validação. O
+ * 70 kg), com o volume acumulado contra o limite da faixa — adulto 12 mL/kg
+ * (ASRA), criança 10 mL/kg (Tratado SAESP), política única escolhida pelo
+ * responsável médico em 01/11/2026. A hipercalemia sem cálculo pediátrico até a validação. O
  * dantroleno com os frascos de cada formulação, sem misturar preparos.
  */
 
@@ -38,8 +39,8 @@ function dose(p: Protocolo, id: string, mudancas: Partial<DoseDoProtocolo> = {})
 const LIPIDIO = "Emulsão lipídica 20%";
 const ABAIXO_70 = { abaixoDe: 70 };
 const A_PARTIR_70 = { aPartirDe: 70 };
-const lipidio = (v: Omit<VolumeDoProtocolo, "grupo" | "populacao" | "referencias">): VolumeDoProtocolo => ({
-  grupo: LIPIDIO, populacao: "adulto", referencias: ["asra-2020-last"], ...v,
+const lipidio = (v: Omit<VolumeDoProtocolo, "grupo" | "populacao" | "referencias"> & Partial<Pick<VolumeDoProtocolo, "populacao" | "referencias">>): VolumeDoProtocolo => ({
+  grupo: LIPIDIO, populacao: "todas", referencias: ["asra-2020-last"], ...v,
 });
 
 export const TOXICIDADE_AL_V3: Protocolo = {
@@ -83,7 +84,7 @@ export const TOXICIDADE_AL_V3: Protocolo = {
     "Adrenalina na LAST: dose inicial de até 1 mcg/kg, titulada. Não programar o bolus de 1 mg da PCR comum como primeira dose.",
     "Evitar vasopressina, betabloqueadores, bloqueadores dos canais de cálcio e novos anestésicos locais.",
     "Dose acumulada de emulsão lipídica em mL/kg, nunca em mg/kg.",
-    "Criança: calculadora da emulsão lipídica pendente de homologação (ASRA 12 mL/kg × Tratado SAESP 10 mL/kg). Não alternar limites entre fontes.",
+    "Limite acumulado da emulsão lipídica: adulto 12 mL/kg (ASRA); criança 10 mL/kg (Tratado SAESP). O limite segue a faixa do paciente e não muda durante o cálculo.",
   ],
   medicamentos: [
     dose(TOXICIDADE_AL, "adrenalina-last", {
@@ -111,12 +112,14 @@ export const TOXICIDADE_AL_V3: Protocolo = {
       fixo: { min: 100 }, faixaDePeso: A_PARTIR_70, repeticao: "Instabilidade persistente: considerar novo bolus." }),
     lipidio({ id: "lipidio-infusao-70", rotulo: "Infusão — 70 kg ou mais", indicacao: "Cerca de 250 mL em 15 a 20 minutos (750 a 1.000 mL/h)",
       fixo: { min: 250 }, faixaDePeso: A_PARTIR_70, repeticao: "Instabilidade persistente: aumentar a infusão, controlando o total administrado." }),
-    lipidio({ id: "lipidio-teto", rotulo: "Limite acumulado adotado (ASRA)", indicacao: "12 mL/kg, somando bolus e infusões — em mL/kg, nunca em mg/kg",
-      porKg: { min: 12 } }),
+    lipidio({ id: "lipidio-teto", rotulo: "Limite acumulado adotado — adulto (ASRA)", indicacao: "12 mL/kg, somando bolus e infusões — em mL/kg, nunca em mg/kg",
+      porKg: { min: 12 }, populacao: "adulto" }),
+    lipidio({ id: "lipidio-teto-ped", rotulo: "Limite acumulado adotado — criança (Tratado SAESP)", indicacao: "10 mL/kg, somando bolus e infusões — em mL/kg, nunca em mg/kg",
+      porKg: { min: 10 }, populacao: "pediatrico", referencias: ["saesp-tratado"] }),
   ],
   notasDeDose: [
-    "Emulsão lipídica: adulto pelo regime ASRA do peso — abaixo de 70 kg, por kg; a partir de 70 kg, o esquema simplificado. Limite acumulado adotado: 12 mL/kg (ASRA).",
-    "Criança: calculadora da emulsão pendente de homologação — o Tratado SAESP usa 10 mL/kg num regime e a ASRA, 12 mL/kg. Sem cálculo automático até uma política institucional única.",
+    "Emulsão lipídica pelo regime ASRA do peso: abaixo de 70 kg, por kg (adulto e criança); a partir de 70 kg, o esquema simplificado.",
+    "Limite acumulado adotado: adulto, 12 mL/kg (ASRA); criança, 10 mL/kg (Tratado SAESP) — política única definida pelo responsável médico em 01/11/2026.",
     "Não apresentar tabela de doses máximas de anestésicos locais como garantia de segurança: a toxicidade depende da dose acumulada, concentração, local de administração, absorção sistêmica, vascularização, idade e comorbidades.",
     "A tabela de doses máximas do Manual traz uma linha duplicada para a ropivacaína, com valores divergentes: não usar sem reconstrução e validação farmacológica.",
   ],
@@ -136,7 +139,7 @@ export const TOXICIDADE_AL_V3: Protocolo = {
         { texto: "12 mL/kg.", referencia: "asra-2020-last" },
         { texto: "Num regime pediátrico, 10 mL/kg.", referencia: "saesp-tratado" },
       ],
-      escolha: "Adulto: 12 mL/kg (ASRA), sempre em mL/kg. Criança: calculadora pendente de homologação até uma política institucional única; não alternar limites entre fontes.",
+      escolha: "Adulto: 12 mL/kg (ASRA). Criança: 10 mL/kg (Tratado SAESP), política única definida pelo responsável médico em 01/11/2026. Sempre em mL/kg; o limite segue a faixa do paciente e não muda durante o cálculo.",
     },
   ],
   referencias: ["asra-2020-last", "saesp-tratado", "manual-20", "qrh-3-10"],

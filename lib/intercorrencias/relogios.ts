@@ -129,28 +129,40 @@ export function alvoSpO2(segundos: number): { minuto: number; faixa: string } | 
 // ---------------------------------------------------------------------------
 // Emulsão lipídica 20% na toxicidade por anestésico local (ASRA 2020)
 // ---------------------------------------------------------------------------
-/** O limite acumulado adotado: 12 mL/kg (ASRA). Só no adulto; na criança, pendente de homologação. */
+/**
+ * O limite acumulado adotado: adulto, 12 mL/kg (ASRA); criança, 10 mL/kg
+ * (Tratado SAESP) — política única definida pelo responsável médico em
+ * 01/11/2026. O limite segue a faixa do paciente e não muda durante o cálculo.
+ */
 export const LIPIDIO_LIMITE_ML_KG = 12;
+export const LIPIDIO_LIMITE_CRIANCA_ML_KG = 10;
 
 export type SugestaoLipidio = {
   regime: "abaixo-de-70" | "a-partir-de-70";
   bolusMl: number;
   taxas: Array<{ rotulo: string; mlH: number }>;
   limiteMl: number;
+  /** "12 mL/kg (ASRA)" ou "10 mL/kg (Tratado SAESP)". */
+  limiteRotulo: string;
 };
 
-/** O regime pelo peso: abaixo de 70 kg, por kg; a partir de 70 kg, o simplificado da ASRA. Sem peso, nulo. */
-export function sugestaoLipidio(pesoKg: number | null): SugestaoLipidio | null {
+/**
+ * O regime pelo peso: abaixo de 70 kg, por kg; a partir de 70 kg, o
+ * simplificado da ASRA. O limite pela faixa: criança 10 mL/kg, adulto 12 mL/kg.
+ * Sem peso, nulo.
+ */
+export function sugestaoLipidio(pesoKg: number | null, crianca = false): SugestaoLipidio | null {
   if (pesoKg === null || !Number.isFinite(pesoKg) || pesoKg <= 0) return null;
-  const limiteMl = LIPIDIO_LIMITE_ML_KG * pesoKg;
+  const limiteMl = (crianca ? LIPIDIO_LIMITE_CRIANCA_ML_KG : LIPIDIO_LIMITE_ML_KG) * pesoKg;
+  const limiteRotulo = crianca ? "10 mL/kg (Tratado SAESP)" : "12 mL/kg (ASRA)";
   if (pesoKg < 70) {
     return {
-      regime: "abaixo-de-70", bolusMl: 1.5 * pesoKg, limiteMl,
+      regime: "abaixo-de-70", bolusMl: 1.5 * pesoKg, limiteMl, limiteRotulo,
       taxas: [{ rotulo: "0,25 mL/kg/min", mlH: 15 * pesoKg }, { rotulo: "Dobrada: 0,5 mL/kg/min", mlH: 30 * pesoKg }],
     };
   }
   return {
-    regime: "a-partir-de-70", bolusMl: 100, limiteMl,
+    regime: "a-partir-de-70", bolusMl: 100, limiteMl, limiteRotulo,
     taxas: [{ rotulo: "250 mL em 15 min", mlH: 1000 }, { rotulo: "250 mL em 20 min", mlH: 750 }],
   };
 }
@@ -169,7 +181,9 @@ export type EstadoLipidio = {
 /** Bolus somados + infusões já encerradas + a infusão em curso, contra o limite. */
 export function lipidioAcumulado(e: {
   bolusMl: number; infundidoMl: number; taxaMlH: number; inicioMs: number | null; agoraMs: number; limiteMl: number;
+  limiteRotulo?: string;
 }): EstadoLipidio {
+  const rotulo = e.limiteRotulo ?? "12 mL/kg (ASRA)";
   const corre = e.inicioMs !== null && e.taxaMlH > 0;
   const infusaoAtualMl = corre ? (e.taxaMlH * Math.max(0, e.agoraMs - e.inicioMs!)) / 3_600_000 : 0;
   const totalMl = e.bolusMl + e.infundidoMl + infusaoAtualMl;
@@ -178,11 +192,11 @@ export function lipidioAcumulado(e: {
   const total = Math.round(totalMl), limite = Math.round(e.limiteMl);
   if (restanteMl <= 0) {
     return { infusaoAtualMl, totalMl, restanteMl, atingeEmMs, nivel: "perigo",
-      mensagem: `Limite acumulado atingido: ${total} de ${limite} mL (12 mL/kg). Parar ou reavaliar com o responsável antes de continuar.` };
+      mensagem: `Limite acumulado atingido: ${total} de ${limite} mL — ${rotulo}. Parar ou reavaliar com o responsável antes de continuar.` };
   }
   return {
     infusaoAtualMl, totalMl, restanteMl, atingeEmMs, nivel: totalMl >= 0.8 * e.limiteMl ? "atencao" : "info",
-    mensagem: `Acumulado: ${total} de ${limite} mL (12 mL/kg); restam ${Math.round(restanteMl)} mL${atingeEmMs ? `, alcançados às ${horaDe(atingeEmMs)} nesta taxa` : ""}.`,
+    mensagem: `Acumulado: ${total} de ${limite} mL — limite de ${rotulo}; restam ${Math.round(restanteMl)} mL${atingeEmMs ? `, alcançados às ${horaDe(atingeEmMs)} nesta taxa` : ""}.`,
   };
 }
 
