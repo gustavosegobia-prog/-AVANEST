@@ -22,6 +22,7 @@ import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
 import { DIAS_DE_TESTE } from "@/lib/teste-gratis";
+import { fraseDoPrecoDeEntrada, precoDeEntrada } from "@/lib/preco-de-entrada";
 import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 import { RodapePublico } from "@/components/rodape-publico";
 
@@ -145,7 +146,14 @@ const MODULOS: Modulo[] = [
   },
 ];
 
-export default function HomePage() {
+// A capa continua estática: o preço de entrada (lib/preco-de-entrada.ts) vem
+// da tabela de planos pelo cache de uma hora, e a página é refeita no mesmo
+// ritmo. O número aqui precisa ser literal — o Next lê esta linha sem rodar o
+// código —, e o teste confere que ele é o mesmo da consulta.
+export const revalidate = 3600;
+
+export default async function HomePage() {
+  const precoDosPlanos = fraseDoPrecoDeEntrada(await precoDeEntrada());
   const whatsappUrl =
     "https://wa.me/5541997870810?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20conversa%20de%2015%20minutos%20sobre%20o%20AVANEST.";
 
@@ -219,6 +227,10 @@ export default function HomePage() {
               <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=site`}>Começar 15 dias grátis</a>
               <a className="avnSecondary" href="/planos">Conhecer os planos</a>
             </div>
+            {/* O PREÇO DE ENTRADA, logo abaixo do botão: quem decide se testa quer
+                saber, antes, a ordem de grandeza. Sai da tabela de planos; se
+                ela não responder, a linha não aparece. */}
+            {precoDosPlanos && <p className="avnOfertaPreco"><a href="/planos">{precoDosPlanos}</a></p>}
             <p className="avnOfertaApoio">Primeira cobrança só depois dos 15 dias. Cancele antes e não paga nada.</p>
             <p className="avnAjuda">
               Precisa de ajuda? <a href={whatsappUrl} target="_blank" rel="noreferrer">Fale com nossa equipe pelo WhatsApp</a>.

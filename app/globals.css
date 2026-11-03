@@ -6356,6 +6356,10 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .avnOferta{margin-top:36px;max-width:620px}
 .avnOferta .avnActions{margin:0}
 .avnOfertaApoio{margin:12px 0 0;color:#c5d4df;font-size:15px}
+.avnOfertaPreco{margin:14px 0 0;font-size:16px;font-weight:700}
+.avnOfertaPreco a{color:#fff;text-decoration:none;border-bottom:1px solid rgba(67,200,184,.55);padding-bottom:1px}
+.avnOfertaPreco a:hover,.avnOfertaPreco a:focus-visible{border-bottom-color:#43c8b8}
+.avnOfertaPreco+.avnOfertaApoio{margin-top:6px}
 .avnAjuda{margin:16px 0 0;color:#9dbdd6;font-size:14px}
 .avnAjuda a{color:#fff;font-weight:700;text-decoration:underline;text-decoration-color:#43c8b8;text-underline-offset:3px}
 /* A oferta cabe na primeira tela de um notebook comum (1440×900 e 1366×768).
@@ -8188,6 +8192,7 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
   .avnOferta{margin-top:44px;max-width:720px}
   .avnCapa .avnPrimary,.avnCapa .avnSecondary{min-height:58px;padding:0 32px;border-radius:14px;font-size:19px}
   .avnOfertaApoio{font-size:17px}
+  .avnOfertaPreco{font-size:18px}
   .avnAjuda{font-size:16px}
   .avnTelaCelular{width:clamp(210px,13vw,260px)}
   .avnTelaLegenda{font-size:14.5px}
