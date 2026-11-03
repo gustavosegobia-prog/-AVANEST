@@ -8,6 +8,7 @@ import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
 import { Icone, type NomeDoIcone } from "@/components/icone";
 import {
   cssDasCores, faixa, faturamentoEmLista, folhaDeFaturamento, folhaDeFechamento, folhaDePlantoesPorLocal,
+  folhaDoRelatorioDaEscala,
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, filtroDeHospital, iniciais, montarICS,
   mesEmMaiusculas, ordemDentroDoDia,
@@ -861,89 +862,6 @@ function guardarModoDaFolha(cores: boolean) {
   for (const avisar of ouvintesDoModo) avisar();
 }
 
-/** Quanto o dedo precisa andar para a gaveta abrir, e a largura dela. */
-const ARRASTO_ABRE = 44;
-const ARRASTO_LARGURA = 92;
-
-/**
- * A linha que abre uma gaveta vermelha quando se arrasta para a esquerda.
- *
- * O apagar saiu de botão fixo por um motivo de uso, não de estética: a lista é
- * lida no celular entre um caso e outro, e o que se faz nela todo mês é marcar
- * que o plantão foi pago — não apagar. Botão vermelho parado ao lado do polegar
- * na coluna que mais se toca é um erro esperando acontecer; o lugar dele é
- * atrás de um gesto que ninguém faz sem querer.
- *
- * A gaveta ABRE, e não apaga sozinha ao soltar. Arrastar e ver sumir é o
- * bastante para perder um plantão num ônibus chacoalhando — aqui o gesto revela
- * o botão, e apagar continua sendo um toque deliberado com confirmação.
- *
- * O gesto vertical vence sempre que for maior que o horizontal: sem essa regra,
- * rolar a lista com o polegar meio torto abre gaveta em cada linha por onde o
- * dedo passa.
- *
- * E existe um caminho sem gesto nenhum. Arrastar não é anunciado por leitor de
- * tela e não existe no teclado: o mesmo botão está aqui o tempo todo, fora da
- * vista, e aparece inteiro assim que recebe foco. Quem navega por Tab apaga do
- * mesmo jeito que quem arrasta.
- */
-function LinhaComGaveta({
-  podeApagar, onApagar, descricao, children,
-}: {
-  podeApagar: boolean;
-  onApagar: () => void;
-  descricao: string;
-  children: React.ReactNode;
-}) {
-  const [dx, setDx] = useState(0);
-  const inicio = useRef<{ x: number; y: number } | null>(null);
-  // Enquanto o dedo está na tela o deslocamento acompanha; ao soltar, ele salta
-  // para 0 ou para a largura da gaveta. A transição só existe no salto — ligada
-  // durante o arrasto, a linha ficaria atrasada em relação ao dedo.
-  const [arrastando, setArrastando] = useState(false);
-
-  if (!podeApagar) return <>{children}</>;
-
-  return (
-    <div className="plantaoArrasta">
-      <div
-        className="plantaoArrastaCorpo"
-        style={{ transform: `translateX(${dx}px)`, transition: arrastando ? "none" : undefined }}
-        onTouchStart={(e) => {
-          const t = e.touches[0];
-          inicio.current = { x: t.clientX, y: t.clientY };
-          setArrastando(true);
-        }}
-        onTouchMove={(e) => {
-          if (!inicio.current) return;
-          const t = e.touches[0];
-          const andou = t.clientX - inicio.current.x;
-          // Rolagem vertical vence. Sem isto, descer a lista com o polegar
-          // torto abre gaveta em cada linha por onde o dedo passa.
-          if (Math.abs(t.clientY - inicio.current.y) > Math.abs(andou)) { setDx(0); return; }
-          // Só para a esquerda, e nunca além da gaveta: puxar para a direita
-          // não revela nada e arrastar 300px não deve descolar a linha da tela.
-          setDx(Math.max(-ARRASTO_LARGURA, Math.min(0, andou)));
-        }}
-        onTouchEnd={() => {
-          setArrastando(false);
-          setDx((d) => (d < -ARRASTO_ABRE ? -ARRASTO_LARGURA : 0));
-          inicio.current = null;
-        }}
-      >
-        {children}
-      </div>
-      <button
-        type="button" className="plantaoGaveta"
-        aria-label={`Apagar plantão de ${descricao}`}
-        onClick={() => { setDx(0); onApagar(); }}
-      >
-        Apagar
-      </button>
-    </div>
-  );
-}
-
 export function Plantoes({
   perfilId, institutionId, locais, ehAdmin, colegas, escalaveis, semCRM = [],
   localAtivoId = null, abrirEm = null, plantaoEmFoco = null,
@@ -1548,6 +1466,32 @@ export function Plantoes({
   }
 
   /**
+   * O valor digitado num plantão seu — no painel do dia, que é onde ele se
+   * muda desde 03/11/2026 (a lista do mês virou relatório).
+   *
+   * Apagar o campo não grava nada: "não sei" não substitui um valor que alguém
+   * já informou. Gravar, mesmo zero, marca o valor como informado. E, se
+   * houver outros do mesmo hospital zerados, oferece repetir — só com valor
+   * positivo: repetir zero não preenche nada.
+   */
+  function gravarValor(p: Plantao, digitado: string) {
+    const texto = digitado.trim();
+    if (!texto) return;
+    const v = Number(texto.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+    if (!Number.isFinite(v) || (v === Number(p.valor) && !valorAusente(p))) return;
+    void atualizar(p.id, { valor: v, valor_informado: true });
+    const outros = v > 0 ? zeradosNoMesmoLocal(meus, { ...p, valor: v }) : [];
+    setOfertaDeValor(outros.length
+      ? { origemId: p.id, valor: v, ids: outros.map((o) => o.id), local: ondeFica(p, localPorId, "") }
+      : null);
+  }
+
+  /** A execução — o que aconteceu com o turno. Mudar a execução desfaz um "pago" antigo. */
+  function mudarExecucao(p: Plantao, situacao: string) {
+    void atualizar(p.id, { situacao, pago_em: null });
+  }
+
+  /**
    * Repete o valor nos plantões zerados do mesmo hospital.
    *
    * SÓ OS ZERADOS — `zeradosNoMesmoLocal` já os separou, e a condição vai junto
@@ -1886,6 +1830,29 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
   const filtrando = filtrosAtivos(filtrosEfetivos);
   const visiveis = filtrarEscala(doPeriodo, filtrosEfetivos, agora, perfilId);
   const contagemVisivel = contagem(visiveis);
+  // A oferta de repetir o valor vale enquanto o plantão de origem estiver na
+  // tela (trocar de mês a desfaz), e aparece no painel do dia quando ele está aberto.
+  const ofertaValida = Boolean(ofertaDeValor && meus.some((p) => p.id === ofertaDeValor.origemId));
+  const ofertaNoDiaAberto = ofertaValida && diaAberto != null
+    && plantoes.some((p) => p.id === ofertaDeValor!.origemId && p.data === diaAberto);
+  const ofertaDeRepetir = ofertaValida && ofertaDeValor ? (
+    <div className="repetirValor" role="status">
+      <span>
+        <strong>{perguntaDeRepetir(ofertaDeValor.ids.length, ofertaDeValor.local)}</strong>
+        <small>Os que já têm valor digitado não são alterados.</small>
+      </span>
+      <div>
+        <button type="button" className="primaryClinical compact"
+          disabled={aplicandoValor} onClick={() => void aplicarValorNoLocal()}>
+          {aplicandoValor ? "Repetindo…" : botaoDeRepetir(ofertaDeValor.valor)}
+        </button>
+        <button type="button" className="outlineClinical compact"
+          disabled={aplicandoValor} onClick={() => setOfertaDeValor(null)}>
+          Agora não
+        </button>
+      </div>
+    </div>
+  ) : null;
   const meusVisiveis = visiveis.filter((p) => p.perfil_id === perfilId);
   const dinheiroVisivel = (() => {
     const total = meusVisiveis.reduce((s, p) => s + Number(p.valor), 0);
@@ -2177,6 +2144,36 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       MESES[m - 1], ano, new Date(),
     );
     if (!imprimirFolha(titulo, corpo, "portrait")) {
+      setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
+    }
+  }
+
+  /**
+   * O relatório da lista: o que ela mostra agora — o mesmo período e os mesmos
+   * filtros —, para conferir o mês no papel. Valor e pagamento do colega não
+   * saem, a mesma regra da tela.
+   */
+  function imprimirRelatorio() {
+    setErro(""); setAviso("");
+    if (visiveis.length === 0) { setErro("Não há plantão nesta lista para imprimir."); return; }
+    const titulo = visao === "semana"
+      ? `${escopo === "grupo" ? "Escala da equipe" : "Meus plantões"} — semana de ${semanaEscrita(semana)}`
+      : `${escopo === "grupo" ? "Escala da equipe" : "Meus plantões"} — ${mesEmMaiusculas(MESES[m - 1])} de ${ano}`;
+    const folha = folhaDoRelatorioDaEscala(titulo, visiveis.map((p) => {
+      const meu = p.perfil_id === perfilId;
+      return {
+        dia: `${diaDaSemanaCurto(p.data)} ${dataCurta(p.data)}`,
+        horario: horarioEscrito(p), horas: Number(p.horas),
+        quem: escopo === "grupo" ? nomePorId.get(p.perfil_id) ?? "Profissional" : undefined,
+        onde: ondeFica(p, localPorId, ""),
+        valor: meu ? Number(p.valor) : null,
+        valorAusente: meu && valorAusente(p),
+        execucao: situacaoDaExecucao(p).rotulo,
+        confirmacao: situacaoDaConfirmacao(p, agora).rotulo,
+        pagamento: meu ? situacaoDoPagamento(p).rotulo : null,
+      };
+    }), new Date());
+    if (!imprimirFolha(folha.titulo, folha.corpo, "landscape")) {
       setErro("O navegador bloqueou a janela de impressão. Libere as janelas pop-up para este site e tente de novo.");
     }
   }
@@ -2485,24 +2482,9 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
           condição confere se o plantão de origem ainda está na lista — sem
           isso, os ids guardados apontariam para um mês que não está mais na
           tela, e o botão mexeria em plantões invisíveis. */}
-      {ofertaDeValor && meus.some((p) => p.id === ofertaDeValor.origemId) && (
-        <div className="repetirValor" role="status">
-          <span>
-            <strong>{perguntaDeRepetir(ofertaDeValor.ids.length, ofertaDeValor.local)}</strong>
-            <small>Os que já têm valor digitado não são alterados.</small>
-          </span>
-          <div>
-            <button type="button" className="primaryClinical compact"
-              disabled={aplicandoValor} onClick={() => void aplicarValorNoLocal()}>
-              {aplicandoValor ? "Repetindo…" : botaoDeRepetir(ofertaDeValor.valor)}
-            </button>
-            <button type="button" className="outlineClinical compact"
-              disabled={aplicandoValor} onClick={() => setOfertaDeValor(null)}>
-              Agora não
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Com o dia do plantão aberto, a oferta mora dentro do painel do dia,
+          onde o valor acabou de ser digitado; senão, aqui no alto. */}
+      {ofertaValida && !ofertaNoDiaAberto && ofertaDeRepetir}
       {recado && <p className="plantaoRecado" role="status">{recado}</p>}
 
       {/* O olho esconde TUDO, e não só o dinheiro: quantos plantões alguém faz
@@ -3046,6 +3028,8 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
               onLancar={lancar} onLancarAvulso={(d, p) => setLancando({ dia: d, para: p })}
               onRemover={remover} onPassar={(p) => setPedindoTroca(p)}
               onConfirmar={(p) => void confirmar(p)}
+              onValor={gravarValor} onExecucao={mudarExecucao}
+              repetir={ofertaNoDiaAberto ? ofertaDeRepetir : null}
               onFechar={() => setDiaAberto(null)}
             />
           )}
@@ -3063,8 +3047,13 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
               informar. O VALOR NÃO VAI, e é de propósito: existe o olho que
               esconde valores nesta tela, e um total no cabeçalho passaria por
               cima dele justamente quando alguém está olhando por cima do ombro. */}
+          {/* O RELATÓRIO DO PERÍODO: para conferir e imprimir, e fechado ao
+              entrar (pedido de 03/11/2026). A chave mudou junto: a escolha
+              guardada de "aberta", de quando a lista era o lugar de editar,
+              não vale para o relatório. */}
           <PainelRecolhivel
-            chave={`escala-lista-${escopo}`}
+            chave={`escala-relatorio-${escopo}`}
+            abrePadrao={false}
             titulo={visao === "semana"
               ? `${escopo === "grupo" ? "Escala da equipe" : "Meus plantões"} na semana de ${semanaEscrita(semana)}`
               : escopo === "grupo"
@@ -3078,6 +3067,12 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
               : undefined}
           >
             <div ref={listaRef} className="escalaListaAncora">
+            {visiveis.length > 0 && (
+              <div className="escalaRelatorioBarra">
+                <span>Para conferir e imprimir. O valor e a execução se mudam no dia: clique no dia do calendário ou em “Abrir o dia”.</span>
+                <button type="button" className="outlineClinical" onClick={imprimirRelatorio}>Imprimir lista</button>
+              </div>
+            )}
             {/* Os nomes das colunas, uma vez só no alto.
                 Antes cada linha carregava "Valor" e "Situação" em cima do
                 próprio campo: quinze plantões viravam quinze repetições do
@@ -3090,7 +3085,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 <span>{escopo === "grupo" ? "Quem" : "Onde"}</span>
                 <span>Valor</span>
                 <span>Execução</span>
-                <span>Ação</span>
+                <span />
               </div>
             )}
             {visiveis.length === 0
@@ -3108,24 +3103,14 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     </div>)
               : visiveis.map((p) => {
                 const meu = p.perfil_id === perfilId;
-                const podeMudarExecucao = !["faturado", "pago"].includes(p.situacao);
                 return (
-                /* A gaveta só existe onde apagar tem chance de dar certo: o
-                   plantão de fora, que é seu e só seu, e a escala do grupo para
-                   quem a monta. Oferecer o gesto numa linha que o banco vai
-                   recusar é ensinar um caminho que termina em erro. */
-                <LinhaComGaveta
-                  key={p.id}
-                  podeApagar={(meu && p.privado) || ehAdmin}
-                  onApagar={() => void remover(p.id)}
-                  descricao={dataCurta(p.data)}
-                >
-                {/* Grade de colunas fixas, e não flex com quebra. As linhas de
-                   colega têm menos controles que as suas, e em flex isso
-                   empurrava valor, situação e botão para posições diferentes a
-                   cada linha — a lista virava um degrau. Aqui cada coluna tem
-                   lugar marcado, ocupado ou não. */}
-                <div className="plantaoLinha escalaLinha">
+                /* A LINHA SÓ LÊ. Valor, execução, passar, confirmar e remover
+                   moram no painel do dia, que abre no "Abrir o dia" ao lado
+                   (pedido de 03/11/2026: a lista é para conferir e imprimir, não
+                   para editar). Grade de colunas fixas, e não flex com quebra:
+                   a linha de colega tem menos dados que a sua, e em flex isso
+                   empurrava cada coluna para uma posição diferente. */
+                <div className="plantaoLinha escalaLinha escalaLinhaLeitura" key={p.id}>
                   <span className="plantaoQuando">
                     <strong>{diaDaSemanaCurto(p.data)} {dataCurta(p.data)}</strong>
                     {/* A virada do dia é escrita: "19h → 07h do dia seguinte".
@@ -3137,121 +3122,35 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     <small>{escopo === "grupo" ? ondeFica(p, localPorId) : null}</small>
                     {p.aberto_para_troca && <small className="plantaoTrocaAviso">oferecido para troca</small>}
                   </span>
-                  {/* O valor do colega não é editável nem visível: quanto cada
-                      um recebe é assunto dele com quem paga, e a escala não
-                      precisa expor isso para funcionar. O RLS recusaria a
-                      escrita de qualquer forma; esconder evita a tentativa.
-
-                      Vazio é "não preenchido"; 0 digitado é "valor zero". O
-                      campo mostra a diferença, e gravar — mesmo zero — marca o
-                      valor como informado. */}
+                  {/* O valor do colega não aparece: quanto cada um recebe é
+                      assunto dele com quem paga. Vazio é "não preenchido"; 0
+                      informado é "R$ 0,00". O olho de esconder valores vale
+                      aqui também. */}
                   <span className="plantaoCelula">
-                    {meu ? (
-                        <input
-                          key={`${p.id}-${p.valor}-${valorAusente(p)}`}
-                          aria-label={`Valor do plantão de ${dataCurta(p.data)}${valorAusente(p) ? " — não preenchido" : ""}`}
-                          defaultValue={valorAusente(p) ? "" : Number(p.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          placeholder={valorAusente(p) ? "Não preenchido" : "R$ 0,00"} inputMode="decimal"
-                          className={valorAusente(p) ? "valorAusente" : undefined}
-                          onBlur={(e) => {
-                            const texto = e.target.value.trim();
-                            // Apagar o campo não grava nada: "não sei" não
-                            // substitui um valor que alguém já informou.
-                            if (!texto) return;
-                            const v = Number(texto.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
-                            if (!Number.isFinite(v) || (v === Number(p.valor) && !valorAusente(p))) return;
-                            void atualizar(p.id, { valor: v, valor_informado: true });
-                            // E, se houver outros do mesmo hospital zerados,
-                            // oferece repetir. A oferta só aparece com valor
-                            // positivo: repetir zero não preenche nada.
-                            const outros = v > 0
-                              ? zeradosNoMesmoLocal(meus, { ...p, valor: v })
-                              : [];
-                            setOfertaDeValor(outros.length
-                              ? {
-                                  origemId: p.id, valor: v,
-                                  ids: outros.map((o) => o.id),
-                                  local: ondeFica(p, localPorId, ""),
-                                }
-                              : null);
-                          }}
-                        />
-                    ) : <span className="plantaoDeColega">de colega</span>}
+                    {meu
+                      ? <span className={`escalaValorTexto${valorAusente(p) ? " ausente" : ""}`}>
+                          {valorAusente(p) ? "Não preenchido" : mascara(money(Number(p.valor)))}
+                        </span>
+                      : <span className="plantaoDeColega">de colega</span>}
                   </span>
                   <span className="plantaoCelula">
-                    {meu && podeMudarExecucao && (
-                        /* O seletor é da EXECUÇÃO — o que aconteceu com o turno.
-                           Confirmação e pagamento têm selo próprio abaixo, e
-                           cada um muda no seu lugar: confirmar no botão ao
-                           lado, receber em Meu financeiro. */
-                        <select aria-label={`Execução do plantão de ${dataCurta(p.data)}`}
-                          value={p.situacao} onChange={(e) => void atualizar(p.id, {
-                          situacao: e.target.value,
-                          pago_em: null,
-                        })}>
-                          <option value="escalado">Escalado</option>
-                          <option value="realizado">Realizado</option>
-                          {/* "Cancelado" some da escala igualzinho a apagar, e
-                              some sem ninguém saber. Num plantão do grupo é a
-                              mesma regra do Remover: sai passando para um
-                              colega. O banco recusa de qualquer forma; tirar a
-                              opção evita o erro depois do clique. */}
-                          {(p.privado || ehAdmin || p.situacao === "cancelado") && (
-                            <option value="cancelado">Cancelado</option>
-                          )}
-                        </select>
-                    )}
-                    {/* Com nota emitida ou pago, o turno está realizado, e mudar
-                        a execução daqui desfaria o pagamento em silêncio. Quem
-                        desfaz a baixa é o Meu financeiro, que tem o botão para
-                        isso — antes o seletor oferecia "Pago" aqui e o primeiro
-                        toque o rebaixava. */}
-                    {meu && !podeMudarExecucao && (
-                      <span className="escalaExecucaoFixa" title="Para desfazer a nota ou o pagamento, use Meu financeiro → Plantões por local.">
-                        Realizado
-                      </span>
-                    )}
+                    {meu && <span className="escalaExecucaoFixa">{situacaoDaExecucao(p).rotulo}</span>}
                   </span>
                   <span className="plantaoCelula">
-                    {/* Plantão privado não se oferece: o colega não o enxerga,
-                        não sabe onde fica nem quanto vale, e aceitaria às
-                        cegas. Ele se apaga, que é o que faz sentido para um
-                        turno que só existe para você. */}
-                    {/* Um botão só, e ele acompanha a vida do plantão: antes do
-                        dia dá para passar adiante; no dia e até meia hora
-                        depois do fim, confirmar. O estado — confirmado, não
-                        confirmado — está nos selos da linha; aqui fica só a
-                        ação, quando há uma. Confirmar o de semana que vem o
-                        banco recusa, e o botão não oferece. */}
-                    {meu && !p.privado && (
-                      <span className="plantaoAcao">
-                        {p.data > hojeISO ? (
-                          <button className="outlineClinical" onClick={() => setPedindoTroca(p)}>
-                            {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
-                          </button>
-                        ) : !p.confirmado_em && podeConfirmar(p, agora) ? (
-                          <button className="outlineClinical plantaoConfirmar"
-                            title="Confirma que você fez este plantão. É o que o fechamento do mês soma."
-                            onClick={() => void confirmar(p)}>
-                            Confirmar
-                          </button>
-                        ) : null}
-                      </span>
-                    )}
+                    <button type="button" className="outlineClinical" onClick={() => setDiaAberto(p.data)}
+                      aria-label={`Abrir o dia ${dataCurta(p.data)} para editar`}>
+                      Abrir o dia
+                    </button>
                   </span>
                   {/* CONFIRMAÇÃO, EXECUÇÃO E PAGAMENTO, cada um no seu selo.
-                      Eram um chip só — CONFIRMADO, NÃO CONFIRMADO ou RECEBIDO —
-                      e o chip de uma dimensão escondia as outras duas: um
-                      plantão confirmado e ainda não pago aparecia só como
-                      "confirmado". O pagamento do colega não aparece, pelo
-                      mesmo motivo do valor. */}
+                      O pagamento do colega não aparece, pelo mesmo motivo do
+                      valor. */}
                   <span className="escalaSelos">
                     {!p.privado && <SeloDeSituacao s={situacaoDaConfirmacao(p, agora)} dimensao="Confirmação" />}
                     <SeloDeSituacao s={situacaoDaExecucao(p)} dimensao="Execução" />
                     {meu && <SeloDeSituacao s={situacaoDoPagamento(p)} dimensao="Pagamento" />}
                   </span>
                 </div>
-                </LinhaComGaveta>
                 );
               })}
             </div>
@@ -3392,6 +3291,62 @@ const ICONE_DA_SITUACAO: Record<string, Partial<Record<Situacao["tom"], Paramete
 };
 
 /** "Confirmação: Confirmado" — dimensão, estado, ícone e cor, juntos. */
+/**
+ * O valor de um plantão SEU, como campo, no painel do dia.
+ *
+ * Vazio é "não preenchido"; 0 digitado é "valor zero". O campo mostra a
+ * diferença, e quem grava (gravarValor) decide: apagar não grava nada, e
+ * gravar — mesmo zero — marca o valor como informado. A chave leva o valor
+ * para o campo se refazer quando o banco devolver outro (o "repetir nos
+ * outros do hospital", por exemplo).
+ */
+function CampoDoValor({ p, onGravar }: { p: Plantao; onGravar: (texto: string) => void }) {
+  return (
+    <input
+      key={`${p.id}-${p.valor}-${valorAusente(p)}`}
+      aria-label={`Valor do plantão de ${dataCurta(p.data)}${valorAusente(p) ? " — não preenchido" : ""}`}
+      defaultValue={valorAusente(p) ? "" : Number(p.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+      placeholder={valorAusente(p) ? "Não preenchido" : "R$ 0,00"} inputMode="decimal"
+      className={valorAusente(p) ? "valorAusente" : undefined}
+      onBlur={(e) => onGravar(e.target.value)}
+      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+    />
+  );
+}
+
+/**
+ * A EXECUÇÃO do seu plantão — o que aconteceu com o turno. Confirmação e
+ * pagamento têm lugar próprio: confirmar no botão ao lado, receber em Meu
+ * financeiro.
+ *
+ * Com nota emitida ou pago, o turno está realizado, e mudar a execução daqui
+ * desfaria o pagamento em silêncio: aparece fixo, e quem desfaz a baixa é o
+ * Meu financeiro.
+ */
+function SeletorDaExecucao({ p, ehAdmin, onMudar }: { p: Plantao; ehAdmin: boolean; onMudar: (situacao: string) => void }) {
+  if (["faturado", "pago"].includes(p.situacao)) {
+    return (
+      <span className="escalaExecucaoFixa" title="Para desfazer a nota ou o pagamento, use Meu financeiro → Plantões por local.">
+        Realizado
+      </span>
+    );
+  }
+  return (
+    <select aria-label={`Execução do plantão de ${dataCurta(p.data)}`}
+      value={p.situacao} onChange={(e) => onMudar(e.target.value)}>
+      <option value="escalado">Escalado</option>
+      <option value="realizado">Realizado</option>
+      {/* "Cancelado" some da escala igualzinho a apagar, e some sem ninguém
+          saber. Num plantão do grupo é a mesma regra do Remover: sai passando
+          para um colega. O banco recusa de qualquer forma; tirar a opção evita
+          o erro depois do clique. */}
+      {(p.privado || ehAdmin || p.situacao === "cancelado") && (
+        <option value="cancelado">Cancelado</option>
+      )}
+    </select>
+  );
+}
+
 function SeloDeSituacao({ s, dimensao }: { s: Situacao; dimensao: "Confirmação" | "Execução" | "Pagamento" }) {
   return (
     <span className={`escSelo ${s.tom}`} title={s.detalhe}>
@@ -3404,7 +3359,8 @@ function SeloDeSituacao({ s, dimensao }: { s: Situacao; dimensao: "Confirmação
 function DiaDetalhe({
   dia, plantoes, modelos, colegas, apelidos, corPorMedico,
   perfilId, ehAdmin, pessoal, institutionId, conveniosConhecidos,
-  nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onPassar, onConfirmar, onFechar,
+  nomePorId, localPorId, onLancar, onLancarAvulso, onRemover, onPassar, onConfirmar, onValor, onExecucao,
+  repetir, onFechar,
 }: {
   dia: string; plantoes: Plantao[]; modelos: Modelo[]; perfilId: string;
   colegas: Colega[]; apelidos: Map<string, string>; corPorMedico: Map<string, string>;
@@ -3416,6 +3372,11 @@ function DiaDetalhe({
   onRemover: (id: string) => void;
   onPassar: (p: Plantao) => void;
   onConfirmar: (p: Plantao) => void;
+  /** O texto digitado no campo do valor; quem chama decide se grava. */
+  onValor: (p: Plantao, digitado: string) => void;
+  onExecucao: (p: Plantao, situacao: string) => void;
+  /** A oferta de repetir o valor nos outros do mesmo hospital, quando nasceu neste dia. */
+  repetir?: React.ReactNode;
   onFechar: () => void;
 }) {
   const [d, mm, aa] = [dia.slice(8, 10), dia.slice(5, 7), dia.slice(0, 4)];
@@ -3491,6 +3452,7 @@ function DiaDetalhe({
         <span>{plantoes.length ? `${contagemEscrita(contagem(plantoes))} na escala` : "nenhum plantão neste dia"}</span>
         <button className="outlineClinical" onClick={onFechar} style={{ marginLeft: "auto" }}>Fechar</button>
       </div>
+      {repetir}
 
       {plantoes.map((p) => (
         <div className="plantaoLinha" key={p.id}>
@@ -3502,6 +3464,22 @@ function DiaDetalhe({
             <strong>{nomePorId.get(p.perfil_id) ?? "Profissional"}</strong>
             <small>{ondeFica(p, localPorId)}{p.privado ? " · só você vê" : ""}</small>
           </span>
+          {/* O VALOR E A EXECUÇÃO DO SEU PLANTÃO, aqui no dia (03/11/2026): é
+              onde você já está quando clica no calendário, e a lista do mês
+              virou relatório. O do colega não aparece — quanto cada um recebe
+              é assunto dele com quem paga. */}
+          {p.perfil_id === perfilId && (
+            <span className="plantaoDiaCampos">
+              <label className="plantaoDiaCampo">
+                <small>Valor</small>
+                <CampoDoValor p={p} onGravar={(texto) => onValor(p, texto)} />
+              </label>
+              <label className="plantaoDiaCampo">
+                <small>Execução</small>
+                <SeletorDaExecucao p={p} ehAdmin={ehAdmin} onMudar={(sit) => onExecucao(p, sit)} />
+              </label>
+            </span>
+          )}
           {/* No SEU plantão, a ação do dia vem primeiro — e ela muda com o
               dia: antes, passar adiante; no dia e depois, confirmar que
               aconteceu. Só o confirmado entra no fechamento do mês, então
