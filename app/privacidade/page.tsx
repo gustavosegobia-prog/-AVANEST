@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { paginaPublica } from "@/lib/metadados";
 import { PaginaLegal } from "@/components/pagina-legal";
 import { VERSAO_DOS_TERMOS, dataPorExtenso } from "@/lib/termos";
+import { ENCARREGADO, MEDIDAS_DE_SEGURANCA } from "@/lib/seguranca";
 
 export const metadata: Metadata = paginaPublica({
   titulo: "Política de Privacidade | AVANEST",
@@ -268,18 +269,12 @@ export default function PrivacidadePage() {
         por máquina, como dizem os <a href="/termos">Termos de Uso</a>.
       </p>
 
+      {/* A lista é a mesma do /recursos e do /seguranca (lib/seguranca.ts): mudou lá, muda aqui. */}
       <h2 id="seguranca">{n("seguranca")}. Como os dados são protegidos</h2>
       <ul>
-        <li>Tráfego cifrado (HTTPS) e dados cifrados em repouso pela infraestrutura.</li>
-        <li>
-          <b>Isolamento por organização aplicado no banco de dados</b>, e não apenas na tela: cada
-          consulta é filtrada pela organização de quem a fez.
-        </li>
-        <li>Perfis de acesso: a recepção não vê conteúdo clínico; o financeiro não vê avaliação.</li>
-        <li>Senhas guardadas com hash — ninguém no AVANEST consegue ler a sua.</li>
-        <li>Verificação anti-robô no login, no cadastro e na recuperação de senha.</li>
-        <li>Registro de auditoria das ações relevantes.</li>
-        <li>Backups automáticos da base.</li>
+        {MEDIDAS_DE_SEGURANCA.map(({ id, naPolitica }) => (
+          <li key={id}>{naPolitica.destaque && <b>{naPolitica.destaque}</b>}{naPolitica.texto}</li>
+        ))}
       </ul>
 
       <h2 id="automatizadas">{n("automatizadas")}. Decisões automatizadas e inteligência artificial</h2>
@@ -351,9 +346,9 @@ export default function PrivacidadePage() {
 
       <h2 id="contato">{n("contato")}. Encarregado (DPO) e contato</h2>
       <p>
-        Encargo exercido por G. Segobia Serviços Médicos Ltda., CNPJ 55.965.276/0001-04. Contato para
+        Encargo exercido por {ENCARREGADO.quem}, CNPJ {ENCARREGADO.cnpj}. Contato para
         assuntos de proteção de dados:{" "}
-        <a href="mailto:contato@avanest.com.br">contato@avanest.com.br</a>.
+        <a href={`mailto:${ENCARREGADO.email}`}>{ENCARREGADO.email}</a>.
       </p>
 
       <h2 id="alteracoes">{n("alteracoes")}. Alterações</h2>

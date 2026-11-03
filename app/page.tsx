@@ -370,7 +370,8 @@ export default async function HomePage() {
           <article>
             <h3>Os dados dos pacientes ficam seguros?</h3>
             <p>Cada serviço só enxerga os próprios dados, a trava fica no banco de dados e cada
-              alteração guarda autor, data e hora. A recepção não abre o conteúdo clínico.</p>
+              alteração guarda autor, data e hora. A recepção não abre o conteúdo clínico. O resumo
+              para hospitais e cooperativas está em <a href="/seguranca">segurança dos dados</a>.</p>
           </article>
         </div>
       </section>

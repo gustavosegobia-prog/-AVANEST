@@ -196,7 +196,8 @@ export default function EscalaMedicaPage() {
             <article>
               <h3>Os dados ficam seguros?</h3>
               <p>Cada grupo só enxerga os próprios dados, e a trava fica no banco de dados. Cada
-                alteração guarda autor, data e hora.</p>
+                alteração guarda autor, data e hora. O resumo completo está em{" "}
+                <Link href="/seguranca">segurança dos dados</Link>.</p>
             </article>
           </div>
         </section>

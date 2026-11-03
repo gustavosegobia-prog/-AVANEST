@@ -53,6 +53,9 @@ const PAGINAS: Array<{ caminho: string; prioridade: number; frequencia: "weekly"
   { caminho: "/app", prioridade: 0.6, frequencia: "monthly" },
   // `/criar-conta` saiu (revisão de 27/10/2026): sem convite e sem plano ela é
   // só o aviso "Cadastro por convite", e está marcada para fora da busca.
+  // O resumo da segurança dos dados, para hospital e cooperativa: é a página
+  // que se manda a quem precisa aprovar a contratação.
+  { caminho: "/seguranca", prioridade: 0.5, frequencia: "monthly" },
   { caminho: "/login", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/termos", prioridade: 0.3, frequencia: "yearly" },
   { caminho: "/privacidade", prioridade: 0.3, frequencia: "yearly" },
