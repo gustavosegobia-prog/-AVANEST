@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { AppLogo } from "@/components/app-logo";
+import { OFERTA_DO_TESTE } from "@/lib/teste-gratis";
 import { OnboardingForm } from "./onboarding-form";
 
 export default async function ComecarPage({
@@ -28,7 +29,7 @@ export default async function ComecarPage({
         </div>
         <div className="avnLoginContent">
           <h1>Como você vai usar o AVANEST?</h1>
-          <p>Escolha uma opção para concluir seu cadastro. Em seguida você cadastra o cartão: os 2 primeiros meses são grátis.</p>
+          <p>Escolha uma opção para concluir seu cadastro. Em seguida você cadastra o cartão: são {OFERTA_DO_TESTE}, e a primeira cobrança só vence depois deles.</p>
           <OnboardingForm email={user.email ?? ""} plano={plano ?? ""} />
         </div>
       </section>

@@ -21,6 +21,7 @@ import Image from "next/image";
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
+import { DIAS_DE_TESTE } from "@/lib/teste-gratis";
 import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 import { RodapePublico } from "@/components/rodape-publico";
 
@@ -351,8 +352,8 @@ export default function HomePage() {
           </article>
           <article>
             <h3>Quanto custa?</h3>
-            <p>Os dois primeiros meses são grátis: você cadastra o cartão no início e a primeira
-              cobrança só vence depois deles. Os valores estão em <a href="/planos">planos e preços</a>.</p>
+            <p>Os primeiros {DIAS_DE_TESTE} dias são grátis: você cadastra o cartão no início e a
+              primeira cobrança só vence depois deles. Os valores estão em <a href="/planos">planos e preços</a>.</p>
           </article>
           <article>
             <h3>Os dados dos pacientes ficam seguros?</h3>
