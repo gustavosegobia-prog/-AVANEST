@@ -21,7 +21,7 @@ import Image from "next/image";
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
-import { DIAS_DE_TESTE } from "@/lib/teste-gratis";
+import { DIAS_DE_TESTE, OFERTA_DO_TESTE } from "@/lib/teste-gratis";
 import { fraseDoPrecoDeEntrada, precoDeEntrada } from "@/lib/preco-de-entrada";
 import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 import { RodapePublico } from "@/components/rodape-publico";
@@ -324,6 +324,31 @@ export default async function HomePage() {
         <div className="avnActions">
           <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=modulos`}>Começar 15 dias grátis</a>
           <a className="avnSecondary avnVerTudo" href="/recursos">Ver todos os recursos</a>
+        </div>
+      </section>
+      {/* COMECE HOJE: o caminho de verdade, na ordem em que ele acontece —
+          /15dias → criar conta → /comecar (sozinho ou grupo) → cartão em
+          /assinatura → área médica. Mudou o fluxo, muda aqui; o teste de
+          lib/capa.test.ts confere cada passo no código. */}
+      <section className="avnComece" aria-labelledby="avn-comece">
+        <h2 id="avn-comece">Comece hoje.</h2>
+        <ol className="avnPassos" role="list">
+          <li>
+            <h3>Crie a conta</h3>
+            <p>Em Começar {OFERTA_DO_TESTE}, com o seu <span className="avnSemQuebra">e-mail</span> e uma senha.</p>
+          </li>
+          <li>
+            <h3>Diga como vai usar e cadastre o cartão</h3>
+            <p>Sozinho ou criando um grupo. A primeira cobrança só vence depois dos {DIAS_DE_TESTE} dias.</p>
+          </li>
+          <li>
+            <h3>Faça a primeira avaliação</h3>
+            <p>Na área médica, em Nova avaliação, você cadastra o paciente e faz a consulta pré-anestésica.</p>
+          </li>
+        </ol>
+        <p className="avnComeceNota">Sem projeto de implantação. Funciona no celular, no tablet e no computador.</p>
+        <div className="avnActions">
+          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=comece-hoje`}>Começar {OFERTA_DO_TESTE}</a>
         </div>
       </section>
       {/* PERGUNTAS FREQUENTES, em texto na página. Respondem às dúvidas de

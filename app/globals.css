@@ -6497,6 +6497,28 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .avnModulosNota{margin-top:56px}
 }
 
+/* Comece hoje: os três passos do cadastro, em fundo branco logo depois da
+   faixa clara dos módulos. Número grande em verde, uma linha por cima de
+   cada passo: lê-se de relance, na ordem. */
+.avnComece{padding:80px max(20px,calc((100vw - var(--avn-caixa,1180px))/2));background:#fff}
+.avnComece>h2{margin:0;font-size:clamp(28px,3.4vw,44px);line-height:1.12;letter-spacing:-.025em;color:var(--avn-ink)}
+.avnPassos{list-style:none;margin:36px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:clamp(24px,3vw,44px);counter-reset:passo}
+.avnPassos li{padding-top:18px;border-top:2px solid var(--avn-line);counter-increment:passo}
+.avnPassos li::before{content:counter(passo);display:block;margin-bottom:14px;font-size:40px;font-weight:700;
+  line-height:1;color:#11776c;font-variant-numeric:tabular-nums}
+.avnPassos h3{margin:0;font-size:21px;line-height:1.3;color:var(--avn-ink);text-wrap:balance}
+.avnPassos p{margin:8px 0 0;max-width:42ch;color:#3a4e60;font-size:16.5px;line-height:1.6}
+.avnComeceNota{margin:36px 0 0;color:var(--avn-ink);font-size:18px;font-weight:600;line-height:1.5}
+.avnComece .avnActions{margin:22px 0 0}
+.avnSemQuebra{white-space:nowrap}
+@media(max-width:760px){
+  .avnComece{padding-top:56px;padding-bottom:56px}
+  .avnPassos{grid-template-columns:minmax(0,1fr);gap:28px}
+  .avnPassos li::before{font-size:34px;margin-bottom:10px}
+  .avnComece .avnActions{display:grid}
+}
+
 /* O fechamento: a oferta de novo, para quem leu até o fim. Azul da marca,
    para não se confundir com o rodapé preto logo abaixo. */
 .avnFechamento{padding:80px max(20px,calc((100vw - var(--avn-caixa,1180px))/2));color:#fff;background:var(--avn-navy2)}
@@ -8015,7 +8037,7 @@ button.evoPFAsaN:disabled{cursor:default}
    linha, numa caixa de até 1400px — menos borda do que os 1180 de antes. */
 @media(min-width:1101px){
   .avnCapa{--avn-moldura:max(32px,calc((100vw - 1400px)/2))}
-  .avnCapa .avnPerfis,.avnCapa .avnModulos,.avnCapa .avnPerguntasCapa,.avnCapa .avnFechamento,.avnCapa .rodapePublico{
+  .avnCapa .avnPerfis,.avnCapa .avnModulos,.avnCapa .avnComece,.avnCapa .avnPerguntasCapa,.avnCapa .avnFechamento,.avnCapa .rodapePublico{
     padding-left:var(--avn-moldura);padding-right:var(--avn-moldura)}
 }
 /* As perguntas vêm logo depois da faixa clara dos módulos, com fundo
@@ -8198,7 +8220,10 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
   .avnTelaLegenda{font-size:14.5px}
 
   /* As seções de baixo acompanham. */
-  .avnPerfis h2,.avnModulos>h2,.avnFechamento h2{font-size:clamp(44px,2.9vw,56px)}
+  .avnPerfis h2,.avnModulos>h2,.avnComece>h2,.avnFechamento h2{font-size:clamp(44px,2.9vw,56px)}
+  .avnPassos h3{font-size:25px}
+  .avnPassos p{font-size:18.5px}
+  .avnComeceNota{font-size:20px}
   .avnPerfisGrade{gap:28px}
   .avnPerfisGrade article{padding:36px}
   .avnPerfisGrade h3{font-size:26px}
