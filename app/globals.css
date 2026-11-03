@@ -6519,6 +6519,27 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .avnComece .avnActions{display:grid}
 }
 
+/* Quem faz o AVANEST: faixa clara entre o "Comece hoje" e as perguntas,
+   foto em retrato à esquerda e o texto curto ao lado. */
+.avnQuemFaz{display:grid;grid-template-columns:240px minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:center;
+  padding:72px max(20px,calc((100vw - var(--avn-caixa,1180px))/2));background:var(--avn-bg)}
+.avnQuemFazFoto{margin:0}
+.avnQuemFazFoto img{display:block;width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:16px}
+.avnQuemFazVaga{display:grid;place-content:center;gap:6px;aspect-ratio:4/5;border:2px dashed #b6c7d4;border-radius:16px;
+  background:#fff;color:#4a5d6e;font-size:16px;font-weight:700;text-align:center}
+.avnQuemFazVaga small{font-size:12.5px;font-weight:500;overflow-wrap:anywhere;padding:0 12px}
+.avnQuemFazTexto h2{margin:0;font-size:clamp(26px,3vw,38px);line-height:1.15;letter-spacing:-.02em;color:var(--avn-ink)}
+.avnQuemFazTexto>p{margin:14px 0 0;max-width:62ch;color:#3a4e60;font-size:17px;line-height:1.65}
+.avnQuemFazTexto>.avnQuemFazNome{margin-top:20px;color:var(--avn-ink);font-weight:700}
+.avnQuemFaz.semFoto{grid-template-columns:minmax(0,1fr)}
+.avnQuemFazTexto>.avnAConfirmar{display:inline-block;margin:0 0 14px;padding:6px 12px;border-radius:8px;
+  background:#fff4d6;color:#7a5200;font-size:14px;font-weight:700}
+@media(max-width:760px){
+  .avnQuemFaz{grid-template-columns:minmax(0,1fr);gap:22px;padding-top:56px;padding-bottom:56px}
+  .avnQuemFazFoto{width:160px}
+  .avnQuemFazTexto>p{font-size:16.5px}
+}
+
 /* O fechamento: a oferta de novo, para quem leu até o fim. Azul da marca,
    para não se confundir com o rodapé preto logo abaixo. */
 .avnFechamento{padding:80px max(20px,calc((100vw - var(--avn-caixa,1180px))/2));color:#fff;background:var(--avn-navy2)}
@@ -8037,7 +8058,7 @@ button.evoPFAsaN:disabled{cursor:default}
    linha, numa caixa de até 1400px — menos borda do que os 1180 de antes. */
 @media(min-width:1101px){
   .avnCapa{--avn-moldura:max(32px,calc((100vw - 1400px)/2))}
-  .avnCapa .avnPerfis,.avnCapa .avnModulos,.avnCapa .avnComece,.avnCapa .avnPerguntasCapa,.avnCapa .avnFechamento,.avnCapa .rodapePublico{
+  .avnCapa .avnPerfis,.avnCapa .avnModulos,.avnCapa .avnComece,.avnCapa .avnQuemFaz,.avnCapa .avnPerguntasCapa,.avnCapa .avnFechamento,.avnCapa .rodapePublico{
     padding-left:var(--avn-moldura);padding-right:var(--avn-moldura)}
 }
 /* As perguntas vêm logo depois da faixa clara dos módulos, com fundo
@@ -8224,6 +8245,9 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
   .avnPassos h3{font-size:25px}
   .avnPassos p{font-size:18.5px}
   .avnComeceNota{font-size:20px}
+  .avnQuemFaz:not(.semFoto){grid-template-columns:280px minmax(0,1fr)}
+  .avnQuemFazTexto h2{font-size:clamp(40px,2.6vw,50px)}
+  .avnQuemFazTexto>p{font-size:19px}
   .avnPerfisGrade{gap:28px}
   .avnPerfisGrade article{padding:36px}
   .avnPerfisGrade h3{font-size:26px}

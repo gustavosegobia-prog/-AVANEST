@@ -23,6 +23,7 @@ import { AbrirNoLogin } from "@/components/abrir-no-login";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
 import { DIAS_DE_TESTE, OFERTA_DO_TESTE } from "@/lib/teste-gratis";
 import { fraseDoPrecoDeEntrada, precoDeEntrada } from "@/lib/preco-de-entrada";
+import { ARQUIVO_DA_FOTO, QUEM_FAZ, mostrarQuemFaz } from "@/lib/quem-faz";
 import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 import { RodapePublico } from "@/components/rodape-publico";
 
@@ -351,6 +352,33 @@ export default async function HomePage() {
           <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=comece-hoje`}>Começar {OFERTA_DO_TESTE}</a>
         </div>
       </section>
+      {/* QUEM FAZ O AVANEST, curto, antes das perguntas. O texto e a foto vêm de
+          lib/quem-faz.ts e ainda não foram confirmados: até lá o bloco sai
+          marcado nas prévias e não vai a produção (mostrarQuemFaz). Sem CRM,
+          título nem cargo. */}
+      {mostrarQuemFaz() && (
+        <section className={`avnQuemFaz${QUEM_FAZ.foto || !QUEM_FAZ.confirmado ? "" : " semFoto"}`}
+          aria-labelledby="avn-quem-faz" data-a-confirmar={QUEM_FAZ.confirmado ? undefined : ""}>
+          {QUEM_FAZ.foto ? (
+            <figure className="avnQuemFazFoto">
+              <Image src={QUEM_FAZ.foto} width={QUEM_FAZ.tamanhoDaFoto[0]} height={QUEM_FAZ.tamanhoDaFoto[1]}
+                alt={QUEM_FAZ.nome} loading="lazy" sizes="(min-width: 761px) 240px, 160px" />
+            </figure>
+          ) : !QUEM_FAZ.confirmado && (
+            <figure className="avnQuemFazFoto">
+              <span className="avnQuemFazVaga">Foto<small>{ARQUIVO_DA_FOTO.replace(/[^/]+$/, "")}<wbr /><span className="avnSemQuebra">{ARQUIVO_DA_FOTO.split("/").pop()}</span></small></span>
+            </figure>
+          )}
+          <div className="avnQuemFazTexto">
+            {!QUEM_FAZ.confirmado && (
+              <p className="avnAConfirmar" role="note">Texto aguardando confirmação: não vai ao ar assim.</p>
+            )}
+            <h2 id="avn-quem-faz">{QUEM_FAZ.titulo}</h2>
+            {QUEM_FAZ.paragrafos.map((x) => <p key={x}>{x}</p>)}
+            <p className="avnQuemFazNome">{QUEM_FAZ.nome}</p>
+          </div>
+        </section>
+      )}
       {/* PERGUNTAS FREQUENTES, em texto na página. Respondem às dúvidas de
           quem chega pela busca ("o AVANEST faz a ficha anestésica?") e levam
           cada uma à página que trata do assunto por inteiro. Sem marcação
