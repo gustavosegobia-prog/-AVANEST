@@ -67,3 +67,40 @@ test("impressão, .ics e fechamento continuam sendo do mês inteiro", () => {
   assert.match(tela, /montarICS\(daEscala\.map/);
   assert.match(tela, /plantoes: daEscala\.map\(\(p\) => \(\{\n\s+data: p\.data/);
 });
+
+test("valor e execução se mudam no painel do dia; a lista do mês só lê, abre fechada e imprime (03/11/2026)", async () => {
+  // O painel do dia: campo de valor e seletor de execução, só no SEU plantão.
+  const painel = tela.slice(tela.indexOf("function DiaDetalhe("));
+  assert.match(painel, /\{p\.perfil_id === perfilId && \(\s*<span className="plantaoDiaCampos">/);
+  assert.match(painel, /<CampoDoValor p=\{p\} onGravar=\{\(texto\) => onValor\(p, texto\)\} \/>/);
+  assert.match(painel, /<SeletorDaExecucao p=\{p\} ehAdmin=\{ehAdmin\}/);
+  assert.match(tela, /onValor=\{gravarValor\} onExecucao=\{mudarExecucao\}/);
+  // A lista: sem campo, sem seletor, sem gaveta de apagar; um botão para abrir o dia.
+  const lista = tela.slice(tela.indexOf('<div className="plantaoLinha escalaLinha escalaLinhaLeitura"'),
+    tela.indexOf("</PainelRecolhivel>", tela.indexOf("escalaLinhaLeitura")));
+  assert.ok(lista.length > 200, "sumiu a linha do relatório");
+  assert.doesNotMatch(lista, /<input|<select|onBlur|LinhaComGaveta/);
+  assert.match(lista, /onClick=\{\(\) => setDiaAberto\(p\.data\)\}/);
+  assert.doesNotMatch(tela, /function LinhaComGaveta/);
+  // Fechada ao entrar, com chave nova (a escolha antiga de "aberta" não vale), e com o botão de imprimir.
+  assert.match(tela, /chave=\{`escala-relatorio-\$\{escopo\}`\}\n\s+abrePadrao=\{false\}/);
+  assert.match(tela, /onClick=\{imprimirRelatorio\}>Imprimir lista<\/button>/);
+  // A oferta de repetir o valor aparece no painel do dia quando nasceu nele.
+  assert.match(tela, /repetir=\{ofertaNoDiaAberto \? ofertaDeRepetir : null\}/);
+  assert.match(tela, /\{ofertaValida && !ofertaNoDiaAberto && ofertaDeRepetir\}/);
+
+  // A folha: o valor e o pagamento do colega não saem; o total soma só os seus informados.
+  const { folhaDoRelatorioDaEscala } = await import("./escala.ts");
+  const base = { horario: "07h–19h · 12h", horas: 12, execucao: "Escalado", confirmacao: "Aguardando o dia" };
+  const { corpo } = folhaDoRelatorioDaEscala("Escala da equipe — NOVEMBRO de 2026", [
+    { ...base, dia: "seg 02/11", quem: "Ana", onde: "Hospital A", valor: 1200, valorAusente: false, pagamento: "A receber" },
+    { ...base, dia: "ter 03/11", quem: "Bruno", onde: "Hospital A", valor: null, valorAusente: false, pagamento: null },
+    { ...base, dia: "qua 04/11", quem: "Ana", onde: "Hospital B", valor: 0, valorAusente: true, pagamento: "Valor não preenchido" },
+  ], new Date("2026-11-03T12:00:00Z"));
+  assert.match(corpo, /<th>Quem<\/th>/);
+  assert.match(corpo, /R\$\s1\.200,00/);
+  assert.match(corpo, /<td class="num">—<\/td>/, "o valor do colega sai como travessão");
+  assert.match(corpo, /não preenchido/);
+  assert.match(corpo, /Seus valores informados<\/td><td class="num">R\$\s1\.200,00/);
+  assert.doesNotMatch(corpo, /Bruno<\/td><td>Hospital A<\/td><td class="num">R\$/);
+});

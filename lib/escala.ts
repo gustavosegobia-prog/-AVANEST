@@ -1347,6 +1347,57 @@ ${blocos || '<p class="sub">Nenhum plantão neste mês.</p>'}
   return { titulo, corpo };
 }
 
+/** Uma linha do relatório da escala, já escrita pela tela (dia, horário, situações). */
+export type LinhaDoRelatorio = {
+  dia: string; horario: string; horas: number;
+  /** O colega, na escala do grupo. Na sua escala fica vazio. */
+  quem?: string;
+  onde: string;
+  /** null: o plantão é de colega, e o valor dele não sai. */
+  valor: number | null;
+  valorAusente: boolean;
+  execucao: string; confirmacao: string;
+  /** null: o pagamento do colega não sai, pelo mesmo motivo do valor. */
+  pagamento: string | null;
+};
+
+/**
+ * O relatório da lista da escala, em papel: o que a lista mostra na tela, com
+ * os mesmos filtros e o mesmo período, para conferir o mês sem abrir dia por
+ * dia (pedido de 03/11/2026).
+ *
+ * O valor e o pagamento do colega não saem — a mesma regra da tela. O total do
+ * pé soma só os seus valores informados.
+ */
+export function folhaDoRelatorioDaEscala(
+  titulo: string, linhas: LinhaDoRelatorio[], impressoEm: Date, instituicao?: Instituicao | null,
+): { titulo: string; corpo: string } {
+  const comQuem = linhas.some((l) => l.quem);
+  const horas = linhas.reduce((s, l) => s + Number(l.horas), 0);
+  const meus = linhas.filter((l) => l.valor != null && !l.valorAusente);
+  const total = meus.reduce((s, l) => s + Number(l.valor), 0);
+  const corpoDaTabela = linhas.map((l) => "<tr>"
+    + `<td>${escaparHTML(l.dia)}</td><td>${escaparHTML(l.horario)}</td>`
+    + (comQuem ? `<td>${escaparHTML(l.quem ?? "")}</td>` : "")
+    + `<td>${escaparHTML(l.onde)}</td>`
+    + `<td class="num">${l.valor == null ? "—" : l.valorAusente ? "não preenchido" : escaparHTML(money(l.valor))}</td>`
+    + `<td>${escaparHTML(l.execucao)}</td><td>${escaparHTML(l.confirmacao)}</td>`
+    + `<td>${l.pagamento == null ? "—" : escaparHTML(l.pagamento)}</td></tr>`).join("");
+  const colunas = comQuem ? 8 : 7;
+  const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
+<p class="sub">${linhas.length} ${linhas.length === 1 ? "lançamento" : "lançamentos"} · ${plantoesEscrito(horas)} · ${
+    horas.toFixed(1).replace(".", ",")} h</p>
+${linhas.length ? '<table class="lista"><thead><tr><th>Dia</th><th>Horário</th>'
+    + (comQuem ? "<th>Quem</th>" : "")
+    + '<th>Onde</th><th class="num">Valor</th><th>Execução</th><th>Confirmação</th><th>Pagamento</th></tr></thead>'
+    + `<tbody>${corpoDaTabela}</tbody>`
+    + `<tfoot><tr class="total"><td colspan="${colunas - 4}">Seus valores informados</td>`
+    + `<td class="num">${escaparHTML(money(total))}</td><td colspan="3"></td></tr></tfoot></table>`
+    : '<p class="sub">Nenhum plantão neste período.</p>'}`;
+  // A data de impressão sai na assinatura que imprimirFolha põe no pé da folha.
+  return { titulo, corpo };
+}
+
 export type ItemDeFaturamento = ItemDeProducao & {
   local: string;
   /** "direto" | "hospital" | "convenio", ou null enquanto ninguém decidiu. */
