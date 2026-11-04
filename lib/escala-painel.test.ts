@@ -161,3 +161,28 @@ describe("semana", () => {
     assert.equal(somarDias("2026-10-04", -7), "2026-09-27");
   });
 });
+
+it("dentro do dia: manhã em cima, depois tarde e noite — a ordem M, T, N (04/11/2026)", async () => {
+  const { emOrdemDoDia } = await import("./escala-painel.ts");
+  const p = (id: string, data: string, hora_inicio: string, hora_fim: string) => ({ id, data, hora_inicio, hora_fim });
+  const dia = [
+    p("noite", "2026-11-12", "19:00:00", "07:00:00"),
+    p("tarde", "2026-11-12", "13:00:00", "19:00:00"),
+    p("madrugada", "2026-11-12", "00:00:00", "07:00:00"),
+    p("manha", "2026-11-12", "07:00:00", "13:00:00"),
+    p("diurno", "2026-11-12", "07:00:00", "19:00:00"),
+    p("ontem", "2026-11-11", "19:00:00", "07:00:00"),
+  ];
+  assert.deepEqual([...dia].sort(emOrdemDoDia).map((x) => x.id),
+    ["ontem", "manha", "diurno", "tarde", "noite", "madrugada"]);
+  // O caso do print: 13–19h aparecia em cima de 07–13h; e 19–07h em cima de 07–19h.
+  assert.deepEqual([p("b", "2026-11-12", "13:00:00", "19:00:00"), p("a", "2026-11-12", "07:00:00", "13:00:00")]
+    .sort(emOrdemDoDia).map((x) => x.hora_inicio), ["07:00:00", "13:00:00"]);
+  assert.deepEqual([p("b", "2026-11-01", "19:00:00", "07:00:00"), p("a", "2026-11-01", "07:00:00", "19:00:00")]
+    .sort(emOrdemDoDia).map((x) => x.hora_inicio), ["07:00:00", "19:00:00"]);
+  // A tela ordena assim ao carregar o mês e a semana.
+  const { readFileSync } = await import("node:fs");
+  const tela = readFileSync(new URL("../components/plantoes.tsx", import.meta.url), "utf8");
+  assert.match(tela, /setPlantoes\(\(\(plans \?\? \[\]\) as Plantao\[\]\)\.sort\(emOrdemDoDia\)\)/);
+  assert.match(tela, /setForaDoMes\(\(\(data \?\? \[\]\) as Plantao\[\]\)\.sort\(emOrdemDoDia\)\)/);
+});
