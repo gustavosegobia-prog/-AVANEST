@@ -33,7 +33,7 @@ import {
 } from "@/lib/valor-do-hospital";
 import { hoje, dataLocal, mesAtual, somarMeses, ultimoDiaDoMes } from "@/lib/data-local";
 import {
-  contagem, contagemEscrita, dataCurta, diaDaSemanaCurto, diasDaSemana, filtrarEscala, filtrosAtivos,
+  contagem, contagemEscrita, dataCurta, diaDaSemanaCurto, diasDaSemana, emOrdemDoDia, filtrarEscala, filtrosAtivos,
   horarioEscrito, inicioDaSemana, OPCOES_DE_SITUACAO, pendenciasDaEscala, semanaEscrita, situacaoDaConfirmacao,
   situacaoDaExecucao, situacaoDoPagamento, somarDias, valorAusente, FILTROS_DA_ESCALA,
   type FiltroDeSituacao, type FiltrosDaEscala, type Situacao,
@@ -1209,7 +1209,8 @@ export function Plantoes({
     setCarregando(false);
     if (error) { setErro("Não foi possível carregar os plantões."); return; }
     setModelos((mods ?? []) as Modelo[]);
-    setPlantoes((plans ?? []) as Plantao[]);
+    // Manhã em cima, depois tarde e noite (emOrdemDoDia): o banco só ordena por data.
+    setPlantoes(((plans ?? []) as Plantao[]).sort(emOrdemDoDia));
     setTrocas((trs ?? []) as Troca[]);
 
     // TROCA DE OUTRO MÊS PRECISA DO PLANTÃO DELA.
@@ -1803,7 +1804,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     void (async () => {
       const { data } = await createClient().from("plantoes").select("*")
         .gte("data", fora[0]).lte("data", fora[fora.length - 1]).order("data");
-      if (vivo) setForaDoMes((data ?? []) as Plantao[]);
+      if (vivo) setForaDoMes(((data ?? []) as Plantao[]).sort(emOrdemDoDia));
     })();
     return () => { vivo = false; };
     // `plantoes` entra para a semana recarregar junto quando algo é lançado ou
@@ -1822,7 +1823,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     .filter((p) => !p.data.startsWith(mes) && !idsDoMes.has(p.id)).filter(naEscala);
   const doPeriodo = visao === "semana"
     ? [...daEscala, ...foraNaEscala].filter((p) => diasDaSemanaAberta.includes(p.data))
-        .sort((a, b) => a.data.localeCompare(b.data) || a.hora_inicio.localeCompare(b.hora_inicio))
+        .sort(emOrdemDoDia)
     : daEscala;
   // Na escala do grupo o hospital já é a escala escolhida na coluna; o filtro
   // de hospital é da escala pessoal, que mistura todos.

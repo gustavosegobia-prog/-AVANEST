@@ -8,7 +8,7 @@
 // plantões; agora os dois contam plantões, sobre o mesmo conjunto, e o número
 // de lançamentos só aparece — com esse nome — quando é diferente.
 
-import { emTurnos, plantoesEscrito, podeConfirmar, turnosCobertos, type TurnoDoDia } from "./escala.ts";
+import { emTurnos, plantoesEscrito, podeConfirmar, turnosCobertos, TURNOS_DO_DIA, type TurnoDoDia } from "./escala.ts";
 
 export type PlantaoDoPainel = {
   id: string;
@@ -211,6 +211,35 @@ export const filtrosAtivos = (f: FiltrosDaEscala) =>
  * vez e passa o resultado aos dois. `perfilId` delimita o "valor não
  * preenchido": só quem fez o plantão preenche o próprio valor.
  */
+/**
+ * A ORDEM DOS PLANTÕES DENTRO DO DIA: manhã, tarde, noite (pedido de
+ * 04/11/2026: "sempre a parte da manhã em cima").
+ *
+ * Por hora de início contada a partir das 7h, onde começa a manhã
+ * (TURNOS_DO_DIA), e não da meia-noite: 07–19h vem antes de 19–07h, 07–13h
+ * antes de 13–19h, e o da madrugada (00–07h) fica no fim, junto da noite de
+ * que ele faz parte — a mesma ordem M, T, N da escala do grupo. Com o mesmo
+ * início, o mais curto primeiro; e o id desempata, para a ordem não mudar de
+ * um carregamento para o outro.
+ */
+const INICIO_DO_DIA = TURNOS_DO_DIA[0].de;
+const minutosDesdeAManha = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (((h * 60 + (m || 0)) - INICIO_DO_DIA) % 1440 + 1440) % 1440;
+};
+export function emOrdemDoDia(
+  a: { data: string; hora_inicio: string; hora_fim: string; id?: string },
+  b: { data: string; hora_inicio: string; hora_fim: string; id?: string },
+): number {
+  const ia = minutosDesdeAManha(a.hora_inicio), ib = minutosDesdeAManha(b.hora_inicio);
+  // O fim conta a partir do início: 07–13h (6 h) antes de 07–19h (12 h).
+  const duracao = (x: typeof a, ini: number) => ((minutosDesdeAManha(x.hora_fim) - ini) + 1440) % 1440 || 1440;
+  return a.data.localeCompare(b.data)
+    || ia - ib
+    || duracao(a, ia) - duracao(b, ib)
+    || String(a.id ?? "").localeCompare(String(b.id ?? ""));
+}
+
 export function filtrarEscala<T extends PlantaoDoPainel>(
   plantoes: T[], f: FiltrosDaEscala, agora: Date, perfilId = "",
 ): T[] {
