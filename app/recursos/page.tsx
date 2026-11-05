@@ -4,6 +4,7 @@ import { comoJson, migalhas } from "@/lib/schema";
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { RodapePublico } from "@/components/rodape-publico";
+import { MEDIDAS_DE_SEGURANCA } from "@/lib/seguranca";
 
 // A trilha que aparece no lugar da URL crua no resultado do Google.
 // Breadcrumb é dos poucos dados estruturados que ainda mudam o que se
@@ -225,24 +226,17 @@ const BLOCOS: Bloco[] = [
   },
   {
     titulo: "O sigilo e a segurança",
+    // As medidas de proteção são as mesmas da Política de Privacidade e do
+    // /seguranca (lib/seguranca.ts). O último cartão é do cuidado clínico, e fica aqui.
     itens: [
-      ["Os dados da sua clínica não se misturam com os de outra",
-        "Todo pedido de informação sai identificado com a sua organização, e quem não é dela não "
-        + "recebe resposta. A trava fica no banco de dados, e não apenas na tela: esconder um botão "
-        + "impede o clique, não o pedido."],
-      ["Fica registrado quem fez o quê, e quando",
-        "Cada cadastro, alteração e exclusão guarda o autor, a data e a hora. Se um dia alguém "
-        + "perguntar quem mudou aquele campo, a resposta existe."],
-      ["Cada um vê apenas o que precisa para trabalhar",
-        "A recepção conduz a fila do dia sem abrir a avaliação clínica. É o princípio da necessidade "
-        + "previsto na LGPD: quanto menos gente com acesso ao dado do paciente, menor o risco para "
-        + "ele e para você."],
+      ...MEDIDAS_DE_SEGURANCA.map(({ titulo, texto }): [string, string] => [titulo, texto]),
       ["Valor clínico vem de referência, não de estimativa",
         "Os pontos de corte, as fórmulas e os prazos de suspensão de medicamento vêm das referências "
         + "publicadas, sem arredondar nem tirar média entre uma e outra. Onde a referência não "
         + "existe, o campo fica em branco — num sistema clínico, um número inventado é pior do que "
         + "um campo vazio."],
     ],
+    leia: ["/seguranca", "A segurança dos dados, em uma página"],
   },
 ];
 

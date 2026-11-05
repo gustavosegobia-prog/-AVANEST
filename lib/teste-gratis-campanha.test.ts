@@ -57,6 +57,13 @@ test("a organização nasce com data de fim do teste", () => {
   assert.match(migracao, /interval '3 months' - interval '1 microsecond'/);
 });
 
+/**
+ * A promessa antiga, em qualquer das formas em que ela já esteve escrita. Desde 27/10/2026 o teste é de
+ * 15 dias e o checkout cobra no fim dele (`gratisAte` = `assinatura_ate`); uma tela que ainda fala em dois
+ * meses promete o que a cobrança não cumpre.
+ */
+const DOIS_MESES = /2 meses grátis|MESES_DE_TESTE|(dois|2) primeiros meses|depois dos dois/i;
+
 test("a promessa aparece na capa e na página de planos, com a condição do cartão", () => {
   // Quem chega direto no /planos por um link nunca viu a capa, e é ali que
   // está olhando número. Desde 27/10/2026 a oferta é "15 dias grátis, com o
@@ -66,10 +73,21 @@ test("a promessa aparece na capa e na página de planos, com a condição do car
     "app/escala-medica/page.tsx", "app/avaliacao-pre-anestesica-digital/page.tsx", "components/pagina-de-conteudo.tsx"]) {
     const codigo = ler(tela);
     assert.match(codigo, /15 dias|\{DIAS_DE_TESTE\} dias|OFERTA_DO_TESTE/, `a promessa sumiu de ${tela}`);
-    assert.doesNotMatch(codigo, /2 meses grátis|MESES_DE_TESTE/, `${tela} ainda promete os dois meses`);
+    assert.doesNotMatch(codigo, DOIS_MESES, `${tela} ainda promete os dois meses`);
     assert.match(codigo, /primeira cobrança/i, `${tela} não diz quando vem a primeira cobrança`);
     assert.doesNotMatch(codigo, /sem cartão|sem cadastrar cartão/i, `${tela} ainda promete "sem cartão"`);
   }
+});
+
+test("o cadastro e a assinatura também não falam mais em dois meses", () => {
+  // As duas telas de quem já está se cadastrando: a escolha do uso (/comecar) e o cartão (/assinatura).
+  // A assinatura não diz número de dias — quem entrou antes de 27/10/2026 teve dois meses, e quem
+  // entra agora tem quinze —, só que nada é cobrado antes do fim do teste.
+  for (const tela of ["app/comecar/page.tsx", "app/assinatura/page.tsx"]) {
+    assert.doesNotMatch(semComentarios(tela), DOIS_MESES, `${tela} ainda promete os dois meses`);
+  }
+  assert.match(ler("app/comecar/page.tsx"), /OFERTA_DO_TESTE/);
+  assert.match(ler("app/assinatura/page.tsx"), /Nada é cobrado antes do fim do seu teste grátis\./);
 });
 
 test("organização nova entra com o cartão cadastrado; o teste antigo segue como foi combinado", () => {
@@ -224,4 +242,20 @@ test("só existe UM lugar que decide quanto dura o teste", () => {
   // E a conta da função continua sendo a de lib/teste-gratis.ts.
   assert.match(ler("supabase/migrations/202609130001_dois_meses_de_teste.sql"),
     /interval '3 months' - interval '1 microsecond'/);
+});
+
+test("a campanha não tem mais meses grátis: o período grátis é só o teste de 15 dias (04/11/2026)", () => {
+  // A linha da campanha ainda dizia "2 meses grátis" (meses_gratis = 2). Não chegava à cobrança, mas
+  // aparecia na tela de planos do super-admin como "Meses grátis concedidos".
+  const migracao = ler("supabase/migrations/202611040001_campanha_sem_meses_gratis.sql")
+    .split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+  assert.match(migracao, /set meses_gratis = 0,/);
+  assert.match(migracao, /rotulo = 'Preço Fundador'/);
+  // Os testes que já correm mantêm a data do cadastro: a migração não toca em instituicoes.
+  assert.doesNotMatch(migracao, /instituicoes|assinatura_ate/);
+  const admin = semComentarios("app/organizacoes/planos/planos-admin-client.tsx");
+  assert.doesNotMatch(admin, /Meses grátis concedidos|Mês grátis concedido/);
+  assert.match(admin, /\{OFERTA_DO_TESTE\}/);
+  // E o checkout continua sem somar meses.
+  assert.match(ler("app/api/assinatura/checkout/route.ts"), /mesesGratis: 0,/);
 });

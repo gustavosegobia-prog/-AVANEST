@@ -42,6 +42,7 @@ export function RodapePublico() {
           <b>Empresa</b>
           <Link href="/termos">Termos de Uso</Link>
           <Link href="/privacidade">Política de Privacidade</Link>
+          <Link href="/seguranca">Segurança dos dados</Link>
           <Link href="/cookies">Política de Cookies</Link>
           <Link href="/cookies#preferencias">Preferências de cookies</Link>
           <a href="https://www.instagram.com/useavanest/" target="_blank" rel="noreferrer">Instagram</a>

@@ -3,6 +3,7 @@ import { paginaPublica } from "@/lib/metadados";
 import Link from "next/link";
 import { comoJson, migalhas, paginaDeConteudo } from "@/lib/schema";
 import { PaginaDeConteudo } from "@/components/pagina-de-conteudo";
+import { DIAS_DE_TESTE } from "@/lib/teste-gratis";
 
 // A ESCALA MÉDICA.
 //
@@ -105,7 +106,7 @@ export default function EscalaMedicaPage() {
         atual={CAMINHO}
         fim={{
           titulo: "Monte a escala do próximo mês no AVANEST.",
-          texto: "Os dois primeiros meses são grátis, e a primeira cobrança só vence depois deles. "
+          texto: `Os primeiros ${DIAS_DE_TESTE} dias são grátis, e a primeira cobrança só vence depois deles. `
             + "Cadastre o grupo, os hospitais e os colegas, monte o mês e avise a equipe: cada "
             + "médico recebe os próprios plantões por e-mail.",
         }}
@@ -165,9 +166,9 @@ export default function EscalaMedicaPage() {
           <div className="conteudoPerguntas">
             <article>
               <h3>Quanto custa a escala médica do AVANEST?</h3>
-              <p>Os valores estão em <Link href="/planos">planos e preços</Link>. Os dois primeiros
-                meses são grátis: o cartão é cadastrado no início e a primeira cobrança só vence
-                depois deles.</p>
+              <p>Os valores estão em <Link href="/planos">planos e preços</Link>. Os primeiros{" "}
+                {DIAS_DE_TESTE} dias são grátis: o cartão é cadastrado no início e a primeira cobrança
+                só vence depois deles.</p>
             </article>
             <article>
               <h3>Todos os médicos do grupo precisam de login?</h3>
@@ -195,7 +196,8 @@ export default function EscalaMedicaPage() {
             <article>
               <h3>Os dados ficam seguros?</h3>
               <p>Cada grupo só enxerga os próprios dados, e a trava fica no banco de dados. Cada
-                alteração guarda autor, data e hora.</p>
+                alteração guarda autor, data e hora. O resumo completo está em{" "}
+                <Link href="/seguranca">segurança dos dados</Link>.</p>
             </article>
           </div>
         </section>

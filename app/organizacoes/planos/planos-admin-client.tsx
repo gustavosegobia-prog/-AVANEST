@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { BrandMark } from "@/components/brand-mark";
 import { Icone } from "@/components/icone";
+import { OFERTA_DO_TESTE } from "@/lib/teste-gratis";
 
 // Tabela de preços e campanha de lançamento.
 //
@@ -100,10 +101,10 @@ export function PlanosAdminClient({
   const ocupadas = Number(vagas?.ocupadas ?? 0);
   const limiteAtual = Number(vagas?.limite ?? 0);
   const restantes = Number(vagas?.restantes ?? 0);
-  const mesesGratis = Number(vagas?.meses_gratis ?? 0);
   // A campanha passou a fechar por data, não por vaga. O `ativa` que a função
-  // devolve já leva o prazo em conta.
-  const promocaoValendo = Boolean(vagas?.ativa) && mesesGratis > 0;
+  // devolve já leva o prazo em conta. Os meses grátis dela saíram (04/11/2026):
+  // o período grátis é o teste de 15 dias, para todo mundo.
+  const promocaoValendo = Boolean(vagas?.ativa);
   const terminaEm = vagas?.termina_em
     ? new Date(`${vagas.termina_em}T12:00:00`).toLocaleDateString("pt-BR")
     : null;
@@ -137,8 +138,8 @@ export function PlanosAdminClient({
 
       <section className="metricGrid adminMetrics">
         <div className="metricCard">
-          <strong className={promocaoValendo ? "green" : ""}>{mesesGratis}</strong>
-          <span>{mesesGratis === 1 ? "Mês grátis concedido" : "Meses grátis concedidos"}</span>
+          <strong className="green">{OFERTA_DO_TESTE}</strong>
+          <span>Período grátis de quem entra</span>
         </div>
         <div className="metricCard">
           <strong className={promocaoValendo ? "green" : "amber"}>{terminaEm ?? "sem prazo"}</strong>

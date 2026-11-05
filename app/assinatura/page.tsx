@@ -108,7 +108,7 @@ export default async function AssinaturaPage({
           <AppLogo />
           <p>
             {semCartao
-              ? "O cartão fica guardado com a Stripe, que processa o pagamento — ele nunca passa pelo AVANEST. Nada é cobrado nos 2 primeiros meses."
+              ? "O cartão fica guardado com a Stripe, que processa o pagamento — ele nunca passa pelo AVANEST. Nada é cobrado antes do fim do seu teste grátis."
               : liberada
                 ? "Sua organização está em dia. Você pode contratar a assinatura mensal a qualquer momento — os dias que ainda restam são somados, não perdidos."
                 : "Seus dados continuam guardados e intactos. Nada é apagado enquanto a assinatura estiver parada."}

@@ -6359,6 +6359,10 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .avnOferta{margin-top:36px;max-width:620px}
 .avnOferta .avnActions{margin:0}
 .avnOfertaApoio{margin:12px 0 0;color:#c5d4df;font-size:15px}
+.avnOfertaPreco{margin:14px 0 0;font-size:16px;font-weight:700}
+.avnOfertaPreco a{color:#fff;text-decoration:none;border-bottom:1px solid rgba(67,200,184,.55);padding-bottom:1px}
+.avnOfertaPreco a:hover,.avnOfertaPreco a:focus-visible{border-bottom-color:#43c8b8}
+.avnOfertaPreco+.avnOfertaApoio{margin-top:6px}
 .avnAjuda{margin:16px 0 0;color:#9dbdd6;font-size:14px}
 .avnAjuda a{color:#fff;font-weight:700;text-decoration:underline;text-decoration-color:#43c8b8;text-underline-offset:3px}
 /* A oferta cabe na primeira tela de um notebook comum (1440×900 e 1366×768).
@@ -6494,6 +6498,49 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   .avnModuloSegunda{right:-8px;bottom:-28px;width:52%;border-radius:8px}
   .avnModulo:has(.avnModuloSegunda) .avnModuloTela{margin-bottom:28px}
   .avnModulosNota{margin-top:56px}
+}
+
+/* Comece hoje: os três passos do cadastro, em fundo branco logo depois da
+   faixa clara dos módulos. Número grande em verde, uma linha por cima de
+   cada passo: lê-se de relance, na ordem. */
+.avnComece{padding:80px max(20px,calc((100vw - var(--avn-caixa,1180px))/2));background:#fff}
+.avnComece>h2{margin:0;font-size:clamp(28px,3.4vw,44px);line-height:1.12;letter-spacing:-.025em;color:var(--avn-ink)}
+.avnPassos{list-style:none;margin:36px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:clamp(24px,3vw,44px);counter-reset:passo}
+.avnPassos li{padding-top:18px;border-top:2px solid var(--avn-line);counter-increment:passo}
+.avnPassos li::before{content:counter(passo);display:block;margin-bottom:14px;font-size:40px;font-weight:700;
+  line-height:1;color:#11776c;font-variant-numeric:tabular-nums}
+.avnPassos h3{margin:0;font-size:21px;line-height:1.3;color:var(--avn-ink);text-wrap:balance}
+.avnPassos p{margin:8px 0 0;max-width:42ch;color:#3a4e60;font-size:16.5px;line-height:1.6}
+.avnComeceNota{margin:36px 0 0;color:var(--avn-ink);font-size:18px;font-weight:600;line-height:1.5}
+.avnComece .avnActions{margin:22px 0 0}
+.avnSemQuebra{white-space:nowrap}
+@media(max-width:760px){
+  .avnComece{padding-top:56px;padding-bottom:56px}
+  .avnPassos{grid-template-columns:minmax(0,1fr);gap:28px}
+  .avnPassos li::before{font-size:34px;margin-bottom:10px}
+  .avnComece .avnActions{display:grid}
+}
+
+/* Quem faz o AVANEST: faixa clara entre o "Comece hoje" e as perguntas,
+   foto em retrato à esquerda e o texto curto ao lado. */
+.avnQuemFaz{display:grid;grid-template-columns:240px minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:center;
+  padding:72px max(20px,calc((100vw - var(--avn-caixa,1180px))/2));background:var(--avn-bg)}
+.avnQuemFazFoto{margin:0}
+.avnQuemFazFoto img{display:block;width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:16px}
+.avnQuemFazVaga{display:grid;place-content:center;gap:6px;aspect-ratio:4/5;border:2px dashed #b6c7d4;border-radius:16px;
+  background:#fff;color:#4a5d6e;font-size:16px;font-weight:700;text-align:center}
+.avnQuemFazVaga small{font-size:12.5px;font-weight:500;overflow-wrap:anywhere;padding:0 12px}
+.avnQuemFazTexto h2{margin:0;font-size:clamp(26px,3vw,38px);line-height:1.15;letter-spacing:-.02em;color:var(--avn-ink)}
+.avnQuemFazTexto>p{margin:14px 0 0;max-width:62ch;color:#3a4e60;font-size:17px;line-height:1.65}
+.avnQuemFazTexto>.avnQuemFazNome{margin-top:20px;color:var(--avn-ink);font-weight:700}
+.avnQuemFaz.semFoto{grid-template-columns:minmax(0,1fr)}
+.avnQuemFazTexto>.avnAConfirmar{display:inline-block;margin:0 0 14px;padding:6px 12px;border-radius:8px;
+  background:#fff4d6;color:#7a5200;font-size:14px;font-weight:700}
+@media(max-width:760px){
+  .avnQuemFaz{grid-template-columns:minmax(0,1fr);gap:22px;padding-top:56px;padding-bottom:56px}
+  .avnQuemFazFoto{width:160px}
+  .avnQuemFazTexto>p{font-size:16.5px}
 }
 
 /* O fechamento: a oferta de novo, para quem leu até o fim. Azul da marca,
@@ -8014,7 +8061,7 @@ button.evoPFAsaN:disabled{cursor:default}
    linha, numa caixa de até 1400px — menos borda do que os 1180 de antes. */
 @media(min-width:1101px){
   .avnCapa{--avn-moldura:max(32px,calc((100vw - 1400px)/2))}
-  .avnCapa .avnPerfis,.avnCapa .avnModulos,.avnCapa .avnPerguntasCapa,.avnCapa .avnFechamento,.avnCapa .rodapePublico{
+  .avnCapa .avnPerfis,.avnCapa .avnModulos,.avnCapa .avnComece,.avnCapa .avnQuemFaz,.avnCapa .avnPerguntasCapa,.avnCapa .avnFechamento,.avnCapa .rodapePublico{
     padding-left:var(--avn-moldura);padding-right:var(--avn-moldura)}
 }
 /* As perguntas vêm logo depois da faixa clara dos módulos, com fundo
@@ -8191,12 +8238,19 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
   .avnOferta{margin-top:44px;max-width:720px}
   .avnCapa .avnPrimary,.avnCapa .avnSecondary{min-height:58px;padding:0 32px;border-radius:14px;font-size:19px}
   .avnOfertaApoio{font-size:17px}
+  .avnOfertaPreco{font-size:18px}
   .avnAjuda{font-size:16px}
   .avnTelaCelular{width:clamp(210px,13vw,260px)}
   .avnTelaLegenda{font-size:14.5px}
 
   /* As seções de baixo acompanham. */
-  .avnPerfis h2,.avnModulos>h2,.avnFechamento h2{font-size:clamp(44px,2.9vw,56px)}
+  .avnPerfis h2,.avnModulos>h2,.avnComece>h2,.avnFechamento h2{font-size:clamp(44px,2.9vw,56px)}
+  .avnPassos h3{font-size:25px}
+  .avnPassos p{font-size:18.5px}
+  .avnComeceNota{font-size:20px}
+  .avnQuemFaz:not(.semFoto){grid-template-columns:280px minmax(0,1fr)}
+  .avnQuemFazTexto h2{font-size:clamp(40px,2.6vw,50px)}
+  .avnQuemFazTexto>p{font-size:19px}
   .avnPerfisGrade{gap:28px}
   .avnPerfisGrade article{padding:36px}
   .avnPerfisGrade h3{font-size:26px}

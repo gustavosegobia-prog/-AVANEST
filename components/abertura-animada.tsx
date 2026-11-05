@@ -71,7 +71,7 @@
 const PAGINAS_SEM_ABERTURA = [
   "planos", "15dias", "recursos", "privacidade", "termos", "escores", "app", "criar-conta",
   "avaliacao-pre-anestesica", "avaliacao-pre-anestesica-digital", "ficha-anestesica",
-  "escala-medica",
+  "escala-medica", "seguranca",
 ];
 const ROTEIRO_DA_ABERTURA = `try{
 if(location.pathname==='/'||/\\/imprimir$/.test(location.pathname)||/^\\/(${PAGINAS_SEM_ABERTURA.join("|")})(\\/|$)/.test(location.pathname)){document.documentElement.className+=' semAbertura'}

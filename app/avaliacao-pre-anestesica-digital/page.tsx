@@ -3,6 +3,7 @@ import Link from "next/link";
 import { paginaPublica } from "@/lib/metadados";
 import { comoJson, migalhas, paginaDeConteudo } from "@/lib/schema";
 import { PaginaDeConteudo } from "@/components/pagina-de-conteudo";
+import { DIAS_DE_TESTE } from "@/lib/teste-gratis";
 
 // A AVALIAÇÃO PRÉ-ANESTÉSICA COMO PRODUTO — a página de destino dos anúncios.
 //
@@ -96,9 +97,9 @@ export default function AvaliacaoDigitalPage() {
         atual={CAMINHO}
         fim={{
           titulo: "Faça a próxima avaliação pré-anestésica no AVANEST.",
-          texto: "Os dois primeiros meses são grátis, com o sistema completo desde o primeiro dia. "
-            + "O cartão é cadastrado no início e a primeira cobrança só vence depois dos dois "
-            + "meses; cancele antes e não paga nada. Sem fidelidade.",
+          texto: `Os primeiros ${DIAS_DE_TESTE} dias são grátis, com o sistema completo desde o primeiro dia. `
+            + `O cartão é cadastrado no início e a primeira cobrança só vence depois dos ${DIAS_DE_TESTE} `
+            + "dias; cancele antes e não paga nada. Sem fidelidade.",
           link: { href: "/avaliacao-pre-anestesica", rotulo: "Ler o guia da avaliação" },
         }}
       >
@@ -145,8 +146,8 @@ export default function AvaliacaoDigitalPage() {
           <div className="conteudoPerguntas">
             <article>
               <h3>Quanto custa?</h3>
-              <p>Os dois primeiros meses são grátis: o cartão é cadastrado no início e a primeira
-                cobrança só vence depois deles. Os valores estão em <Link href="/planos">planos e
+              <p>Os primeiros {DIAS_DE_TESTE} dias são grátis: o cartão é cadastrado no início e a
+                primeira cobrança só vence depois deles. Os valores estão em <Link href="/planos">planos e
                 preços</Link>, do anestesiologista que trabalha sozinho ao grupo inteiro.</p>
             </article>
             <article>

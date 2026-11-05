@@ -21,6 +21,9 @@ import Image from "next/image";
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
+import { DIAS_DE_TESTE, OFERTA_DO_TESTE } from "@/lib/teste-gratis";
+import { fraseDoPrecoDeEntrada, precoDeEntrada } from "@/lib/preco-de-entrada";
+import { ARQUIVO_DA_FOTO, QUEM_FAZ, mostrarQuemFaz } from "@/lib/quem-faz";
 import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 import { RodapePublico } from "@/components/rodape-publico";
 
@@ -144,7 +147,14 @@ const MODULOS: Modulo[] = [
   },
 ];
 
-export default function HomePage() {
+// A capa continua estática: o preço de entrada (lib/preco-de-entrada.ts) vem
+// da tabela de planos pelo cache de uma hora, e a página é refeita no mesmo
+// ritmo. O número aqui precisa ser literal — o Next lê esta linha sem rodar o
+// código —, e o teste confere que ele é o mesmo da consulta.
+export const revalidate = 3600;
+
+export default async function HomePage() {
+  const precoDosPlanos = fraseDoPrecoDeEntrada(await precoDeEntrada());
   const whatsappUrl =
     "https://wa.me/5541997870810?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20conversa%20de%2015%20minutos%20sobre%20o%20AVANEST.";
 
@@ -218,6 +228,10 @@ export default function HomePage() {
               <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=site`}>Começar 15 dias grátis</a>
               <a className="avnSecondary" href="/planos">Conhecer os planos</a>
             </div>
+            {/* O PREÇO DE ENTRADA, logo abaixo do botão: quem decide se testa quer
+                saber, antes, a ordem de grandeza. Sai da tabela de planos; se
+                ela não responder, a linha não aparece. */}
+            {precoDosPlanos && <p className="avnOfertaPreco"><a href="/planos">{precoDosPlanos}</a></p>}
             <p className="avnOfertaApoio">Primeira cobrança só depois dos 15 dias. Cancele antes e não paga nada.</p>
             <p className="avnAjuda">
               Precisa de ajuda? <a href={whatsappUrl} target="_blank" rel="noreferrer">Fale com nossa equipe pelo WhatsApp</a>.
@@ -313,6 +327,58 @@ export default function HomePage() {
           <a className="avnSecondary avnVerTudo" href="/recursos">Ver todos os recursos</a>
         </div>
       </section>
+      {/* COMECE HOJE: o caminho de verdade, na ordem em que ele acontece —
+          /15dias → criar conta → /comecar (sozinho ou grupo) → cartão em
+          /assinatura → área médica. Mudou o fluxo, muda aqui; o teste de
+          lib/capa.test.ts confere cada passo no código. */}
+      <section className="avnComece" aria-labelledby="avn-comece">
+        <h2 id="avn-comece">Comece hoje.</h2>
+        <ol className="avnPassos" role="list">
+          <li>
+            <h3>Crie a conta</h3>
+            <p>Em Começar {OFERTA_DO_TESTE}, com o seu <span className="avnSemQuebra">e-mail</span> e uma senha.</p>
+          </li>
+          <li>
+            <h3>Diga como vai usar e cadastre o cartão</h3>
+            <p>Sozinho ou criando um grupo. A primeira cobrança só vence depois dos {DIAS_DE_TESTE} dias.</p>
+          </li>
+          <li>
+            <h3>Faça a primeira avaliação</h3>
+            <p>Na área médica, em Nova avaliação, você cadastra o paciente e faz a consulta pré-anestésica.</p>
+          </li>
+        </ol>
+        <p className="avnComeceNota">Sem projeto de implantação. Funciona no celular, no tablet e no computador.</p>
+        <div className="avnActions">
+          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=comece-hoje`}>Começar {OFERTA_DO_TESTE}</a>
+        </div>
+      </section>
+      {/* QUEM FAZ O AVANEST, curto, antes das perguntas. O texto e a foto vêm de
+          lib/quem-faz.ts e ainda não foram confirmados: até lá o bloco sai
+          marcado nas prévias e não vai a produção (mostrarQuemFaz). Sem CRM,
+          título nem cargo. */}
+      {mostrarQuemFaz() && (
+        <section className={`avnQuemFaz${QUEM_FAZ.foto || !QUEM_FAZ.confirmado ? "" : " semFoto"}`}
+          aria-labelledby="avn-quem-faz" data-a-confirmar={QUEM_FAZ.confirmado ? undefined : ""}>
+          {QUEM_FAZ.foto ? (
+            <figure className="avnQuemFazFoto">
+              <Image src={QUEM_FAZ.foto} width={QUEM_FAZ.tamanhoDaFoto[0]} height={QUEM_FAZ.tamanhoDaFoto[1]}
+                alt={QUEM_FAZ.nome} loading="lazy" sizes="(min-width: 761px) 240px, 160px" />
+            </figure>
+          ) : !QUEM_FAZ.confirmado && (
+            <figure className="avnQuemFazFoto">
+              <span className="avnQuemFazVaga">Foto<small>{ARQUIVO_DA_FOTO.replace(/[^/]+$/, "")}<wbr /><span className="avnSemQuebra">{ARQUIVO_DA_FOTO.split("/").pop()}</span></small></span>
+            </figure>
+          )}
+          <div className="avnQuemFazTexto">
+            {!QUEM_FAZ.confirmado && (
+              <p className="avnAConfirmar" role="note">Texto aguardando confirmação: não vai ao ar assim.</p>
+            )}
+            <h2 id="avn-quem-faz">{QUEM_FAZ.titulo}</h2>
+            {QUEM_FAZ.paragrafos.map((x) => <p key={x}>{x}</p>)}
+            <p className="avnQuemFazNome">{QUEM_FAZ.nome}</p>
+          </div>
+        </section>
+      )}
       {/* PERGUNTAS FREQUENTES, em texto na página. Respondem às dúvidas de
           quem chega pela busca ("o AVANEST faz a ficha anestésica?") e levam
           cada uma à página que trata do assunto por inteiro. Sem marcação
@@ -351,13 +417,14 @@ export default function HomePage() {
           </article>
           <article>
             <h3>Quanto custa?</h3>
-            <p>Os dois primeiros meses são grátis: você cadastra o cartão no início e a primeira
-              cobrança só vence depois deles. Os valores estão em <a href="/planos">planos e preços</a>.</p>
+            <p>Os primeiros {DIAS_DE_TESTE} dias são grátis: você cadastra o cartão no início e a
+              primeira cobrança só vence depois deles. Os valores estão em <a href="/planos">planos e preços</a>.</p>
           </article>
           <article>
             <h3>Os dados dos pacientes ficam seguros?</h3>
             <p>Cada serviço só enxerga os próprios dados, a trava fica no banco de dados e cada
-              alteração guarda autor, data e hora. A recepção não abre o conteúdo clínico.</p>
+              alteração guarda autor, data e hora. A recepção não abre o conteúdo clínico. O resumo
+              para hospitais e cooperativas está em <a href="/seguranca">segurança dos dados</a>.</p>
           </article>
         </div>
       </section>
