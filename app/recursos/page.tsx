@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { RodapePublico } from "@/components/rodape-publico";
 import { MEDIDAS_DE_SEGURANCA } from "@/lib/seguranca";
+import { QUANTOS_DE_APOIO, QUANTOS_DE_CRISE } from "@/lib/intercorrencias/catalogo";
 
 // A trilha que aparece no lugar da URL crua no resultado do Google.
 // Breadcrumb é dos poucos dados estruturados que ainda mudam o que se
@@ -103,9 +104,10 @@ const BLOCOS: Bloco[] = [
   {
     titulo: "O manejo de crises",
     itens: [
-      ["49 protocolos de crise em anestesia",
+      [`${QUANTOS_DE_CRISE} protocolos de crise em anestesia`,
         "Parada cardíaca, anafilaxia, hipertermia maligna, via aérea difícil, crises obstétricas e "
-        + "pediátricas, e as listas de verificação do aparelho e da pré-indução."],
+        + `pediátricas. Ao lado deles, ${QUANTOS_DE_APOIO} cartões de apoio, como as listas de `
+        + "verificação do aparelho e da pré-indução."],
       ["Doses pelo peso e pela idade do paciente",
         "Com o peso e a idade, cada dose sai calculada com o volume de cada apresentação. O "
         + "dantroleno de um paciente de 72 kg já aparece em frascos."],
