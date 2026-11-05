@@ -44,7 +44,7 @@ test("revisão 4: os seis na versão 3, aprovada em 05/11/2026, que é a que vai
     assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === id), r(id), id);
     assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), r(id), `${id}: quem usa recebe a versão aprovada`);
   }
-  assert.equal(APROVACOES.length, 3, "a de 05/11/2026 é a terceira");
+  assert.equal(APROVACOES.length, 4, "a terceira (os 40 rascunhos) e a quarta (Eclâmpsia 4) são de 05/11/2026");
   // As três emergências passam a "Outras emergências", como pede o texto; o título novo da LAST cobre o previsto antigo.
   for (const id of IDS.slice(0, 3)) assert.equal(r(id).categoria, "outras", id);
   const outras = itensDaCategoria("outras", PROTOCOLOS_DA_PREVIA);

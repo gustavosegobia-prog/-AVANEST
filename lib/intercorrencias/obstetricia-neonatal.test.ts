@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { acharProtocolo, PROTOCOLOS_DA_PREVIA, PROTOCOLOS_LIBERADOS, rascunhoDe } from "./catalogo.ts";
-import { APROVACOES, aprovado } from "./aprovacao.ts";
+import { APROVACOES, aprovacaoDe, aprovado } from "./aprovacao.ts";
 import { bloqueioDoRamo, calcularDose, calcularVolume, passosDe, ramoDe, type PacienteDaConsulta } from "./calculo.ts";
 import { acharReferencia } from "./referencias.ts";
 import { ALVOS_SPO2, alvoSpO2, formatarTempo, horaParaMs, pcrMaterna, tranexamico } from "./relogios.ts";
@@ -40,7 +40,7 @@ test("obstetrícia e neonatal: os quatro na versão 3, aprovada em 05/11/2026, q
     assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === id), rascunho, id);
     assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), rascunho, `${id}: quem usa recebe a versão aprovada`);
   }
-  assert.equal(APROVACOES.length, 3, "a de 05/11/2026 é a terceira");
+  assert.equal(APROVACOES.length, 4, "a terceira (os 40 rascunhos) e a quarta (Eclâmpsia 4) são de 05/11/2026");
   // O rascunho anterior do colapso (magnésio igual ao da Eclâmpsia) saiu: vale o texto novo.
   assert.deepEqual(doseDe(r("colapso-materno"), "magnesio-ataque").dose, { min: 4, max: 6, unidade: "g", por: "fixa" });
 });
@@ -374,11 +374,11 @@ test("vias: nenhuma dose com apresentação de outra via; a ergometrina não vai
   assert.ok(!doseDe(r("hemorragia-pos-parto"), "metilergometrina-hpp").apresentacoes.some((a) => a.vias?.includes("IV")));
 });
 
-test("eclâmpsia v4 (05/11/2026): o magnésio pelo Ministério da Saúde e pela RBEHG/FEBRASGO, à espera de aprovação", () => {
+test("eclâmpsia v4 (05/11/2026): o magnésio pelo Ministério da Saúde e pela RBEHG/FEBRASGO, aprovado e com quem usa", () => {
   const ecl = rascunhoDe("eclampsia")!;
   assert.equal(ecl.versao, 4);
-  assert.equal(aprovado(ecl), false, "a versão 4 só vai para quem usa depois da aprovação");
-  assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === "eclampsia")!.versao, 3, "quem usa continua com a 3");
+  assert.equal(aprovacaoDe(ecl), APROVACOES[3], "a versão 4 tem a aprovação própria de 05/11/2026");
+  assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === "eclampsia"), ecl, "quem usa recebe a versão 4");
   const gestante = { idadeAnos: 28, pesoKg: 70, gestante: true };
   const contas = (id: string, i = 0) => {
     const d = ecl.medicamentos.find((m) => m.id === id)!;

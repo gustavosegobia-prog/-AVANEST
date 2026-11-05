@@ -86,6 +86,18 @@ export const APROVACOES: readonly Aprovacao[] = [
       "via-aerea-dificil-gestante": 2, "pneumotorax-hipertensivo": 2, "intubacao-esofagica-seletiva": 2,
     },
   },
+  {
+    // Autorizada pelo responsável médico na conversa de 05/11/2026 ("Aprovo a
+    // v4 como está"), depois da conferência pelo Manual de Gestação de Alto
+    // Risco (MS 2022) e pelo Protocolo 2023 da RBEHG. Ele confirmou as duas
+    // escolhas da versão: ataque em 15 a 20 minutos e meia dose de manutenção
+    // a partir de creatinina 1,0 mg/dL (ambas da RBEHG).
+    responsavel: "Gustavo Segobia da Silva",
+    crm: "CRM 49131",
+    data: "2026-11-05",
+    documento: "AVANEST — Eclâmpsia, versão 4: sulfato de magnésio pelo Ministério da Saúde (2022) e pela RBEHG/FEBRASGO (2023), 05/11/2026",
+    protocolos: { eclampsia: 4 },
+  },
 ];
 
 /** A aprovação que vale para este protocolo: a da versão dele, com conteúdo até a data da aprovação. */
