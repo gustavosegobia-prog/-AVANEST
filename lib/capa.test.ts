@@ -33,20 +33,23 @@ test("capa, Comece hoje: três passos, cada um conferido no fluxo de verdade", (
   assert.match(ler("app/dashboard/dashboard-client.tsx"), /local_atendimento_id: localAtivo\?\.id \?\? null/);
 });
 
-test("capa, Quem está por trás do AVANEST: antes das perguntas, o texto do responsável, sem CRM, e fora de produção se deixar de estar confirmado", async () => {
+test("capa, Quem está por trás do AVANEST: antes das perguntas, o texto do responsável (segunda versão), sem CRM, e fora de produção se deixar de estar confirmado", async () => {
   const { ARQUIVO_DA_FOTO, QUEM_FAZ, mostrarQuemFaz } = await import("./quem-faz.ts");
   const { AUTOR } = await import("./autoria.ts");
   const texto = capa();
   const quemFaz = texto.indexOf('className={`avnQuemFaz'), perguntas = texto.indexOf('className="recBloco avnPerguntasCapa"');
   assert.ok(quemFaz > 0 && quemFaz < perguntas, "o bloco vem antes das perguntas frequentes");
-  // O texto é o que o responsável escreveu e confirmou em 05/11/2026, com a linha do papel.
+  // O texto é o que o responsável escreveu e confirmou em 05/11/2026 (segunda versão),
+  // com a assinatura e a linha do papel como ele as escreveu.
   assert.equal(QUEM_FAZ.titulo, "Quem está por trás do AVANEST");
-  assert.equal(QUEM_FAZ.papel, "Médico | Idealizador e fundador do AVANEST");
+  assert.equal(QUEM_FAZ.assinatura, "Dr. Gustavo Segobia da Silva");
+  assert.equal(QUEM_FAZ.papel, "Médico anestesiologista | Fundador do AVANEST");
   assert.equal(QUEM_FAZ.paragrafos.length, 3);
-  assert.match(texto.slice(quemFaz, perguntas), /QUEM_FAZ\.papel/);
-  // O CRM não entra (pedido do responsável), nem título "Dr.".
-  const escrito = [QUEM_FAZ.titulo, QUEM_FAZ.nome, QUEM_FAZ.papel, ...QUEM_FAZ.paragrafos].join(" ");
-  assert.doesNotMatch(escrito, /CRM|RQE|\bDr\.?\s|\bDra\.?\s/);
+  assert.match(QUEM_FAZ.paragrafos[0], /^Sou Gustavo Segobia da Silva, médico anestesiologista, e criei o AVANEST/);
+  assert.match(texto.slice(quemFaz, perguntas), /QUEM_FAZ\.assinatura[\s\S]*QUEM_FAZ\.papel/);
+  // O CRM não entra (pedido do responsável).
+  const escrito = [QUEM_FAZ.titulo, QUEM_FAZ.assinatura, QUEM_FAZ.papel, ...QUEM_FAZ.paragrafos].join(" ");
+  assert.doesNotMatch(escrito, /CRM|RQE/);
   assert.ok(!escrito.includes(AUTOR.crm));
   assert.equal(QUEM_FAZ.nome, AUTOR.nome);
   assert.doesNotMatch(texto.slice(quemFaz, perguntas), /nomeCompleto|registro\(\)|AUTOR\.cargo/);
