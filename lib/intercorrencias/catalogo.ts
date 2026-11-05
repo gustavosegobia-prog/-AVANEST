@@ -130,8 +130,17 @@ export const acharProtocolo = (id: string) => PROTOCOLOS.find((x) => x.id === id
  * validação, quando há um (protocolos/rascunhos.ts), e na versão publicada,
  * quando não há. Quem usa nunca vê rascunho.
  */
-export const PROTOCOLOS_DA_PREVIA: Protocolo[] = PROTOCOLOS.map((p) => RASCUNHOS.find((r) => r.id === p.id) ?? p);
-export const rascunhoDe = (id: string) => RASCUNHOS.find((r) => r.id === id);
+/**
+ * As versões que existem de um protocolo, da mais nova para a mais antiga: os
+ * rascunhos (pode haver mais de um — a versão aprovada e a seguinte, ainda em
+ * validação) e a publicada.
+ */
+const versoesDe = (p: Protocolo) =>
+  [...RASCUNHOS.filter((r) => r.id === p.id), p].sort((a, b) => b.versao - a.versao);
+export const PROTOCOLOS_DA_PREVIA: Protocolo[] = PROTOCOLOS.map((p) => versoesDe(p)[0]);
+/** O rascunho mais novo de um protocolo — o que a prévia abre. */
+export const rascunhoDe = (id: string) =>
+  RASCUNHOS.filter((r) => r.id === id).sort((a, b) => b.versao - a.versao)[0];
 
 /**
  * O que QUEM USA abre: de cada protocolo, a versão mais nova com aprovação
@@ -141,8 +150,10 @@ export const rascunhoDe = (id: string) => RASCUNHOS.find((r) => r.id === id);
  * rascunho a quem usa: nada precisa mudar de arquivo.
  */
 export const PROTOCOLOS_LIBERADOS: Protocolo[] = PROTOCOLOS
-  .map((p) => { const r = rascunhoDe(p.id); return r && aprovado(r) ? r : p; })
-  .filter((p) => aprovado(p));
+  .map((p) => versoesDe(p).find((v) => aprovado(v)))
+  .filter((p): p is Protocolo => p !== undefined);
+/** A versão que quem usa abre agora, ou nada (protocolo sem versão aprovada). */
+export const versaoLiberada = (id: string) => PROTOCOLOS_LIBERADOS.find((p) => p.id === id);
 
 export const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
