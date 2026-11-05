@@ -656,6 +656,14 @@ export function GraficoSinais({
             </g>
           ))}
 
+          {/* A LINHA DE AGORA, embaixo dos números (pedido de 05/11/2026). Desenhada
+              por último, ela cortava ao meio os valores da coluna de agora — o
+              "100" pronto da SpO₂ virava "1|00", lido como "1000". Agora ela passa
+              por baixo, e o contorno do valor pronto é opaco: a linha some atrás dele. */}
+          {aberta && visivel(agoraMs) && (
+            <line className="evoAgora" x1={x(agoraMs)} x2={x(agoraMs)} y1={FAIXA_HORAS} y2={topoGrade + alturaGrade} />
+          )}
+
           {/* Gases e infusões: o valor escrito na mudança, e um traço enquanto vale */}
           {faixas.map((f, i) => {
             const y0 = FAIXA_HORAS + i * LINHA;
@@ -755,9 +763,6 @@ export function GraficoSinais({
             );
           })}
 
-          {aberta && visivel(agoraMs) && (
-            <line className="evoAgora" x1={x(agoraMs)} x2={x(agoraMs)} y1={FAIXA_HORAS} y2={topoGrade + alturaGrade} />
-          )}
         </g>
 
         {/* Eixo vertical do papel: forte a cada 30 */}
