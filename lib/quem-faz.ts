@@ -1,9 +1,10 @@
 // ===========================================================================
 // "Quem está por trás do AVANEST" — o bloco da capa antes das perguntas
 // ===========================================================================
-// TEXTO DO PRÓPRIO RESPONSÁVEL, enviado e confirmado em 05/11/2026: título,
-// parágrafos, nome e a linha "Médico | Idealizador e fundador do AVANEST" vão
-// como ele escreveu. Não reescreva sem ele ler: texto sobre uma pessoa não vai
+// TEXTO DO PRÓPRIO RESPONSÁVEL, enviado e confirmado em 05/11/2026 (segunda
+// versão, que substituiu a primeira no mesmo dia): título, parágrafos, a
+// assinatura "Dr. Gustavo Segobia da Silva" e a linha "Médico anestesiologista
+// | Fundador do AVANEST" vão como ele escreveu. Não reescreva sem ele ler: texto sobre uma pessoa não vai
 // ao ar sem ela confirmar. Se `confirmado` voltar a false, o bloco sai de
 // produção e reaparece marcado ("Texto aguardando confirmação") no ambiente
 // local e nas prévias da Vercel.
@@ -27,21 +28,21 @@ export const QUEM_FAZ = {
   foto: "/capa/quem-faz.webp" as string | null,
   /** Largura e altura do arquivo, em pixels (retrato 4:5). */
   tamanhoDaFoto: [800, 1000] as const,
+  /** O nome, para o texto alternativo da foto. */
   nome: AUTOR.nome,
-  /** A linha abaixo do nome, como o responsável a escreveu. */
-  papel: "Médico | Idealizador e fundador do AVANEST",
+  /** A assinatura abaixo do texto, como o responsável a escreveu. */
+  assinatura: `Dr. ${AUTOR.nome}`,
+  /** A linha abaixo da assinatura, como o responsável a escreveu. */
+  papel: "Médico anestesiologista | Fundador do AVANEST",
   titulo: "Quem está por trás do AVANEST",
   paragrafos: [
-    "O AVANEST nasceu da prática médica, dentro do serviço de anestesiologia de Campo Mourão (PR), "
-      + "a partir da necessidade de tornar a rotina do anestesiologista mais simples, organizada e "
-      + "eficiente.",
-    "Desenvolvido com base na experiência de quem vive diariamente os desafios do centro "
-      + "cirúrgico, o projeto transforma necessidades reais em soluções tecnológicas que conectam a "
-      + "avaliação pré-anestésica, a ficha anestésica, a gestão de escalas e o controle financeiro "
-      + "em uma única plataforma.",
-    "Mais do que um sistema, o AVANEST representa o compromisso de unir medicina, tecnologia e "
-      + "inovação, reduzindo a burocracia e permitindo que o anestesiologista dedique mais tempo ao "
-      + "que realmente importa: o cuidado com o paciente.",
+    `Sou ${AUTOR.nome}, médico anestesiologista, e criei o AVANEST a partir dos desafios que `
+      + "vivencio diariamente na profissão.",
+    "Tudo começou em Campo Mourão (PR), com a vontade de simplificar nossa rotina e encontrar "
+      + "soluções para problemas que conhecemos de perto.",
+    "O AVANEST nasceu dessa experiência e continua evoluindo dentro de um serviço de "
+      + "anestesiologia em atividade, sempre pensando em facilitar o dia a dia de quem está na "
+      + "linha de frente.",
   ],
 } as const;
 

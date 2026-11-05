@@ -376,8 +376,11 @@ export default async function HomePage() {
             )}
             <h2 id="avn-quem-faz">{QUEM_FAZ.titulo}</h2>
             {QUEM_FAZ.paragrafos.map((x) => <p key={x}>{x}</p>)}
-            <p className="avnQuemFazNome">{QUEM_FAZ.nome}</p>
-            {QUEM_FAZ.papel && <p className="avnQuemFazPapel">{QUEM_FAZ.papel}</p>}
+            <p className="avnQuemFazNome">{QUEM_FAZ.assinatura}</p>
+            {/* Cada parte do papel fica inteira; no celular a linha quebra no "|". */}
+            <p className="avnQuemFazPapel">{QUEM_FAZ.papel.split(" | ").map((parte, i) => (
+              <span key={parte}>{i > 0 && " | "}<span className="avnSemQuebra">{parte}</span></span>
+            ))}</p>
           </div>
         </section>
       )}
