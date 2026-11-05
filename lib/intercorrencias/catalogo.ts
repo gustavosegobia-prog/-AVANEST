@@ -155,6 +155,15 @@ export const PROTOCOLOS_LIBERADOS: Protocolo[] = PROTOCOLOS
 /** A versão que quem usa abre agora, ou nada (protocolo sem versão aprovada). */
 export const versaoLiberada = (id: string) => PROTOCOLOS_LIBERADOS.find((p) => p.id === id);
 
+/**
+ * Os números que o site anuncia (capa, /recursos e /15dias) saem daqui, e não
+ * digitados: a capa dizia "49 protocolos" quando o módulo já tinha 50 liberados
+ * (05/11/2026). Crise é tudo o que não é de apoio; os de apoio são as listas de
+ * verificação, o evento sem diagnóstico e o que fazer depois da crise.
+ */
+export const QUANTOS_DE_CRISE = PROTOCOLOS_LIBERADOS.filter((p) => p.categoria !== "apoio").length;
+export const QUANTOS_DE_APOIO = PROTOCOLOS_LIBERADOS.length - QUANTOS_DE_CRISE;
+
 export const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 /** Os títulos previstos que já têm protocolo (o próprio, ou o que ocupa o lugar dele). */

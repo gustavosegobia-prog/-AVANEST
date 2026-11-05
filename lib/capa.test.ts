@@ -66,3 +66,17 @@ test("o número do teste não é digitado nos botões e no rodapé: sai de DIAS_
     assert.match(codigo, /OFERTA_DO_TESTE/, arquivo);
   }
 });
+
+test("o número de protocolos não é digitado: sai do catálogo, o que está liberado para quem usa", async () => {
+  // A capa, o /recursos e o /15dias diziam "49 protocolos" à mão quando o módulo já tinha 50.
+  const { PROTOCOLOS_LIBERADOS, QUANTOS_DE_APOIO, QUANTOS_DE_CRISE } = await import("./intercorrencias/catalogo.ts");
+  assert.equal(QUANTOS_DE_CRISE, PROTOCOLOS_LIBERADOS.filter((p) => p.categoria !== "apoio").length);
+  assert.equal(QUANTOS_DE_CRISE + QUANTOS_DE_APOIO, PROTOCOLOS_LIBERADOS.length);
+  assert.ok(QUANTOS_DE_CRISE > 0 && QUANTOS_DE_APOIO > 0);
+  const semComentarios = (c: string) => ler(c).split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join("\n");
+  for (const arquivo of ["app/page.tsx", "app/recursos/page.tsx", "app/15dias/page.tsx"]) {
+    const codigo = semComentarios(arquivo);
+    assert.doesNotMatch(codigo, /\b\d+ protocolos\b/, arquivo);
+    assert.match(codigo, /QUANTOS_DE_CRISE\}? protocolos/, arquivo);
+  }
+});

@@ -6,6 +6,7 @@ import { AppLogo } from "@/components/app-logo";
 import { createClient } from "@/utils/supabase/server";
 import { DIAS_DE_TESTE, OFERTA_DO_TESTE, dataPorExtenso, fimDoTeste } from "@/lib/teste-gratis";
 import { CAMINHO_DA_CAMPANHA, origemDoLink } from "@/lib/link-da-campanha";
+import { QUANTOS_DE_CRISE } from "@/lib/intercorrencias/catalogo";
 
 // A porta da campanha do teste grátis — 15 dias desde 27/10/2026 (era /2meses,
 // que redireciona para cá).
@@ -79,7 +80,7 @@ export default async function TesteGratisPage({
             <li><b>Ficha anestésica</b>
               <span>No tablet, dentro da sala, impressa em A4.</span></li>
             <li><b>Manejo de crises</b>
-              <span>49 protocolos com as doses pelo peso do paciente.</span></li>
+              <span>{QUANTOS_DE_CRISE} protocolos com as doses pelo peso do paciente.</span></li>
             <li><b>Escala pessoal e do grupo</b>
               <span>Uma por hospital e a sua reunindo todas, com a troca de plantão registrada.</span></li>
             <li><b>Financeiro pessoal e do grupo</b>
