@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { acharProtocolo, PROTOCOLOS, PROTOCOLOS_DA_PREVIA, rascunhoDe } from "./catalogo.ts";
+import { acharProtocolo, PROTOCOLOS_DA_PREVIA, PROTOCOLOS_LIBERADOS, rascunhoDe } from "./catalogo.ts";
 import { APROVACOES, aprovado } from "./aprovacao.ts";
 import { calcularDose, passosDe, type PacienteDaConsulta } from "./calculo.ts";
 import { acharReferencia } from "./referencias.ts";
@@ -15,7 +15,7 @@ const adulto: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
 const conta = (p: Protocolo, id: string, pac: PacienteDaConsulta, apresentacao = 0) =>
   calcularDose(p.medicamentos.find((m) => m.id === id)!, p, pac, apresentacao).contas.map((c) => [c.doseTotal, c.unidadeDose, c.volume, c.unidadeVolume]);
 
-test("rascunho: só na prévia do responsável, nunca para quem usa, e sem aprovação", () => {
+test("rascunho: aprovado em 05/11/2026 na versão dele, e é ele que vai para quem usa", () => {
   assert.deepEqual(RASCUNHOS.map((r) => `${r.id} v${r.versao}`),
     ["embolia-pulmonar v2", "depressao-respiratoria-opioides v3", "hipotermia-perioperatoria v3",
       "ventilacao-mascara-dificil v3", "intubacao-dificil v3", "nao-ventilo-nao-intubo v3", "laringoespasmo v3",
@@ -31,11 +31,13 @@ test("rascunho: só na prévia do responsável, nunca para quem usa, e sem aprov
     assert.ok(publicado, r.id);
     assert.notEqual(publicado, r, `${r.id}: o catálogo publicado não pode ser o rascunho`);
     assert.ok(r.versao > publicado.versao, r.id);
-    assert.equal(aprovado(r), false, `${r.id}: rascunho aprovado`);
+    assert.ok(aprovado(r), `${r.id}: rascunho sem a aprovação de 05/11/2026`);
+    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === r.id), r, `${r.id}: quem usa recebe a versão aprovada`);
     assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === r.id), r, `${r.id}: a prévia abre o rascunho`);
     assert.equal(rascunhoDe(r.id), r);
   }
-  // A versão publicada não mudou: aprovada continua aprovada, em validação continua em validação.
+  // A versão publicada não mudou: aprovada continua aprovada; a que nunca foi aprovada segue sem aprovação —
+  // quem usa recebe o rascunho aprovado no lugar dela.
   assert.equal(acharProtocolo("embolia-pulmonar")!.versao, 1);
   assert.ok(aprovado(acharProtocolo("embolia-pulmonar")!));
   assert.equal(acharProtocolo("colapso-materno")!.versao, 2);
@@ -45,12 +47,14 @@ test("rascunho: só na prévia do responsável, nunca para quem usa, e sem aprov
     assert.equal(acharProtocolo(id)!.revisadoEm, "2026-10-16", id);
     assert.equal(aprovado(acharProtocolo(id)!), false, id);
   }
-  // Quem usa recebe só o aprovado, que nunca é rascunho.
-  const liberados = PROTOCOLOS.filter((p) => aprovado(p));
-  assert.ok(!liberados.some((p) => RASCUNHOS.includes(p)));
-  // Nenhuma aprovação nova: as duas de antes, sem rascunho nelas.
-  assert.equal(APROVACOES.length, 2);
-  for (const r of RASCUNHOS) for (const a of APROVACOES) assert.notEqual(a.protocolos[r.id], r.versao, r.id);
+  // Quem usa recebe só o aprovado: desde 05/11/2026, todo rascunho, que foi aprovado na versão dele.
+  assert.ok(PROTOCOLOS_LIBERADOS.every((p) => aprovado(p)));
+  assert.equal(APROVACOES.length, 3);
+  const terceira = APROVACOES[2];
+  for (const r of RASCUNHOS) {
+    assert.equal(terceira.protocolos[r.id], r.versao, `${r.id}: a aprovação de 05/11/2026 não cobre a versão do rascunho`);
+    for (const a of APROVACOES.slice(0, 2)) assert.notEqual(a.protocolos[r.id], r.versao, `${r.id}: aprovado antes de 05/11`);
+  }
 });
 
 test("embolia pulmonar (rascunho): classificação completa da diretriz e terapias avançadas por categoria", () => {

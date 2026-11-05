@@ -56,7 +56,7 @@ test("acompanhamento: os 15 cartões das revisões anteriores também entregam o
   for (const id of ids) {
     const r = rascunhoDe(id)!, publicado = acharProtocolo(id)!;
     assert.ok(r, id);
-    assert.equal(aprovado(r), false, `${id}: rascunho aprovado`);
+    assert.ok(aprovado(r), `${id}: a versão com a passagem sem a aprovação de 05/11/2026`);
     for (const x of r.depois) assert.doesNotMatch(x, proibido, `${id}: "${x}"`);
     assert.match(r.depois.join(" "), /[Pp]assagem/, id);
     // As doses são as da versão publicada (ou do rascunho anterior, que já as trazia).

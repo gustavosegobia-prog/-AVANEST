@@ -7,6 +7,7 @@
  */
 
 import type { Categoria, Previsto, Protocolo } from "./tipos.ts";
+import { aprovado } from "./aprovacao.ts";
 import { ANAFILAXIA } from "./protocolos/anafilaxia.ts";
 import { COLEGA_AFETADO, DEPOIS_DA_CRISE, DEZ_TS, PRE_INDUCAO, VERIFICACAO_APARELHO } from "./protocolos/apoio.ts";
 import { BRONCOASPIRACAO } from "./protocolos/broncoaspiracao.ts";
@@ -131,6 +132,17 @@ export const acharProtocolo = (id: string) => PROTOCOLOS.find((x) => x.id === id
  */
 export const PROTOCOLOS_DA_PREVIA: Protocolo[] = PROTOCOLOS.map((p) => RASCUNHOS.find((r) => r.id === p.id) ?? p);
 export const rascunhoDe = (id: string) => RASCUNHOS.find((r) => r.id === id);
+
+/**
+ * O que QUEM USA abre: de cada protocolo, a versão mais nova com aprovação
+ * registrada (aprovacao.ts) — o rascunho, quando ele foi aprovado; senão a
+ * versão publicada, quando ela é. Sem aprovação nenhuma, o protocolo fica de
+ * fora e aparece "em preparação". É a aprovação, e só ela, que leva um
+ * rascunho a quem usa: nada precisa mudar de arquivo.
+ */
+export const PROTOCOLOS_LIBERADOS: Protocolo[] = PROTOCOLOS
+  .map((p) => { const r = rascunhoDe(p.id); return r && aprovado(r) ? r : p; })
+  .filter((p) => aprovado(p));
 
 export const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 

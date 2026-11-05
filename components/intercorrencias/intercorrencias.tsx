@@ -3,7 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import estilos from "./intercorrencias.module.css";
-import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS, PROTOCOLOS_DA_PREVIA, rascunhoDe } from "@/lib/intercorrencias/catalogo";
+import { buscar, CATEGORIAS, itensDaCategoria, PROTOCOLOS_DA_PREVIA, PROTOCOLOS_LIBERADOS, rascunhoDe } from "@/lib/intercorrencias/catalogo";
 import { aprovado } from "@/lib/intercorrencias/aprovacao";
 import type { Categoria, Protocolo } from "@/lib/intercorrencias/tipos";
 import { Icone } from "@/components/icone";
@@ -44,7 +44,8 @@ function lerFavoritos(): string[] {
  * não tem aparece como "em preparação" e só abre na prévia do responsável
  * médico (super-admin), marcado como em validação.
  */
-const LIBERADOS = PROTOCOLOS.filter((p) => aprovado(p));
+// De cada protocolo, a versão mais nova com aprovação: o rascunho aprovado substitui a versão antiga.
+const LIBERADOS = PROTOCOLOS_LIBERADOS;
 /**
  * Na prévia: só o protocolo novo, sem versão publicada, leva "em validação" no índice e na busca. A correção de um
  * publicado (o rascunho) não leva rótulo (pedido do responsável médico, 01/11/2026); a versão e a situação ficam no
@@ -188,6 +189,7 @@ export function Intercorrencias({
               aoVoltar={fechar} aoBuscar={buscarOutra}
               aoAbrirProtocolo={(x) => { const alvo = disponiveis.find((p) => p.id === x); if (alvo) abrir(alvo); }}
               disponivel={disponivel}
+              versaoDe={(x) => disponiveis.find((p) => p.id === x)}
             />
           ) : buscando ? (
             <section className={estilos.folha} aria-live="polite" aria-labelledby={`${id}-achados`}>

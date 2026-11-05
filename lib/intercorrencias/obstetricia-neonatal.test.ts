@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { acharProtocolo, PROTOCOLOS, PROTOCOLOS_DA_PREVIA, rascunhoDe } from "./catalogo.ts";
+import { acharProtocolo, PROTOCOLOS_DA_PREVIA, PROTOCOLOS_LIBERADOS, rascunhoDe } from "./catalogo.ts";
 import { APROVACOES, aprovado } from "./aprovacao.ts";
 import { bloqueioDoRamo, calcularDose, calcularVolume, passosDe, ramoDe, type PacienteDaConsulta } from "./calculo.ts";
 import { acharReferencia } from "./referencias.ts";
@@ -27,7 +27,7 @@ const tudo = (p: Protocolo) => p.agirAgora.map((x) => `${x.texto} ${x.detalhe ??
 // Um dia fixo, no horário local do teste.
 const as = (hhmm: string, dia = 15) => { const [h, m] = hhmm.split(":").map(Number); return new Date(2026, 10, dia, h, m, 0, 0).getTime(); };
 
-test("obstetrícia e neonatal: os quatro em rascunho, versão 3, sem aprovação; a versão 2 aprovada continua com quem usa", () => {
+test("obstetrícia e neonatal: os quatro na versão 3, aprovada em 05/11/2026, que é a que vai para quem usa", () => {
   assert.deepEqual(OBSTETRICIA_NEONATAL_V3.map((p) => p.id), IDS);
   for (const id of IDS) {
     const publicado = acharProtocolo(id)!;
@@ -36,11 +36,11 @@ test("obstetrícia e neonatal: os quatro em rascunho, versão 3, sem aprovação
     const rascunho = r(id);
     assert.equal(rascunho.versao, 3, id);
     assert.equal(rascunho.atualizadoEm, "2026-11-01", id);
-    assert.equal(aprovado(rascunho), false, `${id}: rascunho aprovado sem autorização`);
+    assert.ok(aprovado(rascunho), `${id}: a versão 3 sem a aprovação de 05/11/2026`);
     assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === id), rascunho, id);
-    assert.ok(!PROTOCOLOS.includes(rascunho), id);
+    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), rascunho, `${id}: quem usa recebe a versão aprovada`);
   }
-  assert.equal(APROVACOES.length, 2, "nenhuma aprovação nova");
+  assert.equal(APROVACOES.length, 3, "a de 05/11/2026 é a terceira");
   // O rascunho anterior do colapso (magnésio igual ao da Eclâmpsia) saiu: vale o texto novo.
   assert.deepEqual(doseDe(r("colapso-materno"), "magnesio-ataque").dose, { min: 4, max: 6, unidade: "g", por: "fixa" });
 });

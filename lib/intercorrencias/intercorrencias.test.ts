@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { acharProtocolo, buscar, CATEGORIAS, itensDaCategoria, PREVISTOS, PROTOCOLOS } from "./catalogo.ts";
+import { acharProtocolo, buscar, CATEGORIAS, itensDaCategoria, PREVISTOS, PROTOCOLOS, PROTOCOLOS_DA_PREVIA, PROTOCOLOS_LIBERADOS } from "./catalogo.ts";
 import {
   calcularDose, calcularVolume, conferirPaciente, doseServe, passosDe, populacaoDe, type PacienteDaConsulta,
 } from "./calculo.ts";
@@ -462,12 +462,19 @@ test("aprovação médica registrada: nome, CRM e data, protocolo por protocolo 
     const esperada = segunda.protocolos[id] !== undefined ? segunda : primeira;
     assert.equal(aprovacaoDe(p), esperada, `${p.id}: versão ${p.versao} de ${p.atualizadoEm} sem aprovação registrada`);
   }
-  // A aprovação não se estende sozinha a uma versão nova nem a um protocolo novo.
-  assert.equal(aprovado({ ...fvtv, versao: 4 }), false);
-  assert.equal(aprovado({ ...fvtv, atualizadoEm: "2026-11-02" }), false);
-  for (const id of NOVOS) assert.equal(aprovado(acha(id)), false, id);
-  // A tela marca os sem aprovação na lista e diz quantos são no rodapé.
-  assert.equal(PROTOCOLOS.filter((p) => !aprovado(p)).length, 15);
+  // A aprovação não se estende sozinha a uma versão nova nem a um conteúdo mais novo que ela.
+  assert.equal(aprovado({ ...fvtv, versao: 5 }), false);
+  assert.equal(aprovado({ ...fvtv, atualizadoEm: "2026-11-06" }), false);
+  // A terceira (05/11/2026): os 40 rascunhos da prévia, cada um na versão dele.
+  const terceira = APROVACOES[2];
+  assert.equal(terceira.data, "2026-11-05");
+  assert.equal(terceira.crm, "CRM 49131");
+  assert.equal(Object.keys(terceira.protocolos).length, 40);
+  // Os 9 cartões da minuta que nunca tiveram aprovação seguem sem ela na versão 2: o aprovado é o rascunho (versão 3).
+  const semAprovacaoNaV2 = PROTOCOLOS.filter((p) => !aprovado(p)).map((p) => p.id).sort();
+  assert.equal(semAprovacaoNaV2.length, 9);
+  for (const id of semAprovacaoNaV2) assert.equal(terceira.protocolos[id], 3, id);
+  for (const id of NOVOS) assert.ok(PROTOCOLOS_LIBERADOS.some((p) => p.id === id && aprovado(p)), id);
 });
 
 
@@ -500,20 +507,26 @@ test("minuta preliminar de outubro de 2026: os 15 cartões revisados (versão 2)
   assert.ok(ids("bradicardia").includes("bradicardia-pediatrica"));
 });
 
-test("trava de liberação: sem aprovação, o protocolo fica em preparação para quem usa e só abre na prévia do responsável", async () => {
-  const liberados = PROTOCOLOS.filter((p) => aprovado(p));
-  assert.equal(liberados.length, 35);
-  // Para quem usa, os 15 voltam a "em preparação" no índice e não aparecem na busca.
+test("trava de liberação: quem usa recebe só a versão aprovada de cada protocolo; desde 05/11/2026, os 50", async () => {
+  const liberados = PROTOCOLOS_LIBERADOS;
+  assert.equal(liberados.length, 50);
+  assert.ok(liberados.every((p) => aprovado(p)));
+  // Cada um na versão mais nova que tem aprovação: a da prévia.
+  for (const p of liberados) assert.equal(PROTOCOLOS_DA_PREVIA.find((x) => x.id === p.id), p, p.id);
+  // Nada fica "em preparação", e a busca acha o que antes só a prévia achava.
   const emPreparacao = CATEGORIAS.flatMap((c) => itensDaCategoria(c.id, liberados).previstos.map((x) => x.titulo));
-  for (const id of NOVOS) assert.ok(emPreparacao.includes(acha(id).titulo), id);
-  assert.ok(!buscar("naloxona", liberados).some((a) => a.tipo === "protocolo" && a.protocolo.id === "depressao-respiratoria-opioides"));
-  assert.ok(buscar("naloxona", liberados).some((a) => a.tipo === "previsto"));
+  assert.deepEqual(emPreparacao, []);
+  assert.ok(buscar("naloxona", liberados).some((a) => a.tipo === "protocolo" && a.protocolo.id === "depressao-respiratoria-opioides"));
+  // A trava continua: sem aprovação, de fora.
+  const semAprovacao = { ...acha("incendio-sala-cirurgica"), versao: 9 };
+  assert.equal(aprovado(semAprovacao), false);
   const { readFileSync } = await import("node:fs");
   const ler = (c: string) => readFileSync(new URL(`../../${c}`, import.meta.url), "utf8");
   // A prévia é só do super-admin; a ficha anestésica nunca mostra protocolo em validação.
   assert.match(ler("app/crises/crises-client.tsx"), /previa=\{superAdmin\}/);
   assert.doesNotMatch(ler("components/intercorrencias/na-ficha.tsx"), /previa/);
   assert.match(ler("components/intercorrencias/intercorrencias.tsx"), /const disponiveis = previa \? PROTOCOLOS_DA_PREVIA : LIBERADOS/);
+  assert.match(ler("components/intercorrencias/intercorrencias.tsx"), /const LIBERADOS = PROTOCOLOS_LIBERADOS;/);
   assert.match(ler("components/intercorrencias/protocolo.tsx"), /Não está liberado para uso clínico/);
   // A barra do protocolo não tem mais o botão da calculadora (pedido do responsável médico, 01/11/2026): as doses já saem no cartão.
   assert.doesNotMatch(ler("components/intercorrencias/protocolo.tsx"), /aoAbrirCalculadora|Calculadora de doses/);

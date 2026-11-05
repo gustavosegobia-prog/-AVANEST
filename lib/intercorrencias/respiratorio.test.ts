@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { acharProtocolo, itensDaCategoria, PROTOCOLOS, PROTOCOLOS_DA_PREVIA, rascunhoDe } from "./catalogo.ts";
+import { acharProtocolo, itensDaCategoria, PROTOCOLOS_DA_PREVIA, PROTOCOLOS_LIBERADOS, rascunhoDe } from "./catalogo.ts";
 import { APROVACOES, aprovado } from "./aprovacao.ts";
 import { calcularDose, doseServe, passosDe, populacaoDe, type PacienteDaConsulta } from "./calculo.ts";
 import { acharReferencia } from "./referencias.ts";
@@ -25,7 +25,7 @@ const conta = (p: Protocolo, id: string, paciente: PacienteDaConsulta, apresenta
 const titulos = (p: Protocolo, populacao: Populacao | null) => passosDe(p, populacao).map((x) => x.texto);
 const doseDe = (p: Protocolo, id: string) => p.medicamentos.find((m) => m.id === id)!;
 
-test("respiratório: os sete em rascunho, versão 3, sem aprovação; a versão 2 aprovada continua com quem usa", () => {
+test("respiratório: os sete na versão 3, aprovada em 05/11/2026, que é a que vai para quem usa", () => {
   assert.deepEqual(RESPIRATORIO_V3.map((p) => p.id), IDS);
   for (const id of IDS) {
     const publicado = acharProtocolo(id)!;
@@ -35,12 +35,12 @@ test("respiratório: os sete em rascunho, versão 3, sem aprovação; a versão 
     assert.equal(rascunho.versao, 3, id);
     assert.equal(rascunho.atualizadoEm, "2026-11-01", id);
     assert.equal(rascunho.revisadoEm, "2026-11-01", id);
-    assert.equal(aprovado(rascunho), false, `${id}: rascunho aprovado sem autorização`);
+    assert.ok(aprovado(rascunho), `${id}: a versão 3 sem a aprovação de 05/11/2026`);
     assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === id), rascunho, `${id}: a prévia abre o rascunho`);
-    assert.ok(!PROTOCOLOS.includes(rascunho), `${id}: o rascunho entrou no catálogo publicado`);
+    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), rascunho, `${id}: quem usa recebe a versão aprovada`);
     assert.equal(rascunho.categoria, "respiratorio", id);
   }
-  assert.equal(APROVACOES.length, 2, "nenhuma aprovação nova");
+  assert.equal(APROVACOES.length, 3, "a de 05/11/2026 é a terceira");
 });
 
 test("respiratório: Agir agora completo e numerado, na ordem do texto clínico", () => {
