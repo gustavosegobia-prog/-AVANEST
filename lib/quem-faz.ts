@@ -12,8 +12,8 @@
 // anestesiologista, dentro de um serviço em atividade"; /recursos, "nasceu no
 // serviço de anestesiologia de Campo Mourão").
 //
-// A FOTO: o arquivo vai em public/capa/quem-faz.webp. Quando ele existir, troque
-// `foto` para "/capa/quem-faz.webp" — o teste confere que o arquivo está lá.
+// A FOTO: public/capa/quem-faz.webp, enviada em 05/11/2026 e recortada em 4:5
+// (800 x 1000). O teste confere que o arquivo está lá.
 // Sem foto, o bloco mostra o espaço reservado (fora de produção) ou só o texto.
 // ===========================================================================
 
@@ -24,8 +24,8 @@ export const ARQUIVO_DA_FOTO = "public/capa/quem-faz.webp";
 export const QUEM_FAZ = {
   /** Troque para true quando o texto e a foto estiverem conferidos. */
   confirmado: false,
-  /** "/capa/quem-faz.webp" quando o arquivo chegar; null até lá. */
-  foto: null as string | null,
+  /** A foto enviada pelo responsável em 05/11/2026, recortada em 4:5. */
+  foto: "/capa/quem-faz.webp" as string | null,
   /** Largura e altura do arquivo, em pixels (retrato 4:5). */
   tamanhoDaFoto: [800, 1000] as const,
   nome: AUTOR.nome,
