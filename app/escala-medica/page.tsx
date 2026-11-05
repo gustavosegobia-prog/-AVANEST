@@ -100,7 +100,7 @@ export default function EscalaMedicaPage() {
         titulo="Escala médica online para o seu grupo"
         resumo={"A escala de cada hospital em que o grupo atende, montada com dois cliques por "
           + "turno, com as trocas entre colegas registradas e o fechamento do mês pronto para "
-          + "pagar. Feita por um anestesiologista que monta a escala do próprio serviço."}
+          + "pagar. Feita por um médico que monta a escala do próprio serviço."}
         comAcao
         origem="escala-medica"
         atual={CAMINHO}

@@ -20,7 +20,10 @@
 export const AUTOR = {
   nome: "Gustavo Segobia da Silva",
   tratamento: "Dr.",
-  cargo: "Médico anestesiologista",
+  // "Médico", e não "Médico anestesiologista": o responsável é residente (R3)
+  // em anestesiologia e o título de especialista vem em março de 2027. Troque
+  // quando ele existir, junto com o RQE — o teste amarra os dois.
+  cargo: "Médico",
   // O RQE não entra enquanto não existir. Registro de especialista é conferível
   // no portal do CFM: publicar um número aproximado é pior do que omitir o
   // campo, porque um dado errado desmente justamente a credencial que ele

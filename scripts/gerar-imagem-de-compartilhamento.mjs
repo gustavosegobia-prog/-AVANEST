@@ -105,7 +105,7 @@ ${await folhaDaFonte()}
     <b>AVANEST</b>
   </div>
   <h1>Da recepção ao<br>fechamento do mês.</h1>
-  <p>Recepção, consulta pré-anestésica, ficha anestésica, manejo de crises, escala e financeiro. <b>Feito por anestesiologista.</b></p>
+  <p>Recepção, consulta pré-anestésica, ficha anestésica, manejo de crises, escala e financeiro. <b>Feito dentro de um serviço de anestesiologia.</b></p>
 </div>`;
 
 // CHROMIUM aponta um navegador já instalado, quando o do Playwright não está.

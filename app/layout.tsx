@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     // Sem `url` aqui: a página que herdasse este bloco declararia ser a capa.
     // Cada página pública declara o próprio endereço em lib/metadados.ts.
     title: "AVANEST | Gestão em anestesiologia",
-    description: "Da recepção ao fechamento do mês: consulta pré-anestésica, ficha anestésica, crises, escala e financeiro. Feito por anestesiologista.",
+    description: "Da recepção ao fechamento do mês: consulta pré-anestésica, ficha anestésica, crises, escala e financeiro. Feito dentro de um serviço de anestesiologia.",
     // A mesma imagem que as páginas públicas declaram por lib/metadados.ts —
     // uma fonte só, para a prévia não mudar de uma página para a outra.
     images: [IMAGEM_DE_COMPARTILHAMENTO],
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AVANEST | Gestão em anestesiologia",
-    description: "Da recepção ao fechamento do mês: consulta pré-anestésica, ficha anestésica, crises, escala e financeiro. Feito por anestesiologista.",
+    description: "Da recepção ao fechamento do mês: consulta pré-anestésica, ficha anestésica, crises, escala e financeiro. Feito dentro de um serviço de anestesiologia.",
     images: ["/compartilhar.png"],
   },
 };
