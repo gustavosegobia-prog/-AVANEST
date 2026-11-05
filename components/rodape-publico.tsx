@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
+import { OFERTA_DO_TESTE } from "@/lib/teste-gratis";
 
 // O rodapé de todas as páginas públicas.
 //
@@ -34,7 +36,7 @@ export function RodapePublico() {
           <Link href="/recursos">O que o AVANEST faz</Link>
           <Link href="/avaliacao-pre-anestesica-digital">Avaliação pré-anestésica digital</Link>
           <Link href="/planos">Planos e preços</Link>
-          <Link href="/15dias">15 dias grátis</Link>
+          <Link href={CAMINHO_DA_CAMPANHA}>{OFERTA_DO_TESTE}</Link>
           <Link href="/app">Instalar no celular</Link>
           <Link href="/login">Entrar</Link>
         </nav>

@@ -56,3 +56,13 @@ test("capa, Quem faz o AVANEST: antes das perguntas, sem CRM, título nem cargo,
   assert.equal(ARQUIVO_DA_FOTO, "public/capa/quem-faz.webp");
   if (QUEM_FAZ.foto) assert.ok(fs.existsSync(new URL(`../public${QUEM_FAZ.foto}`, import.meta.url)), `falta ${QUEM_FAZ.foto}`);
 });
+
+test("o número do teste não é digitado nos botões e no rodapé: sai de DIAS_DE_TESTE / OFERTA_DO_TESTE", () => {
+  // Mudou o teste, mudam os botões. Antes, cada "Começar 15 dias grátis" era um número escrito à mão.
+  const semComentarios = (c: string) => ler(c).split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join("\n");
+  for (const arquivo of ["app/page.tsx", "components/pagina-de-conteudo.tsx", "components/rodape-publico.tsx"]) {
+    const codigo = semComentarios(arquivo);
+    assert.doesNotMatch(codigo, /Começar 15 dias|depois dos 15 dias|>15 dias grátis</, arquivo);
+    assert.match(codigo, /OFERTA_DO_TESTE/, arquivo);
+  }
+});
