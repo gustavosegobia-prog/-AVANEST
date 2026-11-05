@@ -33,25 +33,32 @@ test("capa, Comece hoje: três passos, cada um conferido no fluxo de verdade", (
   assert.match(ler("app/dashboard/dashboard-client.tsx"), /local_atendimento_id: localAtivo\?\.id \?\? null/);
 });
 
-test("capa, Quem faz o AVANEST: antes das perguntas, sem CRM, título nem cargo, e fora de produção até ser confirmado", async () => {
+test("capa, Quem está por trás do AVANEST: antes das perguntas, o texto do responsável, sem CRM, e fora de produção se deixar de estar confirmado", async () => {
   const { ARQUIVO_DA_FOTO, QUEM_FAZ, mostrarQuemFaz } = await import("./quem-faz.ts");
   const { AUTOR } = await import("./autoria.ts");
   const texto = capa();
   const quemFaz = texto.indexOf('className={`avnQuemFaz'), perguntas = texto.indexOf('className="recBloco avnPerguntasCapa"');
   assert.ok(quemFaz > 0 && quemFaz < perguntas, "o bloco vem antes das perguntas frequentes");
-  // Nada de CRM, "Dr." ou cargo no que o bloco escreve.
-  const escrito = [QUEM_FAZ.titulo, QUEM_FAZ.nome, ...QUEM_FAZ.paragrafos].join(" ");
-  assert.doesNotMatch(escrito, /CRM|RQE|\bDr\.?\s|\bDra\.?\s|médico anestesiologista|coordenador|diretor|fundador|CEO/i);
+  // O texto é o que o responsável escreveu e confirmou em 05/11/2026, com a linha do papel.
+  assert.equal(QUEM_FAZ.titulo, "Quem está por trás do AVANEST");
+  assert.equal(QUEM_FAZ.papel, "Médico | Idealizador e fundador do AVANEST");
+  assert.equal(QUEM_FAZ.paragrafos.length, 3);
+  assert.match(texto.slice(quemFaz, perguntas), /QUEM_FAZ\.papel/);
+  // O CRM não entra (pedido do responsável), nem título "Dr.".
+  const escrito = [QUEM_FAZ.titulo, QUEM_FAZ.nome, QUEM_FAZ.papel, ...QUEM_FAZ.paragrafos].join(" ");
+  assert.doesNotMatch(escrito, /CRM|RQE|\bDr\.?\s|\bDra\.?\s/);
   assert.ok(!escrito.includes(AUTOR.crm));
   assert.equal(QUEM_FAZ.nome, AUTOR.nome);
   assert.doesNotMatch(texto.slice(quemFaz, perguntas), /nomeCompleto|registro\(\)|AUTOR\.cargo/);
-  // Até a confirmação: marcado, e só fora de produção.
-  if (!QUEM_FAZ.confirmado) {
+  // Confirmado, vai a todo lugar; sem confirmação, marcado e só fora de produção.
+  if (QUEM_FAZ.confirmado) {
+    assert.equal(mostrarQuemFaz("production"), true);
+  } else {
     assert.equal(mostrarQuemFaz("production"), false);
     assert.equal(mostrarQuemFaz("preview"), true);
     assert.equal(mostrarQuemFaz(undefined), true);
-    assert.match(texto, /Texto aguardando confirmação: não vai ao ar assim\./);
   }
+  assert.match(texto, /Texto aguardando confirmação: não vai ao ar assim\./);
   // A foto: o arquivo tem de existir quando o caminho for preenchido.
   assert.equal(ARQUIVO_DA_FOTO, "public/capa/quem-faz.webp");
   if (QUEM_FAZ.foto) assert.ok(fs.existsSync(new URL(`../public${QUEM_FAZ.foto}`, import.meta.url)), `falta ${QUEM_FAZ.foto}`);
