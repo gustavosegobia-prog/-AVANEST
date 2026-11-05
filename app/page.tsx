@@ -377,6 +377,7 @@ export default async function HomePage() {
             <h2 id="avn-quem-faz">{QUEM_FAZ.titulo}</h2>
             {QUEM_FAZ.paragrafos.map((x) => <p key={x}>{x}</p>)}
             <p className="avnQuemFazNome">{QUEM_FAZ.nome}</p>
+            {QUEM_FAZ.papel && <p className="avnQuemFazPapel">{QUEM_FAZ.papel}</p>}
           </div>
         </section>
       )}

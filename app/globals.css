@@ -6534,6 +6534,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .avnQuemFazTexto h2{margin:0;font-size:clamp(26px,3vw,38px);line-height:1.15;letter-spacing:-.02em;color:var(--avn-ink)}
 .avnQuemFazTexto>p{margin:14px 0 0;max-width:62ch;color:#3a4e60;font-size:17px;line-height:1.65}
 .avnQuemFazTexto>.avnQuemFazNome{margin-top:20px;color:var(--avn-ink);font-weight:700}
+.avnQuemFazTexto>.avnQuemFazPapel{margin-top:2px;font-size:15px;color:#4a5e70}
 .avnQuemFaz.semFoto{grid-template-columns:minmax(0,1fr)}
 .avnQuemFazTexto>.avnAConfirmar{display:inline-block;margin:0 0 14px;padding:6px 12px;border-radius:8px;
   background:#fff4d6;color:#7a5200;font-size:14px;font-weight:700}
