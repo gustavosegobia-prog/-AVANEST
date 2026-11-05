@@ -53,6 +53,39 @@ export const APROVACOES: readonly Aprovacao[] = [
       hipertensao: 3, hipotensao: 3, taquiarritmia: 3, bradicardia: 3, "embolia-pulmonar": 1,
     },
   },
+  {
+    // Autorizada pelo responsável médico na conversa de 05/11/2026 ("pode
+    // validar todos"), sobre os 40 rascunhos que estavam na prévia — todos
+    // feitos a partir dos textos que ele mesmo enviou: a minuta preliminar
+    // "Protocolos de crise" (outubro de 2026), as revisões respiratória (09 a
+    // 15), obstétrica e neonatal (16 a 19) e a revisão 4 (20 a 24), o aviso de
+    // lidocaína na suspeita de LAST e a passagem de cuidado à clínica cirúrgica.
+    //
+    // Duas notas de conferência de fonte seguem declaradas no próprio cartão e
+    // não mudam dose: o texto do PALS 2025 na bradicardia pediátrica (as doses
+    // são as da Bradicardia grave, já aprovada) e o preparo de 124 mL do
+    // magnésio na eclâmpsia (opção vinda da minuta).
+    responsavel: "Gustavo Segobia da Silva",
+    crm: "CRM 49131",
+    data: "2026-11-05",
+    documento: "AVANEST — Validação dos rascunhos da prévia (revisões de 01/11/2026 e minuta preliminar de outubro de 2026), 05/11/2026",
+    protocolos: {
+      // Correções de cartões que já tinham versão aprovada.
+      "pcr-fv-tv": 4, "sav-pediatrico": 3, "isquemia-miocardica": 4, "hemorragia-macica": 4, anafilaxia: 3,
+      "embolia-gasosa-venosa": 4, bradicardia: 4, "embolia-pulmonar": 2,
+      "ventilacao-mascara-dificil": 3, "intubacao-dificil": 3, "nao-ventilo-nao-intubo": 3, laringoespasmo: 3,
+      "pressao-vias-aereas": 3, "broncoespasmo-grave": 3, broncoaspiracao: 3,
+      "bloqueio-neuroaxial-alto": 3, "hemorragia-pos-parto": 3, "colapso-materno": 3, "reanimacao-neonatal": 3,
+      "toxicidade-anestesico-local": 3, hipercalemia: 3, "hipertermia-maligna": 3,
+      "evento-sem-diagnostico": 3, "depois-da-crise": 3, "colega-afetado": 3,
+      // Cartões da minuta preliminar que ainda não tinham aprovação nenhuma.
+      "hipoglicemia-grave": 3, "hipotermia-perioperatoria": 3, "crise-adrenal": 3, "convulsao-perioperatoria": 3,
+      "delirio-ao-despertar": 3, eclampsia: 3, "embolia-amniotica": 3, "depressao-respiratoria-opioides": 3,
+      "bloqueio-neuromuscular-residual": 3,
+      "incendio-sala-cirurgica": 2, "falha-oxigenio-energia": 2, "bradicardia-pediatrica": 2,
+      "via-aerea-dificil-gestante": 2, "pneumotorax-hipertensivo": 2, "intubacao-esofagica-seletiva": 2,
+    },
+  },
 ];
 
 /** A aprovação que vale para este protocolo: a da versão dele, com conteúdo até a data da aprovação. */

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { acharProtocolo, itensDaCategoria, PROTOCOLOS, PROTOCOLOS_DA_PREVIA, rascunhoDe } from "./catalogo.ts";
+import { acharProtocolo, itensDaCategoria, PROTOCOLOS_DA_PREVIA, PROTOCOLOS_LIBERADOS, rascunhoDe } from "./catalogo.ts";
 import { APROVACOES, aprovado } from "./aprovacao.ts";
 import {
   calcularDose, calcularVolume, doseServe, frascosDaDose, passosDe, pesoNaFaixa, populacaoDe, volumeServe, type PacienteDaConsulta,
@@ -32,7 +32,7 @@ const conta = (p: Protocolo, id: string, pac: PacienteDaConsulta, i = 0) => {
 const titulos = (p: Protocolo) => passosDe(p, null).map((x) => x.texto);
 const as = (hhmm: string, dia = 15) => { const [h, m] = hhmm.split(":").map(Number); return new Date(2026, 10, dia, h, m, 0, 0).getTime(); };
 
-test("revisão 4: os seis em rascunho, versão 3, sem aprovação; a versão 2 aprovada continua com quem usa", () => {
+test("revisão 4: os seis na versão 3, aprovada em 05/11/2026, que é a que vai para quem usa", () => {
   assert.deepEqual(METABOLICAS_APOIO_V3.map((p) => p.id), IDS);
   for (const id of IDS) {
     const publicado = acharProtocolo(id)!;
@@ -40,11 +40,11 @@ test("revisão 4: os seis em rascunho, versão 3, sem aprovação; a versão 2 a
     assert.ok(aprovado(publicado), `${id}: a versão 2 deixou de ser aprovada`);
     assert.equal(r(id).versao, 3, id);
     assert.equal(r(id).atualizadoEm, "2026-11-01", id);
-    assert.equal(aprovado(r(id)), false, `${id}: rascunho aprovado sem autorização`);
+    assert.ok(aprovado(r(id)), `${id}: a versão 3 sem a aprovação de 05/11/2026`);
     assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === id), r(id), id);
-    assert.ok(!PROTOCOLOS.includes(r(id)), id);
+    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), r(id), `${id}: quem usa recebe a versão aprovada`);
   }
-  assert.equal(APROVACOES.length, 2, "nenhuma aprovação nova");
+  assert.equal(APROVACOES.length, 3, "a de 05/11/2026 é a terceira");
   // As três emergências passam a "Outras emergências", como pede o texto; o título novo da LAST cobre o previsto antigo.
   for (const id of IDS.slice(0, 3)) assert.equal(r(id).categoria, "outras", id);
   const outras = itensDaCategoria("outras", PROTOCOLOS_DA_PREVIA);
@@ -302,14 +302,15 @@ test("hipertermia maligna: dantroleno por peso real, só o frasco de 20 mg (Ryan
   assert.ok(acharProtocolo("hipertermia-maligna")!.medicamentos[0].apresentacoes.every((a) => !a.frasco), "a versão 2 publicada não mudou");
 });
 
-test("lidocaína: a LAST avisa, e a PCR — FV/TV e o SAV pediátrico ganham o alerta no cartão de dose (rascunho)", () => {
+test("lidocaína: a LAST avisa, e a PCR — FV/TV e o SAV pediátrico ganham o alerta no cartão de dose (aprovado em 05/11/2026)", () => {
   assert.ok(r("toxicidade-anestesico-local").alertas!.includes("Lidocaína é anestésico local: na LAST, não usar como antiarrítmico — na arritmia ventricular, amiodarona."));
   const aviso = "Suspeita de toxicidade por anestésico local (LAST): não usar lidocaína; preferir amiodarona.";
   for (const [id, versao] of [["pcr-fv-tv", 4], ["sav-pediatrico", 3]] as const) {
     const rascunho = r(id), publicado = acharProtocolo(id)!;
     assert.equal(rascunho.versao, versao, id);
     assert.equal(publicado.versao, versao - 1, id);
-    assert.ok(aprovado(publicado) && !aprovado(rascunho), id);
+    assert.ok(aprovado(publicado) && aprovado(rascunho), id);
+    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), rascunho, `${id}: quem usa recebe o aviso`);
     const lidocainas = rascunho.medicamentos.filter((d) => d.farmaco === "Lidocaína");
     assert.ok(lidocainas.length > 0, id);
     for (const d of lidocainas) assert.equal(d.cuidados![0], aviso, `${id}/${d.id}`);

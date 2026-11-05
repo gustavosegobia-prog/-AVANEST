@@ -196,7 +196,7 @@ function tituloDosVolumes(lista: VolumeDoProtocolo[]): string {
 
 export function ProtocoloTela({
   p, dados, set, daFicha, favorito, aoFavoritar, aoVoltar, aoBuscar, aoAbrirProtocolo,
-  disponivel = (x) => Boolean(acharProtocolo(x)),
+  disponivel = (x) => Boolean(acharProtocolo(x)), versaoDe = acharProtocolo,
 }: {
   p: Protocolo;
   dados: DadosDoPaciente;
@@ -210,6 +210,8 @@ export function ProtocoloTela({
   aoAbrirProtocolo?: (id: string) => void;
   /** O protocolo de destino está liberado para quem usa? Sem aprovação, só na prévia do responsável. */
   disponivel?: (id: string) => boolean;
+  /** A versão do protocolo de destino que esta tela abre (a aprovada para quem usa; o rascunho na prévia). */
+  versaoDe?: (id: string) => Protocolo | undefined;
 }) {
   const [confirmadas, setConfirmadas] = useState<string[]>([]);
   // Abre no começo do protocolo, e não onde a lista estava rolada.
@@ -243,7 +245,7 @@ export function ProtocoloTela({
   // O protocolo certo para a faixa do paciente: forte quando a faixa bate; sem idade, só a lembrança.
   const veja = (p.veja ?? [])
     .filter((v) => populacao === null || v.quando.includes(populacao))
-    .map((v) => ({ ...v, alvo: disponivel(v.protocolo) ? acharProtocolo(v.protocolo) : undefined }))
+    .map((v) => ({ ...v, alvo: disponivel(v.protocolo) ? versaoDe(v.protocolo) : undefined }))
     .filter((v) => v.alvo);
   // Protocolo só de condutas (via aérea, listas): a seção de doses traz só as notas — e, sem notas, não aparece.
   const temCalculo = p.medicamentos.length > 0 || p.volumes.length > 0;

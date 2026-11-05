@@ -1,5 +1,6 @@
 /**
- * RASCUNHOS — propostas de correção, aguardando validação médica.
+ * RASCUNHOS — as versões novas da prévia. Aprovadas pelo responsável médico em
+ * 05/11/2026 (aprovacao.ts): desde então são elas que vão para quem usa.
  *
  * Um rascunho é a versão nova de um protocolo que JÁ ESTÁ no catálogo. Quem usa
  * continua com a versão publicada (aprovada ou não, como estiver); a prévia do
