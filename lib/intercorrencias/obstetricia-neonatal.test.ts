@@ -373,3 +373,39 @@ test("vias: nenhuma dose com apresentação de outra via; a ergometrina não vai
   }
   assert.ok(!doseDe(r("hemorragia-pos-parto"), "metilergometrina-hpp").apresentacoes.some((a) => a.vias?.includes("IV")));
 });
+
+test("eclâmpsia v4 (05/11/2026): o magnésio pelo Ministério da Saúde e pela RBEHG/FEBRASGO, à espera de aprovação", () => {
+  const ecl = rascunhoDe("eclampsia")!;
+  assert.equal(ecl.versao, 4);
+  assert.equal(aprovado(ecl), false, "a versão 4 só vai para quem usa depois da aprovação");
+  assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === "eclampsia")!.versao, 3, "quem usa continua com a 3");
+  const gestante = { idadeAnos: 28, pesoKg: 70, gestante: true };
+  const contas = (id: string, i = 0) => {
+    const d = ecl.medicamentos.find((m) => m.id === id)!;
+    return calcularDose({ ...d, apresentacoes: [d.apresentacoes[i]] }, ecl, gestante).contas
+      .map((c) => [c.doseTotal, c.unidadeDose, c.volume, c.unidadeVolume]);
+  };
+  // Ataque: 4 g = 20 mL do preparo do MS (8 mL a 50% + 12 mL de água destilada), ou 8 mL da ampola de 50%.
+  assert.deepEqual(contas("magnesio-eclampsia-ataque", 0), [[4, "g", 20, "mL"]]);
+  assert.deepEqual(contas("magnesio-eclampsia-ataque", 1), [[4, "g", 8, "mL"]]);
+  // Manutenção no preparo do MS (5 g em 250 mL): 1 g/h = 50 mL/h; 2 g/h = 100 mL/h.
+  assert.deepEqual(contas("magnesio-eclampsia-manutencao"), [[1, "g", 50, "mL/h"]]);
+  assert.deepEqual(contas("magnesio-eclampsia-manutencao-2g"), [[2, "g", 100, "mL/h"]]);
+  // Nova convulsão: 2 g = 4 mL a 50%. Gluconato de cálcio 10%: 1 g = 10 mL, em 3 minutos.
+  assert.deepEqual(contas("magnesio-eclampsia-recorrencia"), [[2, "g", 4, "mL"]]);
+  assert.deepEqual(contas("gluconato-eclampsia"), [[1, "g", 10, "mL"]]);
+  assert.match(ecl.medicamentos.find((m) => m.id === "gluconato-eclampsia")!.velocidade ?? "", /3 minutos/);
+  for (const d of ecl.medicamentos.filter((x) => x.farmaco === "Sulfato de magnésio")) assert.ok(d.altoRisco, d.id);
+  // Saem o preparo de 124 mL, o de 8 g em 100 mL e o labetalol; entram os limites, o Pritchard e a miastenia.
+  const texto = JSON.stringify(ecl);
+  assert.doesNotMatch(texto, /124 mL|8 g em 100 mL|80 mg\/mL|labetalol IV,|ou labetalol/i);
+  assert.match(texto, /labetalol IV não está disponível no Brasil/);
+  assert.match(texto, /frequência respiratória ≥16 irpm e diurese ≥25 mL\/h/);
+  assert.match(texto, /Creatinina ≥1,0 mg\/dL: manutenção pela metade/);
+  assert.match(texto, /Pritchard/);
+  assert.match(texto, /miastenia grave/);
+  assert.match(ecl.depois[0], /^Na passagem à obstetrícia/);
+  // As duas fontes brasileiras, lidas no texto.
+  for (const id of ["ms-2022-alto-risco", "rbehg-2023-pe"]) assert.ok(acharReferencia(id)?.conferida, id);
+  assert.ok(ecl.medicamentos.filter((d) => d.farmaco === "Sulfato de magnésio").every((d) => d.referencias.includes("rbehg-2023-pe")));
+});

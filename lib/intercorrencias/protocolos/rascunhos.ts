@@ -23,6 +23,7 @@ import { CONVULSAO, CRISE_ADRENAL, DELIRIO, HIPOGLICEMIA, HIPOTERMIA } from "./o
 import { RESPIRATORIO_V3 } from "./respiratorio.ts";
 import { OBSTETRICIA_NEONATAL_V3 } from "./obstetricia-neonatal.ts";
 import { METABOLICAS_APOIO_V3 } from "./metabolicas-apoio.ts";
+import { GLUCONATO_DE_CALCIO_10, MAGNESIO_50, MAGNESIO_ATAQUE_MS, MAGNESIO_MANUTENCAO_MS } from "./comum.ts";
 
 const PROPOSTA = "2026-11-01";
 
@@ -219,6 +220,131 @@ export const ECLAMPSIA_V3 = comPassagem(ECLAMPSIA, 3, {
   "Vigiar reflexos, frequência respiratória, consciência, diurese e função renal; magnésio sérico se oligúria.":
     "Orientar na passagem a vigilância de reflexos, frequência respiratória, consciência, diurese e função renal; magnésio sérico se oligúria.",
 });
+/**
+ * ECLÂMPSIA, VERSÃO 4 (05/11/2026): o magnésio pelas fontes brasileiras.
+ *
+ * O responsável médico pediu a conferência pelo Ministério da Saúde e pela
+ * FEBRASGO. Lidos no texto: o Manual de Gestação de Alto Risco (MS 2022,
+ * quadros 7 e 8) e o Protocolo 2023 da RBEHG (Peraçoli et al., o mesmo grupo do
+ * protocolo da FEBRASGO). Escolhas do responsável na mesma conversa: o preparo
+ * da manutenção do MS (5 g em 250 mL) e a frequência respiratória mínima da
+ * RBEHG (≥16 irpm).
+ *
+ * O que muda da versão 3: sai o preparo de 12 g em 124 mL (não está em nenhuma
+ * das duas) e o de 8 g em 100 mL do Manual de Crises; entram os preparos do MS;
+ * a nova convulsão passa a 2 g (as duas fontes) com manutenção a 2 g/h; os
+ * limites de vigilância e a meia dose no rim entram com número; sai o
+ * labetalol (não disponível no Brasil, MS 2022); entra o esquema de Pritchard
+ * para sala sem bomba e transporte. A passagem de cuidado da versão 3 fica.
+ */
+export const ECLAMPSIA_V4: Protocolo = {
+  ...ECLAMPSIA_V3,
+  versao: 4,
+  atualizadoEm: "2026-11-05",
+  revisadoEm: "2026-11-05",
+  resumo: "Convulsão em gestante ou puérpera com doença hipertensiva: proteger e oxigenar; sulfato de magnésio 4 g IV lento e 1 g/h por 24 horas; tratar a hipertensão grave; parto depois de estabilizar.",
+  agirAgora: [
+    { texto: "Chamar anestesia, obstetrícia e UTI; proteger e posicionar em decúbito lateral, de preferência esquerdo." },
+    { texto: "Via aérea, O2 e ventilação; monitorizar mãe e feto." },
+    { texto: "Sulfato de magnésio: ataque e manutenção em bomba de infusão.",
+      detalhe: "É o anticonvulsivante da eclâmpsia: não usar diazepam nem fenitoína no lugar dele. Contraindicado na miastenia grave." },
+    { texto: "Conferir em voz alta, com outra pessoa: concentração do frasco (50%, 20% ou 10%), gramas, mL e velocidade da bomba.",
+      detalhe: "A ampola de 50% com 10 mL tem 5 g; a de 20%, 2 g; a de 10%, 1 g." },
+    { texto: "Nova convulsão: mais 2 g IV e manutenção a 2 g/h.",
+      detalhe: "Se dois bolus não controlarem: outro anticonvulsivante (MS: diazepam, lorazepam ou midazolam; RBEHG: fenitoína), UTI e investigação de complicação cerebral." },
+    { texto: "PA ≥160/110 mmHg: nifedipino 10 mg VO ou, se inconsciente, hidralazina 5 a 10 mg IV, pelo protocolo obstétrico.",
+      detalhe: "Sem queda brusca: baixar 15% a 25% na primeira hora. O labetalol IV não está disponível no Brasil." },
+    { texto: "Sem bomba de infusão ou para transporte: esquema de Pritchard.",
+      detalhe: "4 g IV + 10 g IM (10 mL de MgSO4 50% em cada nádega, agulha 20 de 10 cm); depois 5 g IM de 4 em 4 horas. Não usar IM na HELLP com plaquetopenia." },
+    { texto: "Exames: hemograma com plaquetas, creatinina, enzimas hepáticas, eletrólitos e coagulação." },
+    { texto: "Parto depois da estabilização materna." },
+  ],
+  medicamentos: [
+    {
+      id: "magnesio-eclampsia-ataque", farmaco: "Sulfato de magnésio", indicacao: "Ataque", populacao: "adulto", via: "IV",
+      dose: { usual: 4, unidade: "g", por: "fixa" }, apresentacoes: [MAGNESIO_ATAQUE_MS, MAGNESIO_50], altoRisco: true,
+      velocidade: "Lentamente, em 15 a 20 minutos.",
+      cuidados: ["Na ampola de 50%, 4 g são 8 mL: diluir em 12 mL de água destilada antes (MS 2022)."],
+      referencias: ["ms-2022-alto-risco", "rbehg-2023-pe"],
+    },
+    {
+      id: "magnesio-eclampsia-manutencao", farmaco: "Sulfato de magnésio", indicacao: "Manutenção, em bomba de infusão", populacao: "adulto", via: "IV",
+      dose: { usual: 1, unidade: "g", por: "h" }, apresentacoes: [MAGNESIO_MANUTENCAO_MS], altoRisco: true,
+      repeticao: "Por 24 horas depois do parto ou da última convulsão, o que vier por último.",
+      cuidados: [
+        "Manter só com reflexo patelar presente, frequência respiratória ≥16 irpm e diurese ≥25 mL/h; avaliar a cada 4 horas.",
+        "Fora desses limites: reduzir ou parar a infusão e dosar magnésio (terapêutico 4 a 7 mEq/L) e função renal.",
+        "Creatinina ≥1,0 mg/dL: manutenção pela metade e magnésio sérico.",
+        "Infusão parada por até 2 horas: reiniciar; por mais de 2 horas: novo ataque de 2 g.",
+      ],
+      referencias: ["ms-2022-alto-risco", "rbehg-2023-pe"],
+    },
+    {
+      id: "magnesio-eclampsia-recorrencia", farmaco: "Sulfato de magnésio", indicacao: "Nova convulsão — dose adicional", populacao: "adulto", via: "IV",
+      dose: { usual: 2, unidade: "g", por: "fixa" }, apresentacoes: [MAGNESIO_50], altoRisco: true,
+      velocidade: "Em bolus IV lento.",
+      cuidados: [
+        "Diluir: 4 mL de MgSO4 50% (2 g) em 10 mL de água destilada ou SF (RBEHG 2023).",
+        "Depois: manutenção a 2 g/h.",
+      ],
+      referencias: ["ms-2022-alto-risco", "rbehg-2023-pe"],
+    },
+    {
+      id: "magnesio-eclampsia-manutencao-2g", farmaco: "Sulfato de magnésio", indicacao: "Manutenção depois de nova convulsão, ou se seguir sintomática", populacao: "adulto", via: "IV",
+      dose: { usual: 2, unidade: "g", por: "h" }, apresentacoes: [MAGNESIO_MANUTENCAO_MS], altoRisco: true,
+      cuidados: ["Os mesmos limites de vigilância da manutenção de 1 g/h."],
+      referencias: ["ms-2022-alto-risco", "rbehg-2023-pe"],
+    },
+    {
+      id: "gluconato-eclampsia", farmaco: "Gluconato de cálcio 10%", indicacao: "Intoxicação por magnésio, junto do suporte ventilatório", populacao: "adulto",
+      via: "IV lento",
+      dose: { usual: 1, unidade: "g", por: "fixa" }, apresentacoes: [GLUCONATO_DE_CALCIO_10],
+      velocidade: "Lentamente, em 3 minutos.",
+      cuidados: ["Parar a infusão de magnésio; O2 por máscara e suporte ventilatório."],
+      referencias: ["ms-2022-alto-risco", "rbehg-2023-pe"],
+    },
+  ],
+  notasDeDose: [
+    "Preparos do Ministério da Saúde (2022): ataque de 4 g = 8 mL de MgSO4 50% + 12 mL de água destilada; manutenção = 10 mL de MgSO4 50% + 240 mL de SF 0,9% (5 g em 250 mL), em que 1 g/h = 50 mL/h e 2 g/h = 100 mL/h.",
+    "Pritchard (sem bomba ou no transporte): 4 g IV + 10 g IM (5 g em cada nádega) e 5 g IM de 4 em 4 horas.",
+    "Intoxicação por magnésio (perda do reflexo patelar, depressão respiratória, rebaixamento): parar a infusão, ventilar e dar gluconato de cálcio.",
+    "Fluidos na pré-eclâmpsia grave: manutenção limitada a 80 mL/h, salvo perdas.",
+  ],
+  depois: [
+    "Na passagem à obstetrícia (UTI ou unidade de cuidado materno), que acompanha a paciente depois da sala: manter o magnésio por 24 horas depois do parto ou da última convulsão.",
+    "Orientar na passagem a vigilância: reflexo patelar presente, frequência respiratória ≥16 irpm, diurese ≥25 mL/h, consciência e função renal; magnésio sérico fora desses limites ou com creatinina ≥1,0 mg/dL.",
+    "Uso de magnésio por mais de 5 a 7 dias na gestação: avisar a neonatologia (cálcio, magnésio e ossos do recém-nascido).",
+  ],
+  divergencias: [
+    {
+      tema: "Tempo do ataque",
+      posicoes: [
+        { texto: "4 g EV em 5 a 10 minutos.", referencia: "ms-2022-alto-risco" },
+        { texto: "4 g IV lentamente, em 15 a 20 minutos.", referencia: "rbehg-2023-pe" },
+        { texto: "4 g IV em 5 a 15 minutos.", referencia: "nice-ng133" },
+      ],
+      escolha: "O cartão usa 15 a 20 minutos, da RBEHG (o grupo do protocolo da FEBRASGO): o ataque mais lento, com o mesmo preparo de 20 mL do Ministério da Saúde.",
+    },
+    {
+      tema: "Preparo da manutenção",
+      posicoes: [
+        { texto: "10 mL de MgSO4 50% + 240 mL de SF (5 g em 250 mL); 1 g/h = 50 mL/h.", referencia: "ms-2022-alto-risco" },
+        { texto: "10 mL de MgSO4 50% + 490 mL de SF (5 g em 500 mL); 1 g/h = 100 mL/h.", referencia: "rbehg-2023-pe" },
+      ],
+      escolha: "O do Ministério da Saúde, decisão do responsável médico em 05/11/2026.",
+    },
+    {
+      tema: "Limites para manter o magnésio",
+      posicoes: [
+        { texto: "Diurese ≥25 mL/h, reflexos presentes, FR ≥12 mpm; creatinina >1,3 mg/dL, metade da dose.", referencia: "ms-2022-alto-risco" },
+        { texto: "Reflexo patelar presente, FR ≥16 irpm, diurese ≥25 mL/h; creatinina ≥1,0 mg/dL, metade da manutenção.", referencia: "rbehg-2023-pe" },
+      ],
+      escolha: "FR ≥16 irpm, da RBEHG, decisão do responsável médico em 05/11/2026; a meia dose a partir de creatinina 1,0 mg/dL segue a mesma fonte.",
+    },
+  ],
+  referencias: ["ms-2022-alto-risco", "rbehg-2023-pe", "nice-ng133"],
+};
+
 export const EMBOLIA_AMNIOTICA_V3 = comPassagem(EMBOLIA_AMNIOTICA, 3, {
   "UTI materna; coagulação, gasometria e ecocardiograma seriados.":
     "Passagem à UTI materna, que acompanha a paciente depois da sala, com coagulação, gasometria e ecocardiograma seriados.",
@@ -257,5 +383,5 @@ export const RASCUNHOS: readonly Protocolo[] = [
   }),
   ...RESPIRATORIO_V3, ...OBSTETRICIA_NEONATAL_V3, ...METABOLICAS_APOIO_V3, PCR_FV_TV_V4, SAV_PEDIATRICO_V3,
   ISQUEMIA_V4, HEMORRAGIA_V4, ANAFILAXIA_V3, EMBOLIA_GASOSA_V4, BRADICARDIA_V4,
-  HIPOGLICEMIA_V3, CRISE_ADRENAL_V3, CONVULSAO_V3, DELIRIO_V3, ECLAMPSIA_V3, EMBOLIA_AMNIOTICA_V3, BNM_RESIDUAL_V3,
+  HIPOGLICEMIA_V3, CRISE_ADRENAL_V3, CONVULSAO_V3, DELIRIO_V3, ECLAMPSIA_V3, ECLAMPSIA_V4, EMBOLIA_AMNIOTICA_V3, BNM_RESIDUAL_V3,
 ];

@@ -45,7 +45,7 @@ test("acompanhamento: os cartões com seguimento clínico entregam o plano na pa
 });
 
 test("acompanhamento: os 15 cartões das revisões anteriores também entregam o plano na passagem, sem mudar doses nem etapas", async () => {
-  const { acharProtocolo, rascunhoDe } = await import("./catalogo.ts");
+  const { acharProtocolo, rascunhoDe, versaoLiberada } = await import("./catalogo.ts");
   const { aprovado } = await import("./aprovacao.ts");
   const ids = [
     "isquemia-miocardica", "hemorragia-macica", "anafilaxia", "embolia-gasosa-venosa", "bradicardia", "embolia-pulmonar",
@@ -54,9 +54,11 @@ test("acompanhamento: os 15 cartões das revisões anteriores também entregam o
   ];
   const proibido = /^(Monitoriza|Monitorar|Manter observação|Acompanhar|Observar|Vigiar|Reavaliar depois|Glicemia seriada|UTI materna|Recuperação:|EEG se)/;
   for (const id of ids) {
-    const r = rascunhoDe(id)!, publicado = acharProtocolo(id)!;
+    // A versão que quem usa abre (na eclâmpsia, a 3; a 4, com o magnésio do MS, espera aprovação e também traz a passagem).
+    const r = versaoLiberada(id)!, publicado = acharProtocolo(id)!;
     assert.ok(r, id);
     assert.ok(aprovado(r), `${id}: a versão com a passagem sem a aprovação de 05/11/2026`);
+    assert.match(rascunhoDe(id)!.depois.join(" "), /[Pp]assagem/, `${id}: o rascunho mais novo perdeu a passagem`);
     for (const x of r.depois) assert.doesNotMatch(x, proibido, `${id}: "${x}"`);
     assert.match(r.depois.join(" "), /[Pp]assagem/, id);
     // As doses são as da versão publicada (ou do rascunho anterior, que já as trazia).

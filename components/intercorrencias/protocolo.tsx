@@ -7,7 +7,7 @@ import {
   ROTULO_POPULACAO,
   volumeServe, type Alerta, type DoseCalculada, type PacienteDaConsulta,
 } from "@/lib/intercorrencias/calculo";
-import { acharProtocolo, CATEGORIAS, rascunhoDe } from "@/lib/intercorrencias/catalogo";
+import { acharProtocolo, CATEGORIAS, rascunhoDe, versaoLiberada } from "@/lib/intercorrencias/catalogo";
 import { acharReferencia, BIBLIOGRAFIA_GERAL } from "@/lib/intercorrencias/referencias";
 import { aprovacaoDe, dataDaAprovacao } from "@/lib/intercorrencias/aprovacao";
 import { ROTULO_NIVEL, type Calculo } from "@/lib/calculos/doses";
@@ -219,8 +219,8 @@ export function ProtocoloTela({
   useEffect(() => { topo.current?.scrollIntoView({ block: "start" }); }, []);
 
   const aprovacao = aprovacaoDe(p);
-  // Rascunho em validação: a versão publicada continua com quem usa.
-  const publicado = rascunhoDe(p.id) === p ? acharProtocolo(p.id) : undefined;
+  // Rascunho em validação: quem usa continua com a versão aprovada que estiver no ar (nenhuma, se não houver).
+  const publicado = rascunhoDe(p.id) === p && !aprovacao ? versaoLiberada(p.id) : undefined;
   const aprovacaoDoPublicado = publicado ? aprovacaoDe(publicado) : undefined;
   const paciente = pacienteDe(dados);
   const populacao = populacaoDe(paciente);

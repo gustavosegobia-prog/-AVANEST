@@ -99,6 +99,20 @@ export const MAGNESIO_SAESP_124: ApresentacaoDoProtocolo = {
   rotulo: "12 g em 124 mL — cerca de 97 mg/mL (preparo da minuta, a conferir)", quantidade: 12, unidade: "g", mL: 124, vias: ["IV"],
   preparo: "24 mL de sulfato de magnésio 50% (12 g) + 100 mL de SG 5% = 124 mL, em bomba de infusão",
 };
+/**
+ * Eclâmpsia, preparos do Manual de Gestação de Alto Risco (Ministério da Saúde,
+ * 2022, Quadro 7, p. 167), escolhidos pelo responsável médico em 05/11/2026.
+ * Ataque: 4 g em 20 mL (200 mg/mL). Manutenção: 5 g em 250 mL (20 mg/mL), em
+ * que 1 g/h = 50 mL/h e 2 g/h = 100 mL/h.
+ */
+export const MAGNESIO_ATAQUE_MS: ApresentacaoDoProtocolo = {
+  rotulo: "4 g em 20 mL — 200 mg/mL (preparo do Ministério da Saúde)", quantidade: 4, unidade: "g", mL: 20, vias: ["IV"],
+  preparo: "8 mL de sulfato de magnésio 50% (4 g) + 12 mL de água destilada",
+};
+export const MAGNESIO_MANUTENCAO_MS: ApresentacaoDoProtocolo = {
+  rotulo: "5 g em 250 mL — 20 mg/mL (preparo do Ministério da Saúde)", quantidade: 5, unidade: "g", mL: 250, vias: ["IV"],
+  preparo: "10 mL de sulfato de magnésio 50% (5 g) + 240 mL de SF 0,9%, em bomba de infusão identificada",
+};
 /** Manutenção da eclâmpsia: 5 g em 250 mL finais. */
 export const MAGNESIO_20MG: ApresentacaoDoProtocolo = {
   rotulo: "5 g em 250 mL — 20 mg/mL", quantidade: 20, unidade: "mg", mL: 1, vias: ["IV"],
