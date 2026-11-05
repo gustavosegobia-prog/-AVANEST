@@ -1231,6 +1231,11 @@ export function Plantoes({
     }
   }, [mes]);
 
+  // Carga inicial. O estado só muda depois da volta do banco (tudo o que
+  // `carregar` grava vem depois do primeiro await), e não em cascata de
+  // renderização — que é o que a regra abaixo existe para pegar. É o mesmo caso
+  // de components/termo-admin.tsx.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- ver acima
   useEffect(() => { void carregar(); }, [carregar]);
 
   const meus = plantoes.filter((p) => p.perfil_id === perfilId && p.situacao !== "cancelado");
@@ -1896,6 +1901,11 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
   // O sino manda em que aba esta tela abre. Um aviso de troca que caísse no
   // calendário deixaria a pessoa procurando o pedido dia a dia — e o pedido
   // está a uma aba de distância, com o dia, o horário e os dois botões.
+  //
+  // O pedido vem de FORA do React — o clique no sino, com um `token` novo a
+  // cada vez —, e se gasta ao ser atendido (`onAberturaAtendida`). É o mesmo
+  // caso do efeito de `plantaoEmFoco` logo abaixo.
+  /* eslint-disable react-hooks/set-state-in-effect -- ver acima */
   useEffect(() => {
     if (!abrirEm) return;
     setAba(abrirEm.aba);
@@ -1913,6 +1923,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     // alguém clicou.
     onAberturaAtendida?.();
   }, [abrirEm, carregar, onAberturaAtendida]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   /**
    * A notificação tocada abre O PLANTÃO, e não o calendário do mês.
