@@ -98,6 +98,16 @@ export const APROVACOES: readonly Aprovacao[] = [
     documento: "AVANEST — Eclâmpsia, versão 4: sulfato de magnésio pelo Ministério da Saúde (2022) e pela RBEHG/FEBRASGO (2023), 05/11/2026",
     protocolos: { eclampsia: 4 },
   },
+  {
+    // Autorizada pelo responsável médico na conversa de 05/11/2026 ("Aprovo a
+    // v4 do Colapso"): o ramo "Eclâmpsia com pulso" com o mesmo magnésio da
+    // Eclâmpsia 4; o resto do cartão é a versão 3.
+    responsavel: "Gustavo Segobia da Silva",
+    crm: "CRM 49131",
+    data: "2026-11-05",
+    documento: "AVANEST — Colapso materno, versão 4: magnésio do ramo da eclâmpsia igual ao da Eclâmpsia 4, 05/11/2026",
+    protocolos: { "colapso-materno": 4 },
+  },
 ];
 
 /** A aprovação que vale para este protocolo: a da versão dele, com conteúdo até a data da aprovação. */

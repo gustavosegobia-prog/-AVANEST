@@ -28,7 +28,7 @@ const tudo = (p: Protocolo) => p.agirAgora.map((x) => `${x.texto} ${x.detalhe ??
 // Um dia fixo, no horário local do teste.
 const as = (hhmm: string, dia = 15) => { const [h, m] = hhmm.split(":").map(Number); return new Date(2026, 10, dia, h, m, 0, 0).getTime(); };
 
-test("obstetrícia e neonatal: os quatro na versão 3, aprovada em 05/11/2026, que é a que vai para quem usa", () => {
+test("obstetrícia e neonatal: os quatro na versão 3, aprovada em 05/11/2026; quem usa recebe a mais nova aprovada (o colapso, a 4)", () => {
   assert.deepEqual(OBSTETRICIA_NEONATAL_V3.map((p) => p.id), IDS);
   for (const id of IDS) {
     const publicado = acharProtocolo(id)!;
@@ -39,9 +39,9 @@ test("obstetrícia e neonatal: os quatro na versão 3, aprovada em 05/11/2026, q
     assert.equal(rascunho.atualizadoEm, "2026-11-01", id);
     assert.ok(aprovado(rascunho), `${id}: a versão 3 sem a aprovação de 05/11/2026`);
     assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === id), rascunhoDe(id), id);
-    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), rascunho, `${id}: quem usa recebe a versão aprovada`);
+    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), rascunhoDe(id), `${id}: quem usa recebe a versão aprovada mais nova`);
   }
-  assert.equal(APROVACOES.length, 4, "a terceira (os 40 rascunhos) e a quarta (Eclâmpsia 4) são de 05/11/2026");
+  assert.equal(APROVACOES.length, 5, "a terceira (os 40 rascunhos), a quarta (Eclâmpsia 4) e a quinta (Colapso 4) são de 05/11/2026");
   // O rascunho anterior do colapso (magnésio igual ao da Eclâmpsia) saiu: vale o texto novo.
   assert.deepEqual(doseDe(r("colapso-materno"), "magnesio-ataque").dose, { min: 4, max: 6, unidade: "g", por: "fixa" });
 });
@@ -411,11 +411,12 @@ test("eclâmpsia v4 (05/11/2026): o magnésio pelo Ministério da Saúde e pela 
   assert.ok(ecl.medicamentos.filter((d) => d.farmaco === "Sulfato de magnésio").every((d) => d.referencias.includes("rbehg-2023-pe")));
 });
 
-test("colapso materno v4 (05/11/2026): o ramo da eclâmpsia com o mesmo magnésio da Eclâmpsia 4, à espera de aprovação", () => {
+test("colapso materno v4 (05/11/2026): o ramo da eclâmpsia com o mesmo magnésio da Eclâmpsia 4, aprovado e com quem usa", () => {
   const v4 = rascunhoDe("colapso-materno")!, v3 = r("colapso-materno"), ecl = rascunhoDe("eclampsia")!;
   assert.equal(v4.versao, 4);
-  assert.equal(aprovado(v4), false, "a versão 4 só vai para quem usa depois da aprovação");
-  assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === "colapso-materno"), v3, "quem usa continua com a 3");
+  assert.equal(aprovacaoDe(v4), APROVACOES[4], "a versão 4 tem a aprovação própria de 05/11/2026");
+  assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === "colapso-materno"), v4, "quem usa recebe a versão 4");
+  assert.ok(aprovado(v3), "a versão 3 continua aprovada, no histórico");
   // As doses de magnésio e do gluconato são as da Eclâmpsia 4, com os ids deste cartão.
   const par: Record<string, string> = {
     "magnesio-ataque": "magnesio-eclampsia-ataque", "magnesio-manutencao": "magnesio-eclampsia-manutencao",

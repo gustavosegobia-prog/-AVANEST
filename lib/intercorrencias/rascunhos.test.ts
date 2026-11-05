@@ -26,9 +26,9 @@ test("rascunho: aprovado em 05/11/2026 na versão dele, e é ele que vai para qu
       "isquemia-miocardica v4", "hemorragia-macica v4", "anafilaxia v3", "embolia-gasosa-venosa v4", "bradicardia v4",
       "hipoglicemia-grave v3", "crise-adrenal v3", "convulsao-perioperatoria v3", "delirio-ao-despertar v3", "eclampsia v3",
       "eclampsia v4", "colapso-materno v4", "embolia-amniotica v3", "bloqueio-neuromuscular-residual v3"]);
-  // A Eclâmpsia 4 foi aprovada na quarta aprovação. Em validação: o Colapso materno 4, com o mesmo magnésio dela.
+  // Nada em validação: a Eclâmpsia 4 (quarta aprovação) e o Colapso materno 4 (quinta), ambos de 05/11/2026.
   const pendentes = RASCUNHOS.filter((r) => !aprovado(r)).map((r) => `${r.id} v${r.versao}`);
-  assert.deepEqual(pendentes, ["colapso-materno v4"]);
+  assert.deepEqual(pendentes, []);
   for (const r of RASCUNHOS.filter((x) => aprovado(x))) {
     const publicado = acharProtocolo(r.id)!;
     assert.ok(publicado, r.id);
@@ -57,11 +57,12 @@ test("rascunho: aprovado em 05/11/2026 na versão dele, e é ele que vai para qu
   }
   // Quem usa recebe só o aprovado: desde 05/11/2026, todo rascunho, que foi aprovado na versão dele.
   assert.ok(PROTOCOLOS_LIBERADOS.every((p) => aprovado(p)));
-  assert.equal(APROVACOES.length, 4);
-  const terceira = APROVACOES[2], quarta = APROVACOES[3];
+  assert.equal(APROVACOES.length, 5);
+  const [terceira, quarta, quinta] = APROVACOES.slice(2);
   assert.deepEqual(quarta.protocolos, { eclampsia: 4 });
+  assert.deepEqual(quinta.protocolos, { "colapso-materno": 4 });
   for (const r of RASCUNHOS.filter((x) => aprovado(x))) {
-    const desta = r.id === "eclampsia" && r.versao === 4 ? quarta : terceira;
+    const desta = r.versao === 4 && r.id === "eclampsia" ? quarta : r.versao === 4 && r.id === "colapso-materno" ? quinta : terceira;
     assert.equal(desta.protocolos[r.id], r.versao, `${r.id}: a aprovação de 05/11/2026 não cobre a versão do rascunho`);
     for (const a of APROVACOES.slice(0, 2)) assert.notEqual(a.protocolos[r.id], r.versao, `${r.id}: aprovado antes de 05/11`);
   }
