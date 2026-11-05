@@ -25,10 +25,10 @@ test("rascunho: aprovado em 05/11/2026 na versão dele, e é ele que vai para qu
       "depois-da-crise v3", "colega-afetado v3", "pcr-fv-tv v4", "sav-pediatrico v3",
       "isquemia-miocardica v4", "hemorragia-macica v4", "anafilaxia v3", "embolia-gasosa-venosa v4", "bradicardia v4",
       "hipoglicemia-grave v3", "crise-adrenal v3", "convulsao-perioperatoria v3", "delirio-ao-despertar v3", "eclampsia v3",
-      "eclampsia v4", "embolia-amniotica v3", "bloqueio-neuromuscular-residual v3"]);
-  // Nenhuma versão em validação: a Eclâmpsia 4 (magnésio pelo MS e pela RBEHG) foi aprovada na quarta aprovação.
+      "eclampsia v4", "colapso-materno v4", "embolia-amniotica v3", "bloqueio-neuromuscular-residual v3"]);
+  // A Eclâmpsia 4 foi aprovada na quarta aprovação. Em validação: o Colapso materno 4, com o mesmo magnésio dela.
   const pendentes = RASCUNHOS.filter((r) => !aprovado(r)).map((r) => `${r.id} v${r.versao}`);
-  assert.deepEqual(pendentes, []);
+  assert.deepEqual(pendentes, ["colapso-materno v4"]);
   for (const r of RASCUNHOS.filter((x) => aprovado(x))) {
     const publicado = acharProtocolo(r.id)!;
     assert.ok(publicado, r.id);
@@ -36,7 +36,8 @@ test("rascunho: aprovado em 05/11/2026 na versão dele, e é ele que vai para qu
     assert.ok(r.versao > publicado.versao, r.id);
     assert.ok(aprovado(r), `${r.id}: rascunho sem a aprovação de 05/11/2026`);
     // Quem usa recebe a versão aprovada mais nova: esta, ou a seguinte (Eclâmpsia 3 → 4).
-    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === r.id), rascunhoDe(r.id), `${r.id}: quem usa recebe a versão aprovada`);
+    const maisNovaAprovada = RASCUNHOS.filter((x) => x.id === r.id && aprovado(x)).sort((a, b) => b.versao - a.versao)[0];
+    assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === r.id), maisNovaAprovada, `${r.id}: quem usa recebe a versão aprovada`);
     // A prévia abre o rascunho mais novo.
     assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === r.id), rascunhoDe(r.id), r.id);
   }
