@@ -13,7 +13,7 @@ export const metadata: Metadata = paginaPublica({
   titulo: "Software para anestesista e grupos de anestesia | AVANEST",
   descricao:
     "Software para anestesiologistas: recepção, avaliação pré-anestésica, ficha anestésica, "
-    + "manejo de crises, escala e financeiro do grupo. 15 dias grátis.",
+    + `manejo de crises, escala e financeiro do grupo. ${OFERTA_DO_TESTE}.`,
   caminho: "/",
 });
 
@@ -225,14 +225,14 @@ export default async function HomePage() {
               cadastrado no início, e a primeira cobrança só vem depois. */}
           <div className="avnOferta">
             <div className="avnActions">
-              <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=site`}>Começar 15 dias grátis</a>
+              <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=site`}>Começar {OFERTA_DO_TESTE}</a>
               <a className="avnSecondary" href="/planos">Conhecer os planos</a>
             </div>
             {/* O PREÇO DE ENTRADA, logo abaixo do botão: quem decide se testa quer
                 saber, antes, a ordem de grandeza. Sai da tabela de planos; se
                 ela não responder, a linha não aparece. */}
             {precoDosPlanos && <p className="avnOfertaPreco"><a href="/planos">{precoDosPlanos}</a></p>}
-            <p className="avnOfertaApoio">Primeira cobrança só depois dos 15 dias. Cancele antes e não paga nada.</p>
+            <p className="avnOfertaApoio">Primeira cobrança só depois dos {DIAS_DE_TESTE} dias. Cancele antes e não paga nada.</p>
             <p className="avnAjuda">
               Precisa de ajuda? <a href={whatsappUrl} target="_blank" rel="noreferrer">Fale com nossa equipe pelo WhatsApp</a>.
             </p>
@@ -273,7 +273,7 @@ export default async function HomePage() {
               <li>Os plantões de todos os hospitais reunidos em uma escala só.</li>
               <li>O que você fez, recebeu e ainda tem a receber, mês a mês.</li>
             </ul>
-            <a className="avnPerfilBotao primario" href={`${CAMINHO_DA_CAMPANHA}?de=perfil-individual`}>Começar 15 dias grátis</a>
+            <a className="avnPerfilBotao primario" href={`${CAMINHO_DA_CAMPANHA}?de=perfil-individual`}>Começar {OFERTA_DO_TESTE}</a>
           </article>
           <article>
             <h3>Gerencio um grupo de anestesia</h3>
@@ -323,7 +323,7 @@ export default async function HomePage() {
         ))}
         <p className="avnModulosNota">Telas reais do sistema, com pacientes e médicos fictícios.</p>
         <div className="avnActions">
-          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=modulos`}>Começar 15 dias grátis</a>
+          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=modulos`}>Começar {OFERTA_DO_TESTE}</a>
           <a className="avnSecondary avnVerTudo" href="/recursos">Ver todos os recursos</a>
         </div>
       </section>
@@ -432,10 +432,10 @@ export default async function HomePage() {
           com a condição dita do mesmo jeito que no topo. */}
       <section className="avnFechamento" aria-labelledby="avn-fechamento">
         <h2 id="avn-fechamento">Use no seu próximo plantão.</h2>
-        <p>15 dias grátis com o sistema completo. A primeira cobrança só vence depois deles, e
+        <p>{OFERTA_DO_TESTE} com o sistema completo. A primeira cobrança só vence depois deles, e
           cancelando antes você não paga nada.</p>
         <div className="avnActions">
-          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=fim-da-capa`}>Começar 15 dias grátis</a>
+          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=fim-da-capa`}>Começar {OFERTA_DO_TESTE}</a>
           <a className="avnSecondary" href={whatsappUrl} target="_blank" rel="noreferrer">Conversar no WhatsApp</a>
         </div>
       </section>

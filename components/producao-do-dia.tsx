@@ -396,6 +396,11 @@ export function ProducaoDoDia({
     setItens((data ?? []) as Producao[]);
   }, [dia]);
 
+  // Carga inicial. O estado só muda depois da volta do banco (tudo o que
+  // `carregar` grava vem depois do primeiro await), e não em cascata de
+  // renderização — que é o que a regra abaixo existe para pegar. É o mesmo caso
+  // de components/termo-admin.tsx.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- ver acima
   useEffect(() => { void carregar(); }, [carregar]);
 
   const total = useMemo(() => itens.reduce((s, i) => s + Number(i.valor), 0), [itens]);

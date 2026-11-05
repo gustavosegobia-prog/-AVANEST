@@ -22,7 +22,7 @@ Feito por anestesiologista, dentro de um serviço em atividade. A folha digital 
 - Base normativa citada no site: Resolução CFM nº 2.174/2017 (Anexos II, III e IV).
 
 ## Capabilities and Constraints
-- Next.js 16 (App Router) + Supabase (RLS por instituição, verificação em duas etapas cobrada pelo banco). CSS global em `app/globals.css`.
+- Next.js 16 (App Router) + Supabase (RLS por instituição). Verificação em duas etapas: desligada desde 18/10/2026 (`DUAS_ETAPAS_LIGADA = false` em `lib/duas-etapas.ts`); a tranca do banco segue instalada, mas sem fator cadastrado não age sobre ninguém — não prometer no site enquanto estiver desligada. CSS global em `app/globals.css`.
 - Módulos novos amadurecem restritos ao super-admin (`perfis.super_admin`) e só depois são liberados (padrão de /calculos; trava `recursos_liberados`).
 - Cálculos clínicos são apoio à decisão: nunca registram dose sugerida como administrada; nenhuma dose de referência é escrita no código — só regras aprovadas, com fonte e revisor. Sem regra: "Referência de dose indisponível para esta situação".
 - Sevoflurano: consumo estimado em mL; nunca valores financeiros.

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { PAGINAS_DE_CONTEUDO, RodapePublico } from "@/components/rodape-publico";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
+import { DIAS_DE_TESTE, OFERTA_DO_TESTE } from "@/lib/teste-gratis";
 import { dataPorExtenso, nomeCompleto, registro } from "@/lib/autoria";
 
 // A moldura das páginas que respondem a uma busca — avaliação pré-anestésica,
@@ -65,10 +66,10 @@ export function PaginaDeConteudo({
         {comAcao && (
           <div className="conteudoAcao">
             <div className="avnActions">
-              <a className="avnPrimary" href={teste}>Começar 15 dias grátis</a>
+              <a className="avnPrimary" href={teste}>Começar {OFERTA_DO_TESTE}</a>
               <a className="avnSecondary" href="/planos">Ver planos</a>
             </div>
-            <p>Primeira cobrança só depois dos 15 dias. Cancele antes e não paga nada.</p>
+            <p>Primeira cobrança só depois dos {DIAS_DE_TESTE} dias. Cancele antes e não paga nada.</p>
           </div>
         )}
         {indice && (
@@ -87,7 +88,7 @@ export function PaginaDeConteudo({
         <h2>{fim.titulo}</h2>
         <p>{fim.texto}</p>
         <div className="avnActions">
-          <a className="avnPrimary" href={teste}>Começar 15 dias grátis</a>
+          <a className="avnPrimary" href={teste}>Começar {OFERTA_DO_TESTE}</a>
           <a className="avnSecondary" href={fim.link?.href ?? "/recursos"}>
             {fim.link?.rotulo ?? "Ver todos os recursos"}
           </a>
