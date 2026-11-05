@@ -511,14 +511,8 @@ test("trava de liberação: quem usa recebe só a versão aprovada de cada proto
   const liberados = PROTOCOLOS_LIBERADOS;
   assert.equal(liberados.length, 50);
   assert.ok(liberados.every((p) => aprovado(p)));
-  // Cada um na versão mais nova que tem aprovação: a da prévia, salvo a que está em validação depois dela (Colapso materno 4).
-  for (const p of liberados) {
-    const previa = PROTOCOLOS_DA_PREVIA.find((x) => x.id === p.id)!;
-    if (previa === p) continue;
-    assert.equal(aprovado(previa), false, p.id);
-    assert.ok(previa.versao > p.versao, p.id);
-    assert.equal(p.id, "colapso-materno");
-  }
+  // Cada um na versão mais nova que tem aprovação, que hoje é a mesma da prévia (nada em validação).
+  for (const p of liberados) assert.equal(PROTOCOLOS_DA_PREVIA.find((x) => x.id === p.id), p, p.id);
   // Nada fica "em preparação", e a busca acha o que antes só a prévia achava.
   const emPreparacao = CATEGORIAS.flatMap((c) => itensDaCategoria(c.id, liberados).previstos.map((x) => x.titulo));
   assert.deepEqual(emPreparacao, []);

@@ -40,7 +40,7 @@ test("respiratório: os sete na versão 3, aprovada em 05/11/2026, que é a que 
     assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), rascunho, `${id}: quem usa recebe a versão aprovada`);
     assert.equal(rascunho.categoria, "respiratorio", id);
   }
-  assert.equal(APROVACOES.length, 4, "a terceira (os 40 rascunhos) e a quarta (Eclâmpsia 4) são de 05/11/2026");
+  assert.equal(APROVACOES.length, 5, "a terceira (os 40 rascunhos), a quarta (Eclâmpsia 4) e a quinta (Colapso 4) são de 05/11/2026");
 });
 
 test("respiratório: Agir agora completo e numerado, na ordem do texto clínico", () => {
