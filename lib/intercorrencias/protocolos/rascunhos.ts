@@ -345,6 +345,60 @@ export const ECLAMPSIA_V4: Protocolo = {
   referencias: ["ms-2022-alto-risco", "rbehg-2023-pe", "nice-ng133"],
 };
 
+/**
+ * COLAPSO MATERNO, VERSÃO 4 (05/11/2026): o ramo "Eclâmpsia com pulso" passa
+ * a usar o mesmo magnésio da Eclâmpsia 4, aprovada no mesmo dia. A versão 3
+ * trazia ataque de 4 a 6 g em cerca de 20 minutos (texto clínico de
+ * 01/11/2026); o Ministério da Saúde (2022) e a RBEHG (2023) usam 4 g. Eram
+ * dois esquemas no mesmo app, e a própria divergência da versão 3 pedia que se
+ * decidisse um para os dois.
+ *
+ * As doses não são escritas de novo aqui: saem do cartão Eclâmpsia 4, com os
+ * ids deste cartão. Mudou lá, muda aqui. O resto da versão 3 (PCR, parto
+ * ressuscitativo, passagem de cuidado) fica igual.
+ */
+const COLAPSO_V3 = OBSTETRICIA_NEONATAL_V3.find((p) => p.id === "colapso-materno")!;
+const MAGNESIO_DO_COLAPSO: Record<string, { id: string; indicacao: string }> = {
+  "magnesio-eclampsia-ataque": { id: "magnesio-ataque", indicacao: "Eclâmpsia com pulso — ataque" },
+  "magnesio-eclampsia-manutencao": { id: "magnesio-manutencao", indicacao: "Eclâmpsia com pulso — manutenção, em bomba de infusão" },
+  "magnesio-eclampsia-recorrencia": { id: "magnesio-recorrencia", indicacao: "Eclâmpsia — nova convulsão, dose adicional" },
+  "magnesio-eclampsia-manutencao-2g": { id: "magnesio-manutencao-2g", indicacao: "Eclâmpsia — manutenção depois de nova convulsão, ou se seguir sintomática" },
+  "gluconato-eclampsia": { id: "gluconato-intoxicacao-magnesio", indicacao: "Toxicidade por magnésio, com suporte ventilatório" },
+};
+export const COLAPSO_MATERNO_V4: Protocolo = {
+  ...COLAPSO_V3,
+  versao: 4,
+  atualizadoEm: "2026-11-05",
+  revisadoEm: "2026-11-05",
+  quadros: (COLAPSO_V3.quadros ?? []).map((q) => !/Eclâmpsia com pulso/.test(q.titulo) ? q : {
+    ...q,
+    itens: [
+      "Sulfato de magnésio, o mesmo esquema do cartão Eclâmpsia: ataque de 4 g IV lento, em 15 a 20 minutos (8 mL a 50% + 12 mL de água destilada); manutenção de 1 g/h (5 g em 250 mL = 50 mL/h) por 24 horas.",
+      "Nova convulsão: mais 2 g IV e manutenção a 2 g/h (100 mL/h).",
+      "Manter só com reflexo patelar presente, frequência respiratória ≥16 irpm e diurese ≥25 mL/h; creatinina ≥1,0 mg/dL: manutenção pela metade e magnésio sérico.",
+      "O magnésio não substitui o tratamento da hipertensão grave: PAS ≥160 mmHg e/ou PAD ≥110 mmHg persistentes — avaliar e tratar pelo protocolo obstétrico específico.",
+      "Toxicidade por magnésio: suspender a infusão, garantir oxigenação e suporte ventilatório e administrar gluconato de cálcio 10%, 1 g IV lentamente (10 mL), em 3 minutos, com monitorização.",
+    ],
+  }),
+  medicamentos: [
+    ...COLAPSO_V3.medicamentos.filter((d) => d.farmaco !== "Sulfato de magnésio" && d.id !== "gluconato-intoxicacao-magnesio"),
+    ...ECLAMPSIA_V4.medicamentos.map((d) => ({ ...d, ...MAGNESIO_DO_COLAPSO[d.id] })),
+  ],
+  divergencias: [
+    ...COLAPSO_V3.divergencias.filter((d) => !/magnésio/.test(d.tema)),
+    {
+      tema: "Esquema do sulfato de magnésio",
+      posicoes: [
+        { texto: "Ataque de 4 g EV em 5 a 10 minutos; manutenção de 1 a 2 g/h; nova convulsão, 2 g.", referencia: "ms-2022-alto-risco" },
+        { texto: "Ataque de 4 g IV lento em 15 a 20 minutos; 1 g/h, até 2 g/h; nova convulsão, 2 g.", referencia: "rbehg-2023-pe" },
+        { texto: "Ataque de 4 a 6 g IV em cerca de 20 minutos; manutenção de 1 a 2 g/h (texto clínico de 01/11/2026, versão 3).", referencia: "febrasgo-eclampsia" },
+      ],
+      escolha: "O mesmo esquema do cartão Eclâmpsia, versão 4, aprovada em 05/11/2026 (MS 2022 e RBEHG 2023): um esquema só no app.",
+    },
+  ],
+  referencias: [...new Set([...COLAPSO_V3.referencias, "rbehg-2023-pe"])],
+};
+
 export const EMBOLIA_AMNIOTICA_V3 = comPassagem(EMBOLIA_AMNIOTICA, 3, {
   "UTI materna; coagulação, gasometria e ecocardiograma seriados.":
     "Passagem à UTI materna, que acompanha a paciente depois da sala, com coagulação, gasometria e ecocardiograma seriados.",
@@ -383,5 +437,5 @@ export const RASCUNHOS: readonly Protocolo[] = [
   }),
   ...RESPIRATORIO_V3, ...OBSTETRICIA_NEONATAL_V3, ...METABOLICAS_APOIO_V3, PCR_FV_TV_V4, SAV_PEDIATRICO_V3,
   ISQUEMIA_V4, HEMORRAGIA_V4, ANAFILAXIA_V3, EMBOLIA_GASOSA_V4, BRADICARDIA_V4,
-  HIPOGLICEMIA_V3, CRISE_ADRENAL_V3, CONVULSAO_V3, DELIRIO_V3, ECLAMPSIA_V3, ECLAMPSIA_V4, EMBOLIA_AMNIOTICA_V3, BNM_RESIDUAL_V3,
+  HIPOGLICEMIA_V3, CRISE_ADRENAL_V3, CONVULSAO_V3, DELIRIO_V3, ECLAMPSIA_V3, ECLAMPSIA_V4, COLAPSO_MATERNO_V4, EMBOLIA_AMNIOTICA_V3, BNM_RESIDUAL_V3,
 ];

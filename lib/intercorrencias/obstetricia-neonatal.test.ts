@@ -13,7 +13,8 @@ import type { Protocolo } from "./tipos.ts";
 // "corrigido — aguardando validação médica". Quem usa continua com a versão 2.
 
 const IDS = ["bloqueio-neuroaxial-alto", "hemorragia-pos-parto", "colapso-materno", "reanimacao-neonatal"];
-const r = (id: string) => rascunhoDe(id)!;
+// A versão 3 dos quatro cartões (a do Colapso materno tem uma 4 em validação depois dela).
+const r = (id: string) => OBSTETRICIA_NEONATAL_V3.find((p) => p.id === id) ?? rascunhoDe(id)!;
 const GESTANTE = { idadeAnos: 30, pesoKg: 70, gestante: true } as PacienteDaConsulta;
 const ADULTO: PacienteDaConsulta = { idadeAnos: 40, pesoKg: 70 };
 const RN = (pesoKg: number | null): PacienteDaConsulta => ({ idadeAnos: 0, pesoKg });
@@ -37,7 +38,7 @@ test("obstetrícia e neonatal: os quatro na versão 3, aprovada em 05/11/2026, q
     assert.equal(rascunho.versao, 3, id);
     assert.equal(rascunho.atualizadoEm, "2026-11-01", id);
     assert.ok(aprovado(rascunho), `${id}: a versão 3 sem a aprovação de 05/11/2026`);
-    assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === id), rascunho, id);
+    assert.equal(PROTOCOLOS_DA_PREVIA.find((p) => p.id === id), rascunhoDe(id), id);
     assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === id), rascunho, `${id}: quem usa recebe a versão aprovada`);
   }
   assert.equal(APROVACOES.length, 4, "a terceira (os 40 rascunhos) e a quarta (Eclâmpsia 4) são de 05/11/2026");
@@ -408,4 +409,36 @@ test("eclâmpsia v4 (05/11/2026): o magnésio pelo Ministério da Saúde e pela 
   // As duas fontes brasileiras, lidas no texto.
   for (const id of ["ms-2022-alto-risco", "rbehg-2023-pe"]) assert.ok(acharReferencia(id)?.conferida, id);
   assert.ok(ecl.medicamentos.filter((d) => d.farmaco === "Sulfato de magnésio").every((d) => d.referencias.includes("rbehg-2023-pe")));
+});
+
+test("colapso materno v4 (05/11/2026): o ramo da eclâmpsia com o mesmo magnésio da Eclâmpsia 4, à espera de aprovação", () => {
+  const v4 = rascunhoDe("colapso-materno")!, v3 = r("colapso-materno"), ecl = rascunhoDe("eclampsia")!;
+  assert.equal(v4.versao, 4);
+  assert.equal(aprovado(v4), false, "a versão 4 só vai para quem usa depois da aprovação");
+  assert.equal(PROTOCOLOS_LIBERADOS.find((p) => p.id === "colapso-materno"), v3, "quem usa continua com a 3");
+  // As doses de magnésio e do gluconato são as da Eclâmpsia 4, com os ids deste cartão.
+  const par: Record<string, string> = {
+    "magnesio-ataque": "magnesio-eclampsia-ataque", "magnesio-manutencao": "magnesio-eclampsia-manutencao",
+    "magnesio-recorrencia": "magnesio-eclampsia-recorrencia", "magnesio-manutencao-2g": "magnesio-eclampsia-manutencao-2g",
+    "gluconato-intoxicacao-magnesio": "gluconato-eclampsia",
+  };
+  for (const [aqui, la] of Object.entries(par)) {
+    const a = doseDe(v4, aqui), b = doseDe(ecl, la);
+    assert.deepEqual([a.dose, a.apresentacoes, a.velocidade, a.cuidados, a.via], [b.dose, b.apresentacoes, b.velocidade, b.cuidados, b.via], aqui);
+    assert.equal(conta(v4, aqui, GESTANTE).contas.length > 0, true, aqui);
+  }
+  assert.deepEqual(conta(v4, "magnesio-ataque", GESTANTE).contas, [[4, "g", 20, "mL"]]);
+  assert.deepEqual(conta(v4, "magnesio-manutencao", GESTANTE).contas, [[1, "g", 50, "mL/h"]]);
+  assert.deepEqual(conta(v4, "magnesio-recorrencia", GESTANTE).contas, [[2, "g", 4, "mL"]]);
+  assert.doesNotMatch(JSON.stringify(v4.medicamentos), /80 mg\/mL|4 a 6 g/);
+  // O ramo da eclâmpsia diz o mesmo esquema; o resto do cartão é a versão 3.
+  const ramo = v4.quadros!.find((q) => /Eclâmpsia com pulso/.test(q.titulo))!;
+  assert.match(ramo.itens!.join(" "), /4 g IV lento, em 15 a 20 minutos.*1 g\/h \(5 g em 250 mL = 50 mL\/h\)/);
+  assert.match(ramo.itens!.join(" "), /frequência respiratória ≥16 irpm e diurese ≥25 mL\/h/);
+  assert.deepEqual(v4.agirAgora, v3.agirAgora);
+  assert.deepEqual(v4.alertas, v3.alertas);
+  assert.deepEqual(v4.depois, v3.depois);
+  assert.deepEqual(doseDe(v4, "adrenalina-pcr-materna"), doseDe(v3, "adrenalina-pcr-materna"));
+  assert.ok(v4.divergencias.some((d) => /magnésio/.test(d.tema) && /um esquema só no app/.test(d.escolha)));
+  assert.ok(v4.referencias.includes("rbehg-2023-pe"));
 });
