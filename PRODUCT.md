@@ -13,7 +13,7 @@ Anestesiologistas brasileiros e os grupos de anestesia em que trabalham (Campo M
 AVANEST é a plataforma de gestão em anestesiologia: avaliação pré-anestésica com ficha, termo e orientações impressos; escala do serviço por hospital; produção do plantão, fechamento e recebimento. O módulo novo, **Evolução Anestésica Digital Inteligente**, transforma a folha de anestesia de papel numa ferramenta digital rápida e segura, mantendo a impressão parecida com a folha que o anestesiologista já usa. Sucesso: preencher a folha durante o caso tão rápido quanto no papel, com o registro fiel e auditável.
 
 ## Positioning
-Feito por anestesiologista, dentro de um serviço em atividade. A folha digital nasce da avaliação pré-anestésica que já está no sistema e devolve a impressão no padrão da folha tradicional.
+Feito por médico, dentro de um serviço de anestesiologia em atividade. A folha digital nasce da avaliação pré-anestésica que já está no sistema e devolve a impressão no padrão da folha tradicional.
 
 ## Operating Context
 - A folha de anestesia é preenchida dentro da sala cirúrgica, **principalmente em tablet deitado (paisagem)** preso ao aparelho de anestesia; computador da sala é secundário; celular deve funcionar.

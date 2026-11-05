@@ -18,7 +18,7 @@ test("o autor sai com nome, título e registro conferível", () => {
   assert.equal(registro(), "CRM 49131-PR");
   const p = autorEmSchema();
   assert.equal(p["@type"], "Person");
-  assert.equal(p.jobTitle, "Médico anestesiologista");
+  assert.equal(p.jobTitle, "Médico");
   // `identifier` com `PropertyValue` é o jeito de declarar registro
   // profissional: uma string solta não diria de que cadastro ela é.
   assert.equal(p.identifier["@type"], "PropertyValue");
@@ -33,6 +33,8 @@ test("o RQE não é inventado enquanto não existir", () => {
   assert.ok(!("rqe" in AUTOR), "apareceu um RQE — ele não foi informado");
   const json = JSON.stringify(autorEmSchema());
   assert.ok(!/RQE/i.test(json), "o schema está declarando um RQE que não existe");
+  // Sem RQE, sem título de especialista: o responsável é residente (R3) até março de 2027.
+  assert.doesNotMatch(AUTOR.cargo, /anestesiologista/i, "cargo de especialista sem RQE");
 });
 
 test("a data de revisão sai por extenso, sem ambiguidade", () => {
@@ -86,5 +88,25 @@ test("o CRM está escrito num lugar só", () => {
   for (const escore of ["apfel", "classificacao-asa", "indice-de-lee", "stop-bang"]) {
     const pagina = ler(`app/escores/${escore}/page.tsx`);
     assert.ok(!pagina.includes(AUTOR.crm), `${escore} tem o CRM escrito à mão`);
+  }
+});
+
+test("o site não diz que o responsável é anestesiologista enquanto não houver RQE", () => {
+  // Ele é residente (R3) em anestesiologia; o título de especialista vem em março de 2027
+  // (05/11/2026). A capa dizia "desenvolvida por anestesiologista", a descrição do link
+  // "Feito por anestesiologista", e a imagem de compartilhamento também.
+  if ("rqe" in AUTOR) return;
+  const paginas: string[] = [];
+  const andar = (pasta: string) => {
+    for (const e of fs.readdirSync(new URL(`../${pasta}`, import.meta.url), { withFileTypes: true })) {
+      const caminho = `${pasta}/${e.name}`;
+      if (e.isDirectory()) andar(caminho);
+      else if (/^(page|layout)\.tsx$/.test(e.name)) paginas.push(caminho);
+    }
+  };
+  andar("app");
+  for (const arquivo of [...paginas, "scripts/gerar-imagem-de-compartilhamento.mjs", "lib/quem-faz.ts"]) {
+    // "por anestesiologista/mês" é o preço por profissional, e não autoria.
+    assert.doesNotMatch(ler(arquivo), /por (um |uma )?(médic[oa] )?anestesiologista(?![s\/])/i, arquivo);
   }
 });

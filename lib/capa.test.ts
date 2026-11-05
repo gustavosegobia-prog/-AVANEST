@@ -43,13 +43,14 @@ test("capa, Quem está por trás do AVANEST: antes das perguntas, o texto do res
   // com a assinatura e a linha do papel como ele as escreveu.
   assert.equal(QUEM_FAZ.titulo, "Quem está por trás do AVANEST");
   assert.equal(QUEM_FAZ.assinatura, "Dr. Gustavo Segobia da Silva");
-  assert.equal(QUEM_FAZ.papel, "Médico anestesiologista | Fundador do AVANEST");
+  assert.equal(QUEM_FAZ.papel, "Médico | Fundador do AVANEST");
   assert.equal(QUEM_FAZ.paragrafos.length, 3);
-  assert.match(QUEM_FAZ.paragrafos[0], /^Sou Gustavo Segobia da Silva, médico anestesiologista, e criei o AVANEST/);
+  assert.match(QUEM_FAZ.paragrafos[0], /^Sou Gustavo Segobia da Silva, médico, e criei o AVANEST/);
   assert.match(texto.slice(quemFaz, perguntas), /QUEM_FAZ\.assinatura[\s\S]*QUEM_FAZ\.papel/);
-  // O CRM não entra (pedido do responsável).
+  // O CRM não entra (pedido do responsável), nem "anestesiologista": ele é residente (R3)
+  // e o título de especialista vem em março de 2027.
   const escrito = [QUEM_FAZ.titulo, QUEM_FAZ.assinatura, QUEM_FAZ.papel, ...QUEM_FAZ.paragrafos].join(" ");
-  assert.doesNotMatch(escrito, /CRM|RQE/);
+  assert.doesNotMatch(escrito, /CRM|RQE|anestesiologista/i);
   assert.ok(!escrito.includes(AUTOR.crm));
   assert.equal(QUEM_FAZ.nome, AUTOR.nome);
   assert.doesNotMatch(texto.slice(quemFaz, perguntas), /nomeCompleto|registro\(\)|AUTOR\.cargo/);

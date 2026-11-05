@@ -15,7 +15,7 @@ const TRILHA = [
 export const metadata: Metadata = paginaPublica({
   titulo: "Escores da avaliação pré-anestésica | AVANEST",
   descricao: "Calculadoras livres de STOP-Bang, Apfel e índice de Lee (RCRI), e a classificação "
-    + "ASA com exemplos. Feitas para a consulta pré-anestésica, por anestesiologista.",
+    + "ASA com exemplos. Feitas para a consulta pré-anestésica.",
   caminho: CAMINHO,
 });
 

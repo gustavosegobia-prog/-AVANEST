@@ -208,7 +208,7 @@ export default async function HomePage() {
           <h1>Menos burocracia. Mais tempo para o que realmente importa.</h1>
           <p className="avnLead">
             Gestão clínica, escalas e finanças em uma única plataforma,
-            desenvolvida por anestesiologista para anestesiologistas.
+            desenvolvida dentro de um serviço de anestesiologia, para anestesiologistas.
           </p>
           {/* OS SEIS MÓDULOS, um por linha curta, em duas colunas no computador.
               Cada um tem a sua tela real mais abaixo, em "O sistema por dentro". */}

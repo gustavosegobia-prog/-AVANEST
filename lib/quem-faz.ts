@@ -3,8 +3,9 @@
 // ===========================================================================
 // TEXTO DO PRÓPRIO RESPONSÁVEL, enviado e confirmado em 05/11/2026 (segunda
 // versão, que substituiu a primeira no mesmo dia): título, parágrafos, a
-// assinatura "Dr. Gustavo Segobia da Silva" e a linha "Médico anestesiologista
-// | Fundador do AVANEST" vão como ele escreveu. Não reescreva sem ele ler: texto sobre uma pessoa não vai
+// assinatura "Dr. Gustavo Segobia da Silva" e a linha do papel vão como ele
+// escreveu. "Anestesiologista" saiu a pedido dele (05/11/2026): é residente
+// (R3) e o título de especialista vem em março de 2027. Não reescreva sem ele ler: texto sobre uma pessoa não vai
 // ao ar sem ela confirmar. Se `confirmado` voltar a false, o bloco sai de
 // produção e reaparece marcado ("Texto aguardando confirmação") no ambiente
 // local e nas prévias da Vercel.
@@ -33,11 +34,11 @@ export const QUEM_FAZ = {
   /** A assinatura abaixo do texto, como o responsável a escreveu. */
   assinatura: `Dr. ${AUTOR.nome}`,
   /** A linha abaixo da assinatura, como o responsável a escreveu. */
-  papel: "Médico anestesiologista | Fundador do AVANEST",
+  papel: "Médico | Fundador do AVANEST",
   titulo: "Quem está por trás do AVANEST",
   paragrafos: [
-    `Sou ${AUTOR.nome}, médico anestesiologista, e criei o AVANEST a partir dos desafios que `
-      + "vivencio diariamente na profissão.",
+    `Sou ${AUTOR.nome}, médico, e criei o AVANEST a partir dos desafios que vivencio `
+      + "diariamente na profissão.",
     "Tudo começou em Campo Mourão (PR), com a vontade de simplificar nossa rotina e encontrar "
       + "soluções para problemas que conhecemos de perto.",
     "O AVANEST nasceu dessa experiência e continua evoluindo dentro de um serviço de "
