@@ -243,3 +243,19 @@ test("só existe UM lugar que decide quanto dura o teste", () => {
   assert.match(ler("supabase/migrations/202609130001_dois_meses_de_teste.sql"),
     /interval '3 months' - interval '1 microsecond'/);
 });
+
+test("a campanha não tem mais meses grátis: o período grátis é só o teste de 15 dias (04/11/2026)", () => {
+  // A linha da campanha ainda dizia "2 meses grátis" (meses_gratis = 2). Não chegava à cobrança, mas
+  // aparecia na tela de planos do super-admin como "Meses grátis concedidos".
+  const migracao = ler("supabase/migrations/202611040001_campanha_sem_meses_gratis.sql")
+    .split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+  assert.match(migracao, /set meses_gratis = 0,/);
+  assert.match(migracao, /rotulo = 'Preço Fundador'/);
+  // Os testes que já correm mantêm a data do cadastro: a migração não toca em instituicoes.
+  assert.doesNotMatch(migracao, /instituicoes|assinatura_ate/);
+  const admin = semComentarios("app/organizacoes/planos/planos-admin-client.tsx");
+  assert.doesNotMatch(admin, /Meses grátis concedidos|Mês grátis concedido/);
+  assert.match(admin, /\{OFERTA_DO_TESTE\}/);
+  // E o checkout continua sem somar meses.
+  assert.match(ler("app/api/assinatura/checkout/route.ts"), /mesesGratis: 0,/);
+});
