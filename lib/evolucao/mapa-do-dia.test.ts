@@ -115,13 +115,21 @@ test("mapa na ficha: a linha só já mostra um cadastro quando não há dúvida"
   assert.equal(principalDoCaso({ patientId: "4" }, [cad("4", "João da Silva Fictício", 19)])?.id, "4", "o ligado antes vale");
 });
 
-test("mapa por hospital: desligado até a migração rodar, e desligado não pede coluna nova ao banco", async () => {
-  const { MAPA_POR_HOSPITAL, comHospital, noHospital } = await import("../centro-cirurgico.ts");
-  // Ligar é um passo da publicação (migração, chave, liberar o mapa) — não deste commit.
-  assert.equal(MAPA_POR_HOSPITAL, false);
-  assert.deepEqual(comHospital("qualquer"), {}, "desligado, a gravação não leva a coluna nova");
-  const consulta = { or: () => { throw new Error("pediu a coluna nova"); } };
-  assert.equal(noHospital(consulta as never, "qualquer"), consulta, "desligado, a consulta não filtra pelo hospital");
+test("mapa por hospital: ligado (a migração 202611060001 já rodou), grava e filtra pelo hospital da sessão", async () => {
+  const { MAPA_POR_HOSPITAL, comHospital, comNascimento, noHospital } = await import("../centro-cirurgico.ts");
+  assert.equal(MAPA_POR_HOSPITAL, true);
+  assert.deepEqual(comHospital("h1"), { local_atendimento_id: "h1" });
+  assert.deepEqual(comHospital(null), { local_atendimento_id: null }, "sem hospital na sessão, vale em todos");
+  assert.deepEqual(comNascimento("1974-03-01"), { data_nascimento: "1974-03-01" });
+  assert.deepEqual(comNascimento(""), { data_nascimento: null });
+  let filtro = "";
+  const consulta = { or: (f: string) => { filtro = f; return consulta; } };
+  noHospital(consulta as never, "h1");
+  assert.equal(filtro, "local_atendimento_id.eq.h1,local_atendimento_id.is.null", "o deste hospital e o de antes de haver hospital");
+  filtro = "";
+  noHospital(consulta as never, null);
+  assert.equal(filtro, "", "sem hospital na sessão, não filtra");
+  // A chave continua no código, para desligar depressa se for preciso.
   assert.match(ler("app/evolucao/mapa-do-dia-servidor.ts"), /if \(!MAPA_POR_HOSPITAL\) return \[\];/);
 });
 

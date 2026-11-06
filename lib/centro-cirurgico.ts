@@ -31,12 +31,12 @@ export type Sala = { id: string; nome: string; ordem: number; ativa: boolean };
 // ---------------------------------------------------------------------------
 
 /**
- * DESLIGADO ATÉ A MIGRAÇÃO 202611060001 RODAR NO BANCO. As colunas de hospital
- * não existem antes dela: com a chave ligada antes da hora, o mapa pediria uma
- * coluna que o banco não tem e voltaria vazio. A ordem da publicação é:
- * migração, depois esta chave em true, depois liberar o mapa para todos.
+ * LIGADO em 06/11/2026, a pedido do médico responsável ("pode ligar o mapa pra
+ * todos"), depois de a migração 202611060001 rodar no banco. A chave fica para
+ * desligar depressa se for preciso: desligada, o código não pede as colunas
+ * novas e o mapa volta a ser um só por organização.
  */
-export const MAPA_POR_HOSPITAL = false;
+export const MAPA_POR_HOSPITAL = true;
 
 /** O hospital numa gravação do mapa — nada, enquanto a chave estiver desligada. */
 export const comHospital = (localId: string | null | undefined): { local_atendimento_id?: string | null } =>
