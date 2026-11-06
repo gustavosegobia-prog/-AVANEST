@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje } from "@/lib/data-local";
 import { apelidosDaEquipe } from "@/lib/escala";
-import { CAMPOS_DO_CASO, abreOCentro, type Caso, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, noHospital, type Caso, type Sala } from "@/lib/centro-cirurgico";
 import { PainelTv } from "@/components/centro/painel-tv";
 import { casaDaSessao } from "../casa";
 
@@ -28,11 +28,11 @@ export default async function TvDoCentroPage() {
   if (!abreOCentro(podeVer)) redirect("/dashboard");
 
   const dia = hoje();
-  const [casa, salas, casos, equipe] = await Promise.all([
-    // O nome e a marca d'água: o hospital escolhido nesta sessão, ou a casa.
-    casaDaSessao(supabase, inst, perfil.super_admin),
-    supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst).order("ordem"),
-    supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst).eq("data", dia),
+  // O nome, a marca d'água e o hospital do mapa: o escolhido nesta sessão, ou a casa.
+  const casa = await casaDaSessao(supabase, inst, perfil.super_admin);
+  const [salas, casos, equipe] = await Promise.all([
+    noHospital(supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst), casa.localId).order("ordem"),
+    noHospital(supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst).eq("data", dia), casa.localId),
     supabase.from("perfis").select("id, nome").eq("institution_id", inst),
   ]);
   const apelidos = apelidosDaEquipe((equipe.data ?? []) as Array<{ id: string; nome: string }>);
@@ -40,6 +40,7 @@ export default async function TvDoCentroPage() {
   return (
     <PainelTv
       institutionId={inst}
+      localId={casa.localId}
       dia={dia}
       nomeDaCasa={casa.nome}
       salasIniciais={(salas.data ?? []) as Sala[]}

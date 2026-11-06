@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje } from "@/lib/data-local";
-import { CAMPOS_DO_CASO, abreOCentro, type Caso, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, noHospital, type Caso, type Sala } from "@/lib/centro-cirurgico";
 import { diasDoMes, mesValido, planilhaDoRelatorio, relatorioDoMes } from "@/lib/centro-relatorio";
 import { Icone } from "@/components/icone";
 import { RelatorioDoMes } from "@/components/centro/relatorio";
@@ -36,18 +36,19 @@ export default async function RelatorioDoCentroPage({ searchParams }: { searchPa
   const mes = mesValido(pedido) ? pedido : mesDeHoje;
   const dias = diasDoMes(mes);
 
+  // O hospital do relatório: o da sessão, como o mapa (202611060001).
+  const casa = await casaDaSessao(supabase, inst, perfil.super_admin);
   // O mês em páginas de mil: é o teto de linhas por pedido do banco.
   const casos: Caso[] = [];
   for (let de = 0; ; de += 1000) {
-    const { data, error } = await supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst)
-      .gte("data", dias[0]).lte("data", dias.at(-1)!).order("data").order("id").range(de, de + 999);
+    const { data, error } = await noHospital(supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst)
+      .gte("data", dias[0]).lte("data", dias.at(-1)!), casa.localId).order("data").order("id").range(de, de + 999);
     if (error || !data) break;
     casos.push(...(data as unknown as Caso[]));
     if (data.length < 1000) break;
   }
-  const [casa, salas, equipe] = await Promise.all([
-    casaDaSessao(supabase, inst, perfil.super_admin),
-    supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst).order("ordem"),
+  const [salas, equipe] = await Promise.all([
+    noHospital(supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst), casa.localId).order("ordem"),
     supabase.from("perfis").select("id, nome").eq("institution_id", inst),
   ]);
   const nomes = new Map(((equipe.data ?? []) as Array<{ id: string; nome: string }>).map((p) => [p.id, p.nome]));

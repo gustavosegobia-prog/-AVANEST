@@ -6,7 +6,7 @@ import { hoje } from "@/lib/data-local";
 import { VERSAO_DO_SITE, deveRecarregar } from "@/lib/versao";
 import { assinarTemaDaTv, guardarTvClara, tvClara } from "@/lib/tema";
 import {
-  CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, linhasDaTv, nomeNaTv,
+  CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, linhasDaTv, noHospital, nomeNaTv,
   type Caso, type LinhaDaTv, type Sala,
 } from "@/lib/centro-cirurgico";
 import { MarcaDagua } from "./marca-dagua";
@@ -97,8 +97,10 @@ function Letreiro({ texto, className }: { texto: string; className: string }) {
  * quem passa no corredor lê a TV. Atualiza a cada meio minuto e pede para a
  * tela não apagar.
  */
-export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosIniciais, apelidos, agora: agoraDoServidor, marca = null }: {
+export function PainelTv({ institutionId, localId = null, dia, nomeDaCasa, salasIniciais, casosIniciais, apelidos, agora: agoraDoServidor, marca = null }: {
   institutionId: string;
+  /** O hospital do mapa (o da sessão neste computador), ou nenhum. */
+  localId?: string | null;
   dia: string;
   nomeDaCasa: string;
   salasIniciais: Sala[];
@@ -129,15 +131,15 @@ export function PainelTv({ institutionId, dia, nomeDaCasa, salasIniciais, casosI
   const recarregar = useCallback(async () => {
     const sb = createClient();
     const [s, c] = await Promise.all([
-      sb.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", institutionId).order("ordem"),
-      sb.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", institutionId).eq("data", diaAtual.current),
+      noHospital(sb.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", institutionId), localId).order("ordem"),
+      noHospital(sb.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", institutionId).eq("data", diaAtual.current), localId),
     ]);
     if (s.error || c.error) { setSemRede(true); return; }
     setSalas((s.data ?? []) as Sala[]);
     setCasos((c.data ?? []) as unknown as Caso[]);
     setSemRede(false);
     setAtualizado(Date.now());
-  }, [institutionId]);
+  }, [institutionId, localId]);
 
   useEffect(() => {
     const relogio = window.setInterval(() => {

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   anestesistaDoTitulo, campoDoTitulo, casarAnestesista, casarSala, convenioLimpo, dataDoTexto, gradeDoCsv, gradeDePalavras,
-  horaDaCelula, idadeDaCelula, juntarLeituras, lerMapa, nomeDaSala, nomeProprio, type Palavra,
+  horaDaCelula, idadeDaCelula, juntarLeituras, lerMapa, nascimentoDaCelula, nomeDaSala, nomeProprio, type Palavra,
 } from "./centro-importar.ts";
 import { gradeDaAba, gradeDoXlsx, posicaoDaCelula, textosCompartilhados } from "./xlsx-leitura.ts";
 import { zip } from "./zip-de-teste.ts";
@@ -87,7 +87,7 @@ test("da grade do mapa saem os pacientes, na ordem, com A/S e leito", () => {
   assert.equal(m.ignoradas, 1);
   assert.deepEqual(m.linhas.map((l) => l.paciente), ["Maria Aparecida da Silva", "Joao dos Santos", "Ana Luiza Costa", "Clara Pereira"]);
   assert.deepEqual(m.linhas[0], {
-    linha: 1, horario: "07:30", paciente: "Maria Aparecida da Silva", idade: 34, convenio: "Unimed",
+    linha: 1, horario: "07:30", paciente: "Maria Aparecida da Silva", idade: 34, nascimento: null, convenio: "Unimed",
     cirurgiao: "DR. PAULO M", sala: "Sala 4", procedimento: "RETIRADA DE CATETER DJ", leito: "UNIMED",
   });
   assert.equal(m.linhas[1].horario, null);
@@ -231,4 +231,37 @@ test("a planilha .xlsx inteira vira o mapa: a primeira aba do livro, a hora do E
     [null, "Jose Costa", "COLECISTECTOMIA", "Sala 1", null],
   ]);
   await assert.rejects(gradeDoXlsx(new TextEncoder().encode("não é zip").buffer), /não é uma planilha/);
+});
+
+test("a data de nascimento do mapa: dd/mm/aaaa, ano de dois dígitos, a data do Excel; o que não é data fica de fora", () => {
+  const hoje = "2026-11-06";
+  assert.equal(nascimentoDaCelula("03/04/1974", hoje), "1974-04-03");
+  assert.equal(nascimentoDaCelula(" 3/4/74 ", hoje), "1974-04-03");
+  assert.equal(nascimentoDaCelula("03-04-1974", hoje), "1974-04-03");
+  assert.equal(nascimentoDaCelula("03.04.1974", hoje), "1974-04-03");
+  assert.equal(nascimentoDaCelula("1974-04-03", hoje), "1974-04-03");
+  assert.equal(nascimentoDaCelula("05/06/20", hoje), "2020-06-05", "ano de dois dígitos que cabe neste século");
+  assert.equal(nascimentoDaCelula("05/06/30", hoje), "1930-06-05", "o que daria no futuro é do século passado");
+  assert.equal(nascimentoDaCelula("27089", hoje), "1974-03-01", "o número de série do Excel");
+  assert.equal(nascimentoDaCelula("27089.0", hoje), "1974-03-01");
+  for (const ruim of ["", "31/02/1980", "13/13/1980", "07/11/2026", "01/01/1880", "1974", "52", "nasc", "12/1974"]) {
+    assert.equal(nascimentoDaCelula(ruim, hoje), null, ruim);
+  }
+});
+
+test("a coluna de nascimento é achada pelo título, e a idade sai dela quando o mapa não escreve", () => {
+  for (const t of ["DATA DE NASCIMENTO", "Data Nasc.", "DT NASC", "Nascimento", "NASC", "DN", "D.N."]) {
+    assert.equal(campoDoTitulo(t), "nascimento", t);
+  }
+  const m = lerMapa([
+    ["06/11/2026  ANESTESISTA DR: Fernanda"],
+    ["HORA", "PACIENTE", "DATA DE NASCIMENTO", "IDADE", "CONVENIO", "PROCEDIMENTO"],
+    ["07:30", "MARIA FICTICIA DA SILVA", "03/04/1974", "", "SUS", "HERNIORRAFIA"],
+    ["08:30", "JOAO FICTICIO", "27089", "51", "SUS", "RTU"],
+    ["09:30", "ANA FICTICIA", "", "40", "SUS", "COLECISTECTOMIA"],
+    ["10:30", "PEDRO FICTICIO", "31/02/1980", "", "SUS", "RTU"],
+  ], "2026-11-06")!;
+  assert.deepEqual(m.linhas.map((l) => [l.nascimento, l.idade]), [
+    ["1974-04-03", 52], ["1974-03-01", 51], [null, 40], [null, null],
+  ]);
 });

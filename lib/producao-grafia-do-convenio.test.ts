@@ -17,12 +17,13 @@ import { readFileSync } from "node:fs";
 const tela = readFileSync(new URL("../components/producao-do-dia.tsx", import.meta.url), "utf8");
 
 test("anotação nova grava a grafia do cadastro", () => {
-  assert.match(tela, /convenio: grafiaConhecida\(novo\.convenio, conveniosConhecidos\),/,
+  // Com o convênio de antes quando o campo foi esvaziado para mostrar a lista inteira.
+  assert.match(tela, /convenio: grafiaConhecida\(novo\.convenio\.trim\(\) \|\| convenioAntes, conveniosConhecidos\),/,
     "a anotação nova voltou a gravar o convênio como foi digitado");
 });
 
 test("corrigir o convênio de uma anotação também grava a grafia do cadastro", () => {
-  assert.match(tela, /const v = grafiaConhecida\(e\.target\.value, conveniosConhecidos\);/,
+  assert.match(tela, /const v = grafiaConhecida\(e\.target\.value\.trim\(\) \|\| e\.target\.dataset\.antes \|\| "", conveniosConhecidos\);/,
     "a edição do convênio voltou a gravar o texto cru");
 });
 
@@ -31,4 +32,14 @@ test("os dois totais por convênio agrupam pela chave, não pelo texto", () => {
   assert.equal(usos.length, 2, "algum total por convênio da Produção voltou a agrupar pelo texto cru");
   assert.doesNotMatch(tela, /const k = (i|l)\.convenio \|\| "Particular";/,
     "voltou um agrupamento pelo texto cru");
+});
+
+test("a seta do convênio mostra a lista inteira, e o Anotar sem nome avisa (06/11/2026)", () => {
+  // "Não está respondendo quando aperta": o campo começava com "Particular" e o
+  // navegador só mostrava as opções que combinavam com ele.
+  assert.match(tela, /setConvenioAntes\(novo\.convenio\);\s*setNovo\(\(n\) => \(\{ \.\.\.n, convenio: "" \}\)\)/);
+  assert.match(tela, /onFocus=\{\(e\) => mostrarListaInteira\(e\.currentTarget, conveniosConhecidos\)\}/);
+  // O botão não fica travado em silêncio: sem nome, ele diz o que falta.
+  assert.match(tela, /<button className="primaryClinical compact" disabled=\{salvando\}>/);
+  assert.match(tela, /setErro\("Escreva o nome do paciente para anotar\."\)/);
 });

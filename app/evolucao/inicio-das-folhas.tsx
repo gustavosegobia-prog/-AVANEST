@@ -4,6 +4,8 @@ import { Decorrido } from "./decorrido";
 import { ExcluirFolha } from "./excluir-folha";
 import { ImprimirFicha } from "@/components/evolucao/imprimir-ficha";
 import { NovaFolha } from "./nova-folha";
+import type { CasoComCadastro } from "@/lib/evolucao/mapa-do-dia";
+import type { PacienteAchado } from "@/lib/evolucao/entrada";
 
 export type FolhaResumo = {
   id: string;
@@ -22,13 +24,21 @@ const DIA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit",
 const hora = (iso: string) => HORA.format(new Date(iso));
 const dia = (iso: string) => DIA.format(new Date(iso));
 
-// A entrada da ficha anestésica. No tablet da sala ela tem três trabalhos, na
-// ordem em que aparecem: abrir a ficha do paciente que vai entrar, voltar à
-// que está em andamento, e achar a que já foi encerrada para conferir ou
-// imprimir.
+// A entrada da ficha anestésica. Três trabalhos, na ordem da pressa
+// (06/11/2026: "para não ter que ficar abrindo um monte de coisa para fazer uma
+// função só"):
+//   1. voltar à ficha em andamento — no topo, no tablet e no celular;
+//   2. abrir a do próximo paciente — a caixa com a lista do dia (o mapa
+//      cirúrgico, quando há; os avaliados hoje, no ambulatório) e a busca;
+//   3. achar a encerrada, para conferir ou imprimir.
+// No computador, a caixa de abrir fica à esquerda e as listas à direita.
 export function InicioDasFolhas({
-  institutionId, abertas, encerradas, semBanco, agora, local = null,
+  institutionId, abertas, encerradas, semBanco, agora, local = null, mapa = [], avaliadosHoje = [],
 }: {
+  /** O mapa cirúrgico de hoje, do hospital da sessão, com o cadastro de cada paciente já procurado. */
+  mapa?: CasoComCadastro[];
+  /** Os avaliados hoje que ainda não têm ficha: a lista do dia de quem não tem mapa. */
+  avaliadosHoje?: PacienteAchado[];
   institutionId: string;
   /** O hospital da sessão: a lista é só dele, e a ficha nova nasce nele. */
   local?: { id: string; nome: string } | null;
@@ -49,7 +59,6 @@ export function InicioDasFolhas({
         <div className="fcTitulo">
           <h1>Ficha anestésica</h1>
           {local && <p className="fcLocal"><Icone nome="predio" tamanho={16} /> {local.nome}</p>}
-          <p>Busque o paciente: a ficha abre com a avaliação pré-anestésica dele já no topo, para conferir.</p>
         </div>
 
         {semBanco ? (
@@ -58,70 +67,67 @@ export function InicioDasFolhas({
             <code> 202610100004_evolucao_anestesica.sql</code> no Supabase.
           </p>
         ) : (
-          // No computador, duas colunas: abrir à esquerda, o que está em
-          // andamento e o encerrado à direita. No tablet e no celular, uma só,
-          // nesta mesma ordem.
+          // Em andamento, abrir, encerradas: a ordem da pressa, também a do
+          // teclado. No computador, abrir à esquerda e as duas listas à
+          // direita (grid-template-areas em globals.css).
           <div className="fcColunas">
-            <NovaFolha institutionId={institutionId} local={local} />
-            <div className="fcLado">
-              <section className="fcSecao" aria-labelledby="fc-andamento">
-                <h2 id="fc-andamento">
-                  Em andamento {abertas.length > 0 && <span className="fcConta">{abertas.length}</span>}
-                </h2>
-                {abertas.length ? (
-                  <ul className="fcLista">
-                    {abertas.map((f) => (
-                      <li key={f.id} className="fcAberta">
-                        <Link href={`/evolucao/${f.id}`} className="fcLinha aberta">
-                          <span className="fcQuem">
-                            <strong>{f.paciente}</strong>
-                            <span>{[f.procedimento || "Procedimento não informado", f.sala && `Sala ${f.sala}`, `aberta às ${hora(f.inicio_em)}`]
-                              .filter(Boolean).join(" · ")}</span>
+            {abertas.length > 0 && (
+              <section className="fcSecao fcAndamento" aria-labelledby="fc-andamento">
+                <h2 id="fc-andamento">Em andamento <span className="fcConta">{abertas.length}</span></h2>
+                <ul className="fcLista">
+                  {abertas.map((f) => (
+                    <li key={f.id} className="fcAberta">
+                      <Link href={`/evolucao/${f.id}`} className="fcLinha aberta">
+                        <span className="fcQuem">
+                          <strong>{f.paciente}</strong>
+                          <span>{[f.procedimento || "Procedimento não informado", f.sala && `Sala ${f.sala}`, `aberta às ${hora(f.inicio_em)}`]
+                            .filter(Boolean).join(" · ")}</span>
+                        </span>
+                        {f.fim ? (
+                          // Terminou: o tempo para no fim, e o que falta é encerrar.
+                          <span className="fcTempo parado">Terminou às {hora(f.fim)}</span>
+                        ) : (
+                          <span className="fcTempo">
+                            <Decorrido desde={f.inicio_em} agoraDoServidor={agora} />
                           </span>
-                          {f.fim ? (
-                            // Terminou: o tempo para no fim, e o que falta é encerrar.
-                            <span className="fcTempo parado">Terminou às {hora(f.fim)}</span>
-                          ) : (
-                            <span className="fcTempo">
-                              <Decorrido desde={f.inicio_em} agoraDoServidor={agora} />
-                            </span>
-                          )}
-                          <span className="fcIr">{f.fim ? "Encerrar ficha" : "Continuar"} <Icone nome="seta" className="fcSetaDireita" /></span>
-                        </Link>
-                        <ExcluirFolha id={f.id} paciente={f.paciente} />
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="fcVazio">Nenhuma ficha aberta agora.</p>
-                )}
+                        )}
+                        <span className="fcIr">{f.fim ? "Encerrar ficha" : "Continuar"} <Icone nome="seta" className="fcSetaDireita" /></span>
+                      </Link>
+                      <ExcluirFolha id={f.id} paciente={f.paciente} />
+                    </li>
+                  ))}
+                </ul>
               </section>
+            )}
 
-              {encerradas.length > 0 && (
-                <section className="fcSecao" aria-labelledby="fc-encerradas">
-                  <h2 id="fc-encerradas">Encerradas recentes</h2>
-                  <ul className="fcLista">
-                    {encerradas.map((f) => (
-                      <li key={f.id} className="fcEncerrada">
-                        <Link href={`/evolucao/${f.id}`} className="fcLinha">
-                          <span className="fcQuem">
-                            <strong>{f.paciente}</strong>
-                            <span>{[f.procedimento || "Procedimento não informado", f.versao > 1 && `versão ${f.versao}`]
-                              .filter(Boolean).join(" · ")}</span>
-                          </span>
-                          <span className="fcQuando">
-                            {dia(f.inicio_em)} · {hora(f.inicio_em)}{f.encerrada_em && `–${hora(f.encerrada_em)}`}
-                          </span>
-                        </Link>
-                        <ImprimirFicha id={f.id} className="fcImprimir" rotulo={`Imprimir a ficha de ${f.paciente}`}>
-                          <Icone nome="imprimir" tamanho={18} /> <span>Imprimir</span>
-                        </ImprimirFicha>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
+            <div className="fcPrincipal">
+              <NovaFolha institutionId={institutionId} local={local} mapa={mapa} avaliadosHoje={avaliadosHoje} />
             </div>
+
+            {encerradas.length > 0 && (
+              <section className="fcSecao fcEncerradas" aria-labelledby="fc-encerradas">
+                <h2 id="fc-encerradas">Encerradas recentes</h2>
+                <ul className="fcLista">
+                  {encerradas.map((f) => (
+                    <li key={f.id} className="fcEncerrada">
+                      <Link href={`/evolucao/${f.id}`} className="fcLinha">
+                        <span className="fcQuem">
+                          <strong>{f.paciente}</strong>
+                          <span>{[f.procedimento || "Procedimento não informado", f.versao > 1 && `versão ${f.versao}`]
+                            .filter(Boolean).join(" · ")}</span>
+                        </span>
+                        <span className="fcQuando">
+                          {dia(f.inicio_em)} · {hora(f.inicio_em)}{f.encerrada_em && `–${hora(f.encerrada_em)}`}
+                        </span>
+                      </Link>
+                      <ImprimirFicha id={f.id} className="fcImprimir" rotulo={`Imprimir a ficha de ${f.paciente}`}>
+                        <Icone nome="imprimir" tamanho={18} /> <span>Imprimir</span>
+                      </ImprimirFicha>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </div>
         )}
       </main>

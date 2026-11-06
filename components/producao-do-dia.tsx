@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { mesEmMaiusculas, money, plural } from "@/lib/escala";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
@@ -286,6 +286,30 @@ export function ProducaoDoDia({
   const [salvando, setSalvando] = useState(false);
   const vazio = { paciente: "", convenio: "Particular", procedimento: "", valor: "", urgencia: false, marcas: [] as string[] };
   const [novo, setNovo] = useState(vazio);
+  // A LISTA INTEIRA AO TOCAR NO CONVÊNIO (06/11/2026: "não está respondendo
+  // quando aperta"). O navegador só mostra as opções que combinam com o que já
+  // está escrito, e o campo começa com "Particular": a seta mostrava só
+  // "Particular" e parecia travada. Ao entrar no campo com um convênio da
+  // lista, ele vira a dica cinza e a lista aparece inteira; saindo sem
+  // escolher, o convênio volta.
+  const [convenioAntes, setConvenioAntes] = useState("");
+  // UMA LISTA POR DIA (06/11/2026: "está se repetindo nos dias sozinho"). O
+  // painel da escala troca o dia sem desmontar esta lista; ela continuava com
+  // os pacientes do dia anterior até a consulta nova voltar — e, trocando de
+  // dia depressa, a resposta do dia anterior chegava por último e ficava no
+  // dia novo. Agora a troca de dia zera tudo na hora (inclusive o rascunho do
+  // Anotar, para nada digitado num dia cair no outro), e `pedidoAtual`
+  // descarta a resposta de um dia que já não está aberto.
+  const [diaDaLista, setDiaDaLista] = useState(dia);
+  if (diaDaLista !== dia) {
+    setDiaDaLista(dia);
+    setItens([]);
+    setCarregando(true);
+    setErro("");
+    setNovo(vazio);
+    setConvenioAntes("");
+  }
+  const pedidoAtual = useRef(0);
   // A urgência e as marcas da clínica (um bloqueio, um cateter): cada marca
   // puxa um código a mais no Financeiro. Marca-se na hora de anotar, que é
   // quando se lembra.
@@ -380,9 +404,12 @@ export function ProducaoDoDia({
   }
 
   const carregar = useCallback(async () => {
+    const pedido = ++pedidoAtual.current;
     const { data, error } = await createClient()
       .from("producao_do_dia").select("*")
       .eq("data", dia).order("created_at");
+    // A resposta de um dia que já não está aberto não entra (ver diaDaLista).
+    if (pedido !== pedidoAtual.current) return;
     setCarregando(false);
     // A tabela pode não existir ainda se o SQL não tiver sido rodado. A tela
     // avisa o que fazer em vez de mostrar uma lista vazia que mente.
@@ -413,7 +440,12 @@ export function ProducaoDoDia({
   async function adicionar(e: React.FormEvent) {
     e.preventDefault();
     const paciente = novo.paciente.trim();
-    if (!paciente) return;
+    // Sem nome, o botão avisava nada: ficava travado e parecia quebrado.
+    if (!paciente) {
+      setErro("Escreva o nome do paciente para anotar.");
+      document.getElementById("producao-paciente")?.focus();
+      return;
+    }
     setSalvando(true); setErro("");
     const { error } = await createClient().from("producao_do_dia").insert({
       institution_id: institutionId, perfil_id: perfilId, plantao_id: plantaoId,
@@ -422,7 +454,7 @@ export function ProducaoDoDia({
       // A grafia do cadastro quando o convênio é um já conhecido: a foto da
       // guia lê "UNIMED" em caixa-alta, e cada grafia virava uma linha
       // separada nos totais do mês e do Financeiro.
-      convenio: grafiaConhecida(novo.convenio, conveniosConhecidos),
+      convenio: grafiaConhecida(novo.convenio.trim() || convenioAntes, conveniosConhecidos),
       procedimento: novo.procedimento.trim() || null,
       valor: lerValor(novo.valor),
       urgencia: novo.urgencia,
@@ -513,8 +545,11 @@ export function ProducaoDoDia({
                   <input
                     className="producaoConvenio" defaultValue={i.convenio} aria-label="Convênio"
                     list="producao-convenios"
+                    onFocus={(e) => mostrarListaInteira(e.currentTarget, conveniosConhecidos)}
                     onBlur={(e) => {
-                      const v = grafiaConhecida(e.target.value, conveniosConhecidos);
+                      const v = grafiaConhecida(e.target.value.trim() || e.target.dataset.antes || "", conveniosConhecidos);
+                      delete e.target.dataset.antes;
+                      e.target.placeholder = "";
                       e.target.value = v;
                       if (v !== i.convenio) void mudar(i.id, { convenio: v });
                     }}
@@ -582,7 +617,17 @@ export function ProducaoDoDia({
         />
         <input
           className="producaoConvenio" value={novo.convenio} list="producao-convenios"
-          placeholder="Convênio" aria-label="Convênio"
+          placeholder={convenioAntes || "Convênio"} aria-label="Convênio"
+          onFocus={() => {
+            if (!ehConhecido(novo.convenio, conveniosConhecidos)) return;
+            setConvenioAntes(novo.convenio);
+            setNovo((n) => ({ ...n, convenio: "" }));
+          }}
+          onBlur={() => {
+            const antes = convenioAntes;
+            setConvenioAntes("");
+            if (antes) setNovo((n) => (n.convenio.trim() ? n : { ...n, convenio: antes }));
+          }}
           onChange={(e) => setNovo({ ...novo, convenio: e.target.value })}
         />
         <input
@@ -595,7 +640,7 @@ export function ProducaoDoDia({
           placeholder="R$ 0,00" aria-label="Valor"
           onChange={(e) => setNovo({ ...novo, valor: e.target.value })}
         />
-        <button className="primaryClinical compact" disabled={salvando || !novo.paciente.trim()}>
+        <button className="primaryClinical compact" disabled={salvando}>
           {salvando ? "Salvando…" : "+ Anotar"}
         </button>
         <div className="producaoNovoMarcas" role="group" aria-label="Urgência e marcas do paciente">
@@ -1489,4 +1534,23 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
       )}
     </>
   );
+}
+
+/** O convênio escrito é um dos da lista (sem diferença de maiúsculas)? */
+function ehConhecido(valor: string, conhecidos: string[]) {
+  const v = valor.trim().toLowerCase();
+  return Boolean(v) && conhecidos.some((c) => c.toLowerCase() === v);
+}
+
+/**
+ * Para os campos de convênio já anotados (sem estado no React): ao entrar com
+ * um convênio da lista, ele vai para a dica cinza e o valor fica vazio, para a
+ * seta mostrar a lista inteira. O onBlur de cada campo devolve o anterior
+ * quando nada foi escolhido.
+ */
+function mostrarListaInteira(campo: HTMLInputElement, conhecidos: string[]) {
+  if (!ehConhecido(campo.value, conhecidos)) return;
+  campo.dataset.antes = campo.value;
+  campo.placeholder = campo.value;
+  campo.value = "";
 }

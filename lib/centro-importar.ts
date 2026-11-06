@@ -12,10 +12,11 @@
 // Tudo aqui é puro: a leitura do arquivo mora em centro-importar-arquivo.ts.
 
 import { CONVENIOS } from "./convenios.ts";
+import { idadeNaData } from "./centro-cirurgico.ts";
 
 export type Palavra = { t: string; x0: number; x1: number; y0: number; y1: number };
 
-export type Campo = "numero" | "hora" | "paciente" | "idade" | "convenio" | "cirurgiao" | "sala" | "procedimento" | "leito";
+export type Campo = "numero" | "hora" | "paciente" | "idade" | "nascimento" | "convenio" | "cirurgiao" | "sala" | "procedimento" | "leito";
 
 /** "Convênio" → "convenio": sem acento, minúsculo, sem espaço sobrando. */
 export const normalizar = (s: string) =>
@@ -26,6 +27,8 @@ const TITULOS: Array<[Campo, RegExp]> = [
   ["hora", /^(hora|horario|hr)$/],
   ["paciente", /^(paciente|nome|nome do paciente)$/],
   ["idade", /^(idade|id)$/],
+  // Pedida aos hospitais a partir de 06/11/2026: a trava do paciente certo na ficha.
+  ["nascimento", /^(data de nascimento|data nascimento|data nasc|dt nascimento|dt nasc|dta nasc|nascimento|nasc|dn|d\.?\s?n)$/],
   ["convenio", /^(convenio|plano)$/],
   ["cirurgiao", /^(medico|cirurgiao|cirurgia o|equipe)$/],
   ["sala", /^sala$/],
@@ -35,7 +38,7 @@ const TITULOS: Array<[Campo, RegExp]> = [
 
 /** As palavras de cada título, para a comparação tolerante da leitura de foto. */
 const PALAVRAS_DOS_TITULOS: Array<[Campo, string[]]> = [
-  ["hora", ["horario"]], ["paciente", ["paciente"]], ["idade", ["idade"]], ["convenio", ["convenio"]],
+  ["hora", ["horario"]], ["paciente", ["paciente"]], ["idade", ["idade"]], ["nascimento", ["nascimento"]], ["convenio", ["convenio"]],
   ["cirurgiao", ["medico", "cirurgiao"]], ["procedimento", ["procedimento", "procedimentos", "cirurgia"]],
   ["leito", ["observacao", "observacoes", "acomodacao"]],
 ];
@@ -259,7 +262,7 @@ export function gradeDePalavras(palavras: Palavra[]): string[][] | null {
 }
 
 const TITULO_PADRAO: Record<Campo, string> = {
-  numero: "#", hora: "HORA", paciente: "PACIENTE", idade: "IDADE", convenio: "CONVENIO",
+  numero: "#", hora: "HORA", paciente: "PACIENTE", idade: "IDADE", nascimento: "NASCIMENTO", convenio: "CONVENIO",
   cirurgiao: "MEDICO", sala: "SALA", procedimento: "PROCEDIMENTO", leito: "OBSERVACAO",
 };
 
@@ -272,6 +275,8 @@ export type LinhaImportada = {
   horario: string | null;   // "HH:MM"; nulo é "A/S"
   paciente: string;
   idade: number | null;
+  /** "AAAA-MM-DD", da coluna de data de nascimento, quando o mapa tem. */
+  nascimento: string | null;
   convenio: string | null;
   cirurgiao: string | null;
   sala: string | null;
@@ -338,6 +343,37 @@ export function idadeDaCelula(v: string): number | null {
   return Number.isInteger(n) && n <= 130 ? n : null;
 }
 
+/**
+ * A data de nascimento de uma célula: "03/04/1974", "3/4/74", "03-04-1974",
+ * "1974-04-03" ou o número de série do Excel (a planilha guarda a data como
+ * número). Ano de dois dígitos: o século que não dá nascimento no futuro.
+ * Data impossível, no futuro ou de mais de 130 anos: nula — melhor perguntar
+ * do que ligar o paciente errado.
+ */
+export function nascimentoDaCelula(v: string, hoje: string): string | null {
+  const t = v.trim();
+  let a: number, m: number, d: number;
+  const br = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/);
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  // Série do Excel com cinco dígitos (de 1927 em diante): um ano solto, "1974", não vira data.
+  const serial = t.match(/^(\d{5})(\.0+)?$/);
+  if (br) {
+    d = Number(br[1]); m = Number(br[2]); a = Number(br[3]);
+    if (br[3].length === 2) a += 2000 + a > Number(hoje.slice(0, 4)) ? 1900 : 2000;
+  } else if (iso) {
+    a = Number(iso[1]); m = Number(iso[2]); d = Number(iso[3]);
+  } else if (serial) {
+    // O Excel conta dias desde 30/12/1899.
+    const data = new Date(Date.UTC(1899, 11, 30) + Number(serial[1]) * 86400000);
+    a = data.getUTCFullYear(); m = data.getUTCMonth() + 1; d = data.getUTCDate();
+  } else return null;
+  const dt = new Date(Date.UTC(a, m - 1, d));
+  if (dt.getUTCFullYear() !== a || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+  const texto = `${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const anos = Number(hoje.slice(0, 4)) - a;
+  return texto <= hoje && anos <= 130 ? texto : null;
+}
+
 /** A data do título: "21/10/2026", "21/10/26", ou o número de série de data do Excel. */
 export function dataDoTexto(texto: string): string | null {
   const m = texto.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})\b/);
@@ -383,7 +419,7 @@ export function convenioLimpo(s: string): string {
  * Paciente sem cirurgia não entra — vai para a contagem de ignoradas, para a
  * conferência avisar.
  */
-export function lerMapa(grade: string[][]): MapaImportado | null {
+export function lerMapa(grade: string[][], hoje: string = new Date().toISOString().slice(0, 10)): MapaImportado | null {
   let iCab = -1;
   let mapa = new Map<Campo, number>();
   for (let i = 0; i < grade.length && iCab < 0; i++) {
@@ -393,6 +429,8 @@ export function lerMapa(grade: string[][]): MapaImportado | null {
   }
   if (iCab < 0) return null;
   const titulo = grade.slice(0, iCab).flat().filter(Boolean).join(" ");
+  // O dia do mapa (do título), ou hoje: a referência da idade e do "nascimento no futuro".
+  const dia = dataDoTexto(titulo) ?? hoje;
   const celula = (linha: string[], c: Campo) => { const j = mapa.get(c); return j == null ? "" : String(linha[j] ?? "").trim(); };
 
   const linhas: LinhaImportada[] = [];
@@ -403,11 +441,14 @@ export function lerMapa(grade: string[][]): MapaImportado | null {
     const procedimento = celula(linha, "procedimento");
     if (vazio(procedimento)) { ignoradas++; return; }
     const texto = (c: Campo) => (vazio(celula(linha, c)) ? null : celula(linha, c).replace(/\s+/g, " "));
+    const nascimento = nascimentoDaCelula(celula(linha, "nascimento"), dia);
     linhas.push({
       linha: k + 1,
       horario: horaDaCelula(celula(linha, "hora")),
       paciente: nomeProprio(paciente),
-      idade: idadeDaCelula(celula(linha, "idade")),
+      nascimento,
+      // Sem a idade escrita, a da data de nascimento, no dia do mapa.
+      idade: idadeDaCelula(celula(linha, "idade")) ?? (nascimento ? idadeNaData(nascimento, dia) : null),
       convenio: texto("convenio") && convenioLimpo(texto("convenio")!),
       cirurgiao: texto("cirurgiao"),
       sala: nomeDaSala(celula(linha, "sala")),

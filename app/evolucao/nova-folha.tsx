@@ -5,36 +5,43 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
-import { cabecalhoInicial, type PacienteDaFolha } from "@/lib/evolucao/importar";
-import { motivoAoAbrirFolha } from "@/lib/evolucao/fila";
 import { fichasDoLocal } from "@/lib/evolucao/local";
+import { casaComONome, type PacienteAchado } from "@/lib/evolucao/entrada";
+import type { CasoComCadastro } from "@/lib/evolucao/mapa-do-dia";
+import { abrirFicha } from "./abrir-ficha";
+import { MapaDoDia } from "./mapa-do-dia";
 import { horarioDaFicha } from "@/lib/evolucao/folha";
 import { dataLocal, horaLocal } from "@/lib/data-local";
 
-type Encontrado = PacienteDaFolha & { id: string };
-export type Achado = Encontrado & {
-  /** A avaliação que vai para o topo da ficha; nula quando não há; ausente quando não deu para saber. */
-  avaliacao?: { em: string; rascunho: boolean; cirurgia: string } | null;
-  /** A ficha que o paciente já tem aberta, se tiver. */
-  aberta: string | null;
-};
+type Encontrado = Omit<PacienteAchado, "avaliacao" | "aberta">;
+export type Achado = PacienteAchado;
 type Busca = { termo: string; lista: Achado[]; falhou: boolean };
 
 const DIA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "America/Sao_Paulo" });
+const CAMPOS = "id, nome, data_nascimento, idade_anos, sexo, convenio, hospital, cirurgia, procedimento";
 
 function quemE(p: Achado) {
   return [p.idade_anos != null && `${p.idade_anos} anos`, p.sexo && p.sexo !== "Não informado" && p.sexo.toLowerCase(), p.hospital]
     .filter(Boolean).join(" · ");
 }
 
-// Abrir uma ficha: achar o paciente, e a ficha nasce com a avaliação
-// pré-anestésica mais recente dele no topo. A busca já diz, antes do toque, se
-// essa avaliação existe — e se o paciente já tem ficha aberta, leva a ela em
-// vez de abrir uma segunda.
-export function NovaFolha({ institutionId, local = null }: {
+// Abrir uma ficha: uma caixa só, para todo mundo (06/11/2026: "tem que ficar
+// bom pra todo mundo. Fácil").
+//   - Sem nada escrito, a lista do dia: o mapa cirúrgico do hospital, quando
+//     há, e os avaliados hoje que ainda não têm ficha (o ambulatório, sem mapa).
+//     Um toque na linha abre a ficha.
+//   - Com o nome, a mesma caixa filtra o mapa na hora e busca no cadastro.
+// A ficha nasce com a avaliação pré-anestésica mais recente do paciente no
+// topo; a linha já diz, antes do toque, se essa avaliação existe — e, se o
+// paciente já tem ficha aberta, leva a ela em vez de abrir uma segunda.
+export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoje = [] }: {
   institutionId: string;
   /** O hospital da sessão: a ficha nova nasce nele (e só aparece na lista dele). */
   local?: { id: string; nome: string } | null;
+  /** O mapa cirúrgico de hoje, com o cadastro de cada paciente já procurado. */
+  mapa?: CasoComCadastro[];
+  /** Os avaliados hoje, sem ficha ainda (lib/evolucao/entrada.ts). */
+  avaliadosHoje?: Achado[];
 }) {
   const router = useRouter();
   const [busca, setBusca] = useState("");
@@ -57,7 +64,7 @@ export function NovaFolha({ institutionId, local = null }: {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("pacientes")
-        .select("id, nome, data_nascimento, idade_anos, sexo, convenio, hospital, cirurgia, procedimento")
+        .select(CAMPOS)
         .ilike("nome", `%${termo.replace(/[%_]/g, "")}%`)
         .order("nome")
         .limit(12);
@@ -97,8 +104,13 @@ export function NovaFolha({ institutionId, local = null }: {
     return () => { vale = false; clearTimeout(t); };
   }, [busca, local]);
 
+  /** "Agora" (nulo) ou o outro dia e horário, conferido na hora do toque. */
+  const lerHorario = () => (quando ? horarioDaFicha(quando) : null);
+
   async function cadastrarEAbrir() {
     if (!novo || !novo.nome.trim()) return;
+    const horario = lerHorario();
+    if (horario && !horario.ok) { setErro(horario.erro); return; }
     setCadastrando(true); setErro("");
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -107,75 +119,48 @@ export function NovaFolha({ institutionId, local = null }: {
       institution_id: institutionId, created_by: user?.id ?? null, nome: novo.nome.trim(),
       idade_anos: Number.isInteger(idade) && idade >= 0 && idade <= 120 && novo.idade.trim() ? idade : null,
       sexo: novo.sexo || null, convenio: novo.convenio.trim() || null, cirurgia: novo.cirurgia.trim() || null,
-    }).select("id, nome, data_nascimento, idade_anos, sexo, convenio, hospital, cirurgia, procedimento").single();
+    }).select(CAMPOS).single();
     setCadastrando(false);
     if (error || !data) { setErro("Não foi possível cadastrar o paciente. Confira a conexão e tente de novo."); return; }
     await abrir(data as Encontrado);
   }
 
   async function abrir(p: Encontrado) {
-    const horario = quando ? horarioDaFicha(quando) : null;
+    const horario = lerHorario();
     if (horario && !horario.ok) { setErro(horario.erro); return; }
     setAbrindo(p.id);
     setErro("");
-    const supabase = createClient();
-    const { data: avaliacao } = await supabase
-      .from("avaliacoes")
-      .select("id, dados, concluida_at, created_at")
-      .eq("patient_id", p.id)
-      .eq("versao_vigente", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const dados = {
-      ...cabecalhoInicial(p, avaliacao ? { id: avaliacao.id, dados: avaliacao.dados } : null, new Date()),
-      ...(local ? { local_atendimento_id: local.id, local_atendimento: local.nome } : {}),
-      ...(horario?.ok ? { data_procedimento: horario.data } : {}),
-    };
-    const { data, error } = await supabase
-      .from("evolucoes_anestesicas")
-      .insert({
-        institution_id: institutionId, patient_id: p.id, avaliacao_id: avaliacao?.id ?? null, dados,
-        ...(horario?.ok ? { inicio_em: horario.inicioIso } : {}),
-      })
-      .select("id")
-      .single();
-    if (error || !data) {
-      setErro(motivoAoAbrirFolha(error));
+    const r = await abrirFicha({ institutionId, local, paciente: p, horario: horario?.ok ? horario : null });
+    if ("erro" in r) {
+      setErro(r.erro);
       setAbrindo(null);
       return;
     }
-    // Ficha de outro horário: início e fim da anestesia já marcados, pela
-    // mesma porta dos outros registros (a que confere no servidor).
-    if (horario?.ok) {
-      const marcos = [{ codigo: "inicio_anestesia", momento: horario.inicioIso },
-        ...(horario.fimIso ? [{ codigo: "fim_anestesia", momento: horario.fimIso }] : [])];
-      for (const m of marcos) {
-        await fetch("/api/evolucao/registrar", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: crypto.randomUUID(), evolucao_id: data.id, tipo: "evento", momento: m.momento,
-            dados: { codigo: m.codigo }, origem: "manual" }),
-        }).catch(() => null);
-      }
-    }
-    router.push(`/evolucao/${data.id}`);
+    router.push(`/evolucao/${r.id}`);
   }
 
   const termo = busca.trim();
   const curto = termo.length < 2;
   const buscando = !curto && achados?.termo !== termo;
-  const lista = !curto ? achados?.lista ?? [] : [];
+  // O mapa filtra na hora, sem esperar o banco; já com uma letra.
+  const doMapa = termo ? mapa.filter((c) => casaComONome(c.paciente, termo) || (c.principal ? casaComONome(c.principal.nome, termo) : false)) : mapa;
+  // Quem o mapa já mostra (com o cadastro certo) não se repete na busca.
+  const jaNoMapa = new Set(doMapa.flatMap((c) => [c.patientId, c.principal?.id]).filter(Boolean));
+  const lista = !curto ? (achados?.lista ?? []).filter((p) => !jaNoMapa.has(p.id)) : [];
+  const avaliados = termo ? avaliadosHoje.filter((p) => casaComONome(p.nome, termo)) : avaliadosHoje;
+  // Com o nome escrito, os avaliados de hoje vêm na busca do cadastro.
+  const mostrarAvaliados = curto && avaliados.length > 0;
+  const nada = !curto && !buscando && !achados?.falhou && !lista.length && !doMapa.length;
 
-  let situacao = "Digite ao menos duas letras do nome.";
-  if (!curto) {
-    if (buscando) situacao = "Buscando…";
-    else if (achados?.falhou) situacao = "A busca não respondeu. Confira a conexão e tente de novo.";
-    else if (!lista.length) situacao = `Nenhum paciente com “${termo}” no sistema.`;
-    else situacao = lista.length === 1 ? "1 paciente" : `${lista.length} pacientes${lista.length === 12 ? " — refine o nome se não estiver aqui" : ""}`;
-  }
+  let situacao = "";
+  if (curto) {
+    if (!mapa.length && !avaliadosHoje.length) situacao = "Digite ao menos duas letras do nome.";
+  } else if (buscando) situacao = "Buscando no cadastro…";
+  else if (achados?.falhou) situacao = "A busca no cadastro não respondeu. Confira a conexão e tente de novo.";
+  else if (nada) situacao = `Nenhum paciente com “${termo}”${mapa.length ? " no mapa nem" : ""} no cadastro.`;
 
-  // Uma linha da lista: o paciente, a avaliação que vai para o topo da ficha e
-  // o toque — abrir, ou continuar a que ele já tem aberta.
+  // Uma linha do cadastro: o paciente, a avaliação que vai para o topo da
+  // ficha e o toque — abrir, ou continuar a que ele já tem aberta.
   const linha = (p: Achado) => {
     const corpo = (
       <>
@@ -204,11 +189,16 @@ export function NovaFolha({ institutionId, local = null }: {
         ) : (
           <button type="button" className="fcAchado" onClick={() => abrir(p)} disabled={abrindo !== null}>
             {corpo}
-            <span className="fcIr">{abrindo === p.id ? "Abrindo…" : <>Abrir ficha <Icone nome="seta" className="fcSetaDireita" /></>}</span>
+            <span className="fcIr forte">{abrindo === p.id ? "Abrindo…" : <>Abrir ficha <Icone nome="seta" className="fcSetaDireita" /></>}</span>
           </button>
         )}
       </li>
     );
+  };
+
+  const abrirSemCadastro = () => {
+    setNovo({ nome: curto ? "" : termo, idade: "", sexo: "", convenio: "", cirurgia: "" });
+    setErro("");
   };
 
   return (
@@ -222,15 +212,23 @@ export function NovaFolha({ institutionId, local = null }: {
           autoComplete="off" autoCapitalize="words" spellCheck={false} enterKeyHint="search"
         />
       </label>
-      <div className="fcQuando" role="group" aria-label="Quando foi a anestesia">
-        <span>Quando</span>
-        <button type="button" aria-pressed={!quando} className={!quando ? "ativo" : undefined}
-          onClick={() => { setQuando(null); setErro(""); }}>Agora</button>
-        <button type="button" aria-pressed={Boolean(quando)} className={quando ? "ativo" : undefined}
-          onClick={() => setQuando((q) => q ?? { data: dataLocal(), inicio: horaLocal(), fim: "" })}>Outro dia ou horário</button>
+
+      {/* O que é raro fica numa linha discreta, fora do caminho do toque. */}
+      <div className="fcAtalhos">
+        {!novo && (
+          <button type="button" className="fcAtalho" onClick={abrirSemCadastro}>
+            <Icone nome="pessoa" tamanho={16} /> Paciente sem cadastro
+          </button>
+        )}
+        <button type="button" className={`fcAtalho${quando ? " ativo" : ""}`} aria-pressed={Boolean(quando)}
+          onClick={() => { setQuando((q) => (q ? null : { data: dataLocal(), inicio: horaLocal(), fim: "" })); setErro(""); }}>
+          <Icone nome="relogio" tamanho={16} /> {quando ? "Voltar para agora" : "Outro dia ou horário"}
+        </button>
       </div>
+
       {quando && (
         <div className="fcQuandoCampos">
+          <p className="fcQuandoDica topo">Passando a limpo: a ficha que você abrir agora nasce com esta data e estes horários.</p>
           <label><span>Data</span>
             <input type="date" value={quando.data} max={dataLocal()} required
               onChange={(e) => { setQuando({ ...quando, data: e.target.value }); setErro(""); }} />
@@ -250,17 +248,8 @@ export function NovaFolha({ institutionId, local = null }: {
           </p>
         </div>
       )}
-      <p className={`fcSituacao${achados?.falhou && !buscando && !curto ? " falhou" : ""}`} aria-live="polite">{situacao}</p>
-      {erro && <p className="fcErro" role="alert">{erro}</p>}
 
-      {/* Sem cadastro e sem avaliação: a ficha começa em branco. Quem está
-          cadastrado mas não foi avaliado aparece na busca, com o aviso. */}
-      {!novo ? (
-        <button type="button" className="fcSemCadastro"
-          onClick={() => setNovo({ nome: curto ? "" : termo, idade: "", sexo: "", convenio: "", cirurgia: "" })}>
-          + {!curto && !buscando && !lista.length ? `Iniciar ficha para “${termo}”` : "Paciente sem cadastro"} — ficha em branco
-        </button>
-      ) : (
+      {novo && (
         <form className="fcNovoPaciente" onSubmit={(e) => { e.preventDefault(); void cadastrarEAbrir(); }}>
           <p className="fcNovoTitulo">Paciente sem cadastro: um cadastro mínimo, e a ficha abre em branco para preencher.</p>
           <label className="fcNovoCampo nome"><span>Nome do paciente</span>
@@ -271,9 +260,9 @@ export function NovaFolha({ institutionId, local = null }: {
           </label>
           <div className="fcNovoCampo sexo" role="group" aria-label="Sexo"><span>Sexo</span>
             <div className="fcNovoSexo">
-              {([["Feminino", "FEM"], ["Masculino", "MASC"]] as const).map(([x, curto]) => (
+              {([["Feminino", "FEM"], ["Masculino", "MASC"]] as const).map(([x, curtoDoSexo]) => (
                 <button type="button" key={x} aria-pressed={novo.sexo === x} aria-label={x} className={novo.sexo === x ? "ativo" : undefined}
-                  onClick={() => setNovo({ ...novo, sexo: novo.sexo === x ? "" : x })}>{curto}</button>
+                  onClick={() => setNovo({ ...novo, sexo: novo.sexo === x ? "" : x })}>{curtoDoSexo}</button>
               ))}
             </div>
           </div>
@@ -292,10 +281,43 @@ export function NovaFolha({ institutionId, local = null }: {
         </form>
       )}
 
-      {lista.length > 0 && (
-        <ul className={`fcAchados${buscando ? " velho" : ""}`} aria-busy={buscando}>
-          {lista.map((p) => linha(p))}
-        </ul>
+      <p className={`fcSituacao${achados?.falhou && !buscando && !curto ? " falhou" : ""}`} aria-live="polite">{situacao}</p>
+      {erro && <p className="fcErro" role="alert">{erro}</p>}
+      {nada && !novo && (
+        <button type="button" className="evoBotao fcIniciarPara" onClick={abrirSemCadastro}>
+          Cadastrar “{termo}” e abrir ficha
+        </button>
+      )}
+
+      {(doMapa.length > 0 || lista.length > 0 || mostrarAvaliados) && (
+        <div className="fcResultados">
+          <MapaDoDia
+            institutionId={institutionId} local={local} casos={doMapa} filtrado={Boolean(termo)}
+            lerHorario={lerHorario} abrindo={abrindo} setAbrindo={setAbrindo}
+          />
+          {lista.length > 0 && (
+            <div className="fcGrupo" role="group" aria-labelledby="fc-cadastro">
+              <h3 id="fc-cadastro" className="fcGrupoTitulo">
+                {doMapa.length ? "No cadastro" : "Pacientes"} <span className="fcConta">{lista.length}</span>
+              </h3>
+              {lista.length === 12 && <p className="fcSubgrupo">Os 12 primeiros: escreva mais do nome se não estiver aqui.</p>}
+              <ul className={`fcAchados${buscando ? " velho" : ""}`} aria-busy={buscando}>
+                {lista.map((p) => linha(p))}
+              </ul>
+            </div>
+          )}
+          {mostrarAvaliados && (
+            <div className="fcGrupo" role="group" aria-labelledby="fc-avaliados">
+              <h3 id="fc-avaliados" className="fcGrupoTitulo">
+                Avaliados hoje <span className="fcConta">{avaliados.length}</span>
+              </h3>
+              <p className="fcSubgrupo">Com avaliação pré-anestésica de hoje e ainda sem ficha.</p>
+              <ul className="fcAchados">
+                {avaliados.map((p) => linha(p))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </section>
   );

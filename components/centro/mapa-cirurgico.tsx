@@ -8,7 +8,7 @@ import { Icone } from "@/components/icone";
 import { somarDias } from "@/lib/data-local";
 import {
   CAMPOS_DO_CASO, ETAPAS_DO_FLUXO, NOME_DA_ETAPA, NOME_DO_DESTINO, anestesistasDePlantao, colunasDoMapa,
-  contagemPorEtapa, duracao, horaDe, horaNoMapa, mover, proximaOrdem, proximoPasso, resumoDoDia, tempoNaEtapa, tempos,
+  contagemPorEtapa, duracao, horaDe, horaNoMapa, mover, noHospital, proximaOrdem, proximoPasso, resumoDoDia, tempoNaEtapa, tempos,
   type Caso, type Etapa, type PlantaoDaEscala, type Sala, type Passo,
 } from "@/lib/centro-cirurgico";
 import { JanelaDoCaso, JanelaDoPasso, JanelaDeCancelar, JanelaDasSalas, mensagemDoBanco } from "./janelas";
@@ -46,10 +46,12 @@ const nomeDoDia = (dia: string) => {
  * RPA, que é a pergunta que a enfermagem faz a cada meia hora.
  */
 export function MapaCirurgico({
-  institutionId, nomeDaCasa, dia, hoje, salasIniciais, casosIniciais, anestesistas, plantoes, podeMontar, semBanco, agora: agoraDoServidor,
+  institutionId, localId = null, nomeDaCasa, dia, hoje, salasIniciais, casosIniciais, anestesistas, plantoes, podeMontar, semBanco, agora: agoraDoServidor,
   marca = null, soMapa = false,
 }: {
   institutionId: string;
+  /** O hospital do mapa (o da sessão), ou nenhum: as consultas e as gravações usam este. */
+  localId?: string | null;
   nomeDaCasa: string;
   dia: string;
   hoje: string;
@@ -84,12 +86,12 @@ export function MapaCirurgico({
   const recarregar = useCallback(async () => {
     const sb = createClient();
     const [s, c] = await Promise.all([
-      sb.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", institutionId).order("ordem"),
-      sb.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", institutionId).eq("data", dia),
+      noHospital(sb.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", institutionId), localId).order("ordem"),
+      noHospital(sb.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", institutionId).eq("data", dia), localId),
     ]);
     if (!s.error && s.data) setSalas(s.data as Sala[]);
     if (!c.error && c.data) setCasos(c.data as unknown as Caso[]);
-  }, [institutionId, dia]);
+  }, [institutionId, localId, dia]);
 
   useEffect(() => {
     const tique = () => {
@@ -283,6 +285,7 @@ export function MapaCirurgico({
       {aberta?.tipo === "novo" || aberta?.tipo === "editar" ? (
         <JanelaDoCaso
           institutionId={institutionId}
+          localId={localId}
           dia={dia}
           caso={aberta.tipo === "editar" ? aberta.caso : null}
           salaInicial={aberta.tipo === "novo" ? aberta.salaId : ""}
@@ -309,7 +312,7 @@ export function MapaCirurgico({
         <JanelaDeCancelar caso={aberta.caso} gravar={gravar} onFechar={() => setAberta(null)} onFeito={() => setAberta(null)} />
       )}
       {aberta?.tipo === "importar" && (
-        <JanelaDeImportar institutionId={institutionId} diaAberto={dia} salas={salas} anestesistas={anestesistas}
+        <JanelaDeImportar institutionId={institutionId} localId={localId} diaAberto={dia} salas={salas} anestesistas={anestesistas}
           dePlantao={(data, horario) => anestesistasDePlantao(plantoes, data, horario)}
           onFechar={() => setAberta(null)}
           onImportado={(data, quantos) => {
@@ -321,7 +324,7 @@ export function MapaCirurgico({
           }} />
       )}
       {aberta?.tipo === "salas" && (
-        <JanelaDasSalas institutionId={institutionId} salas={salas}
+        <JanelaDasSalas institutionId={institutionId} localId={localId} salas={salas}
           onMudou={(lista) => setSalas(lista)} onFechar={() => { setAberta(null); void recarregar(); }} />
       )}
     </Casca>

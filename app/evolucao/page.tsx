@@ -3,6 +3,8 @@ import { exigirAcessoAEvolucao, fichasDoLocal, localDaSessao } from "@/lib/evolu
 import { fimDaAnestesia } from "@/lib/evolucao/folha";
 import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { InicioDasFolhas, type FolhaResumo } from "./inicio-das-folhas";
+import { mapaDoDiaNaFicha } from "./mapa-do-dia-servidor";
+import { avaliadosHojeNaFicha } from "./avaliados-hoje-servidor";
 
 export const metadata: Metadata = {
   title: "Ficha anestésica | AVANEST",
@@ -38,19 +40,27 @@ export default async function FichasPage() {
     const q = supabase.from("evolucoes_anestesicas").select(CAMPOS);
     return local ? q.or(fichasDoLocal(local.id)) : q;
   };
-  const [abertas, encerradas] = await Promise.all([
+  const [abertas, encerradas, mapa] = await Promise.all([
     tabela().eq("status", "aberta").order("inicio_em", { ascending: false }).limit(30),
     tabela().eq("status", "encerrada").order("encerrada_em", { ascending: false, nullsFirst: false }).limit(20),
+    // O mapa cirúrgico de hoje deste hospital, com o cadastro e a avaliação de cada paciente (06/11/2026).
+    mapaDoDiaNaFicha(supabase, { institutionId: perfil.institution_id as string, local, perfilId: perfil.id as string }),
   ]);
+  // Os avaliados hoje que ainda não têm ficha: a lista do dia de quem não tem
+  // mapa (o ambulatório). Quem já está no mapa não se repete.
+  const noMapa = mapa.flatMap((c) => [c.patientId, c.principal?.id]).filter((x): x is string => Boolean(x));
   const linhasAbertas = (abertas.data ?? []) as unknown as Linha[];
   // Os eventos das fichas abertas, para saber quais já terminaram (fim da
   // anestesia ou saída da sala): nessas o relógio para e a linha pede o
   // encerramento. Correções e exclusões vêm junto — `vigentes` resolve.
-  const eventosAbertas = linhasAbertas.length
-    ? await supabase.from("evolucao_registros")
-      .select("id, evolucao_id, tipo, momento, dados, origem, substitui_id, anulado, motivo, created_by, created_at")
-      .in("evolucao_id", linhasAbertas.map((l) => l.id)).eq("tipo", "evento")
-    : { data: [] };
+  const [avaliadosHoje, eventosAbertas] = await Promise.all([
+    avaliadosHojeNaFicha(supabase, { local, noMapa }),
+    linhasAbertas.length
+      ? supabase.from("evolucao_registros")
+        .select("id, evolucao_id, tipo, momento, dados, origem, substitui_id, anulado, motivo, created_by, created_at")
+        .in("evolucao_id", linhasAbertas.map((l) => l.id)).eq("tipo", "evento")
+      : Promise.resolve({ data: [] }),
+  ]);
   const eventosDa = new Map<string, Registro[]>();
   for (const r of (eventosAbertas.data ?? []) as unknown as Registro[]) {
     eventosDa.set(r.evolucao_id, [...(eventosDa.get(r.evolucao_id) ?? []), r]);
@@ -64,6 +74,8 @@ export default async function FichasPage() {
       semBanco={Boolean(abertas.error)}
       agora={agora}
       local={local}
+      mapa={mapa}
+      avaliadosHoje={avaliadosHoje}
     />
   );
 }

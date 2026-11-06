@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje, somarDias } from "@/lib/data-local";
 import { apelidosDaEquipe } from "@/lib/escala";
-import { CAMPOS_DO_CASO, abreOCentro, type Caso, type PlantaoDaEscala, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, noHospital, type Caso, type PlantaoDaEscala, type Sala } from "@/lib/centro-cirurgico";
 import { casaDaSessao } from "./casa";
 import { MapaCirurgico, type Anestesista } from "@/components/centro/mapa-cirurgico";
 
@@ -38,11 +38,11 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
   const { data: pedido } = await searchParams;
   const dia = /^\d{4}-\d{2}-\d{2}$/.test(pedido ?? "") ? (pedido as string) : hoje();
 
-  const [casa, salas, casos, equipe, plantoes] = await Promise.all([
-    // O nome e a marca d'água: o hospital escolhido nesta sessão, ou a casa.
-    casaDaSessao(supabase, inst, perfil.super_admin),
-    supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst).order("ordem"),
-    supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst).eq("data", dia),
+  // O nome, a marca d'água e o hospital do mapa: o escolhido nesta sessão, ou a casa.
+  const casa = await casaDaSessao(supabase, inst, perfil.super_admin);
+  const [salas, casos, equipe, plantoes] = await Promise.all([
+    noHospital(supabase.from("centro_salas").select("id, nome, ordem, ativa").eq("institution_id", inst), casa.localId).order("ordem"),
+    noHospital(supabase.from("centro_casos").select(CAMPOS_DO_CASO).eq("institution_id", inst).eq("data", dia), casa.localId),
     supabase.from("perfis").select("id, nome, role, status, atuacao_medica").eq("institution_id", inst),
     // Ontem também: a cirurgia das 5h é do plantão de 24h que começou ontem às 7h.
     supabase.from("plantoes").select("data, hora_inicio, hora_fim, perfil_id, situacao")
@@ -62,6 +62,7 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
     <MapaCirurgico
       key={dia}
       institutionId={inst}
+      localId={casa.localId}
       nomeDaCasa={casa.nome}
       dia={dia}
       hoje={hoje()}

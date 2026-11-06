@@ -20,6 +20,50 @@ export type Destino = "quarto" | "uti" | "casa" | "outro";
 
 export type Sala = { id: string; nome: string; ordem: number; ativa: boolean };
 
+// ---------------------------------------------------------------------------
+// O hospital do mapa (202611060001)
+//
+// O mapa é de um hospital: o escolhido em "Onde você vai atender hoje?", o
+// mesmo que a ficha anestésica usa. Um grupo que atende em seis hospitais tem
+// seis mapas no mesmo dia. O paciente e a sala sem hospital — lançados antes
+// da separação — valem em todos, como as fichas antigas (lib/evolucao/local.ts):
+// nada some de mapa nenhum.
+// ---------------------------------------------------------------------------
+
+/**
+ * LIGADO em 06/11/2026, a pedido do médico responsável ("pode ligar o mapa pra
+ * todos"), depois de a migração 202611060001 rodar no banco. A chave fica para
+ * desligar depressa se for preciso: desligada, o código não pede as colunas
+ * novas e o mapa volta a ser um só por organização.
+ */
+export const MAPA_POR_HOSPITAL = true;
+
+/** O hospital numa gravação do mapa — nada, enquanto a chave estiver desligada. */
+export const comHospital = (localId: string | null | undefined): { local_atendimento_id?: string | null } =>
+  (MAPA_POR_HOSPITAL ? { local_atendimento_id: localId ?? null } : {});
+
+/** A data de nascimento numa gravação do mapa — nada, enquanto a chave estiver desligada. */
+export const comNascimento = (nascimento: string | null | undefined): { data_nascimento?: string | null } =>
+  (MAPA_POR_HOSPITAL ? { data_nascimento: nascimento || null } : {});
+
+/** A idade completa em anos numa data, as duas em "AAAA-MM-DD". */
+export function idadeNaData(nascimento: string, data: string): number | null {
+  const [a, b] = [nascimento, data].map((x) => /^(\d{4})-(\d{2})-(\d{2})/.exec(x));
+  if (!a || !b) return null;
+  let anos = Number(b[1]) - Number(a[1]);
+  if (Number(b[2]) * 100 + Number(b[3]) < Number(a[2]) * 100 + Number(a[3])) anos--;
+  return anos >= 0 && anos <= 130 ? anos : null;
+}
+
+/** Filtro `or` do PostgREST: o que é deste hospital e o que ainda não tem hospital. */
+export const doHospital = (localId: string) =>
+  `local_atendimento_id.eq.${localId},local_atendimento_id.is.null`;
+
+/** A mesma consulta, só do hospital da sessão — ou de todos, quando a sessão não tem hospital. */
+export function noHospital<Q extends { or(filtro: string): Q }>(consulta: Q, localId: string | null | undefined): Q {
+  return MAPA_POR_HOSPITAL && localId ? consulta.or(doHospital(localId)) : consulta;
+}
+
 export type Caso = {
   id: string;
   data: string;               // "AAAA-MM-DD"
@@ -29,6 +73,12 @@ export type Caso = {
   horario: string | null;     // "HH:MM" ou "HH:MM:SS"; nulo é "A/S", a seguir do anterior
   paciente: string;
   idade: number | null;
+  /**
+   * "AAAA-MM-DD". A trava do paciente certo na ficha anestésica (06/11/2026:
+   * "vamos deixar uma trava também na data de nascimento"): com ela no mapa e
+   * no cadastro, só a data igual liga os dois sem perguntar.
+   */
+  data_nascimento?: string | null;
   prontuario: string | null;
   procedimento: string;
   cirurgiao: string | null;
@@ -52,7 +102,9 @@ export type Caso = {
 /** As colunas que a tela lê — a mesma lista no servidor e na recarga do navegador. */
 export const CAMPOS_DO_CASO =
   "id, data, sala_id, ordem, horario, paciente, idade, prontuario, procedimento, cirurgiao, convenio, anestesista_id, etapa, destino, "
-  + "entrada_sala_em, inicio_cirurgia_em, fim_cirurgia_em, saida_sala_em, alta_rpa_em, aldrete_alta, cancelado_motivo, leito, observacoes, created_at";
+  + "entrada_sala_em, inicio_cirurgia_em, fim_cirurgia_em, saida_sala_em, alta_rpa_em, aldrete_alta, cancelado_motivo, leito, observacoes, created_at"
+  // A data de nascimento só existe depois da migração 202611060001.
+  + (MAPA_POR_HOSPITAL ? ", data_nascimento" : "");
 
 export const NOME_DA_ETAPA: Record<Etapa, string> = {
   agendado: "Agendado",
@@ -250,19 +302,21 @@ export function avisoDoAldrete(total: number | null): string | null {
 
 export type FormDoCaso = {
   data: string; sala_id: string; horario: string; paciente: string; idade: string;
+  /** "AAAA-MM-DD", do campo de data; vazio quando não informada. */
+  nascimento: string;
   prontuario: string; procedimento: string; cirurgiao: string; convenio: string;
   anestesista_id: string; leito: string; observacoes: string;
 };
 
 export const formVazio = (data: string, sala_id = ""): FormDoCaso => ({
-  data, sala_id, horario: "", paciente: "", idade: "", prontuario: "", procedimento: "",
+  data, sala_id, horario: "", paciente: "", idade: "", nascimento: "", prontuario: "", procedimento: "",
   cirurgiao: "", convenio: "", anestesista_id: "", leito: "", observacoes: "",
 });
 
 export function formDoCaso(c: Caso): FormDoCaso {
   return {
     data: c.data, sala_id: c.sala_id ?? "", horario: hhmm(c.horario), paciente: c.paciente,
-    idade: c.idade == null ? "" : String(c.idade), prontuario: c.prontuario ?? "",
+    idade: c.idade == null ? "" : String(c.idade), nascimento: c.data_nascimento ?? "", prontuario: c.prontuario ?? "",
     procedimento: c.procedimento, cirurgiao: c.cirurgiao ?? "", convenio: c.convenio ?? "",
     anestesista_id: c.anestesista_id ?? "", leito: c.leito ?? "", observacoes: c.observacoes ?? "",
   };
@@ -288,11 +342,16 @@ export function linhaDoForm(f: FormDoCaso):
     idade = Number(f.idade.trim());
     if (!Number.isInteger(idade) || idade < 0 || idade > 130) return { ok: false, erro: "Idade inválida." };
   }
+  if (f.nascimento && (!/^\d{4}-\d{2}-\d{2}$/.test(f.nascimento) || f.nascimento > f.data || f.nascimento < "1890-01-01")) {
+    return { ok: false, erro: "Data de nascimento inválida." };
+  }
+  // Sem a idade escrita, a da data de nascimento, no dia da cirurgia.
+  if (idade == null && f.nascimento) idade = idadeNaData(f.nascimento, f.data);
   return {
     ok: true,
     linha: {
       data: f.data, sala_id: f.sala_id || null, horario: f.horario || null,
-      paciente: limpo(f.paciente), idade, prontuario: ouNulo(f.prontuario),
+      paciente: limpo(f.paciente), idade, ...comNascimento(f.nascimento), prontuario: ouNulo(f.prontuario),
       procedimento: limpo(f.procedimento), cirurgiao: ouNulo(f.cirurgiao), convenio: ouNulo(f.convenio),
       anestesista_id: f.anestesista_id || null, leito: ouNulo(f.leito), observacoes: ouNulo(f.observacoes),
     },

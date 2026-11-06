@@ -3611,6 +3611,7 @@ function DiaDetalhe({
           estritamente de quem escreve. */}
       {pessoal && (
         <ProducaoDoDia
+          key={dia}
           dia={dia} perfilId={perfilId} institutionId={institutionId}
           conveniosConhecidos={conveniosConhecidos}
           plantaoId={meusDoDia.length === 1 ? meusDoDia[0].id : null}

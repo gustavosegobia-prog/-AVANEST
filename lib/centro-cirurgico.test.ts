@@ -109,6 +109,18 @@ test("o formulário exige só paciente, cirurgia e data, e limpa o resto", () =>
   assert.deepEqual(linhaDoForm({ ...f, horario: "7h" }), { ok: false, erro: "Horário inválido." });
 });
 
+test("o formulário aceita a data de nascimento, tira dela a idade, e recusa a impossível", () => {
+  const f = { ...formVazio("2026-11-06"), paciente: "Maria Ficticia", procedimento: "Hérnia", nascimento: "1974-11-07" };
+  const r = linhaDoForm(f);
+  assert.ok(r.ok);
+  if (r.ok) assert.equal(r.linha.idade, 51, "faz 52 amanhã");
+  const escrita = linhaDoForm({ ...f, idade: "52" });
+  assert.ok(escrita.ok && escrita.linha.idade === 52, "a idade escrita vale");
+  assert.deepEqual(linhaDoForm({ ...f, nascimento: "2026-11-07" }), { ok: false, erro: "Data de nascimento inválida." });
+  assert.deepEqual(linhaDoForm({ ...f, nascimento: "1880-01-01" }), { ok: false, erro: "Data de nascimento inválida." });
+  assert.equal(formVazio("2026-11-06").nascimento, "");
+});
+
 test("o anestesista do horário vem da escala, e a madrugada é do plantão de ontem", () => {
   const escala = [
     { data: "2026-10-20", hora_inicio: "07:00:00", hora_fim: "07:00:00", perfil_id: "ontem" },
