@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
-import { cabecalhoInicial, type PacienteDaFolha } from "@/lib/evolucao/importar";
-import { motivoAoAbrirFolha } from "@/lib/evolucao/fila";
+import { type PacienteDaFolha } from "@/lib/evolucao/importar";
 import { fichasDoLocal } from "@/lib/evolucao/local";
+import { abrirFicha } from "./abrir-ficha";
 import { horarioDaFicha } from "@/lib/evolucao/folha";
 import { dataLocal, horaLocal } from "@/lib/data-local";
 
@@ -118,47 +118,13 @@ export function NovaFolha({ institutionId, local = null }: {
     if (horario && !horario.ok) { setErro(horario.erro); return; }
     setAbrindo(p.id);
     setErro("");
-    const supabase = createClient();
-    const { data: avaliacao } = await supabase
-      .from("avaliacoes")
-      .select("id, dados, concluida_at, created_at")
-      .eq("patient_id", p.id)
-      .eq("versao_vigente", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const dados = {
-      ...cabecalhoInicial(p, avaliacao ? { id: avaliacao.id, dados: avaliacao.dados } : null, new Date()),
-      ...(local ? { local_atendimento_id: local.id, local_atendimento: local.nome } : {}),
-      ...(horario?.ok ? { data_procedimento: horario.data } : {}),
-    };
-    const { data, error } = await supabase
-      .from("evolucoes_anestesicas")
-      .insert({
-        institution_id: institutionId, patient_id: p.id, avaliacao_id: avaliacao?.id ?? null, dados,
-        ...(horario?.ok ? { inicio_em: horario.inicioIso } : {}),
-      })
-      .select("id")
-      .single();
-    if (error || !data) {
-      setErro(motivoAoAbrirFolha(error));
+    const r = await abrirFicha({ institutionId, local, paciente: p, horario: horario?.ok ? horario : null });
+    if ("erro" in r) {
+      setErro(r.erro);
       setAbrindo(null);
       return;
     }
-    // Ficha de outro horário: início e fim da anestesia já marcados, pela
-    // mesma porta dos outros registros (a que confere no servidor).
-    if (horario?.ok) {
-      const marcos = [{ codigo: "inicio_anestesia", momento: horario.inicioIso },
-        ...(horario.fimIso ? [{ codigo: "fim_anestesia", momento: horario.fimIso }] : [])];
-      for (const m of marcos) {
-        await fetch("/api/evolucao/registrar", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: crypto.randomUUID(), evolucao_id: data.id, tipo: "evento", momento: m.momento,
-            dados: { codigo: m.codigo }, origem: "manual" }),
-        }).catch(() => null);
-      }
-    }
-    router.push(`/evolucao/${data.id}`);
+    router.push(`/evolucao/${r.id}`);
   }
 
   const termo = busca.trim();

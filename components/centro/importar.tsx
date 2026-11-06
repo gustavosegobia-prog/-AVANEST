@@ -6,7 +6,7 @@ import { Janela } from "@/components/janela";
 import {
   casarAnestesista, casarSala, normalizar, lerMapa, type LinhaImportada, type MapaImportado,
 } from "@/lib/centro-importar";
-import { type Sala } from "@/lib/centro-cirurgico";
+import { MAPA_POR_HOSPITAL, comHospital, doHospital, noHospital, type Sala } from "@/lib/centro-cirurgico";
 import type { Anestesista } from "./mapa-cirurgico";
 import { mensagemDoBanco } from "./janelas";
 import { TIPOS_ACEITOS, gradeDoArquivo } from "./ler-arquivo";
@@ -25,8 +25,10 @@ const nomeDoDia = (d: string) => DATA_CURTA.format(new Date(`${d}T12:00:00Z`));
  * junto), e o paciente que já está no mapa daquele dia vem desmarcado — subir
  * o mesmo arquivo duas vezes não duplica ninguém.
  */
-export function JanelaDeImportar({ institutionId, diaAberto, salas, anestesistas, dePlantao, onFechar, onImportado }: {
+export function JanelaDeImportar({ institutionId, localId = null, diaAberto, salas, anestesistas, dePlantao, onFechar, onImportado }: {
   institutionId: string;
+  /** O hospital do mapa: os pacientes e as salas novas nascem nele. */
+  localId?: string | null;
   diaAberto: string;
   salas: Sala[];
   anestesistas: Anestesista[];
@@ -52,8 +54,8 @@ export function JanelaDeImportar({ institutionId, diaAberto, salas, anestesistas
    */
   async function conferirRepetidos(m: MapaImportado, dia: string) {
     try {
-      const { data: existentes, error } = await createClient().from("centro_casos").select("paciente, procedimento")
-        .eq("institution_id", institutionId).eq("data", dia);
+      const { data: existentes, error } = await noHospital(createClient().from("centro_casos").select("paciente, procedimento")
+        .eq("institution_id", institutionId).eq("data", dia), localId);
       if (error) return;
       const chave = (p: string, c: string) => `${normalizar(p)}|${normalizar(c)}`;
       const ja = new Set((existentes ?? []).map((e) => chave(String(e.paciente), String(e.procedimento))));
@@ -103,17 +105,20 @@ export function JanelaDeImportar({ institutionId, diaAberto, salas, anestesistas
       if (salasNovas.length) {
         const base = salas.reduce((m, s) => Math.max(m, s.ordem), 0);
         const { data: criadas, error } = await sb.from("centro_salas")
-          .insert(salasNovas.map((nome, i) => ({ institution_id: institutionId, nome, ordem: base + i + 1 })))
+          .insert(salasNovas.map((nome, i) => ({ institution_id: institutionId, ...comHospital(localId), nome, ordem: base + i + 1 })))
           .select("id, nome, ordem, ativa");
         if (error) throw new Error(mensagemDoBanco(error.message));
         todas = [...todas, ...((criadas ?? []) as Sala[])];
       }
       // 2. Os pacientes, depois dos que já estão no mapa daquele dia, na ordem do arquivo.
-      const { data: ultimos } = await sb.from("centro_casos").select("ordem").eq("institution_id", institutionId)
-        .eq("data", data).not("ordem", "is", null).order("ordem", { ascending: false }).limit(1);
+      // Escrita por extenso, sem noHospital: aqui o TypeScript não aguenta o tipo genérico.
+      let doDia = sb.from("centro_casos").select("ordem").eq("institution_id", institutionId)
+        .eq("data", data).not("ordem", "is", null);
+      if (MAPA_POR_HOSPITAL && localId) doDia = doDia.or(doHospital(localId));
+      const { data: ultimos } = await doDia.order("ordem", { ascending: false }).limit(1);
       const base = Number(ultimos?.[0]?.ordem ?? 0);
       const linhas = escolhidas.map((l, i) => ({
-        institution_id: institutionId, data, ordem: base + i + 1,
+        institution_id: institutionId, ...comHospital(localId), data, ordem: base + i + 1,
         horario: l.horario, paciente: l.paciente, idade: l.idade, convenio: l.convenio, cirurgiao: l.cirurgiao,
         sala_id: casarSala(l.sala, todas)?.id ?? null, procedimento: l.procedimento, leito: l.leito,
         anestesista_id: anestesistaId || null,

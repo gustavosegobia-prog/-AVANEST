@@ -77,8 +77,23 @@ const EXAMES: Array<[string, string, string]> = [
   ["hba1c", "HbA1c", "%"],
 ];
 
+/**
+ * O que o mapa cirúrgico do dia diz sobre a cirurgia (lib/evolucao/mapa-do-dia.ts).
+ * Para o que é DO DIA — data, sala, cirurgia, cirurgião, convênio —, o mapa
+ * vale mais que a avaliação: ela pode ter sido feita semanas antes, para uma
+ * cirurgia que mudou. Campo vazio no mapa não apaga o da avaliação.
+ */
+export type DoMapa = {
+  data?: string | null;
+  sala?: string | null;
+  procedimento?: string | null;
+  cirurgiao?: string | null;
+  convenio?: string | null;
+};
+
 export function cabecalhoInicial(
   paciente: PacienteDaFolha, avaliacao: { id: string; dados: Dados | null } | null, agora: Date,
+  doMapa?: DoMapa,
 ): CabecalhoDaFolha & Record<string, unknown> {
   const d: Dados = avaliacao?.dados ?? {};
   const peso = lerDecimal(d.peso);
@@ -140,6 +155,16 @@ export function cabecalhoInicial(
     observacoes_pre: "",
     preanestesica_origem: avaliacao ? { avaliacao_id: avaliacao.id, importado_em: agora.toISOString() } : null,
   };
+  if (doMapa) {
+    const doDia: Array<[keyof DoMapa, keyof CabecalhoDaFolha]> = [
+      ["data", "data_procedimento"], ["sala", "sala"], ["procedimento", "procedimento"],
+      ["cirurgiao", "cirurgiao"], ["convenio", "convenio"],
+    ];
+    for (const [deOnde, campo] of doDia) {
+      const v = texto(doMapa[deOnde]);
+      if (v) (cabecalho as Record<string, unknown>)[campo] = v;
+    }
+  }
   // As células da ficha de papel (PA, pulso, Hb, aparelhos…) já separadas,
   // pela mesma regra que lê as folhas antigas.
   const papel = camposDoPapel(cabecalho);

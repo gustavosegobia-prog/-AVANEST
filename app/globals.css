@@ -7786,6 +7786,42 @@ button.evoPFAsaN:disabled{cursor:default}
 .fcJaAberta{padding:3px 8px;margin-right:4px;border-radius:999px;background:var(--cor-sucesso-suave);color:var(--cor-sucesso);
   font-size:12px;font-weight:700}
 
+/* O mapa cirúrgico de hoje, no topo da ficha (06/11/2026). Cada paciente do
+   mapa numa linha: hora e sala, quem é, o cadastro e a avaliação já achados,
+   e o toque que abre a ficha. Os do anestesista logado têm a borda da marca. */
+.fcPrincipal{display:grid;gap:16px;align-content:start;min-width:0}
+.fcMapa{padding:20px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:16px}
+.fcMapa h2{display:flex;align-items:center;gap:8px;margin:0 0 4px;font-size:16px;font-weight:700;color:var(--cor-tinta-forte)}
+.fcMapaDica{margin:0 2px 12px;font-size:13.5px;line-height:1.45;color:var(--cor-tinta-fraca)}
+.fcMapaLista{list-style:none;margin:0 -20px -20px;padding:0}
+.fcMapaCaso{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 20px;border-top:1px solid var(--cor-borda)}
+/* .fcPre e .fcQuem trazem grid-area da busca; aqui a linha é uma coluna só. */
+.fcMapaCaso>*{grid-area:auto;min-width:0}
+.fcMapaCaso.meu{box-shadow:inset 3px 0 0 var(--cor-marca)}
+.fcMapaCaso .fcQuem{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
+.fcMapaTopo{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fcMapaQuando{font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--cor-marca-forte);font-variant-numeric:tabular-nums}
+.fcMapaSeu{padding:2px 8px;border-radius:999px;background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-size:12px;font-weight:700}
+.fcMapaAnest{font-size:12.5px;color:var(--cor-tinta-fraca)}
+.fcMapaCadastro{font-size:13px;color:var(--cor-tinta-fraca)}
+.fcMapaAcoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:4px}
+.fcMapaAcoes .evoBotao{min-height:44px}
+.fcMapaOutro{min-height:44px;padding:0 4px;border:0;background:none;color:var(--cor-marca-forte);font:inherit;font-size:14px;
+  font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.fcMapaOutro:disabled,.fcMapaAcoes .evoBotao:disabled{cursor:progress;opacity:.6}
+.fcMapaIr{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:14.5px;font-weight:700;color:var(--cor-marca-forte);
+  text-decoration:none}
+.fcMapaEscolha{display:grid;gap:8px;margin-top:4px;padding:12px;border-radius:12px;background:var(--cor-superficie-suave);
+  border:1px solid var(--cor-borda)}
+.fcMapaEscolha>p{margin:0;font-size:14px;font-weight:600;color:var(--cor-tinta-forte)}
+.fcMapaEscolha ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.fcMapaEscolha .fcAchado{border:1px solid var(--cor-borda);border-radius:10px;background:var(--cor-superficie)}
+@media (max-width:760px){
+  .fcMapa{padding:16px}
+  .fcMapaLista{margin:0 -16px -16px}
+  .fcMapaCaso{padding:14px 16px}
+}
+
 /* Em andamento e encerradas */
 .fcSecao{margin-top:28px}
 .fcSecao h2{margin-left:2px}

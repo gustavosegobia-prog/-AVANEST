@@ -6,7 +6,7 @@ import { Janela } from "@/components/janela";
 import { horaLocal } from "@/lib/data-local";
 import { CONVENIOS } from "@/lib/convenios";
 import {
-  ALDRETE, ALDRETE_PARA_ALTA, CAMPOS_DO_CASO, NOME_DA_ETAPA, NOME_DO_DESTINO, altaDaRpa, avisoDoAldrete, cancelar,
+  ALDRETE, ALDRETE_PARA_ALTA, CAMPOS_DO_CASO, comHospital, NOME_DA_ETAPA, NOME_DO_DESTINO, altaDaRpa, avisoDoAldrete, cancelar,
   conferirHorario, desfazer, entrarEmSala, formDoCaso, formVazio, horaDe, instanteDoPasso, linhaDoForm,
   rotuloDoDesfazer, sairDaSala, somaAldrete,
   type Caso, type Destino, type FormDoCaso, type Mudanca, type Passo, type Sala,
@@ -38,9 +38,11 @@ export function mensagemDoBanco(m: string): string {
  * acompanhar o horário no momento em que alguém escolhe outro nome.
  */
 export function JanelaDoCaso({
-  institutionId, dia, caso, salaInicial, salas, ordemNova, anestesistas, dePlantao, onFechar, onSalvo, onApagado, onCancelar, gravar,
+  institutionId, localId = null, dia, caso, salaInicial, salas, ordemNova, anestesistas, dePlantao, onFechar, onSalvo, onApagado, onCancelar, gravar,
 }: {
   institutionId: string;
+  /** O hospital do mapa: o paciente novo nasce nele. */
+  localId?: string | null;
   dia: string;
   caso: Caso | null;
   salaInicial: string;
@@ -84,7 +86,7 @@ export function JanelaDoCaso({
     const sb = createClient();
     const pedido = caso
       ? sb.from("centro_casos").update(r.linha).eq("id", caso.id)
-      : sb.from("centro_casos").insert({ institution_id: institutionId, ordem: ordemNova, ...r.linha });
+      : sb.from("centro_casos").insert({ institution_id: institutionId, ...comHospital(localId), ordem: ordemNova, ...r.linha });
     const { data, error } = await pedido.select(CAMPOS_DO_CASO).maybeSingle();
     setOcupado(false);
     if (error) { setErro(mensagemDoBanco(error.message)); return; }
@@ -386,8 +388,8 @@ export function JanelaDeCancelar({ caso, gravar, onFechar, onFeito }: {
  * As salas do centro cirúrgico: cada uma é uma coluna do mapa. Não se apaga
  * sala — desativa —, para os mapas antigos continuarem dizendo onde foi.
  */
-export function JanelaDasSalas({ institutionId, salas, onMudou, onFechar }: {
-  institutionId: string; salas: Sala[]; onMudou: (s: Sala[]) => void; onFechar: () => void;
+export function JanelaDasSalas({ institutionId, localId = null, salas, onMudou, onFechar }: {
+  institutionId: string; localId?: string | null; salas: Sala[]; onMudou: (s: Sala[]) => void; onFechar: () => void;
 }) {
   const [lista, setLista] = useState(() => [...salas].sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR")));
   const [nova, setNova] = useState("");
@@ -402,7 +404,7 @@ export function JanelaDasSalas({ institutionId, salas, onMudou, onFechar }: {
     setOcupado(true); setErro("");
     const base = lista.reduce((m, s) => Math.max(m, s.ordem), 0);
     const { data, error } = await createClient().from("centro_salas")
-      .insert(limpos.map((nome, i) => ({ institution_id: institutionId, nome, ordem: base + i + 1 })))
+      .insert(limpos.map((nome, i) => ({ institution_id: institutionId, ...comHospital(localId), nome, ordem: base + i + 1 })))
       .select("id, nome, ordem, ativa");
     setOcupado(false);
     if (error) { setErro(mensagemDoBanco(error.message)); return; }

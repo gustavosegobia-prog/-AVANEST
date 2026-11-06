@@ -3,6 +3,7 @@ import { exigirAcessoAEvolucao, fichasDoLocal, localDaSessao } from "@/lib/evolu
 import { fimDaAnestesia } from "@/lib/evolucao/folha";
 import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { InicioDasFolhas, type FolhaResumo } from "./inicio-das-folhas";
+import { mapaDoDiaNaFicha } from "./mapa-do-dia-servidor";
 
 export const metadata: Metadata = {
   title: "Ficha anestésica | AVANEST",
@@ -38,9 +39,11 @@ export default async function FichasPage() {
     const q = supabase.from("evolucoes_anestesicas").select(CAMPOS);
     return local ? q.or(fichasDoLocal(local.id)) : q;
   };
-  const [abertas, encerradas] = await Promise.all([
+  const [abertas, encerradas, mapa] = await Promise.all([
     tabela().eq("status", "aberta").order("inicio_em", { ascending: false }).limit(30),
     tabela().eq("status", "encerrada").order("encerrada_em", { ascending: false, nullsFirst: false }).limit(20),
+    // O mapa cirúrgico de hoje deste hospital, com o cadastro e a avaliação de cada paciente (06/11/2026).
+    mapaDoDiaNaFicha(supabase, { institutionId: perfil.institution_id as string, local, perfilId: perfil.id as string }),
   ]);
   const linhasAbertas = (abertas.data ?? []) as unknown as Linha[];
   // Os eventos das fichas abertas, para saber quais já terminaram (fim da
@@ -64,6 +67,7 @@ export default async function FichasPage() {
       semBanco={Boolean(abertas.error)}
       agora={agora}
       local={local}
+      mapa={mapa}
     />
   );
 }

@@ -4,6 +4,8 @@ import { Decorrido } from "./decorrido";
 import { ExcluirFolha } from "./excluir-folha";
 import { ImprimirFicha } from "@/components/evolucao/imprimir-ficha";
 import { NovaFolha } from "./nova-folha";
+import { MapaDoDia } from "./mapa-do-dia";
+import type { CasoComCadastro } from "@/lib/evolucao/mapa-do-dia";
 
 export type FolhaResumo = {
   id: string;
@@ -27,8 +29,10 @@ const dia = (iso: string) => DIA.format(new Date(iso));
 // que está em andamento, e achar a que já foi encerrada para conferir ou
 // imprimir.
 export function InicioDasFolhas({
-  institutionId, abertas, encerradas, semBanco, agora, local = null,
+  institutionId, abertas, encerradas, semBanco, agora, local = null, mapa = [],
 }: {
+  /** O mapa cirúrgico de hoje, do hospital da sessão, com o cadastro de cada paciente já procurado. */
+  mapa?: CasoComCadastro[];
   institutionId: string;
   /** O hospital da sessão: a lista é só dele, e a ficha nova nasce nele. */
   local?: { id: string; nome: string } | null;
@@ -49,7 +53,9 @@ export function InicioDasFolhas({
         <div className="fcTitulo">
           <h1>Ficha anestésica</h1>
           {local && <p className="fcLocal"><Icone nome="predio" tamanho={16} /> {local.nome}</p>}
-          <p>Busque o paciente: a ficha abre com a avaliação pré-anestésica dele já no topo, para conferir.</p>
+          <p>{mapa.length
+            ? "Os pacientes do mapa de hoje estão logo abaixo. Quem não estiver no mapa, busque pelo nome."
+            : "Busque o paciente: a ficha abre com a avaliação pré-anestésica dele já no topo, para conferir."}</p>
         </div>
 
         {semBanco ? (
@@ -62,7 +68,10 @@ export function InicioDasFolhas({
           // andamento e o encerrado à direita. No tablet e no celular, uma só,
           // nesta mesma ordem.
           <div className="fcColunas">
-            <NovaFolha institutionId={institutionId} local={local} />
+            <div className="fcPrincipal">
+              {mapa.length > 0 && <MapaDoDia institutionId={institutionId} local={local} casos={mapa} />}
+              <NovaFolha institutionId={institutionId} local={local} />
+            </div>
             <div className="fcLado">
               <section className="fcSecao" aria-labelledby="fc-andamento">
                 <h2 id="fc-andamento">

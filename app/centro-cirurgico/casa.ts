@@ -22,10 +22,14 @@ export async function casaDaSessao(supabase: Supabase, inst: string, superAdmin:
     cookies(),
   ]);
   const { local } = decidirLocalDaSessao(cookieStore.get(COOKIE_LOCAL)?.value, (meus.data ?? []) as LocalDisponivel[]);
-  return casaDoCentro({
-    local,
-    organizacao: (instituicao.data?.nome as string | undefined) ?? "",
-    locais: (locais.data ?? []) as Array<{ nome: string; logo_url: string | null }>,
-    superAdmin,
-  });
+  return {
+    ...casaDoCentro({
+      local,
+      organizacao: (instituicao.data?.nome as string | undefined) ?? "",
+      locais: (locais.data ?? []) as Array<{ nome: string; logo_url: string | null }>,
+      superAdmin,
+    }),
+    // O mapa é deste hospital (202611060001): as telas filtram e gravam com ele.
+    localId: local?.id ?? null,
+  };
 }

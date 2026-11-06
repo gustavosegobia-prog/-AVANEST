@@ -20,6 +20,37 @@ export type Destino = "quarto" | "uti" | "casa" | "outro";
 
 export type Sala = { id: string; nome: string; ordem: number; ativa: boolean };
 
+// ---------------------------------------------------------------------------
+// O hospital do mapa (202611060001)
+//
+// O mapa é de um hospital: o escolhido em "Onde você vai atender hoje?", o
+// mesmo que a ficha anestésica usa. Um grupo que atende em seis hospitais tem
+// seis mapas no mesmo dia. O paciente e a sala sem hospital — lançados antes
+// da separação — valem em todos, como as fichas antigas (lib/evolucao/local.ts):
+// nada some de mapa nenhum.
+// ---------------------------------------------------------------------------
+
+/**
+ * DESLIGADO ATÉ A MIGRAÇÃO 202611060001 RODAR NO BANCO. As colunas de hospital
+ * não existem antes dela: com a chave ligada antes da hora, o mapa pediria uma
+ * coluna que o banco não tem e voltaria vazio. A ordem da publicação é:
+ * migração, depois esta chave em true, depois liberar o mapa para todos.
+ */
+export const MAPA_POR_HOSPITAL = false;
+
+/** O hospital numa gravação do mapa — nada, enquanto a chave estiver desligada. */
+export const comHospital = (localId: string | null | undefined): { local_atendimento_id?: string | null } =>
+  (MAPA_POR_HOSPITAL ? { local_atendimento_id: localId ?? null } : {});
+
+/** Filtro `or` do PostgREST: o que é deste hospital e o que ainda não tem hospital. */
+export const doHospital = (localId: string) =>
+  `local_atendimento_id.eq.${localId},local_atendimento_id.is.null`;
+
+/** A mesma consulta, só do hospital da sessão — ou de todos, quando a sessão não tem hospital. */
+export function noHospital<Q extends { or(filtro: string): Q }>(consulta: Q, localId: string | null | undefined): Q {
+  return MAPA_POR_HOSPITAL && localId ? consulta.or(doHospital(localId)) : consulta;
+}
+
 export type Caso = {
   id: string;
   data: string;               // "AAAA-MM-DD"
