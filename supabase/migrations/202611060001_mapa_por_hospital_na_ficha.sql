@@ -38,6 +38,19 @@ alter table public.centro_casos
 alter table public.centro_salas
   add column if not exists local_atendimento_id uuid references public.locais_atendimento(id) on delete set null;
 
+-- A data de nascimento do paciente do mapa (06/11/2026: os hospitais passam a
+-- mandá-la no mapa). É a trava mais forte para achar o cadastro certo:
+-- lib/evolucao/mapa-do-dia.ts, principalDoCaso.
+alter table public.centro_casos
+  add column if not exists data_nascimento date;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'centro_casos_data_nascimento_valida') then
+    alter table public.centro_casos add constraint centro_casos_data_nascimento_valida
+      check (data_nascimento is null or data_nascimento >= date '1890-01-01');
+  end if;
+end $$;
+
 create index if not exists centro_casos_local_dia_idx
   on public.centro_casos (institution_id, local_atendimento_id, data);
 

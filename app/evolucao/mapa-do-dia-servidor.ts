@@ -21,7 +21,7 @@ type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 type LinhaDoMapa = {
   id: string; data: string; horario: string | null; ordem: number | null; paciente: string; idade: number | null;
-  procedimento: string | null; cirurgiao: string | null; convenio: string | null; anestesista_id: string | null;
+  data_nascimento: string | null; procedimento: string | null; cirurgiao: string | null; convenio: string | null; anestesista_id: string | null;
   etapa: EtapaDoMapa; patient_id: string | null; evolucao_id: string | null;
   sala: { nome?: string } | Array<{ nome?: string }> | null;
 };
@@ -39,7 +39,7 @@ export async function mapaDoDiaNaFicha(supabase: Supabase, o: {
   const dia = hojeLocal();
   try {
     let consulta = supabase.from("centro_casos")
-      .select("id, data, horario, ordem, paciente, idade, procedimento, cirurgiao, convenio, anestesista_id, etapa, patient_id, evolucao_id, sala:centro_salas(nome)")
+      .select("id, data, horario, ordem, paciente, idade, data_nascimento, procedimento, cirurgiao, convenio, anestesista_id, etapa, patient_id, evolucao_id, sala:centro_salas(nome)")
       .eq("institution_id", o.institutionId).eq("data", dia).neq("etapa", "cancelado");
     if (o.local) consulta = consulta.or(doHospital(o.local.id));
     const { data, error } = await consulta;
@@ -95,7 +95,7 @@ export async function mapaDoDiaNaFicha(supabase: Supabase, o: {
       const sala = Array.isArray(l.sala) ? l.sala[0] : l.sala;
       const base: CasoDoMapaNaFicha = {
         id: l.id, data: l.data, horario: l.horario, ordem: l.ordem, sala: sala?.nome?.trim() ?? "",
-        paciente: l.paciente, idade: l.idade, procedimento: l.procedimento ?? "", cirurgiao: l.cirurgiao ?? "",
+        paciente: l.paciente, idade: l.idade, nascimento: l.data_nascimento ?? null, procedimento: l.procedimento ?? "", cirurgiao: l.cirurgiao ?? "",
         convenio: l.convenio ?? "", anestesista: l.anestesista_id ? apelidos.get(l.anestesista_id) ?? "" : "",
         meu: l.anestesista_id === o.perfilId, etapa: l.etapa, patientId: l.patient_id,
         ficha: l.evolucao_id && statusDa.has(l.evolucao_id)

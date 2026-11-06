@@ -10,7 +10,7 @@ const ler = (c: string) => fs.readFileSync(new URL(`../../${c}`, import.meta.url
 
 const caso = (x: Partial<CasoDoMapaNaFicha>): CasoDoMapaNaFicha => ({
   id: "c1", data: "2026-11-06", horario: "07:30", ordem: 1, sala: "Sala 1", paciente: "PACIENTE FICTICIO",
-  idade: 52, procedimento: "COLECISTECTOMIA VIDEOLAPAROSCOPICA", cirurgiao: "DR. CIRURGIAO FICTICIO", convenio: "SUS",
+  idade: 52, nascimento: null, procedimento: "COLECISTECTOMIA VIDEOLAPAROSCOPICA", cirurgiao: "DR. CIRURGIAO FICTICIO", convenio: "SUS",
   anestesista: "Dra. Ficticia", meu: false, etapa: "agendado", patientId: null, ficha: null, ...x,
 });
 
@@ -49,7 +49,8 @@ test("mapa na ficha: o que é do dia vem do mapa; o resto, da avaliação", () =
 
 test("mapa na ficha: o cadastro de quem não tem cadastro leva só o que o mapa trouxe", () => {
   assert.deepEqual(cadastroDoMapa(caso({ paciente: "  JOSE FICTICIO ", idade: 70, convenio: "", procedimento: "RTU" })),
-    { nome: "JOSE FICTICIO", idade_anos: 70, convenio: null, cirurgia: "RTU" });
+    { nome: "JOSE FICTICIO", data_nascimento: null, idade_anos: 70, convenio: null, cirurgia: "RTU" });
+  assert.equal(cadastroDoMapa(caso({ nascimento: "1956-02-10" })).data_nascimento, "1956-02-10", "a data do mapa vai para o cadastro novo");
   assert.equal(cadastroDoMapa(caso({ idade: 140 })).idade_anos, null);
 });
 
@@ -122,4 +123,53 @@ test("mapa por hospital: desligado até a migração rodar, e desligado não ped
   const consulta = { or: () => { throw new Error("pediu a coluna nova"); } };
   assert.equal(noHospital(consulta as never, "qualquer"), consulta, "desligado, a consulta não filtra pelo hospital");
   assert.match(ler("app/evolucao/mapa-do-dia-servidor.ts"), /if \(!MAPA_POR_HOSPITAL\) return \[\];/);
+});
+
+test("trava da data de nascimento: com a data dos dois lados, só a mesma data mostra o cadastro sozinho", async () => {
+  const { principalDoCaso } = await import("./mapa-do-dia.ts");
+  const hoje = "2026-11-06";
+  const mapa = { paciente: "JOAO DA SILVA FICTICIO", idade: 52, nascimento: "1974-03-01" };
+  const cad = (id: string, nome: string, data_nascimento: string | null, idade_anos: number | null = null) => ({
+    id, nome, data_nascimento, idade_anos, sexo: null, convenio: null, hospital: null, cirurgia: null, procedimento: null,
+    avaliacao: null, aberta: null, comparacao: comparacaoDoParecido(mapa, { nome, data_nascimento, idade_anos }, hoje),
+  });
+
+  const mesma = cad("1", "João da Silva Fictício", "1974-03-01");
+  assert.deepEqual([mesma.comparacao.nascimento, mesma.comparacao.texto], ["bate", "Mesmo nome · mesma data de nascimento"]);
+  assert.equal(principalDoCaso({ patientId: null }, [mesma])?.id, "1");
+
+  // Mesmo nome e mesma idade, mas outro dia de nascimento: é outra pessoa (ou erro de digitação). Nunca sozinho.
+  const outroDia = cad("2", "João da Silva Fictício", "1974-03-02");
+  assert.equal(outroDia.comparacao.nascimento, "nao_bate");
+  assert.equal(outroDia.comparacao.texto, "Mesmo nome · data de nascimento diferente (mapa: 01/03/1974, cadastro: 02/03/1974)");
+  assert.equal(principalDoCaso({ patientId: null }, [outroDia]), null);
+
+  // O homônimo de data diferente não atrapalha o certo.
+  assert.equal(principalDoCaso({ patientId: null }, [mesma, outroDia])?.id, "1");
+  // Dois com a mesma data e o mesmo nome (cadastro duplicado): escolhe.
+  assert.equal(principalDoCaso({ patientId: null }, [mesma, cad("3", "Joao da Silva Ficticio", "1974-03-01")]), null);
+  // Um com a data certa e outro sem data nenhuma: nada desmente o segundo, então escolhe.
+  assert.equal(principalDoCaso({ patientId: null }, [mesma, cad("4", "João da Silva Fictício", null)]), null);
+
+  // Sem a data no cadastro, a idade decide — a do mapa, ou a da data do mapa.
+  assert.equal(principalDoCaso({ patientId: null }, [cad("5", "João da Silva Fictício", null, 52)])?.id, "5");
+  assert.equal(principalDoCaso({ patientId: null }, [cad("6", "João da Silva Fictício", null, 30)]), null);
+  const soData = comparacaoDoParecido({ paciente: "JOAO DA SILVA FICTICIO", idade: null, nascimento: "1974-03-01" },
+    { nome: "João da Silva Fictício", data_nascimento: null, idade_anos: 52 }, hoje);
+  assert.deepEqual([soData.nascimento, soData.idade, soData.texto], ["sem_dado", "bate", "Mesmo nome · mesma idade"]);
+
+  // Só o nome, sem data nem idade de nenhum lado: o anestesista confirma.
+  const soNome = comparacaoDoParecido({ paciente: "JOAO DA SILVA FICTICIO", idade: null, nascimento: null },
+    { nome: "João da Silva Fictício", data_nascimento: null, idade_anos: null }, hoje);
+  assert.deepEqual([soNome.nascimento, soNome.idade, soNome.texto], ["sem_dado", "sem_dado", "Mesmo nome"]);
+  assert.equal(principalDoCaso({ patientId: null }, [{ ...cad("7", "João da Silva Fictício", null), comparacao: soNome }]), null);
+});
+
+test("trava da data de nascimento: a coluna existe no banco e só é pedida com o mapa ligado", () => {
+  const sql = ler("supabase/migrations/202611060001_mapa_por_hospital_na_ficha.sql");
+  assert.match(sql, /alter table public\.centro_casos\s+add column if not exists data_nascimento date;/);
+  assert.match(sql, /check \(data_nascimento is null or data_nascimento >= date '1890-01-01'\)/);
+  assert.match(ler("lib/centro-cirurgico.ts"), /\+ \(MAPA_POR_HOSPITAL \? ", data_nascimento" : ""\)/);
+  assert.match(ler("components/centro/importar.tsx"), /\.\.\.comNascimento\(l\.nascimento\)/);
+  assert.match(ler("app/evolucao/mapa-do-dia-servidor.ts"), /nascimento: l\.data_nascimento \?\? null/);
 });

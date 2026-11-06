@@ -6,7 +6,7 @@ import { Janela } from "@/components/janela";
 import { horaLocal } from "@/lib/data-local";
 import { CONVENIOS } from "@/lib/convenios";
 import {
-  ALDRETE, ALDRETE_PARA_ALTA, CAMPOS_DO_CASO, comHospital, NOME_DA_ETAPA, NOME_DO_DESTINO, altaDaRpa, avisoDoAldrete, cancelar,
+  ALDRETE, ALDRETE_PARA_ALTA, CAMPOS_DO_CASO, MAPA_POR_HOSPITAL, comHospital, NOME_DA_ETAPA, NOME_DO_DESTINO, altaDaRpa, avisoDoAldrete, cancelar,
   conferirHorario, desfazer, entrarEmSala, formDoCaso, formVazio, horaDe, instanteDoPasso, linhaDoForm,
   rotuloDoDesfazer, sairDaSala, somaAldrete,
   type Caso, type Destino, type FormDoCaso, type Mudanca, type Passo, type Sala,
@@ -138,6 +138,11 @@ export function JanelaDoCaso({
         <label className="clinicalField"><span>Idade</span>
           <input value={form.idade} onChange={(e) => mudar("idade", e.target.value.replace(/\D/g, "").slice(0, 3))}
             inputMode="numeric" placeholder="anos" /></label>
+        {MAPA_POR_HOSPITAL && (
+          <label className="clinicalField"><span>Data de nascimento</span>
+            <input type="date" value={form.nascimento} max={form.data}
+              onChange={(e) => mudar("nascimento", e.target.value)} /></label>
+        )}
         <label className="clinicalField"><span>Atendimento / prontuário</span>
           <input value={form.prontuario} onChange={(e) => mudar("prontuario", e.target.value)} maxLength={40} /></label>
         <label className={`clinicalField ${estilos.campoLargo}`}><span>Cirurgia *</span>

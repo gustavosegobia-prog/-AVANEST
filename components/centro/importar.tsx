@@ -6,7 +6,7 @@ import { Janela } from "@/components/janela";
 import {
   casarAnestesista, casarSala, normalizar, lerMapa, type LinhaImportada, type MapaImportado,
 } from "@/lib/centro-importar";
-import { MAPA_POR_HOSPITAL, comHospital, doHospital, noHospital, type Sala } from "@/lib/centro-cirurgico";
+import { MAPA_POR_HOSPITAL, comHospital, comNascimento, doHospital, noHospital, type Sala } from "@/lib/centro-cirurgico";
 import type { Anestesista } from "./mapa-cirurgico";
 import { mensagemDoBanco } from "./janelas";
 import { TIPOS_ACEITOS, gradeDoArquivo } from "./ler-arquivo";
@@ -119,7 +119,7 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
       const base = Number(ultimos?.[0]?.ordem ?? 0);
       const linhas = escolhidas.map((l, i) => ({
         institution_id: institutionId, ...comHospital(localId), data, ordem: base + i + 1,
-        horario: l.horario, paciente: l.paciente, idade: l.idade, convenio: l.convenio, cirurgiao: l.cirurgiao,
+        horario: l.horario, paciente: l.paciente, idade: l.idade, ...comNascimento(l.nascimento), convenio: l.convenio, cirurgiao: l.cirurgiao,
         sala_id: casarSala(l.sala, todas)?.id ?? null, procedimento: l.procedimento, leito: l.leito,
         anestesista_id: anestesistaId || null,
       }));

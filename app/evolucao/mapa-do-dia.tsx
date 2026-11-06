@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
 import {
-  cadastroDoMapa, doMapaParaAFicha, type CadastroSugerido, type CasoComCadastro,
+  cadastroDoMapa, dataBR, doMapaParaAFicha, type CadastroSugerido, type CasoComCadastro,
 } from "@/lib/evolucao/mapa-do-dia";
 import { abrirFicha } from "./abrir-ficha";
 
@@ -28,7 +28,9 @@ function LinhaDaAvaliacao({ cadastro }: { cadastro: CadastroSugerido }) {
   );
 }
 
-const idadeDoCadastro = (c: CadastroSugerido) => (c.idade_anos != null ? `${c.idade_anos} anos` : null);
+/** O que o cadastro diz de quem é: a data de nascimento, quando há; senão a idade. */
+const idadeDoCadastro = (c: CadastroSugerido) =>
+  (c.data_nascimento ? `nasc. ${dataBR(c.data_nascimento)}` : c.idade_anos != null ? `${c.idade_anos} anos` : null);
 
 // O mapa cirúrgico de hoje, do hospital da sessão, no topo da ficha
 // anestésica (lib/evolucao/mapa-do-dia.ts). Cada linha já traz o cadastro e a
@@ -96,7 +98,7 @@ export function MapaDoDia({ institutionId, local, casos }: {
       <ul className="fcMapaLista">
         {casos.map((c) => {
           const ocupado = abrindo !== null;
-          const sobre = [c.idade != null && `${c.idade} anos`, c.procedimento, c.cirurgiao, c.convenio].filter(Boolean).join(" · ");
+          const sobre = [c.idade != null && `${c.idade} anos`, c.nascimento && `nasc. ${dataBR(c.nascimento)}`, c.procedimento, c.cirurgiao, c.convenio].filter(Boolean).join(" · ");
           const aberto = escolhendo === c.id;
           return (
             <li key={c.id} className={`fcMapaCaso${c.meu ? " meu" : ""}`}>

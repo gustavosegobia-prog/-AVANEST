@@ -18,6 +18,15 @@
 // acento) e o anestesista confirma com um toque — ou cadastra um novo com o
 // que o mapa já trouxe.
 //
+// AS TRAVAS (06/11/2026: "vamos deixar uma trava também na data de
+// nascimento"). A linha só já mostra um cadastro quando é o ÚNICO com o mesmo
+// nome (sem acento) e:
+//   - a mesma data de nascimento, quando o mapa e o cadastro têm a data; ou
+//   - a mesma idade (um ano de folga), quando falta a data de um dos lados.
+// Data de nascimento diferente, idade diferente, nome só parecido, dois
+// cadastros iguais, ou nada além do nome para conferir: a linha não escolhe —
+// o anestesista confirma.
+//
 // Tudo aqui é puro; a tela é app/evolucao/mapa-do-dia.tsx.
 // ===========================================================================
 
@@ -35,6 +44,8 @@ export type CasoDoMapaNaFicha = {
   sala: string;
   paciente: string;
   idade: number | null;
+  /** "AAAA-MM-DD", quando o mapa trouxe a data de nascimento. */
+  nascimento: string | null;
   procedimento: string;
   cirurgiao: string;
   convenio: string;
@@ -79,11 +90,20 @@ export const doMapaParaAFicha = (c: CasoDoMapaNaFicha): DoMapa => ({
 export function cadastroDoMapa(c: CasoDoMapaNaFicha) {
   return {
     nome: c.paciente.trim(),
+    data_nascimento: dataValida(c.nascimento),
     idade_anos: c.idade != null && Number.isInteger(c.idade) && c.idade >= 0 && c.idade <= 120 ? c.idade : null,
     convenio: c.convenio.trim() || null,
     cirurgia: c.procedimento.trim() || null,
   };
 }
+
+const dataValida = (d: string | null | undefined) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d ?? "");
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+};
+
+/** "1974-03-01" → "01/03/1974". */
+export const dataBR = (d: string) => d.slice(0, 10).split("-").reverse().join("/");
 
 export const semAcento = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -100,28 +120,41 @@ export function idadeDoCadastro(p: { data_nascimento: string | null; idade_anos:
   return p.idade_anos ?? null;
 }
 
+type Confere = "bate" | "nao_bate" | "sem_dado";
+
 /**
  * O que a tela diz de cada parecido, para o anestesista decidir: o nome é o
- * mesmo (sem acento) ou só parecido, e a idade bate ou não. A idade que não
- * bate é dita com todas as letras — é ela que mais denuncia o homônimo.
+ * mesmo (sem acento) ou só parecido, a data de nascimento bate ou não, e a
+ * idade bate ou não. O que não bate é dito com todas as letras — é o que
+ * denuncia o homônimo.
  */
 export function comparacaoDoParecido(
-  caso: Pick<CasoDoMapaNaFicha, "paciente" | "idade">,
+  caso: Pick<CasoDoMapaNaFicha, "paciente" | "idade"> & { nascimento?: string | null },
   cadastro: { nome: string; data_nascimento: string | null; idade_anos: number | null },
   hoje: string,
-): { mesmoNome: boolean; idade: "bate" | "nao_bate" | "sem_dado"; texto: string } {
+): { mesmoNome: boolean; nascimento: Confere; idade: Confere; texto: string } {
   const mesmoNome = semAcento(caso.paciente) === semAcento(cadastro.nome);
+  const [doMapa, doCad] = [dataValida(caso.nascimento), dataValida(cadastro.data_nascimento)];
+  // A data é exata: um dia de diferença já é outra pessoa (ou um erro de digitação, que o anestesista confere).
+  const nascimento: Confere = !doMapa || !doCad ? "sem_dado" : doMapa === doCad ? "bate" : "nao_bate";
+  // A idade do mapa, ou a da data de nascimento do mapa, no dia de hoje.
+  const idadeDoMapa = caso.idade ?? (doMapa ? idadeDoCadastro({ data_nascimento: doMapa, idade_anos: null }, hoje) : null);
   const doCadastro = idadeDoCadastro(cadastro, hoje);
   // Um ano de folga: o mapa escreve a idade que o hospital tem, às vezes de antes do aniversário.
-  const idade = caso.idade == null || doCadastro == null ? "sem_dado"
-    : Math.abs(caso.idade - doCadastro) <= 1 ? "bate" : "nao_bate";
+  const idade: Confere = idadeDoMapa == null || doCadastro == null ? "sem_dado"
+    : Math.abs(idadeDoMapa - doCadastro) <= 1 ? "bate" : "nao_bate";
   const partes = [
     mesmoNome ? "Mesmo nome" : "Nome parecido",
-    idade === "bate" ? "mesma idade"
-      : idade === "nao_bate" ? `idade diferente (mapa: ${caso.idade}, cadastro: ${doCadastro})`
+    nascimento === "bate" ? "mesma data de nascimento"
+      : nascimento === "nao_bate" ? `data de nascimento diferente (mapa: ${dataBR(doMapa!)}, cadastro: ${dataBR(doCad!)})`
         : null,
+    // Com a data conferida, a idade não acrescenta nada; sem ela, a idade é o que há.
+    nascimento !== "sem_dado" ? null
+      : idade === "bate" ? "mesma idade"
+        : idade === "nao_bate" ? `idade diferente (mapa: ${idadeDoMapa}, cadastro: ${doCadastro})`
+          : null,
   ].filter(Boolean);
-  return { mesmoNome, idade, texto: partes.join(" · ") };
+  return { mesmoNome, nascimento, idade, texto: partes.join(" · ") };
 }
 
 // ---------------------------------------------------------------------------
@@ -156,14 +189,25 @@ export type CasoComCadastro = CasoDoMapaNaFicha & {
 };
 
 /**
+ * O parecido que a linha pode mostrar sozinha: mesmo nome, nada que desminta
+ * (data de nascimento nem idade) e algo que confirme além do nome — a data de
+ * nascimento, ou, quando falta a data de um dos lados, a idade.
+ */
+export const confirmaSemPerguntar = (c: CadastroSugerido["comparacao"]) =>
+  c.mesmoNome && c.nascimento !== "nao_bate" && c.idade !== "nao_bate"
+  && (c.nascimento === "bate" || c.idade === "bate");
+
+/**
  * Qual cadastro a linha já mostra. O ligado antes, quando há; senão o único
- * com o mesmo nome (sem acento) e idade que não desmente. Dois iguais, idade
- * diferente ou só nome parecido: nenhum — o anestesista escolhe. A linha mostra
- * o nome, a idade e a avaliação desse cadastro ANTES do toque: o toque é a
- * confirmação.
+ * que confirma sem perguntar (confirmaSemPerguntar). Dois iguais, data ou
+ * idade diferente, só nome parecido ou só o nome para conferir: nenhum — o
+ * anestesista escolhe. A linha mostra o nome, a data de nascimento e a
+ * avaliação desse cadastro ANTES do toque: o toque é a confirmação.
  */
 export function principalDoCaso(caso: Pick<CasoDoMapaNaFicha, "patientId">, sugestoes: CadastroSugerido[]): CadastroSugerido | null {
   if (caso.patientId) return sugestoes.find((s) => s.id === caso.patientId) ?? null;
-  const fortes = sugestoes.filter((s) => s.comparacao.mesmoNome && s.comparacao.idade !== "nao_bate");
-  return fortes.length === 1 ? fortes[0] : null;
+  // Mais de um com o mesmo nome e nada que desminta: na dúvida, ninguém.
+  const semDesmentir = sugestoes.filter((s) => s.comparacao.mesmoNome && s.comparacao.nascimento !== "nao_bate" && s.comparacao.idade !== "nao_bate");
+  if (semDesmentir.length !== 1) return null;
+  return confirmaSemPerguntar(semDesmentir[0].comparacao) ? semDesmentir[0] : null;
 }
