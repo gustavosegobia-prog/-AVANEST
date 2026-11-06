@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { mesEmMaiusculas, money, plural } from "@/lib/escala";
 import { OlhoValores, useValoresOcultos } from "@/components/olho-valores";
@@ -293,6 +293,23 @@ export function ProducaoDoDia({
   // lista, ele vira a dica cinza e a lista aparece inteira; saindo sem
   // escolher, o convênio volta.
   const [convenioAntes, setConvenioAntes] = useState("");
+  // UMA LISTA POR DIA (06/11/2026: "está se repetindo nos dias sozinho"). O
+  // painel da escala troca o dia sem desmontar esta lista; ela continuava com
+  // os pacientes do dia anterior até a consulta nova voltar — e, trocando de
+  // dia depressa, a resposta do dia anterior chegava por último e ficava no
+  // dia novo. Agora a troca de dia zera tudo na hora (inclusive o rascunho do
+  // Anotar, para nada digitado num dia cair no outro), e `pedidoAtual`
+  // descarta a resposta de um dia que já não está aberto.
+  const [diaDaLista, setDiaDaLista] = useState(dia);
+  if (diaDaLista !== dia) {
+    setDiaDaLista(dia);
+    setItens([]);
+    setCarregando(true);
+    setErro("");
+    setNovo(vazio);
+    setConvenioAntes("");
+  }
+  const pedidoAtual = useRef(0);
   // A urgência e as marcas da clínica (um bloqueio, um cateter): cada marca
   // puxa um código a mais no Financeiro. Marca-se na hora de anotar, que é
   // quando se lembra.
@@ -387,9 +404,12 @@ export function ProducaoDoDia({
   }
 
   const carregar = useCallback(async () => {
+    const pedido = ++pedidoAtual.current;
     const { data, error } = await createClient()
       .from("producao_do_dia").select("*")
       .eq("data", dia).order("created_at");
+    // A resposta de um dia que já não está aberto não entra (ver diaDaLista).
+    if (pedido !== pedidoAtual.current) return;
     setCarregando(false);
     // A tabela pode não existir ainda se o SQL não tiver sido rodado. A tela
     // avisa o que fazer em vez de mostrar uma lista vazia que mente.
