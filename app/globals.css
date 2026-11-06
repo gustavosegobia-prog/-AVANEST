@@ -7744,7 +7744,7 @@ button.evoPFAsaN:disabled{cursor:default}
 .fcVoltar{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px 0 8px;margin-left:-8px;
   border-radius:10px;color:var(--cor-tinta);font-weight:650;font-size:15px;text-decoration:none}
 .fcVoltar:hover{background:var(--cor-superficie-suave)}
-.fcTitulo{margin:14px 0 22px}
+.fcTitulo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:12px 0 20px}
 .fcTitulo h1{margin:0;font-size:clamp(28px,3.6vw,36px);line-height:1.1;font-weight:750;letter-spacing:-.025em;color:var(--cor-tinta-forte)}
 .fcTitulo p{margin:8px 0 0;max-width:60ch;font-size:15.5px;line-height:1.45;color:var(--cor-tinta-fraca)}
 
@@ -7760,10 +7760,10 @@ button.evoPFAsaN:disabled{cursor:default}
 .fcBusca input:focus{outline:none;border-color:var(--cor-marca);background:var(--cor-superficie);
   box-shadow:0 0 0 4px var(--cor-marca-suave)}
 .fcSituacao{margin:8px 2px 0;font-size:13.5px;color:var(--cor-tinta-fraca)}
+.fcSituacao:empty{display:none}
 .fcSituacao.falhou,.fcErro{color:var(--cor-perigo-forte)}
 .fcErro{margin:8px 2px 0;font-size:14px;font-weight:600}
-.fcAchados{list-style:none;margin:14px -20px -20px;padding:0;border-top:1px solid var(--cor-borda);
-  border-radius:0 0 16px 16px;overflow:hidden;transition:opacity .15s ease}
+.fcAchados{list-style:none;margin:0;padding:0;border-top:1px solid var(--cor-borda);transition:opacity .15s ease}
 .fcAchados.velho{opacity:.55}
 .fcAchados li+li{border-top:1px solid var(--cor-borda)}
 .fcAchado{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"quem ir" "pre ir";gap:4px 16px;
@@ -7786,44 +7786,87 @@ button.evoPFAsaN:disabled{cursor:default}
 .fcJaAberta{padding:3px 8px;margin-right:4px;border-radius:999px;background:var(--cor-sucesso-suave);color:var(--cor-sucesso);
   font-size:12px;font-weight:700}
 
-/* O mapa cirúrgico de hoje, no topo da ficha (06/11/2026). Cada paciente do
-   mapa numa linha: hora e sala, quem é, o cadastro e a avaliação já achados,
-   e o toque que abre a ficha. Os do anestesista logado têm a borda da marca. */
+/* A lista do dia e a busca, dentro da caixa de abrir (06/11/2026: "para não
+   ter que ficar abrindo um monte de coisa"). Sem nada escrito, o mapa
+   cirúrgico de hoje (ou, no ambulatório, os avaliados hoje); com o nome, o que
+   casa no mapa e no cadastro. Cada linha é um toque só. */
 .fcPrincipal{display:grid;gap:16px;align-content:start;min-width:0}
-.fcMapa{padding:20px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:16px}
-.fcMapa h2{display:flex;align-items:center;gap:8px;margin:0 0 4px;font-size:16px;font-weight:700;color:var(--cor-tinta-forte)}
-.fcMapaDica{margin:0 2px 12px;font-size:13.5px;line-height:1.45;color:var(--cor-tinta-fraca)}
-.fcMapaLista{list-style:none;margin:0 -20px -20px;padding:0}
-.fcMapaCaso{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 20px;border-top:1px solid var(--cor-borda)}
-/* .fcPre e .fcQuem trazem grid-area da busca; aqui a linha é uma coluna só. */
-.fcMapaCaso>*{grid-area:auto;min-width:0}
-.fcMapaCaso.meu{box-shadow:inset 3px 0 0 var(--cor-marca)}
-.fcMapaCaso .fcQuem{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
-.fcMapaTopo{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.fcMapaQuando{font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--cor-marca-forte);font-variant-numeric:tabular-nums}
-.fcMapaSeu{padding:2px 8px;border-radius:999px;background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-size:12px;font-weight:700}
-.fcMapaAnest{font-size:12.5px;color:var(--cor-tinta-fraca)}
-.fcMapaCadastro{font-size:13px;color:var(--cor-tinta-fraca)}
+.fcResultados{margin:16px -20px -20px;border-radius:0 0 16px 16px;overflow:hidden}
+.fcGrupo{border-top:1px solid var(--cor-borda)}
+.fcGrupoTitulo{display:flex;align-items:center;gap:8px;margin:0;padding:16px 20px 8px;font-size:15px;font-weight:750;
+  color:var(--cor-tinta-forte)}
+.fcSubgrupo{margin:0;padding:4px 20px 8px;font-size:13px;font-weight:650;color:var(--cor-tinta-fraca)}
+.fcGrupoTitulo+.fcSubgrupo{margin-top:-6px}
+.fcDias{list-style:none;margin:0;padding:0;border-top:1px solid var(--cor-borda)}
+.fcDia{--trilho:64px;--folga:20px}
+.fcDia+.fcDia{border-top:1px solid var(--cor-borda)}
+/* A linha: hora e sala num trilho à esquerda (a leitura do mapa de papel),
+   quem é no meio, o toque à direita. */
+.fcDiaLinha{display:grid;grid-template-columns:var(--trilho) minmax(0,1fr) auto;grid-template-areas:"hora quem acao";
+  gap:4px 16px;align-items:start;width:100%;min-height:64px;padding:14px var(--folga);border:0;background:none;color:inherit;
+  font:inherit;text-align:left;text-decoration:none;cursor:pointer;transition:background .12s ease}
+.fcDiaLinha:hover{background:var(--cor-marca-suave)}
+.fcDiaLinha:disabled{cursor:progress}
+.fcDiaLinha:focus-visible{outline:2px solid var(--cor-marca);outline-offset:-2px}
+.fcDiaHora{grid-area:hora;display:grid;gap:1px;padding-top:1px;font-variant-numeric:tabular-nums}
+.fcDiaHora strong{font-size:16px;font-weight:750;letter-spacing:-.01em;color:var(--cor-marca-forte)}
+.fcDiaHora strong.seguir{font-size:13px;line-height:1.5;white-space:nowrap}
+.fcDiaHora span{font-size:12.5px;font-weight:650;line-height:1.3;color:var(--cor-tinta-fraca);overflow-wrap:anywhere}
+.fcDiaQuem{grid-area:quem;display:grid;gap:3px;min-width:0}
+.fcDiaNome{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
+.fcDiaNome strong{font-size:16.5px;font-weight:700;color:var(--cor-tinta-forte);overflow-wrap:anywhere}
+.fcDiaNome span{font-size:13.5px;color:var(--cor-tinta-fraca);font-variant-numeric:tabular-nums}
+.fcDiaCirurgia{font-size:13.5px;line-height:1.4;color:var(--cor-tinta)}
+.fcDiaAnest,.fcDiaCadastro{font-size:13px;line-height:1.35;color:var(--cor-tinta-fraca)}
+.fcDiaQuem .fcPre{grid-area:auto;margin-top:2px}
+.fcDiaAcao{grid-area:acao;align-self:center;display:inline-flex;align-items:center;gap:6px;font-size:14.5px;font-weight:700;
+  color:var(--cor-marca-forte);white-space:nowrap}
+/* O toque que já abre a ficha: um alvo cheio, no tom da marca, sem gritar. */
+.fcDiaAcao.forte,.fcIr.forte{min-height:44px;padding:0 14px 0 16px;border-radius:10px;background:var(--cor-marca-suave)}
+.fcDiaLinha.encerrada .fcDiaHora strong,.fcDiaLinha.encerrada .fcDiaNome strong{color:var(--cor-tinta)}
+.fcDiaLinha.encerrada .fcDiaAcao{color:var(--cor-tinta-fraca)}
+.fcDiaOutro{display:inline-flex;align-items:center;min-height:44px;margin:-14px 0 0 calc(var(--folga) + var(--trilho) + 12px);
+  padding:0 4px;border:0;background:none;color:var(--cor-tinta-fraca);font:inherit;font-size:13px;font-weight:600;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.fcDiaOutro:hover{color:var(--cor-marca-forte)}
+.fcDiaOutro:disabled{cursor:progress;opacity:.6}
+.fcDiaErro{margin:0 var(--folga) 12px}
+.fcDia .fcMapaEscolha{margin:0 var(--folga) 14px}
 .fcMapaAcoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:4px}
 .fcMapaAcoes .evoBotao{min-height:44px}
 .fcMapaOutro{min-height:44px;padding:0 4px;border:0;background:none;color:var(--cor-marca-forte);font:inherit;font-size:14px;
   font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .fcMapaOutro:disabled,.fcMapaAcoes .evoBotao:disabled{cursor:progress;opacity:.6}
-.fcMapaIr{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:14.5px;font-weight:700;color:var(--cor-marca-forte);
-  text-decoration:none}
-.fcMapaEscolha{display:grid;gap:8px;margin-top:4px;padding:12px;border-radius:12px;background:var(--cor-superficie-suave);
+.fcMapaEscolha{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--cor-superficie-suave);
   border:1px solid var(--cor-borda)}
 .fcMapaEscolha>p{margin:0;font-size:14px;font-weight:600;color:var(--cor-tinta-forte)}
 .fcMapaEscolha ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .fcMapaEscolha .fcAchado{border:1px solid var(--cor-borda);border-radius:10px;background:var(--cor-superficie)}
+/* O que é raro (paciente sem cadastro, outro dia ou horário) numa linha
+   discreta logo abaixo da busca, fora do caminho do toque. */
+.fcAtalhos{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:10px}
+.fcAtalho{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px 0 12px;border:1px solid var(--cor-borda);
+  border-radius:999px;background:none;color:var(--cor-tinta);font:inherit;font-size:13.5px;font-weight:650;cursor:pointer;
+  transition:background .12s ease,border-color .12s ease}
+.fcAtalho svg{flex:none;color:var(--cor-tinta-fraca)}
+.fcAtalho:hover{background:var(--cor-superficie-suave)}
+.fcAtalho.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.fcAtalho.ativo svg{color:currentColor}
+.fcIniciarPara{margin-top:10px;min-height:48px}
 @media (max-width:760px){
-  .fcMapa{padding:16px}
-  .fcMapaLista{margin:0 -16px -16px}
-  .fcMapaCaso{padding:14px 16px}
+  .fcResultados{margin:14px -16px -16px}
+  .fcGrupoTitulo{padding:14px 16px 8px}
+  .fcSubgrupo{padding:4px 16px 8px}
+  .fcDia{--trilho:52px;--folga:16px}
+  .fcDiaLinha{grid-template-columns:var(--trilho) minmax(0,1fr);grid-template-areas:"hora quem" ". acao";gap:6px 12px}
+  .fcDiaAcao{align-self:start}
+  .fcDiaOutro{margin-top:-10px}
 }
 
 /* Em andamento e encerradas */
 .fcSecao{margin-top:28px}
+.fcSecao.fcAndamento{margin-top:0}
+.fcAndamento+.fcPrincipal{margin-top:24px}
 .fcSecao h2{margin-left:2px}
 .fcConta{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;
   background:var(--cor-marca);color:var(--cor-marca-contraste);font-size:12.5px;font-weight:750}
@@ -7938,10 +7981,14 @@ button.evoPFAsaN:disabled{cursor:default}
 @media (min-width:1100px) and (pointer:fine){
   .fcPagina{max-width:1800px;padding:12px 48px 80px}
   .fcTitulo{margin:10px 0 24px}
-  .fcColunas{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(440px,1fr);gap:32px;align-items:start}
-  .fcLado{position:sticky;top:20px}
-  .fcLado>.fcSecao:first-child{margin-top:0}
-  .fcLado .fcSecao h2{min-height:24px}
+  .fcColunas{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(440px,1fr);grid-template-rows:auto 1fr;
+    grid-template-areas:"abrir andamento" "abrir encerradas";column-gap:32px;align-items:start}
+  .fcColunas>.fcPrincipal{grid-area:abrir;margin-top:0}
+  .fcColunas>.fcAndamento{grid-area:andamento;margin-top:0}
+  .fcColunas>.fcEncerradas{grid-area:encerradas}
+  /* Sem ficha em andamento, as encerradas sobem para o topo da coluna. */
+  .fcColunas:not(:has(>.fcAndamento))>.fcEncerradas{grid-row:1/-1;margin-top:0}
+  .fcColunas .fcSecao h2{min-height:24px}
 }
 
 /* ══ Responsividade: revisão do site inteiro ═════════════════════════════
@@ -8057,12 +8104,7 @@ button.evoPFAsaN:disabled{cursor:default}
   color:var(--cor-tinta);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
 .fcNovoSexo button.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
 .fcNovoAcoes{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}
-/* Quando foi a anestesia: agora, ou outro dia e horário (ficha antiga). */
-.fcQuando{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
-.fcQuando>span{margin-right:4px;font-size:12.5px;font-weight:650;color:var(--cor-tinta-fraca)}
-.fcQuando button{min-height:40px;padding:0 14px;border:1px solid var(--cor-borda-forte);border-radius:999px;background:var(--cor-superficie);
-  color:var(--cor-tinta);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
-.fcQuando button.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+/* Outro dia ou horário: passar a limpo uma anestesia que já aconteceu. */
 .fcQuandoCampos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px;padding:12px 14px;
   border:1px solid var(--cor-borda);border-radius:12px;background:var(--cor-fundo)}
 .fcQuandoCampos label{display:grid;gap:4px;min-width:0}
@@ -8071,6 +8113,7 @@ button.evoPFAsaN:disabled{cursor:default}
   background:var(--cor-superficie);color:var(--cor-tinta-forte);font:inherit;font-size:15px}
 .fcQuandoCampos input:focus{outline:none;border-color:var(--cor-marca);box-shadow:0 0 0 3px var(--cor-marca-suave)}
 .fcQuandoDica{grid-column:1/-1;margin:0;font-size:13px;color:var(--cor-tinta-fraca)}
+.fcQuandoDica.topo{font-size:13.5px;font-weight:600;color:var(--cor-tinta)}
 @media (max-width:560px){
   .fcQuandoCampos{grid-template-columns:repeat(2,minmax(0,1fr))}
   .fcQuandoCampos label:first-child{grid-column:1/-1}
@@ -8078,8 +8121,8 @@ button.evoPFAsaN:disabled{cursor:default}
 /* Na coluna da direita do computador, o nome ganha a linha inteira e o tempo
    desce para junto do continuar: com o excluir ao lado, não cabe tudo numa. */
 @media (min-width:1100px) and (pointer:fine){
-  .fcLado .fcAberta .fcLinha{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"quem quem" "tempo ir";row-gap:6px}
-  .fcLado .fcTempo{font-size:17px}
+  .fcAndamento .fcAberta .fcLinha{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"quem quem" "tempo ir";row-gap:6px}
+  .fcAndamento .fcTempo{font-size:17px}
 }
 @media(max-width:640px){
   .fcNovoPaciente{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:row dense;padding:12px}
@@ -8197,7 +8240,7 @@ html[data-tema=escuro]:has(.temaApp),html[data-tema=escuro]:has(.temaApp) body{b
 .fcTempo.parado::before{background:var(--cor-atencao)}
 
 /* O hospital da lista de fichas: as de outros hospitais não aparecem aqui. */
-.fcLocal{display:inline-flex;align-items:center;gap:6px;margin:6px 0 0;padding:4px 10px;border-radius:999px;
+.fcLocal{display:inline-flex;align-items:center;gap:6px;margin:0;padding:4px 10px;border-radius:999px;
   background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-size:13.5px;font-weight:750}
 
 /* O botão de imprimir da lista das fichas é <button> (imprime sem abrir aba):
