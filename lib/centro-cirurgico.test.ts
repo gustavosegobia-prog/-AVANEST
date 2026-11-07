@@ -315,6 +315,36 @@ test("mapa: a caixa de cada sala termina no último paciente dela, com os cartõ
   assert.match(tela, /\["--linhas" as string\]: 1 \+ Math\.max\(1, \.\.\.colunas\.map\(\(c\) => c\.casos\.length\)\)/);
   // …mas a caixa desenhada cobre só as linhas que a sala ocupa.
   assert.match(tela, /\["--ocupadas" as string\]: 1 \+ Math\.max\(1, col\.casos\.length\)/);
-  assert.match(css, /\.coluna::before \{ content: ""; position: absolute; grid-column: 1; grid-row: 1 \/ span var\(--ocupadas, 2\); inset: -10px;/);
+  // Na largura, a caixa é a da própria sala (grid-column: auto = as bordas dela):
+  // com a coluna 1 e -10px, ela passava 10 px da sala e a última era cortada.
+  assert.match(css, /\.coluna::before \{ content: ""; position: absolute; grid-column: auto; grid-row: 1 \/ span var\(--ocupadas, 2\); inset: -10px 0;/);
   assert.match(css, /border-color: transparent; background: none; \}/, "a coluna em si não desenha mais a caixa inteira");
+});
+
+test("mapa: as salas numa linha só, sem buraco debaixo da sala curta; no celular, cada sala com a altura dela (07/11/2026)", () => {
+  const ler = (c: string) => fs.readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+  const tela = ler("components/centro/mapa-cirurgico.tsx");
+  const css = ler("components/centro/mapa.module.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  // Quebrando em linhas (auto-fill), a 5ª sala descia e só começava depois da mais cheia de cima.
+  assert.doesNotMatch(css, /\.quadro \{[^}]*auto-fill/);
+  assert.match(css, /\.quadro \{ display: grid; grid-template-columns: repeat\(var\(--salas, 4\), minmax\(220px, 1fr\)\);[^}]*overflow-x: auto;/);
+  assert.match(tela, /\["--salas" as string\]: colunas\.length/);
+  // No celular, uma sala embaixo da outra: sem as linhas da sala mais cheia.
+  assert.ok(css.includes("@media (max-width: 640px) {\n  @supports (grid-template-rows: subgrid) {"));
+  const doCelular = css.slice(css.indexOf("@media (max-width: 640px) {\n  @supports"));
+  assert.match(doCelular, /\.coluna \{ display: block; grid-row: auto;/);
+  assert.match(doCelular, /\.coluna::before \{ content: none; \}/);
+});
+
+test("mapa: à meia-noite o mapa de hoje vira o dia sozinho; o de outro dia fica parado (07/11/2026)", () => {
+  const ler = (c: string) => fs.readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+  const tela = ler("components/centro/mapa-cirurgico.tsx");
+  assert.match(tela, /const irParaHoje = useCallback\(\(\) => router\.replace\("\/centro-cirurgico"\), \[router\]\);/);
+  assert.match(tela, /useVirarODia\(hoje, irParaHoje, deHoje\);/);
+  const virar = ler("components/virar-o-dia.tsx");
+  assert.match(virar, /if \(dataLocal\(\) === dia\) return;/, "o dia no fuso do serviço, o mesmo do servidor");
+  assert.match(virar, /window\.setInterval\(conferir, 30_000\)/);
+  assert.match(virar, /visibilitychange/, "ao voltar para a aba, confere na hora");
+  // A entrada da ficha também vira o dia (o mapa e os avaliados de hoje).
+  assert.match(ler("app/evolucao/page.tsx"), /<VirarODia dia=\{hoje\(\)\} \/>/);
 });

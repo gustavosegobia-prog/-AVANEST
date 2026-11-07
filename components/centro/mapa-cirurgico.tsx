@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
+import { useVirarODia } from "@/components/virar-o-dia";
 import { somarDias } from "@/lib/data-local";
 import {
   CAMPOS_DO_CASO, ETAPAS_DO_FLUXO, NOME_DA_ETAPA, NOME_DO_DESTINO, anestesistasDePlantao, colunasDoMapa,
@@ -135,6 +136,10 @@ export function MapaCirurgico({
   const resumo = useMemo(() => resumoDoDia(casos, (id) => porId.get(id)?.nome), [casos, porId]);
   const salasAtivas = salas.filter((s) => s.ativa);
   const deHoje = dia === hoje;
+  // O mapa de hoje vira sozinho à meia-noite: sai o dia que acabou, entra o
+  // novo. O endereço sem data é sempre "hoje" (o de outro dia fica parado).
+  const irParaHoje = useCallback(() => router.replace("/centro-cirurgico"), [router]);
+  useVirarODia(hoje, irParaHoje, deHoje);
 
   if (semBanco) {
     return (
@@ -242,7 +247,7 @@ export function MapaCirurgico({
             // sala mais cheia. Cada sala ocupa todas, e o 1º paciente de todas
             // as salas fica na mesma linha, com a mesma altura (mapa.module.css).
             <div className={estilos.quadro}
-              style={{ ["--linhas" as string]: 1 + Math.max(1, ...colunas.map((c) => c.casos.length)) }}>
+              style={{ ["--linhas" as string]: 1 + Math.max(1, ...colunas.map((c) => c.casos.length)), ["--salas" as string]: colunas.length }}>
               {colunas.map((col) => (
                 <section key={col.sala?.id ?? "sem-sala"} className={estilos.coluna} aria-label={col.sala?.nome ?? "Sem sala"}
                   // As linhas que ESTA sala ocupa (o cabeçalho e os pacientes dela,

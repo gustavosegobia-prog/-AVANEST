@@ -5,7 +5,7 @@ import { ExcluirFolha } from "./excluir-folha";
 import { ImprimirFicha } from "@/components/evolucao/imprimir-ficha";
 import { NovaFolha } from "./nova-folha";
 import type { CasoComCadastro } from "@/lib/evolucao/mapa-do-dia";
-import type { PacienteAchado } from "@/lib/evolucao/entrada";
+import { nomeDaSala, type PacienteAchado } from "@/lib/evolucao/entrada";
 
 export type FolhaResumo = {
   id: string;
@@ -84,7 +84,7 @@ export function InicioDasFolhas({
                       <Link href={`/evolucao/${f.id}`} className="fcLinha aberta">
                         <span className="fcQuem">
                           <strong>{f.paciente}</strong>
-                          <span>{[f.procedimento || "Procedimento não informado", f.sala && `Sala ${f.sala}`, `aberta às ${hora(f.inicio_em)}`]
+                          <span>{[f.procedimento || "Procedimento não informado", nomeDaSala(f.sala), `aberta às ${hora(f.inicio_em)}`]
                             .filter(Boolean).join(" · ")}</span>
                         </span>
                         {f.fim ? (
