@@ -715,6 +715,35 @@ export function ProducaoDoMes({
   const [recarregar, setRecarregar] = useState(0);
   const { oculto, alternar, mascara } = useValoresOcultos();
   /**
+   * "Enviar sozinho": o que é de ontem para trás vai ao financeiro depois da
+   * meia-noite (07/11/2026: "enviar todo final do dia, ele vai acumulando").
+   * Por pessoa — a lista é de quem anota até ele enviar. Nulo enquanto não se
+   * sabe, ou antes da migração 202611070003: aí a opção não aparece.
+   */
+  const [vaiSozinha, setVaiSozinha] = useState<boolean | null>(null);
+  const [mudandoSozinha, setMudandoSozinha] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const sb = createClient();
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return;
+      const { data, error } = await sb.from("perfis").select("producao_vai_sozinha").eq("id", user.id).maybeSingle();
+      if (vivo && !error && data) setVaiSozinha(Boolean((data as { producao_vai_sozinha?: boolean }).producao_vai_sozinha));
+    })();
+    return () => { vivo = false; };
+  }, []);
+  async function mudarVaiSozinha(ligado: boolean) {
+    setMudandoSozinha(true); setErro(""); setRecado("");
+    const { error } = await createClient().rpc("definir_producao_vai_sozinha", { p_ligado: ligado });
+    setMudandoSozinha(false);
+    if (error) { setErro("Não foi possível mudar o envio automático agora."); return; }
+    setVaiSozinha(ligado);
+    setRecado(ligado
+      ? "Ligado: depois da meia-noite, o que é de ontem para trás vai sozinho ao financeiro. Você continua podendo corrigir."
+      : "Desligado: a produção só vai ao financeiro pelo botão.");
+  }
+  /**
    * Quais atos entram na nota deste momento.
    *
    * A escala já tinha isto: marca-se o que entra, diz-se a data, e sai um
@@ -1051,6 +1080,16 @@ export function ProducaoDoMes({
             )}
           </div>
         </div>
+        {vaiSozinha !== null && (
+          <label className="producaoSozinha">
+            <input type="checkbox" checked={vaiSozinha} disabled={mudandoSozinha}
+              onChange={(e) => void mudarVaiSozinha(e.target.checked)} />
+            <span>
+              <strong>Enviar sozinho todo dia</strong>
+              <small>Depois da meia-noite, o que é de ontem para trás vai ao financeiro. Você continua podendo corrigir.</small>
+            </span>
+          </label>
+        )}
         {porConvenio.length === 0
           ? <div className="emptyClinical compactEmpty">
               Nada anotado neste mês. A anotação é feita no dia: toque num dia da

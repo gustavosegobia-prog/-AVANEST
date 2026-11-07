@@ -42,7 +42,7 @@ type LinhaDoMapa = {
 type LinhaDoHospital = {
   id: string; data: string; horario: string | null; ordem: number | null; sala: string | null; paciente: string; idade: number | null;
   data_nascimento: string | null; procedimento: string | null; cirurgiao: string | null; convenio: string | null;
-  etapa: EtapaDoMapa; hospital: string | null;
+  etapa: EtapaDoMapa; hospital: string | null; tipo_anestesia?: TipoDeAnestesia | null;
 };
 
 type Cadastro = Omit<CadastroSugerido, "avaliacao" | "aberta" | "comparacao">;

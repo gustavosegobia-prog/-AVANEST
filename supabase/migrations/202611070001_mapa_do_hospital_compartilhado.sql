@@ -18,8 +18,10 @@
 --   * só os pacientes de HOJE (no fuso do serviço), sem os cancelados;
 --   * só para quem pode abrir ficha anestésica, e só no hospital da ligação;
 --   * só o que a ficha usa: hora, ordem, sala, nome, idade, data de
---     nascimento, cirurgia, cirurgião, convênio e etapa. Prontuário, leito,
---     observações, anestesista e horários da sala ficam no hospital.
+--     nascimento, cirurgia, cirurgião, convênio, etapa e o tipo de anestesia
+--     (a local, do cirurgião, vai para o fim da lista; 202611070002).
+--     Prontuário, leito, observações, anestesista e horários da sala ficam
+--     no hospital.
 --   * cada leitura fica registrada (uma linha por pessoa por dia), para o
 --     hospital saber quem viu.
 --
@@ -129,7 +131,7 @@ revoke all on table public.centro_compartilhamento_leituras from public, anon, a
 create or replace function public.mapa_compartilhado_do_dia(p_local uuid)
 returns table (
   id uuid, data date, horario time, ordem integer, sala text, paciente text, idade smallint,
-  data_nascimento date, procedimento text, cirurgiao text, convenio text, etapa text, hospital text
+  data_nascimento date, procedimento text, cirurgiao text, convenio text, etapa text, hospital text, tipo_anestesia text
 )
 language plpgsql
 volatile
@@ -169,7 +171,7 @@ begin
   return query
     select k.id, k.data, k.horario, k.ordem, btrim(coalesce(s.nome, '')), k.paciente, k.idade,
            k.data_nascimento, k.procedimento, k.cirurgiao, k.convenio, k.etapa,
-           coalesce(nullif(btrim(lo.nome_fantasia), ''), lo.nome, i.nome)
+           coalesce(nullif(btrim(lo.nome_fantasia), ''), lo.nome, i.nome), k.tipo_anestesia
     from public.centro_casos k
     left join public.centro_salas s on s.id = k.sala_id
     left join public.locais_atendimento lo on lo.id = v_lig.origem_local_id

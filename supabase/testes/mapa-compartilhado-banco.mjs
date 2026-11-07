@@ -46,7 +46,7 @@ create table public.centro_casos (
   id uuid primary key default gen_random_uuid(), institution_id uuid not null, data date not null, sala_id uuid,
   ordem integer, horario time, paciente text not null, idade smallint, prontuario text, procedimento text not null,
   cirurgiao text, convenio text, anestesista_id uuid, etapa text not null default 'agendado', leito text, observacoes text,
-  cancelado_motivo text, patient_id uuid, evolucao_id uuid, local_atendimento_id uuid, data_nascimento date);
+  cancelado_motivo text, patient_id uuid, evolucao_id uuid, local_atendimento_id uuid, data_nascimento date, tipo_anestesia text);
 
 create function public.current_institution_id() returns uuid language sql stable security definer set search_path = public
   as $$ select institution_id from public.perfis where id = auth.uid() and status = 'ativo' $$;
@@ -152,7 +152,8 @@ const linhas = await mapa(U.med, L.noServico);
 assert.deepEqual(linhas.map((l) => l.paciente), ["PACIENTE UM FICTICIO", "PACIENTE DOIS FICTICIO"],
   "sem o cancelado, sem o de ontem, sem o da outra casa do grupo");
 assert.deepEqual(Object.keys(linhas[0]).sort(),
-  ["cirurgiao", "convenio", "data", "data_nascimento", "etapa", "horario", "hospital", "id", "idade", "ordem", "paciente", "procedimento", "sala"]);
+  ["cirurgiao", "convenio", "data", "data_nascimento", "etapa", "horario", "hospital", "id", "idade", "ordem", "paciente", "procedimento", "sala",
+    "tipo_anestesia"]);
 assert.equal(linhas[0].sala, "Sala 1");
 assert.equal(linhas[0].hospital, "Hospital Fictício");
 assert.equal(linhas[1].sala, "");
