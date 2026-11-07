@@ -462,10 +462,13 @@ export function ProducaoDoDia({
     });
     setSalvando(false);
     if (error) { setErro("Não foi possível salvar a anotação."); return; }
-    // Convênio e procedimento ficam: numa sala de cirurgia o caso seguinte
-    // costuma ser do mesmo convênio, e limpar tudo obrigaria a redigitar.
-    // A urgência e as marcas são de cada paciente: voltam desmarcadas.
-    setNovo({ ...novo, paciente: "", valor: "", urgencia: false, marcas: [] });
+    // O próximo paciente começa em branco, como o primeiro (07/11/2026: "não
+    // repetir o plano, a cirurgia e o nome do paciente"). Guardar o convênio
+    // e a cirurgia do anterior parecia ajuda, mas fazia o paciente seguinte
+    // nascer com os dados do outro — e o que vem pré-preenchido passa sem
+    // ser conferido.
+    setNovo(vazio);
+    setConvenioAntes("");
     setAvisoFoto("");
     void carregar();
     document.getElementById("producao-paciente")?.focus();

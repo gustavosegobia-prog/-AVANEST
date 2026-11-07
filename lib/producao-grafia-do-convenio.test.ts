@@ -48,3 +48,12 @@ test("a seta do convênio mostra a lista inteira, e o Anotar sem nome avisa (06/
   assert.match(tela, /<button className="primaryClinical compact" disabled=\{salvando\}>/);
   assert.match(tela, /setErro\("Escreva o nome do paciente para anotar\."\)/);
 });
+
+test("depois de anotar, o próximo paciente começa em branco (07/11/2026)", () => {
+  // "Não repetir o plano, a cirurgia e o nome do paciente. Só abre outro campo em branco."
+  const depois = tela.slice(tela.indexOf('if (error) { setErro("Não foi possível salvar a anotação."); return; }'));
+  assert.match(depois, /^[^]*?setNovo\(vazio\);\s*setConvenioAntes\(""\);/);
+  assert.doesNotMatch(tela, /setNovo\(\{ \.\.\.novo, paciente: "", valor: ""/, "não guarda mais convênio nem cirurgia do anterior");
+  // O formulário em branco é o mesmo do primeiro paciente do dia.
+  assert.match(tela, /const vazio = \{ paciente: "", convenio: "Particular", procedimento: "", valor: "", urgencia: false, marcas: \[\] as string\[\] \};/);
+});
