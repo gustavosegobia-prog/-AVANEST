@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { hoje, somarDias } from "@/lib/data-local";
-import { apelidosDaEquipe } from "@/lib/escala";
-import { CAMPOS_DO_CASO, abreOCentro, noHospital, type Caso, type PlantaoDaEscala, type Sala } from "@/lib/centro-cirurgico";
+import { CAMPOS_DO_CASO, abreOCentro, anestesistasDaEquipe, noHospital, type Caso, type PlantaoDaEscala, type Sala } from "@/lib/centro-cirurgico";
 import { casaDaSessao } from "./casa";
 import { MapaCirurgico, type Anestesista } from "@/components/centro/mapa-cirurgico";
 
@@ -51,12 +50,8 @@ export default async function MapaCirurgicoPage({ searchParams }: { searchParams
 
   // Quem anestesia: o médico da casa, e quem atua como médico. Recepção e
   // enfermagem ficam fora da lista de quem se escolhe para o paciente.
-  const pessoas = (equipe.data ?? []) as Array<{ id: string; nome: string; role: string; status: string; atuacao_medica: boolean | null }>;
-  const anestesistas = pessoas.filter((p) => p.status === "ativo" && (p.role === "medico" || p.atuacao_medica === true));
-  const apelidos = apelidosDaEquipe(anestesistas);
-  const lista: Anestesista[] = anestesistas
-    .map((p) => ({ id: p.id, nome: p.nome, apelido: apelidos.get(p.id) ?? p.nome }))
-    .sort((a, b) => a.apelido.localeCompare(b.apelido, "pt-BR"));
+  const lista: Anestesista[] = anestesistasDaEquipe(
+    (equipe.data ?? []) as Array<{ id: string; nome: string; role: string; status: string; atuacao_medica: boolean | null }>);
 
   return (
     <MapaCirurgico

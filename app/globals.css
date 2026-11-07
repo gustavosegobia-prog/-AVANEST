@@ -7860,6 +7860,13 @@ button.evoPFAsaN:disabled{cursor:default}
 .fcAtalho.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
 .fcAtalho.ativo svg{color:currentColor}
 .fcIniciarPara{margin-top:10px;min-height:48px}
+/* Botão e link na mesma letra: `.evoInicio button{font:inherit}` vencia a
+   regra do atalho nos botões, e o link (Mapa cirúrgico) saía diferente. */
+.fcAtalhos .fcAtalho{font-size:15px;font-weight:600;line-height:1.2}
+a.fcAtalho{text-decoration:none}
+.fcAtalho:disabled{cursor:progress;opacity:.7}
+.fcAtalhoErro{flex-basis:100%;margin:2px 2px 0}
+.fcAvisoMapa{margin:10px 2px 0;font-size:14px;font-weight:600;color:var(--cor-sucesso)}
 @media (max-width:760px){
   .fcResultados{margin:14px -16px -16px}
   .fcGrupoTitulo{padding:14px 16px 8px}
