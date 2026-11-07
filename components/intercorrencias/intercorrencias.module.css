@@ -472,7 +472,15 @@
 /* ---------------- Impressão / PDF ---------------- */
 .soImpressao { display: none; }
 @media print {
-  :global(body *) { visibility: hidden; }
+  /* Só quando há um protocolo aberto para imprimir. Era `body *` sozinho, e a
+     folha de estilo fica na página depois que se sai da tela de crises (o
+     React não tira o CSS de uma tela que já foi aberta; o painel de crises
+     também vem dentro da ficha anestésica): a avaliação, a escala ou o
+     relatório impressos depois disso, sem recarregar, saíam em branco
+     (06/11/2026, lib/impressao-sem-vazamento.test.ts). O :where() mantém o
+     peso do seletor igual ao do `body *` antigo: com o :has() contando, esta
+     regra vencia o `.impressao` abaixo e escondia o próprio protocolo. */
+  :global(body):where(:has(.impressao)) * { visibility: hidden; }
   .impressao, .impressao * { visibility: visible; }
   .impressao { position: absolute; inset: 0 auto auto 0; width: 100%; color: #000; }
   .naoImprimir { display: none !important; }

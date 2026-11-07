@@ -73,7 +73,14 @@ export async function pdfDaFicha(doc: Document): Promise<File> {
       backgroundColor: "#ffffff",
       logging: false,
       // A sombra e a margem da folha são da tela, não do papel.
-      onclone: (_copia, el) => { el.style.boxShadow = "none"; el.style.margin = "0"; textoEmPeComoDesenho(el); },
+      // Sem o zoom da folha longa (registro-que-enche.tsx): o desenhista não
+      // entende zoom e cola as palavras ("AparecidaFictícia"). A folha sai na
+      // altura de verdade, e a conta logo abaixo a faz caber no A4.
+      onclone: (_copia, el) => {
+        el.style.boxShadow = "none"; el.style.margin = "0";
+        el.style.removeProperty("zoom"); el.style.removeProperty("width");
+        textoEmPeComoDesenho(el);
+      },
     });
     // A folha da tela já tem a largura do A4 com a margem (196 mm + 2 × 7 mm).
     // Se por algum motivo vier mais alta que a página, cabe pela altura.
