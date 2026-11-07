@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { Icone } from "@/components/icone";
-import { duracao, horaDe } from "@/lib/centro-cirurgico";
+import { duracao, horaDe, NOME_DA_ANESTESIA } from "@/lib/centro-cirurgico";
 import {
   dataBR, faixaDeTempo, mesVizinho, nomeDoMes, type Estatistica, type Grupo, type LinhaDoRelatorio, type RelatorioDoMes,
 } from "@/lib/centro-relatorio";
@@ -108,7 +108,7 @@ function Numeros({ r }: { r: RelatorioDoMes }) {
 
 /** O que pode deixar os números errados — e como acertar no mapa. */
 function Avisos({ r }: { r: RelatorioDoMes }) {
-  if (!r.incompletas && !r.semRegistro && !r.aindaAgendados) return null;
+  if (!r.incompletas && !r.semRegistro && !r.aindaAgendados && !r.soLocal) return null;
   return (
     <ul className={estilos.avisos}>
       {r.incompletas > 0 && (
@@ -125,6 +125,12 @@ function Avisos({ r }: { r: RelatorioDoMes }) {
         </li>
       )}
       {r.aindaAgendados > 0 && <li><b>{r.aindaAgendados}</b> ainda {r.aindaAgendados === 1 ? "agendado" : "agendados"}, de hoje em diante.</li>}
+      {r.soLocal > 0 && (
+        <li>
+          <b>{r.soLocal}</b> {r.soLocal === 1 ? "cirurgia foi feita" : "cirurgias foram feitas"} só com anestesia local, do cirurgião:
+          {r.soLocal === 1 ? " está" : " estão"} nos tempos de sala e fora dos atos por convênio e por anestesista.
+        </li>
+      )}
     </ul>
   );
 }
@@ -257,7 +263,10 @@ function CadaCirurgia({ linhas }: { linhas: LinhaDoRelatorio[] }) {
                 <td data-rotulo="Cirurgia" data-largo>{l.caso.procedimento}</td>
                 <td data-rotulo="Cirurgião">{l.caso.cirurgiao ?? ""}</td>
                 <td data-rotulo="Convênio">{l.caso.convenio ?? ""}</td>
-                <td data-rotulo="Anestesista">{l.anestesista}</td>
+                <td data-rotulo="Anestesista">
+                  {l.anestesista}
+                  {l.caso.tipo_anestesia && <small>{NOME_DA_ANESTESIA[l.caso.tipo_anestesia]}</small>}
+                </td>
                 <td className={estilos.tempo} data-rotulo="Em sala"><TempoEmSala l={l} /></td>
                 <td className={estilos.tempo} data-rotulo="Na RPA"><TempoNaRpa l={l} /></td>
               </tr>

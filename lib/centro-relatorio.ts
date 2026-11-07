@@ -7,7 +7,7 @@
 // com um número inventado.
 
 import {
-  aconteceu, compararNoMapa, contarConvenios, duracao, horaDe, hhmm, NOME_DO_DESTINO, tempos,
+  aconteceu, compararNoMapa, contarConvenios, duracao, horaDe, hhmm, NOME_DA_ANESTESIA, NOME_DO_DESTINO, soLocal, tempos,
   type Caso, type Sala,
 } from "./centro-cirurgico.ts";
 import type { Celula } from "./xlsx.ts";
@@ -81,8 +81,12 @@ export type RelatorioDoMes = {
   porDia: Array<{ data: string; n: number }>;
   porSala: Grupo[];
   porCirurgiao: Grupo[];
+  /** Os atos de anestesia por convênio: sem as cirurgias só com anestesia local. */
   porConvenio: Array<{ convenio: string; atos: number }>;
+  /** Os atos de anestesia por anestesista: sem as cirurgias só com anestesia local. */
   porAnestesista: Array<{ nome: string; n: number }>;
+  /** Cirurgias feitas só com anestesia local (do cirurgião): no centro, fora dos atos de anestesia. */
+  soLocal: number;
   motivos: Array<{ motivo: string; n: number }>;
   linhas: LinhaDoRelatorio[];
   /** Os cancelados, na mesma forma (sem tempos). */
@@ -157,8 +161,11 @@ export function relatorioDoMes({ mes, hoje, casos, salas, nomeDoAnestesista }: {
     motivos.set(k, { motivo: motivos.get(k)?.motivo ?? motivo, n: (motivos.get(k)?.n ?? 0) + 1 });
   }
 
+  // Os atos de anestesia: a cirurgia só com anestesia local é do cirurgião
+  // (07/11/2026). Ela continua nos tempos de sala, por sala e por cirurgião.
+  const deAnestesia = linhas.filter((l) => !soLocal(l.caso));
   const anestesistas = new Map<string, number>();
-  for (const l of linhas) {
+  for (const l of deAnestesia) {
     const nome = l.anestesista || "Sem anestesista";
     anestesistas.set(nome, (anestesistas.get(nome) ?? 0) + 1);
   }
@@ -177,10 +184,11 @@ export function relatorioDoMes({ mes, hoje, casos, salas, nomeDoAnestesista }: {
     porDia: diasDoMes(mes).map((data) => ({ data, n: contagemPorDia.get(data) ?? 0 })),
     porSala: agrupar(linhas, (l) => l.sala, (nome) => ordemDaSala.get(nome) ?? Number.MAX_SAFE_INTEGER),
     porCirurgiao: agrupar(linhas, (l) => l.caso.cirurgiao?.trim() || "Sem cirurgião"),
-    porConvenio: contarConvenios(linhas.map((l) => l.caso)),
+    porConvenio: contarConvenios(deAnestesia.map((l) => l.caso)),
     porAnestesista: [...anestesistas].map(([nome, n]) => ({ nome, n }))
       .sort((a, b) => Number(a.nome === "Sem anestesista") - Number(b.nome === "Sem anestesista") || b.n - a.n
         || a.nome.localeCompare(b.nome, "pt-BR")),
+    soLocal: linhas.length - deAnestesia.length,
     motivos: [...motivos.values()].sort((a, b) => b.n - a.n || a.motivo.localeCompare(b.motivo, "pt-BR")),
     linhas,
     listaCanceladas,
@@ -200,7 +208,7 @@ export const dataBR = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.sli
  * duração em "1h05" seria texto.
  */
 export function planilhaDoRelatorio(r: RelatorioDoMes): Celula[][] {
-  const cabecalho = ["Data", "Sala", "Marcado", "Paciente", "Idade", "Cirurgia", "Cirurgião", "Convênio", "Anestesista",
+  const cabecalho = ["Data", "Sala", "Marcado", "Paciente", "Idade", "Cirurgia", "Cirurgião", "Convênio", "Anestesista", "Anestesia",
     "Entrou em sala", "Saiu da sala", "Minutos em sala", "Alta da RPA", "Minutos na RPA", "Destino", "Situação"];
   const situacao = (l: LinhaDoRelatorio) => (l.caso.etapa === "cancelado"
     ? `Cancelada: ${l.caso.cancelado_motivo?.trim() || "sem motivo"}`
@@ -212,7 +220,7 @@ export function planilhaDoRelatorio(r: RelatorioDoMes): Celula[][] {
     const c = l.caso;
     return [
       dataBR(c.data), l.sala, hhmm(c.horario) || "A/S", c.paciente, c.idade ?? "", c.procedimento, c.cirurgiao ?? "",
-      c.convenio ?? "", l.anestesista, horaDe(c.entrada_sala_em), horaDe(c.saida_sala_em), l.emSala ?? "",
+      c.convenio ?? "", l.anestesista, c.tipo_anestesia ? NOME_DA_ANESTESIA[c.tipo_anestesia] : "", horaDe(c.entrada_sala_em), horaDe(c.saida_sala_em), l.emSala ?? "",
       horaDe(c.alta_rpa_em), l.naRpa ?? "", c.destino ? NOME_DO_DESTINO[c.destino] : "", situacao(l),
     ];
   })];

@@ -123,6 +123,12 @@
 .anestesista { display: flex; align-items: center; gap: 6px; margin: 2px 0 0; font-size: 13.5px; font-weight: 650; color: var(--cor-tinta); }
 .anestesista svg { color: var(--cor-tinta-fraca); flex: none; }
 .anestesista.falta { color: var(--cor-atencao); }
+/* O tipo de anestesia ao lado do anestesista; a local (do cirurgião), em selo
+   neutro no lugar do aviso de "Sem anestesista" (07/11/2026). */
+.tipo { margin-left: 4px; padding-left: 8px; border-left: 1px solid var(--cor-borda); font-weight: 600; color: var(--cor-tinta-fraca); }
+.anestesista.local { color: var(--cor-tinta-fraca); font-weight: 600; }
+.seloLocal { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px;
+  border: 1px solid var(--cor-borda); background: var(--cor-superficie-suave); color: var(--cor-tinta-forte); font-size: 12.5px; font-weight: 750; }
 .marcos { margin: 4px 0 0; font-size: 13px; color: var(--cor-tinta-fraca); font-variant-numeric: tabular-nums; }
 .motivo { margin: 4px 0 0; font-size: 13.5px; color: var(--cor-perigo-forte); }
 .etapa_cancelado .paciente, .etapa_cancelado .procedimento { text-decoration: line-through; text-decoration-color: var(--cor-tinta-fraca); }

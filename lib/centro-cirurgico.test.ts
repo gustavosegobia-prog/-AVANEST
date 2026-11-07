@@ -5,6 +5,7 @@ import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
   resumoDoDia, rotuloDoDesfazer, sairDaSala, tempoNaEtapa, tempos, nomeNaTv, atraso, linhasDaTv, horaNoMapa, proximaOrdem, mover, formDoCaso, marcaDaCasa, abreOCentro, mostraACasa, casaDoCentro, type Caso,
+  atoDeAnestesia, soLocal, tipoDeAnestesiaDoTexto, NOME_DA_ANESTESIA, TIPOS_DE_ANESTESIA,
 } from "./centro-cirurgico.ts";
 
 const iso = (data: string, h: string) => new Date(`${data}T${h}:00-03:00`).toISOString();
@@ -347,4 +348,59 @@ test("mapa: à meia-noite o mapa de hoje vira o dia sozinho; o de outro dia fica
   assert.match(virar, /visibilitychange/, "ao voltar para a aba, confere na hora");
   // A entrada da ficha também vira o dia (o mapa e os avaliados de hoje).
   assert.match(ler("app/evolucao/page.tsx"), /<VirarODia dia=\{hoje\(\)\} \/>/);
+});
+
+test("tipo de anestesia: a local fica no mapa e sai dos atos; pedida a sedação, volta a contar (07/11/2026)", () => {
+  const dentro = { etapa: "concluido" as const, entrada_sala_em: iso("2026-10-21", "08:00"), saida_sala_em: iso("2026-10-21", "08:30") };
+  const geral = caso({ id: "g", tipo_anestesia: "geral", ...dentro });
+  const local = caso({ id: "l", tipo_anestesia: "local", anestesista_id: null, ...dentro });
+  const sedacao = caso({ id: "s", tipo_anestesia: "local_sedacao", ...dentro });
+  const semTipo = caso({ id: "x", ...dentro });
+  assert.equal(soLocal(local), true);
+  assert.equal(soLocal(sedacao), false);
+  assert.deepEqual([geral, local, sedacao, semTipo].filter(atoDeAnestesia).map((c) => c.id), ["g", "s", "x"],
+    "sem tipo marcado, conta como sempre contou");
+  const r = resumoDoDia([geral, local, sedacao, semTipo], () => "Dra. Fictícia");
+  assert.equal(r.atos, 3);
+  assert.equal(r.pendencias.length, 0, "a local sem anestesista não é pendência de cobrança");
+  // A local continua no mapa: a coluna da sala e a contagem por etapa a mostram.
+  assert.equal(contagemPorEtapa([geral, local]).concluido, 2);
+  // O formulário grava o tipo; um valor estranho vira vazio.
+  const f = { ...formVazio("2026-10-21"), paciente: "Paciente Fictício", procedimento: "Exérese de lesão" };
+  const ok = linhaDoForm({ ...f, tipo_anestesia: "local" });
+  assert.ok(ok.ok && ok.linha.tipo_anestesia === "local");
+  const estranho = linhaDoForm({ ...f, tipo_anestesia: "hipnose" });
+  assert.ok(estranho.ok && estranho.linha.tipo_anestesia === null);
+  assert.equal(formDoCaso(caso({ tipo_anestesia: "raqui" })).tipo_anestesia, "raqui");
+  assert.equal(NOME_DA_ANESTESIA.local_sedacao, "Local + sedação");
+  assert.equal(TIPOS_DE_ANESTESIA.length, 8);
+});
+
+test("tipo de anestesia: o texto do mapa do hospital vira o tipo; o que não se reconhece fica vazio", () => {
+  const casos: Array<[string, string | null]> = [
+    ["LOCAL", "local"], ["Local", "local"], ["ANESTESIA LOCAL", "local"], ["infiltração", "local"],
+    ["local c/ sedação", "local_sedacao"], ["LOCAL + SEDAÇÃO", "local_sedacao"],
+    ["GERAL", "geral"], ["Geral balanceada", "geral"], ["RAQUI", "raqui"], ["raquianestesia", "raqui"],
+    ["PERIDURAL", "peridural"], ["peri", "peridural"], ["BLOQUEIO", "bloqueio"], ["bloq plexo braquial", "bloqueio"],
+    ["SEDAÇÃO", "sedacao"], ["GERAL + BLOQ", "combinada"], ["RAQUI + PERI", "combinada"], ["combinada", "combinada"],
+    ["", null], ["-", null], ["A DEFINIR", null], [" ", null],
+  ];
+  for (const [texto, tipo] of casos) assert.equal(tipoDeAnestesiaDoTexto(texto), tipo, texto);
+});
+
+test("tipo de anestesia: a tela mostra o tipo, a local tem o selo, e a coluna só vai ao banco com a migração", () => {
+  const ler = (c: string) => fs.readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+  const tela = ler("components/centro/mapa-cirurgico.tsx");
+  assert.match(tela, /soLocal\(c\) && !anestesista \?/);
+  assert.match(tela, /<span className=\{estilos\.seloLocal\}>Local<\/span> Anestesia do cirurgião/);
+  assert.match(tela, /NOME_DA_ANESTESIA\[c\.tipo_anestesia\]/);
+  const janela = ler("components/centro/janelas.tsx");
+  assert.match(janela, /\{TIPO_DE_ANESTESIA_NO_MAPA && \(\s*<label className="clinicalField"><span>Anestesia<\/span>/);
+  const importar = ler("components/centro/importar.tsx");
+  assert.match(importar, /\.\.\.comTipoDeAnestesia\(l\.anestesia\)/);
+  assert.match(importar, /anestesista_id: l\.anestesia === "local" \? null : anestesistaId \|\| null/);
+  const sql = ler("supabase/migrations/202611070002_tipo_de_anestesia_no_mapa.sql");
+  assert.match(sql, /add column if not exists tipo_anestesia text/);
+  for (const t of TIPOS_DE_ANESTESIA) assert.match(sql, new RegExp(`'${t.valor}'`), `o banco aceita ${t.valor}`);
+  assert.doesNotMatch(sql.replace(/--.*$/gm, ""), /drop |delete |update /i, "só acrescenta");
 });

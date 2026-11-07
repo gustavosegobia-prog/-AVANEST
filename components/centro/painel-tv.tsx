@@ -6,7 +6,7 @@ import { hoje } from "@/lib/data-local";
 import { VERSAO_DO_SITE, deveRecarregar } from "@/lib/versao";
 import { assinarTemaDaTv, guardarTvClara, tvClara } from "@/lib/tema";
 import {
-  CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, linhasDaTv, noHospital, nomeNaTv,
+  CAMPOS_DO_CASO, contagemPorEtapa, duracao, horaDe, horaNoMapa, linhasDaTv, noHospital, nomeNaTv, soLocal,
   type Caso, type LinhaDaTv, type Sala,
 } from "@/lib/centro-cirurgico";
 import { MarcaDagua } from "./marca-dagua";
@@ -296,7 +296,7 @@ export function PainelTv({ institutionId, localId = null, dia, nomeDaCasa, salas
               <Letreiro texto={c.procedimento} className={estilos.texto} />
               <span role="cell" className={estilos.texto}>{nomeDaSala(c.sala_id)}</span>
               <span role="cell" className={estilos.texto}>{c.cirurgiao ?? ""}</span>
-              <span role="cell" className={estilos.texto}>{quem(c.anestesista_id)}</span>
+              <span role="cell" className={estilos.texto}>{quem(c.anestesista_id) || (soLocal(c) ? "Local" : "")}</span>
               <span role="cell" className={estilos.situacao}>{situacao(l)}</span>
             </div>
           );

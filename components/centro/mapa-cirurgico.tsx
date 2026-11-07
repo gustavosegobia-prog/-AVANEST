@@ -8,7 +8,7 @@ import { Icone } from "@/components/icone";
 import { useVirarODia } from "@/components/virar-o-dia";
 import { somarDias } from "@/lib/data-local";
 import {
-  CAMPOS_DO_CASO, ETAPAS_DO_FLUXO, NOME_DA_ETAPA, NOME_DO_DESTINO, anestesistasDePlantao, colunasDoMapa,
+  CAMPOS_DO_CASO, ETAPAS_DO_FLUXO, NOME_DA_ANESTESIA, NOME_DA_ETAPA, NOME_DO_DESTINO, anestesistasDePlantao, colunasDoMapa, soLocal,
   contagemPorEtapa, duracao, horaDe, horaNoMapa, mover, noHospital, proximaOrdem, proximoPasso, resumoDoDia, tempoNaEtapa, tempos,
   type Caso, type Etapa, type PlantaoDaEscala, type Sala, type Passo,
 } from "@/lib/centro-cirurgico";
@@ -420,9 +420,18 @@ function Cartao({ caso: c, agora, anestesista, podeMontar, onPasso, onEditar, on
       </h3>
       <p className={estilos.procedimento}>{c.procedimento}</p>
       {detalhe && <p className={estilos.detalhe}>{detalhe}</p>}
-      <p className={anestesista ? estilos.anestesista : `${estilos.anestesista} ${estilos.falta}`}>
-        <Icone nome="pessoa" tamanho={14} /> {anestesista || "Sem anestesista"}
-      </p>
+      {/* O tipo de anestesia junto do anestesista. Só local (do cirurgião) não
+          pede anestesista: no lugar do aviso, o selo "Local" (07/11/2026). */}
+      {soLocal(c) && !anestesista ? (
+        <p className={`${estilos.anestesista} ${estilos.local}`}>
+          <span className={estilos.seloLocal}>Local</span> Anestesia do cirurgião
+        </p>
+      ) : (
+        <p className={anestesista ? estilos.anestesista : `${estilos.anestesista} ${estilos.falta}`}>
+          <Icone nome="pessoa" tamanho={14} /> {anestesista || "Sem anestesista"}
+          {c.tipo_anestesia && <span className={estilos.tipo}>{NOME_DA_ANESTESIA[c.tipo_anestesia]}</span>}
+        </p>
+      )}
       {c.etapa === "cancelado" ? (
         <p className={estilos.motivo}>Cancelado: {c.cancelado_motivo}</p>
       ) : marcos.length > 0 && (
