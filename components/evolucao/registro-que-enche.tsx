@@ -21,6 +21,8 @@ import { GRAFICO_MAXIMO, GRAFICO_MINIMO, GRAFICO_PADRAO, RegistroImpresso } from
 
 const PX_POR_MM = 96 / 25.4;
 const FOLGA_MM = 4;
+/** A largura da folha em globals.css (.imprFolha): 210 mm do A4 menos 2 × 7 mm de margem. */
+const LARGURA_DA_FOLHA_MM = 196;
 
 type Props = Omit<Parameters<typeof RegistroImpresso>[0], "grafico">;
 
@@ -64,8 +66,32 @@ export function RegistroQueEnche(props: Props) {
     return () => { vale = false; };
   }, []);
 
+  // A última conferência, com o gráfico já no tamanho final. Lista de
+  // medicação longa (07/11/2026: 3h20 de anestesia, treze administrações e uma
+  // infusão) passava do A4 mesmo com o gráfico no mínimo e a letra compacta —
+  // a altura vem da coluna da medicação, não do gráfico — e o pé da folha
+  // (posição, técnica, cirurgia, saída da sala, assinatura) ia sozinho para
+  // uma segunda página. Agora a folha inteira diminui na medida exata (zoom),
+  // com a largura compensada para continuar com os 196 mm: uma folha só,
+  // sempre. Só depois disso ela fica marcada como pronta para imprimir.
   useEffect(() => {
-    if (ajustado) caixa.current?.closest(".imprFolha")?.setAttribute("data-ajustada", "1");
+    if (!ajustado) return;
+    const folha = caixa.current?.closest<HTMLElement>(".imprFolha");
+    if (!folha) return;
+    const quadro = requestAnimationFrame(() => {
+      folha.style.removeProperty("zoom");
+      folha.style.removeProperty("width");
+      const estilo = getComputedStyle(folha);
+      const alvo = parseFloat(estilo.minHeight);
+      const conteudo = folha.clientHeight - parseFloat(estilo.paddingTop) - parseFloat(estilo.paddingBottom);
+      if (alvo && conteudo > alvo + 1) {
+        const escala = Math.max(0.6, (alvo - FOLGA_MM * PX_POR_MM) / conteudo);
+        folha.style.zoom = String(escala);
+        folha.style.width = `calc(${LARGURA_DA_FOLHA_MM}mm / ${escala})`;
+      }
+      folha.setAttribute("data-ajustada", "1");
+    });
+    return () => cancelAnimationFrame(quadro);
   }, [ajustado, grafico]);
 
   return (

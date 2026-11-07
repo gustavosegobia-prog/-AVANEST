@@ -216,6 +216,7 @@ function Canceladas({ r }: { r: RelatorioDoMes }) {
               </tr>
             ))}
           </tbody>
+          <VaoDaAssinatura />
         </table>
       </div>
     </section>
@@ -262,8 +263,20 @@ function CadaCirurgia({ linhas }: { linhas: LinhaDoRelatorio[] }) {
               </tr>
             ))}
           </tbody>
+          <VaoDaAssinatura />
         </table>
       </div>
     </section>
   );
+}
+
+/**
+ * No papel, a assinatura do AVANEST fica fixa no pé de cada página e não
+ * reserva lugar: numa página cheia, ela caía em cima da última linha da lista
+ * (07/11/2026). O <tfoot> vazio se repete no pé de cada página que a tabela
+ * ocupa e guarda essa faixa — a mesma técnica da folha da escala
+ * (components/plantoes.tsx). Na tela ele não existe.
+ */
+function VaoDaAssinatura() {
+  return <tfoot className={estilos.vaoDaAssinatura} aria-hidden="true"><tr><td colSpan={12} /></tr></tfoot>;
 }

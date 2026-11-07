@@ -562,7 +562,14 @@ a,button,input,select,textarea,label,summary,[role=button]{touch-action:manipula
    custa uma folha a mais com a assinatura órfã; sobrar custa um dedo de papel
    branco embaixo. A conta é assimétrica, então o valor é o conservador. */
 :root{--altura-folha-impressa:255mm}
-.printPaper{display:flex;flex-direction:column;width:auto;min-height:var(--altura-folha-impressa);border:0;border-radius:0;box-shadow:none;padding:0;margin:0;color:#000;opacity:1;filter:none;break-after:page;page-break-after:always;overflow:visible}.assessmentPaper{display:flex;min-height:0;overflow:visible;font-size:7.8px}.printPaper:last-child{break-after:auto;page-break-after:auto}.printPaper.notSelected{display:none!important}.legalReview{background:#fff!important}.paperTitle,.paperTable th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.printPaper{display:flex;flex-direction:column;width:auto;min-height:var(--altura-folha-impressa);border:0;border-radius:0;box-shadow:none;padding:0;margin:0;color:#000;opacity:1;filter:none;overflow:visible}.assessmentPaper{display:flex;min-height:0;overflow:visible;font-size:7.8px}
+/* A folha nova começa ANTES de cada documento que sai depois de outro, e não
+   depois de cada um (07/11/2026). Era break-after em todos menos no
+   :last-child — e o último filho é a folha de orientações, que não é mais
+   impressa (display:none, mais abaixo). O termo, último visível, pedia uma
+   página depois de si: toda impressão da avaliação saía com uma folha em
+   branco no fim. Imprimindo só a ficha, a mesma coisa. */
+.printPaper:not(.notSelected):not(.guidancePaper)~.printPaper:not(.notSelected):not(.guidancePaper){break-before:page;page-break-before:always}.printPaper.notSelected{display:none!important}.legalReview{background:#fff!important}.paperTitle,.paperTable th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 
 /* Fluxo clínico contínuo e campos condicionais */
 [id^="etapa-"]{scroll-margin-top:155px}

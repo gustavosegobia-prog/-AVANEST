@@ -80,6 +80,7 @@
 /* ── Cada cirurgia ───────────────────────────────────────────────────────── */
 .rolagem { overflow-x: auto; }
 .lista { width: 100%; border-collapse: collapse; font-size: 14px; }
+.vaoDaAssinatura { display: none; }
 .lista th { position: sticky; top: 0; z-index: 1; padding: 7px 8px; border-bottom: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
   text-align: left; font-size: 12px; font-weight: 700; color: var(--cor-tinta-fraca); white-space: nowrap; }
 .lista td { padding: 8px; border-bottom: 1px solid var(--cor-borda); vertical-align: top; color: var(--cor-tinta); overflow-wrap: anywhere; }
@@ -124,4 +125,6 @@
   .lista th { position: static; }
   .lista tr { break-inside: avoid; }
   .secaoLista { break-inside: auto; }
+  .vaoDaAssinatura { display: table-footer-group; }
+  .vaoDaAssinatura td { height: 15mm; padding: 0; border: 0; }
 }
