@@ -7841,6 +7841,7 @@ button.evoPFAsaN:disabled{cursor:default}
 .fcDiaNome span{font-size:13.5px;color:var(--cor-tinta-fraca);font-variant-numeric:tabular-nums}
 .fcDiaCirurgia{font-size:13.5px;line-height:1.4;color:var(--cor-tinta)}
 .fcDiaAnest,.fcDiaCadastro{font-size:13px;line-height:1.35;color:var(--cor-tinta-fraca)}
+.fcDiaLocal{display:inline-flex;align-items:center;min-height:20px;padding:0 7px;margin-right:4px;border:1px solid var(--cor-borda);border-radius:999px;background:var(--cor-superficie-suave);color:var(--cor-tinta-forte);font-size:12px;font-weight:750}
 .fcDiaQuem .fcPre{grid-area:auto;margin-top:2px}
 .fcDiaAcao{grid-area:acao;align-self:center;display:inline-flex;align-items:center;gap:6px;font-size:14.5px;font-weight:700;
   color:var(--cor-marca-forte);white-space:nowrap}

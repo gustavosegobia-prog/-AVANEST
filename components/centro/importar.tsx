@@ -6,7 +6,9 @@ import { Janela } from "@/components/janela";
 import {
   casarAnestesista, casarSala, normalizar, lerMapa, type LinhaImportada, type MapaImportado,
 } from "@/lib/centro-importar";
-import { MAPA_POR_HOSPITAL, comHospital, comNascimento, doHospital, noHospital, type Sala } from "@/lib/centro-cirurgico";
+import {
+  MAPA_POR_HOSPITAL, NOME_DA_ANESTESIA, comHospital, comNascimento, comTipoDeAnestesia, doHospital, noHospital, type Sala,
+} from "@/lib/centro-cirurgico";
 import type { Anestesista } from "./mapa-cirurgico";
 import { mensagemDoBanco } from "./janelas";
 import { TIPOS_ACEITOS, gradeDoArquivo } from "./ler-arquivo";
@@ -121,7 +123,9 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
         institution_id: institutionId, ...comHospital(localId), data, ordem: base + i + 1,
         horario: l.horario, paciente: l.paciente, idade: l.idade, ...comNascimento(l.nascimento), convenio: l.convenio, cirurgiao: l.cirurgiao,
         sala_id: casarSala(l.sala, todas)?.id ?? null, procedimento: l.procedimento, leito: l.leito,
-        anestesista_id: anestesistaId || null,
+        ...comTipoDeAnestesia(l.anestesia),
+        // A anestesista do título é de quem tem anestesia: a local é do cirurgião.
+        anestesista_id: l.anestesia === "local" ? null : anestesistaId || null,
       }));
       const { error } = await sb.from("centro_casos").insert(linhas);
       if (error) throw new Error(mensagemDoBanco(error.message));
@@ -196,7 +200,7 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
           <div className={estilos.importarTabela} role="region" aria-label="Pacientes lidos do arquivo" tabIndex={0}>
             <table>
               <thead>
-                <tr><th aria-label="Importar"></th><th>Hora</th><th>Paciente</th><th>Idade</th><th>Convênio</th><th>Cirurgião</th><th>Sala</th><th>Cirurgia</th><th>Leito</th></tr>
+                <tr><th aria-label="Importar"></th><th>Hora</th><th>Paciente</th><th>Idade</th><th>Convênio</th><th>Cirurgião</th><th>Sala</th><th>Cirurgia</th><th>Anestesia</th><th>Leito</th></tr>
               </thead>
               <tbody>
                 {mapa.linhas.map((l) => {
@@ -213,6 +217,7 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
                       <td data-rotulo="Cirurgião">{l.cirurgiao ?? ""}</td>
                       <td data-rotulo="Sala">{sala}{nova && <small> nova</small>}</td>
                       <td data-rotulo="Cirurgia">{l.procedimento}</td>
+                      <td data-rotulo="Anestesia">{l.anestesia ? NOME_DA_ANESTESIA[l.anestesia] : ""}</td>
                       <td data-rotulo="Leito">{l.leito ?? ""}</td>
                     </tr>
                   );

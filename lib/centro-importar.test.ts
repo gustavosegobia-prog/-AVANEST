@@ -88,7 +88,7 @@ test("da grade do mapa saem os pacientes, na ordem, com A/S e leito", () => {
   assert.deepEqual(m.linhas.map((l) => l.paciente), ["Maria Aparecida da Silva", "Joao dos Santos", "Ana Luiza Costa", "Clara Pereira"]);
   assert.deepEqual(m.linhas[0], {
     linha: 1, horario: "07:30", paciente: "Maria Aparecida da Silva", idade: 34, nascimento: null, convenio: "Unimed",
-    cirurgiao: "DR. PAULO M", sala: "Sala 4", procedimento: "RETIRADA DE CATETER DJ", leito: "UNIMED",
+    cirurgiao: "DR. PAULO M", sala: "Sala 4", procedimento: "RETIRADA DE CATETER DJ", leito: "UNIMED", anestesia: null,
   });
   assert.equal(m.linhas[1].horario, null);
   assert.equal(m.linhas[1].leito, "9/3");
@@ -264,4 +264,20 @@ test("a coluna de nascimento é achada pelo título, e a idade sai dela quando o
   assert.deepEqual(m.linhas.map((l) => [l.nascimento, l.idade]), [
     ["1974-04-03", 52], ["1974-03-01", 51], [null, 40], [null, null],
   ]);
+});
+
+test("importar: a coluna ANESTESIA vira o tipo; a coluna ANESTESISTA não é confundida com ela (07/11/2026)", async () => {
+  const { lerMapa: ler, campoDoTitulo } = await import("./centro-importar.ts");
+  assert.equal(campoDoTitulo("ANESTESIA"), "anestesia");
+  assert.equal(campoDoTitulo("Tipo de anestesia"), "anestesia");
+  assert.equal(campoDoTitulo("ANESTESISTA"), null);
+  assert.equal(campoDoTitulo("ANESTESIOLOGISTA"), null);
+  const m = ler([
+    ["MAPA CIRÚRGICO 07/11/2026"],
+    ["HORA", "PACIENTE", "IDADE", "CONVÊNIO", "MÉDICO", "SALA", "PROCEDIMENTO", "ANESTESIA", "ANESTESISTA"],
+    ["07:30", "PACIENTE UM FICTICIO", "40", "SUS", "DR. FICTICIO", "1", "EXERESE DE LESAO", "LOCAL", ""],
+    ["08:00", "PACIENTE DOIS FICTICIO", "52", "SUS", "DR. FICTICIO", "2", "COLECISTECTOMIA", "GERAL", "DRA. FICTICIA"],
+    ["A/S", "PACIENTE TRES FICTICIO", "33", "SUS", "DR. FICTICIO", "2", "HERNIORRAFIA", "", ""],
+  ], "2026-11-07")!;
+  assert.deepEqual(m.linhas.map((l) => l.anestesia), ["local", "geral", null]);
 });

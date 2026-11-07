@@ -8,7 +8,7 @@ import { CONVENIOS } from "@/lib/convenios";
 import {
   ALDRETE, ALDRETE_PARA_ALTA, CAMPOS_DO_CASO, MAPA_POR_HOSPITAL, comHospital, NOME_DA_ETAPA, NOME_DO_DESTINO, altaDaRpa, avisoDoAldrete, cancelar,
   conferirHorario, desfazer, entrarEmSala, formDoCaso, formVazio, horaDe, instanteDoPasso, linhaDoForm,
-  rotuloDoDesfazer, sairDaSala, somaAldrete,
+  rotuloDoDesfazer, sairDaSala, somaAldrete, TIPO_DE_ANESTESIA_NO_MAPA, TIPOS_DE_ANESTESIA,
   type Caso, type Destino, type FormDoCaso, type Mudanca, type Passo, type Sala,
 } from "@/lib/centro-cirurgico";
 import type { Anestesista } from "./mapa-cirurgico";
@@ -175,6 +175,18 @@ export function JanelaDoCaso({
               ? `De plantão${form.horario ? ` às ${form.horario}` : " no dia"}: ${plantao.map(nome).filter(Boolean).join(", ")}.`
               : "Ninguém na escala neste horário."}
           </small></label>
+        {TIPO_DE_ANESTESIA_NO_MAPA && (
+          <label className="clinicalField"><span>Anestesia</span>
+            <select value={form.tipo_anestesia} onChange={(e) => mudar("tipo_anestesia", e.target.value)}>
+              <option value="">A definir</option>
+              {TIPOS_DE_ANESTESIA.map((t) => <option key={t.valor} value={t.valor}>{t.nome}</option>)}
+            </select>
+            <small className={estilos.dica}>
+              {form.tipo_anestesia === "local"
+                ? "Local é do cirurgião: fica no mapa e não conta nos atos de anestesia. Se pedir sedação, troque para “Local + sedação”."
+                : "Local + sedação conta como ato de anestesia; local sozinha, não."}
+            </small></label>
+        )}
         <label className="clinicalField"><span>Quarto / leito</span>
           <input value={form.leito} onChange={(e) => mudar("leito", e.target.value)} maxLength={40} placeholder="Ex.: 9/3, Suíte 2" /></label>
         <label className={`clinicalField ${estilos.campoLargo}`}><span>Observações</span>

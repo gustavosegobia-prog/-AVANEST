@@ -128,7 +128,13 @@ export function MapaDoDia({ institutionId, local, casos, filtrado = false, lerHo
       <span className="fcDiaQuem">
         <span className="fcDiaNome"><strong>{c.paciente}</strong>{sobre && <span>{sobre}</span>}</span>
         {cirurgia && <span className="fcDiaCirurgia">{cirurgia}</span>}
-        {!c.meu && c.anestesista && <span className="fcDiaAnest">Anestesista do mapa: {c.anestesista}</span>}
+        {c.soLocal ? (
+          <span className="fcDiaAnest"><span className="fcDiaLocal">Local</span> anestesia do cirurgião; abra se pedirem sedação</span>
+        ) : (c.anestesista || c.anestesia) ? (
+          <span className="fcDiaAnest">
+            {[!c.meu && c.anestesista && `Anestesista do mapa: ${c.anestesista}`, c.anestesia && `Anestesia: ${c.anestesia}`].filter(Boolean).join(" · ")}
+          </span>
+        ) : null}
         {c.ficha ? null : p ? (
           <>
             {p.nome !== c.paciente || idadeDoCadastro(p) ? (

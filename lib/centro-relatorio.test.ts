@@ -93,13 +93,34 @@ test("a planilha: uma linha por paciente, cancelado no dia dele, minutos como n�
   const p = planilhaDoRelatorio(r);
   assert.equal(p[0][0], "Data");
   assert.equal(p.length, 1 + 4 + 1);
-  assert.deepEqual(p.slice(1).map((l) => [l[0], l[3], l[11], l[13], l[15]]), [
+  // A coluna "Anestesia" (07/11/2026) vem logo depois de "Anestesista".
+  assert.equal(p[0][9], "Anestesia");
+  assert.deepEqual(p.slice(1).map((l) => [l[0], l[3], l[12], l[14], l[16]]), [
     ["01/10/2026", "Paciente a", 60, 40, "Feita"],
     ["01/10/2026", "Paciente b", 120, "", "Feita"],
     ["02/10/2026", "Paciente c", "", "", "Feita, sem horário de saída da sala"],
     ["02/10/2026", "Paciente d", 30, "", "Feita, sem horário de alta da RPA"],
     ["03/10/2026", "Paciente e", "", "", "Cancelada: Paciente sem jejum"],
   ]);
-  assert.deepEqual([p[1][9], p[1][10], p[1][12], p[1][14]], ["07:30", "08:30", "09:10", "Quarto / enfermaria"]);
-  assert.equal(p[2][14], "UTI");
+  assert.deepEqual([p[1][10], p[1][11], p[1][13], p[1][15]], ["07:30", "08:30", "09:10", "Quarto / enfermaria"]);
+  assert.equal(p[2][15], "UTI");
+});
+
+test("relatório do mês: a cirurgia só com anestesia local fica nos tempos de sala e sai dos atos de anestesia", () => {
+  const casos: Caso[] = [
+    caso("g", "2026-10-05", { sala_id: "s1", convenio: "SUS", anestesista_id: "an1", tipo_anestesia: "geral", etapa: "concluido",
+      entrada_sala_em: t("2026-10-05", "08:00"), saida_sala_em: t("2026-10-05", "09:00"), alta_rpa_em: t("2026-10-05", "09:30") }),
+    caso("l", "2026-10-05", { sala_id: "s1", convenio: "SUS", tipo_anestesia: "local", etapa: "concluido",
+      entrada_sala_em: t("2026-10-05", "10:00"), saida_sala_em: t("2026-10-05", "10:20"), alta_rpa_em: t("2026-10-05", "10:25") }),
+    caso("s", "2026-10-05", { sala_id: "s1", convenio: "Unimed", anestesista_id: "an1", tipo_anestesia: "local_sedacao", etapa: "concluido",
+      entrada_sala_em: t("2026-10-05", "11:00"), saida_sala_em: t("2026-10-05", "11:30"), alta_rpa_em: t("2026-10-05", "11:40") }),
+  ];
+  const rel = relatorioDoMes({ mes: "2026-10", hoje: "2026-10-31", casos, salas: SALAS, nomeDoAnestesista: () => "Dra. Fictícia" });
+  assert.equal(rel.feitas, 3, "a local continua entre as cirurgias do centro");
+  assert.equal(rel.emSala.n, 3, "e nos tempos de sala");
+  assert.equal(rel.soLocal, 1);
+  assert.deepEqual(rel.porAnestesista, [{ nome: "Dra. Fictícia", n: 2 }], "local + sedação conta; local sozinha, não");
+  assert.deepEqual(rel.porConvenio.map((c) => [c.convenio, c.atos]), [["SUS", 1], ["Unimed", 1]]);
+  const planilha = planilhaDoRelatorio(rel);
+  assert.deepEqual(planilha.slice(1).map((l) => l[9]), ["Geral", "Local", "Local + sedação"]);
 });

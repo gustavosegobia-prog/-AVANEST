@@ -12,11 +12,12 @@
 // Tudo aqui é puro: a leitura do arquivo mora em centro-importar-arquivo.ts.
 
 import { CONVENIOS } from "./convenios.ts";
-import { idadeNaData } from "./centro-cirurgico.ts";
+import { idadeNaData, tipoDeAnestesiaDoTexto, type TipoDeAnestesia } from "./centro-cirurgico.ts";
 
 export type Palavra = { t: string; x0: number; x1: number; y0: number; y1: number };
 
-export type Campo = "numero" | "hora" | "paciente" | "idade" | "nascimento" | "convenio" | "cirurgiao" | "sala" | "procedimento" | "leito";
+export type Campo = "numero" | "hora" | "paciente" | "idade" | "nascimento" | "convenio" | "cirurgiao" | "sala" | "procedimento" | "leito"
+  | "anestesia";
 
 /** "Convênio" → "convenio": sem acento, minúsculo, sem espaço sobrando. */
 export const normalizar = (s: string) =>
@@ -34,6 +35,10 @@ const TITULOS: Array<[Campo, RegExp]> = [
   ["sala", /^sala$/],
   ["procedimento", /^(procedimento|cirurgia|procedimentos)$/],
   ["leito", /^(observacao|observacoes|obs|leito|quarto|quarto\/leito|acomodacao)$/],
+  // O tipo de anestesia (07/11/2026). Só o título exato: "ANESTESISTA" é a
+  // coluna de quem faz, e não pode virar a do tipo — por isso fica fora da
+  // comparação tolerante da foto.
+  ["anestesia", /^(anestesia|tipo de anestesia|tipo anestesia|tipo de anest|tipo anest|anest|tecnica|tecnica anestesica)$/],
 ];
 
 /** As palavras de cada título, para a comparação tolerante da leitura de foto. */
@@ -263,7 +268,7 @@ export function gradeDePalavras(palavras: Palavra[]): string[][] | null {
 
 const TITULO_PADRAO: Record<Campo, string> = {
   numero: "#", hora: "HORA", paciente: "PACIENTE", idade: "IDADE", nascimento: "NASCIMENTO", convenio: "CONVENIO",
-  cirurgiao: "MEDICO", sala: "SALA", procedimento: "PROCEDIMENTO", leito: "OBSERVACAO",
+  cirurgiao: "MEDICO", sala: "SALA", procedimento: "PROCEDIMENTO", leito: "OBSERVACAO", anestesia: "ANESTESIA",
 };
 
 // ---------------------------------------------------------------------------
@@ -282,6 +287,8 @@ export type LinhaImportada = {
   sala: string | null;
   procedimento: string;
   leito: string | null;
+  /** O tipo de anestesia da coluna do mapa, quando há e se reconhece. */
+  anestesia: TipoDeAnestesia | null;
 };
 
 export type MapaImportado = {
@@ -454,6 +461,7 @@ export function lerMapa(grade: string[][], hoje: string = new Date().toISOString
       sala: nomeDaSala(celula(linha, "sala")),
       procedimento: procedimento.replace(/\s+/g, " "),
       leito: texto("leito"),
+      anestesia: tipoDeAnestesiaDoTexto(celula(linha, "anestesia")),
     });
   });
   return { data: dataDoTexto(titulo), anestesista: anestesistaDoTitulo(titulo), linhas, ignoradas };

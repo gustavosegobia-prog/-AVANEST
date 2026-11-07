@@ -22,6 +22,69 @@ export type Destino = "quarto" | "uti" | "casa" | "outro";
 export type Sala = { id: string; nome: string; ordem: number; ativa: boolean };
 
 // ---------------------------------------------------------------------------
+// O tipo de anestesia no mapa (07/11/2026)
+//
+// "Tem muita anestesia que é local, que a gente não faz. Pode aparecer lá
+// local, porém não vai contar na nossa produção. Tem que aparecer porque às
+// vezes pede sedação." A anestesia local é do cirurgião: o paciente continua
+// no mapa (a enfermagem precisa dele, e o anestesista vê quem pode pedir
+// sedação), mas não entra nos atos de anestesia — o resumo do dia, os atos
+// por anestesista e por convênio, e as pendências de cobrança. Pedida a
+// sedação, o tipo vira "Local + sedação" e passa a contar.
+// ---------------------------------------------------------------------------
+
+export type TipoDeAnestesia = "geral" | "raqui" | "peridural" | "combinada" | "bloqueio" | "sedacao" | "local" | "local_sedacao";
+
+/** Na ordem em que aparece na escolha. */
+export const TIPOS_DE_ANESTESIA: Array<{ valor: TipoDeAnestesia; nome: string }> = [
+  { valor: "geral", nome: "Geral" },
+  { valor: "raqui", nome: "Raquianestesia" },
+  { valor: "peridural", nome: "Peridural" },
+  { valor: "combinada", nome: "Combinada" },
+  { valor: "bloqueio", nome: "Bloqueio" },
+  { valor: "sedacao", nome: "Sedação" },
+  { valor: "local_sedacao", nome: "Local + sedação" },
+  { valor: "local", nome: "Local" },
+];
+
+export const NOME_DA_ANESTESIA = Object.fromEntries(TIPOS_DE_ANESTESIA.map((t) => [t.valor, t.nome])) as Record<TipoDeAnestesia, string>;
+
+/** Só a local, sem anestesista: aparece no mapa e não conta como ato de anestesia. */
+export const soLocal = (c: { tipo_anestesia?: string | null }) => c.tipo_anestesia === "local";
+
+/**
+ * O tipo escrito no mapa do hospital ("LOCAL", "Raqui", "GERAL + BLOQ",
+ * "local c/ sedação") no tipo do sistema; o que não se reconhece fica vazio,
+ * para a enfermagem escolher — melhor vazio que um tipo inventado.
+ */
+export function tipoDeAnestesiaDoTexto(texto: string | null | undefined): TipoDeAnestesia | null {
+  const t = (texto ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  const tem = (re: RegExp) => re.test(t);
+  const local = tem(/\blocal\b|\bloc\b|infiltra/);
+  const sedacao = tem(/\bseda/);
+  if (local) return sedacao ? "local_sedacao" : "local";
+  const geral = tem(/\bgera/), raqui = tem(/\braqu|\bspinal|\braq\b/), peri = tem(/\bperi(d|\b)|\bepidu/), bloq = tem(/\bbloq/);
+  if ([geral, raqui, peri, bloq].filter(Boolean).length >= 2 || tem(/\bcombin|\bduplo/)) return "combinada";
+  if (geral) return "geral";
+  if (raqui) return "raqui";
+  if (peri) return "peridural";
+  if (bloq) return "bloqueio";
+  if (sedacao) return "sedacao";
+  return null;
+}
+
+/**
+ * LIGADO depois da migração 202611070002 (a coluna tipo_anestesia). Desligado,
+ * a tela não pede nem grava a coluna — sem ela no banco, a leitura do mapa
+ * inteiro falharia.
+ */
+export const TIPO_DE_ANESTESIA_NO_MAPA = true;
+
+export const comTipoDeAnestesia = (tipo: string | null | undefined): { tipo_anestesia?: TipoDeAnestesia | null } =>
+  (TIPO_DE_ANESTESIA_NO_MAPA ? { tipo_anestesia: (TIPOS_DE_ANESTESIA.some((x) => x.valor === tipo) ? tipo as TipoDeAnestesia : null) } : {});
+
+// ---------------------------------------------------------------------------
 // O hospital do mapa (202611060001)
 //
 // O mapa é de um hospital: o escolhido em "Onde você vai atender hoje?", o
@@ -97,6 +160,8 @@ export type Caso = {
   /** Quarto e leito para onde volta ("9/3", "Suíte 2"). */
   leito?: string | null;
   observacoes: string | null;
+  /** O tipo de anestesia (202611070002); "local" não conta como ato de anestesia. */
+  tipo_anestesia?: TipoDeAnestesia | null;
   created_at?: string;
 };
 
@@ -105,7 +170,9 @@ export const CAMPOS_DO_CASO =
   "id, data, sala_id, ordem, horario, paciente, idade, prontuario, procedimento, cirurgiao, convenio, anestesista_id, etapa, destino, "
   + "entrada_sala_em, inicio_cirurgia_em, fim_cirurgia_em, saida_sala_em, alta_rpa_em, aldrete_alta, cancelado_motivo, leito, observacoes, created_at"
   // A data de nascimento só existe depois da migração 202611060001.
-  + (MAPA_POR_HOSPITAL ? ", data_nascimento" : "");
+  + (MAPA_POR_HOSPITAL ? ", data_nascimento" : "")
+  // E o tipo de anestesia, depois da 202611070002.
+  + (TIPO_DE_ANESTESIA_NO_MAPA ? ", tipo_anestesia" : "");
 
 export const NOME_DA_ETAPA: Record<Etapa, string> = {
   agendado: "Agendado",
@@ -307,11 +374,13 @@ export type FormDoCaso = {
   nascimento: string;
   prontuario: string; procedimento: string; cirurgiao: string; convenio: string;
   anestesista_id: string; leito: string; observacoes: string;
+  /** Um de TIPOS_DE_ANESTESIA, ou vazio. */
+  tipo_anestesia: string;
 };
 
 export const formVazio = (data: string, sala_id = ""): FormDoCaso => ({
   data, sala_id, horario: "", paciente: "", idade: "", nascimento: "", prontuario: "", procedimento: "",
-  cirurgiao: "", convenio: "", anestesista_id: "", leito: "", observacoes: "",
+  cirurgiao: "", convenio: "", anestesista_id: "", leito: "", observacoes: "", tipo_anestesia: "",
 });
 
 export function formDoCaso(c: Caso): FormDoCaso {
@@ -320,6 +389,7 @@ export function formDoCaso(c: Caso): FormDoCaso {
     idade: c.idade == null ? "" : String(c.idade), nascimento: c.data_nascimento ?? "", prontuario: c.prontuario ?? "",
     procedimento: c.procedimento, cirurgiao: c.cirurgiao ?? "", convenio: c.convenio ?? "",
     anestesista_id: c.anestesista_id ?? "", leito: c.leito ?? "", observacoes: c.observacoes ?? "",
+    tipo_anestesia: c.tipo_anestesia ?? "",
   };
 }
 
@@ -355,6 +425,7 @@ export function linhaDoForm(f: FormDoCaso):
       paciente: limpo(f.paciente), idade, ...comNascimento(f.nascimento), prontuario: ouNulo(f.prontuario),
       procedimento: limpo(f.procedimento), cirurgiao: ouNulo(f.cirurgiao), convenio: ouNulo(f.convenio),
       anestesista_id: f.anestesista_id || null, leito: ouNulo(f.leito), observacoes: ouNulo(f.observacoes),
+      ...comTipoDeAnestesia(f.tipo_anestesia),
     },
   };
 }
@@ -471,6 +542,9 @@ export function contagemPorEtapa(casos: Caso[]): Record<Etapa, number> {
 /** Ato que aconteceu: o paciente entrou em sala e não foi cancelado. */
 export const aconteceu = (c: Caso) => c.etapa !== "cancelado" && (c.etapa !== "agendado" || Boolean(c.entrada_sala_em));
 
+/** Ato de anestesia: aconteceu e não foi só anestesia local (do cirurgião). */
+export const atoDeAnestesia = (c: Caso) => aconteceu(c) && !soLocal(c);
+
 export type LinhaDoResumo = { anestesistaId: string | null; nome: string; atos: Caso[]; porConvenio: Array<{ convenio: string; atos: number }> };
 
 export type ResumoDoDia = {
@@ -509,7 +583,8 @@ export function contarConvenios(casos: Caso[]) {
  * anestesista não tem de quem cobrar, ato sem convênio não tem para quem.
  */
 export function resumoDoDia(casos: Caso[], nomeDe: (id: string) => string | undefined): ResumoDoDia {
-  const feitos = ordenarCasos(casos.filter(aconteceu));
+  // A anestesia local não é ato de anestesia: fica no mapa e fora da conta.
+  const feitos = ordenarCasos(casos.filter(atoDeAnestesia));
   const grupos = new Map<string, Caso[]>();
   for (const c of feitos) {
     const k = c.anestesista_id ?? "";

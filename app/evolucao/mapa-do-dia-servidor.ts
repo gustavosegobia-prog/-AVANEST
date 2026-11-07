@@ -17,7 +17,9 @@
 import type { createClient } from "@/utils/supabase/server";
 import { dataLocal, hoje as hojeLocal } from "@/lib/data-local";
 import { apelidosDaEquipe } from "@/lib/escala";
-import { MAPA_POR_HOSPITAL, doHospital } from "@/lib/centro-cirurgico";
+import {
+  MAPA_POR_HOSPITAL, NOME_DA_ANESTESIA, TIPO_DE_ANESTESIA_NO_MAPA, doHospital, soLocal, type TipoDeAnestesia,
+} from "@/lib/centro-cirurgico";
 import { fichasDoLocal } from "@/lib/evolucao/local";
 import {
   comparacaoDoParecido, fichaDeHoje, ordenarMapaDaFicha, principalDoCaso, semRepetirOMapaDaCasa,
@@ -30,6 +32,7 @@ type LinhaDoMapa = {
   id: string; data: string; horario: string | null; ordem: number | null; paciente: string; idade: number | null;
   data_nascimento: string | null; procedimento: string | null; cirurgiao: string | null; convenio: string | null; anestesista_id: string | null;
   etapa: EtapaDoMapa; patient_id: string | null; evolucao_id: string | null;
+  tipo_anestesia?: TipoDeAnestesia | null;
   sala: { nome?: string } | Array<{ nome?: string }> | null;
   /** O nome do hospital, quando a linha vem do mapa dele (mapa_compartilhado_do_dia). */
   doHospital?: string;
@@ -55,7 +58,8 @@ export async function mapaDoDiaNaFicha(supabase: Supabase, o: {
   const dia = hojeLocal();
   try {
     let consulta = supabase.from("centro_casos")
-      .select("id, data, horario, ordem, paciente, idade, data_nascimento, procedimento, cirurgiao, convenio, anestesista_id, etapa, patient_id, evolucao_id, sala:centro_salas(nome)")
+      .select("id, data, horario, ordem, paciente, idade, data_nascimento, procedimento, cirurgiao, convenio, anestesista_id, etapa, patient_id, evolucao_id, "
+        + (TIPO_DE_ANESTESIA_NO_MAPA ? "tipo_anestesia, " : "") + "sala:centro_salas(nome)")
       .eq("institution_id", o.institutionId).eq("data", dia).neq("etapa", "cancelado");
     if (o.local) consulta = consulta.or(doHospital(o.local.id));
     const [daCasa, doMapaDoHospital] = await Promise.all([
@@ -137,6 +141,7 @@ export async function mapaDoDiaNaFicha(supabase: Supabase, o: {
           ? { id: l.evolucao_id, status: statusDa.get(l.evolucao_id) === "encerrada" ? "encerrada" : "aberta" }
           : null,
         ...(l.doHospital ? { doHospital: l.doHospital } : {}),
+        ...(l.tipo_anestesia ? { anestesia: NOME_DA_ANESTESIA[l.tipo_anestesia] ?? "", soLocal: soLocal(l) } : {}),
       };
       const candidatos = l.patient_id
         ? [cadastroPorId.get(l.patient_id)].filter((c): c is Cadastro => Boolean(c))

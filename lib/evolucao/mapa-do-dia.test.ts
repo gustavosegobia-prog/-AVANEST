@@ -256,3 +256,15 @@ test("mapa do hospital: a ficha lê o mapa do hospital junto, e a linha dele nã
   assert.match(tela, /if \(casos\.find\(\(c\) => c\.id === casoId\)\?\.doHospital\) return;/);
   assert.match(tela, /Do mapa do centro cirúrgico: /);
 });
+
+test("mapa na ficha: a anestesia local (do cirurgião) vai para o fim da lista, sem sumir", () => {
+  const lista = ordenarMapaDaFicha([
+    caso({ id: "l", ordem: 1, soLocal: true, anestesia: "Local" }),
+    caso({ id: "g", ordem: 2, anestesia: "Geral" }),
+    caso({ id: "s", ordem: 3, anestesia: "Local + sedação" }),
+  ]);
+  assert.deepEqual(lista.map((c) => c.id), ["g", "s", "l"]);
+  const tela = ler("app/evolucao/mapa-do-dia.tsx");
+  assert.match(tela, /<span className="fcDiaLocal">Local<\/span> anestesia do cirurgião; abra se pedirem sedação/);
+  assert.match(ler("app/evolucao/mapa-do-dia-servidor.ts"), /anestesia: NOME_DA_ANESTESIA\[l\.tipo_anestesia\] \?\? "", soLocal: soLocal\(l\)/);
+});

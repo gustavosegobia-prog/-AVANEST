@@ -64,6 +64,10 @@ export type CasoDoMapaNaFicha = {
    * Essa linha é só leitura: nada volta para o mapa do hospital.
    */
   doHospital?: string;
+  /** O tipo de anestesia do mapa, por extenso ("Geral", "Local + sedação"). */
+  anestesia?: string;
+  /** Só anestesia local, do cirurgião: fica na lista, no fim, para o caso de pedirem sedação. */
+  soLocal?: boolean;
 };
 
 /**
@@ -113,7 +117,9 @@ const minutos = (h: string | null) => {
  * quem vem antes dele na mesma ordem do papel. Cancelados não chegam aqui.
  */
 export function ordenarMapaDaFicha<T extends CasoDoMapaNaFicha>(casos: T[]): T[] {
-  const chave = (c: CasoDoMapaNaFicha) => [c.meu ? 0 : 1, c.ordem ?? Number.MAX_SAFE_INTEGER, minutos(c.horario) ?? 24 * 60] as const;
+  // A anestesia local (do cirurgião) vai para o fim: está no mapa, mas raramente é do anestesista.
+  const chave = (c: CasoDoMapaNaFicha) =>
+    [c.meu ? 0 : 1, c.soLocal ? 1 : 0, c.ordem ?? Number.MAX_SAFE_INTEGER, minutos(c.horario) ?? 24 * 60] as const;
   return casos
     .filter((c) => c.etapa !== "cancelado")
     .sort((a, b) => {
