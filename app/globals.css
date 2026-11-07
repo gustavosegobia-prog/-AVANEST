@@ -2978,6 +2978,21 @@ button:disabled{cursor:not-allowed}
 .localAtivoBadge:hover{background:var(--cor-superficie-suave)}
 .localAtivoBadge strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(34vw,300px)}
 .localSeta{color:var(--cor-tinta-fraca);font-size:11px}
+/* A lista de locais abre logo abaixo do selo (07/11/2026), no desenho do menu
+   da conta. Cada hospital em duas linhas: o nome e a cidade. */
+.localTroca{position:relative;display:flex;align-items:center;min-width:0}
+button.localAtivoBadge{border:0;background:none;font:inherit;cursor:pointer;text-align:left}
+.localTrocaLista{left:12px;right:auto;min-width:280px;max-width:min(92vw,380px);max-height:min(70vh,520px);overflow:auto}
+.localTrocaLista button[role=menuitemradio]{height:auto;min-height:48px;padding:7px var(--esp-3);justify-content:space-between}
+.localTrocaLista button[role=menuitemradio]:disabled{cursor:progress;opacity:.7}
+.localTrocaNome{display:grid;gap:1px;min-width:0}
+.localTrocaNome strong{font-size:14px;font-weight:650;color:var(--cor-tinta-forte);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.localTrocaNome small{font-size:12.5px;font-weight:500;color:var(--cor-tinta-fraca)}
+.localTrocaLista button.atual{background:var(--cor-marca-suave)}
+.localTrocaLista button.atual .localTrocaNome strong{color:var(--cor-marca-forte)}
+.localTrocaMarca{flex:none;color:var(--cor-marca-forte);font-size:12.5px;font-weight:650}
+.localTrocaLista .localTrocaMarca{color:var(--cor-marca-forte)}
+.localTrocaErro{margin:6px var(--esp-3) 2px;font-size:13px;font-weight:600;color:var(--cor-perigo-forte)}
 
 /* --- A barra do topo em duas linhas -------------------------------------
    A barra tem QUATRO filhos: marca, local, abas e o canto do usuário (sino e
@@ -7860,6 +7875,13 @@ button.evoPFAsaN:disabled{cursor:default}
 .fcAtalho.ativo{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
 .fcAtalho.ativo svg{color:currentColor}
 .fcIniciarPara{margin-top:10px;min-height:48px}
+/* Botão e link na mesma letra: `.evoInicio button{font:inherit}` vencia a
+   regra do atalho nos botões, e o link (Mapa cirúrgico) saía diferente. */
+.fcAtalhos .fcAtalho{font-size:15px;font-weight:600;line-height:1.2}
+a.fcAtalho{text-decoration:none}
+.fcAtalho:disabled{cursor:progress;opacity:.7}
+.fcAtalhoErro{flex-basis:100%;margin:2px 2px 0}
+.fcAvisoMapa{margin:10px 2px 0;font-size:14px;font-weight:600;color:var(--cor-sucesso)}
 @media (max-width:760px){
   .fcResultados{margin:14px -16px -16px}
   .fcGrupoTitulo{padding:14px 16px 8px}

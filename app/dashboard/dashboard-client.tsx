@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { guardarTemaEscuro, temaEscuroGuardado } from "@/lib/tema";
 import { createClient } from "@/utils/supabase/client";
+import { TrocaDeLocal } from "@/components/troca-de-local";
 import { BrandMark, NomeDaMarca } from "@/components/brand-mark";
 import { useCaptcha } from "@/components/turnstile";
 import { Icone, type NomeDoIcone } from "@/components/icone";
@@ -820,7 +821,10 @@ export function DashboardClient({
             hospitais precisa saber em qual está antes de imprimir a primeira
             ficha, e o nome da organização é o mesmo nos três. Sem local
             cadastrado, o cabeçalho segue como sempre foi. */}
-        {localAtivo ? (
+        {localAtivo && totalDeLocais > 1 ? (
+          // Mais de um hospital: a lista abre aqui mesmo, logo abaixo (07/11/2026).
+          <TrocaDeLocal ativo={localAtivo} locais={locais} />
+        ) : localAtivo ? (
           <Link
             className="orgBadge localAtivoBadge"
             href="/locais?trocar=1"

@@ -130,7 +130,17 @@ export function AreaMedica({
     ? (id: string, nome: string) => { setErroAoExcluir(""); setAvisoDaAcao(""); setErroDaAcao(""); setCancelarJunto(false); setAExcluir({ id, nome }); }
     : undefined;
   async function cancelarConsulta(id: string): Promise<string | null> {
-    const { error } = await createClient().rpc("registrar_presenca", { p_agendamento_id: id, p_status: "cancelado" });
+    const sb = createClient();
+    // Chegou e não vai ser avaliado (a pendência "chegou sem avaliação" é onde
+    // este botão aparece): o banco só cancela depois de desfazer a chegada
+    // (transicao_de_agendamento_valida). Recusava sempre, com "desfaça a
+    // chegada antes" — sem lugar para desfazer nesta tela (07/11/2026). Os
+    // dois passos, nessa ordem, como faria a recepção.
+    if (agendamentos.find((c) => c.id === id)?.status === "presente") {
+      const desfeita = await sb.rpc("registrar_presenca", { p_agendamento_id: id, p_status: "agendado" });
+      if (desfeita.error) return desfeita.error.message;
+    }
+    const { error } = await sb.rpc("registrar_presenca", { p_agendamento_id: id, p_status: "cancelado" });
     if (error) return error.message;
     setCanceladas((s) => new Set(s).add(id));
     return null;

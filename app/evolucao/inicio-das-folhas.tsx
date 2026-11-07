@@ -34,7 +34,11 @@ const dia = (iso: string) => DIA.format(new Date(iso));
 // No computador, a caixa de abrir fica à esquerda e as listas à direita.
 export function InicioDasFolhas({
   institutionId, abertas, encerradas, semBanco, agora, local = null, mapa = [], avaliadosHoje = [],
+  podeImportarMapa = false, podeVerMapa = false,
 }: {
+  /** Quem monta o mapa importa de dentro da ficha; quem vê tem o atalho para ele. */
+  podeImportarMapa?: boolean;
+  podeVerMapa?: boolean;
   /** O mapa cirúrgico de hoje, do hospital da sessão, com o cadastro de cada paciente já procurado. */
   mapa?: CasoComCadastro[];
   /** Os avaliados hoje que ainda não têm ficha: a lista do dia de quem não tem mapa. */
@@ -101,7 +105,8 @@ export function InicioDasFolhas({
             )}
 
             <div className="fcPrincipal">
-              <NovaFolha institutionId={institutionId} local={local} mapa={mapa} avaliadosHoje={avaliadosHoje} />
+              <NovaFolha institutionId={institutionId} local={local} mapa={mapa} avaliadosHoje={avaliadosHoje}
+                podeImportarMapa={podeImportarMapa} podeVerMapa={podeVerMapa} />
             </div>
 
             {encerradas.length > 0 && (

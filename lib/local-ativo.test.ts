@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { decidirLocalDaSessao, localAindaVale, nomeDoLocal, type LocalDisponivel } from "./local-ativo.ts";
 
 const local = (id: string, extra: Partial<LocalDisponivel> = {}): LocalDisponivel => ({
@@ -294,4 +295,18 @@ test("a pergunta continua sendo o padrão", () => {
   // Omitir a opção não pode desligar a escolha do anestesiologista.
   const r = decidirLocalDaSessao(undefined, [local("a"), local("b")]);
   assert.equal(r.precisaEscolher, true);
+});
+
+test("trocar de local pela barra: a lista abre ali, pela mesma porta da tela de locais (07/11/2026)", () => {
+  const ler = (c: string) => fs.readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+  const painel = ler("app/dashboard/dashboard-client.tsx");
+  // Com mais de um hospital, o selo abre a lista logo abaixo, sem ir à tela de locais.
+  assert.match(painel, /\{localAtivo && totalDeLocais > 1 \? \(\s*(\/\/[^\n]*\n\s*)?<TrocaDeLocal ativo=\{localAtivo\} locais=\{locais\} \/>/);
+  const troca = ler("components/troca-de-local.tsx");
+  // A escolha passa por /api/local, que confere no banco se o local é da pessoa.
+  assert.match(troca, /fetch\("\/api\/local", \{\s*method: "POST"/);
+  assert.match(troca, /router\.refresh\(\);/);
+  assert.match(troca, /href="\/locais\?trocar=1"/, "a tela inteira continua no fim da lista");
+  // E o painel nasce de novo com o hospital novo: nenhuma lista do anterior fica na tela.
+  assert.match(ler("app/dashboard/page.tsx"), /key=\{localAtivo\?\.id \?\? "sem-local"\}/);
 });

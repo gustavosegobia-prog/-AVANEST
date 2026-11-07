@@ -45,7 +45,7 @@ test("entrada: em andamento primeiro, depois abrir e as encerradas; o mapa e os 
   const inicio = ler("app/evolucao/inicio-das-folhas.tsx");
   const [andamento, abrir, encerradas] = ["fcAndamento", "<NovaFolha", "fcEncerradas"].map((x) => inicio.indexOf(x));
   assert.ok(andamento > 0 && andamento < abrir && abrir < encerradas, "a ordem da pressa, também a do teclado");
-  assert.match(inicio, /<NovaFolha institutionId=\{institutionId\} local=\{local\} mapa=\{mapa\} avaliadosHoje=\{avaliadosHoje\} \/>/);
+  assert.match(inicio, /<NovaFolha institutionId=\{institutionId\} local=\{local\} mapa=\{mapa\} avaliadosHoje=\{avaliadosHoje\}\s+podeImportarMapa=\{podeImportarMapa\} podeVerMapa=\{podeVerMapa\} \/>/);
   const nova = ler("app/evolucao/nova-folha.tsx");
   assert.match(nova, /<MapaDoDia[\s\S]*casos=\{doMapa\}/);
   assert.match(nova, /Avaliados hoje/);
@@ -54,4 +54,20 @@ test("entrada: em andamento primeiro, depois abrir e as encerradas; o mapa e os 
   assert.match(mapa, /const p = c\.ficha \? null : c\.principal;/);
   assert.match(mapa, /if \(p\) void abrirCom\(c, p\);\s*else if \(c\.sugestoes\.length\) setEscolhendo/);
   assert.match(mapa, /Não é este paciente/);
+});
+
+test("entrada: o mapa cirúrgico de dentro da ficha — importar daqui e o atalho para a tela do mapa", () => {
+  const pagina = ler("app/evolucao/page.tsx");
+  // As mesmas perguntas da tela do centro cirúrgico: quem monta importa; quem vê tem o atalho.
+  assert.match(pagina, /rpc\("pode_montar_centro"/);
+  assert.match(pagina, /rpc\("pode_ver_centro"/);
+  assert.match(pagina, /podeImportarMapa=\{MAPA_POR_HOSPITAL && podeMontarMapa\}/);
+  const nova = ler("app/evolucao/nova-folha.tsx");
+  assert.match(nova, /\{podeImportarMapa && \(\s*<ImportarMapaNaFicha institutionId=\{institutionId\} localId=\{local\?\.id \?\? null\}/);
+  assert.match(nova, /\{podeVerMapa && \(\s*<Link href="\/centro-cirurgico"/);
+  assert.match(nova, /router\.refresh\(\);/, "depois de importar, o mapa de hoje aparece sem sair da ficha");
+  const importar = ler("app/evolucao/importar-mapa.tsx");
+  // A mesma janela da tela do centro, no hospital da sessão; salas, equipe e escala só no toque.
+  assert.match(importar, /<JanelaDeImportar\s+institutionId=\{institutionId\} localId=\{localId\}/);
+  assert.match(importar, /async function abrir\(\)[\s\S]*from\("centro_salas"\)[\s\S]*from\("perfis"\)[\s\S]*from\("plantoes"\)/);
 });

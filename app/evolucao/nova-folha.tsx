@@ -10,6 +10,7 @@ import { casaComONome, type PacienteAchado } from "@/lib/evolucao/entrada";
 import type { CasoComCadastro } from "@/lib/evolucao/mapa-do-dia";
 import { abrirFicha } from "./abrir-ficha";
 import { MapaDoDia } from "./mapa-do-dia";
+import { ImportarMapaNaFicha } from "./importar-mapa";
 import { horarioDaFicha } from "@/lib/evolucao/folha";
 import { dataLocal, horaLocal } from "@/lib/data-local";
 
@@ -34,7 +35,7 @@ function quemE(p: Achado) {
 // A ficha nasce com a avaliação pré-anestésica mais recente do paciente no
 // topo; a linha já diz, antes do toque, se essa avaliação existe — e, se o
 // paciente já tem ficha aberta, leva a ela em vez de abrir uma segunda.
-export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoje = [] }: {
+export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoje = [], podeImportarMapa = false, podeVerMapa = false }: {
   institutionId: string;
   /** O hospital da sessão: a ficha nova nasce nele (e só aparece na lista dele). */
   local?: { id: string; nome: string } | null;
@@ -42,6 +43,10 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
   mapa?: CasoComCadastro[];
   /** Os avaliados hoje, sem ficha ainda (lib/evolucao/entrada.ts). */
   avaliadosHoje?: Achado[];
+  /** Quem monta o mapa (pode_montar_centro) importa daqui mesmo. */
+  podeImportarMapa?: boolean;
+  /** Quem vê o mapa (pode_ver_centro) tem o atalho para a tela inteira dele. */
+  podeVerMapa?: boolean;
 }) {
   const router = useRouter();
   const [busca, setBusca] = useState("");
@@ -55,6 +60,7 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
   // Agora (o padrão) ou outro dia e horário, para passar a limpo uma anestesia
   // que já aconteceu (lib/evolucao/folha.ts, horarioDaFicha).
   const [quando, setQuando] = useState<{ data: string; inicio: string; fim: string } | null>(null);
+  const [avisoDoMapa, setAvisoDoMapa] = useState("");
 
   useEffect(() => {
     const termo = busca.trim();
@@ -224,7 +230,25 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
           onClick={() => { setQuando((q) => (q ? null : { data: dataLocal(), inicio: horaLocal(), fim: "" })); setErro(""); }}>
           <Icone nome="relogio" tamanho={16} /> {quando ? "Voltar para agora" : "Outro dia ou horário"}
         </button>
+        {/* O mapa cirúrgico de dentro da ficha (07/11/2026): importar sem sair
+            daqui, e o atalho para a tela inteira do mapa (salas, TV, relatório). */}
+        {podeImportarMapa && (
+          <ImportarMapaNaFicha institutionId={institutionId} localId={local?.id ?? null}
+            aoImportar={(data, quantos) => {
+              const n = `${quantos} ${quantos === 1 ? "paciente importado" : "pacientes importados"}`;
+              setAvisoDoMapa(data === dataLocal()
+                ? `${n}. Estão em “Mapa de hoje”, logo abaixo.`
+                : `${n} para ${data.split("-").reverse().join("/")}: aparecem aqui nesse dia.`);
+              router.refresh();
+            }} />
+        )}
+        {podeVerMapa && (
+          <Link href="/centro-cirurgico" prefetch={false} className="fcAtalho">
+            <Icone nome="painel" tamanho={16} /> Mapa cirúrgico
+          </Link>
+        )}
       </div>
+      {avisoDoMapa && <p className="fcAvisoMapa" role="status">{avisoDoMapa}</p>}
 
       {quando && (
         <div className="fcQuandoCampos">

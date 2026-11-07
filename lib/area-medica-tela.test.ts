@@ -176,3 +176,19 @@ test("consulta solta depois de excluir a avaliação: cancelar junto, ou pela pe
   // (equipe_acessa_agendamentos e area_extra_edita).
   assert.match(painel, /podeCancelarConsulta=\{\["recepcao","medico","admin","owner"\]\.includes\(perfil\.role\)\|\|\(Array\.isArray\(perfil\.permissoes\)&&perfil\.permissoes\.some\(\(x\)=>x==="medico"\|\|x==="todos"\)\)\}/);
 });
+
+test("cancelar a consulta de quem chegou e não foi avaliado: desfaz a chegada e cancela, nessa ordem", async () => {
+  // O botão mora na pendência "chegou sem avaliação", e o banco recusa
+  // presente → cancelado ("desfaça a chegada antes"). Recusava sempre
+  // (07/11/2026). Os dois passos que a regra deixa:
+  const { motivoParaRecusar } = await import("./recepcao.ts");
+  const hoje = "2026-11-07";
+  assert.match(String(motivoParaRecusar("presente", "cancelado", "2026-10-23", false, hoje)), /desfaça a chegada/);
+  assert.equal(motivoParaRecusar("presente", "agendado", "2026-10-23", false, hoje), null);
+  assert.equal(motivoParaRecusar("agendado", "cancelado", "2026-10-23", false, hoje), null);
+  // Com avaliação começada, nem o primeiro passo: aí a consulta não se cancela daqui.
+  assert.match(String(motivoParaRecusar("presente", "agendado", "2026-10-23", true, hoje)), /atendimento já começou/);
+  const passos = tela.slice(tela.indexOf("async function cancelarConsulta"), tela.indexOf("async function confirmarCancelamento"));
+  assert.match(passos, /status === "presente"\) \{\s*const desfeita = await sb\.rpc\("registrar_presenca", \{ p_agendamento_id: id, p_status: "agendado" \}\);\s*if \(desfeita\.error\) return desfeita\.error\.message;/);
+  assert.ok(passos.indexOf('p_status: "agendado"') < passos.indexOf('p_status: "cancelado"'));
+});

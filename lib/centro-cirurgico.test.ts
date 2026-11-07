@@ -292,3 +292,16 @@ test("o nome e a marca d'água: o hospital escolhido na sessão vem primeiro", (
     { nome: "Hospital Sem Logo", marca: null },
   );
 });
+
+test("quem anestesia no mapa: o médico e quem atua como médico, ativos, pelo apelido", async () => {
+  const { anestesistasDaEquipe } = await import("./centro-cirurgico.ts");
+  const lista = anestesistasDaEquipe([
+    { id: "1", nome: "Zélia Fictícia Souza", role: "medico", status: "ativo", atuacao_medica: null },
+    { id: "2", nome: "Ana Teste Lima", role: "admin", status: "ativo", atuacao_medica: true },
+    { id: "3", nome: "Bruno Exemplo", role: "recepcao", status: "ativo", atuacao_medica: null },
+    { id: "4", nome: "Carla Modelo", role: "medico", status: "inativo", atuacao_medica: null },
+    { id: "5", nome: "Diego Enfermeiro", role: "centro", status: "ativo", atuacao_medica: null },
+  ]);
+  assert.deepEqual(lista.map((a) => a.id), ["2", "1"], "em ordem de apelido; recepção, centro e inativo ficam fora");
+  assert.ok(lista.every((a) => a.apelido.length > 0));
+});

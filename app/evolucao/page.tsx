@@ -5,6 +5,7 @@ import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { InicioDasFolhas, type FolhaResumo } from "./inicio-das-folhas";
 import { mapaDoDiaNaFicha } from "./mapa-do-dia-servidor";
 import { avaliadosHojeNaFicha } from "./avaliados-hoje-servidor";
+import { MAPA_POR_HOSPITAL } from "@/lib/centro-cirurgico";
 
 export const metadata: Metadata = {
   title: "Ficha anestésica | AVANEST",
@@ -40,11 +41,15 @@ export default async function FichasPage() {
     const q = supabase.from("evolucoes_anestesicas").select(CAMPOS);
     return local ? q.or(fichasDoLocal(local.id)) : q;
   };
-  const [abertas, encerradas, mapa] = await Promise.all([
+  const [abertas, encerradas, mapa, podeMontarMapa, podeVerMapa] = await Promise.all([
     tabela().eq("status", "aberta").order("inicio_em", { ascending: false }).limit(30),
     tabela().eq("status", "encerrada").order("encerrada_em", { ascending: false, nullsFirst: false }).limit(20),
     // O mapa cirúrgico de hoje deste hospital, com o cadastro e a avaliação de cada paciente (06/11/2026).
     mapaDoDiaNaFicha(supabase, { institutionId: perfil.institution_id as string, local, perfilId: perfil.id as string }),
+    // O mapa de dentro da ficha (07/11/2026): quem monta importa daqui; quem vê
+    // tem o atalho. As mesmas perguntas da tela do centro cirúrgico.
+    supabase.rpc("pode_montar_centro", { p_institution_id: perfil.institution_id }).then((r) => r.data === true, () => false),
+    supabase.rpc("pode_ver_centro", { p_institution_id: perfil.institution_id }).then((r) => r.data === true, () => false),
   ]);
   // Os avaliados hoje que ainda não têm ficha: a lista do dia de quem não tem
   // mapa (o ambulatório). Quem já está no mapa não se repete.
@@ -76,6 +81,8 @@ export default async function FichasPage() {
       local={local}
       mapa={mapa}
       avaliadosHoje={avaliadosHoje}
+      podeImportarMapa={MAPA_POR_HOSPITAL && podeMontarMapa}
+      podeVerMapa={podeVerMapa}
     />
   );
 }

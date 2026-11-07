@@ -462,10 +462,13 @@ export function ProducaoDoDia({
     });
     setSalvando(false);
     if (error) { setErro("Não foi possível salvar a anotação."); return; }
-    // Convênio e procedimento ficam: numa sala de cirurgia o caso seguinte
-    // costuma ser do mesmo convênio, e limpar tudo obrigaria a redigitar.
-    // A urgência e as marcas são de cada paciente: voltam desmarcadas.
-    setNovo({ ...novo, paciente: "", valor: "", urgencia: false, marcas: [] });
+    // O próximo paciente começa em branco, como o primeiro (07/11/2026: "não
+    // repetir o plano, a cirurgia e o nome do paciente"). Guardar o convênio
+    // e a cirurgia do anterior parecia ajuda, mas fazia o paciente seguinte
+    // nascer com os dados do outro — e o que vem pré-preenchido passa sem
+    // ser conferido.
+    setNovo(vazio);
+    setConvenioAntes("");
     setAvisoFoto("");
     void carregar();
     document.getElementById("producao-paciente")?.focus();
@@ -545,7 +548,7 @@ export function ProducaoDoDia({
                   <input
                     className="producaoConvenio" defaultValue={i.convenio} aria-label="Convênio"
                     list="producao-convenios"
-                    onFocus={(e) => mostrarListaInteira(e.currentTarget, conveniosConhecidos)}
+                    onFocus={(e) => mostrarListaInteira(e.currentTarget)}
                     onBlur={(e) => {
                       const v = grafiaConhecida(e.target.value.trim() || e.target.dataset.antes || "", conveniosConhecidos);
                       delete e.target.dataset.antes;
@@ -619,7 +622,7 @@ export function ProducaoDoDia({
           className="producaoConvenio" value={novo.convenio} list="producao-convenios"
           placeholder={convenioAntes || "Convênio"} aria-label="Convênio"
           onFocus={() => {
-            if (!ehConhecido(novo.convenio, conveniosConhecidos)) return;
+            if (!novo.convenio.trim()) return;
             setConvenioAntes(novo.convenio);
             setNovo((n) => ({ ...n, convenio: "" }));
           }}
@@ -1536,20 +1539,19 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
   );
 }
 
-/** O convênio escrito é um dos da lista (sem diferença de maiúsculas)? */
-function ehConhecido(valor: string, conhecidos: string[]) {
-  const v = valor.trim().toLowerCase();
-  return Boolean(v) && conhecidos.some((c) => c.toLowerCase() === v);
-}
-
 /**
- * Para os campos de convênio já anotados (sem estado no React): ao entrar com
- * um convênio da lista, ele vai para a dica cinza e o valor fica vazio, para a
- * seta mostrar a lista inteira. O onBlur de cada campo devolve o anterior
- * quando nada foi escolhido.
+ * Para os campos de convênio já anotados (sem estado no React): ao entrar, o
+ * convênio escrito vai para a dica cinza e o valor fica vazio, para a seta
+ * mostrar a lista inteira. O onBlur de cada campo devolve o anterior quando
+ * nada foi escolhido nem digitado.
+ *
+ * Com QUALQUER convênio escrito, e não só com os da lista (07/11/2026, vídeo
+ * da seta parada em "UNIMED INTERCAMBIO"): o digitado à mão, fora da lista,
+ * deixava o navegador filtrar por ele, sem achar nenhum — e a seta não abria
+ * nada.
  */
-function mostrarListaInteira(campo: HTMLInputElement, conhecidos: string[]) {
-  if (!ehConhecido(campo.value, conhecidos)) return;
+function mostrarListaInteira(campo: HTMLInputElement) {
+  if (!campo.value.trim()) return;
   campo.dataset.antes = campo.value;
   campo.placeholder = campo.value;
   campo.value = "";

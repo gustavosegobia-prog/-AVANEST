@@ -12,6 +12,7 @@
 
 import { ALDRETE, somaAldrete } from "./evolucao/lista-da-folha.ts";
 import { nomeDoLocal } from "./local-ativo.ts";
+import { apelidosDaEquipe } from "./escala.ts";
 
 export { ALDRETE, somaAldrete };
 
@@ -668,4 +669,19 @@ export function casaDoCentro({ local, organizacao, locais, superAdmin }: {
   const marcaDaOrganizacao = daOrganizacao ? marcaDaCasa(organizacao, locais) : null;
   if (local) return { nome: nomeDoLocal(local), marca: local.logo_url ?? marcaDaOrganizacao };
   return daOrganizacao ? { nome: organizacao, marca: marcaDaOrganizacao } : { nome: "", marca: null };
+}
+
+/**
+ * Quem anestesia, para escolher no mapa: o médico da casa e quem atua como
+ * médico, ativos, pelo apelido da escala. Recepção e enfermagem ficam fora.
+ * O mesmo na tela do centro cirúrgico e na importação de dentro da ficha.
+ */
+export function anestesistasDaEquipe(
+  pessoas: Array<{ id: string; nome: string; role: string; status: string; atuacao_medica: boolean | null }>,
+): Array<{ id: string; nome: string; apelido: string }> {
+  const medicos = pessoas.filter((p) => p.status === "ativo" && (p.role === "medico" || p.atuacao_medica === true));
+  const apelidos = apelidosDaEquipe(medicos);
+  return medicos
+    .map((p) => ({ id: p.id, nome: p.nome, apelido: apelidos.get(p.id) ?? p.nome }))
+    .sort((a, b) => a.apelido.localeCompare(b.apelido, "pt-BR"));
 }
