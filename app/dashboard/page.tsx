@@ -470,6 +470,10 @@ export default async function DashboardPage({
 
   return (
     <DashboardClient
+      // Trocou de hospital pela lista da barra (components/troca-de-local.tsx):
+      // o painel inteiro nasce de novo com o local novo, como numa entrada —
+      // nenhuma tela fica com a lista do hospital anterior.
+      key={localAtivo?.id ?? "sem-local"}
       perfil={perfil}
       // Quando este pacote foi montado: o painel sabe se o que mostra veio
       // da pré-carga (e confere com o servidor) ou acabou de chegar.
