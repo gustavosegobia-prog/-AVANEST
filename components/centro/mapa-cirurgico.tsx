@@ -244,7 +244,10 @@ export function MapaCirurgico({
             <div className={estilos.quadro}
               style={{ ["--linhas" as string]: 1 + Math.max(1, ...colunas.map((c) => c.casos.length)) }}>
               {colunas.map((col) => (
-                <section key={col.sala?.id ?? "sem-sala"} className={estilos.coluna} aria-label={col.sala?.nome ?? "Sem sala"}>
+                <section key={col.sala?.id ?? "sem-sala"} className={estilos.coluna} aria-label={col.sala?.nome ?? "Sem sala"}
+                  // As linhas que ESTA sala ocupa (o cabeçalho e os pacientes dela,
+                  // ou o "Sala livre"): a caixa da sala termina aí (07/11/2026).
+                  style={{ ["--ocupadas" as string]: 1 + Math.max(1, col.casos.length) }}>
                   <header className={estilos.cabecaDaColuna}>
                     <h2>{col.sala?.nome ?? "Sem sala"}</h2>
                     <span className={estilos.quantos}>{col.casos.length || ""}</span>
