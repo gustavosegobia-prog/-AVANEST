@@ -38,7 +38,12 @@ test("a seta do convênio mostra a lista inteira, e o Anotar sem nome avisa (06/
   // "Não está respondendo quando aperta": o campo começava com "Particular" e o
   // navegador só mostrava as opções que combinavam com ele.
   assert.match(tela, /setConvenioAntes\(novo\.convenio\);\s*setNovo\(\(n\) => \(\{ \.\.\.n, convenio: "" \}\)\)/);
-  assert.match(tela, /onFocus=\{\(e\) => mostrarListaInteira\(e\.currentTarget, conveniosConhecidos\)\}/);
+  assert.match(tela, /onFocus=\{\(e\) => mostrarListaInteira\(e\.currentTarget\)\}/);
+  // Com qualquer convênio escrito, também o digitado à mão fora da lista
+  // (07/11/2026: a seta parada em "UNIMED INTERCAMBIO", que não é da lista).
+  assert.match(tela, /function mostrarListaInteira\(campo: HTMLInputElement\) \{\s*if \(!campo\.value\.trim\(\)\) return;/);
+  assert.match(tela, /if \(!novo\.convenio\.trim\(\)\) return;\s*setConvenioAntes\(novo\.convenio\);/);
+  assert.doesNotMatch(tela, /ehConhecido\(/, "não depende mais de o convênio estar na lista");
   // O botão não fica travado em silêncio: sem nome, ele diz o que falta.
   assert.match(tela, /<button className="primaryClinical compact" disabled=\{salvando\}>/);
   assert.match(tela, /setErro\("Escreva o nome do paciente para anotar\."\)/);
