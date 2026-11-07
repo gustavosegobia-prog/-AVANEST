@@ -4131,6 +4131,12 @@ button.localAtivoBadge{border:0;background:none;font:inherit;cursor:pointer;text
 }
 /* Enviar, desfazer e imprimir na mesma barra, encostados à direita do título. */
 .producaoAcoesMes{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
+/* O envio automático, por pessoa (07/11/2026): uma linha debaixo do título do mês. */
+.producaoSozinha{display:flex;align-items:flex-start;gap:10px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--cor-borda);border-radius:12px;background:var(--cor-superficie-suave);cursor:pointer}
+.producaoSozinha input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--cor-marca)}
+.producaoSozinha span{display:grid;gap:2px;min-width:0}
+.producaoSozinha strong{font-size:14.5px;color:var(--cor-tinta-forte)}
+.producaoSozinha small{font-size:13px;line-height:1.35;color:var(--cor-tinta-fraca)}
 /* A linha do que a equipe enviou. Colunas fixas pelo motivo de sempre: cada
    linha é uma grade própria, e em largura automática nada bate com a de cima. */
 .producaoRecebidaLinha{display:grid;grid-template-columns:minmax(200px,1fr) 190px 74px 128px;
