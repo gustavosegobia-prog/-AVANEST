@@ -7819,6 +7819,7 @@ button.evoPFAsaN:disabled{cursor:default}
   color:var(--cor-tinta-forte)}
 .fcSubgrupo{margin:0;padding:4px 20px 8px;font-size:13px;font-weight:650;color:var(--cor-tinta-fraca)}
 .fcGrupoTitulo+.fcSubgrupo{margin-top:-6px}
+.fcSubgrupo.fcOrigem{font-weight:500}
 .fcDias{list-style:none;margin:0;padding:0;border-top:1px solid var(--cor-borda)}
 .fcDia{--trilho:64px;--folga:20px}
 .fcDia+.fcDia{border-top:1px solid var(--cor-borda)}

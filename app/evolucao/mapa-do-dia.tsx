@@ -58,7 +58,10 @@ export function MapaDoDia({ institutionId, local, casos, filtrado = false, lerHo
 
   if (!casos.length) return null;
 
+  // O paciente do mapa do hospital (outra organização) não se liga: aquele
+  // mapa é só leitura (centro_compartilhamentos).
   const ligar = async (casoId: string, fichaId: string) => {
+    if (casos.find((c) => c.id === casoId)?.doHospital) return;
     try { await createClient().rpc("ligar_caso_a_ficha", { p_caso: casoId, p_evolucao: fichaId }); } catch { /* a ficha abre igual */ }
   };
 
@@ -223,12 +226,17 @@ export function MapaDoDia({ institutionId, local, casos, filtrado = false, lerHo
   const grupos = filtrado || !seus.length || !outros.length
     ? [{ titulo: null, lista: casos }]
     : [{ titulo: `Seus pacientes`, lista: seus }, { titulo: "Demais do mapa", lista: outros }];
+  // De onde vem a lista, quando parte dela é o mapa do centro cirúrgico do hospital.
+  const hospitais = [...new Set(casos.map((c) => c.doHospital).filter((h): h is string => Boolean(h)))];
 
   return (
     <div className="fcGrupo" role="group" aria-labelledby="fc-mapa">
       <h3 id="fc-mapa" className="fcGrupoTitulo">
         {filtrado ? "No mapa de hoje" : "Mapa de hoje"} <span className="fcConta">{casos.length}</span>
       </h3>
+      {hospitais.length > 0 && !filtrado && (
+        <p className="fcSubgrupo fcOrigem">Do mapa do centro cirúrgico: {hospitais.join(", ")}</p>
+      )}
       {grupos.map((g) => (
         <div key={g.titulo ?? "todos"}>
           {g.titulo && <p className="fcSubgrupo">{g.titulo} · {g.lista.length}</p>}

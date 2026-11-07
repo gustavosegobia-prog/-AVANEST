@@ -181,3 +181,78 @@ test("trava da data de nascimento: a coluna existe no banco e só é pedida com 
   assert.match(ler("components/centro/importar.tsx"), /\.\.\.comNascimento\(l\.nascimento\)/);
   assert.match(ler("app/evolucao/mapa-do-dia-servidor.ts"), /nascimento: l\.data_nascimento \?\? null/);
 });
+
+test("mapa do hospital: quem já está no mapa da casa não se repete, nem duas vezes no do hospital", async () => {
+  const { semRepetirOMapaDaCasa } = await import("./mapa-do-dia.ts");
+  const daCasa = [{ paciente: "Dorcília Fictícia" }];
+  const doHospital = [
+    { id: "h1", paciente: "DORCILIA FICTICIA" },
+    { id: "h2", paciente: "NILCE FICTICIA" },
+    { id: "h3", paciente: "Nilce  Fictícia" },
+    { id: "h4", paciente: "   " },
+  ];
+  assert.deepEqual(semRepetirOMapaDaCasa(daCasa, doHospital).map((c) => c.id), ["h2"]);
+  assert.equal(semRepetirOMapaDaCasa([], doHospital).length, 2);
+});
+
+test("mapa do hospital: a ficha de hoje é achada pelo cadastro, a aberta antes da encerrada", async () => {
+  const { fichaDeHoje } = await import("./mapa-do-dia.ts");
+  const dia = (iso: string) => new Date(new Date(iso).getTime() - 3 * 3600000).toISOString().slice(0, 10);
+  const fichas = [
+    { id: "ontem", patient_id: "p1", status: "encerrada", inicio_em: "2026-11-07T02:00:00Z" },
+    { id: "cedo", patient_id: "p1", status: "encerrada", inicio_em: "2026-11-07T10:00:00Z" },
+    { id: "outro", patient_id: "p2", status: "aberta", inicio_em: "2026-11-07T11:00:00Z" },
+  ];
+  assert.deepEqual(fichaDeHoje("p1", fichas, "2026-11-07", dia), { id: "cedo", status: "encerrada" },
+    "a encerrada hoje volta como ficha da linha: o toque não abre uma segunda");
+  assert.deepEqual(fichaDeHoje("p1", [...fichas, { id: "agora", patient_id: "p1", status: "aberta", inicio_em: "2026-11-07T12:00:00Z" }],
+    "2026-11-07", dia), { id: "agora", status: "aberta" });
+  assert.equal(fichaDeHoje("p3", fichas, "2026-11-07", dia), null);
+  assert.equal(fichaDeHoje("p1", [fichas[0]], "2026-11-07", dia), null, "a de ontem à noite (23h no fuso) não conta");
+});
+
+test("mapa do hospital: nada se compartilha sem a ligação autorizada, e só o mínimo, só hoje, só leitura", () => {
+  const sql = ler("supabase/migrations/202611070001_mapa_do_hospital_compartilhado.sql");
+  const semComentarios = sql.replace(/--.*$/gm, "");
+  // A migração cria o mecanismo e nenhuma ligação.
+  assert.doesNotMatch(semComentarios, /insert into public\.centro_compartilhamentos/i);
+  // A autorização por escrito é obrigatória na ligação.
+  assert.match(semComentarios, /autorizado_por text not null/);
+  assert.match(semComentarios, /autorizado_em date not null/);
+  assert.match(semComentarios, /documento text not null/);
+  // A tabela fica fechada para a API; só a função lê.
+  assert.match(semComentarios, /revoke all on table public\.centro_compartilhamentos from public, anon, authenticated;/);
+  assert.match(semComentarios, /revoke all on table public\.centro_compartilhamento_leituras from public, anon, authenticated;/);
+  const funcao = semComentarios.slice(semComentarios.indexOf("function public.mapa_compartilhado_do_dia"));
+  // Quem pode abrir ficha, num local da própria casa que enxerga.
+  assert.match(funcao, /not public\.pode_evolucao\(v_inst\)/);
+  assert.match(funcao, /l\.institution_id = v_inst\s+and \(l\.owner_id is null or l\.owner_id = auth\.uid\(\)\)/);
+  // A ligação viva, no prazo, para este local.
+  assert.match(funcao, /c\.destino_local_id = p_local\s+and c\.revogado_em is null\s+and \(c\.valido_ate is null or c\.valido_ate >= v_hoje\)/);
+  // Só hoje, no fuso do serviço; sem os cancelados; só o hospital da ligação.
+  assert.match(funcao, /v_hoje date := \(now\(\) at time zone 'America\/Sao_Paulo'\)::date/);
+  assert.match(funcao, /k\.data = v_hoje\s+and k\.etapa <> 'cancelado'/);
+  assert.doesNotMatch(funcao, /p_data|p_dia/, "o dia não é escolhido por quem chama");
+  // Só o que a ficha usa: prontuário, leito, observações e anestesista ficam no hospital.
+  const devolve = funcao.slice(0, funcao.indexOf("language plpgsql"));
+  for (const c of ["prontuario", "leito", "observacoes", "anestesista", "patient_id", "evolucao_id", "cancelado_motivo"]) {
+    assert.doesNotMatch(devolve, new RegExp(c), `${c} não sai do hospital`);
+  }
+  // Só leitura do mapa do hospital; cada leitura fica registrada.
+  assert.doesNotMatch(funcao, /update public\.centro_casos|insert into public\.centro_casos|delete from public\.centro_casos/);
+  assert.match(funcao, /insert into public\.centro_compartilhamento_leituras/);
+  // A ligação não se edita; revogada não volta.
+  assert.match(semComentarios, /A ligação não se edita: revogue e crie outra\./);
+  assert.match(semComentarios, /Ligação revogada não volta: crie outra\./);
+});
+
+test("mapa do hospital: a ficha lê o mapa do hospital junto, e a linha dele não se liga", () => {
+  const servidor = ler("app/evolucao/mapa-do-dia-servidor.ts");
+  assert.match(servidor, /supabase\.rpc\("mapa_compartilhado_do_dia", \{ p_local: o\.local\.id \}\)/);
+  assert.match(servidor, /semRepetirOMapaDaCasa\(daCasa, doMapaDoHospital\)/);
+  assert.match(servidor, /patient_id: null, evolucao_id: null/);
+  assert.match(servidor, /fichaDeHoje\(principal\.id, fichasRecentes, dia/);
+  const tela = ler("app/evolucao/mapa-do-dia.tsx");
+  assert.match(tela, /if \(casos\.find\(\(c\) => c\.id === casoId\)\?\.doHospital\) return;/);
+  assert.match(tela, /Do mapa do centro cirúrgico: /);
+});

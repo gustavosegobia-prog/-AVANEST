@@ -6,14 +6,21 @@
 // pede pode_ver_centro; os pacientes, a política deles). Se o mapa não está
 // liberado, ou a migração 202611060001 ainda não rodou, a lista volta vazia e
 // a seção não aparece — a ficha continua como era.
+//
+// O MAPA DO HOSPITAL (07/11/2026). Quando o centro cirúrgico monta o mapa na
+// organização do hospital, e o hospital autorizou por escrito, os pacientes
+// de hoje desse mapa vêm junto, pela função mapa_compartilhado_do_dia
+// (migração 202611070001). Sem ligação autorizada, ou antes da migração, ela
+// não devolve nada. Essas linhas são só leitura: nada volta para o mapa do
+// hospital, e a ficha encerrada é achada aqui, pelo cadastro (fichaDeHoje).
 
 import type { createClient } from "@/utils/supabase/server";
-import { hoje as hojeLocal } from "@/lib/data-local";
+import { dataLocal, hoje as hojeLocal } from "@/lib/data-local";
 import { apelidosDaEquipe } from "@/lib/escala";
 import { MAPA_POR_HOSPITAL, doHospital } from "@/lib/centro-cirurgico";
 import { fichasDoLocal } from "@/lib/evolucao/local";
 import {
-  comparacaoDoParecido, ordenarMapaDaFicha, principalDoCaso,
+  comparacaoDoParecido, fichaDeHoje, ordenarMapaDaFicha, principalDoCaso, semRepetirOMapaDaCasa,
   type AvaliacaoResumo, type CadastroSugerido, type CasoComCadastro, type CasoDoMapaNaFicha, type EtapaDoMapa,
 } from "@/lib/evolucao/mapa-do-dia";
 
@@ -24,6 +31,15 @@ type LinhaDoMapa = {
   data_nascimento: string | null; procedimento: string | null; cirurgiao: string | null; convenio: string | null; anestesista_id: string | null;
   etapa: EtapaDoMapa; patient_id: string | null; evolucao_id: string | null;
   sala: { nome?: string } | Array<{ nome?: string }> | null;
+  /** O nome do hospital, quando a linha vem do mapa dele (mapa_compartilhado_do_dia). */
+  doHospital?: string;
+};
+
+/** O que mapa_compartilhado_do_dia devolve: só o que a ficha usa. */
+type LinhaDoHospital = {
+  id: string; data: string; horario: string | null; ordem: number | null; sala: string | null; paciente: string; idade: number | null;
+  data_nascimento: string | null; procedimento: string | null; cirurgiao: string | null; convenio: string | null;
+  etapa: EtapaDoMapa; hospital: string | null;
 };
 
 type Cadastro = Omit<CadastroSugerido, "avaliacao" | "aberta" | "comparacao">;
@@ -42,9 +58,22 @@ export async function mapaDoDiaNaFicha(supabase: Supabase, o: {
       .select("id, data, horario, ordem, paciente, idade, data_nascimento, procedimento, cirurgiao, convenio, anestesista_id, etapa, patient_id, evolucao_id, sala:centro_salas(nome)")
       .eq("institution_id", o.institutionId).eq("data", dia).neq("etapa", "cancelado");
     if (o.local) consulta = consulta.or(doHospital(o.local.id));
-    const { data, error } = await consulta;
-    if (error || !data?.length) return [];
-    const linhas = data as unknown as LinhaDoMapa[];
+    const [daCasa, doMapaDoHospital] = await Promise.all([
+      consulta.then((r) => (r.error ? [] : (r.data ?? []) as unknown as LinhaDoMapa[]), () => [] as LinhaDoMapa[]),
+      o.local
+        ? supabase.rpc("mapa_compartilhado_do_dia", { p_local: o.local.id })
+          .then((r) => (r.error ? [] : (r.data ?? []) as LinhaDoHospital[]), () => [] as LinhaDoHospital[])
+        : Promise.resolve([] as LinhaDoHospital[]),
+    ]);
+    const linhas: LinhaDoMapa[] = [
+      ...daCasa,
+      ...semRepetirOMapaDaCasa(daCasa, doMapaDoHospital).map((l) => ({
+        ...l, sala: { nome: l.sala ?? "" }, anestesista_id: null, patient_id: null, evolucao_id: null,
+        doHospital: l.hospital?.trim() || "Hospital",
+      })),
+    ];
+    if (!linhas.length) return [];
+    const temDoHospital = linhas.some((l) => l.doHospital);
 
     const idsDeFicha = linhas.map((l) => l.evolucao_id).filter((x): x is string => Boolean(x));
     const ligados = [...new Set(linhas.map((l) => l.patient_id).filter((x): x is string => Boolean(x)))];
@@ -73,16 +102,22 @@ export async function mapaDoDiaNaFicha(supabase: Supabase, o: {
 
     // A avaliação mais recente e a ficha aberta neste hospital, de todos os cadastros de uma vez.
     const todos = [...new Set([...cadastroPorId.keys(), ...parecidos.flatMap(([, lista]) => lista.map((c) => c.id))])];
-    const [avaliacoes, abertas] = todos.length
+    const fichasDosCadastros = () => (o.local
+      ? supabase.from("evolucoes_anestesicas").select("id, patient_id, status, inicio_em").or(fichasDoLocal(o.local.id))
+      : supabase.from("evolucoes_anestesicas").select("id, patient_id, status, inicio_em")).in("patient_id", todos);
+    const [avaliacoes, abertas, recentes] = todos.length
       ? await Promise.all([
         supabase.from("avaliacoes").select("patient_id, created_at, concluida_at, cirurgia:dados->>cirurgia")
           .in("patient_id", todos).eq("versao_vigente", true).order("created_at", { ascending: false }),
-        (o.local
-          ? supabase.from("evolucoes_anestesicas").select("id, patient_id").or(fichasDoLocal(o.local.id))
-          : supabase.from("evolucoes_anestesicas").select("id, patient_id"))
-          .in("patient_id", todos).eq("status", "aberta"),
+        fichasDosCadastros().eq("status", "aberta"),
+        // As fichas de hoje, abertas ou encerradas, de quem veio do mapa do
+        // hospital. Uma janela folgada; o dia é conferido no fuso do serviço.
+        temDoHospital
+          ? fichasDosCadastros().gte("inicio_em", new Date(Date.now() - 36 * 3600000).toISOString())
+          : Promise.resolve({ data: [] }),
       ])
-      : [{ data: [] }, { data: [] }];
+      : [{ data: [] }, { data: [] }, { data: [] }];
+    const fichasRecentes = (recentes.data ?? []) as Array<{ id: string; patient_id: string; status: string; inicio_em: string }>;
     const avaliacaoDe = new Map<string, AvaliacaoResumo>();
     for (const a of (avaliacoes.data ?? []) as Array<{ patient_id: string; created_at: string; concluida_at: string | null; cirurgia: string | null }>) {
       if (!avaliacaoDe.has(a.patient_id)) {
@@ -101,6 +136,7 @@ export async function mapaDoDiaNaFicha(supabase: Supabase, o: {
         ficha: l.evolucao_id && statusDa.has(l.evolucao_id)
           ? { id: l.evolucao_id, status: statusDa.get(l.evolucao_id) === "encerrada" ? "encerrada" : "aberta" }
           : null,
+        ...(l.doHospital ? { doHospital: l.doHospital } : {}),
       };
       const candidatos = l.patient_id
         ? [cadastroPorId.get(l.patient_id)].filter((c): c is Cadastro => Boolean(c))
@@ -111,7 +147,12 @@ export async function mapaDoDiaNaFicha(supabase: Supabase, o: {
         aberta: abertaDe.get(c.id) ?? null,
         comparacao: comparacaoDoParecido(base, c, dia),
       }));
-      return { ...base, sugestoes, principal: principalDoCaso(base, sugestoes) };
+      const principal = principalDoCaso(base, sugestoes);
+      if (base.doHospital && principal) {
+        const ficha = fichaDeHoje(principal.id, fichasRecentes, dia, (iso) => dataLocal(new Date(iso)));
+        if (ficha) return { ...base, ficha, sugestoes, principal };
+      }
+      return { ...base, sugestoes, principal };
     });
     return ordenarMapaDaFicha(casos);
   } catch {
