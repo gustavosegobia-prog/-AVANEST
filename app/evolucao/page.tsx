@@ -6,6 +6,8 @@ import { InicioDasFolhas, type FolhaResumo } from "./inicio-das-folhas";
 import { mapaDoDiaNaFicha } from "./mapa-do-dia-servidor";
 import { avaliadosHojeNaFicha } from "./avaliados-hoje-servidor";
 import { MAPA_POR_HOSPITAL } from "@/lib/centro-cirurgico";
+import { hoje } from "@/lib/data-local";
+import { VirarODia } from "@/components/virar-o-dia";
 
 export const metadata: Metadata = {
   title: "Ficha anestésica | AVANEST",
@@ -72,17 +74,21 @@ export default async function FichasPage() {
   }
 
   return (
-    <InicioDasFolhas
-      institutionId={perfil.institution_id as string}
-      abertas={linhasAbertas.map((l) => resumo(l, fimDaAnestesia(vigentes(eventosDa.get(l.id) ?? []))))}
-      encerradas={((encerradas.data ?? []) as unknown as Linha[]).map((l) => resumo(l))}
-      semBanco={Boolean(abertas.error)}
-      agora={agora}
-      local={local}
-      mapa={mapa}
-      avaliadosHoje={avaliadosHoje}
-      podeImportarMapa={MAPA_POR_HOSPITAL && podeMontarMapa}
-      podeVerMapa={podeVerMapa}
-    />
+    <>
+      {/* À meia-noite a entrada vira o dia: o mapa e os avaliados de hoje são outros. */}
+      <VirarODia dia={hoje()} />
+      <InicioDasFolhas
+        institutionId={perfil.institution_id as string}
+        abertas={linhasAbertas.map((l) => resumo(l, fimDaAnestesia(vigentes(eventosDa.get(l.id) ?? []))))}
+        encerradas={((encerradas.data ?? []) as unknown as Linha[]).map((l) => resumo(l))}
+        semBanco={Boolean(abertas.error)}
+        agora={agora}
+        local={local}
+        mapa={mapa}
+        avaliadosHoje={avaliadosHoje}
+        podeImportarMapa={MAPA_POR_HOSPITAL && podeMontarMapa}
+        podeVerMapa={podeVerMapa}
+      />
+    </>
   );
 }

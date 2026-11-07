@@ -58,7 +58,49 @@ export type CasoDoMapaNaFicha = {
   patientId: string | null;
   /** A ficha ligada a este paciente do mapa, e em que pé ela está. */
   ficha: { id: string; status: "aberta" | "encerrada" } | null;
+  /**
+   * O nome do hospital, quando a linha vem do mapa que o centro cirúrgico do
+   * hospital monta na organização dele (centro_compartilhamentos, 07/11/2026).
+   * Essa linha é só leitura: nada volta para o mapa do hospital.
+   */
+  doHospital?: string;
 };
+
+/**
+ * O mapa do hospital junto com o da casa: o paciente que já está no mapa da
+ * casa (mesmo nome, sem acento) não se repete — vale a linha da casa, que liga
+ * a ficha ao mapa.
+ */
+export function semRepetirOMapaDaCasa<T extends { paciente: string }>(daCasa: Array<{ paciente: string }>, doHospital: T[]): T[] {
+  const nomes = new Set(daCasa.map((c) => semAcento(c.paciente)));
+  const vistos = new Set<string>();
+  return doHospital.filter((c) => {
+    const n = semAcento(c.paciente);
+    if (!n || nomes.has(n) || vistos.has(n)) return false;
+    vistos.add(n);
+    return true;
+  });
+}
+
+/**
+ * A ficha de hoje de quem veio do mapa do hospital. O mapa do hospital não
+ * guarda a ficha (é de outra organização, só leitura); sem isto, depois de
+ * encerrada a ficha a linha voltaria a oferecer "Abrir ficha", e o toque
+ * abriria uma segunda para o mesmo paciente. Só para o cadastro sem dúvida
+ * (principalDoCaso): a aberta antes da encerrada; das iguais, a mais recente.
+ */
+export function fichaDeHoje(
+  patientId: string,
+  fichas: Array<{ id: string; patient_id: string; status: string; inicio_em: string }>,
+  hoje: string,
+  diaDe: (iso: string) => string,
+): { id: string; status: "aberta" | "encerrada" } | null {
+  const doDia = fichas
+    .filter((f) => f.patient_id === patientId && diaDe(f.inicio_em) === hoje)
+    .sort((a, b) => (a.status === "aberta" ? 0 : 1) - (b.status === "aberta" ? 0 : 1) || b.inicio_em.localeCompare(a.inicio_em));
+  const f = doDia[0];
+  return f ? { id: f.id, status: f.status === "encerrada" ? "encerrada" : "aberta" } : null;
+}
 
 const minutos = (h: string | null) => {
   const m = /^(\d{1,2}):(\d{2})/.exec(h ?? "");

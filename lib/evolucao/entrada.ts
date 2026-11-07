@@ -85,3 +85,14 @@ export function avaliadosDeHoje(
   }
   return lista;
 }
+
+/**
+ * A sala como a linha da ficha em andamento escreve: "2" vira "Sala 2", e o
+ * que já vem com "Sala" (o mapa escreve "Sala 2") fica como está. Antes saía
+ * "Sala Sala 2".
+ */
+export function nomeDaSala(sala: string | null | undefined): string {
+  const s = (sala ?? "").trim();
+  if (!s) return "";
+  return /^sala(\s|$)/i.test(s) ? s : `Sala ${s}`;
+}

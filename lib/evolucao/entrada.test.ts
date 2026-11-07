@@ -71,3 +71,14 @@ test("entrada: o mapa cirúrgico de dentro da ficha — importar daqui e o atalh
   assert.match(importar, /<JanelaDeImportar\s+institutionId=\{institutionId\} localId=\{localId\}/);
   assert.match(importar, /async function abrir\(\)[\s\S]*from\("centro_salas"\)[\s\S]*from\("perfis"\)[\s\S]*from\("plantoes"\)/);
 });
+
+test("entrada: a sala da ficha em andamento não sai \"Sala Sala 2\"", async () => {
+  const { nomeDaSala } = await import("./entrada.ts");
+  assert.equal(nomeDaSala("Sala 2"), "Sala 2");
+  assert.equal(nomeDaSala("sala 2"), "sala 2");
+  assert.equal(nomeDaSala("2"), "Sala 2");
+  assert.equal(nomeDaSala(" Salão 3 "), "Sala Salão 3", "só a palavra Sala inteira conta");
+  assert.equal(nomeDaSala(""), "");
+  assert.equal(nomeDaSala(null), "");
+  assert.match(ler("app/evolucao/inicio-das-folhas.tsx"), /nomeDaSala\(f\.sala\)/);
+});

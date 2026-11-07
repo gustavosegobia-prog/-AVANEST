@@ -57,7 +57,13 @@
 .etapa_cancelado { --faixa: var(--cor-perigo); --selo: var(--cor-perigo-suave); --selo-tinta: var(--cor-perigo-forte); }
 
 /* ── O quadro ────────────────────────────────────────────────────────────── */
-.quadro { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; align-items: start; }
+/* Todas as salas numa linha só (07/11/2026: "tirar esse buraco"). Quebrando
+   em duas linhas, a sala que descia (a "Sem sala", a 5ª) só começava depois da
+   mais cheia de cima, e ficava um buraco debaixo da sala curta. Numa linha só,
+   como as colunas de um quadro, nenhuma sala desce; com salas demais para a
+   tela, o quadro rola de lado (--salas, contado no componente). */
+.quadro { display: grid; grid-template-columns: repeat(var(--salas, 4), minmax(220px, 1fr)); gap: 14px; align-items: start;
+  overflow-x: auto; overscroll-behavior-x: contain; }
 .coluna { min-width: 0; padding: 10px; border: 1px solid var(--cor-borda); border-radius: 16px; background: var(--cor-superficie-suave); }
 .cabecaDaColuna { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px 8px; }
 .cabecaDaColuna h2 { margin: 0; font-size: 16px; font-weight: 750; color: var(--cor-tinta-forte); }
@@ -84,16 +90,27 @@
   .quadro { align-items: stretch; }
   .coluna { display: grid; grid-template-rows: subgrid; grid-row: span var(--linhas, 2); row-gap: 8px; align-content: start;
     position: relative; isolation: isolate; border-color: transparent; background: none; }
-  .coluna::before { content: ""; position: absolute; grid-column: 1; grid-row: 1 / span var(--ocupadas, 2); inset: -10px;
+  .coluna::before { content: ""; position: absolute; grid-column: auto; grid-row: 1 / span var(--ocupadas, 2); inset: -10px 0;
     z-index: -1; border: 1px solid var(--cor-borda); border-radius: 16px; background: var(--cor-superficie-suave); pointer-events: none; }
   .fila { display: contents; }
   .fila > li { display: flex; min-width: 0; }
   .fila > li > .cartao { flex: 1; }
 }
+/* No celular as salas ficam uma embaixo da outra: alinhar a fila de uma com a
+   da vizinha não serve, e as linhas da sala mais cheia deixavam um vão debaixo
+   de cada sala curta. Cada sala volta a ter a altura dela. */
+@media (max-width: 640px) {
+  @supports (grid-template-rows: subgrid) {
+    .quadro { align-items: start; }
+    .coluna { display: block; grid-row: auto; border-color: var(--cor-borda); background: var(--cor-superficie-suave); }
+    .coluna::before { content: none; }
+    .fila { display: grid; }
+  }
+}
 
 .cartao { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 12px 14px;
   border: 1px solid var(--cor-borda); border-left: 5px solid var(--faixa); border-radius: 12px; background: var(--cor-superficie); }
-.linhaDoTopo { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; min-width: 0; }
+.linhaDoTopo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 2px; min-width: 0; }
 .linhaDoTopo .chip { margin-left: auto; }
 .hora { font-size: 15px; font-weight: 750; color: var(--cor-tinta-forte); font-variant-numeric: tabular-nums; }
 .chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px;
@@ -110,7 +127,10 @@
 .motivo { margin: 4px 0 0; font-size: 13.5px; color: var(--cor-perigo-forte); }
 .etapa_cancelado .paciente, .etapa_cancelado .procedimento { text-decoration: line-through; text-decoration-color: var(--cor-tinta-fraca); }
 .etapa_cancelado { opacity: .85; }
-.acoesDoCartao { display: flex; gap: 8px; margin-top: auto; padding-top: 8px; }
+/* Numa coluna estreita (muitas salas na linha), os botões vão um embaixo do
+   outro em vez de passar da caixa da sala. */
+.acoesDoCartao { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
+.acoesDoCartao > * { flex: 1 1 auto; }
 .passo { flex: 1; min-height: 44px; }
 .editar { min-height: 44px; }
 /* Subir e descer na fila: ao lado da hora, que é o que a posição muda. */
@@ -226,7 +246,7 @@
     border-left: 1px solid var(--cor-borda); border-top: 4px solid var(--faixa); text-align: center; }
   .contador strong { font-size: 21px; }
   .contador span { font-size: 11.5px; }
-  .quadro { grid-template-columns: minmax(0, 1fr); }
+  .quadro { grid-template-columns: minmax(0, 1fr); overflow-x: visible; }
   .coluna { padding: 8px; }
   .formGrade { grid-template-columns: minmax(0, 1fr); }
   .opcoes { grid-template-columns: minmax(0, 1fr); }
