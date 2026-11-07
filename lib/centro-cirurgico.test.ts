@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   altaDaRpa, anestesistasDePlantao, avisoDoAldrete, cancelar, colunasDoMapa, conferirHorario, contagemPorEtapa,
   desfazer, duracao, entrarEmSala, horaDe, instanteDoPasso, linhaDoForm, formVazio, ordenarCasos, proximoPasso,
@@ -304,4 +305,16 @@ test("quem anestesia no mapa: o médico e quem atua como médico, ativos, pelo a
   ]);
   assert.deepEqual(lista.map((a) => a.id), ["2", "1"], "em ordem de apelido; recepção, centro e inativo ficam fora");
   assert.ok(lista.every((a) => a.apelido.length > 0));
+});
+
+test("mapa: a caixa de cada sala termina no último paciente dela, com os cartões ainda no mesmo nível (07/11/2026)", () => {
+  const ler = (c: string) => fs.readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+  const tela = ler("components/centro/mapa-cirurgico.tsx");
+  const css = ler("components/centro/mapa.module.css");
+  // As linhas do quadro continuam as da sala mais cheia (o 1º paciente de todas na mesma linha)…
+  assert.match(tela, /\["--linhas" as string\]: 1 \+ Math\.max\(1, \.\.\.colunas\.map\(\(c\) => c\.casos\.length\)\)/);
+  // …mas a caixa desenhada cobre só as linhas que a sala ocupa.
+  assert.match(tela, /\["--ocupadas" as string\]: 1 \+ Math\.max\(1, col\.casos\.length\)/);
+  assert.match(css, /\.coluna::before \{ content: ""; position: absolute; grid-column: 1; grid-row: 1 \/ span var\(--ocupadas, 2\); inset: -10px;/);
+  assert.match(css, /border-color: transparent; background: none; \}/, "a coluna em si não desenha mais a caixa inteira");
 });

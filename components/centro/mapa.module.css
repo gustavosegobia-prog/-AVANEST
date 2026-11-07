@@ -75,9 +75,17 @@
    (--linhas, contado no componente), cada sala ocupa todas pela subgrade, e o
    1º paciente de todas as salas fica na mesma linha, com a mesma altura; os
    botões descem para o pé do cartão. Navegador sem subgrade fica como antes. */
+/* E a caixa de cada sala termina no último paciente DELA (07/11/2026: "por
+   que esse espaço vagando na sala 1?"). Com a subgrade, toda sala tem a altura
+   da mais cheia, e a caixa da sala com um paciente só descia vazia até o fim da
+   vizinha. A caixa agora é desenhada atrás das linhas que a sala ocupa
+   (--ocupadas, contado no componente); o resto é fundo da página. */
 @supports (grid-template-rows: subgrid) {
   .quadro { align-items: stretch; }
-  .coluna { display: grid; grid-template-rows: subgrid; grid-row: span var(--linhas, 2); row-gap: 8px; align-content: start; }
+  .coluna { display: grid; grid-template-rows: subgrid; grid-row: span var(--linhas, 2); row-gap: 8px; align-content: start;
+    position: relative; isolation: isolate; border-color: transparent; background: none; }
+  .coluna::before { content: ""; position: absolute; grid-column: 1; grid-row: 1 / span var(--ocupadas, 2); inset: -10px;
+    z-index: -1; border: 1px solid var(--cor-borda); border-radius: 16px; background: var(--cor-superficie-suave); pointer-events: none; }
   .fila { display: contents; }
   .fila > li { display: flex; min-width: 0; }
   .fila > li > .cartao { flex: 1; }
