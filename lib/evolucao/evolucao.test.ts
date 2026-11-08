@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { historicoDe, vigentes, type Registro } from "./registros.ts";
-import { lacunaPadrao, pamEstimada, pamEstimadaCabe, periodosSemMonitorizacao, pontosDe, trechos } from "./sinais.ts";
+import { lacunaPadrao, pamAutomatica, pamEstimada, pamEstimadaCabe, periodosSemMonitorizacao, pontosDe, trechos } from "./sinais.ts";
 import { pontoDoToque, tempoParaX, valorParaY, xParaTempo, yParaValor, marcasDeTempo, janelaVisivel, colunasParaRepetir, MAX_COLUNAS_REPETIDAS } from "./grafico.ts";
 import { consumoSevoflurano, formatarMl, mlNoIntervalo } from "./sevoflurano.ts";
 import {
@@ -66,6 +66,37 @@ test("PAM estimada nunca cobre uma PAM medida no mesmo minuto", () => {
   assert.equal(pamEstimadaCabe([medida], em(15)), true);
   const estimada = reg("sinal", 20, { parametro: "pam", valor: 85 }, { origem: "estimado" });
   assert.equal(pamEstimadaCabe([estimada], em(20)), true, "estimada não bloqueia outra estimativa");
+});
+
+test("PAM automática: com PAS e PAD no minuto e sem PAM, entra a calculada (08/11/2026)", () => {
+  // Arrastando no gráfico: a PAS já está na coluna, a PAD está entrando.
+  const pas = reg("sinal", 10, { parametro: "pas", valor: 120 });
+  assert.equal(pamAutomatica([pas], em(10), [{ parametro: "pad", valor: 80 }]), 93);
+  // Só a PAS, ainda sem PAD: nada.
+  assert.equal(pamAutomatica([], em(10), [{ parametro: "pas", valor: 120 }]), null);
+  // As duas entrando juntas (o monitor): calcula.
+  assert.equal(pamAutomatica([], em(10), [{ parametro: "pas", valor: 90 }, { parametro: "pad", valor: 60 }]), 70);
+  // A PAM do monitor sempre prevalece: entrando junto, ou já no minuto.
+  assert.equal(pamAutomatica([], em(10), [{ parametro: "pas", valor: 120 }, { parametro: "pad", valor: 80 }, { parametro: "pam", valor: 95 }]), null);
+  assert.equal(pamAutomatica([pas, reg("sinal", 10, { parametro: "pam", valor: 95 })], em(10), [{ parametro: "pad", valor: 80 }]), null);
+  // Já há estimada no minuto: não duplica.
+  assert.equal(pamAutomatica([pas, reg("sinal", 10, { parametro: "pam", valor: 93 }, { origem: "estimado" })], em(10),
+    [{ parametro: "pad", valor: 80 }]), null);
+  // A PA de outro minuto não entra na conta.
+  assert.equal(pamAutomatica([reg("sinal", 5, { parametro: "pas", valor: 120 })], em(10), [{ parametro: "pad", valor: 80 }]), null);
+  // Par impossível (PAD acima da PAS): nada.
+  assert.equal(pamAutomatica([pas], em(10), [{ parametro: "pad", valor: 130 }]), null);
+});
+
+test("PAM automática: a janela já vem marcada, e o gráfico e o monitor gravam a calculada junto", () => {
+  const janela = fs.readFileSync(new URL("../../components/evolucao/janelas-sinais.tsx", import.meta.url), "utf8");
+  assert.match(janela, /const \[comPam, setComPam\] = useState\(true\);/);
+  assert.match(janela, /PAM calculada: <b>\{estimada\} mmHg<\/b>/);
+  const folha = fs.readFileSync(new URL("../../components/evolucao/folha-anestesica.tsx", import.meta.url), "utf8");
+  assert.match(folha, /const pam = estimada \? null : pamAutomatica\(atuais, momento, \[\{ parametro: p, valor \}\]\);/);
+  assert.match(folha, /f\.registrarLote\(\[lancado, \{ tipo: "sinal", momento, dados: \{ parametro: "pam", valor: pam \}, origem: "estimado" \}\]\)/,
+    "no mesmo gesto: um Desfazer tira as duas");
+  assert.match(folha, /const pam = pamAutomatica\(atuais, m\.momento, m\.itens\);/);
 });
 
 test("Teste A — as curvas ligam os pontos em ordem e quebram nas lacunas", () => {

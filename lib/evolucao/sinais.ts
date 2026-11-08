@@ -51,6 +51,35 @@ export function pamEstimadaCabe(vigentes: readonly Registro[], momento: string):
     && r.origem !== "estimado" && Math.abs(minutosEntre(r.momento, momento)) < 1);
 }
 
+/**
+ * A PAM calculada sozinha (08/11/2026: "calcula a pressão média
+ * automaticamente, lá na ficha anestésica").
+ *
+ * Depois de lançar PAS e/ou PAD num horário — pela janela, arrastando no
+ * gráfico ou pela foto do monitor —, se o mesmo minuto fica com as duas (as
+ * já gravadas mais as que estão entrando) e SEM PAM nenhuma, medida ou já
+ * estimada, devolve a estimada para gravar junto, marcada como estimada. A
+ * PAM do monitor sempre prevalece: com ela no minuto, ou entrando junto, nada.
+ */
+export function pamAutomatica(
+  vigentes: readonly Registro[],
+  momento: string,
+  entrando: ReadonlyArray<{ parametro: Parametro; valor: number }>,
+): number | null {
+  if (entrando.some((i) => i.parametro === "pam")) return null;
+  const noMinuto = (p: Parametro) => vigentes.filter((r) => r.tipo === "sinal" && r.dados.parametro === p
+    && Math.abs(minutosEntre(r.momento, momento)) < 1);
+  if (noMinuto("pam").length) return null;
+  const valor = (p: Parametro): number | null => {
+    const novo = entrando.find((i) => i.parametro === p);
+    if (novo) return novo.valor;
+    const gravados = noMinuto(p).sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")));
+    return gravados.length ? num(gravados[gravados.length - 1].dados.valor) : null;
+  };
+  const pas = valor("pas"), pad = valor("pad");
+  return pas === null || pad === null ? null : pamEstimada(pas, pad);
+}
+
 export type Ponto = { id: string; momento: string; valor: number; origem: Registro["origem"] };
 
 /** Os pontos de um parâmetro, em ordem de horário. */
