@@ -145,7 +145,7 @@ export const ROTULOS: Array<{
   { chave: "escala_publicada", grupo: "escala", titulo: "Nova escala publicada",
     detalhe: "Quando a escala do mês entra no ar e você tem plantão nela." },
   { chave: "lembrete_plantao", grupo: "escala", titulo: "Lembrete de plantão",
-    detalhe: "Plantão da noite: aviso às 7h do mesmo dia. Plantão da manhã: às 19h da véspera." },
+    detalhe: "Plantão da noite: aviso às 7h do mesmo dia. Plantão da manhã: às 19h da véspera. E no início do plantão, se o check-in ainda não foi feito." },
   { chave: "plantao_alterado", grupo: "plantao", titulo: "Plantão alterado",
     detalhe: "Quando lançam um plantão na sua escala, ou mudam a data, o horário ou o hospital de um plantão seu." },
   { chave: "plantao_cancelado", grupo: "plantao", titulo: "Plantão cancelado",

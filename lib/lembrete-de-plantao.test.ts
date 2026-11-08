@@ -182,3 +182,44 @@ test("nada é agendado, e é isso que dispensa cancelar", () => {
   assert.equal(deveAvisar(plantao({ situacao: "cancelado" }), "2026-09-17T08:00"), false);
   assert.equal(deveAvisar(plantao(), "2026-09-17T08:00"), true);
 });
+
+test("check-in: toca no começo do plantão, só sem confirmação, por até 3 horas e nunca depois do fim (08/11/2026)", async () => {
+  const { deveLembrarCheckin, fimDoPlantao, chaveDoCheckin, textoDoCheckin, chaveDoLembrete } = await import("./lembrete-de-plantao.ts");
+  const noite = { id: "n", data: "2026-11-08", hora_inicio: "19:00:00", hora_fim: "07:00:00", situacao: "escalado", local: "Hospital Fictício" };
+  assert.equal(fimDoPlantao(noite), "2026-11-09T07:00");
+  assert.equal(deveLembrarCheckin(noite, "2026-11-08T18:59"), false, "antes de começar, não");
+  assert.equal(deveLembrarCheckin(noite, "2026-11-08T19:00"), true, "na hora do início");
+  assert.equal(deveLembrarCheckin(noite, "2026-11-08T21:59"), true, "a execução atrasada ainda entrega");
+  assert.equal(deveLembrarCheckin(noite, "2026-11-08T22:00"), false, "três horas depois, não mais");
+  assert.equal(deveLembrarCheckin({ ...noite, confirmado_em: "2026-11-08T19:05:00Z" }, "2026-11-08T20:00"), false, "com check-in feito, nada");
+  assert.equal(deveLembrarCheckin({ ...noite, privado: true }, "2026-11-08T20:00"), false, "plantão privado não tem confirmação");
+  for (const situacao of ["cancelado", "realizado", "pago"]) {
+    assert.equal(deveLembrarCheckin({ ...noite, situacao }, "2026-11-08T20:00"), false, situacao);
+  }
+  // O de 24 h (7h às 7h do dia seguinte) e o que vira a meia-noite.
+  const dia = { id: "d", data: "2026-11-08", hora_inicio: "07:00", hora_fim: "07:00", situacao: "escalado" };
+  assert.equal(deveLembrarCheckin(dia, "2026-11-08T07:00"), true);
+  assert.equal(deveLembrarCheckin(dia, "2026-11-08T10:00"), false);
+  const tarde = { id: "t", data: "2026-11-08", hora_inicio: "22:00", hora_fim: "06:00", situacao: "escalado" };
+  assert.equal(deveLembrarCheckin(tarde, "2026-11-09T00:00"), true, "o das 22h ainda pede check-in à meia-noite");
+  // Plantão curto: a janela fecha no fim dele.
+  const curto = { id: "c", data: "2026-11-08", hora_inicio: "13:00", hora_fim: "14:00", situacao: "escalado" };
+  assert.equal(deveLembrarCheckin(curto, "2026-11-08T13:59"), true);
+  assert.equal(deveLembrarCheckin(curto, "2026-11-08T14:00"), false);
+  assert.equal(deveLembrarCheckin({ id: "x", data: "2026-11-08", hora_inicio: null, situacao: "escalado" }, "2026-11-08T07:00"), false);
+  // Recibo próprio: o lembrete de véspera não cala o check-in.
+  assert.notEqual(chaveDoCheckin(noite), chaveDoLembrete(noite));
+  assert.deepEqual(textoDoCheckin(noite), {
+    titulo: "✅ Check-in do plantão — Hospital Fictício",
+    corpo: "Seu plantão começou às 19h e ainda não tem check-in. Toque para confirmar.",
+  });
+});
+
+test("check-in: a rotina de hora em hora manda o check-in, com o recibo e a preferência do lembrete de plantão", () => {
+  const rota = fs.readFileSync(new URL("../app/api/push/lembretes/route.ts", import.meta.url), "utf8");
+  assert.match(rota, /confirmado_em,privado"\)\s*\.in\("perfil_id", perfis\)\.gte\("data", somarDias\(hoje, -1\)\)/);
+  const bloco = rota.slice(rota.indexOf("1b. O CHECK-IN"));
+  assert.match(bloco, /if \(jaEnviados\.has\(chave\)\) continue;\s*if \(!deveLembrarCheckin\(plantao, agoraLocal\)\) continue;/);
+  assert.ok(rota.indexOf("1b. O CHECK-IN") > rota.indexOf('if (aceita(preferencias, "lembrete_plantao"))'), "dentro da preferência");
+  assert.ok(rota.indexOf("1b. O CHECK-IN") < rota.indexOf("2. AS PENDÊNCIAS"), "fora da janela das 8h às 21h: o plantão das 7h avisa às 7h");
+});
