@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
 import { janelaVisivel } from "@/lib/evolucao/grafico";
-import { colunasProntas, INTERVALOS, linhasProntas, pamEstimadaCabe, PARAMETROS, pontosDe, type Parametro } from "@/lib/evolucao/sinais";
+import { colunasProntas, INTERVALOS, linhasProntas, pamAutomatica, pamEstimadaCabe, PARAMETROS, pontosDe, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
   administrados, agruparPorMedicamento, doseAcumulada, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
@@ -507,8 +507,17 @@ export function FolhaAnestesica({
               alturaGrade={300} somenteLeitura={!aberta} colunas={colunas} linha={linha}
               onLancar={(p, valor, ms, estimada) => {
                 const momento = new Date(ms).toISOString();
-                f.registrar({ tipo: "sinal", momento, dados: { parametro: p, valor }, origem: estimada ? "estimado" : "manual" });
-                setAviso({ texto: `${PARAMETROS[p].curto}${estimada ? " estimada" : ""} ${fmt(valor, 1)} às ${hora(momento)}`, desfazer: true });
+                const lancado = { tipo: "sinal" as const, momento, dados: { parametro: p, valor }, origem: estimada ? "estimado" as const : "manual" as const };
+                // Com a PAS e a PAD da coluna lançadas, a PAM calculada entra sozinha
+                // (lib/evolucao/sinais.ts, pamAutomatica) — no mesmo gesto: um
+                // "Desfazer" tira as duas.
+                const pam = estimada ? null : pamAutomatica(atuais, momento, [{ parametro: p, valor }]);
+                if (pam === null) f.registrar(lancado);
+                else f.registrarLote([lancado, { tipo: "sinal", momento, dados: { parametro: "pam", valor: pam }, origem: "estimado" }]);
+                setAviso({
+                  texto: `${PARAMETROS[p].curto}${estimada ? " estimada" : ""} ${fmt(valor, 1)}${pam !== null ? ` · PAM calculada ${pam}` : ""} às ${hora(momento)}`,
+                  desfazer: true,
+                });
               }}
               onRepetir={(p, valor, momentos) => {
                 f.registrarLote(momentos.map((ms) => ({ tipo: "sinal", momento: new Date(ms).toISOString(), dados: { parametro: p, valor } })));
@@ -759,6 +768,9 @@ export function FolhaAnestesica({
               for (const i of m.itens) {
                 f.registrar({ tipo: "sinal", momento: m.momento, dados: { parametro: i.parametro, valor: i.valor }, origem: "importado" });
               }
+              // O monitor que não mostra a PAM: a calculada entra junto, marcada como estimada.
+              const pam = pamAutomatica(atuais, m.momento, m.itens);
+              if (pam !== null) f.registrar({ tipo: "sinal", momento: m.momento, dados: { parametro: "pam", valor: pam }, origem: "estimado" });
             }
             setAbrir(null);
             setAviso({ texto: `${medidas.length} ${medidas.length === 1 ? "horário lançado" : "horários lançados"} do monitor`, desfazer: false });

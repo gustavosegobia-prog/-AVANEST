@@ -27,8 +27,9 @@ const VAZIO: Record<Parametro, string> = { pas: "", pad: "", pam: "", fc: "", sp
  * toque escolhe o horário, não o valor.
  *
  * PA vai em par (sistólica e diastólica, a diastólica menor). A PAM digitada
- * é a do monitor; sem ela, a estimada aparece calculada e só é gravada se o
- * médico marcar, e nunca onde já há uma PAM medida no mesmo minuto.
+ * é a do monitor; sem ela, a estimada aparece calculada e é gravada junto
+ * (08/11/2026: "calcula a pressão média automaticamente") — o médico pode
+ * desmarcar —, e nunca onde já há uma PAM medida no mesmo minuto.
  *
  * O toque numa linha (SpO₂, EtCO₂, temperatura) abre SÓ aquele campo, com o
  * último valor num botão para repetir — "Mostrar todos os sinais" abre o resto.
@@ -49,7 +50,7 @@ export function JanelaSinais({ ms, foco = "pas", so, ultimo, temPamMedida, onCon
   const base = ms !== undefined ? new Date(ms) : undefined;
   const [hora, setHora] = useState(horaLocal(base));
   const [v, setV] = useState<Record<Parametro, string>>(VAZIO);
-  const [comPam, setComPam] = useState(false);
+  const [comPam, setComPam] = useState(true);
   const [todos, setTodos] = useState(!so);
   const momento = momentoDeHora(hora, base);
   const preenchidos = (Object.keys(v) as Parametro[]).filter((p) => v[p].trim());
@@ -61,6 +62,8 @@ export function JanelaSinais({ ms, foco = "pas", so, ultimo, temPamMedida, onCon
   const pamBloqueada = momento ? temPamMedida(momento) : false;
   const ok = Boolean(momento) && preenchidos.length > 0 && !paIncompleta && !paInvertida
     && preenchidos.every((p) => valorPlausivel(p, numero(v[p])));
+  // O botão conta o que vai ser gravado: a PAM calculada entra na conta.
+  const quantos = preenchidos.length + (comPam && estimada !== null && !pamBloqueada ? 1 : 0);
 
   function confirmar(e: React.FormEvent) {
     e.preventDefault();
@@ -105,7 +108,7 @@ export function JanelaSinais({ ms, foco = "pas", so, ultimo, temPamMedida, onCon
       rodape={<>
         <button type="button" className="evoBotao secundario" onClick={onFechar}>Cancelar</button>
         <button type="submit" form="evoFormSinais" className="evoBotao" disabled={!ok}>
-          Registrar{preenchidos.length > 1 ? ` ${preenchidos.length}` : ""}
+          Registrar{quantos > 1 ? ` ${quantos}` : ""}
         </button>
       </>}>
       <form id="evoFormSinais" className="evoForm" onSubmit={confirmar}>
@@ -121,9 +124,9 @@ export function JanelaSinais({ ms, foco = "pas", so, ultimo, temPamMedida, onCon
             <input type="checkbox" checked={comPam && !pamBloqueada} disabled={pamBloqueada}
               onChange={(e) => setComPam(e.target.checked)} />
             <span>
-              Registrar também a PAM estimada: <b>{estimada} mmHg</b>
+              PAM calculada: <b>{estimada} mmHg</b>
               <small>{pamBloqueada ? "Já há PAM medida neste minuto — a medida prevalece."
-                : "(PAS + 2 × PAD) / 3. Aparece marcada como estimada, separada da PAM do monitor."}</small>
+                : "(PAS + 2 × PAD) / 3, registrada junto e marcada como estimada. Desmarque para não registrar."}</small>
             </span>
           </label>
         )}
