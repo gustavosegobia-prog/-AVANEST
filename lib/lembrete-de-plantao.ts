@@ -164,3 +164,70 @@ export function textoDoLembrete(p: PlantaoParaLembrar, hojeISO: string): {
 
   return { titulo, corpo };
 }
+
+// ===========================================================================
+// "Faça o check-in do plantão" (08/11/2026)
+// ===========================================================================
+// Pedido: "crie um alerta de check-in no início do plantão pra lembrar se não
+// houver feito". O check-in é a confirmação do plantão (plantoes.confirmado_em,
+// migrações 202608250002 e 202608260001): quem está lá diz que está, no dia.
+//
+// O aviso toca no COMEÇO do plantão, só se a confirmação ainda não foi feita,
+// e uma vez por plantão (o recibo em avisos_enviados). A janela é de três
+// horas a partir do início — a rota roda de hora em hora, e uma execução que
+// falhe ainda deixa a próxima entregar —, e nunca passa do fim do plantão:
+// depois dele, lembrar de fazer o check-in não ajuda ninguém.
+//
+// Como o lembrete de véspera, nada é agendado: a pergunta é feita à escala
+// como ela está na hora. Confirmado, cancelado, repassado ou privado (que não
+// tem confirmação) não aparece.
+// ===========================================================================
+
+/** Quantas horas depois do início o lembrete do check-in ainda pode sair. */
+export const JANELA_DO_CHECKIN_HORAS = 3;
+
+/** "AAAA-MM-DDTHH:MM" em minutos, como relógio de parede (sem fuso: os dois lados são de Brasília). */
+function emMinutos(iso: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso);
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) / 60000 : null;
+}
+
+/** O fim do plantão no mesmo formato; o que termina na hora do início ou antes vira o dia. */
+export function fimDoPlantao(p: PlantaoParaLembrar): string {
+  const data = String(p.data ?? "").slice(0, 10);
+  const inicio = hhmm(p.hora_inicio);
+  const fim = hhmm(p.hora_fim);
+  if (!/^\d{2}:\d{2}$/.test(fim) || !/^\d{2}:\d{2}$/.test(inicio)) return "";
+  return `${fim <= inicio ? somarDias(data, 1) : data}T${fim}`;
+}
+
+export type PlantaoParaCheckin = PlantaoParaLembrar & {
+  confirmado_em?: string | null;
+  privado?: boolean | null;
+};
+
+/** Lembrar agora do check-in deste plantão? `agora` em "AAAA-MM-DDTHH:MM", hora de Brasília. */
+export function deveLembrarCheckin(p: PlantaoParaCheckin, agora: string): boolean {
+  if (p.confirmado_em || p.privado) return false;
+  // Só o que ainda é plano: realizado, pago e cancelado já estão resolvidos.
+  if (p.situacao && p.situacao !== "escalado") return false;
+  const inicio = emMinutos(inicioDoPlantao(p));
+  const agoraMin = emMinutos(agora);
+  if (inicio == null || agoraMin == null) return false;
+  const fim = emMinutos(fimDoPlantao(p));
+  const fecha = Math.min(inicio + JANELA_DO_CHECKIN_HORAS * 60, fim ?? Infinity);
+  return agoraMin >= inicio && agoraMin < fecha;
+}
+
+/** A chave do recibo e a `tag` da notificação: uma por plantão, separada da do lembrete de véspera. */
+export const chaveDoCheckin = (p: PlantaoParaLembrar) => `plantao-checkin-${p.id}`;
+
+/** O que aparece na tela bloqueada: o hospital no título, como no lembrete de véspera. */
+export function textoDoCheckin(p: PlantaoParaLembrar): { titulo: string; corpo: string } {
+  const local = String(p.local ?? "").trim();
+  const hora = horaFalada(p.hora_inicio);
+  return {
+    titulo: ["✅ Check-in do plantão", local].filter(Boolean).join(" — "),
+    corpo: `${hora ? `Seu plantão começou às ${hora}` : "Seu plantão começou"} e ainda não tem check-in. Toque para confirmar.`,
+  };
+}

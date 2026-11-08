@@ -10,8 +10,8 @@ import {
 } from "@/lib/aviso-no-telefone";
 import { dataLocal, horaLocal, hoje as hojeNoBrasil, somarDias, somarMeses } from "@/lib/data-local";
 import {
-  chaveDoLembrete, destinoDoLembrete, deveAvisar, textoDoLembrete,
-  type PlantaoParaLembrar,
+  chaveDoCheckin, chaveDoLembrete, destinoDoLembrete, deveAvisar, deveLembrarCheckin, textoDoCheckin, textoDoLembrete,
+  type PlantaoParaCheckin,
 } from "@/lib/lembrete-de-plantao";
 import { aceita, comPadrao, comoTocar } from "@/lib/preferencias-de-aviso";
 import { segredoConfere } from "@/lib/portaria";
@@ -152,13 +152,14 @@ export async function GET(request: NextRequest) {
       .in("perfil_id", perfis).gte("ate", hoje),
     admin.from("avisos_enviados").select("perfil_id,chave,enviado_em")
       .in("perfil_id", perfis).gte("enviado_em", desdeORecibo),
-    // Os plantões de hoje e amanhã, com o que for preciso para escrever o
+    // Os plantões de ontem a amanhã, com o que for preciso para escrever o
     // aviso. `cancelado` fica de fora já na consulta: plantão cancelado não
     // tem lembrete, e é assim que cancelar um plantão apaga o aviso dele sem
-    // haver nada agendado para cancelar.
+    // haver nada agendado para cancelar. Ontem entra pelo check-in: o plantão
+    // das 22h ainda pede check-in à 0h do dia seguinte.
     admin.from("plantoes")
-      .select("id,perfil_id,data,hora_inicio,hora_fim,situacao,local_texto,local_id")
-      .in("perfil_id", perfis).gte("data", hoje).lte("data", amanha)
+      .select("id,perfil_id,data,hora_inicio,hora_fim,situacao,local_texto,local_id,confirmado_em,privado")
+      .in("perfil_id", perfis).gte("data", somarDias(hoje, -1)).lte("data", amanha)
       .neq("situacao", "cancelado"),
   ]);
 
@@ -205,7 +206,8 @@ export async function GET(request: NextRequest) {
       id: String(p.id), data: String(p.data),
       hora_inicio: p.hora_inicio, hora_fim: p.hora_fim, situacao: p.situacao,
       local: (p.local_texto || (p.local_id ? nomeDoLocal.get(String(p.local_id)) : "") || "").trim(),
-    } as PlantaoParaLembrar,
+      confirmado_em: p.confirmado_em, privado: p.privado,
+    } as PlantaoParaCheckin,
   })), "perfil_id");
 
   const mortas: string[] = [];
@@ -215,6 +217,7 @@ export async function GET(request: NextRequest) {
   let pessoas = 0;
 
   let lembretesEnviados = 0;
+  let checkinsEnviados = 0;
 
   for (const perfilAtivo of ativos ?? []) {
     const perfilId = String(perfilAtivo.id);
@@ -288,6 +291,22 @@ export async function GET(request: NextRequest) {
           lembretesEnviados++;
         }
       }
+
+      // ── 1b. O CHECK-IN NO COMEÇO DO PLANTÃO (08/11/2026) ────────────────
+      //
+      // Toca no início do plantão, se a confirmação (o check-in) ainda não
+      // foi feita; uma vez por plantão. Mesma preferência do lembrete de
+      // véspera: é o mesmo assunto, o plantão. Ver lib/lembrete-de-plantao.
+      for (const { plantao } of lembretesDe.get(perfilId) ?? []) {
+        const chave = chaveDoCheckin(plantao);
+        if (jaEnviados.has(chave)) continue;
+        if (!deveLembrarCheckin(plantao, agoraLocal)) continue;
+        const { titulo, corpo } = textoDoCheckin(plantao);
+        if (await mandar({ titulo, corpo, url: destinoDoLembrete(plantao), tag: chave })) {
+          anotar(chave);
+          checkinsEnviados++;
+        }
+      }
     }
 
     // ── 2. AS PENDÊNCIAS ──────────────────────────────────────────────────
@@ -350,6 +369,7 @@ export async function GET(request: NextRequest) {
     ok: true,
     enviadas,
     lembretesDePlantao: lembretesEnviados,
+    checkinsDePlantao: checkinsEnviados,
     pessoas,
     removidas: mortas.length,
     janelaDasPendencias,
