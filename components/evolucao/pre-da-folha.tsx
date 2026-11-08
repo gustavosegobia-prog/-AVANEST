@@ -205,10 +205,15 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
             <textarea rows={1} value={nega ? "" : alergias} disabled={leitura || nega} aria-label="Alergias"
               onChange={(e) => mudar({ alergias: e.target.value, nega_alergia: false })} />
           )}
-          <span className="evoPFNega">
-            <Op m={m} rotulo="nega alergia a medicamentos" marcado={nega}
-              onClick={() => mudar({ nega_alergia: !nega, ...(!nega ? { alergias: "" } : {}) })} />
-          </span>
+          {/* No papel, com alergia anotada, o "nega alergia" some (08/11/2026):
+              a opção vazia ao lado de "Tramal" só confundia quem lê. Na tela
+              ela fica, para marcar. */}
+          {!(m.impresso && temAlergia) && (
+            <span className="evoPFNega">
+              <Op m={m} rotulo="nega alergia a medicamentos" marcado={nega}
+                onClick={() => mudar({ nega_alergia: !nega, ...(!nega ? { alergias: "" } : {}) })} />
+            </span>
+          )}
         </div>
       </div>
 
