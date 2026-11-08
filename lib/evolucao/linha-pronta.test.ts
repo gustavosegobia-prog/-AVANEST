@@ -72,3 +72,15 @@ test("a tela: tocar lança igual, o '?' pede o valor, e o ✓ Igual leva a colun
   assert.match(folha, /\.\.\.linhaDeAgora\.map\(\(r\) => `\$\{PARAMETROS\[r\.parametro\]\.curto\} \$\{fmt\(r\.valor, 1\)\}`\)/);
   assert.match(folha, /r\.valor !== null && Math\.floor\(r\.ms \/ passoMs\) === Math\.floor\(agora \/ passoMs\)/);
 });
+
+test("gráfico no iPad: o dedo perto do ponto move a tela; em cima, ou parado um instante, pega o ponto (08/11/2026)", () => {
+  const grafico = fs.readFileSync(new URL("../../components/evolucao/grafico-sinais.tsx", import.meta.url), "utf8");
+  assert.match(grafico, /const PRECISO = 10;/);
+  assert.match(grafico, /const SEGURAR_MS = 180;/);
+  // Em cima do ponto: pega na hora, como antes.
+  assert.match(grafico, /if \(!pode \|\| !t \|\| ehEmCima\(t\.clientX - r\.left, t\.clientY - r\.top\)\) \{ segurarDedo\.current = pode; return; \}/);
+  // Perto: a tela se move, a não ser que o dedo fique parado.
+  assert.match(grafico, /espera\.current = setTimeout\(\(\) => \{ espera\.current = null; segurarDedo\.current = pode; \}, SEGURAR_MS\);/);
+  assert.match(grafico, /if \(espera\.current && \(!t \|\| !i \|\| Math\.hypot\(t\.clientX - i\.x, t\.clientY - i\.y\) > ANDOU\)\) parar\(\);/);
+  assert.match(grafico, /const fim = \(\) => \{ parar\(\); segurarDedo\.current = false; \};/);
+});
