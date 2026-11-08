@@ -61,3 +61,10 @@ test("impressão: a assinatura do AVANEST não cobre a última linha do relatór
   assert.match(impressao, /\.vaoDaAssinatura \{ display: table-footer-group; \}/);
   assert.match(impressao, /\.vaoDaAssinatura td \{ height: 15mm;/);
 });
+
+test("impressão: com alergia anotada, o \"nega alergia\" some do papel (08/11/2026)", () => {
+  const pre = ler("components/evolucao/pre-da-folha.tsx");
+  assert.match(pre, /const temAlergia = !nega && Boolean\(alergias\.trim\(\)\);/);
+  // Só no papel e só com alergia: na tela a opção continua, para marcar.
+  assert.match(pre, /\{!\(m\.impresso && temAlergia\) && \(\s*<span className="evoPFNega">/);
+});
