@@ -12,6 +12,7 @@ import {
 } from "@/lib/equipe";
 import { autorDoEvento, diferencas, rotuloDaAcao, type EventoDeAuditoria } from "@/lib/auditoria";
 import { linkDoConvite, mensagemDoConvite } from "@/lib/convite-mensagem";
+import { saiComPlantoes, textoDaExclusao, type SaiComOCadastro } from "@/lib/excluir-cadastro";
 
 // O cadastro de uma pessoa, e o cadastro de uma pessoa nova.
 //
@@ -135,6 +136,20 @@ export function PainelDaPessoa({
   const [destinoDaSaida, setDestinoDaSaida] = useState<string | null>(null);
   const [acaoDeConta, setAcaoDeConta] = useState<null | "status" | "excluir">(null);
   const [erroDaAcao, setErroDaAcao] = useState("");
+  // O que sai junto com o cadastro sem conta, para o aviso dizer os números
+  // antes do toque (lib/excluir-cadastro). Nulo enquanto não se sabe, ou antes
+  // da migração 202611080001: aí vale a exclusão de sempre.
+  const [saiJunto, setSaiJunto] = useState<SaiComOCadastro | null>(null);
+  useEffect(() => {
+    if (acaoDeConta !== "excluir" || !pessoa.sem_acesso) return;
+    let vivo = true;
+    void createClient().rpc("o_que_sai_com_o_cadastro", { p_perfil_id: pessoa.id }).then(({ data, error }) => {
+      const linha = Array.isArray(data) ? data[0] : data;
+      if (vivo && !error && linha) setSaiJunto(linha as SaiComOCadastro);
+    });
+    return () => { vivo = false; };
+  }, [acaoDeConta, pessoa.id, pessoa.sem_acesso]);
+  const comPlantoes = acaoDeConta === "excluir" && saiComPlantoes(saiJunto) ? textoDaExclusao(pessoa.nome, saiJunto) : null;
 
   const sujo = JSON.stringify(f) !== JSON.stringify(inicial);
   const legado = concessoesLegadas(pessoa);
@@ -229,6 +244,13 @@ export function PainelDaPessoa({
 
   async function excluir() {
     setOcupado(true); setErroDaAcao("");
+    if (saiComPlantoes(saiJunto)) {
+      const { error } = await createClient().rpc("excluir_cadastro_com_plantoes", { p_perfil_id: pessoa.id });
+      setOcupado(false);
+      if (error) { setErroDaAcao(error.message); return; }
+      onSalvo(`Cadastro de ${pessoa.nome} excluído, com ${saiJunto.plantoes === 1 ? "o plantão" : `os ${saiJunto.plantoes} plantões`}.`);
+      return;
+    }
     const { error } = await createClient().rpc("excluir_usuario", { p_perfil_id: pessoa.id });
     setOcupado(false);
     if (error) { setErroDaAcao(error.message); return; }
@@ -420,7 +442,7 @@ export function PainelDaPessoa({
                 <small>Só para quem não tem nenhum registro (prontuário, plantões, produção ou faturamento). Com registros, o sistema recusa: use desativar.</small>
               </span>
               <button type="button" className="outlineClinical red" disabled={sujo || ocupado}
-                onClick={() => { setErroDaAcao(""); setAcaoDeConta("excluir"); }}>Excluir</button>
+                onClick={() => { setErroDaAcao(""); setSaiJunto(null); setAcaoDeConta("excluir"); }}>Excluir</button>
             </div>}
           </div>}
           {ehVoce && <p className="admNota">Você não pode desativar nem excluir o próprio acesso.</p>}
@@ -448,9 +470,12 @@ export function PainelDaPessoa({
           resumo={resumoDaMudanca(pessoa, { ...pessoa, status: pessoa.status === "ativo" ? "inativo" : "ativo" }, ctx)} />
       </Dialogo>}
 
-      {acaoDeConta === "excluir" && <Dialogo titulo={`Excluir o cadastro de ${pessoa.nome}?`} confirmar="Excluir definitivamente" perigo
+      {acaoDeConta === "excluir" && <Dialogo titulo={`Excluir o cadastro de ${pessoa.nome}?`}
+        confirmar={comPlantoes ? comPlantoes.botao : "Excluir definitivamente"} confirmando="Excluindo…" perigo
         ocupado={ocupado} erro={erroDaAcao} onConfirmar={() => void excluir()} onCancelar={() => setAcaoDeConta(null)}>
-        <p>A exclusão é definitiva e só acontece se a pessoa não tiver nenhum registro no sistema. Se tiver, nada é apagado e o sistema explica o motivo — nesse caso, desative o acesso.</p>
+        {comPlantoes
+          ? <p>{comPlantoes.aviso}</p>
+          : <p>A exclusão é definitiva e só acontece se a pessoa não tiver nenhum registro no sistema. Se tiver, nada é apagado e o sistema explica o motivo — nesse caso, desative o acesso.</p>}
       </Dialogo>}
     </Gaveta>
   );
