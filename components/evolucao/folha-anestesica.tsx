@@ -498,7 +498,7 @@ export function FolhaAnestesica({
           </div>
 
           {colunas.length > 0 && (
-            <p className="evoDicaGrafico">Arraste os pontos tracejados de cada coluna até o valor do monitor e solte: lança naquele horário. Na SpO₂, no EtCO₂ e na temperatura o último valor já aparece em cada coluna: toque para lançar igual, ou arraste para cima (aumenta) ou para baixo (diminui) e solte.</p>
+            <p className="evoDicaGrafico">Arraste os pontos tracejados de cada coluna até o valor do monitor e solte: lança naquele horário. Para mover a tela, deslize o dedo fora dos pontos (perto de um ponto, segure um instante para pegá-lo). Na SpO₂, no EtCO₂ e na temperatura o último valor já aparece em cada coluna: toque para lançar igual, ou arraste para cima (aumenta) ou para baixo (diminui) e solte.</p>
           )}
           {montado ? (
             <GraficoSinais

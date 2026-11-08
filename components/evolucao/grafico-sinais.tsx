@@ -51,6 +51,8 @@ const LINHA = 24;          // cada faixa: gases, infusões, líquidos, SpO₂, E
 const FAIXA_EVENTOS = 30;  // duas pistas de marcas
 const TIRA = 16;           // a tira vertical com o nome da seção, como no papel
 const TOQUE = 18;          // raio de acerto num ponto (dedo com luva)
+const PRECISO = 10;        // dedo em cima do ponto: pega na hora; perto, a tela se move
+const SEGURAR_MS = 180;    // perto do ponto e parado este tempo: pega o ponto
 const PX_POR_PASSO = 8;    // arrastar na faixa de SpO₂/EtCO₂/temperatura: um passo a cada 8 px
 
 export type Toque = { ms: number; valor: number };
@@ -492,29 +494,55 @@ export function GraficoSinais({
     return Boolean(prontoNoToque(lx, ly) || pontoNoToque(lx, ly));
   }
 
+  /**
+   * O quanto o dedo caiu em cima do ponto do gráfico de pressão e FC (08/11/2026:
+   * "mover a tela com o dedo no iPad"). Com uma coluna a cada 10 minutos, os
+   * pontos tracejados cobriam quase todo o gráfico com o raio de acerto, e o
+   * dedo que só queria mover a tela pegava um ponto. Agora só o dedo EM CIMA
+   * do ponto (até PRECISO) pega na hora; o que cai perto move a tela, a menos
+   * que fique parado um instante (SEGURAR_MS) — aí pega o ponto. Na faixa de
+   * SpO₂, EtCO₂ e temperatura fica como era (de lado, ela já rola).
+   */
+  function emCimaDoPonto(lx: number, ly: number): boolean {
+    if (ly < topoGrade) return true;
+    const d = Math.min(prontoNoToque(lx, ly)?.d ?? Infinity, somenteLeitura ? Infinity : pontoMaisPerto(lx, ly)?.d ?? Infinity);
+    return d <= PRECISO;
+  }
+
   // O dedo que começa num ponto arrastável não rola a página; os outros rolam.
   // Precisa ser ouvinte nativo e não passivo: é o único jeito de o
   // preventDefault segurar a rolagem no iPhone e no Android.
   const ehArrastavel = useEffectEvent((lx: number, ly: number) => arrastavel(lx, ly));
+  const ehEmCima = useEffectEvent((lx: number, ly: number) => emCimaDoPonto(lx, ly));
+  const espera = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const el = svg.current;
     if (!el) return;
+    const parar = () => { if (espera.current) { clearTimeout(espera.current); espera.current = null; } };
     const inicio = (ev: TouchEvent) => {
+      parar();
       const t = ev.touches[0];
       const r = el.getBoundingClientRect();
-      segurarDedo.current = ev.touches.length === 1 && t ? ehArrastavel(t.clientX - r.left, t.clientY - r.top) : false;
+      const pode = ev.touches.length === 1 && t ? ehArrastavel(t.clientX - r.left, t.clientY - r.top) : false;
       inicioDoDedo.current = t ? { x: t.clientX, y: t.clientY } : null;
+      if (!pode || !t || ehEmCima(t.clientX - r.left, t.clientY - r.top)) { segurarDedo.current = pode; return; }
+      // Perto do ponto, e não em cima: a tela se move, a não ser que o dedo
+      // fique parado um instante — então ele pega o ponto.
+      segurarDedo.current = false;
+      espera.current = setTimeout(() => { espera.current = null; segurarDedo.current = pode; }, SEGURAR_MS);
     };
     const mover = (ev: TouchEvent) => {
+      const t = ev.touches[0], i = inicioDoDedo.current;
+      // Andou antes do instante: é a tela se movendo.
+      if (espera.current && (!t || !i || Math.hypot(t.clientX - i.x, t.clientY - i.y) > ANDOU)) parar();
       // O primeiro movimento decide o gesto inteiro (depois dele o navegador
       // não deixa mais segurar a rolagem): mais de lado que de pé, rola.
       if (segurarDedo.current === "vertical") {
-        const t = ev.touches[0], i = inicioDoDedo.current;
         segurarDedo.current = !t || !i || Math.abs(t.clientY - i.y) >= Math.abs(t.clientX - i.x);
       }
       if (segurarDedo.current === true && ev.cancelable) ev.preventDefault();
     };
-    const fim = () => { segurarDedo.current = false; };
+    const fim = () => { parar(); segurarDedo.current = false; };
     el.addEventListener("touchstart", inicio, { passive: true });
     el.addEventListener("touchmove", mover, { passive: false });
     el.addEventListener("touchend", fim);
@@ -524,6 +552,7 @@ export function GraficoSinais({
       el.removeEventListener("touchmove", mover);
       el.removeEventListener("touchend", fim);
       el.removeEventListener("touchcancel", fim);
+      parar();
     };
   }, []);
   function aoMover(ev: React.PointerEvent<SVGSVGElement>) {
