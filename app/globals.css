@@ -4616,6 +4616,19 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 
 .escalaVazio{margin-top:16px}
 
+/* O nome que não está na equipe, cadastrado direto da escala (09/11/2026). */
+.escalaNovo{display:grid;gap:8px;margin:12px var(--esp-6) 12px;padding:12px 14px;border:1px dashed var(--cor-marca);
+  border-radius:var(--raio-1);background:var(--cor-marca-suave)}
+.escalaNovo p{margin:0;font-size:14.5px;color:var(--cor-tinta-forte)}
+.escalaNovoLinha{display:flex;gap:8px;flex-wrap:wrap}
+.escalaNovoLinha input{flex:1 1 180px;min-width:0;height:44px;padding:0 12px;border:1px solid var(--cor-borda-forte);
+  border-radius:var(--raio-1);background:var(--cor-superficie);font:inherit;color:var(--cor-tinta)}
+.escalaNovoLinha input:focus{outline:0;border-color:var(--cor-marca);box-shadow:var(--foco)}
+.escalaNovoLinha button{flex:none;min-height:44px}
+.escalaNovo small{font-size:12.5px;line-height:1.35;color:var(--cor-tinta-fraca)}
+.escalaRecado{margin:10px var(--esp-6) 0;font-size:13.5px;font-weight:600;color:var(--cor-ok,var(--cor-marca-forte))}
+.escalaRecado.erro{color:var(--cor-perigo)}
+
 /* Uma linha por pessoa, e cada linha é um cartão que se acende quando marcado.
    Antes eram linhas separadas por um risco, e marcado ou desmarcado se
    distinguia por um quadradinho de 20px na ponta: conferir quem está na escala

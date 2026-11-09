@@ -216,5 +216,7 @@ export async function POST(request: NextRequest) {
     detalhes: semAcesso ? { nome, crm, role } : { email, role },
   });
 
-  return NextResponse.json({ ok: true });
+  // O id volta para quem cadastra direto da escala (components/plantoes.tsx,
+  // QuemEntraNaEscala): o nome novo já entra marcado, sem recarregar a lista.
+  return NextResponse.json({ ok: true, id: criado.id });
 }

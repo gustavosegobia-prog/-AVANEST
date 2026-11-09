@@ -1559,3 +1559,22 @@ function gruposDoFaturamento(itens: ItemDeFaturamento[]) {
       }),
     }));
 }
+
+// ---------------------------------------------------------------------------
+// O nome que ainda não está na equipe, direto da escala (09/11/2026)
+// ---------------------------------------------------------------------------
+// "Aqui já poderia pôr o nome que não está cadastrado e salvar — ir na outra
+// página é muita burocracia." Na janela "Quem entra na escala", o que se busca
+// e não se acha vira um botão: o administrador cadastra o médico sem conta ali
+// mesmo (o mesmo cadastro de Admin → Equipe, sem login) e ele já entra na
+// escala. Esta função diz QUANDO oferecer o botão: com pelo menos três letras e
+// nenhum nome igual na equipe — sem acento e sem diferença de maiúsculas, para
+// "dra alessandra" não criar uma segunda DRA ALESSANDRA.
+const comparavel = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+export function nomeParaCadastrar(busca: string, equipe: ReadonlyArray<{ nome: string }>): string | null {
+  const nome = busca.replace(/\s+/g, " ").trim();
+  if (comparavel(nome).replace(/[^a-z]/g, "").length < 3) return null;
+  const alvo = comparavel(nome);
+  return equipe.some((p) => comparavel(p.nome) === alvo) ? null : nome;
+}

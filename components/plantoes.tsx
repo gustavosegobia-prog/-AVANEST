@@ -12,7 +12,7 @@ import {
   folhaDeProducao, hhmm, money, podeConfirmar,
   apelidosDaEquipe, assinaturaDaFolha, coresDaFolha, filtroDeHospital, iniciais, montarICS,
   mesEmMaiusculas, ordemDentroDoDia,
-  nomeCurto, nomeDoPeriodo,
+  nomeCurto, nomeDoPeriodo, nomeParaCadastrar,
   ondeFica, partesDoPlantao, plantaoNaEscala, plural, somarHoras, TURNOS_DO_DIA, TURNOS_RAPIDOS,
   turnosCobertos,
 } from "@/lib/escala";
@@ -2379,6 +2379,24 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     return true;
   }
 
+  /**
+   * Cadastra direto da escala o médico que não está na equipe (09/11/2026:
+   * "ir na outra página é muita burocracia"): o mesmo cadastro sem conta de
+   * Admin → Equipe (/api/admin/users, que confere se quem pede é administrador)
+   * e, em seguida, na escala.
+   */
+  async function cadastrarNaEscala(nome: string, crm: string): Promise<{ id: string } | { erro: string }> {
+    setErro("");
+    const resposta = await fetch("/api/admin/users", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome, role: "medico", sem_acesso: true, crm }),
+    }).catch(() => null);
+    const r = (await resposta?.json().catch(() => ({}))) as { id?: string; error?: string } | undefined;
+    if (!resposta?.ok || !r?.id) return { erro: r?.error ?? "Não foi possível cadastrar agora. Confira a conexão e tente de novo." };
+    await alternarNaEscala(r.id, true);
+    return { id: r.id };
+  }
+
   async function alternarNaEscala(id: string, entra: boolean) {
     setErro("");
     const { error } = await createClient().rpc("definir_na_escala", {
@@ -3287,6 +3305,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
           corAtual={corPorMedico}
           perfilId={perfilId}
           ehAdmin={ehAdmin}
+          onCadastrar={ehAdmin ? cadastrarNaEscala : undefined}
           onFechar={() => { setAdicionando(false); onEquipeMudou?.(); }}
         />
       )}
@@ -4306,11 +4325,13 @@ function TrocasPainel({
  * A marcação vale na hora, e a página só é recarregada ao fechar: marcar cinco
  * nomes não pode custar cinco recarregamentos.
  */
-function QuemEntraNaEscala({
-  equipe, onAlternar, onCor, corAtual, perfilId, ehAdmin, onFechar,
+export function QuemEntraNaEscala({
+  equipe: equipeInicial, onAlternar, onCor, corAtual, perfilId, ehAdmin, onCadastrar, onFechar,
 }: {
   equipe: { id: string; nome: string; crm: string | null; naEscala: boolean; cor: number | null }[];
   onAlternar: (id: string, entra: boolean) => Promise<boolean>;
+  /** Só para o administrador: cadastra sem conta o nome buscado que não está na equipe, e põe na escala. */
+  onCadastrar?: (nome: string, crm: string) => Promise<{ id: string } | { erro: string }>;
   onCor: (id: string, cor: number | null) => Promise<boolean>;
   /** A cor que cada um TEM hoje na escala, escolhida ou sorteada. */
   corAtual: Map<string, string>;
@@ -4318,9 +4339,16 @@ function QuemEntraNaEscala({
   ehAdmin: boolean;
   onFechar: () => void;
 }) {
+  // Os cadastrados aqui mesmo entram na lista na hora; ao fechar, a página
+  // recarrega a equipe inteira (onEquipeMudou).
+  const [novos, setNovos] = useState<typeof equipeInicial>([]);
+  const equipe = useMemo(() => [...equipeInicial, ...novos], [equipeInicial, novos]);
   const [estado, setEstado] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(equipe.map((p) => [p.id, p.naEscala])),
+    () => Object.fromEntries(equipeInicial.map((p) => [p.id, p.naEscala])),
   );
+  const [crmNovo, setCrmNovo] = useState("");
+  const [cadastrando, setCadastrando] = useState(false);
+  const [recado, setRecado] = useState<{ texto: string; erro: boolean } | null>(null);
   const [salvando, setSalvando] = useState("");
   const [busca, setBusca] = useState("");
   // Qual linha está com a paleta aberta. Uma de cada vez: catorze pastilhas
@@ -4344,17 +4372,33 @@ function QuemEntraNaEscala({
     if (deuCerto) { setCores((antes) => ({ ...antes, [id]: cor })); setPaletaDe(""); }
   }
 
+  async function cadastrar(nome: string) {
+    if (!onCadastrar) return;
+    setCadastrando(true); setRecado(null);
+    const r = await onCadastrar(nome, crmNovo.trim());
+    setCadastrando(false);
+    if ("erro" in r) { setRecado({ texto: r.erro, erro: true }); return; }
+    setNovos((antes) => [...antes, { id: r.id, nome, crm: crmNovo.trim() || null, naEscala: true, cor: null }]);
+    setEstado((antes) => ({ ...antes, [r.id]: true }));
+    setBusca(""); setCrmNovo("");
+    setRecado({ texto: `${nome} cadastrado sem conta e já na escala.${crmNovo.trim() ? "" : " O CRM fica pendente."}`, erro: false });
+  }
+
   const temCRM = (p: { crm: string | null }) => Boolean((p.crm ?? "").trim());
   // A mesma conta que `definir_cor_escala` faz no banco. Repetida aqui só para
   // não oferecer um botão que seria recusado — a decisão continua sendo de lá.
   const podeMexerNaCor = (id: string) => ehAdmin || id === perfilId;
-  const dentro = equipe.filter((p) => estado[p.id] && temCRM(p)).length;
-  const aptos = equipe.filter(temCRM).length;
+  // Todos os marcados contam: quem está sem CRM também entra na escala (o
+  // aviso é outro). Antes o rodapé dizia "1 de 1" com seis marcados.
+  const dentro = equipe.filter((p) => estado[p.id]).length;
+  const semCrmDentro = equipe.filter((p) => estado[p.id] && !temCRM(p)).length;
 
   // A busca aparece só quando há lista para percorrer. Num serviço de cinco
   // pessoas ela seria um campo a mais para ler e nada para filtrar; num de
   // vinte, é a diferença entre marcar um nome e caçá-lo rolando.
-  const temBusca = equipe.length > 6;
+  // Para quem cadastra, a busca aparece sempre: é por ela que o nome novo entra.
+  const temBusca = equipe.length > 6 || Boolean(onCadastrar);
+  const paraCadastrar = onCadastrar ? nomeParaCadastrar(busca, equipe) : null;
   const alvo = busca.trim().toLowerCase();
   const visiveis = alvo
     ? equipe.filter((p) => `${p.nome} ${p.crm ?? ""}`.toLowerCase().includes(alvo))
@@ -4379,23 +4423,43 @@ function QuemEntraNaEscala({
         {temBusca && (
           <div className="escalaBusca">
             <Icone nome="busca" tamanho={16} />
-            <input value={busca} onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar pelo nome ou CRM" aria-label="Buscar na equipe" />
+            <input value={busca} onChange={(e) => { setBusca(e.target.value); setRecado(null); }}
+              placeholder={onCadastrar ? "Buscar ou adicionar um nome" : "Buscar pelo nome ou CRM"} aria-label="Buscar na equipe" />
             {busca && (
               <button type="button" onClick={() => setBusca("")} aria-label="Limpar a busca">×</button>
             )}
           </div>
         )}
 
+        {/* O nome que não está na equipe: cadastra aqui mesmo, sem conta, e já entra na escala. */}
+        {paraCadastrar && (
+          <form className="escalaNovo" onSubmit={(e) => { e.preventDefault(); void cadastrar(paraCadastrar); }}>
+            <p><strong>{paraCadastrar}</strong> não está na equipe.</p>
+            <div className="escalaNovoLinha">
+              <input value={crmNovo} onChange={(e) => setCrmNovo(e.target.value)} inputMode="numeric" maxLength={20}
+                placeholder="CRM (pode ficar para depois)" aria-label={`CRM de ${paraCadastrar}`} />
+              <button type="submit" className="primaryClinical compact" disabled={cadastrando}>
+                {cadastrando ? "Cadastrando…" : "+ Adicionar à escala"}
+              </button>
+            </div>
+            <small>Entra sem conta (sem login), como em Admin → Equipe. Dá para completar o cadastro depois.</small>
+          </form>
+        )}
+        {recado && <p className={`escalaRecado${recado.erro ? " erro" : ""}`} role={recado.erro ? "alert" : "status"}>{recado.texto}</p>}
+
         {equipe.length === 0 ? (
           <p className="plantaoNota escalaVazio">
-            Ninguém cadastrado como anestesiologista ainda. O cadastro é em{" "}
-            <strong>Admin → Convidar</strong>, com nome, CRM e e-mail.
+            {onCadastrar
+              ? <>Ninguém na equipe ainda. Escreva o nome na busca para adicionar.</>
+              : <>Ninguém cadastrado como anestesiologista ainda. O cadastro é em{" "}
+                <strong>Admin → Convidar</strong>, com nome, CRM e e-mail.</>}
           </p>
         ) : visiveis.length === 0 ? (
-          <p className="plantaoNota escalaVazio">
-            Ninguém com <strong>{busca}</strong> no nome ou no CRM.
-          </p>
+          paraCadastrar ? null : (
+            <p className="plantaoNota escalaVazio">
+              Ninguém com <strong>{busca}</strong> no nome ou no CRM.
+            </p>
+          )
         ) : (
           <ul className="escalaMembros">
             {visiveis.map((p) => {
@@ -4492,7 +4556,8 @@ function QuemEntraNaEscala({
 
         <div className="modalActions">
           <span className="escalaContagem">
-            <strong>{dentro}</strong> de {aptos} na escala
+            <strong>{dentro}</strong> de {equipe.length} na escala
+            {semCrmDentro > 0 && <> · {semCrmDentro} sem CRM</>}
           </span>
           <button type="button" className="primaryClinical compact" onClick={onFechar}>
             Pronto
