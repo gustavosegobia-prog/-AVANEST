@@ -14,6 +14,10 @@ export type Novidade = {
   titulo: string;
   /** O texto muda com a área: cada um lê o que vai fazer. */
   texto: Partial<Record<AreaDaNovidade, string>>;
+  /** Os pontos da novidade, com o rótulo em negrito. */
+  itens?: { rotulo: string; texto: string }[];
+  /** A frase de fecho, em negrito. */
+  assinatura?: string;
   /**
    * O que precisa estar no banco para a novidade existir de fato. Sem isso, o
    * aviso anunciaria um botão que dá erro: ele espera, e aparece sozinho no
@@ -22,18 +26,33 @@ export type Novidade = {
   requer?: "questionario-pre";
 };
 
+const TEXTO_DO_QUESTIONARIO =
+  "Agora, a recepção pode enviar o questionário pré-anestésico diretamente para o WhatsApp do paciente, permitindo que ele responda com antecedência, de forma simples e prática.";
+
 export const NOVIDADES: Novidade[] = [
   {
     id: "questionario-whatsapp",
     ate: "2026-12-11",
-    titulo: "Questionário pré-anestésico pelo WhatsApp",
+    // Texto do Dr. Gustavo (10/11/2026), igual para a recepção e o médico.
+    titulo: "🚀 Novidade no AVANEST: Questionário Pré-Anestésico pelo WhatsApp!",
     requer: "questionario-pre",
     texto: {
-      recepcao:
-        "Na agenda, toque em Mais ▾ na consulta e escolha Enviar questionário pelo WhatsApp. O paciente responde pelo celular antes de vir, e ao lado do nome você vê se ele já respondeu.",
-      medico:
-        "A recepção já pode mandar ao paciente um questionário pelo WhatsApp. Quando ele responde, a avaliação abre com os alertas (alergia, remédio que afina o sangue, caneta para emagrecer) e o botão Trazer as respostas, que preenche só o que está vazio.",
+      recepcao: TEXTO_DO_QUESTIONARIO,
+      medico: TEXTO_DO_QUESTIONARIO,
     },
+    itens: [
+      { rotulo: "Mais agilidade", texto: "o paciente preenche suas informações antes da avaliação." },
+      {
+        rotulo: "Alertas automáticos",
+        texto: "o sistema destaca informações importantes, como alergias, uso de anticoagulantes e medicamentos para emagrecimento, incluindo as canetas emagrecedoras.",
+      },
+      {
+        rotulo: "Preenchimento inteligente",
+        texto: "com o botão “Trazer as respostas”, as informações fornecidas pelo paciente são incorporadas à avaliação pré-anestésica, preenchendo apenas os campos vazios, sem substituir os dados já registrados.",
+      },
+      { rotulo: "Mais segurança", texto: "o anestesiologista revisa e valida as informações antes de concluir a avaliação." },
+    ],
+    assinatura: "AVANEST — Menos burocracia, mais agilidade e segurança em cada etapa do cuidado anestésico.",
   },
 ];
 

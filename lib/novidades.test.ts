@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { chaveDaNovidade, NOVIDADES, novidadeDaArea } from "./novidades.ts";
 
 const nada = () => false;
@@ -8,8 +9,12 @@ test("novidades: o questionário aparece na recepção e no médico, cada um com
   const rec = novidadeDaArea("recepcao", "2026-11-10", nada);
   const med = novidadeDaArea("medico", "2026-11-10", nada);
   assert.equal(rec?.id, "questionario-whatsapp");
-  assert.match(rec!.textoDaArea, /Mais ▾/);
-  assert.match(med!.textoDaArea, /Trazer as respostas/);
+  assert.match(rec!.textoDaArea, /WhatsApp do paciente/);
+  assert.equal(med!.textoDaArea, rec!.textoDaArea, "o mesmo texto para as duas áreas");
+  // O nome do botão como ele aparece na avaliação (components/questionario/na-avaliacao.tsx).
+  assert.ok(rec!.itens?.some((i) => i.texto.includes("“Trazer as respostas”")));
+  const tela = fs.readFileSync(new URL("../components/questionario/na-avaliacao.tsx", import.meta.url), "utf8");
+  assert.match(tela, /Trazer as respostas \(\{aTrazer\}\)/);
 });
 
 test("novidades: não aparece em outra área, depois de vista, nem depois do prazo", () => {

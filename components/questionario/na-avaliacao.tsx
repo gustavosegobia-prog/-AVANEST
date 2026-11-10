@@ -76,7 +76,7 @@ export function QuestionarioNaAvaliacao({ questionario: q, draft, sexo, avaliaca
         <div className="evalQuestionarioAcoes">
           {trazidos === null && aTrazer > 0 && (
             <button type="button" className="primaryClinical compact" onClick={trazer}>
-              Trazer {aTrazer} resposta{aTrazer > 1 ? "s" : ""} para a ficha
+              Trazer as respostas ({aTrazer})
             </button>
           )}
           <button type="button" className="outlineClinical" onClick={() => void abrir()}>Ver respostas</button>
