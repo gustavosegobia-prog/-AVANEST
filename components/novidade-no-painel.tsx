@@ -46,9 +46,21 @@ export function NovidadeNoPainel({ perfilId, area }: { perfilId: string; area: s
     <aside className="novidadePainel" aria-labelledby={titulo}>
       <span className="novidadeIcone" aria-hidden="true"><Icone nome="whatsapp" tamanho={22} /></span>
       <div className="novidadeTexto">
-        <small>Novidade</small>
+        {/* O rótulo sai quando o próprio título já anuncia a novidade. */}
+        {!/novidade/i.test(n.titulo) && <small>Novidade</small>}
         <strong id={titulo}>{n.titulo}</strong>
         <p>{n.textoDaArea}</p>
+        {n.itens && n.itens.length > 0 && (
+          <ul className="novidadeItens">
+            {n.itens.map((i) => (
+              <li key={i.rotulo}>
+                <Icone nome="confirmado" tamanho={15} />
+                <span><b>{i.rotulo}:</b> {i.texto}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {n.assinatura && <p className="novidadeAssinatura">{n.assinatura}</p>}
       </div>
       <button type="button" className="outlineClinical" onClick={entendi}>Entendi</button>
     </aside>
