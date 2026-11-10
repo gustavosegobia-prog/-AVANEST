@@ -574,19 +574,39 @@ export function primeiroNome(nome: string | null | undefined): string {
   return p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "";
 }
 
+/** "INOVANEST — Serviço de Anestesiologia…" vira "INOVANEST", para a assinatura. */
+export function nomeCurtoDaOrganizacao(organizacao: string | null | undefined): string {
+  return String(organizacao ?? "").split(/\s+[—–-]\s+/)[0].trim();
+}
+
+/**
+ * O texto do Dr. Gustavo (10/11/2026). Negrito do WhatsApp é com UM asterisco
+ * de cada lado: com dois, os asteriscos aparecem na mensagem.
+ */
 export function mensagemDoQuestionario(
   { paciente, organizacao, link, validade }: { paciente: string; organizacao: string | null; link: string; validade: string },
 ): string {
   const nome = primeiroNome(paciente);
   const ate = new Date(validade).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  const org = String(organizacao ?? "").trim();
+  const curto = nomeCurtoDaOrganizacao(org);
   return [
-    `Olá${nome ? `, ${nome}` : ""}! Aqui é da equipe de anestesia${organizacao ? `, ${organizacao}` : ""}.`,
+    `Olá${nome ? `, ${nome}` : ""}! 👋`,
     "",
-    "Antes da sua consulta pré-anestésica, responda algumas perguntas sobre a sua saúde. Leva uns 10 minutos, e você pode parar e continuar depois no mesmo celular.",
+    org ? `Somos da *${org}*.` : "Somos da equipe de anestesia.",
     "",
+    "Antes da sua consulta pré-anestésica, pedimos que responda a um breve questionário sobre sua saúde. Isso ajudará a tornar sua avaliação mais ágil e segura.",
+    "",
+    "⏱️ *Tempo estimado: menos de 10 minutos.*",
+    "",
+    "📱 Você pode interromper e continuar depois no mesmo celular.",
+    "",
+    "*Acesse seu questionário:*",
     link,
     "",
-    `O link é só seu e vale até ${ate}.`,
+    `🔒 Link pessoal e exclusivo, válido até ${ate}.`,
+    "",
+    curto ? `*${curto} | Sua segurança é nossa prioridade.*` : "*Sua segurança é nossa prioridade.*",
   ].join("\n");
 }
 

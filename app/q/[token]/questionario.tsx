@@ -186,7 +186,7 @@ export function Questionario({ token, nome, organizacao, sexo, validade }: {
           <h1>Olá{nome ? `, ${nome}` : ""}.</h1>
           <p>Estas perguntas são da equipe de anestesia que vai cuidar de você. Com elas, o anestesiologista chega à sua consulta já sabendo o principal da sua saúde.</p>
           <ul>
-            <li>Leva uns 10 minutos.</li>
+            <li>Leva menos de 10 minutos.</li>
             <li>Se não souber alguma resposta, marque <b>Não sei</b>. O médico pergunta na consulta.</li>
             <li>Pode parar e continuar depois, neste mesmo celular. O link vale até {ate}.</li>
           </ul>

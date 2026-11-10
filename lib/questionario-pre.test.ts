@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  alertasDoQuestionario, BLOCOS, faltandoNoBloco, lerMedida, limparRespostas, mensagemDoQuestionario,
+  alertasDoQuestionario, BLOCOS, faltandoNoBloco, lerMedida, limparRespostas, mensagemDoQuestionario, nomeCurtoDaOrganizacao,
   respostasParaAvaliacao, resumoDasRespostas, whatsappDoPaciente, type Respostas,
 } from "./questionario-pre.ts";
 
@@ -147,11 +147,32 @@ test("questionário: o resumo mostra as respostas como o paciente deu", () => {
 
 test("questionário: a mensagem do WhatsApp e o número do paciente", () => {
   const texto = mensagemDoQuestionario({
-    paciente: "MARIA DAS DORES FICTÍCIA", organizacao: "Grupo Fictício", link: "https://x.test/q/abc", validade: "2026-11-17T15:00:00Z",
+    paciente: "MARIA DAS DORES FICTÍCIA", organizacao: "Grupo Fictício — Serviço de Anestesia", link: "https://x.test/q/abc", validade: "2026-11-17T15:00:00Z",
   });
-  assert.match(texto, /^Olá, Maria! Aqui é da equipe de anestesia, Grupo Fictício\./);
-  assert.match(texto, /https:\/\/x\.test\/q\/abc/);
-  assert.match(texto, /vale até 17\/11\/2026\./);
+  assert.equal(texto, [
+    "Olá, Maria! 👋",
+    "",
+    "Somos da *Grupo Fictício — Serviço de Anestesia*.",
+    "",
+    "Antes da sua consulta pré-anestésica, pedimos que responda a um breve questionário sobre sua saúde. Isso ajudará a tornar sua avaliação mais ágil e segura.",
+    "",
+    "⏱️ *Tempo estimado: menos de 10 minutos.*",
+    "",
+    "📱 Você pode interromper e continuar depois no mesmo celular.",
+    "",
+    "*Acesse seu questionário:*",
+    "https://x.test/q/abc",
+    "",
+    "🔒 Link pessoal e exclusivo, válido até 17/11/2026.",
+    "",
+    "*Grupo Fictício | Sua segurança é nossa prioridade.*",
+  ].join("\n"));
+  assert.doesNotMatch(texto, /\*\*/, "negrito do WhatsApp é com um asterisco só");
+  const semGrupo = mensagemDoQuestionario({ paciente: "", organizacao: null, link: "L", validade: "2026-11-17T15:00:00Z" });
+  assert.match(semGrupo, /^Olá! 👋\n\nSomos da equipe de anestesia\./);
+  assert.match(semGrupo, /\*Sua segurança é nossa prioridade\.\*$/);
+  assert.equal(nomeCurtoDaOrganizacao("INOVANEST — Serviço de Anestesiologia de Campo Mourão"), "INOVANEST");
+  assert.equal(nomeCurtoDaOrganizacao("FUNDHOSPAR — Centro Cirúrgico"), "FUNDHOSPAR");
   assert.match(whatsappDoPaciente("(45) 99999-0000", "oi"), /^https:\/\/wa\.me\/5545999990000\?text=oi$/);
   assert.match(whatsappDoPaciente("5545999990000", "oi"), /^https:\/\/wa\.me\/5545999990000\?/);
   assert.match(whatsappDoPaciente(null, "oi"), /^https:\/\/wa\.me\/\?text=oi$/, "sem número, o WhatsApp pede o contato");
