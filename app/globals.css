@@ -5930,6 +5930,14 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
 .recEtapas button[aria-pressed="true"]{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
 .recEtapas button:focus-visible{outline:0;box-shadow:var(--foco)}
 .recAgendaLista{list-style:none;margin:0;padding:0}
+/* O menu "Mais ▾" da última consulta passava da borda do quadro e o quadro o
+   cortava (.clinicalPanel esconde o que sai): só "Confirmar" aparecia, e
+   "Reagendar…" e o questionário ficavam escondidos. O quadro da agenda deixa
+   o menu sair, e a última linha arredonda os cantos que o corte fazia. */
+.clinicalPanel.recAgenda{overflow:visible}
+.recAgendaLista>li:last-child{border-bottom-left-radius:inherit;border-bottom-right-radius:inherit}
+.recAgenda{border-radius:var(--raio-2)}
+.recAgendaLista{border-radius:0 0 var(--raio-2) var(--raio-2)}
 .recLinha{display:grid;grid-template-columns:78px minmax(0,1.4fr) minmax(0,1fr) auto;gap:14px;align-items:center;
   padding:12px 18px;border-bottom:1px solid var(--cor-borda);border-left:4px solid transparent}
 .recLinha.etapa-aguardando{border-left-color:var(--cor-atencao)}
