@@ -16,6 +16,7 @@ import {
   lerApfel, lerLee, lerStopBang,
 } from "@/lib/escores";
 import { BrandMark, NomeDaMarca } from "@/components/brand-mark";
+import { QuestionarioNaAvaliacao, type QuestionarioRespondido } from "@/components/questionario/na-avaliacao";
 import { Icone } from "@/components/icone";
 import { antropometriaPlausivel, avisoDeFaixa, avisoDePressao, decimalNaTela, lerDecimal, normalizarDecimal } from "@/lib/numero-clinico";
 import {
@@ -67,7 +68,7 @@ function isFilled(value: unknown) {
   return value !== undefined && value !== null && String(value).trim() !== "";
 }
 
-export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Assessment; paciente: Patient; perfil:Profile }) {
+export function AssessmentForm({ avaliacao, paciente, perfil, questionario = null }: { avaliacao: Assessment; paciente: Patient; perfil:Profile; questionario?: QuestionarioRespondido | null }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => {
     const saved = avaliacao.dados ?? {};
@@ -191,7 +192,11 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
     router.push("/dashboard");
   }
   function set(name: string, value: string | boolean) {
-    const next = { ...draftRef.current, [name]: value }; draftRef.current=next;setDraft(next); setSaveState("pending"); setSaveError("");
+    setVarios({ [name]: value });
+  }
+  // Vários campos de uma vez, num salvamento só (as respostas do questionário).
+  function setVarios(campos: Record<string, string | boolean>) {
+    const next = { ...draftRef.current, ...campos }; draftRef.current=next;setDraft(next); setSaveState("pending"); setSaveError("");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => save(next), 900);
   }
@@ -472,6 +477,9 @@ export function AssessmentForm({ avaliacao, paciente, perfil }: { avaliacao: Ass
       </div>}
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
 
+      {questionario && <QuestionarioNaAvaliacao questionario={questionario} draft={draft} sexo={String(draft.sexo || paciente.sexo || "") || null}
+        avaliacaoId={avaliacao.id} aplicar={setVarios}/>}
+
       <section id="etapa-1" className="evalSection">
         <h1>1 · Identificação do paciente</h1>
         <div className="evalFormGrid">
@@ -600,7 +608,10 @@ function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{nam
   const answerOptions=name==="gestacao"?["Sim","Não"]:["Sim","Não","Não sabe"];
   const selected=detail.split(",").map(item=>item.trim()).filter(Boolean);
   const toggleChip=(chip:string)=>onDetail(selected.includes(chip)?selected.filter(item=>item!==chip).join(", "):[...selected,chip].join(", "));
-  return <section className="questionCard"><div className="questionHead"><strong>{label}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="respiratoria"){set("respiratoria_ultima_crise","");set("respiratoria_controle","")}if(name==="gestacao"){for(const field of [...PREGNANCY_FIELDS.map(([f])=>f),...PREGNANCY_LEGACY_FIELDS])set(field,"")}}}} key={answer}>{answer}</button>)}</div></div>
+  // A resposta que veio do questionário do paciente, até o médico mudá-la.
+  const doPaciente=String(draft.questionario_pre_campos??"").split(",");
+  const informada=doPaciente.includes(name);
+  return <section className="questionCard"><div className="questionHead"><strong>{label}{informada&&<small className="doPaciente">informado pelo paciente</small>}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{if(informada)set("questionario_pre_campos",doPaciente.filter(item=>item!==name).join(","));onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="respiratoria"){set("respiratoria_ultima_crise","");set("respiratoria_controle","")}if(name==="gestacao"){for(const field of [...PREGNANCY_FIELDS.map(([f])=>f),...PREGNANCY_LEGACY_FIELDS])set(field,"")}}}} key={answer}>{answer}</button>)}</div></div>
     {value==="Sim"&&<><div className="detailChips">{chips.map(chip=><button type="button" className={selected.includes(chip)?"selected":""} onClick={()=>toggleChip(chip)} key={chip}>{chip}</button>)}</div>
       {name==="cirurgias_anteriores"&&<div className="conditionalDetails">
         <label><span>Qual cirurgia foi realizada?</span><input value={String(draft.cirurgias_anteriores_cirurgia??detail)} onChange={e=>set("cirurgias_anteriores_cirurgia",e.target.value)} placeholder="Ex.: cesárea, colecistectomia, herniorrafia"/></label>
