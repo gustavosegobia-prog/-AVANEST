@@ -178,7 +178,8 @@ export function RecepcaoView({
     const e = etapaDaConsulta(c, andamento.get(c.id));
     return etapaFiltro === "fora" ? ["faltou", "cancelado", "reagendado"].includes(e) : e === etapaFiltro;
   });
-  const { mapa: questionarios, recarregar: recarregarQuestionarios } = useQuestionarios(doDia.map((c) => c.patient_id));
+  const { mapa: questionarios, recarregar: recarregarQuestionarios, pronto: questionarioPronto } =
+    useQuestionarios(doDia.map((c) => c.patient_id));
   const proxima = proximaDataComConsultas(consultas, dia);
   const totais = totaisDoMes(consultas, mesDoDia);
   const resultados = buscarPacientes(pacientes, busca);
@@ -473,7 +474,7 @@ export function RecepcaoView({
                               {c.medico_id ? "Trocar médico…" : "Indicar médico…"}
                             </button>
                           )}
-                          {!FORA_DO_FLUXO(c.status) && p && (
+                          {questionarioPronto && !FORA_DO_FLUXO(c.status) && p && (
                             <button type="button" role="menuitem" onClick={() => { setMenu(""); setQuestionarioDe(c); }}>
                               {rotuloDoEnvio(questionarios.get(c.patient_id))}
                             </button>

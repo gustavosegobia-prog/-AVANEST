@@ -29,6 +29,11 @@ test("novidades: a mais recente primeiro, e a vista dá lugar à seguinte", () =
   assert.equal(novidadeDaArea("medico", "2026-11-10", (id) => id === "b", lista)?.id, "a");
 });
 
+test("novidades: o aviso do questionário espera o banco ficar pronto", () => {
+  assert.equal(novidadeDaArea("recepcao", "2026-11-10", nada, NOVIDADES, () => false), null);
+  assert.equal(novidadeDaArea("recepcao", "2026-11-10", nada, NOVIDADES, () => true)?.id, "questionario-whatsapp");
+});
+
 test("novidades: o visto é de cada pessoa, e cada novidade tem id único", () => {
   assert.notEqual(chaveDaNovidade("u1", "x"), chaveDaNovidade("u2", "x"));
   assert.equal(new Set(NOVIDADES.map((n) => n.id)).size, NOVIDADES.length);

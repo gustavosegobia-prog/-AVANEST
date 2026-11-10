@@ -14,6 +14,12 @@ export type Novidade = {
   titulo: string;
   /** O texto muda com a área: cada um lê o que vai fazer. */
   texto: Partial<Record<AreaDaNovidade, string>>;
+  /**
+   * O que precisa estar no banco para a novidade existir de fato. Sem isso, o
+   * aviso anunciaria um botão que dá erro: ele espera, e aparece sozinho no
+   * dia em que o banco estiver pronto.
+   */
+  requer?: "questionario-pre";
 };
 
 export const NOVIDADES: Novidade[] = [
@@ -21,6 +27,7 @@ export const NOVIDADES: Novidade[] = [
     id: "questionario-whatsapp",
     ate: "2026-12-11",
     titulo: "Questionário pré-anestésico pelo WhatsApp",
+    requer: "questionario-pre",
     texto: {
       recepcao:
         "Na agenda, toque em Mais ▾ na consulta e escolha Enviar questionário pelo WhatsApp. O paciente responde pelo celular antes de vir, e ao lado do nome você vê se ele já respondeu.",
@@ -38,10 +45,12 @@ export function novidadeDaArea(
   hoje: string,
   vistas: (id: string) => boolean,
   lista: Novidade[] = NOVIDADES,
+  pronto: (requisito: NonNullable<Novidade["requer"]>) => boolean = () => true,
 ): (Novidade & { textoDaArea: string }) | null {
   for (const n of lista) {
     const texto = n.texto[area as AreaDaNovidade];
     if (!texto || hoje >= n.ate || vistas(n.id)) continue;
+    if (n.requer && !pronto(n.requer)) continue;
     return { ...n, textoDaArea: texto };
   }
   return null;

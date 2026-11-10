@@ -14,22 +14,29 @@ import {
 
 type Linha = { patient_id: string; situacao: Situacao | "cancelado"; enviado_em: string | null; respondido_em: string | null };
 
+/**
+ * A situação de cada paciente do dia, e se o questionário existe no banco.
+ * Enquanto a migração 202611100001 não estiver aplicada, `pronto` fica falso e
+ * a agenda não oferece o envio: o botão daria erro.
+ */
 export function useQuestionarios(pacientes: string[]) {
   const [mapa, setMapa] = useState<Map<string, Linha>>(new Map());
+  const [pronto, setPronto] = useState(false);
   const [versao, setVersao] = useState(0);
   const chave = [...new Set(pacientes)].sort().join(",");
   useEffect(() => {
     if (!chave) return;
     let vivo = true;
     void (async () => {
-      const { data } = await createClient().rpc("situacao_dos_questionarios", { p_patient_ids: chave.split(",") });
+      const { data, error } = await createClient().rpc("situacao_dos_questionarios", { p_patient_ids: chave.split(",") });
       if (!vivo) return;
+      setPronto(!error);
       setMapa(new Map(((data ?? []) as Linha[]).map((l) => [l.patient_id, l])));
     })();
     return () => { vivo = false; };
   }, [chave, versao]);
   const recarregar = useCallback(() => setVersao((v) => v + 1), []);
-  return { mapa, recarregar };
+  return { mapa, recarregar, pronto };
 }
 
 const ICONE: Record<Situacao, Parameters<typeof Icone>[0]["nome"]> = {

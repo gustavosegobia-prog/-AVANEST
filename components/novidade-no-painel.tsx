@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
 import { hoje } from "@/lib/data-local";
 import { chaveDaNovidade, novidadeDaArea } from "@/lib/novidades";
@@ -19,11 +20,21 @@ export function NovidadeNoPainel({ perfilId, area }: { perfilId: string; area: s
   // Até lá, nada aparece — quem já disse "Entendi" não vê o aviso piscar.
   const [pronto, setPronto] = useState(false);
   const [dispensadas, setDispensadas] = useState<string[]>([]);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- o visto é do aparelho, só existe depois de montar
-  useEffect(() => { setPronto(true); }, []);
+  // O questionário só é anunciado quando o banco já tem as funções dele
+  // (migração 202611100001). Lista vazia não lê nada: só confirma que existe.
+  const [questionarioPronto, setQuestionarioPronto] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- o visto é do aparelho, só existe depois de montar
+    setPronto(true);
+    let vivo = true;
+    void createClient().rpc("situacao_dos_questionarios", { p_patient_ids: [] })
+      .then(({ error }) => { if (vivo) setQuestionarioPronto(!error); });
+    return () => { vivo = false; };
+  }, []);
   if (!pronto) return null;
 
-  const n = novidadeDaArea(area, hoje(), (id) => dispensadas.includes(id) || jaViu(perfilId, id));
+  const n = novidadeDaArea(area, hoje(), (id) => dispensadas.includes(id) || jaViu(perfilId, id), undefined,
+    (requisito) => requisito === "questionario-pre" && questionarioPronto);
   if (!n) return null;
 
   const entendi = () => {
