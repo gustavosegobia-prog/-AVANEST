@@ -7,6 +7,7 @@ import { Dialogo, Gaveta } from "@/components/admin-ui";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { AvisoFlutuante } from "@/components/aviso-flutuante";
 import { dataLocal, hoje as hojeNoBrasil } from "@/lib/data-local";
+import { EnviarQuestionario, rotuloDoEnvio, SeloDoQuestionario, useQuestionarios } from "@/components/questionario/na-recepcao";
 import {
   acoesDaConsulta, buscarPacientes, confirmacaoDaConsulta, dataCurtaBr, dataPorExtenso, DESTINO_DA_ACAO,
   ETAPAS_DO_FLUXO, etapaDaConsulta, formatarCPF, formatarTelefone, horaCurta, horaDoInstante, horarioOcupado,
@@ -81,6 +82,8 @@ export function RecepcaoView({
   const [indicando, setIndicando] = useState<{ consulta: ConsultaDaRecepcao; medico: string } | null>(null);
   const [erroIndicando, setErroIndicando] = useState("");
   const [historicoDe, setHistoricoDe] = useState<ConsultaDaRecepcao | null>(null);
+  // O questionário pré-anestésico, pelo WhatsApp (components/questionario).
+  const [questionarioDe, setQuestionarioDe] = useState<ConsultaDaRecepcao | null>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
 
   // A mudança aparece na hora, e é desfeita se o banco recusar. Some quando a
@@ -175,6 +178,8 @@ export function RecepcaoView({
     const e = etapaDaConsulta(c, andamento.get(c.id));
     return etapaFiltro === "fora" ? ["faltou", "cancelado", "reagendado"].includes(e) : e === etapaFiltro;
   });
+  const { mapa: questionarios, recarregar: recarregarQuestionarios, pronto: questionarioPronto } =
+    useQuestionarios(doDia.map((c) => c.patient_id));
   const proxima = proximaDataComConsultas(consultas, dia);
   const totais = totaisDoMes(consultas, mesDoDia);
   const resultados = buscarPacientes(pacientes, busca);
@@ -440,6 +445,7 @@ export function RecepcaoView({
                         {conf === "confirmada" ? "Confirmada" : "Confirmação pendente"}
                       </span>
                     )}
+                    <SeloDoQuestionario linha={questionarios.get(c.patient_id)} />
                     {marca && <small className="recCarimbo">{marca}</small>}
                   </div>
                   <div className="recAcoes">
@@ -466,6 +472,11 @@ export function RecepcaoView({
                             <button type="button" role="menuitem" autoFocus={outras.length === 0}
                               onClick={() => { setMenu(""); setErroIndicando(""); setIndicando({ consulta: c, medico: c.medico_id ?? "" }); }}>
                               {c.medico_id ? "Trocar médico…" : "Indicar médico…"}
+                            </button>
+                          )}
+                          {questionarioPronto && !FORA_DO_FLUXO(c.status) && p && (
+                            <button type="button" role="menuitem" onClick={() => { setMenu(""); setQuestionarioDe(c); }}>
+                              {rotuloDoEnvio(questionarios.get(c.patient_id))}
                             </button>
                           )}
                           <button type="button" role="menuitem" autoFocus={outras.length === 0 && FORA_DO_FLUXO(c.status)}
@@ -565,6 +576,11 @@ export function RecepcaoView({
       {historicoDe && (
         <Historico consulta={historicoDe} nome={pacientePorId.get(historicoDe.patient_id)?.nome ?? "Paciente"}
           nomes={nomes} perfilId={perfilId} onFechar={() => setHistoricoDe(null)} />
+      )}
+
+      {questionarioDe && pacientePorId.get(questionarioDe.patient_id) && (
+        <EnviarQuestionario paciente={pacientePorId.get(questionarioDe.patient_id)!} agendamentoId={questionarioDe.id}
+          onFechar={() => setQuestionarioDe(null)} onEnviado={recarregarQuestionarios} />
       )}
     </div>
   );

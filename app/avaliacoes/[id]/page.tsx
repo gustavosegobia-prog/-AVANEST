@@ -1,6 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { AssessmentForm } from "./assessment-form";
+import type { QuestionarioRespondido } from "@/components/questionario/na-avaliacao";
+
+// O questionário que o paciente respondeu pelo celular entra se for dos
+// últimos 4 meses: o de uma cirurgia de anos atrás já não descreve o paciente.
+const QUESTIONARIO_VALE_DIAS = 120;
 
 export default async function AssessmentPage({
   params,
@@ -27,5 +32,16 @@ export default async function AssessmentPage({
     .eq("id", avaliacao.patient_id)
     .single();
   if (!paciente) notFound();
-  return <AssessmentForm avaliacao={avaliacao} paciente={paciente} perfil={perfil} />;
+  const desde = new Date(Date.now() - QUESTIONARIO_VALE_DIAS * 86400000).toISOString();
+  const { data: questionario } = await supabase
+    .from("questionarios_pre")
+    .select("id,respostas,fotos,respondido_em,usado_em")
+    .eq("patient_id", paciente.id)
+    .eq("status", "respondido")
+    .gte("respondido_em", desde)
+    .order("respondido_em", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return <AssessmentForm avaliacao={avaliacao} paciente={paciente} perfil={perfil}
+    questionario={(questionario as QuestionarioRespondido | null) ?? null} />;
 }

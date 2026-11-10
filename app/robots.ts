@@ -29,6 +29,8 @@ const PRIVADO = [
   "/recuperar-senha",
   // O convite mostra o e-mail de quem foi convidado: nunca vai para a busca.
   "/convite/",
+  // O questionário do paciente: link pessoal, com dado de saúde.
+  "/q/",
   "/comecar",
   "/duas-etapas",
   "/evolucao",

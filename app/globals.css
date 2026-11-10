@@ -5954,6 +5954,15 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
 .recEtapa.etapa-faltou,.recEtapa.etapa-cancelado{background:var(--cor-perigo-suave);color:var(--cor-perigo)}
 .recConfirmacao.confirmada{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
 .recConfirmacao.pendente{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+/* O questionário pré-anestésico (components/questionario/na-recepcao.tsx). */
+.recQuestionario{display:inline-flex;align-items:center;gap:5px;border-radius:var(--raio-cheio);padding:3px 10px;
+  font-size:12px;font-weight:700;background:var(--cor-superficie-suave);color:var(--cor-tinta-fraca)}
+.recQuestionario.aberto{background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.recQuestionario.respondido{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.recQuestionario.vencido{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.recQuestionarioMensagem{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:14px;line-height:1.45;margin:12px 0;padding:12px 14px;
+  border:1px solid var(--cor-borda);border-radius:var(--raio-2);background:var(--cor-superficie-suave);max-height:240px;overflow:auto}
+.recQuestionarioNota{font-size:13px;color:var(--cor-tinta-fraca);margin-top:12px}
 .recCarimbo{flex-basis:100%;font-size:12px;color:var(--cor-tinta-fraca)}
 .recAcoes{display:flex;gap:8px;align-items:center;justify-content:flex-end}
 .recAcoes>button{white-space:nowrap}
@@ -8411,3 +8420,55 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
    onde ele está. O cinza de apoio do site público (--avn-muted) subiu de
    4,2:1 para 5,3:1 sobre o fundo claro. */
 .escTabela:focus-visible{outline:2px solid #11776c;outline-offset:3px}
+
+/* ── O questionário do paciente dentro da avaliação ─────────────────────────
+   components/questionario/na-avaliacao.tsx. Fica antes da identificação:
+   é a primeira coisa que o médico lê ao abrir a ficha. */
+.evalQuestionario{background:var(--cor-superficie);border:1px solid var(--cor-borda);border-left:4px solid var(--cor-marca);
+  border-radius:17px;padding:20px 24px;margin:0 0 20px;display:grid;gap:12px}
+.evalQuestionarioTopo{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.evalQuestionarioTopo strong{display:flex;align-items:center;gap:8px;font-size:16px;color:var(--cor-tinta-forte)}
+.evalQuestionarioTopo small{display:block;color:var(--cor-tinta-fraca);font-size:13px;margin-top:3px}
+.evalQuestionarioAcoes{display:flex;gap:8px;flex-wrap:wrap}
+.evalQuestionarioFeito{display:flex;gap:8px;align-items:flex-start;margin:0;font-size:14px;color:var(--cor-sucesso)}
+.evalQuestionarioFeito svg{flex:none;margin-top:3px}
+.evalQuestionarioAlertas{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.evalQuestionarioAlertas li{display:flex;gap:8px;align-items:flex-start;padding:8px 12px;border-radius:var(--raio-1);
+  background:var(--cor-atencao-suave);color:var(--cor-atencao);font-size:14px;font-weight:650}
+.evalQuestionarioAlertas li.grave{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
+.evalQuestionarioAlertas svg{flex:none;margin-top:3px}
+.evalQuestionarioRemedios{margin:0;font-size:13px;color:var(--cor-tinta-fraca)}
+.evalQuestionarioBloco h3,.evalQuestionarioFotos h3{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca);margin:22px 0 8px}
+.evalQuestionarioBloco dl{margin:0;display:grid;gap:0;border:1px solid var(--cor-borda);border-radius:var(--raio-2);overflow:hidden}
+.evalQuestionarioBloco dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:10px 14px;border-top:1px solid var(--cor-borda)}
+.evalQuestionarioBloco dl>div:first-child{border-top:0}
+.evalQuestionarioBloco dt{color:var(--cor-tinta-fraca);font-size:14px}
+.evalQuestionarioBloco dd{margin:0;font-weight:650;font-size:14px;overflow-wrap:anywhere}
+.evalQuestionarioFotos ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.evalQuestionarioFotos img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:var(--raio-2);border:1px solid var(--cor-borda);display:block}
+.questionHead strong .doPaciente{display:inline-block;margin-left:10px;padding:2px 8px;border-radius:var(--raio-cheio);
+  background:var(--cor-marca-suave);color:var(--cor-marca-forte);font-size:12px;font-weight:700;vertical-align:middle}
+@media(max-width:700px){
+  .evalQuestionario{padding:16px}
+  .evalQuestionarioBloco dl>div{grid-template-columns:1fr;gap:2px}
+  .questionHead strong .doPaciente{margin:6px 0 0;display:table}
+}
+
+/* ── Novidade no alto da área (components/novidade-no-painel.tsx) ──────────
+   Na mesma largura do conteúdo da área, logo abaixo da barra do topo. */
+.novidadePainel{width:min(var(--largura-painel),calc(100% - 48px));margin:24px auto 0;display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;gap:14px 16px;align-items:center;padding:16px 18px;
+  background:var(--cor-superficie);border:1px solid var(--cor-borda);border-left:4px solid var(--cor-sucesso);
+  border-radius:var(--raio-3);box-shadow:var(--sombra-1,0 1px 2px rgba(8,25,42,.06))}
+.novidadeIcone{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+  background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.novidadeTexto{display:grid;gap:2px;min-width:0}
+.novidadeTexto small{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cor-sucesso)}
+.novidadeTexto strong{font-size:16px;color:var(--cor-tinta-forte)}
+.novidadeTexto p{margin:2px 0 0;font-size:14px;line-height:1.5;color:var(--cor-tinta-fraca);max-width:78ch}
+.clinicalDark .novidadePainel{background:var(--cor-superficie)}
+@media(max-width:680px){
+  .novidadePainel{width:calc(100% - 24px);margin-top:12px;grid-template-columns:auto minmax(0,1fr);padding:14px}
+  .novidadePainel>button{grid-column:1/-1;justify-self:stretch}
+  .novidadeIcone{align-self:start}
+}
