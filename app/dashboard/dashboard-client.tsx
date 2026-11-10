@@ -59,6 +59,7 @@ const ChatFlutuante = dynamic(() => import("@/components/chat-flutuante").then((
 
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
 import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
+import { NovidadeNoPainel } from "@/components/novidade-no-painel";
 import { iniciais, plural } from "@/lib/escala";
 import { DIAS_ADIADO, DIAS_VISTO, chaveDeVisto, chaveDoAviso, type Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
@@ -1071,6 +1072,9 @@ export function DashboardClient({
           )}
         </div>
       )}
+
+      {/* A novidade da área, uma por vez, até "Entendi" (lib/novidades.ts). */}
+      <NovidadeNoPainel perfilId={perfil.id} area={view} />
 
       {/* Instalar vem ANTES de ligar o aviso, porque no iPhone é pré-requisito:
           sem o AVANEST na tela de início, o Safari não entrega notificação

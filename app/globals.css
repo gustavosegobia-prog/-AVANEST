@@ -8453,3 +8453,22 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
   .evalQuestionarioBloco dl>div{grid-template-columns:1fr;gap:2px}
   .questionHead strong .doPaciente{margin:6px 0 0;display:table}
 }
+
+/* ── Novidade no alto da área (components/novidade-no-painel.tsx) ──────────
+   Na mesma largura do conteúdo da área, logo abaixo da barra do topo. */
+.novidadePainel{width:min(var(--largura-painel),calc(100% - 48px));margin:24px auto 0;display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;gap:14px 16px;align-items:center;padding:16px 18px;
+  background:var(--cor-superficie);border:1px solid var(--cor-borda);border-left:4px solid var(--cor-sucesso);
+  border-radius:var(--raio-3);box-shadow:var(--sombra-1,0 1px 2px rgba(8,25,42,.06))}
+.novidadeIcone{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+  background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
+.novidadeTexto{display:grid;gap:2px;min-width:0}
+.novidadeTexto small{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cor-sucesso)}
+.novidadeTexto strong{font-size:16px;color:var(--cor-tinta-forte)}
+.novidadeTexto p{margin:2px 0 0;font-size:14px;line-height:1.5;color:var(--cor-tinta-fraca);max-width:78ch}
+.clinicalDark .novidadePainel{background:var(--cor-superficie)}
+@media(max-width:680px){
+  .novidadePainel{width:calc(100% - 24px);margin-top:12px;grid-template-columns:auto minmax(0,1fr);padding:14px}
+  .novidadePainel>button{grid-column:1/-1;justify-self:stretch}
+  .novidadeIcone{align-self:start}
+}
