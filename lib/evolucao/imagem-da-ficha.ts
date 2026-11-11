@@ -102,9 +102,15 @@ export function apagarLinhas(img: Imagem, { minimoH = 60, minimoV = 38 } = {}): 
   return { largura: W, altura: H, pontos: saida };
 }
 
-/** A escala para o lado maior ficar perto de 3.000 pontos (nunca reduz, no máximo 2,4×). */
+/**
+ * A escala para o lado maior ficar em 3.000 pontos — ampliando a foto pequena
+ * (a do WhatsApp chega com 1.600) e REDUZINDO a grande. A do iPhone tem 4.032:
+ * lida assim, a letra engorda, as bordas passam do tamanho de "linha" e o
+ * cabeçalho (nome, nascimento, CRM) virava sujeira (11/11/2026, no aparelho
+ * do Dr. Gustavo).
+ */
 export function escalaDaFicha(largura: number, altura: number): number {
-  return Math.min(2.4, Math.max(1, 3000 / Math.max(largura, altura)));
+  return Math.min(2.4, Math.max(0.4, 3000 / Math.max(largura, altura)));
 }
 
 /** Os dois passos, na ordem. */

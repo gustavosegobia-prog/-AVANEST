@@ -351,30 +351,74 @@ function donoDoQual(anteriores: Array<{ pergunta: Pergunta }>, respostas: FichaD
 
 const MAIUSCULA = /^[A-ZÀ-ÖØ-Ý'’.-]+$/;
 
+/** As trocas do OCR dentro de uma data ("O3/O5/196O", "03/05/l960"). */
+function datasDe(texto: string): Array<{ iso: string; ano: number }> {
+  const algarismos = texto.replace(/[oO]/g, "0").replace(/[lI|]/g, "1").replace(/[S]/g, "5").replace(/[B]/g, "8");
+  const datas: Array<{ iso: string; ano: number }> = [];
+  for (const m of algarismos.matchAll(/(\d{2})\s*[/.-]\s*(\d{2})\s*[/.-]\s*(\d{4})/g)) {
+    const [dia, mes, ano] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    if (dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12 && ano >= 1900 && ano <= 2100) {
+      datas.push({ iso: `${m[3]}-${m[2]}-${m[1]}`, ano });
+    }
+  }
+  return datas;
+}
+
+/** O que o cabeçalho põe depois do nome, na mesma linha. */
+const DEPOIS_DO_NOME = /^(prontu|registro|idade|nasc|conv|sexo|atend)/;
+
+/**
+ * A identificação, no cabeçalho. O nome é o que vem em MAIÚSCULAS depois de
+ * "Paciente:" (às vezes colado: "Paciente:MARIA"), até o próximo rótulo. O
+ * nascimento é a data da linha de "Nascimento"; se ela não foi lida, a data
+ * mais antiga do cabeçalho — a outra é a do atendimento, sempre mais nova.
+ */
 function pacienteDo(linhas: Linha[]): FichaDoHospital["paciente"] {
   const p = { nome: "", nascimento: "", sexo: "", convenio: "", prontuario: "" };
-  for (const l of linhas) {
+  // O cabeçalho acaba onde começa a avaliação (a faixa "Anamnese", o "Evento em" ou o primeiro rótulo).
+  let fimDoCabecalho = linhas.findIndex((l) => /\b(anamnese|evento)\b/.test(l.norm) || rotulosDa(l).length > 0);
+  if (fimDoCabecalho < 0) fimDoCabecalho = linhas.length;
+  const cabecalho = linhas.slice(0, fimDoCabecalho);
+
+  for (const l of cabecalho) {
     const textos = l.palavras.map((x) => x.t);
-    const iProntuario = l.norm.split(" ").findIndex((w) => /^prontu/.test(w));
-    if (!p.nome && iProntuario > 0) {
-      const iPaciente = l.norm.split(" ").findIndex((w) => /^paciente/.test(w));
-      const nome = textos.slice(iPaciente >= 0 ? iPaciente + 1 : 0, iProntuario).filter((t) => MAIUSCULA.test(t) && t.length > 1);
+    const normais = textos.map((t) => normalizar(t));
+    const iPaciente = normais.findIndex((w) => /^pac[il1]ente/.test(w));
+    if (!p.nome && iPaciente >= 0) {
+      // "Paciente:MARIA" colado: o resto da palavra já é o nome.
+      const colado = textos[iPaciente].split(/[:;]/).slice(1).join("").trim();
+      const nome: string[] = colado && MAIUSCULA.test(colado) ? [colado] : [];
+      for (const t of textos.slice(iPaciente + 1)) {
+        if (DEPOIS_DO_NOME.test(normalizar(t)) || /:$/.test(t)) break;
+        if (MAIUSCULA.test(t) && t.length > 1) nome.push(t);
+        else if (nome.length) break;
+      }
       p.nome = nome.join(" ");
-      const n = /prontu\w*\s+([\d.]+)/.exec(l.norm);
+    }
+    if (!p.prontuario) {
+      const n = /prontu\w*\s*([\d.]{3,})/.exec(l.norm);
       if (n) p.prontuario = n[1];
     }
-    if (!p.nascimento && /nascimento/.test(l.norm)) {
-      const d = /(\d{2})\/(\d{2})\/(\d{4})/.exec(l.norm.slice(l.norm.indexOf("nascimento")));
-      if (d) p.nascimento = `${d[3]}-${d[2]}-${d[1]}`;
+    if (!p.nascimento && /nasc/.test(l.norm)) {
+      const depois = textos.slice(normais.findIndex((w) => /nasc/.test(w))).join(" ");
+      const d = datasDe(depois)[0];
+      if (d) p.nascimento = d.iso;
     }
-    if (!p.sexo && !rotulosDa(l).length) {
+    if (!p.sexo) {
       const s = /\b(masculino|feminino)\b/.exec(l.norm);
       if (s) p.sexo = s[1] === "masculino" ? "Masculino" : "Feminino";
     }
-    if (!p.convenio && /convenio/.test(l.norm)) {
-      const depois = textos.slice(l.norm.split(" ").findIndex((w) => /convenio/.test(w)) + 1).join(" ");
+    if (!p.convenio && /conv[eê]n/.test(l.norm)) {
+      const depois = textos.slice(normais.findIndex((w) => /conv[eê]n/.test(w)) + 1).join(" ");
       p.convenio = depois.replace(/^[\s\d:.-]+/, "").split(/\s+/)[0]?.replace(/^-+/, "") ?? "";
     }
+  }
+  // Sem a linha do nascimento: a data mais antiga do cabeçalho.
+  if (!p.nascimento) {
+    const datas = cabecalho.flatMap((l) => datasDe(l.palavras.map((x) => x.t).join(" ")));
+    const anoAtual = new Date().getFullYear();
+    const maisAntiga = datas.filter((d) => d.ano < anoAtual).sort((a, b) => a.ano - b.ano)[0];
+    if (maisAntiga) p.nascimento = maisAntiga.iso;
   }
   return p;
 }

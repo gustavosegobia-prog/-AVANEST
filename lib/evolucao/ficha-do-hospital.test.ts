@@ -84,6 +84,24 @@ test("ficha do hospital: a identificação e quem avaliou", () => {
   assert.deepEqual(lida.autor, { crm: "PR 12345", nome: "MEDICA FICTICIA", quando: "10/11/2026 08:30" });
 });
 
+test("ficha do hospital: o nome e o nascimento mesmo com o cabeçalho mal lido", () => {
+  const variante = (cabecalho: typeof FOLHA) => lerFichaDoHospital(palavrasDa([...cabecalho, ...FOLHA.slice(5)])).paciente;
+  // "Paciente:" colado no nome, e o Prontuário lido numa linha à parte.
+  const colado = variante([
+    [100, [[100, "Paciente:MARIA FICTÍCIA DA SILVA"]]],
+    [104, [[1500, "Prontuário: 12.345"]]],
+    [140, [[100, "Data de Nascimento:O7/08/l975"], [900, "Idade: 51a"], [1500, "Convênio: 02 - UNIMED"]]],
+  ]);
+  assert.equal(colado.nome, "MARIA FICTÍCIA DA SILVA");
+  assert.equal(colado.nascimento, "1975-08-07", "O e l no lugar de 0 e 1");
+  // Sem a palavra "Nascimento" lida: a data mais antiga do cabeçalho (a outra é a do atendimento).
+  const semRotulo = variante([
+    [100, [[100, "Paciente: MARIA FICTÍCIA DA SILVA"], [1500, "Prontuário: 12.345"]]],
+    [140, [[100, "Data de Nasclmentu 07/08/1975"], [1500, "Atendimento: 10/11/2026"]]],
+  ]);
+  assert.equal(semRotulo.nascimento, "1975-08-07");
+});
+
 test("ficha do hospital: cada resposta na sua coluna, mesmo com três perguntas lado a lado e a foto torta", () => {
   assert.equal(lida.respostas.sintomas, "Não");
   assert.equal(lida.respostas.respiratoria, "Sim");

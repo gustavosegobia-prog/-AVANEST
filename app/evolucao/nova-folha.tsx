@@ -10,12 +10,20 @@ import { casaComONome, type PacienteAchado } from "@/lib/evolucao/entrada";
 import type { CasoComCadastro } from "@/lib/evolucao/mapa-do-dia";
 import { abrirFicha } from "./abrir-ficha";
 import { BotaoFotoDaAvaliacao, JanelaFichaDoHospital, type FichaConferida } from "@/components/evolucao/janela-ficha-do-hospital";
+import { mesmoPaciente } from "@/lib/evolucao/ficha-do-hospital";
+import { normalizar } from "@/lib/centro-importar";
 import { MapaDoDia } from "./mapa-do-dia";
 import { ImportarMapaNaFicha } from "./importar-mapa";
 import { horarioDaFicha } from "@/lib/evolucao/folha";
 import { dataLocal, horaLocal } from "@/lib/data-local";
 
 type Encontrado = Omit<PacienteAchado, "avaliacao" | "aberta">;
+
+/** O mesmo nome, apesar do OCR: igual sem espaços, ou com o primeiro e o último nome do cadastro na foto. */
+function mesmoNome(doCadastro: string, daFoto: string): boolean {
+  const colado = (x: string) => normalizar(x).replace(/[^a-z]/g, "");
+  return colado(doCadastro) === colado(daFoto) || mesmoPaciente(doCadastro, daFoto);
+}
 
 /** A idade de hoje, pelo nascimento da folha ("1960-05-03"). */
 function idadeHoje(nascimento: string): number | null {
@@ -156,11 +164,16 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
     setAbrindoPelaFoto(true); setErroDaFoto("");
     const supabase = createClient();
     const nome = paciente.nome.trim().replace(/\s+/g, " ");
-    const { data: mesmos, error } = await supabase.from("pacientes").select(CAMPOS).ilike("nome", nome.replace(/[%_]/g, "")).limit(5);
+    // Com o nascimento, a busca é por ele, e o nome só confirma — tolerante ao
+    // OCR que parte uma palavra ("CAR LOS"): um cadastro em dobro do mesmo
+    // paciente é pior do que um toque a mais.
+    const { data: mesmos, error } = paciente.nascimento
+      ? await supabase.from("pacientes").select(CAMPOS).eq("data_nascimento", paciente.nascimento).limit(30)
+      : await supabase.from("pacientes").select(CAMPOS).ilike("nome", nome.replace(/[%_]/g, "")).limit(5);
     if (error) { setAbrindoPelaFoto(false); setErroDaFoto("A busca no cadastro não respondeu. Confira a conexão e tente de novo."); return; }
     const candidatos = (mesmos ?? []) as Encontrado[];
     let p = paciente.nascimento
-      ? candidatos.find((c) => c.data_nascimento === paciente.nascimento)
+      ? candidatos.find((c) => mesmoNome(c.nome, nome))
       : candidatos.length === 1 ? candidatos[0] : undefined;
     if (p) {
       const { data: aberta } = await (local
@@ -281,12 +294,12 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
           onArquivo={(f) => { setPelaFoto(f); setErroDaFoto(""); }} />
         {!novo && (
           <button type="button" className="fcAtalho" onClick={abrirSemCadastro}>
-            <Icone nome="pessoa" tamanho={16} /> Paciente sem cadastro
+            <Icone nome="pessoa" tamanho={16} /> Novo paciente
           </button>
         )}
         <button type="button" className={`fcAtalho${quando ? " ativo" : ""}`} aria-pressed={Boolean(quando)}
           onClick={() => { setQuando((q) => (q ? null : { data: dataLocal(), inicio: horaLocal(), fim: "" })); setErro(""); }}>
-          <Icone nome="relogio" tamanho={16} /> {quando ? "Voltar para agora" : "Outro dia ou horário"}
+          <Icone nome="relogio" tamanho={16} /> {quando ? "Voltar para agora" : "Outro dia/hora"}
         </button>
         {/* O mapa cirúrgico de dentro da ficha (07/11/2026): importar sem sair
             daqui, e o atalho para a tela inteira do mapa (salas, TV, relatório). */}

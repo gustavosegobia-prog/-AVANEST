@@ -128,6 +128,7 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
             <div className="evoGradeCampos">
               <label className="evoCampo evoFHNome"><span>Nome</span>
                 <input value={paciente.nome} onChange={(e) => setPaciente({ ...paciente, nome: e.target.value })} autoComplete="off" />
+                {!paciente.nome.trim() && <small>Não deu para ler o nome nesta foto: escreva aqui, ou tente outra foto mais de perto.</small>}
               </label>
               <label className="evoCampo"><span>Nascimento</span>
                 <input type="date" value={paciente.nascimento} onChange={(e) => setPaciente({ ...paciente, nascimento: e.target.value })} />
