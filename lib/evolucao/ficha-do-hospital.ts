@@ -48,22 +48,31 @@ export function juntarComConfianca(a: PalavraComConfianca[], b: PalavraComConfia
     const w = Math.min(p.x1, q.x1) - Math.max(p.x0, q.x0), h = Math.min(p.y1, q.y1) - Math.max(p.y0, q.y0);
     if (w <= 0 || h <= 0) return false;
     const comum = w * h;
-    if (comum / (area(p) + area(q) - comum) > 0.45) return true;
+    const iou = comum / (area(p) + area(q) - comum);
+    if (iou > 0.7) return true;
+    // Caixas que só se cruzam são a mesma palavra quando o texto também bate
+    // (uma contém a outra, ou começam igual). "Nascimento:03/05/1" por cima de
+    // "03/05/1960" são duas leituras de pedaços diferentes: ficam as duas, e
+    // a data inteira não se perde.
     const [tp, tq] = [normalizar(p.t), normalizar(q.t)];
-    return comum / Math.min(area(p), area(q)) > 0.85 && (tp.includes(tq) || tq.includes(tp));
+    const parecidas = tp.includes(tq) || tq.includes(tp) || tp.slice(0, 2) === tq.slice(0, 2);
+    return parecidas && (iou > 0.45 || comum / Math.min(area(p), area(q)) > 0.6);
   };
-  // Confiança muito baixa é quase sempre sujeira; a exceção é a palavra longa em
-  // maiúsculas, que o OCR lê certo e marca com zero por causa da borda colada
-  // ("(OMEPRAZOL").
-  const fica = (p: PalavraComConfianca) => p.c >= 25 || /^[([|]?\p{Lu}{5,}[,.]?$/u.test(p.t.trim());
+  // Confiança muito baixa é quase sempre sujeira; as exceções são a palavra
+  // longa em maiúsculas e a data, que o OCR lê certo e marca com zero por causa
+  // da borda colada ("(OMEPRAZOL", o "03/05/1960" do nascimento na foto girada).
+  const fica = (p: PalavraComConfianca) => p.c >= 25 || /^[([|]?\p{Lu}{5,}[,.]?$/u.test(p.t.trim())
+    || /\d{2}\/\d{2}\/\d{4}/.test(p.t);
   const todas = [...a, ...b].filter(fica).sort((p, q) => q.c - p.c);
   const ficam: PalavraComConfianca[] = [];
   for (const p of todas) {
     const i = ficam.findIndex((q) => sobrepoe(p, q));
     if (i < 0) { ficam.push(p); continue; }
-    // A mais confiante leu só o começo ("N" por cima de "Não"): fica a inteira.
+    // A mais confiante leu só um pedaço ("N" por cima de "Não", "960" por cima
+    // de "03/05/1960"): fica a inteira.
     const [curta, longa] = [normalizar(ficam[i].t), normalizar(p.t)];
-    if (p.c >= 30 && longa.length > curta.length && longa.startsWith(curta)) ficam[i] = p;
+    const data = /\d{2}\/\d{2}\/\d{4}/.test(p.t);
+    if (longa.length > curta.length && ((p.c >= 30 && longa.startsWith(curta)) || (data && longa.includes(curta)))) ficam[i] = p;
   }
   return ficam;
 }
@@ -304,6 +313,9 @@ export function lerFichaDoHospital(palavrasBrutas: PalavraComConfianca[]): Ficha
       const pedacos: PalavraComConfianca[][] = [];
       let ultimaY = -1;
       for (const l of abaixo) {
+        // Resposta não tem "?": a linha com pergunta é rótulo que a leitura não
+        // reconheceu (cortado no pé da foto, por exemplo), e a resposta acabou.
+        if (l.palavras.some((p) => p.t.includes("?"))) break;
         const ps = l.palavras.filter((p) => p.x0 >= c.de && p.x0 < c.ate
           && (p.t.length > 1 || /[\d+/<>-]/.test(p.t) || c.pergunta === "asa" || c.pergunta === "mallampati"
             || (/^[NS]$/.test(p.t) && !TEXTO_LIVRE.has(c.pergunta))));
@@ -355,7 +367,9 @@ const MAIUSCULA = /^[A-ZÀ-ÖØ-Ý'’.-]+$/;
 function datasDe(texto: string): Array<{ iso: string; ano: number }> {
   const algarismos = texto.replace(/[oO]/g, "0").replace(/[lI|]/g, "1").replace(/[S]/g, "5").replace(/[B]/g, "8");
   const datas: Array<{ iso: string; ano: number }> = [];
-  for (const m of algarismos.matchAll(/(\d{2})\s*[/.-]\s*(\d{2})\s*[/.-]\s*(\d{4})/g)) {
+  // A data partida em duas palavras ("03/05/1 960"): sem os espaços, ela volta.
+  const semEspaco = algarismos.replace(/(?<=[\d/])\s+(?=\d)/g, "");
+  for (const m of semEspaco.matchAll(/(\d{2})\s*[/.-]\s*(\d{2})\s*[/.-]\s*(\d{4})/g)) {
     const [dia, mes, ano] = [Number(m[1]), Number(m[2]), Number(m[3])];
     if (dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12 && ano >= 1900 && ano <= 2100) {
       datas.push({ iso: `${m[3]}-${m[2]}-${m[1]}`, ano });

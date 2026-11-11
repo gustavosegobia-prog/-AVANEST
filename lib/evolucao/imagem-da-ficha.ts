@@ -117,3 +117,30 @@ export function escalaDaFicha(largura: number, altura: number): number {
 export function prepararFicha(img: Imagem): Imagem {
   return apagarLinhas(binarizar(img));
 }
+
+/**
+ * As linhas de texto da foto estão deitadas ou de pé? Na folha em pé, a soma
+ * da tinta linha a linha sobe e desce a cada linha de texto; coluna a coluna,
+ * varia pouco. Com a foto de lado (o celular deitado), o contrário. Recebe a
+ * imagem já em preto e branco; "?" quando não dá para dizer.
+ */
+export function direcaoDoTexto(pb: Imagem): "horizontal" | "vertical" | "?" {
+  const { largura: W, altura: H, pontos } = pb;
+  const linhas = new Float64Array(H), colunas = new Float64Array(W);
+  let total = 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (pontos[y * W + x] === PRETO) { linhas[y]++; colunas[x]++; total++; }
+    }
+  }
+  if (!total) return "?";
+  const variacao = (v: Float64Array) => {
+    let soma = 0;
+    for (let i = 1; i < v.length; i++) soma += Math.abs(v[i] - v[i - 1]);
+    return soma / total;
+  };
+  const [vl, vc] = [variacao(linhas), variacao(colunas)];
+  if (vl > vc * 1.15) return "horizontal";
+  if (vc > vl * 1.15) return "vertical";
+  return "?";
+}
