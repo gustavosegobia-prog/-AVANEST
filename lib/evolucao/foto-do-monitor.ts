@@ -21,6 +21,14 @@
 // A FOTO DE LADO OU DE CABEÇA PARA BAIXO (11/11/2026, no monitor de outro
 // hospital): endireitada antes de tudo (girar-foto.ts). Deitada, a leitura
 // rápida escolhe o lado; de pé e sem nada lido, tenta virada.
+//
+// O MOIRÉ (11/11/2026, as três fotos do mesmo monitor): a foto de tela tirada
+// de perto e de lado sai com listras, e a leitura em resolução cheia se perde
+// nelas — 0 de 30 valores certos numa foto, 0 de 27 na outra. Reduzida, as
+// listras somem: 30 de 30 e até 25 de 27. Mas a foto nítida piora reduzida
+// (19 → 13 de 29). Então: lê como veio; se renderam poucos valores com
+// horário, relê reduzida (1.600, 1.300, 1.000 pontos, até uma render bem), e
+// fica a leitura que rendeu mais.
 
 import { chaveDaLeitura, juntarPalavras, leituraBoa, montar, planejar, SELO_ILEGIVEL, type Alfabeto, type Caixa, type Celula, type Palavra } from "./grade-do-monitor";
 import { lerTendencias, type LinhaDoMonitor } from "./monitor";
@@ -31,6 +39,12 @@ export type Tela = { canvas: HTMLCanvasElement; largura: number; altura: number 
 const LADO_DA_LEITURA = 2000;   // a foto inteira, para achar a tabela
 const LADO_DOS_RECORTES = 3200; // a fonte dos recortes de cada célula (foto maior encolhe)
 const ALTURA_DO_RECORTE = 96;   // a célula ampliada: letra com uns 40–60 px
+const LADOS_SEM_MOIRE = [1600, 1300, 1000]; // as releituras reduzidas: as listras da tela somem
+const BOA_LEITURA = 15;         // valores com horário que dispensam a segunda leitura
+
+/** Quantos valores a leitura achou com horário: a medida de qual leitura rendeu mais. */
+const rendimento = (linhas: LinhaDoMonitor[]) =>
+  linhas.filter((l) => l.hora).reduce((n, l) => n + Object.keys(l).filter((k) => k !== "hora").length, 0);
 
 const ALFABETOS: Record<Alfabeto, string> = {
   numero: "0123456789.,",
@@ -379,26 +393,38 @@ export async function lerFotoDoMonitor(arquivo: Blob, avancar: (fracao: number) 
     };
     const direcao = direcaoDaFoto(bitmap);
     const giro: Giro = direcao === "horizontal" ? 0 : await melhorGiro(direcao === "vertical" ? [270, 90] : [0, 270, 90], pontuar);
-    const lidas = await lerGirada(giro);
-    if (lidas.length || giro !== 0) return lidas;
-    return (await pontuar(180)) > (await pontuar(0)) ? await lerGirada(180) : lidas;
+    let lidas = await lerGirada(giro, null, 0, 0.65);
+    if (!lidas.length && giro === 0 && (await pontuar(180)) > (await pontuar(0))) lidas = await lerGirada(180, null, 0.65, 1);
+    // Pouco lido: a foto reduzida, sem o moiré — em mais de um tamanho, porque
+    // o ponto em que as listras somem muda com a distância e o ângulo da foto.
+    let melhor = lidas;
+    for (const [i, lado] of LADOS_SEM_MOIRE.entries()) {
+      if (rendimento(melhor) >= BOA_LEITURA) break;
+      const fatia = 0.35 / LADOS_SEM_MOIRE.length;
+      const reduzida = await lerGirada(giro, lado, 0.65 + fatia * i, 0.65 + fatia * (i + 1));
+      if (rendimento(reduzida) > rendimento(melhor)) melhor = reduzida;
+    }
+    return melhor;
   } finally {
     bitmap.close();
     await worker.terminate();
   }
 
-  async function lerGirada(giro: Giro): Promise<LinhaDoMonitor[]> {
-    const fonte = giro ? desenharGirada(bitmap, 1, giro) : bitmap;
+  /** Uma leitura completa: girada, e reduzida para `lado` pontos quando pedido. A barra anda de `de` até `ate`. */
+  async function lerGirada(giro: Giro, lado: number | null, de: number, ate: number): Promise<LinhaDoMonitor[]> {
+    const passo = (f: number) => avancar(de + (ate - de) * f);
+    const girada = giro ? desenharGirada(bitmap, 1, giro) : bitmap;
+    const fonte = lado ? desenharGirada(girada, Math.min(1, lado / Math.max(girada.width, girada.height)), 0) : girada;
     const original = desenhar(fonte, fonte.width, fonte.height, LADO_DOS_RECORTES, 1600);
     // Endireitada antes de tudo: torta, a linha da tabela vira duas.
     const cheia = endireitada(original, inclinacao(original));
     const menor = desenhar(cheia.canvas, cheia.largura, cheia.altura, LADO_DA_LEITURA, LADO_DA_LEITURA);
-    avancar(0.1);
+    passo(0.1);
     await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: "" });
     const crua = await palavrasDa(worker, menor.canvas);
-    avancar(0.35);
+    passo(0.35);
     const limpa = await palavrasDa(worker, tratada(menor));
-    avancar(0.55);
+    passo(0.55);
     const juntas = juntarPalavras(crua.palavras, limpa.palavras);
     espiar?.({ id: "palavras", caixa: { x0: 0, y0: 0, x1: 1, y1: 1 }, alfabeto: "numero", primeiraLeitura: "" }, menor.canvas, JSON.stringify(juntas));
     let plano = planejar(juntas);
@@ -469,7 +495,7 @@ export async function lerFotoDoMonitor(arquivo: Blob, avancar: (fracao: number) 
         }
         lidos[c.id] = lidas.filter(Boolean);
         if (!lidos[c.id].length && viuSelo) lidos[c.id] = [SELO_ILEGIVEL];
-        avancar(0.55 + (0.45 * ++feitas) / plano.celulas.length);
+        passo(0.55 + (0.45 * ++feitas) / plano.celulas.length);
       }
     }
     return montar(plano, lidos);
