@@ -1,6 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { lerTendencias, resumoDaLinha } from "./monitor.ts";
+import { horaDigitada, lerTendencias, resumoDaLinha } from "./monitor.ts";
+
+test("hora digitada no teclado de números: os dois pontos entram sozinhos", () => {
+  assert.equal(horaDigitada("1"), "1");
+  assert.equal(horaDigitada("10"), "10");
+  assert.equal(horaDigitada("100"), "10:0");
+  assert.equal(horaDigitada("1005"), "10:05");
+  assert.equal(horaDigitada("10:05"), "10:05", "colada com os dois pontos, fica igual");
+  assert.equal(horaDigitada("905"), "09:05", "três números com hora acima de 23: a hora tem um número só");
+  assert.equal(horaDigitada("10:0"), "10:0", "apagando: de 10:05 para 10:0");
+  assert.equal(horaDigitada("10:"), "10", "e de 10:0 para 10, sem os dois pontos sobrando");
+  assert.equal(horaDigitada("100599"), "10:05", "no máximo quatro números");
+});
 
 test("tabela de tendências com cabeçalho: hora, PNI, FC e SpO₂ em colunas", () => {
   const texto = `Tendências tabulares
