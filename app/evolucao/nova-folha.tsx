@@ -321,8 +321,8 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
       </div>
       {avisoDoMapa && <p className="fcAvisoMapa" role="status">{avisoDoMapa}</p>}
       {pelaFoto && (
-        <JanelaFichaDoHospital key={pelaFoto.name + pelaFoto.lastModified} arquivoInicial={pelaFoto} comPaciente
-          confirmar="Abrir a ficha anestésica" ocupado={abrindoPelaFoto} erroDeFora={erroDaFoto}
+        <JanelaFichaDoHospital key={pelaFoto.name + pelaFoto.lastModified} arquivoInicial={pelaFoto}
+          ocupado={abrindoPelaFoto} erroDeFora={erroDaFoto}
           onFechar={() => { setPelaFoto(null); setAbrindoPelaFoto(false); }} onConfirmar={(r) => void abrirPelaFoto(r)} />
       )}
 

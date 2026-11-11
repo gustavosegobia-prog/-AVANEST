@@ -3,21 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Icone } from "@/components/icone";
 import { Janela } from "@/components/janela";
-import {
-  jaPreenchido, mesmoPaciente, preencherAFolha, propostaDaFicha, valorNaFolha, type CampoProposto, type ChaveDaProposta, type FichaDoHospital,
-} from "@/lib/evolucao/ficha-do-hospital";
+import { propostaDaFicha, type CampoProposto, type ChaveDaProposta, type FichaDoHospital } from "@/lib/evolucao/ficha-do-hospital";
 
-// A ficha pré-anestésica do hospital, pela foto (11/11/2026).
+// Abrir a ficha anestésica pela foto da avaliação de outro serviço (11/11/2026).
 //
-// Fotografa a folha impressa do sistema do hospital, lê no aparelho
-// (lib/evolucao/foto-da-ficha.ts) e mostra campo a campo o que iria para a
-// ficha anestésica. O médico corrige o que o OCR errou e confirma. O campo
-// que a ficha já tem fica como está: a foto só preenche o vazio.
-//
-// Duas portas: de dentro da ficha aberta ("Preencher pela ficha do
-// hospital") e da tela de abrir ficha, quando o paciente ainda nem está no
-// sistema — aí a janela mostra também o nome, o nascimento e o sexo, para o
-// cadastro.
+// A avaliação pré-anestésica que outro médico fez, impressa no sistema do
+// hospital: a foto é lida no aparelho (lib/evolucao/foto-da-ficha.ts), e
+// dela vêm só os DADOS DO PACIENTE — nome, nascimento, sexo e convênio para
+// o cadastro; cirurgia proposta, peso, altura, alergias e medicação em uso
+// para o cabeçalho da ficha. O médico confere, corrige o que a leitura
+// trocou e abre a ficha. A ficha anestésica não muda em nada.
 
 export type PacienteDaFoto = { nome: string; nascimento: string; sexo: string; convenio: string };
 export type FichaConferida = { ficha: FichaDoHospital; campos: Array<{ chave: ChaveDaProposta; valor: string }>; paciente: PacienteDaFoto };
@@ -38,18 +33,11 @@ export function BotaoFotoDaAvaliacao({ rotulo, className = "fcAtalho", onArquivo
   );
 }
 
-export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente = false, confirmar, ocupado = false, erroDeFora = "", arquivoInicial, onConfirmar, onFechar }: {
-  /** A ficha como está: o que já tem não é trocado. Na abertura, vazia. */
-  dados?: Record<string, unknown>;
-  /** O paciente da ficha aberta, para conferir que a foto é dele. */
-  pacienteDaFolha?: { nome: string };
-  /** Na tela de abrir ficha: nome, nascimento, sexo e convênio para o cadastro. */
-  comPaciente?: boolean;
-  confirmar: string;
+export function JanelaFichaDoHospital({ arquivoInicial, ocupado = false, erroDeFora = "", onConfirmar, onFechar }: {
+  /** A foto escolhida no botão: a janela já abre lendo. */
+  arquivoInicial?: File;
   ocupado?: boolean;
   erroDeFora?: string;
-  /** A foto escolhida no botão de fora: a janela já abre lendo. */
-  arquivoInicial?: File;
   onConfirmar: (r: FichaConferida) => void;
   onFechar: () => void;
 }) {
@@ -67,20 +55,20 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
       const { lerFotoDaFicha } = await import("@/lib/evolucao/foto-da-ficha");
       const f = await lerFotoDaFicha(arquivo, setProgresso);
       const proposta = propostaDaFicha(f);
-      if (proposta.length < 3) {
+      if (!f.paciente.nome && proposta.length < 2) {
         setErro("Li pouca coisa nesta foto. Tente de novo: a folha inteira, de frente, bem iluminada e sem sombra da mão.");
       }
       setFicha(f);
       setCampos(proposta);
       setPaciente({ nome: f.paciente.nome, nascimento: f.paciente.nascimento, sexo: f.paciente.sexo, convenio: f.paciente.convenio });
     } catch {
-      setErro("Não consegui ler este arquivo. Envie uma foto da ficha pré-anestésica impressa (ou o PDF do sistema do hospital).");
+      setErro("Não consegui ler este arquivo. Envie uma foto da avaliação pré-anestésica impressa (ou o PDF do sistema do hospital).");
     } finally {
       setLendo(false);
     }
   }
 
-  // A leitura da foto do botão de fora começa sozinha, uma vez só (o modo de
+  // A leitura da foto do botão começa sozinha, uma vez só (o modo de
   // desenvolvimento roda o efeito duas vezes).
   const comecou = useRef(false);
   useEffect(() => {
@@ -90,21 +78,21 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
   }, [arquivoInicial]);
 
   const mudar = (chave: ChaveDaProposta, valor: string) => setCampos((cs) => cs.map((c) => (c.chave === chave ? { ...c, valor } : c)));
-  const entram = campos.filter((c) => c.valor.trim() && !jaPreenchido(dados, c.chave));
-  const outroPaciente = !comPaciente && ficha && pacienteDaFolha && ficha.paciente.nome
-    && !mesmoPaciente(pacienteDaFolha.nome, ficha.paciente.nome);
-  const pronto = ficha && (comPaciente ? paciente.nome.trim().length > 2 : entram.length > 0);
+  const pronto = ficha && paciente.nome.trim().length > 2;
+  const confirmar = () => {
+    if (!ficha) return;
+    const entram = campos.filter((c) => c.valor.trim()).map(({ chave, valor }) => ({ chave, valor }));
+    if (paciente.convenio.trim()) entram.push({ chave: "papel_convenio", valor: paciente.convenio.trim() });
+    onConfirmar({ ficha, campos: entram, paciente });
+  };
 
   return (
-    <Janela titulo={comPaciente ? "Abrir a ficha pela foto da avaliação" : "Preencher pela foto da avaliação"} largura="larga" onFechar={onFechar}
-      subtitulo={comPaciente
-        ? "A avaliação pré-anestésica impressa, de outro hospital ou serviço: o AVANEST lê o paciente e a avaliação, cadastra quem não está no sistema e abre a ficha anestésica."
-        : "A avaliação pré-anestésica impressa, de outro hospital ou serviço: o AVANEST lê e preenche os campos vazios desta ficha."}
+    <Janela titulo="Abrir a ficha pela foto da avaliação" largura="larga" onFechar={onFechar}
+      subtitulo="A avaliação pré-anestésica impressa, de outro hospital ou serviço: o AVANEST lê os dados do paciente, cadastra quem não está no sistema e abre a ficha anestésica."
       rodape={<>
         <button type="button" className="evoBotao secundario" onClick={onFechar}>Cancelar</button>
-        <button type="button" className="evoBotao" disabled={!pronto || ocupado || lendo}
-          onClick={() => ficha && onConfirmar({ ficha, campos: entram.map(({ chave, valor }) => ({ chave, valor })), paciente })}>
-          {ocupado ? "Abrindo…" : confirmar}
+        <button type="button" className="evoBotao" disabled={!pronto || ocupado || lendo} onClick={confirmar}>
+          {ocupado ? "Abrindo…" : "Abrir a ficha anestésica"}
         </button>
       </>}>
       <div className="evoForm">
@@ -116,13 +104,8 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
         </label>
         <p className="evoNota">A foto é lida neste aparelho e não é enviada nem guardada. Confira cada campo com a folha: a leitura pode trocar letras.</p>
         {erro && <p className="evoNota atencao" role="alert">{erro}</p>}
-        {outroPaciente && (
-          <p className="evoNota atencao" role="alert">
-            O nome na foto ({ficha.paciente.nome}) não é o desta ficha ({pacienteDaFolha.nome}). Confira se é a folha certa antes de preencher.
-          </p>
-        )}
 
-        {ficha && comPaciente && (
+        {ficha && (
           <fieldset className="evoFHGrupo">
             <legend>Paciente</legend>
             <div className="evoGradeCampos">
@@ -147,52 +130,21 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
 
         {campos.length > 0 && (
           <fieldset className="evoFHGrupo">
-            <legend>Avaliação pré-anestésica</legend>
+            <legend>Para o cabeçalho da ficha</legend>
             <div className="evoFHCampos">
-              {campos.map((c) => {
-                const ja = jaPreenchido(dados, c.chave);
-                const longo = c.valor.length > 60;
-                return (
-                  <label key={c.chave} className={`evoCampo evoFHCampo${ja ? " ja" : ""}`}>
-                    <span>{c.rotulo}{ja && <em> · fica o que já está na ficha: {valorNaFolha(dados, c.chave)}</em>}</span>
-                    {longo
-                      ? <textarea rows={Math.min(5, Math.ceil(c.valor.length / 70))} value={c.valor} disabled={ja} onChange={(e) => mudar(c.chave, e.target.value)} />
-                      : <input value={c.valor} disabled={ja} onChange={(e) => mudar(c.chave, e.target.value)} />}
-                  </label>
-                );
-              })}
+              {campos.map((c) => (
+                <label key={c.chave} className="evoCampo evoFHCampo">
+                  <span>{c.rotulo}</span>
+                  {c.valor.length > 60
+                    ? <textarea rows={Math.min(4, Math.ceil(c.valor.length / 70))} value={c.valor} onChange={(e) => mudar(c.chave, e.target.value)} />
+                    : <input value={c.valor} onChange={(e) => mudar(c.chave, e.target.value)} />}
+                </label>
+              ))}
             </div>
           </fieldset>
-        )}
-        {ficha && !comPaciente && !entram.length && campos.length > 0 && (
-          <p className="evoNota">Todos estes campos já estão preenchidos na ficha: nada a trazer.</p>
         )}
         {erroDeFora && <p className="evoNota atencao" role="alert">{erroDeFora}</p>}
       </div>
     </Janela>
-  );
-}
-
-/** O botão de dentro da ficha aberta: lê a foto e preenche só os campos vazios. */
-export function PreencherPelaFichaDoHospital({ dados, paciente, onMudar }: {
-  dados: Record<string, unknown>;
-  paciente: { nome: string };
-  onMudar: (m: Record<string, unknown>) => void;
-}) {
-  const [foto, setFoto] = useState<File | null>(null);
-  return (
-    <>
-      <BotaoFotoDaAvaliacao rotulo="Preencher pela foto da avaliação" className="evoBotao pequeno secundario evoFHBotao" onArquivo={setFoto} />
-      {foto && (
-        <JanelaFichaDoHospital key={foto.name + foto.lastModified} arquivoInicial={foto} dados={dados} pacienteDaFolha={paciente}
-          confirmar="Preencher os campos vazios"
-          onFechar={() => setFoto(null)}
-          onConfirmar={({ ficha, campos }) => {
-            const parcial = preencherAFolha(dados, campos, new Date(), ficha);
-            if (Object.keys(parcial).length) onMudar(parcial);
-            setFoto(null);
-          }} />
-      )}
-    </>
   );
 }
