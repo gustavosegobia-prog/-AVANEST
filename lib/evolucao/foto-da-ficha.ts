@@ -6,15 +6,13 @@
 // aparelho e não é enviada"). Só o que o médico conferir vai para a ficha.
 //
 // A FOTO DE LADO (11/11/2026): com o celular deitado, a folha chega girada, e
-// o OCR não lê nada de lado. Antes de ler, a direção das linhas de texto diz
-// se a folha está de pé ou deitada (direcaoDoTexto); deitada, uma leitura
-// rápida em miniatura nos dois giros possíveis diz para qual lado girar.
+// o OCR não lê nada de lado. Antes de ler, ela é endireitada (girar-foto.ts).
 
-import { binarizar, cinzaDoRgba, direcaoDoTexto, escalaDaFicha, prepararFicha } from "./imagem-da-ficha";
+import { cinzaDoRgba, escalaDaFicha, prepararFicha } from "./imagem-da-ficha";
+import { abrirFoto, desenharGirada, direcaoDaFoto, melhorGiro, miniatura, type Giro } from "./girar-foto";
 import { juntarComConfianca, lerFichaDoHospital, propostaDaFicha, type FichaDoHospital, type PalavraComConfianca } from "./ficha-do-hospital";
 
 type Trabalhador = Awaited<ReturnType<typeof import("tesseract.js")["createWorker"]>>;
-type Giro = 0 | 90 | 180 | 270;
 
 async function palavrasDa(worker: Trabalhador, imagem: HTMLCanvasElement): Promise<PalavraComConfianca[]> {
   const { data } = await worker.recognize(imagem, {}, { blocks: true });
@@ -29,23 +27,6 @@ async function palavrasDa(worker: Trabalhador, imagem: HTMLCanvasElement): Promi
     }
   }
   return palavras;
-}
-
-/** A foto desenhada num canvas, girada no sentido horário e na escala pedida. */
-function desenhar(bitmap: ImageBitmap, escala: number, giro: Giro): HTMLCanvasElement {
-  const w = Math.round(bitmap.width * escala), h = Math.round(bitmap.height * escala);
-  const deitado = giro === 90 || giro === 270;
-  const canvas = document.createElement("canvas");
-  canvas.width = deitado ? h : w;
-  canvas.height = deitado ? w : h;
-  const g = canvas.getContext("2d", { willReadFrequently: true });
-  if (!g) throw new Error("Sem canvas");
-  g.imageSmoothingQuality = "high";
-  if (giro === 90) { g.translate(canvas.width, 0); g.rotate(Math.PI / 2); }
-  if (giro === 180) { g.translate(canvas.width, canvas.height); g.rotate(Math.PI); }
-  if (giro === 270) { g.translate(0, canvas.height); g.rotate(-Math.PI / 2); }
-  g.drawImage(bitmap, 0, 0, w, h);
-  return canvas;
 }
 
 function pontosDo(canvas: HTMLCanvasElement) {
@@ -67,24 +48,15 @@ function preparar(canvas: HTMLCanvasElement): HTMLCanvasElement {
 
 /** Quantas palavras a leitura rápida achou com confiança: no giro certo, dezenas; de lado, quase nenhuma. */
 async function pontuar(worker: Trabalhador, bitmap: ImageBitmap, giro: Giro): Promise<number> {
-  const miniatura = desenhar(bitmap, Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height)), giro);
-  const palavras = await palavrasDa(worker, miniatura);
+  const palavras = await palavrasDa(worker, miniatura(bitmap, giro));
   return palavras.filter((p) => p.c >= 80 && /\p{L}{3,}/u.test(p.t)).length;
 }
 
 /** Para que lado girar a foto antes de ler. */
 async function giroDaFoto(worker: Trabalhador, bitmap: ImageBitmap): Promise<Giro> {
-  const amostra = desenhar(bitmap, Math.min(1, 900 / Math.max(bitmap.width, bitmap.height)), 0);
-  const { dados } = pontosDo(amostra);
-  const direcao = direcaoDoTexto(binarizar(cinzaDoRgba(dados.data, amostra.width, amostra.height)));
+  const direcao = direcaoDaFoto(bitmap);
   if (direcao === "horizontal") return 0;
-  const candidatos: Giro[] = direcao === "vertical" ? [270, 90] : [0, 270, 90];
-  let melhor: Giro = candidatos[0], pontos = -1;
-  for (const g of candidatos) {
-    const p = await pontuar(worker, bitmap, g);
-    if (p > pontos) { melhor = g; pontos = p; }
-  }
-  return melhor;
+  return melhorGiro(direcao === "vertical" ? [270, 90] : [0, 270, 90], (g) => pontuar(worker, bitmap, g));
 }
 
 /** O PDF do sistema do hospital tem texto de verdade: cada pedaço com a sua posição. */
@@ -130,7 +102,7 @@ export async function lerFotoDaFicha(arquivo: File, avancar: (fracao: number) =>
     throw new Error("PDF sem texto");
   }
   avancar(0.03);
-  const bitmap = await createImageBitmap(arquivo);
+  const bitmap = await abrirFoto(arquivo);
   const { createWorker, PSM } = await import("tesseract.js");
   let fase = 0;
   const worker = await createWorker("por", undefined, {
@@ -140,7 +112,7 @@ export async function lerFotoDaFicha(arquivo: File, avancar: (fracao: number) =>
   });
   try {
     const ler = async (giro: Giro) => {
-      const imagem = preparar(desenhar(bitmap, escalaDaFicha(bitmap.width, bitmap.height), giro));
+      const imagem = preparar(desenharGirada(bitmap, escalaDaFicha(bitmap.width, bitmap.height), giro));
       fase = 1;
       await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
       const automatica = await palavrasDa(worker, imagem);

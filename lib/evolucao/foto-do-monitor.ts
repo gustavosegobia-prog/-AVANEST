@@ -17,9 +17,14 @@
 //
 // Sem tabela reconhecível, o texto da foto vai para lerTendencias, como antes.
 // A foto não sai do aparelho e não fica guardada.
+//
+// A FOTO DE LADO OU DE CABEÇA PARA BAIXO (11/11/2026, no monitor de outro
+// hospital): endireitada antes de tudo (girar-foto.ts). Deitada, a leitura
+// rápida escolhe o lado; de pé e sem nada lido, tenta virada.
 
 import { chaveDaLeitura, juntarPalavras, leituraBoa, montar, planejar, SELO_ILEGIVEL, type Alfabeto, type Caixa, type Celula, type Palavra } from "./grade-do-monitor";
 import { lerTendencias, type LinhaDoMonitor } from "./monitor";
+import { abrirFoto, desenharGirada, direcaoDaFoto, melhorGiro, miniatura, type Giro } from "./girar-foto";
 
 export type Tela = { canvas: HTMLCanvasElement; largura: number; altura: number };
 
@@ -360,18 +365,36 @@ async function palavrasDa(worker: Trabalhador, imagem: HTMLCanvasElement): Promi
 export async function lerFotoDoMonitor(arquivo: Blob, avancar: (fracao: number) => void = () => {},
   /** Para conferir a leitura: cada célula recortada e o que o OCR leu nela. */
   espiar?: (celula: Celula, recortada: HTMLCanvasElement, lido: string) => void): Promise<LinhaDoMonitor[]> {
-  const bitmap = await createImageBitmap(arquivo);
-  const original = desenhar(bitmap, bitmap.width, bitmap.height, LADO_DOS_RECORTES, 1600);
-  bitmap.close();
-  // Endireitada antes de tudo: torta, a linha da tabela vira duas.
-  const cheia = endireitada(original, inclinacao(original));
-  const menor = desenhar(cheia.canvas, cheia.largura, cheia.altura, LADO_DA_LEITURA, LADO_DA_LEITURA);
-
+  const bitmap = await abrirFoto(arquivo);
   const { createWorker, PSM } = await import("tesseract.js");
   const worker = await createWorker("por");
   try {
+    // De lado: a leitura rápida escolhe o giro. De pé: como veio, e virada
+    // só se nada for lido.
+    const pontuar = async (g: Giro) => {
+      // Sem a lista de caracteres que a leitura das células deixa no trabalhador.
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: "" });
+      const { palavras } = await palavrasDa(worker, miniatura(bitmap, g));
+      return palavras.filter((p) => p.c >= 75 && /\d{2}:\d{2}|\p{L}{2,}|\d{2,}/u.test(p.t)).length;
+    };
+    const direcao = direcaoDaFoto(bitmap);
+    const giro: Giro = direcao === "horizontal" ? 0 : await melhorGiro(direcao === "vertical" ? [270, 90] : [0, 270, 90], pontuar);
+    const lidas = await lerGirada(giro);
+    if (lidas.length || giro !== 0) return lidas;
+    return (await pontuar(180)) > (await pontuar(0)) ? await lerGirada(180) : lidas;
+  } finally {
+    bitmap.close();
+    await worker.terminate();
+  }
+
+  async function lerGirada(giro: Giro): Promise<LinhaDoMonitor[]> {
+    const fonte = giro ? desenharGirada(bitmap, 1, giro) : bitmap;
+    const original = desenhar(fonte, fonte.width, fonte.height, LADO_DOS_RECORTES, 1600);
+    // Endireitada antes de tudo: torta, a linha da tabela vira duas.
+    const cheia = endireitada(original, inclinacao(original));
+    const menor = desenhar(cheia.canvas, cheia.largura, cheia.altura, LADO_DA_LEITURA, LADO_DA_LEITURA);
     avancar(0.1);
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: "" });
     const crua = await palavrasDa(worker, menor.canvas);
     avancar(0.35);
     const limpa = await palavrasDa(worker, tratada(menor));
@@ -450,7 +473,5 @@ export async function lerFotoDoMonitor(arquivo: Blob, avancar: (fracao: number) 
       }
     }
     return montar(plano, lidos);
-  } finally {
-    await worker.terminate();
   }
 }
