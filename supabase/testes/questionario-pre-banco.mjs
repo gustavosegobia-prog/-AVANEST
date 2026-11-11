@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
 
 const MIG = readFileSync(new URL("../migrations/202611100001_questionario_pre_anestesico.sql", import.meta.url), "utf8");
+const MIG_PARTES = readFileSync(new URL("../migrations/202611110001_questionario_salva_cada_parte.sql", import.meta.url), "utf8");
 const db = new PGlite();
 
 const INST = { A: "10000000-0000-0000-0000-0000000000a1", B: "10000000-0000-0000-0000-0000000000b1" };
@@ -64,7 +65,9 @@ insert into public.agendamentos values ('${AG}', '${INST.A}', '${P.ana}');
 `);
 await db.exec(MIG);
 await db.exec(MIG);
-console.log("ok  migração aplicada duas vezes");
+await db.exec(MIG_PARTES);
+await db.exec(MIG_PARTES);
+console.log("ok  migrações aplicadas duas vezes");
 
 let passou = 0;
 const como = async (uid, sql, params = [], papel = "authenticated") => {
@@ -136,6 +139,22 @@ await assert.rejects(anexar(`${pasta}/6.jpg`, "anon"), /permission denied/);
 await assert.rejects(anexar(`${pasta}/6.jpg`, "authenticated"), /permission denied/);
 ok("Até 4 fotos, na pasta do questionário, e só pela rota do servidor");
 
+// ── Cada parte vai para o banco ───────────────────────────────────────────
+const parte = (token, respostas, n, consentimento = true) =>
+  como(null, `select public.salvar_parte_do_questionario($1, $2, $3, $4) as n`, [token, respostas, n, consentimento], "anon");
+await assert.rejects(parte(q1.token, { quem: "paciente" }, 1, false), /consentimento/);
+assert.deepEqual(await parte(q1.token, { quem: "paciente", peso: "70" }, 1), [{ n: 1 }]);
+assert.deepEqual(await parte(q1.token, { cirurgias: "nao" }, 2), [{ n: 2 }]);
+assert.deepEqual(await parte(q1.token, { quem: "familiar" }, 1), [{ n: 2 }], "voltar uma parte não apaga o avanço");
+const [salvo] = await como(U.medico, `select respostas, parte, status from public.questionarios_pre where id = $1`, [q1.id]);
+assert.deepEqual(salvo.respostas, { quem: "familiar", peso: "70", cirurgias: "nao" }, "as partes se somam");
+assert.equal(salvo.status, "enviado", "continua aberto: o paciente ainda pode terminar");
+assert.deepEqual(await situacao(U.recepcao, [P.ana]), [{ patient_id: P.ana, situacao: "incompleto" }]);
+await assert.rejects(parte(q1.token, { x: "y" }, 0), /Parte inválida/);
+await assert.rejects(parte("f".repeat(64), { x: "y" }, 1), /não encontrado/);
+await assert.rejects(como(null, `select public.salvar_parte_do_questionario($1, $2, 1, true)`, [q1.token, { mais: "x".repeat(70000) }], "anon"), /Respostas inválidas/);
+ok("Cada parte vai para o banco, se soma às outras, e a recepção vê \"incompleto\"");
+
 // ── Responder ─────────────────────────────────────────────────────────────
 await assert.rejects(responder(q1.token, { quem: "paciente" }, false), /consentimento/);
 await assert.rejects(responder(q1.token, ["lista"]), /Respostas inválidas/);
@@ -143,6 +162,7 @@ await assert.rejects(responder(q1.token, { mais: "x".repeat(70000) }), /Resposta
 assert.deepEqual(await responder(q1.token, { quem: "paciente", alergia: "sim", "alergia.texto": "Dipirona" }), [{ r: "respondido" }]);
 await assert.rejects(responder(q1.token, { quem: "paciente" }), /já foi respondido/);
 await assert.rejects(anexar(`${pasta}/9.jpg`), /Não foi possível/, "depois de enviado, não entra foto");
+await assert.rejects(parte(q1.token, { mais: "depois" }, 3), /venceu ou já foi respondido/, "depois de enviado, não entra parte");
 assert.equal((await publico(q1.token))[0].situacao, "respondido");
 assert.deepEqual(await situacao(U.recepcao, [P.ana]), [{ patient_id: P.ana, situacao: "respondido" }]);
 ok("Responde uma vez, com consentimento; depois disso não muda mais");
@@ -176,10 +196,24 @@ await como(U.recepcao, `select public.registrar_envio_do_questionario($1)`, [q2.
 await db.exec(`update public.questionarios_pre set expires_at = now() - interval '1 minute' where id = '${q2.id}'`);
 assert.equal((await publico(q2.token))[0].situacao, "vencido");
 await assert.rejects(responder(q2.token, { quem: "paciente" }), /venceu/);
+await assert.rejects(parte(q2.token, { quem: "paciente" }, 1), /venceu/);
 assert.deepEqual(await situacao(U.recepcao, [P.beto]), [{ patient_id: P.beto, situacao: "vencido" }]);
 const [q3] = await criar(U.recepcao, P.beto);
 assert.notEqual(q3.id, q2.id, "vencido, mandar de novo cria outro link");
 assert.equal((await publico(q3.token))[0].situacao, "aberto");
 ok("Vencido em 7 dias: não aceita resposta, e mandar de novo gera link novo");
+
+// ── O incompleto que venceu: fica para o médico ───────────────────────────
+const [q4] = await criar(U.recepcao, P.ana);
+await como(U.recepcao, `select public.registrar_envio_do_questionario($1)`, [q4.id]);
+await parte(q4.token, { alergia: "sim", "alergia.texto": "Dipirona" }, 6);
+await db.exec(`update public.questionarios_pre set expires_at = now() - interval '1 minute' where id = '${q4.id}'`);
+const [inc] = await como(U.medico, `select respostas->>'alergia' as alergia, parte, status from public.questionarios_pre where id = $1`, [q4.id]);
+assert.deepEqual(inc, { alergia: "sim", parte: 6, status: "enviado" });
+assert.deepEqual(await situacao(U.recepcao, [P.ana]), [{ patient_id: P.ana, situacao: "incompleto" }]);
+await como(U.medico, `select public.marcar_questionario_usado($1, $2)`, [q4.id, "40000000-0000-0000-0000-000000000002"]);
+assert.equal((await como(U.medico, `select usado_por from public.questionarios_pre where id = $1`, [q4.id]))[0].usado_por, U.medico);
+assert.deepEqual(await como(U.medicoB, `select id from public.questionarios_pre where id = $1`, [q4.id]), []);
+ok("O incompleto fica para o médico mesmo depois de o link vencer, e ele pode trazer para a ficha");
 
 console.log(`\n${passou} verificações passaram.`);

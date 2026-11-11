@@ -110,7 +110,15 @@ export function Questionario({ token, nome, organizacao, sexo, validade }: {
       requestAnimationFrame(() => document.getElementById(`p-${falta[0]}`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
       return;
     }
-    if (passo < BLOCOS.length - 1) irPara(passo + 1);
+    if (passo < BLOCOS.length - 1) {
+      // A parte vai para o banco: quem parar aqui e não voltar já deixou o
+      // que respondeu para o médico. Sem rede, segue assim mesmo: o celular
+      // guarda tudo, e a próxima parte leva junto o que faltou.
+      void createClient().rpc("salvar_parte_do_questionario", {
+        p_token: token, p_respostas: limparRespostas(respostas, ctx), p_parte: passo + 1, p_consentimento: consentimento,
+      }).then(() => undefined);
+      irPara(passo + 1);
+    }
     else void enviar();
   }
 

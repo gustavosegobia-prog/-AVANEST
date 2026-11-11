@@ -5,7 +5,8 @@ import { createClient } from "@/utils/supabase/client";
 import { Gaveta } from "@/components/admin-ui";
 import { Icone } from "@/components/icone";
 import {
-  alertasDoQuestionario, quemRespondeu, respostasParaAvaliacao, resumoDasRespostas, type Respostas,
+  alertasDoQuestionario, BLOCOS, limparRespostas, partesQueFaltam, quemRespondeu, respostasParaAvaliacao,
+  resumoDasRespostas, type Respostas,
 } from "@/lib/questionario-pre";
 
 // O questionário que o paciente respondeu pelo celular, dentro da avaliação.
@@ -18,8 +19,15 @@ export type QuestionarioRespondido = {
   id: string;
   respostas: Respostas;
   fotos: string[];
-  respondido_em: string;
+  respondido_em: string | null;
+  /** Quando o paciente salvou a última parte (questionário incompleto). */
+  salvo_em: string | null;
   usado_em: string | null;
+  /** Falso quando o paciente parou no meio e não enviou. */
+  completo: boolean;
+  /** Quantas partes ele concluiu. */
+  parte: number | null;
+  expires_at: string;
 };
 
 const quando = (iso: string) => new Date(iso).toLocaleString("pt-BR", {
@@ -34,14 +42,25 @@ export function QuestionarioNaAvaliacao({ questionario: q, draft, sexo, avaliaca
   aplicar: (campos: Record<string, string | boolean>) => void;
 }) {
   const [aberto, setAberto] = useState(false);
+  // A hora de abrir a tela basta para dizer se o link ainda vale.
+  const [agora] = useState(() => Date.now());
   const [trazidos, setTrazidos] = useState<number | null>(null);
   const [fotos, setFotos] = useState<{ caminho: string; url: string }[] | null>(null);
   const [erroFotos, setErroFotos] = useState("");
 
-  const alertas = useMemo(() => alertasDoQuestionario(q.respostas), [q.respostas]);
-  const { campos } = useMemo(() => respostasParaAvaliacao(q.respostas, draft), [q.respostas, draft]);
+  // As partes salvas se somam no banco; o que ficou sem sentido (uma
+  // resposta trocada depois) sai aqui, antes de qualquer leitura.
+  const r = useMemo(() => limparRespostas(q.respostas, { sexo }), [q.respostas, sexo]);
+  const alertas = useMemo(() => alertasDoQuestionario(r), [r]);
+  const { campos } = useMemo(() => respostasParaAvaliacao(r, draft), [r, draft]);
   const aTrazer = Object.keys(campos).length;
-  const quem = quemRespondeu(q.respostas);
+  const quem = quemRespondeu(r);
+  const momento = q.completo ? q.respondido_em : q.salvo_em ?? q.respondido_em;
+  const faltam = q.completo ? [] : partesQueFaltam(q.parte);
+  const linkValendo = new Date(q.expires_at).getTime() > agora;
+  const titulo = q.completo
+    ? "Questionário respondido pelo paciente"
+    : `Questionário incompleto: o paciente respondeu ${Math.min(q.parte ?? 0, BLOCOS.length)} de ${BLOCOS.length} partes`;
 
   function trazer() {
     const anteriores = String(draft.questionario_pre_campos ?? "").split(",").filter(Boolean);
@@ -64,12 +83,12 @@ export function QuestionarioNaAvaliacao({ questionario: q, draft, sexo, avaliaca
   }
 
   return (
-    <section className="evalQuestionario" aria-label="Questionário respondido pelo paciente">
+    <section className={`evalQuestionario${q.completo ? "" : " incompleto"}`} aria-label={titulo}>
       <div className="evalQuestionarioTopo">
         <div>
-          <strong><Icone nome="nota" tamanho={16} /> Questionário respondido pelo paciente</strong>
+          <strong><Icone nome="nota" tamanho={16} /> {titulo}</strong>
           <small>
-            {quando(q.respondido_em)}{quem ? ` · ${quem}` : ""}
+            {momento ? (q.completo ? quando(momento) : `salvo em ${quando(momento)}`) : ""}{quem ? ` · ${quem}` : ""}
             {q.fotos.length ? ` · ${q.fotos.length} foto${q.fotos.length > 1 ? "s" : ""} da receita` : ""}
           </small>
         </div>
@@ -92,6 +111,12 @@ export function QuestionarioNaAvaliacao({ questionario: q, draft, sexo, avaliaca
         <p className="evalQuestionarioFeito">As respostas já estão na ficha, ou os campos já foram preenchidos.</p>
       )}
 
+      {faltam.length > 0 && (
+        <p className="evalQuestionarioFalta">
+          <b>Faltou responder:</b> {faltam.join(", ")}. Pergunte na consulta.
+          {linkValendo ? ` O link vale até ${new Date(q.expires_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}: o paciente ainda pode terminar.` : " O link já venceu."}
+        </p>
+      )}
       {alertas.length > 0 && (
         <ul className="evalQuestionarioAlertas">
           {alertas.map((a) => (
@@ -104,7 +129,8 @@ export function QuestionarioNaAvaliacao({ questionario: q, draft, sexo, avaliaca
       </p>
 
       {aberto && (
-        <Gaveta titulo="Respostas do paciente" subtitulo={`Respondido em ${quando(q.respondido_em)}${quem ? ` · ${quem}` : ""}`}
+        <Gaveta titulo={q.completo ? "Respostas do paciente" : "Respostas do paciente (incompleto)"}
+          subtitulo={`${q.completo ? "Respondido" : "Salvo"} em ${momento ? quando(momento) : "—"}${quem ? ` · ${quem}` : ""}`}
           onPedirFechar={() => setAberto(false)} largura="larga">
           {q.fotos.length > 0 && (
             <div className="evalQuestionarioFotos">
@@ -123,7 +149,7 @@ export function QuestionarioNaAvaliacao({ questionario: q, draft, sexo, avaliaca
               )}
             </div>
           )}
-          {resumoDasRespostas(q.respostas, { sexo }).map((b) => (
+          {resumoDasRespostas(r, { sexo }).map((b) => (
             <div key={b.titulo} className="evalQuestionarioBloco">
               <h3>{b.titulo}</h3>
               <dl>
