@@ -14,7 +14,7 @@ import { balancoHidrico } from "./liquidos.ts";
 import { SEM_REFERENCIA, avaliarDose, idadeEmDias, type RegraDeDose } from "./doses.ts";
 import {
   conferirEncerramento, duracaoEmMinutos, equipeParaImpressao, fimDaAnestesia, horarioDaSaida, horarioDoMarco,
-  minutosDeTorniquete, periodosDeTorniquete,
+  minutosDeTorniquete, periodosDeTorniquete, registroDoMarco,
   horarioDaFicha,
 } from "./folha.ts";
 import { classificarErro, motivoLegivel } from "./fila.ts";
@@ -501,4 +501,17 @@ test("ficha de outro dia: início e fim viram os horários da folha; hoje, o fim
   // Nada no futuro.
   assert.match((horarioDaFicha({ data: "2026-10-17", inicio: "08:00", fim: "09:00" }, agora) as { erro: string }).erro, /depois de agora/);
   assert.match((horarioDaFicha({ data: "2026-10-16", inicio: "18:00", fim: "19:30" }, agora) as { erro: string }).erro, /fim não pode/);
+});
+
+test("o marco que o botão abre para corrigir: o primeiro início, o último fim", () => {
+  const v = [
+    reg("evento", 5, { codigo: "inicio_anestesia" }, { id: "ia1" }),
+    reg("evento", 9, { codigo: "inicio_anestesia" }, { id: "ia2" }),
+    reg("evento", 80, { codigo: "fim_cirurgia" }, { id: "fc1" }),
+    reg("evento", 85, { codigo: "fim_cirurgia" }, { id: "fc2" }),
+  ];
+  assert.equal(registroDoMarco(v, "inicio_anestesia")?.id, "ia1");
+  assert.equal(registroDoMarco(v, "fim_cirurgia")?.id, "fc2");
+  assert.equal(registroDoMarco(v, "fim_anestesia"), null);
+  assert.equal(horarioDoMarco(v, "inicio_anestesia"), em(5));
 });

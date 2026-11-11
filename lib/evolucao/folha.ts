@@ -107,8 +107,17 @@ export function fimDaAnestesia(vigentes: readonly Registro[]): string | null {
 
 /** O horário de um marco (o primeiro "início", o último "fim"). */
 export function horarioDoMarco(vigentes: readonly Registro[], codigo: string): string | null {
-  const lista = vigentes.filter((r) => r.tipo === "evento" && r.dados.codigo === codigo).map((r) => r.momento)
-    .sort((a, b) => Date.parse(a) - Date.parse(b));
+  return registroDoMarco(vigentes, codigo)?.momento ?? null;
+}
+
+/**
+ * O registro que vale para o marco: o primeiro "início", o último "fim".
+ * É o que o botão do marco abre para corrigir o horário (11/11/2026: "consigo
+ * editar o horário dos inícios?") — um segundo toque não cria outro marco.
+ */
+export function registroDoMarco(vigentes: readonly Registro[], codigo: string): Registro | null {
+  const lista = vigentes.filter((r) => r.tipo === "evento" && r.dados.codigo === codigo)
+    .sort((a, b) => Date.parse(a.momento) - Date.parse(b.momento));
   if (!lista.length) return null;
   return codigo.startsWith("fim") ? lista[lista.length - 1] : lista[0];
 }
