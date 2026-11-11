@@ -5,7 +5,7 @@
 // O hospital imprime a avaliação do sistema dele num desenho fixo: rótulo em
 // negrito ("Tem diabetes?", "Peso", "ASA"…) e, logo abaixo, a resposta numa
 // caixa. Às vezes dois ou três rótulos lado a lado, cada um com a sua caixa.
-// O OCR do aparelho (components/evolucao/ler-ficha-do-hospital.ts) devolve as
+// O OCR do aparelho (lib/evolucao/foto-da-ficha.ts) devolve as
 // palavras com a posição; aqui:
 //
 //   1. a foto torta é endireitada pela inclinação das próprias palavras;
@@ -15,15 +15,15 @@
 //      até a próxima linha de rótulos;
 //   4. o "Qual?" sozinho numa linha completa a pergunta da linha de cima.
 //
-// Daí sai a PROPOSTA: cada campo da ficha anestésica com o texto que iria
-// para ele. O médico confere e corrige antes; e só o campo vazio é
+// Daí sai a PROPOSTA: os dados do paciente para o cadastro e para o cabeçalho
+// da ficha anestésica. O médico confere e corrige antes; e só o campo vazio é
 // preenchido — o que já está na ficha nunca é trocado.
 //
 // Tudo puro. Nenhum dado de paciente real nos testes: o modelo do hospital
 // foi conferido no aparelho, e os testes usam palavras fictícias.
 
 import { normalizar, type Palavra } from "../centro-importar.ts";
-import { asaRomana, camposDoPapel, type CampoDoPapel } from "./pre-papel.ts";
+import { camposDoPapel, type CampoDoPapel } from "./pre-papel.ts";
 
 export type PalavraComConfianca = Palavra & { c: number };
 
@@ -460,105 +460,42 @@ function autorDo(linhas: Linha[]): FichaDoHospital["autor"] {
 }
 
 // ── A proposta para a ficha anestésica ────────────────────────────────────
+//
+// SÓ OS DADOS DO PACIENTE (11/11/2026: "não era pra alterar a ficha
+// anestésica; era só aproveitar os dados do paciente que vêm da ficha que
+// outro médico fez: nome, idade, cirurgia proposta, medicamento em uso").
+// O nome, o nascimento (a idade), o sexo e o convênio vão para o cadastro;
+// para o cabeçalho da folha, a cirurgia, o peso, a altura, as alergias e a
+// medicação em uso. A avaliação clínica do outro médico — ASA, PA, aparelhos,
+// via aérea — não é copiada: quem avalia o paciente na sala é quem está nela.
 
-export type ChaveDaProposta =
-  | "procedimento" | "peso_kg" | "altura_cm" | "asa" | "alergias"
-  | "papel_convenio" | "papel_pa" | "papel_medicacao_uso" | "papel_anestesia_anterior"
-  | "papel_ap_circulatorio" | "papel_ap_respiratorio" | "papel_ap_endocrino" | "papel_estado_mental"
-  | "papel_observacoes_pre";
+export type ChaveDaProposta = "procedimento" | "peso_kg" | "altura_cm" | "alergias" | "papel_convenio" | "papel_medicacao_uso";
 
 export type CampoProposto = { chave: ChaveDaProposta; rotulo: string; valor: string };
 
-const juntar = (partes: Array<string | false | null | undefined>, sep = "; ") => partes.filter(Boolean).join(sep);
-const mmhg = (v: string | undefined) => {
-  const n = numeroDe(v);
-  return n !== null && n >= 30 && n <= 300 ? String(n) : "";
-};
-
-/** Mallampati e ASA em romano, com as confusões do OCR (l, 1, |). */
-function romano(v: string | undefined, max: number): string {
-  const s = String(v ?? "").trim().toUpperCase().replace(/[L1|]/g, "I").replace(/[^IV]/g, "");
-  const romanos = ["I", "II", "III", "IV", "V", "VI"].slice(0, max);
-  if (romanos.includes(s)) return s;
-  const n = numeroDe(v);
-  return n !== null && Number.isInteger(n) && n >= 1 && n <= max ? romanos[n - 1] : "";
-}
-
-/** O que a ficha do hospital diz, campo a campo da ficha anestésica. Campo sem resposta não aparece. */
+/** O que a folha do outro serviço diz, campo a campo do cabeçalho da ficha anestésica. Campo sem resposta não aparece. */
 export function propostaDaFicha(f: FichaDoHospital): CampoProposto[] {
   const r = f.respostas, d = f.detalhes;
-  const sn = (k: Pergunta) => simOuNao(r[k]);
-  const sim = (k: Pergunta, padrao: string) => (sn(k) === "Sim" ? d[k] || padrao : "");
   const campos: CampoProposto[] = [];
   const por = (chave: ChaveDaProposta, rotulo: string, valor: string) => {
     if (valor.trim()) campos.push({ chave, rotulo, valor: valor.trim() });
   };
-
-  por("procedimento", "Cirurgia", r.cirurgia ?? "");
+  por("procedimento", "Cirurgia proposta", r.cirurgia ?? "");
   const peso = numeroDe(r.peso);
   por("peso_kg", "Peso (kg)", peso !== null && peso > 0 && peso <= 400 ? String(peso).replace(".", ",") : "");
   let altura = numeroDe(r.altura);
   if (altura !== null && altura > 0.4 && altura < 2.6) altura = Math.round(altura * 100);
   por("altura_cm", "Altura (cm)", altura !== null && altura >= 40 && altura <= 250 ? String(altura) : "");
-  por("asa", "ASA", romano(r.asa, 6));
-  const pas = mmhg(r.pas), pad = mmhg(r.pad);
-  por("papel_pa", "Pressão arterial", pas && pad ? `${pas}/${pad}` : "");
-  por("alergias", "Alergias", sn("alergias") === "Não" ? "Nega" : sim("alergias", "Sim (sem detalhe na ficha do hospital)"));
-  por("papel_convenio", "Convênio", f.paciente.convenio);
-
+  const alergia = simOuNao(r.alergias);
+  por("alergias", "Alergias", alergia === "Não" ? "Nega" : alergia === "Sim" ? d.alergias ?? "" : "");
+  // O remédio, como o outro médico escreveu; o anticoagulante só quando há um.
+  const medicacao = simOuNao(r.medicacao);
   const anticoag = r.anticoagulante?.trim() ?? "";
-  por("papel_medicacao_uso", "Medicação em uso", juntar([
-    sn("medicacao") === "Não" ? "Nega medicação contínua" : sim("medicacao", "Sim (sem detalhe na ficha do hospital)"),
-    anticoag && (simOuNao(anticoag) === "Não" ? "nega anticoagulante" : `anticoagulante: ${anticoag}`),
-  ]));
-  por("papel_anestesia_anterior", "Anestesia anterior", juntar([
-    sn("cirurgias") === "Não" ? "Nega cirurgias anteriores" : sim("cirurgias", "Cirurgia anterior (sem detalhe)"),
-    sn("reacao") === "Não" ? "nega reação a anestesia (pessoal e familiar)" : sn("reacao") === "Sim" && `reação a anestesia: ${d.reacao || "sim"}`,
-  ]));
-  const mets = d.capacidade?.trim();
-  por("papel_ap_circulatorio", "Ap. circulatório", juntar([
-    sn("cardiovascular") === "Não" ? "Nega doença cardiovascular" : sim("cardiovascular", "Doença cardiovascular"),
-    sn("sintomas") === "Sim" && "sintomas cardiovasculares",
-    mets && `capacidade funcional ${mets.toLowerCase().replace(/\s*a\s*/, " a ")} METs`.replace(/mets?\s+METs/i, "METs"),
-  ]));
-  por("papel_ap_respiratorio", "Ap. respiratório", juntar([
-    sn("respiratoria") === "Não" ? "Nega doença respiratória" : sim("respiratoria", "Doença respiratória"),
-    sn("apneia") === "Sim" ? "apneia obstrutiva do sono" : sn("apneia") === "Não" && "nega apneia do sono",
-  ]));
-  por("papel_ap_endocrino", "Ap. endócrino", sn("diabetes") === "Não" ? "Nega diabetes" : sim("diabetes", "Diabetes"));
-  por("papel_estado_mental", "Estado mental", sn("neuro") === "Não"
-    ? "Nega doença neurológica ou psiquiátrica" : sim("neuro", "Doença neurológica ou psiquiátrica"));
-
-  const negou = ([["aguda", "doença aguda"], ["habitos", "tabagismo, etilismo e drogas"], ["glaucoma", "glaucoma"]] as const)
-    .filter(([k]) => sn(k) === "Não").map(([, nome]) => nome);
-  // O Mallampati vem em romano, e a borda da caixa come um traço do "II": lido
-  // com um sinal só ("1", "I"), não dá para saber se era I, II ou III. Aí fica
-  // de fora, para o médico escrever; errar para menos é o erro perigoso.
-  const lidoMallampati = String(r.mallampati ?? "").replace(/\s/g, "");
-  const mallampati = lidoMallampati.length >= 2 ? romano(lidoMallampati, 4) : "";
-  const viaAerea = juntar([
-    mallampati && `Mallampati ${mallampati}`,
-    r.abertura && `abertura bucal ${r.abertura.toLowerCase()}`,
-    r.dtm && `DTM ${r.dtm.toLowerCase()}`,
-    r.dentes && `dentes ${r.dentes.toLowerCase()}`,
-    sn("protese") === "Sim" && "prótese dentária removível",
-  ], ", ");
-  por("papel_observacoes_pre", "Observações", juntar([
-    sn("outras") === "Sim" && `Outras doenças: ${d.outras || "sim"}`,
-    sn("aguda") === "Sim" && `Doença aguda: ${d.aguda || "sim"}`,
-    sn("habitos") === "Sim" && `Tabagismo/etilismo/drogas: ${d.habitos || "sim"}`,
-    sn("glaucoma") === "Sim" && "Glaucoma",
-    negou.length > 0 && `Nega ${negou.join(", ").replace(/, ([^,]*)$/, " e $1")}`,
-    viaAerea && `Via aérea: ${viaAerea}`,
-    origemDaFicha(f),
-  ]));
+  por("papel_medicacao_uso", "Medicação em uso", [
+    medicacao === "Não" ? "Nega" : medicacao === "Sim" ? d.medicacao ?? "" : "",
+    anticoag && simOuNao(anticoag) !== "Não" ? `anticoagulante: ${anticoag}` : "",
+  ].filter(Boolean).join("; "));
   return campos;
-}
-
-/** A linha que diz de onde veio: quem avaliou no hospital, e quando. */
-export function origemDaFicha(f: FichaDoHospital): string {
-  const quem = juntar([f.autor.crm && `CRM ${f.autor.crm}`, f.autor.nome], " ");
-  return juntar(["Avaliação pré-anestésica de origem (foto)", quem, f.autor.quando], ", ") + ".";
 }
 
 /**
@@ -583,20 +520,8 @@ export function jaPreenchido(dados: Dados, chave: ChaveDaProposta): boolean {
   switch (chave) {
     case "procedimento": return Boolean(texto(dados.procedimento));
     case "peso_kg": case "altura_cm": return typeof dados[chave] === "number";
-    case "asa": return Boolean(asaRomana(dados.asa));
     case "alergias": return dados.nega_alergia === true || Boolean(texto(dados.alergias));
     default: return Boolean(camposDoPapel(dados)[chave.replace(/^papel_/, "") as CampoDoPapel]);
-  }
-}
-
-/** O que a ficha já tem no campo, como se lê na tela (para a conferência mostrar o que fica). */
-export function valorNaFolha(dados: Dados, chave: ChaveDaProposta): string {
-  switch (chave) {
-    case "procedimento": return texto(dados.procedimento);
-    case "peso_kg": case "altura_cm": return typeof dados[chave] === "number" ? String(dados[chave]).replace(".", ",") : "";
-    case "asa": return asaRomana(dados.asa);
-    case "alergias": return dados.nega_alergia === true ? "Nega" : texto(dados.alergias);
-    default: return camposDoPapel(dados)[chave.replace(/^papel_/, "") as CampoDoPapel];
   }
 }
 
@@ -613,9 +538,6 @@ export function preencherAFolha(dados: Dados, campos: Array<{ chave: ChaveDaProp
       const n = numeroDe(v);
       const ok = n !== null && (chave === "peso_kg" ? n > 0 && n <= 400 : n >= 40 && n <= 250);
       if (ok) parcial[chave] = n;
-    } else if (chave === "asa") {
-      const a = asaRomana(v);
-      if (a) parcial.asa = a;
     } else if (chave === "alergias") {
       Object.assign(parcial, /^nega/i.test(v) ? { nega_alergia: true, alergias: "" } : { alergias: v, nega_alergia: false });
     } else parcial[chave] = v;

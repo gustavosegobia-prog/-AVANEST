@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  jaPreenchido, juntarComConfianca, valorNaFolha, lerFichaDoHospital, mesmoPaciente, numeroDe, preencherAFolha, propostaDaFicha, simOuNao,
+  jaPreenchido, juntarComConfianca, lerFichaDoHospital, mesmoPaciente, numeroDe, preencherAFolha, propostaDaFicha, simOuNao,
   type PalavraComConfianca,
 } from "./ficha-do-hospital.ts";
 import { apagarLinhas, binarizar, type Imagem } from "./imagem-da-ficha.ts";
@@ -122,31 +122,14 @@ test("ficha do hospital: cada resposta na sua coluna, mesmo com três perguntas 
   assert.equal(lida.detalhes.alergias, "DIPIRONA");
 });
 
-test("ficha do hospital: a proposta, campo a campo da ficha anestésica", () => {
-  assert.equal(porChave.procedimento, "COLECISTECTOMIA VIDEO");
-  assert.equal(porChave.peso_kg, "64,5");
-  assert.equal(porChave.altura_cm, "158", "altura em metros vira centímetros");
-  assert.equal(porChave.asa, "III");
-  assert.equal(porChave.papel_pa, "130/80", "'Bo mmHg' é 80");
-  assert.equal(porChave.alergias, "DIPIRONA");
-  assert.equal(porChave.papel_convenio, "UNIMED");
-  assert.equal(porChave.papel_medicacao_uso, "LOSARTANA 50 MG; nega anticoagulante");
-  assert.equal(porChave.papel_anestesia_anterior, "CESAREA EM 2010 - RAQUI; nega reação a anestesia (pessoal e familiar)");
-  assert.equal(porChave.papel_ap_circulatorio, "Doença cardiovascular; capacidade funcional >10 METs");
-  assert.equal(porChave.papel_ap_respiratorio, "Doença respiratória; nega apneia do sono");
-  assert.equal(porChave.papel_ap_endocrino, "Nega diabetes");
-  assert.equal(porChave.papel_estado_mental, "Nega doença neurológica ou psiquiátrica");
-  assert.equal(porChave.papel_observacoes_pre,
-    "Outras doenças: HIPOTIREOIDISMO; Nega doença aguda, tabagismo, etilismo e drogas e glaucoma; "
-    + "Via aérea: Mallampati II, abertura bucal >= 4 cm, DTM > 6 cm, dentes normais; "
-    + "Avaliação pré-anestésica de origem (foto), CRM PR 12345 MEDICA FICTICIA, 10/11/2026 08:30.");
-});
-
-test("ficha do hospital: Mallampati lido com um sinal só fica de fora (o 'II' que perdeu um traço)", () => {
-  const comUm = FOLHA.map(([y, ps]) => [y, ps.map(([x, t]) => [x, y === 2000 && t === "II" ? "1" : t])] as (typeof FOLHA)[number]);
-  const obs = propostaDaFicha(lerFichaDoHospital(palavrasDa(comUm))).find((c) => c.chave === "papel_observacoes_pre")!.valor;
-  assert.match(obs, /Via aérea: abertura bucal/);
-  assert.doesNotMatch(obs, /Mallampati/);
+test("ficha do hospital: da avaliação do outro médico, só os dados do paciente para o cabeçalho", () => {
+  assert.deepEqual(porChave, {
+    procedimento: "COLECISTECTOMIA VIDEO",
+    peso_kg: "64,5",
+    altura_cm: "158",
+    alergias: "DIPIRONA",
+    papel_medicacao_uso: "LOSARTANA 50 MG",
+  }, "sem ASA, PA, aparelhos, anestesia anterior nem observações: a avaliação clínica é de quem está na sala");
 });
 
 test("ficha do hospital: só o campo vazio é preenchido, e a ficha guarda de onde veio", () => {
@@ -155,17 +138,14 @@ test("ficha do hospital: só o campo vazio é preenchido, e a ficha guarda de on
   assert.equal(jaPreenchido(dados, "peso_kg"), true);
   assert.equal(jaPreenchido(dados, "papel_medicacao_uso"), true);
   assert.equal(jaPreenchido(dados, "procedimento"), false);
-  assert.equal(valorNaFolha(dados, "peso_kg"), "70");
-  assert.equal(valorNaFolha(dados, "papel_medicacao_uso"), "Enalapril");
   const parcial = preencherAFolha(dados, campos, new Date("2026-11-11T12:00:00Z"), lida);
   assert.equal(parcial.peso_kg, undefined, "o peso que já estava fica");
   assert.equal(parcial.papel_medicacao_uso, undefined);
   assert.equal(parcial.altura_cm, 158);
-  assert.equal(parcial.asa, "III");
   assert.equal(parcial.procedimento, "COLECISTECTOMIA VIDEO");
   assert.equal(parcial.alergias, "DIPIRONA");
   assert.equal(parcial.nega_alergia, false);
-  assert.equal(parcial.papel_pa, "130/80");
+  assert.deepEqual(Object.keys(parcial).sort(), ["alergias", "altura_cm", "ficha_do_hospital", "nega_alergia", "procedimento"]);
   assert.deepEqual(parcial.ficha_do_hospital,
     { lida_em: "2026-11-11T12:00:00.000Z", crm: "PR 12345", medico: "MEDICA FICTICIA", avaliada_em: "10/11/2026 08:30" });
   // "Nega" alergia marca a opção da ficha, sem texto.

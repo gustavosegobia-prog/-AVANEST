@@ -8574,17 +8574,13 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 }
 
 /* ============================================================================
-   Ficha anestésica: a ficha pré-anestésica do hospital pela foto
+   Abrir ficha pela foto da avaliação de outro serviço
    (components/evolucao/janela-ficha-do-hospital.tsx)
    ========================================================================= */
-.evoPreOrigem{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px}
-.evoPreOrigem .evoFHBotao{flex:none}
 .evoFHGrupo{margin:0;padding:12px 14px 14px;border:1px solid var(--cor-borda);border-radius:12px;min-width:0}
 .evoFHGrupo legend{padding:0 6px;font-size:13px;font-weight:800;letter-spacing:.02em;color:var(--cor-tinta)}
 .evoFHNome{grid-column:1/-1}
 .evoFHCampos{display:grid;gap:10px}
-.evoFHCampo>span em{font-style:normal;font-weight:600;color:var(--cor-tinta-fraca)}
-.evoFHCampo.ja input,.evoFHCampo.ja textarea{opacity:.7}
 @media(min-width:700px){
   .evoFHCampo{grid-template-columns:170px minmax(0,1fr);align-items:start;column-gap:12px}
   .evoFHCampo>span{padding-top:12px}
