@@ -51,6 +51,19 @@ function ordemDoCabecalho(linhas: string[]): Parametro[] | null {
 const plausivel = (p: Parametro, v: number | undefined): v is number => v !== undefined && valorPlausivel(p, v);
 
 /**
+ * A hora digitada na tabela da foto do monitor. O teclado de números do
+ * celular não tem os dois pontos (11/11/2026: "como coloco o ponto da
+ * hora?"): eles entram sozinhos — "1005" vira "10:05", e "905", "09:05".
+ * Apagar o último número tira os dois pontos junto.
+ */
+export function horaDigitada(texto: string): string {
+  const d = texto.replace(/\D/g, "").slice(0, 4);
+  if (d.length <= 2) return d;
+  if (d.length === 3 && Number(d.slice(0, 2)) > 23) return `0${d[0]}:${d.slice(1)}`;
+  return `${d.slice(0, 2)}:${d.slice(2)}`;
+}
+
+/**
  * As linhas da tabela de tendências. Cada linha com hora e ao menos um
  * parâmetro plausível vira uma linha; a mesma hora repetida se junta.
  */

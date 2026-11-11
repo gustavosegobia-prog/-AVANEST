@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Janela } from "@/components/janela";
-import { COLUNAS_DO_MONITOR, lerTendencias, type LinhaDoMonitor } from "@/lib/evolucao/monitor";
+import { COLUNAS_DO_MONITOR, horaDigitada, lerTendencias, type LinhaDoMonitor } from "@/lib/evolucao/monitor";
 import { PARAMETROS, valorPlausivel, type Parametro } from "@/lib/evolucao/sinais";
 import { minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import { momentoDeHora } from "./use-folha";
@@ -120,8 +120,9 @@ export function JanelaMonitor({ atuais, onLancar, onFechar }: {
                           onChange={(e) => mudar(l.chave, (x) => ({ ...x, incluir: e.target.checked }))} />
                       </td>
                       <td>
-                        <input className="hora" value={l.hora} inputMode="numeric" aria-label="Hora" maxLength={5}
-                          onChange={(e) => mudar(l.chave, (x) => ({ ...x, hora: e.target.value }))} />
+                        {/* O teclado de números do celular não tem ":": os dois pontos entram sozinhos (horaDigitada). */}
+                        <input className="hora" value={l.hora} inputMode="numeric" aria-label="Hora" maxLength={5} placeholder="hh:mm"
+                          onChange={(e) => mudar(l.chave, (x) => ({ ...x, hora: horaDigitada(e.target.value) }))} />
                         {l.jaTem && <small>já lançado</small>}
                         {p && l.incluir && <small className="erro">{p}</small>}
                       </td>
