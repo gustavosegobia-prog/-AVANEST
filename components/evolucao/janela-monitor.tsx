@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Janela } from "@/components/janela";
 import { COLUNAS_DO_MONITOR, horaDigitada, lerTendencias, type LinhaDoMonitor } from "@/lib/evolucao/monitor";
-import { PARAMETROS, valorPlausivel, type Parametro } from "@/lib/evolucao/sinais";
+import { PARAMETROS, pamEstimada, valorPlausivel, type Parametro } from "@/lib/evolucao/sinais";
 import { minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import { momentoDeHora } from "./use-folha";
 import { numero } from "./campos";
@@ -13,7 +13,28 @@ import { numero } from "./campos";
 // lança o que o médico deixar marcado. Linha sem hora legível vem com a hora
 // em branco, para ele escrever.
 
-type Linha = { chave: number; incluir: boolean; hora: string; valores: Partial<Record<Parametro, string>>; jaTem: boolean };
+type Linha = {
+  chave: number; incluir: boolean; hora: string; valores: Partial<Record<Parametro, string>>; jaTem: boolean;
+  /** A PAM da linha foi recalculada da PAS e PAD corrigidas à mão: entra como estimada. */
+  pamCalculada?: boolean;
+  /** A PAM foi digitada à mão: a PAS e a PAD mudadas não a tocam. */
+  pamDigitada?: boolean;
+};
+
+/**
+ * Um valor mudado à mão na tabela (11/11/2026: "quando muda no manual a PAM
+ * não está mudando"). A PAS ou a PAD corrigida recalcula a PAM da linha —
+ * a que a foto leu provavelmente veio do mesmo erro de leitura —, a não ser
+ * que a PAM tenha sido digitada à mão.
+ */
+function comValor(l: Linha, p: Parametro, texto: string): Linha {
+  const valores = { ...l.valores, [p]: texto };
+  if (p === "pam") return { ...l, valores, pamCalculada: false, pamDigitada: true };
+  if ((p !== "pas" && p !== "pad") || l.pamDigitada) return { ...l, valores };
+  const pas = numero(valores.pas ?? ""), pad = numero(valores.pad ?? "");
+  const pam = pas !== null && pad !== null ? pamEstimada(pas, pad) : null;
+  return { ...l, valores: { ...valores, pam: pam === null ? "" : String(pam) }, pamCalculada: true };
+}
 
 let proxima = 0;
 const paraLinha = (l: LinhaDoMonitor, jaTem: boolean): Linha => ({
@@ -77,7 +98,9 @@ export function JanelaMonitor({ atuais, onLancar, onFechar }: {
   function lancar() {
     onLancar(prontas.map((l) => ({
       momento: momentoDeHora(l.hora)!,
-      itens: COLUNAS_DO_MONITOR.filter((p) => l.valores[p]).map((p) => ({ parametro: p, valor: numero(l.valores[p]!)! })),
+      // A PAM recalculada não vai como lida do monitor: a folha a grava como estimada.
+      itens: COLUNAS_DO_MONITOR.filter((p) => l.valores[p] && !(p === "pam" && l.pamCalculada))
+        .map((p) => ({ parametro: p, valor: numero(l.valores[p]!)! })),
     })));
   }
 
@@ -129,7 +152,9 @@ export function JanelaMonitor({ atuais, onLancar, onFechar }: {
                       {COLUNAS_DO_MONITOR.map((par) => (
                         <td key={par}>
                           <input value={l.valores[par] ?? ""} inputMode="decimal" aria-label={`${PARAMETROS[par].nome} às ${l.hora}`}
-                            onChange={(e) => mudar(l.chave, (x) => ({ ...x, valores: { ...x.valores, [par]: e.target.value } }))} />
+                            className={par === "pam" && l.pamCalculada ? "calculada" : undefined}
+                            title={par === "pam" && l.pamCalculada ? "Calculada: (PAS + 2 × PAD) / 3" : undefined}
+                            onChange={(e) => mudar(l.chave, (x) => comValor(x, par, e.target.value))} />
                         </td>
                       ))}
                     </tr>

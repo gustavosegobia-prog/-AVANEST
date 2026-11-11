@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
 import { janelaVisivel } from "@/lib/evolucao/grafico";
-import { colunasProntas, INTERVALOS, linhasProntas, pamAutomatica, pamEstimadaCabe, PARAMETROS, pontosDe, type Parametro } from "@/lib/evolucao/sinais";
+import { ajustesDaPam, colunasProntas, INTERVALOS, linhasProntas, pamEstimadaCabe, PARAMETROS, pontosDe, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
   administrados, agruparPorMedicamento, doseAcumulada, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
@@ -27,7 +27,7 @@ import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { marcasDeEvento } from "@/lib/evolucao/impressao";
 import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
 import type { PacienteDaFolha } from "@/lib/evolucao/importar";
-import { useFolha, type Folha } from "./use-folha";
+import { useFolha, type Folha, type NovoRegistro, type Passo } from "./use-folha";
 import { GraficoSinais, type AlvoDaFaixa, type Toque } from "./grafico-sinais";
 import { JanelaMover, JanelaPonto, JanelaSinais, Historico, type NovoSinal } from "./janelas-sinais";
 import { JanelaMedicamento } from "./janela-medicamento";
@@ -241,12 +241,65 @@ export function FolhaAnestesica({
     setAviso({ texto: `${textoDoRascunho} às ${hora(momentoDaPa ?? new Date(linhaDeAgora[0].ms).toISOString())}`, desfazer: false });
   }
 
-  function registrarSinais(itens: NovoSinal[], momento: string) {
-    for (const i of itens) {
-      f.registrar({ tipo: "sinal", momento, dados: { parametro: i.parametro, valor: i.valor }, origem: i.origem });
-    }
+  // ---- A PAM estimada acompanha a PA (lib/evolucao/sinais.ts, ajustesDaPam) ----
+  // Toda mudança de PAS ou PAD — lançar, repetir, corrigir, mover, excluir,
+  // a foto do monitor — recalcula a PAM estimada daquele minuto no mesmo
+  // gesto (um "Desfazer" tira as duas). A PAM medida nunca é tocada.
+
+  /** A folha como fica com a mudança: sem `sai`, com os `novos` (os mais novos do minuto). */
+  function comoFica(novos: NovoRegistro[], sai: Registro | null = null): Registro[] {
+    return [
+      ...atuais.filter((r) => r.id !== sai?.id),
+      ...novos.map((n, i): Registro => ({
+        id: `entrando-${i}`, evolucao_id: folha.id, tipo: n.tipo, momento: n.momento, dados: n.dados ?? {},
+        origem: n.origem ?? "manual", substitui_id: null, anulado: false, motivo: null, created_by: null, created_at: null,
+      })),
+    ];
+  }
+  const mexeNaPa = (r: { tipo: string; dados?: Record<string, unknown> }) =>
+    r.tipo === "sinal" && (r.dados?.parametro === "pas" || r.dados?.parametro === "pad");
+  const SEM_PAM = { passos: [] as Passo[], texto: "" };
+
+  /** Os passos que deixam a PAM estimada em (PAS + 2 × PAD) / 3 nos minutos em que a PA mudou, e o pedaço do aviso. */
+  function passosDaPam(depois: Registro[], momentos: string[]): { passos: Passo[]; texto: string } {
+    const ajustes = ajustesDaPam(depois, momentos);
+    const passos = ajustes.map((a): Passo => (a.tipo === "criar"
+      ? { criar: { tipo: "sinal", momento: a.momento, dados: { parametro: "pam", valor: a.valor }, origem: "estimado" } }
+      : a.tipo === "corrigir"
+        ? { corrigir: a.registro, novo: { momento: a.registro.momento, dados: { ...a.registro.dados, valor: a.valor }, origem: "estimado", motivo: "Recalculada pela PA" } }
+        : { excluir: a.registro, motivo: "PAM estimada sem PAS e PAD no horário" }));
+    const valores = ajustes.flatMap((a) => (a.tipo === "excluir" ? [] : [a.valor]));
+    const texto = valores.length === 1 ? ` · PAM calculada ${valores[0]}`
+      : valores.length > 1 ? ` · PAM recalculada em ${valores.length} horários`
+      : ajustes.length ? " · PAM estimada retirada"
+      : momentos.some((m) => !pamEstimadaCabe(depois, m)) ? " · PAM medida mantida" : "";
+    return { passos, texto };
+  }
+
+  /** Corrigir (ou mover) um ponto: a PAM estimada do minuto de antes e do de agora acompanha. */
+  function corrigirPonto(r: Registro, momento: string, valor: number) {
+    const novo = { momento, dados: { ...r.dados, valor }, origem: "manual" as const };
+    const pam = mexeNaPa(r) ? passosDaPam(comoFica([{ tipo: r.tipo, ...novo }], r), [r.momento, momento]) : SEM_PAM;
+    f.gesto([{ corrigir: r, novo }, ...pam.passos]);
     setAbrir(null);
-    setAviso({ texto: `${itens.map((i) => `${PARAMETROS[i.parametro].curto} ${fmt(i.valor, 1)}`).join(" · ")} às ${hora(momento)}`, desfazer: false });
+    if (pam.texto) setAviso({ texto: `${PARAMETROS[r.dados.parametro as Parametro]?.curto ?? ""} ${fmt(valor, 1)}${pam.texto} às ${hora(momento)}`, desfazer: true });
+  }
+
+  function excluirPonto(r: Registro, motivo: string) {
+    const pam = mexeNaPa(r) ? passosDaPam(comoFica([], r), [r.momento]) : SEM_PAM;
+    f.gesto([{ excluir: r, motivo }, ...pam.passos]);
+    setAbrir(null);
+  }
+
+  function registrarSinais(itens: NovoSinal[], momento: string, calcularPam = true) {
+    // A estimada que a janela mostrou entra pelo cálculo da folha, que também
+    // corrige a que já estava no minuto (em vez de gravar uma segunda).
+    const lista = itens.filter((i) => !(i.parametro === "pam" && i.origem === "estimado"))
+      .map((i): NovoRegistro => ({ tipo: "sinal", momento, dados: { parametro: i.parametro, valor: i.valor }, origem: i.origem }));
+    const pam = calcularPam && lista.some(mexeNaPa) ? passosDaPam(comoFica(lista), [momento]) : SEM_PAM;
+    f.gesto([...lista.map((c): Passo => ({ criar: c })), ...pam.passos]);
+    setAbrir(null);
+    setAviso({ texto: `${lista.map((c) => `${PARAMETROS[c.dados!.parametro as Parametro].curto} ${fmt(Number(c.dados!.valor), 1)}`).join(" · ")}${pam.texto} às ${hora(momento)}`, desfazer: false });
   }
 
   // O torniquete: um botão que insufla e desinsufla, com o tempo somado.
@@ -514,23 +567,23 @@ export function FolhaAnestesica({
               alturaGrade={300} somenteLeitura={!aberta} colunas={colunas} linha={linha}
               onLancar={(p, valor, ms, estimada) => {
                 const momento = new Date(ms).toISOString();
-                const lancado = { tipo: "sinal" as const, momento, dados: { parametro: p, valor }, origem: estimada ? "estimado" as const : "manual" as const };
-                // Com a PAS e a PAD da coluna lançadas, a PAM calculada entra sozinha
-                // (lib/evolucao/sinais.ts, pamAutomatica) — no mesmo gesto: um
-                // "Desfazer" tira as duas.
-                const pam = estimada ? null : pamAutomatica(atuais, momento, [{ parametro: p, valor }]);
-                if (pam === null) f.registrar(lancado);
-                else f.registrarLote([lancado, { tipo: "sinal", momento, dados: { parametro: "pam", valor: pam }, origem: "estimado" }]);
+                const lancado: NovoRegistro = { tipo: "sinal", momento, dados: { parametro: p, valor }, origem: estimada ? "estimado" : "manual" };
+                // Com a PAS e a PAD da coluna lançadas, a PAM calculada entra (ou é
+                // recalculada) sozinha — no mesmo gesto: um "Desfazer" tira as duas.
+                const pam = !estimada && mexeNaPa(lancado) ? passosDaPam(comoFica([lancado]), [momento]) : SEM_PAM;
+                f.gesto([{ criar: lancado }, ...pam.passos]);
                 setAviso({
-                  texto: `${PARAMETROS[p].curto}${estimada ? " estimada" : ""} ${fmt(valor, 1)}${pam !== null ? ` · PAM calculada ${pam}` : ""} às ${hora(momento)}`,
+                  texto: `${PARAMETROS[p].curto}${estimada ? " estimada" : ""} ${fmt(valor, 1)}${pam.texto} às ${hora(momento)}`,
                   desfazer: true,
                 });
               }}
               onRepetir={(p, valor, momentos) => {
-                f.registrarLote(momentos.map((ms) => ({ tipo: "sinal", momento: new Date(ms).toISOString(), dados: { parametro: p, valor } })));
+                const lista = momentos.map((ms): NovoRegistro => ({ tipo: "sinal", momento: new Date(ms).toISOString(), dados: { parametro: p, valor } }));
+                const pam = p === "pas" || p === "pad" ? passosDaPam(comoFica(lista), lista.map((l) => l.momento)) : SEM_PAM;
+                f.gesto([...lista.map((c): Passo => ({ criar: c })), ...pam.passos]);
                 const n = momentos.length;
                 setAviso({
-                  texto: `${PARAMETROS[p].curto} ${fmt(valor, 1)} em ${n} ${n === 1 ? "coluna" : "colunas"}, de ${hora(new Date(momentos[0]).toISOString())} a ${hora(new Date(momentos[n - 1]).toISOString())}`,
+                  texto: `${PARAMETROS[p].curto} ${fmt(valor, 1)} em ${n} ${n === 1 ? "coluna" : "colunas"}, de ${hora(new Date(momentos[0]).toISOString())} a ${hora(new Date(momentos[n - 1]).toISOString())}${pam.texto}`,
                   desfazer: true,
                 });
               }}
@@ -747,22 +800,13 @@ export function FolhaAnestesica({
       )}
       {abrir?.tipo === "ponto" && (
         <JanelaPonto registro={abrir.registro} todos={todos} nomes={nomes} somenteLeitura={!aberta}
-          onCorrigir={(momento, valor) => {
-            f.corrigir(abrir.registro, { momento, dados: { ...abrir.registro.dados, valor }, origem: "manual" });
-            setAbrir(null);
-          }}
-          onExcluir={(motivo) => { f.excluir(abrir.registro, motivo); setAbrir(null); }}
+          onCorrigir={(momento, valor) => corrigirPonto(abrir.registro, momento, valor)}
+          onExcluir={(motivo) => excluirPonto(abrir.registro, motivo)}
           onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "mover" && (
         <JanelaMover registro={abrir.registro} momento={new Date(abrir.t.ms).toISOString()} valor={abrir.t.valor}
-          onConfirmar={() => {
-            f.corrigir(abrir.registro, {
-              momento: new Date(abrir.t.ms).toISOString(),
-              dados: { ...abrir.registro.dados, valor: abrir.t.valor }, origem: "manual",
-            });
-            setAbrir(null);
-          }}
+          onConfirmar={() => corrigirPonto(abrir.registro, new Date(abrir.t.ms).toISOString(), abrir.t.valor)}
           onFechar={() => setAbrir(null)} />
       )}
       {abrir?.tipo === "intercorrencias" && (
@@ -771,14 +815,13 @@ export function FolhaAnestesica({
       {abrir?.tipo === "monitor" && (
         <JanelaMonitor atuais={atuais} onFechar={() => setAbrir(null)}
           onLancar={(medidas) => {
-            for (const m of medidas) {
-              for (const i of m.itens) {
-                f.registrar({ tipo: "sinal", momento: m.momento, dados: { parametro: i.parametro, valor: i.valor }, origem: "importado" });
-              }
-              // O monitor que não mostra a PAM: a calculada entra junto, marcada como estimada.
-              const pam = pamAutomatica(atuais, m.momento, m.itens);
-              if (pam !== null) f.registrar({ tipo: "sinal", momento: m.momento, dados: { parametro: "pam", valor: pam }, origem: "estimado" });
-            }
+            const lista = medidas.flatMap((m) => m.itens.map((i): NovoRegistro => (
+              { tipo: "sinal", momento: m.momento, dados: { parametro: i.parametro, valor: i.valor }, origem: "importado" })));
+            // O monitor que não mostra a PAM (ou a PAS/PAD corrigida à mão na
+            // tabela): a calculada entra junto, marcada como estimada.
+            const comPa = medidas.filter((m) => m.itens.some((i) => i.parametro === "pas" || i.parametro === "pad")).map((m) => m.momento);
+            const pam = passosDaPam(comoFica(lista), comPa);
+            f.gesto([...lista.map((c): Passo => ({ criar: c })), ...pam.passos]);
             setAbrir(null);
             setAviso({ texto: `${medidas.length} ${medidas.length === 1 ? "horário lançado" : "horários lançados"} do monitor`, desfazer: false });
           }} />

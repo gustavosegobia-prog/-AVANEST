@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { historicoDe, vigentes, type Registro } from "./registros.ts";
-import { lacunaPadrao, pamAutomatica, pamEstimada, pamEstimadaCabe, periodosSemMonitorizacao, pontosDe, trechos } from "./sinais.ts";
+import { ajustesDaPam, lacunaPadrao, pamAutomatica, pamEstimada, pamEstimadaCabe, periodosSemMonitorizacao, pontosDe, trechos } from "./sinais.ts";
 import { pontoDoToque, tempoParaX, valorParaY, xParaTempo, yParaValor, marcasDeTempo, janelaVisivel, colunasParaRepetir, MAX_COLUNAS_REPETIDAS } from "./grafico.ts";
 import { consumoSevoflurano, formatarMl, mlNoIntervalo } from "./sevoflurano.ts";
 import {
@@ -93,10 +93,15 @@ test("PAM automática: a janela já vem marcada, e o gráfico e o monitor gravam
   assert.match(janela, /const \[comPam, setComPam\] = useState\(true\);/);
   assert.match(janela, /PAM calculada: <b>\{estimada\} mmHg<\/b>/);
   const folha = fs.readFileSync(new URL("../../components/evolucao/folha-anestesica.tsx", import.meta.url), "utf8");
-  assert.match(folha, /const pam = estimada \? null : pamAutomatica\(atuais, momento, \[\{ parametro: p, valor \}\]\);/);
-  assert.match(folha, /f\.registrarLote\(\[lancado, \{ tipo: "sinal", momento, dados: \{ parametro: "pam", valor: pam \}, origem: "estimado" \}\]\)/,
-    "no mesmo gesto: um Desfazer tira as duas");
-  assert.match(folha, /const pam = pamAutomatica\(atuais, m\.momento, m\.itens\);/);
+  // Lançar, repetir, a janela, corrigir/mover/excluir o ponto e a foto do monitor:
+  // todos recalculam a PAM estimada (ajustesDaPam) no mesmo gesto da PA.
+  assert.match(folha, /const pam = !estimada && mexeNaPa\(lancado\) \? passosDaPam\(comoFica\(\[lancado\]\), \[momento\]\) : SEM_PAM;/);
+  assert.match(folha, /f\.gesto\(\[\{ criar: lancado \}, \.\.\.pam\.passos\]\);/, "no mesmo gesto: um Desfazer tira as duas");
+  assert.match(folha, /f\.gesto\(\[\{ corrigir: r, novo \}, \.\.\.pam\.passos\]\);/, "corrigir a PA corrige a PAM");
+  assert.match(folha, /f\.gesto\(\[\{ excluir: r, motivo \}, \.\.\.pam\.passos\]\);/);
+  assert.match(folha, /onCorrigir=\{\(momento, valor\) => corrigirPonto\(abrir\.registro, momento, valor\)\}/);
+  assert.match(folha, /onConfirmar=\{\(\) => corrigirPonto\(abrir\.registro, new Date\(abrir\.t\.ms\)\.toISOString\(\), abrir\.t\.valor\)\}/);
+  assert.match(folha, /const pam = passosDaPam\(comoFica\(lista\), comPa\);/, "foto do monitor");
 });
 
 test("Teste A — as curvas ligam os pontos em ordem e quebram nas lacunas", () => {
@@ -514,4 +519,36 @@ test("o marco que o botão abre para corrigir: o primeiro início, o último fim
   assert.equal(registroDoMarco(v, "fim_cirurgia")?.id, "fc2");
   assert.equal(registroDoMarco(v, "fim_anestesia"), null);
   assert.equal(horarioDoMarco(v, "inicio_anestesia"), em(5));
+});
+
+test("a PAM estimada acompanha a PAS e a PAD corrigidas à mão", () => {
+  const pas = (min: number, v: number, extra: Partial<Registro> = {}) => reg("sinal", min, { parametro: "pas", valor: v }, extra);
+  const pad = (min: number, v: number, extra: Partial<Registro> = {}) => reg("sinal", min, { parametro: "pad", valor: v }, extra);
+  const pam = (min: number, v: number, extra: Partial<Registro> = {}) => reg("sinal", min, { parametro: "pam", valor: v }, extra);
+
+  // PAS corrigida de 120 para 150: a estimada (87) vira 97.
+  const estimada = pam(10, 87, { origem: "estimado", id: "pamE" });
+  const corrigida = [pas(10, 150, { created_at: null }), pad(10, 70), estimada];
+  assert.deepEqual(ajustesDaPam(corrigida, [em(10)]), [{ tipo: "corrigir", registro: estimada, valor: 97 }]);
+
+  // Já está certa: nada.
+  assert.deepEqual(ajustesDaPam([pas(10, 120), pad(10, 70), estimada], [em(10)]), []);
+
+  // A PAM do monitor (ou digitada) prevalece.
+  assert.deepEqual(ajustesDaPam([pas(10, 150), pad(10, 70), pam(10, 90, { origem: "importado" })], [em(10)]), []);
+
+  // Sem PAM no minuto, com as duas: entra a calculada, no horário da PAS.
+  assert.deepEqual(ajustesDaPam([pas(20, 110), pad(20, 60)], [em(20)]), [{ tipo: "criar", momento: em(20), valor: 77 }]);
+
+  // A PAD saiu do minuto (excluída ou movida): a estimada que sobrou sai junto.
+  assert.deepEqual(ajustesDaPam([pas(10, 120), estimada], [em(10)]), [{ tipo: "excluir", registro: estimada }]);
+
+  // A PAS que está entrando (sem created_at) vale mais que a gravada no mesmo minuto.
+  assert.deepEqual(ajustesDaPam([pas(30, 120), pas(30, 180, { created_at: null }), pad(30, 60)], [em(30)]),
+    [{ tipo: "criar", momento: em(30), valor: 100 }]);
+
+  // Duas estimadas no mesmo minuto (lançada duas vezes): fica uma, a outra sai.
+  const e1 = pam(40, 75, { origem: "estimado", id: "e1" }), e2 = pam(40, 81, { origem: "estimado", id: "e2" });
+  assert.deepEqual(ajustesDaPam([pas(40, 120), pad(40, 60), e1, e2], [em(40), em(40)]),
+    [{ tipo: "corrigir", registro: e1, valor: 80 }, { tipo: "excluir", registro: e2 }]);
 });

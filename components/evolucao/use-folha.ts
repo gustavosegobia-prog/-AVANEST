@@ -45,7 +45,15 @@ type Acao =
   /** Vários registros de um gesto só (arrastar um sinal pelas colunas): desfaz junto. */
   | { tipo: "lote"; itens: Array<{ id: string; copia: NovoRegistro }> }
   | { tipo: "corrigir"; antigo: Registro; novoId: string; novo: NovoRegistro }
-  | { tipo: "excluir"; alvo: Registro };
+  | { tipo: "excluir"; alvo: Registro }
+  /** Criar, corrigir e excluir num gesto só (a PA e a PAM que a acompanha): desfaz junto. */
+  | { tipo: "gesto"; partes: Acao[] };
+
+/** Um passo de um gesto: `f.gesto([...])` faz todos e um "Desfazer" tira todos. */
+export type Passo =
+  | { criar: NovoRegistro }
+  | { corrigir: Registro; novo: Omit<NovoRegistro, "tipo" | "substitui_id"> }
+  | { excluir: Registro; motivo: string };
 
 /** HH:MM do relógio do serviço → ISO, no dia da referência (ou na véspera, se cairia no futuro). */
 export function momentoDeHora(hhmm: string, referencia: Date = new Date()): string | null {
@@ -205,41 +213,66 @@ export function useFolha(folhaInicial: Folha, registrosIniciais: Registro[]) {
     setRefazer([]);
   }, [registrar]);
 
-  const corrigir = useCallback((antigo: Registro, novo: Omit<NovoRegistro, "tipo" | "substitui_id">) => {
-    const n: NovoRegistro = { ...novo, tipo: antigo.tipo, substitui_id: antigo.id };
-    const novoId = registrar(n, { semDesfazer: true });
-    setDesfazer((d) => [...d.slice(-49), { tipo: "corrigir", antigo, novoId, novo: n }]);
-    setRefazer([]);
-    return novoId;
+  /** Faz um passo sem empilhar no "Desfazer"; devolve o que desfaz. */
+  const fazer = useCallback((p: Passo): Acao => {
+    if ("criar" in p) return { tipo: "criar", id: registrar(p.criar, { semDesfazer: true }), copia: p.criar };
+    if ("corrigir" in p) {
+      const n: NovoRegistro = { ...p.novo, tipo: p.corrigir.tipo, substitui_id: p.corrigir.id };
+      return { tipo: "corrigir", antigo: p.corrigir, novoId: registrar(n, { semDesfazer: true }), novo: n };
+    }
+    registrar({ tipo: p.excluir.tipo, momento: p.excluir.momento, substitui_id: p.excluir.id, anulado: true, motivo: p.motivo },
+      { semDesfazer: true });
+    return { tipo: "excluir", alvo: p.excluir };
   }, [registrar]);
 
-  const excluir = useCallback((alvo: Registro, motivo: string) => {
-    registrar({ tipo: alvo.tipo, momento: alvo.momento, substitui_id: alvo.id, anulado: true, motivo }, { semDesfazer: true });
-    setDesfazer((d) => [...d.slice(-49), { tipo: "excluir", alvo }]);
+  const empilhar = useCallback((a: Acao) => {
+    setDesfazer((d) => [...d.slice(-49), a]);
     setRefazer([]);
-  }, [registrar]);
+  }, []);
+
+  const corrigir = useCallback((antigo: Registro, novo: Omit<NovoRegistro, "tipo" | "substitui_id">) => {
+    const a = fazer({ corrigir: antigo, novo });
+    empilhar(a);
+    return a.tipo === "corrigir" ? a.novoId : "";
+  }, [fazer, empilhar]);
+
+  const excluir = useCallback((alvo: Registro, motivo: string) => {
+    empilhar(fazer({ excluir: alvo, motivo }));
+  }, [fazer, empilhar]);
+
+  /** Vários passos de um gesto só: um "Desfazer" desfaz todos. */
+  const gesto = useCallback((passos: Passo[]) => {
+    if (!passos.length) return;
+    const partes = passos.map(fazer);
+    empilhar(partes.length === 1 ? partes[0] : { tipo: "gesto", partes });
+  }, [fazer, empilhar]);
 
   // Desfazer não apaga: registra o contrário. O histórico mostra os dois.
   const desfazerUltimo = useCallback(() => {
-    const a = desfazer[desfazer.length - 1];
-    if (!a) return;
+    const ultima = desfazer[desfazer.length - 1];
+    if (!ultima) return;
     setDesfazer((d) => d.slice(0, -1));
-    if (a.tipo === "criar") {
-      registrar({ tipo: a.copia.tipo, momento: a.copia.momento, substitui_id: a.id, anulado: true, motivo: "Desfeito" },
-        { semDesfazer: true });
-    } else if (a.tipo === "lote") {
-      for (const i of a.itens) {
-        registrar({ tipo: i.copia.tipo, momento: i.copia.momento, substitui_id: i.id, anulado: true, motivo: "Desfeito" },
+    const desfazerAcao = (a: Acao) => {
+      if (a.tipo === "gesto") {
+        for (const parte of [...a.partes].reverse()) desfazerAcao(parte);
+      } else if (a.tipo === "criar") {
+        registrar({ tipo: a.copia.tipo, momento: a.copia.momento, substitui_id: a.id, anulado: true, motivo: "Desfeito" },
           { semDesfazer: true });
+      } else if (a.tipo === "lote") {
+        for (const i of a.itens) {
+          registrar({ tipo: i.copia.tipo, momento: i.copia.momento, substitui_id: i.id, anulado: true, motivo: "Desfeito" },
+            { semDesfazer: true });
+        }
+      } else if (a.tipo === "corrigir") {
+        registrar({ tipo: a.antigo.tipo, momento: a.antigo.momento, dados: a.antigo.dados, origem: a.antigo.origem,
+          substitui_id: a.novoId, motivo: "Desfeito" }, { semDesfazer: true });
+      } else {
+        registrar({ tipo: a.alvo.tipo, momento: a.alvo.momento, dados: a.alvo.dados, origem: a.alvo.origem,
+          motivo: "Exclusão desfeita" }, { semDesfazer: true });
       }
-    } else if (a.tipo === "corrigir") {
-      registrar({ tipo: a.antigo.tipo, momento: a.antigo.momento, dados: a.antigo.dados, origem: a.antigo.origem,
-        substitui_id: a.novoId, motivo: "Desfeito" }, { semDesfazer: true });
-    } else {
-      registrar({ tipo: a.alvo.tipo, momento: a.alvo.momento, dados: a.alvo.dados, origem: a.alvo.origem,
-        motivo: "Exclusão desfeita" }, { semDesfazer: true });
-    }
-    setRefazer((r) => [...r, a]);
+    };
+    desfazerAcao(ultima);
+    setRefazer((r) => [...r, ultima]);
   }, [desfazer, registrar]);
 
   const refazerUltimo = useCallback(() => {
@@ -252,6 +285,9 @@ export function useFolha(folhaInicial: Folha, registrosIniciais: Registro[]) {
     } else if (a.tipo === "lote") {
       const itens = a.itens.map((i) => ({ id: registrar(i.copia, { semDesfazer: true }), copia: i.copia }));
       setDesfazer((d) => [...d, { tipo: "lote", itens }]);
+    } else if (a.tipo === "gesto" && a.partes.every((p) => p.tipo === "criar")) {
+      const partes: Acao[] = a.partes.map((p) => (p.tipo === "criar" ? { tipo: "criar", id: registrar(p.copia, { semDesfazer: true }), copia: p.copia } : p));
+      setDesfazer((d) => [...d, { tipo: "gesto", partes }]);
     } else {
       // Refazer correção ou exclusão sobre o estado que mudou desde então é
       // ambíguo; a folha prefere pedir o gesto de novo a adivinhar.
@@ -329,7 +365,7 @@ export function useFolha(folhaInicial: Folha, registrosIniciais: Registro[]) {
 
   return {
     folha, setFolha, todos, atuais, idsPendentes, pendentes, sincronia, recusa, setRecusa,
-    registrar, registrarLote, corrigir, excluir, desfazerUltimo, refazerUltimo,
+    registrar, registrarLote, corrigir, excluir, gesto, desfazerUltimo, refazerUltimo,
     podeDesfazer: desfazer.length > 0, podeRefazer: refazer.length > 0,
     mudarCabecalho, cabecalhoSalvo, recarregarTudo, descartarRecusados,
   };
