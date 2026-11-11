@@ -9,7 +9,7 @@ import { fichasDoLocal } from "@/lib/evolucao/local";
 import { casaComONome, type PacienteAchado } from "@/lib/evolucao/entrada";
 import type { CasoComCadastro } from "@/lib/evolucao/mapa-do-dia";
 import { abrirFicha } from "./abrir-ficha";
-import { JanelaFichaDoHospital, type FichaConferida } from "@/components/evolucao/janela-ficha-do-hospital";
+import { BotaoFotoDaAvaliacao, JanelaFichaDoHospital, type FichaConferida } from "@/components/evolucao/janela-ficha-do-hospital";
 import { MapaDoDia } from "./mapa-do-dia";
 import { ImportarMapaNaFicha } from "./importar-mapa";
 import { horarioDaFicha } from "@/lib/evolucao/folha";
@@ -72,7 +72,7 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
   const [quando, setQuando] = useState<{ data: string; inicio: string; fim: string } | null>(null);
   const [avisoDoMapa, setAvisoDoMapa] = useState("");
   // A ficha pré-anestésica do hospital, pela foto: acha (ou cadastra) o paciente e abre a ficha preenchida.
-  const [pelaFoto, setPelaFoto] = useState(false);
+  const [pelaFoto, setPelaFoto] = useState<File | null>(null);
   const [abrindoPelaFoto, setAbrindoPelaFoto] = useState(false);
   const [erroDaFoto, setErroDaFoto] = useState("");
 
@@ -272,16 +272,18 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
         />
       </label>
 
-      {/* O que é raro fica numa linha discreta, fora do caminho do toque. */}
+      {/* O que é raro fica numa linha discreta, fora do caminho do toque. A
+          foto da avaliação de outro serviço vem primeiro (11/11/2026: "a gente
+          põe a foto da ficha de avaliação de outro lugar, e já lê automático"):
+          a câmera abre no toque, e o paciente sem cadastro é cadastrado pela foto. */}
       <div className="fcAtalhos">
+        <BotaoFotoDaAvaliacao rotulo="Abrir pela foto da avaliação" className="fcAtalho fcAtalhoFoto"
+          onArquivo={(f) => { setPelaFoto(f); setErroDaFoto(""); }} />
         {!novo && (
           <button type="button" className="fcAtalho" onClick={abrirSemCadastro}>
             <Icone nome="pessoa" tamanho={16} /> Paciente sem cadastro
           </button>
         )}
-        <button type="button" className="fcAtalho" onClick={() => { setPelaFoto(true); setErroDaFoto(""); }}>
-          <Icone nome="nota" tamanho={16} /> Ficha do hospital (foto)
-        </button>
         <button type="button" className={`fcAtalho${quando ? " ativo" : ""}`} aria-pressed={Boolean(quando)}
           onClick={() => { setQuando((q) => (q ? null : { data: dataLocal(), inicio: horaLocal(), fim: "" })); setErro(""); }}>
           <Icone nome="relogio" tamanho={16} /> {quando ? "Voltar para agora" : "Outro dia ou horário"}
@@ -306,8 +308,9 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
       </div>
       {avisoDoMapa && <p className="fcAvisoMapa" role="status">{avisoDoMapa}</p>}
       {pelaFoto && (
-        <JanelaFichaDoHospital comPaciente confirmar="Abrir a ficha anestésica" ocupado={abrindoPelaFoto} erroDeFora={erroDaFoto}
-          onFechar={() => { setPelaFoto(false); setAbrindoPelaFoto(false); }} onConfirmar={(r) => void abrirPelaFoto(r)} />
+        <JanelaFichaDoHospital key={pelaFoto.name + pelaFoto.lastModified} arquivoInicial={pelaFoto} comPaciente
+          confirmar="Abrir a ficha anestésica" ocupado={abrindoPelaFoto} erroDeFora={erroDaFoto}
+          onFechar={() => { setPelaFoto(null); setAbrindoPelaFoto(false); }} onConfirmar={(r) => void abrirPelaFoto(r)} />
       )}
 
       {quando && (
@@ -336,6 +339,10 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
       {novo && (
         <form className="fcNovoPaciente" onSubmit={(e) => { e.preventDefault(); void cadastrarEAbrir(); }}>
           <p className="fcNovoTitulo">Paciente sem cadastro: um cadastro mínimo, e a ficha abre em branco para preencher.</p>
+          <div className="fcNovoFoto">
+            <BotaoFotoDaAvaliacao rotulo="Ou cadastrar pela foto da avaliação" className="fcAtalho"
+              onArquivo={(f) => { setPelaFoto(f); setErroDaFoto(""); }} />
+          </div>
           <label className="fcNovoCampo nome"><span>Nome do paciente</span>
             <input value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} required autoFocus autoComplete="off" />
           </label>
@@ -368,9 +375,13 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
       <p className={`fcSituacao${achados?.falhou && !buscando && !curto ? " falhou" : ""}`} aria-live="polite">{situacao}</p>
       {erro && <p className="fcErro" role="alert">{erro}</p>}
       {nada && !novo && (
-        <button type="button" className="evoBotao fcIniciarPara" onClick={abrirSemCadastro}>
-          Cadastrar “{termo}” e abrir ficha
-        </button>
+        <div className="fcNadaAcoes">
+          <button type="button" className="evoBotao fcIniciarPara" onClick={abrirSemCadastro}>
+            Cadastrar “{termo}” e abrir ficha
+          </button>
+          <BotaoFotoDaAvaliacao rotulo="Cadastrar pela foto da avaliação" className="evoBotao secundario fcIniciarPara"
+            onArquivo={(f) => { setPelaFoto(f); setErroDaFoto(""); }} />
+        </div>
       )}
 
       {(doMapa.length > 0 || lista.length > 0 || mostrarAvaliados) && (

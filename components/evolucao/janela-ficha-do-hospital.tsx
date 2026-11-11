@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Icone } from "@/components/icone";
 import { Janela } from "@/components/janela";
 import {
   jaPreenchido, mesmoPaciente, preencherAFolha, propostaDaFicha, valorNaFolha, type CampoProposto, type ChaveDaProposta, type FichaDoHospital,
@@ -21,7 +22,23 @@ import {
 export type PacienteDaFoto = { nome: string; nascimento: string; sexo: string; convenio: string };
 export type FichaConferida = { ficha: FichaDoHospital; campos: Array<{ chave: ChaveDaProposta; valor: string }>; paciente: PacienteDaFoto };
 
-export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente = false, confirmar, ocupado = false, erroDeFora = "", onConfirmar, onFechar }: {
+/**
+ * O botão que já abre a câmera (ou a galeria, ou o PDF): escolhida a foto, a
+ * janela abre lendo. Um toque a menos do que abrir a janela e depois escolher.
+ */
+export function BotaoFotoDaAvaliacao({ rotulo, className = "fcAtalho", onArquivo }: {
+  rotulo: string; className?: string; onArquivo: (f: File) => void;
+}) {
+  return (
+    <label className={`${className} evoFHEscolher`}>
+      <Icone nome="camera" tamanho={16} /> {rotulo}
+      <input type="file" accept="image/*,.pdf" className="evoFHArquivo"
+        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onArquivo(f); }} />
+    </label>
+  );
+}
+
+export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente = false, confirmar, ocupado = false, erroDeFora = "", arquivoInicial, onConfirmar, onFechar }: {
   /** A ficha como está: o que já tem não é trocado. Na abertura, vazia. */
   dados?: Record<string, unknown>;
   /** O paciente da ficha aberta, para conferir que a foto é dele. */
@@ -31,13 +48,15 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
   confirmar: string;
   ocupado?: boolean;
   erroDeFora?: string;
+  /** A foto escolhida no botão de fora: a janela já abre lendo. */
+  arquivoInicial?: File;
   onConfirmar: (r: FichaConferida) => void;
   onFechar: () => void;
 }) {
   const [ficha, setFicha] = useState<FichaDoHospital | null>(null);
   const [campos, setCampos] = useState<CampoProposto[]>([]);
   const [paciente, setPaciente] = useState<PacienteDaFoto>({ nome: "", nascimento: "", sexo: "", convenio: "" });
-  const [lendo, setLendo] = useState(false);
+  const [lendo, setLendo] = useState(Boolean(arquivoInicial));
   const [progresso, setProgresso] = useState(0);
   const [erro, setErro] = useState("");
 
@@ -61,6 +80,15 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
     }
   }
 
+  // A leitura da foto do botão de fora começa sozinha, uma vez só (o modo de
+  // desenvolvimento roda o efeito duas vezes).
+  const comecou = useRef(false);
+  useEffect(() => {
+    if (!arquivoInicial || comecou.current) return;
+    comecou.current = true;
+    void ler(arquivoInicial);
+  }, [arquivoInicial]);
+
   const mudar = (chave: ChaveDaProposta, valor: string) => setCampos((cs) => cs.map((c) => (c.chave === chave ? { ...c, valor } : c)));
   const entram = campos.filter((c) => c.valor.trim() && !jaPreenchido(dados, c.chave));
   const outroPaciente = !comPaciente && ficha && pacienteDaFolha && ficha.paciente.nome
@@ -68,8 +96,10 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
   const pronto = ficha && (comPaciente ? paciente.nome.trim().length > 2 : entram.length > 0);
 
   return (
-    <Janela titulo="Ficha pré-anestésica do hospital" largura="larga" onFechar={onFechar}
-      subtitulo="Fotografe a avaliação impressa do sistema do hospital: os dados vêm para a ficha anestésica, para você conferir."
+    <Janela titulo={comPaciente ? "Abrir a ficha pela foto da avaliação" : "Preencher pela foto da avaliação"} largura="larga" onFechar={onFechar}
+      subtitulo={comPaciente
+        ? "A avaliação pré-anestésica impressa, de outro hospital ou serviço: o AVANEST lê o paciente e a avaliação, cadastra quem não está no sistema e abre a ficha anestésica."
+        : "A avaliação pré-anestésica impressa, de outro hospital ou serviço: o AVANEST lê e preenche os campos vazios desta ficha."}
       rodape={<>
         <button type="button" className="evoBotao secundario" onClick={onFechar}>Cancelar</button>
         <button type="button" className="evoBotao" disabled={!pronto || ocupado || lendo}
@@ -79,7 +109,7 @@ export function JanelaFichaDoHospital({ dados = {}, pacienteDaFolha, comPaciente
       </>}>
       <div className="evoForm">
         <label className={`evoFotoMonitor${lendo ? " lendo" : ""}`}>
-          <b>{lendo ? `Lendo a ficha… ${Math.round(progresso * 100)}%` : ficha ? "Ler outra foto" : "Fotografar a ficha do hospital"}</b>
+          <b>{lendo ? `Lendo a foto… ${Math.round(progresso * 100)}%` : ficha ? "Ler outra foto" : "Fotografar a avaliação"}</b>
           <span>A folha inteira, de frente, sem sombra. Também aceita o PDF do sistema do hospital.</span>
           <input type="file" accept="image/*,.pdf" disabled={lendo}
             onChange={(e) => { void ler(e.target.files?.[0]); e.target.value = ""; }} />
@@ -148,19 +178,18 @@ export function PreencherPelaFichaDoHospital({ dados, paciente, onMudar }: {
   paciente: { nome: string };
   onMudar: (m: Record<string, unknown>) => void;
 }) {
-  const [aberta, setAberta] = useState(false);
+  const [foto, setFoto] = useState<File | null>(null);
   return (
     <>
-      <button type="button" className="evoBotao pequeno secundario evoFHBotao" onClick={() => setAberta(true)}>
-        Preencher pela ficha do hospital (foto)
-      </button>
-      {aberta && (
-        <JanelaFichaDoHospital dados={dados} pacienteDaFolha={paciente} confirmar="Preencher os campos vazios"
-          onFechar={() => setAberta(false)}
+      <BotaoFotoDaAvaliacao rotulo="Preencher pela foto da avaliação" className="evoBotao pequeno secundario evoFHBotao" onArquivo={setFoto} />
+      {foto && (
+        <JanelaFichaDoHospital key={foto.name + foto.lastModified} arquivoInicial={foto} dados={dados} pacienteDaFolha={paciente}
+          confirmar="Preencher os campos vazios"
+          onFechar={() => setFoto(null)}
           onConfirmar={({ ficha, campos }) => {
             const parcial = preencherAFolha(dados, campos, new Date(), ficha);
             if (Object.keys(parcial).length) onMudar(parcial);
-            setAberta(false);
+            setFoto(null);
           }} />
       )}
     </>

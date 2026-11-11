@@ -226,8 +226,8 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
             {origem?.importado_em
               ? `Trazido da avaliação pré-anestésica em ${quando(origem.importado_em)}. Mudar aqui não altera a avaliação; fica no histórico da ficha.`
               : doHospital?.lida_em
-                ? `Preenchido pela ficha pré-anestésica do hospital (foto) em ${quando(doHospital.lida_em)}. Confira com a folha; mudar aqui fica no histórico da ficha.`
-                : "Sem avaliação pré-anestésica no sistema para este paciente: preencha o que tiver, ou traga da ficha do hospital."}
+                ? `Preenchido pela foto da avaliação pré-anestésica em ${quando(doHospital.lida_em)}. Confira com a folha; mudar aqui fica no histórico da ficha.`
+                : "Sem avaliação pré-anestésica no sistema para este paciente: preencha o que tiver, ou fotografe a avaliação de outro serviço."}
           </span>
           {/* A folha impressa do sistema do hospital, pela foto (11/11/2026). Só preenche o vazio. */}
           {onMudar && !leitura && <PreencherPelaFichaDoHospital dados={dados} paciente={paciente} onMudar={mudar} />}

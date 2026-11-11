@@ -115,7 +115,7 @@ test("ficha do hospital: a proposta, campo a campo da ficha anestésica", () => 
   assert.equal(porChave.papel_observacoes_pre,
     "Outras doenças: HIPOTIREOIDISMO; Nega doença aguda, tabagismo, etilismo e drogas e glaucoma; "
     + "Via aérea: Mallampati II, abertura bucal >= 4 cm, DTM > 6 cm, dentes normais; "
-    + "Ficha pré-anestésica do hospital, CRM PR 12345 MEDICA FICTICIA, 10/11/2026 08:30.");
+    + "Avaliação pré-anestésica de origem (foto), CRM PR 12345 MEDICA FICTICIA, 10/11/2026 08:30.");
 });
 
 test("ficha do hospital: Mallampati lido com um sinal só fica de fora (o 'II' que perdeu um traço)", () => {
