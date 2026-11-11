@@ -254,7 +254,15 @@ function planoDeitado(palavras: Palavra[], cabecalho: Hora[], altura: number, ro
   const ultima = colunas[colunas.length - 1];
   if (ultima.xc + passo * 0.75 < 1 && numerosEm(ultima.xc + passo) >= 2) colunas.push({ ...ultima, hora: null, xc: ultima.xc + passo });
   const primeiraCol = colunas[0];
-  const rotulosAntes = palavras.some((w) => rotuloDaLinha(w.t) && Math.abs(cx(w) - (primeiraCol.xc - passo)) < passo * 0.45);
+  // Só conta nome de linha dentro da altura da tabela: a foto do monitor
+  // inteiro mostra os botões de baixo ("Medida de PNI", "STAT de PNI"), e
+  // esse "PNI" fazia a primeira coluna parecer a margem dos nomes — ela
+  // ficava de fora, com a FC, a SpO₂ e a PA dela (11/11/2026, Mindray ePM).
+  const yDoCorpo = palavras.filter((w) => /\d\d/.test(w.t) && !horaDoTexto(w.t) && cy(w) > yCab0 + hCab0
+    && colunas.some((c) => Math.abs(cx(w) - c.xc) < passo * 0.45)).map(cy);
+  const yFimDoCorpo = yDoCorpo.length ? quantil(yDoCorpo, 0.95) + hCab0 * 2 : 1;
+  const rotulosAntes = palavras.some((w) => rotuloDaLinha(w.t) && Math.abs(cx(w) - (primeiraCol.xc - passo)) < passo * 0.45
+    && cy(w) > yCab0 && cy(w) < yFimDoCorpo);
   if (!rotulosAntes && numerosEm(primeiraCol.xc - passo) >= 2) colunas.unshift({ ...primeiraCol, hora: null, xc: primeiraCol.xc - passo });
   const yCab = mediana(colunas.map((c) => c.yc));
   const hCab = mediana(colunas.map((c) => c.h)) || altura;
