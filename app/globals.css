@@ -8597,3 +8597,17 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 .fcNovoFoto{grid-column:1/-1}
 .fcNadaAcoes{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
 .fcNadaAcoes .fcIniciarPara{display:inline-flex;align-items:center;gap:6px}
+/* Os atalhos de Abrir ficha em grade (11/11/2026: "organiza aqui"): a foto da
+   avaliação na largura toda, em destaque; os outros em pares do mesmo tamanho.
+   Sobrou um sozinho no fim (sem o mapa, por exemplo), ele ocupa a linha. */
+.fcAtalhos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.fcAtalhos .fcAtalho{justify-content:center;min-height:50px;padding:6px 12px;border-radius:12px;text-align:center;line-height:1.25}
+.fcAtalhos .fcAtalhoFoto{grid-column:1/-1;min-height:52px;background:var(--cor-marca-suave);border-color:var(--cor-marca);
+  color:var(--cor-marca-forte);font-weight:700}
+.fcAtalhos .fcAtalhoFoto svg{color:currentColor}
+.fcAtalhos>.fcAtalho:last-child:nth-child(even){grid-column:1/-1}
+.fcAtalhos .fcAtalhoErro{grid-column:1/-1}
+@media(min-width:900px){
+  .fcAtalhos{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .fcAtalhos>.fcAtalho:last-child:nth-child(even){grid-column:auto}
+}
