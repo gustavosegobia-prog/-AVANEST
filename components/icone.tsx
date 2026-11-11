@@ -62,6 +62,8 @@ const TRACOS = {
   avancar: <><path d="M4.5 12h15"/><path d="m13.5 6 6 6-6 6"/></>,
   // As marcas da clínica: o que o médico marca e puxa um código a mais.
   etiqueta: <><path d="M3.5 12.3V4.5a1 1 0 0 1 1-1h7.8l8.2 8.2a1.4 1.4 0 0 1 0 2l-6.8 6.8a1.4 1.4 0 0 1-2 0z"/><circle cx="8.2" cy="8.2" r="1.4"/></>,
+  // A foto da avaliação de outro serviço, lida para a ficha anestésica.
+  camera: <><path d="M4 8h3l1.6-2.5h6.8L17 8h3a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.2" r="3.4"/></>,
 } as const;
 
 export function Icone({ nome, tamanho = 16, rotulo, className }: Props) {

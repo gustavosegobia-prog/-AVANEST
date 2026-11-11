@@ -500,7 +500,7 @@ export function propostaDaFicha(f: FichaDoHospital): CampoProposto[] {
 /** A linha que diz de onde veio: quem avaliou no hospital, e quando. */
 export function origemDaFicha(f: FichaDoHospital): string {
   const quem = juntar([f.autor.crm && `CRM ${f.autor.crm}`, f.autor.nome], " ");
-  return juntar(["Ficha pré-anestésica do hospital", quem, f.autor.quando], ", ") + ".";
+  return juntar(["Avaliação pré-anestésica de origem (foto)", quem, f.autor.quando], ", ") + ".";
 }
 
 /**
