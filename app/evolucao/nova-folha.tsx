@@ -9,12 +9,22 @@ import { fichasDoLocal } from "@/lib/evolucao/local";
 import { casaComONome, type PacienteAchado } from "@/lib/evolucao/entrada";
 import type { CasoComCadastro } from "@/lib/evolucao/mapa-do-dia";
 import { abrirFicha } from "./abrir-ficha";
+import { JanelaFichaDoHospital, type FichaConferida } from "@/components/evolucao/janela-ficha-do-hospital";
 import { MapaDoDia } from "./mapa-do-dia";
 import { ImportarMapaNaFicha } from "./importar-mapa";
 import { horarioDaFicha } from "@/lib/evolucao/folha";
 import { dataLocal, horaLocal } from "@/lib/data-local";
 
 type Encontrado = Omit<PacienteAchado, "avaliacao" | "aberta">;
+
+/** A idade de hoje, pelo nascimento da folha ("1960-05-03"). */
+function idadeHoje(nascimento: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(nascimento);
+  if (!m) return null;
+  const [ano, mes, dia] = dataLocal().split("-").map(Number);
+  const idade = ano - Number(m[1]) - (mes < Number(m[2]) || (mes === Number(m[2]) && dia < Number(m[3])) ? 1 : 0);
+  return idade >= 0 && idade <= 120 ? idade : null;
+}
 export type Achado = PacienteAchado;
 type Busca = { termo: string; lista: Achado[]; falhou: boolean };
 
@@ -61,6 +71,10 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
   // que já aconteceu (lib/evolucao/folha.ts, horarioDaFicha).
   const [quando, setQuando] = useState<{ data: string; inicio: string; fim: string } | null>(null);
   const [avisoDoMapa, setAvisoDoMapa] = useState("");
+  // A ficha pré-anestésica do hospital, pela foto: acha (ou cadastra) o paciente e abre a ficha preenchida.
+  const [pelaFoto, setPelaFoto] = useState(false);
+  const [abrindoPelaFoto, setAbrindoPelaFoto] = useState(false);
+  const [erroDaFoto, setErroDaFoto] = useState("");
 
   useEffect(() => {
     const termo = busca.trim();
@@ -129,6 +143,45 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
     setCadastrando(false);
     if (error || !data) { setErro("Não foi possível cadastrar o paciente. Confira a conexão e tente de novo."); return; }
     await abrir(data as Encontrado);
+  }
+
+  /**
+   * Da foto da ficha do hospital: o paciente pelo nome e nascimento; se ele já
+   * tem ficha aberta neste hospital, vai para ela (lá dentro dá para trazer a
+   * foto); se não está no sistema, um cadastro com o que a folha diz.
+   */
+  async function abrirPelaFoto({ ficha, campos, paciente }: FichaConferida) {
+    const horario = lerHorario();
+    if (horario && !horario.ok) { setErroDaFoto(horario.erro); return; }
+    setAbrindoPelaFoto(true); setErroDaFoto("");
+    const supabase = createClient();
+    const nome = paciente.nome.trim().replace(/\s+/g, " ");
+    const { data: mesmos, error } = await supabase.from("pacientes").select(CAMPOS).ilike("nome", nome.replace(/[%_]/g, "")).limit(5);
+    if (error) { setAbrindoPelaFoto(false); setErroDaFoto("A busca no cadastro não respondeu. Confira a conexão e tente de novo."); return; }
+    const candidatos = (mesmos ?? []) as Encontrado[];
+    let p = paciente.nascimento
+      ? candidatos.find((c) => c.data_nascimento === paciente.nascimento)
+      : candidatos.length === 1 ? candidatos[0] : undefined;
+    if (p) {
+      const { data: aberta } = await (local
+        ? supabase.from("evolucoes_anestesicas").select("id").or(fichasDoLocal(local.id))
+        : supabase.from("evolucoes_anestesicas").select("id"))
+        .eq("patient_id", p.id).eq("status", "aberta").limit(1).maybeSingle();
+      if (aberta) { router.push(`/evolucao/${aberta.id}`); return; }
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      const cirurgia = campos.find((c) => c.chave === "procedimento")?.valor.trim() || null;
+      const { data, error: erroNovo } = await supabase.from("pacientes").insert({
+        institution_id: institutionId, created_by: user?.id ?? null, nome,
+        data_nascimento: paciente.nascimento || null, idade_anos: idadeHoje(paciente.nascimento),
+        sexo: paciente.sexo || null, convenio: paciente.convenio.trim() || null, cirurgia,
+      }).select(CAMPOS).single();
+      if (erroNovo || !data) { setAbrindoPelaFoto(false); setErroDaFoto("Não foi possível cadastrar o paciente. Confira a conexão e tente de novo."); return; }
+      p = data as Encontrado;
+    }
+    const r = await abrirFicha({ institutionId, local, paciente: p, horario: horario?.ok ? horario : null, daFoto: { ficha, campos } });
+    if ("erro" in r) { setAbrindoPelaFoto(false); setErroDaFoto(r.erro); return; }
+    router.push(`/evolucao/${r.id}`);
   }
 
   async function abrir(p: Encontrado) {
@@ -226,6 +279,9 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
             <Icone nome="pessoa" tamanho={16} /> Paciente sem cadastro
           </button>
         )}
+        <button type="button" className="fcAtalho" onClick={() => { setPelaFoto(true); setErroDaFoto(""); }}>
+          <Icone nome="nota" tamanho={16} /> Ficha do hospital (foto)
+        </button>
         <button type="button" className={`fcAtalho${quando ? " ativo" : ""}`} aria-pressed={Boolean(quando)}
           onClick={() => { setQuando((q) => (q ? null : { data: dataLocal(), inicio: horaLocal(), fim: "" })); setErro(""); }}>
           <Icone nome="relogio" tamanho={16} /> {quando ? "Voltar para agora" : "Outro dia ou horário"}
@@ -249,6 +305,10 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
         )}
       </div>
       {avisoDoMapa && <p className="fcAvisoMapa" role="status">{avisoDoMapa}</p>}
+      {pelaFoto && (
+        <JanelaFichaDoHospital comPaciente confirmar="Abrir a ficha anestésica" ocupado={abrindoPelaFoto} erroDeFora={erroDaFoto}
+          onFechar={() => { setPelaFoto(false); setAbrindoPelaFoto(false); }} onConfirmar={(r) => void abrirPelaFoto(r)} />
+      )}
 
       {quando && (
         <div className="fcQuandoCampos">

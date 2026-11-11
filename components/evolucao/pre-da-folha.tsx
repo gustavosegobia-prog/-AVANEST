@@ -17,6 +17,7 @@ import { imcDaFolha } from "@/lib/evolucao/folha";
 import { dataDoDia } from "@/lib/evolucao/impressao";
 import { asaRomana, camposDoPapel, chaveDoCampo, sexoAbreviado, type CampoDoPapel } from "@/lib/evolucao/pre-papel";
 import { CampoDecimal } from "./campo-decimal";
+import { PreencherPelaFichaDoHospital } from "./janela-ficha-do-hospital";
 import { Linha, Op, Txt, type Modo } from "./papel";
 
 type Dados = Record<string, unknown>;
@@ -89,6 +90,8 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
   const temAlergia = !nega && Boolean(alergias.trim());
   const recolhida = !m.impresso && !aberta;
   const origem = dados.preanestesica_origem as { importado_em?: string } | null | undefined;
+  const doHospital = dados.ficha_do_hospital as { lida_em?: string } | null | undefined;
+  const quando = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
   const linhaDoPaciente = (
     <>
@@ -219,9 +222,15 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
 
       {!m.impresso && (
         <p className="evoPreOrigem">
-          {origem?.importado_em
-            ? `Trazido da avaliação pré-anestésica em ${new Date(origem.importado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}. Mudar aqui não altera a avaliação; fica no histórico da ficha.`
-            : "Sem avaliação pré-anestésica no sistema para este paciente: preencha o que tiver."}
+          <span>
+            {origem?.importado_em
+              ? `Trazido da avaliação pré-anestésica em ${quando(origem.importado_em)}. Mudar aqui não altera a avaliação; fica no histórico da ficha.`
+              : doHospital?.lida_em
+                ? `Preenchido pela ficha pré-anestésica do hospital (foto) em ${quando(doHospital.lida_em)}. Confira com a folha; mudar aqui fica no histórico da ficha.`
+                : "Sem avaliação pré-anestésica no sistema para este paciente: preencha o que tiver, ou traga da ficha do hospital."}
+          </span>
+          {/* A folha impressa do sistema do hospital, pela foto (11/11/2026). Só preenche o vazio. */}
+          {onMudar && !leitura && <PreencherPelaFichaDoHospital dados={dados} paciente={paciente} onMudar={mudar} />}
         </p>
       )}
     </section>
