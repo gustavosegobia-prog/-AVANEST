@@ -80,6 +80,51 @@ export function pamAutomatica(
   return pas === null || pad === null ? null : pamEstimada(pas, pad);
 }
 
+export type AjusteDaPam =
+  | { tipo: "criar"; momento: string; valor: number }
+  | { tipo: "corrigir"; registro: Registro; valor: number }
+  | { tipo: "excluir"; registro: Registro };
+
+/**
+ * A PAM estimada acompanha a PA (11/11/2026: "quando muda no manual a PAM não
+ * está mudando automaticamente"). Antes, a calculada só entrava no primeiro
+ * lançamento: corrigida a PAS ou a PAD depois, ela ficava com o valor velho.
+ *
+ * `depois` é a folha como fica com a mudança (os registros ainda sem
+ * `created_at`, os que estão entrando, contam como os mais novos); `momentos`,
+ * os horários em que a PAS ou a PAD mudou. Em cada minuto:
+ * - com PAM medida (do monitor ou digitada), nada: ela prevalece;
+ * - com PAS e PAD, a estimada é criada ou corrigida para (PAS + 2 × PAD) / 3;
+ * - sem as duas, a estimada que sobrou sai — não há mais de onde calcular.
+ */
+export function ajustesDaPam(depois: readonly Registro[], momentos: readonly string[]): AjusteDaPam[] {
+  const ajustes: AjusteDaPam[] = [];
+  const vistos: string[] = [];
+  const novo = (r: Registro) => r.created_at ?? "\uffff";
+  for (const m of momentos) {
+    if (vistos.some((v) => Math.abs(minutosEntre(v, m)) < 1)) continue;
+    vistos.push(m);
+    const noMinuto = (p: Parametro) => depois
+      .filter((r) => r.tipo === "sinal" && r.dados.parametro === p && Math.abs(minutosEntre(r.momento, m)) < 1)
+      .sort((a, b) => novo(a).localeCompare(novo(b)));
+    const pams = noMinuto("pam");
+    if (pams.some((r) => r.origem !== "estimado")) continue;
+    const pas = noMinuto("pas").pop(), pad = noMinuto("pad").pop();
+    const valor = pas && pad ? pamEstimadaDe(num(pas.dados.valor), num(pad.dados.valor)) : null;
+    const [primeira, ...sobras] = pams;
+    if (valor === null) {
+      for (const r of pams) ajustes.push({ tipo: "excluir", registro: r });
+      continue;
+    }
+    if (!primeira) ajustes.push({ tipo: "criar", momento: pas!.momento, valor });
+    else if (num(primeira.dados.valor) !== valor) ajustes.push({ tipo: "corrigir", registro: primeira, valor });
+    for (const r of sobras) ajustes.push({ tipo: "excluir", registro: r });
+  }
+  return ajustes;
+}
+
+const pamEstimadaDe = (pas: number | null, pad: number | null) => (pas === null || pad === null ? null : pamEstimada(pas, pad));
+
 export type Ponto = { id: string; momento: string; valor: number; origem: Registro["origem"] };
 
 /** Os pontos de um parâmetro, em ordem de horário. */

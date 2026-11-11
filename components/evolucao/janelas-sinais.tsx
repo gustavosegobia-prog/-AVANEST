@@ -44,7 +44,8 @@ export function JanelaSinais({ ms, foco = "pas", so, ultimo, temPamMedida, onCon
   /** O último valor registrado do campo `so`, para repetir com um toque. */
   ultimo?: number;
   temPamMedida: (iso: string) => boolean;
-  onConfirmar: (itens: NovoSinal[], momento: string) => void;
+  /** `calcularPam`: falso quando o médico desmarcou a PAM calculada. */
+  onConfirmar: (itens: NovoSinal[], momento: string, calcularPam: boolean) => void;
   onFechar: () => void;
 }) {
   const base = ms !== undefined ? new Date(ms) : undefined;
@@ -70,7 +71,7 @@ export function JanelaSinais({ ms, foco = "pas", so, ultimo, temPamMedida, onCon
     if (!ok || !momento) return;
     const itens: NovoSinal[] = preenchidos.map((p) => ({ parametro: p, valor: numero(v[p])!, origem: "manual" }));
     if (comPam && estimada !== null && !pamBloqueada) itens.push({ parametro: "pam", valor: estimada, origem: "estimado" });
-    onConfirmar(itens, momento);
+    onConfirmar(itens, momento, comPam);
   }
 
   const campo = (p: Parametro, rotulo: string, extra: string | null = null) => (

@@ -7198,6 +7198,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoMonitorTabela input:not([type]){width:100%;min-width:46px;min-height:40px;padding:0 6px;border:1px solid var(--cor-borda-forte);
   border-radius:8px;background:var(--cor-superficie);color:var(--cor-tinta);font:inherit;font-size:15px;font-variant-numeric:tabular-nums;text-align:right}
 .evoMonitorTabela input.hora{min-width:62px;text-align:left}
+.evoMonitorTabela input.calculada{font-style:italic;color:var(--cor-tinta-fraca)}
 .evoMonitorTabela td small{display:block;margin-top:2px;font-size:11px;color:var(--cor-tinta-fraca)}
 .evoMonitorTabela td small.erro{color:var(--cor-perigo,#b42318)}
 .evoMonitorTabela tr.fora input:not([type=checkbox]){opacity:.5}
