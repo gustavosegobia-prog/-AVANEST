@@ -195,10 +195,12 @@ ok("Revogada, a lista some na hora; a ligação não se edita e revogada não vo
 // ── Prazo: vencida não vale ───────────────────────────────────────────────
 await assert.rejects(ligar({ validoAte: "2000-01-01" }), /validade/);
 const [nova] = await como(null, `insert into public.centro_compartilhamentos (origem_institution_id, origem_local_id, destino_institution_id,
-  destino_local_id, autorizado_por, autorizado_em, documento, valido_ate) values ($1, $2, $3, $4, 'Diretoria Fictícia', current_date - 30, 'Termo fictício nº 2', current_date - 1) returning id`,
+  destino_local_id, autorizado_por, autorizado_em, documento, valido_ate) values ($1, $2, $3, $4, 'Diretoria Fictícia', current_date - 30, 'Termo fictício nº 2', current_date - 2) returning id`,
 [INST.H, L.hospital, INST.S, L.noServico]);
 assert.ok(nova.id);
-assert.equal((await mapa(U.med, L.noServico)).length, 0, "vencida ontem: nada");
+// Anteontem, e não ontem: o banco de teste conta o dia em UTC, e entre 21h e
+// meia-noite de Brasília o "ontem" de lá ainda é hoje no fuso do serviço.
+assert.equal((await mapa(U.med, L.noServico)).length, 0, "vencida anteontem: nada");
 await como(null, `update public.centro_compartilhamentos set revogado_em = now() where id = $1`, [nova.id]);
 ok("A ligação vencida não mostra nada");
 

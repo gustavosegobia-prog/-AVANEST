@@ -5968,6 +5968,7 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
 .recQuestionario.aberto{background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
 .recQuestionario.respondido{background:var(--cor-sucesso-suave);color:var(--cor-sucesso)}
 .recQuestionario.vencido{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
+.recQuestionario.incompleto{background:var(--cor-atencao-suave);color:var(--cor-atencao)}
 .recQuestionarioMensagem{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:14px;line-height:1.45;margin:12px 0;padding:12px 14px;
   border:1px solid var(--cor-borda);border-radius:var(--raio-2);background:var(--cor-superficie-suave);max-height:240px;overflow:auto}
 .recQuestionarioNota{font-size:13px;color:var(--cor-tinta-fraca);margin-top:12px}
@@ -8446,6 +8447,9 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 .evalQuestionarioAlertas li.grave{background:var(--cor-perigo-suave);color:var(--cor-perigo-forte)}
 .evalQuestionarioAlertas svg{flex:none;margin-top:3px}
 .evalQuestionarioRemedios{margin:0;font-size:13px;color:var(--cor-tinta-fraca)}
+/* Incompleto: o paciente parou no meio. Borda âmbar e a lista do que faltou. */
+.evalQuestionario.incompleto{border-left-color:var(--cor-atencao)}
+.evalQuestionarioFalta{margin:0;padding:8px 12px;border-radius:var(--raio-1);background:var(--cor-atencao-suave);color:var(--cor-atencao);font-size:14px}
 .evalQuestionarioBloco h3,.evalQuestionarioFotos h3{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--cor-tinta-fraca);margin:22px 0 8px}
 .evalQuestionarioBloco dl{margin:0;display:grid;gap:0;border:1px solid var(--cor-borda);border-radius:var(--raio-2);overflow:hidden}
 .evalQuestionarioBloco dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:10px 14px;border-top:1px solid var(--cor-borda)}

@@ -40,7 +40,7 @@ export function useQuestionarios(pacientes: string[]) {
 }
 
 const ICONE: Record<Situacao, Parameters<typeof Icone>[0]["nome"]> = {
-  enviado: "enviar", aberto: "olho", respondido: "confirmado", vencido: "relogio",
+  enviado: "enviar", aberto: "olho", incompleto: "ampulheta", respondido: "confirmado", vencido: "relogio",
 };
 
 export function SeloDoQuestionario({ linha }: { linha?: Linha }) {

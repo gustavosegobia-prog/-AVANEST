@@ -62,6 +62,10 @@ const marcou = (r: Respostas, pergunta: string, opcao: string) => {
 };
 const disse = (r: Respostas, pergunta: string, valor: string) => r[pergunta] === valor;
 
+// Perguntas curtas, no estilo da ficha impressa (11/11/2026: "tem como ser
+// mais diretos nas perguntas"). O exemplo, quando ajuda, fica na linha de
+// baixo, em letra menor. O `id` de cada pergunta e de cada opção não muda:
+// é ele que leva a resposta ao campo da avaliação.
 export const BLOCOS: Bloco[] = [
   {
     id: "voce",
@@ -70,52 +74,50 @@ export const BLOCOS: Bloco[] = [
       {
         id: "quem", tipo: "escolha", texto: "Quem está respondendo?",
         opcoes: [
-          { id: "paciente", texto: "Eu, o paciente" },
-          { id: "familiar", texto: "Um familiar ou responsável" },
+          { id: "paciente", texto: "O paciente" },
+          { id: "familiar", texto: "Familiar ou responsável" },
         ],
-        detalhe: "Seu nome e o parentesco", detalheObrigatorio: true,
+        detalhe: "Nome e parentesco", detalheObrigatorio: true,
       },
-      { id: "peso", tipo: "numero", texto: "Qual é o seu peso?", unidade: "kg", opcional: true, ajuda: "Se não souber, deixe em branco." },
-      { id: "altura", tipo: "numero", texto: "Qual é a sua altura?", unidade: "cm", opcional: true, ajuda: "Em centímetros. Exemplo: 1,65 m é 165." },
-      { id: "cirurgia", tipo: "texto", texto: "Qual cirurgia você vai fazer?", opcional: true, ajuda: "Pode escrever do seu jeito." },
-      { id: "cirurgiao", tipo: "texto", texto: "Qual é o nome do cirurgião?", opcional: true, ajuda: "Se souber." },
+      { id: "peso", tipo: "numero", texto: "Peso", unidade: "kg", opcional: true, ajuda: "Se não souber, deixe em branco." },
+      { id: "altura", tipo: "numero", texto: "Altura", unidade: "cm", opcional: true, ajuda: "Ex.: 1,65 m = 165" },
+      { id: "cirurgia", tipo: "texto", texto: "Cirurgia que vai fazer", opcional: true },
+      { id: "cirurgiao", tipo: "texto", texto: "Cirurgião", opcional: true, ajuda: "Se souber." },
     ],
   },
   {
     id: "anestesias",
     titulo: "Cirurgias e anestesias",
     perguntas: [
-      { id: "cirurgias", tipo: "simnao", texto: "Você já fez alguma cirurgia?", detalhe: "Quais, e em que ano mais ou menos" },
+      { id: "cirurgias", tipo: "simnao", texto: "Já fez cirurgia?", detalhe: "Quais e quando" },
       {
-        id: "anestesias", tipo: "marcar", texto: "Que anestesia você já tomou?", opcional: true,
+        id: "anestesias", tipo: "marcar", texto: "Tipo de anestesia", opcional: true,
         se: (r) => disse(r, "cirurgias", SIM),
         opcoes: [
-          { id: "geral", texto: "Geral (dormi)" },
-          { id: "raqui", texto: "Raqui ou peridural (nas costas)" },
+          { id: "geral", texto: "Geral (dormiu)" },
+          { id: "raqui", texto: "Raqui ou peridural" },
           { id: "sedacao", texto: "Sedação" },
           { id: "local", texto: "Local" },
           { id: "naosei", texto: "Não sei" },
         ],
       },
       {
-        id: "problema", tipo: "simnao", texto: "Já teve algum problema com anestesia?", detalhe: "Conte o que aconteceu",
+        id: "problema", tipo: "simnao", texto: "Problema com anestesia?", detalhe: "O que aconteceu",
         opcoes: [
           { id: "enjoo", texto: "Enjoo ou vômito forte", ficha: "Náuseas/vômitos intensos" },
-          { id: "tubo", texto: "Disseram que foi difícil colocar o tubo para respirar", ficha: "Intubação difícil" },
-          { id: "alergia", texto: "Alergia durante a anestesia", ficha: "Alergia" },
-          { id: "febre", texto: "Febre muito alta durante a cirurgia" },
-          { id: "cefaleia", texto: "Dor de cabeça forte depois de raqui ou peridural", ficha: "Cefaleia pós-raqui" },
-          { id: "acordar", texto: "Demorei muito para acordar" },
-          { id: "uti", texto: "Precisei ir para a UTI", ficha: "UTI" },
+          { id: "tubo", texto: "Difícil colocar o tubo", ficha: "Intubação difícil" },
+          { id: "alergia", texto: "Alergia", ficha: "Alergia" },
+          { id: "febre", texto: "Febre muito alta" },
+          { id: "cefaleia", texto: "Dor de cabeça após raqui", ficha: "Cefaleia pós-raqui" },
+          { id: "acordar", texto: "Demorou para acordar" },
+          { id: "uti", texto: "Foi para a UTI", ficha: "UTI" },
         ],
       },
       {
-        id: "familia", tipo: "simnao",
-        texto: "Alguém da sua família de sangue teve problema grave com anestesia?",
-        ajuda: "Por exemplo: febre muito alta, ida para a UTI ou morte sem explicação.",
-        detalhe: "Quem foi e o que aconteceu",
+        id: "familia", tipo: "simnao", texto: "Problema grave com anestesia na família?",
+        ajuda: "Ex.: febre muito alta, UTI ou morte.", detalhe: "Quem e o que aconteceu",
       },
-      { id: "viagem", tipo: "simnao", texto: "Você costuma enjoar em viagem de carro, ônibus ou barco?" },
+      { id: "viagem", tipo: "simnao", texto: "Enjoa em viagem?" },
     ],
   },
   {
@@ -123,37 +125,36 @@ export const BLOCOS: Bloco[] = [
     titulo: "Coração, pulmão e diabetes",
     perguntas: [
       {
-        id: "coracao", tipo: "simnao", texto: "Tem pressão alta ou algum problema de coração?", detalhe: "Outro problema ou detalhe",
+        id: "coracao", tipo: "simnao", texto: "Pressão alta ou doença do coração?", detalhe: "Outra ou detalhe",
         opcoes: [
           { id: "pressao", texto: "Pressão alta", ficha: "Hipertensão" },
-          { id: "infarto", texto: "Já tive infarto", ficha: "Infarto" },
-          { id: "stent", texto: "Tenho stent ou fiz ponte de safena", ficha: "Coronariopatia" },
-          { id: "fraco", texto: "Coração fraco (insuficiência cardíaca)", ficha: "Insuficiência cardíaca" },
-          { id: "arritmia", texto: "Arritmia (coração disparado ou falhando)", ficha: "Arritmia" },
-          { id: "valvula", texto: "Problema na válvula do coração", ficha: "Valvopatia" },
-          { id: "marcapasso", texto: "Uso marca-passo", ficha: "Marca-passo/CDI" },
+          { id: "infarto", texto: "Infarto", ficha: "Infarto" },
+          { id: "stent", texto: "Stent ou ponte de safena", ficha: "Coronariopatia" },
+          { id: "fraco", texto: "Insuficiência cardíaca", ficha: "Insuficiência cardíaca" },
+          { id: "arritmia", texto: "Arritmia", ficha: "Arritmia" },
+          { id: "valvula", texto: "Doença de válvula", ficha: "Valvopatia" },
+          { id: "marcapasso", texto: "Marca-passo", ficha: "Marca-passo/CDI" },
         ],
       },
-      { id: "esforco", tipo: "simnao", texto: "Sente dor no peito ou falta de ar quando faz esforço?" },
+      { id: "esforco", tipo: "simnao", texto: "Dor no peito ou falta de ar ao esforço?" },
       {
-        id: "pulmao", tipo: "simnao", texto: "Tem asma, bronquite, enfisema ou outro problema no pulmão?", detalhe: "Outro problema ou detalhe",
+        id: "pulmao", tipo: "simnao", texto: "Doença no pulmão?", ajuda: "Ex.: asma, bronquite, enfisema.", detalhe: "Outra ou detalhe",
         opcoes: [
           { id: "asma", texto: "Asma", ficha: "Asma" },
           { id: "dpoc", texto: "Bronquite crônica ou enfisema", ficha: "DPOC" },
-          { id: "apneia", texto: "Apneia do sono (já diagnosticada)", ficha: "Apneia do sono" },
+          { id: "apneia", texto: "Apneia do sono", ficha: "Apneia do sono" },
         ],
       },
       {
-        id: "crise", tipo: "texto", texto: "Quando foi a última crise de falta de ar?", opcional: true,
-        ajuda: "Exemplo: há 3 meses, no ano passado.",
+        id: "crise", tipo: "texto", texto: "Última crise", opcional: true, ajuda: "Ex.: há 3 meses.",
         se: (r) => disse(r, "pulmao", SIM) && (marcou(r, "pulmao", "asma") || marcou(r, "pulmao", "dpoc")),
       },
       {
-        id: "diabetes", tipo: "simnao", texto: "Tem diabetes?", detalhe: "Detalhe, se quiser",
+        id: "diabetes", tipo: "simnao", texto: "Diabetes?", detalhe: "Detalhe",
         opcoes: [
-          { id: "insulina", texto: "Uso insulina", ficha: "Insulina" },
-          { id: "comprimido", texto: "Uso comprimido" },
-          { id: "hipo", texto: "Tive açúcar baixo (hipoglicemia) nos últimos meses", ficha: "Hipoglicemia recente" },
+          { id: "insulina", texto: "Insulina", ficha: "Insulina" },
+          { id: "comprimido", texto: "Comprimido" },
+          { id: "hipo", texto: "Hipoglicemia recente", ficha: "Hipoglicemia recente" },
         ],
       },
     ],
@@ -163,38 +164,36 @@ export const BLOCOS: Bloco[] = [
     titulo: "Outras doenças",
     perguntas: [
       {
-        id: "neuro", tipo: "simnao", texto: "Tem algum problema neurológico ou de saúde mental?",
-        ajuda: "Por exemplo: convulsão, derrame, Parkinson, depressão, ansiedade.", detalhe: "Outro problema ou detalhe",
+        id: "neuro", tipo: "simnao", texto: "Doença neurológica ou psiquiátrica?",
+        ajuda: "Ex.: convulsão, derrame, Parkinson, depressão.", detalhe: "Outra ou detalhe",
         opcoes: [
-          { id: "epilepsia", texto: "Convulsão ou epilepsia", ficha: "Epilepsia" },
+          { id: "epilepsia", texto: "Convulsão / epilepsia", ficha: "Epilepsia" },
           { id: "avc", texto: "Derrame (AVC)", ficha: "AVC/AIT" },
           { id: "parkinson", texto: "Parkinson", ficha: "Parkinson" },
-          { id: "demencia", texto: "Demência ou perda de memória", ficha: "Demência" },
+          { id: "demencia", texto: "Demência", ficha: "Demência" },
           { id: "depressao", texto: "Depressão", ficha: "Depressão" },
           { id: "ansiedade", texto: "Ansiedade", ficha: "Ansiedade" },
           { id: "bipolar", texto: "Transtorno bipolar", ficha: "Transtorno bipolar" },
         ],
       },
       {
-        id: "outras", tipo: "simnao", texto: "Tem alguma outra doença?", detalhe: "Outra doença ou detalhe",
+        id: "outras", tipo: "simnao", texto: "Outra doença?", ajuda: "Ex.: tireoide, rins, fígado.", detalhe: "Outra ou detalhe",
         opcoes: [
-          { id: "hipotireoidismo", texto: "Hipotireoidismo (tireoide lenta)", ficha: "Hipotireoidismo" },
-          { id: "hipertireoidismo", texto: "Hipertireoidismo (tireoide acelerada)", ficha: "Hipertireoidismo" },
-          { id: "tireoide", texto: "Tireoide, não sei qual" },
+          { id: "hipotireoidismo", texto: "Hipotireoidismo", ficha: "Hipotireoidismo" },
+          { id: "hipertireoidismo", texto: "Hipertireoidismo", ficha: "Hipertireoidismo" },
+          { id: "tireoide", texto: "Tireoide (não sei qual)" },
           { id: "rins", texto: "Doença nos rins", ficha: "Doença renal crônica" },
-          { id: "dialise", texto: "Faço diálise", ficha: "Em diálise" },
+          { id: "dialise", texto: "Diálise", ficha: "Em diálise" },
           { id: "hepatite", texto: "Hepatite", ficha: "Hepatite" },
           { id: "cirrose", texto: "Cirrose", ficha: "Cirrose" },
-          { id: "refluxo", texto: "Refluxo ou azia frequente", ficha: "Refluxo (DRGE)" },
+          { id: "refluxo", texto: "Refluxo / azia", ficha: "Refluxo (DRGE)" },
           { id: "artrite", texto: "Artrite reumatoide", ficha: "Artrite reumatoide" },
           { id: "lupus", texto: "Lúpus", ficha: "Lúpus" },
-          { id: "cancer", texto: "Câncer (agora ou no passado)", ficha: "Câncer" },
+          { id: "cancer", texto: "Câncer", ficha: "Câncer" },
         ],
       },
       {
-        id: "aguda", tipo: "simnao",
-        texto: "Nas últimas 2 semanas, teve gripe, febre, tosse, infecção de urina, diarreia ou vômitos?",
-        detalhe: "Detalhe, se quiser",
+        id: "aguda", tipo: "simnao", texto: "Gripe, febre ou infecção nas últimas 2 semanas?", detalhe: "Detalhe",
         opcoes: [
           { id: "gripe", texto: "Gripe", ficha: "Gripe" },
           { id: "febre", texto: "Febre", ficha: "Febre" },
@@ -203,9 +202,9 @@ export const BLOCOS: Bloco[] = [
           { id: "diarreia", texto: "Diarreia ou vômitos", ficha: "Diarreia/vômitos" },
         ],
       },
-      { id: "glaucoma", tipo: "simnao", texto: "Tem glaucoma?" },
+      { id: "glaucoma", tipo: "simnao", texto: "Glaucoma?" },
       {
-        id: "gravidez", tipo: "escolha", texto: "Está grávida ou pode estar grávida?",
+        id: "gravidez", tipo: "escolha", texto: "Grávida ou pode estar?",
         se: (_r, ctx) => String(ctx.sexo ?? "").toLowerCase() !== "masculino",
         opcoes: [
           { id: SIM, texto: "Sim" },
@@ -215,7 +214,7 @@ export const BLOCOS: Bloco[] = [
         ],
       },
       {
-        id: "semanas", tipo: "texto", texto: "De quantas semanas?", opcional: true,
+        id: "semanas", tipo: "texto", texto: "Quantas semanas?", opcional: true,
         se: (r) => disse(r, "gravidez", SIM),
       },
     ],
@@ -225,37 +224,36 @@ export const BLOCOS: Bloco[] = [
     titulo: "Seu dia a dia",
     perguntas: [
       {
-        id: "escada", tipo: "escolha", texto: "Você consegue subir dois andares de escada sem parar para descansar?",
+        id: "escada", tipo: "escolha", texto: "Sobe 2 andares de escada sem parar?",
         opcoes: [
-          { id: "sim", texto: "Sim, subo sem parar" },
-          { id: "cansa", texto: "Não, preciso parar por cansaço ou falta de ar" },
-          { id: "outro", texto: "Não consigo por outro motivo (dor, joelho, cadeira de rodas)" },
+          { id: "sim", texto: "Sim" },
+          { id: "cansa", texto: "Não: paro por cansaço ou falta de ar" },
+          { id: "outro", texto: "Não: por outro motivo (dor, joelho…)" },
           { id: NAO_SEI, texto: "Não sei" },
         ],
       },
-      { id: "ronco", tipo: "simnao", texto: "Você ronca alto, a ponto de ouvirem de outro cômodo?" },
-      { id: "sono", tipo: "simnao", texto: "Sente muito cansaço ou sono durante o dia?" },
-      { id: "parada", tipo: "simnao", texto: "Alguém já viu você parar de respirar enquanto dorme?" },
+      { id: "ronco", tipo: "simnao", texto: "Ronca alto?" },
+      { id: "sono", tipo: "simnao", texto: "Muito sono ou cansaço durante o dia?" },
+      { id: "parada", tipo: "simnao", texto: "Já viram você parar de respirar dormindo?" },
       {
-        id: "habitos", tipo: "simnao", texto: "Você fuma, bebe bebida alcoólica ou usa alguma droga?",
-        detalhe: "Quanto e com que frequência. Se parou, conte quando.",
+        id: "habitos", tipo: "simnao", texto: "Fuma, bebe ou usa drogas?",
+        detalhe: "Quanto. Se parou, quando.",
         opcoes: [
-          { id: "fumo", texto: "Fumo (cigarro, vape ou narguilé)", ficha: "Tabagismo" },
-          { id: "alcool", texto: "Bebida alcoólica", ficha: "Álcool" },
+          { id: "fumo", texto: "Fumo / vape", ficha: "Tabagismo" },
+          { id: "alcool", texto: "Álcool", ficha: "Álcool" },
           { id: "maconha", texto: "Maconha", ficha: "Cannabis" },
-          { id: "cocaina", texto: "Cocaína ou outro estimulante", ficha: "Cocaína/estimulantes" },
+          { id: "cocaina", texto: "Cocaína ou estimulante", ficha: "Cocaína/estimulantes" },
         ],
       },
       {
-        id: "dentes", tipo: "simnao", texto: "Usa dentadura, ponte móvel ou aparelho, ou tem dente mole ou quebrado?",
-        detalhe: "Detalhe, se quiser",
+        id: "dentes", tipo: "simnao", texto: "Prótese dentária, aparelho ou dente mole?", detalhe: "Detalhe",
         opcoes: [
-          { id: "dentadura", texto: "Dentadura ou ponte que tira", ficha: "Prótese removível" },
-          { id: "fixa", texto: "Prótese fixa ou implante", ficha: "Prótese fixa" },
+          { id: "dentadura", texto: "Dentadura / ponte móvel", ficha: "Prótese removível" },
+          { id: "fixa", texto: "Prótese fixa / implante", ficha: "Prótese fixa" },
           { id: "mole", texto: "Dente mole", ficha: "Dente solto" },
           { id: "quebrado", texto: "Dente quebrado", ficha: "Dente fraturado" },
           { id: "aparelho", texto: "Aparelho", ficha: "Aparelho" },
-          { id: "semdentes", texto: "Não tenho dentes", ficha: "Edentado" },
+          { id: "semdentes", texto: "Sem dentes", ficha: "Edentado" },
         ],
       },
     ],
@@ -265,23 +263,23 @@ export const BLOCOS: Bloco[] = [
     titulo: "Alergias e remédios",
     perguntas: [
       {
-        id: "alergia", tipo: "simnao", texto: "Tem alergia a algum remédio, látex, alimento ou outra coisa?",
-        detalhe: "Escreva o nome de cada um e o que aconteceu", detalheObrigatorio: true,
+        id: "alergia", tipo: "simnao", texto: "Alergia?", ajuda: "A remédio, látex, alimento ou outra coisa.",
+        detalhe: "Nome de cada um e o que aconteceu", detalheObrigatorio: true,
         opcoes: [
           { id: "remedio", texto: "Remédio", ficha: "Medicamentos" },
-          { id: "latex", texto: "Látex (luva, balão, camisinha)", ficha: "Látex" },
-          { id: "contraste", texto: "Contraste de exame (tomografia, cateterismo)", ficha: "Contraste iodado" },
+          { id: "latex", texto: "Látex", ficha: "Látex" },
+          { id: "contraste", texto: "Contraste de exame", ficha: "Contraste iodado" },
           { id: "alimento", texto: "Alimento", ficha: "Alimentos" },
-          { id: "antisseptico", texto: "Esparadrapo, iodo ou antisséptico", ficha: "Antissépticos" },
-          { id: "outra", texto: "Outra coisa", ficha: "Outros" },
+          { id: "antisseptico", texto: "Esparadrapo / iodo", ficha: "Antissépticos" },
+          { id: "outra", texto: "Outra", ficha: "Outros" },
         ],
       },
       {
-        id: "remedios", tipo: "simnao", texto: "Você toma algum remédio todos os dias?",
-        detalhe: "Nome e dose de cada um, se souber. Pode mandar foto da receita logo abaixo.",
+        id: "remedios", tipo: "simnao", texto: "Remédio de uso diário?",
+        detalhe: "Nome e dose (ou mande a foto da receita abaixo)",
       },
       {
-        id: "sangue", tipo: "simnao", texto: "Toma remédio para afinar o sangue?", detalhe: "Outro, ou detalhe",
+        id: "sangue", tipo: "simnao", texto: "Remédio para afinar o sangue?", detalhe: "Outro ou detalhe",
         opcoes: [
           { id: "aas", texto: "AAS (aspirina)" },
           { id: "clopidogrel", texto: "Clopidogrel" },
@@ -292,12 +290,11 @@ export const BLOCOS: Bloco[] = [
         ],
       },
       {
-        id: "caneta", tipo: "simnao",
-        texto: "Usa Ozempic, Mounjaro, Wegovy, Saxenda, Rybelsus ou outro remédio para emagrecer?",
-        detalhe: "Qual remédio",
+        id: "caneta", tipo: "simnao", texto: "Remédio para emagrecer?",
+        ajuda: "Ex.: Ozempic, Mounjaro, Wegovy, Saxenda, Rybelsus.", detalhe: "Qual",
       },
       {
-        id: "caneta_dia", tipo: "data", texto: "Em que dia foi a última aplicação ou o último comprimido?", opcional: true,
+        id: "caneta_dia", tipo: "data", texto: "Data da última dose", opcional: true,
         se: (r) => disse(r, "caneta", SIM),
       },
     ],
@@ -306,12 +303,21 @@ export const BLOCOS: Bloco[] = [
     id: "fim",
     titulo: "Para terminar",
     perguntas: [
-      { id: "mais", tipo: "texto", texto: "Quer contar mais alguma coisa para o anestesiologista?", opcional: true },
+      { id: "mais", tipo: "texto", texto: "Algo mais para o anestesiologista?", opcional: true },
     ],
   },
 ];
 
 export const TODAS = BLOCOS.flatMap((b) => b.perguntas);
+
+/**
+ * As partes que o paciente não chegou a concluir, pelo número de partes
+ * salvas. A última ("Para terminar") só tem campo opcional e não conta.
+ */
+export function partesQueFaltam(parte: number | null | undefined): string[] {
+  const feitas = Math.max(0, Math.floor(Number(parte) || 0));
+  return BLOCOS.slice(feitas).filter((b) => b.perguntas.some((p) => !p.opcional)).map((b) => b.titulo);
+}
 const POR_ID = new Map(TODAS.map((p) => [p.id, p]));
 
 export const MAX_FOTOS = 4;
@@ -511,7 +517,7 @@ export function alertasDoQuestionario(r: Respostas): Alerta[] {
   if (r.problema === SIM && marcas(r, "problema").includes("tubo"))
     a.push({ texto: "Relata intubação difícil em anestesia anterior.", grave: true });
   if (r.alergia === SIM) a.push({ texto: com("Alergia", nomes(r, "alergia")), grave: true });
-  if (r.sangue === SIM) a.push({ texto: com("Afina o sangue", nomes(r, "sangue")) + ". Confirmar a última dose.", grave: true });
+  if (r.sangue === SIM) a.push({ texto: com("Anticoagulante ou antiagregante", nomes(r, "sangue")) + ". Confirmar a última dose.", grave: true });
   if (r.caneta === SIM) {
     const dia = texto(r, "caneta_dia");
     const quando = /^\d{4}-\d{2}-\d{2}$/.test(dia) ? ` Última dose em ${dia.split("-").reverse().join("/")}.` : " Sem a data da última dose.";
@@ -620,11 +626,12 @@ export function whatsappDoPaciente(telefone: string | null | undefined, mensagem
 
 // ── A situação, para a recepção (sem o conteúdo) ───────────────────────────
 
-export type Situacao = "enviado" | "aberto" | "respondido" | "vencido";
+export type Situacao = "enviado" | "aberto" | "incompleto" | "respondido" | "vencido";
 
 export const NOME_DA_SITUACAO: Record<Situacao, string> = {
   enviado: "Questionário enviado",
   aberto: "Questionário aberto",
+  incompleto: "Questionário incompleto",
   respondido: "Questionário respondido",
   vencido: "Questionário vencido",
 };

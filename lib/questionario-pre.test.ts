@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  alertasDoQuestionario, BLOCOS, faltandoNoBloco, lerMedida, limparRespostas, mensagemDoQuestionario, nomeCurtoDaOrganizacao,
+  alertasDoQuestionario, BLOCOS, faltandoNoBloco, partesQueFaltam, lerMedida, limparRespostas, mensagemDoQuestionario, nomeCurtoDaOrganizacao,
   respostasParaAvaliacao, resumoDasRespostas, whatsappDoPaciente, type Respostas,
 } from "./questionario-pre.ts";
 
@@ -39,13 +39,13 @@ test("questionário: cada resposta vai para o campo da avaliação, na língua d
   assert.equal(campos.cirurgias_anteriores_anestesia, "raqui/peridural");
   assert.equal(campos.reacao_anestesica, "Sim");
   // O botão da ficha quando existe ("Náuseas/vômitos intensos"); o texto do paciente quando não.
-  assert.equal(campos.reacao_anestesica_detalhes, "Náuseas/vômitos intensos, febre muito alta durante a cirurgia, vomitei o dia todo");
+  assert.equal(campos.reacao_anestesica_detalhes, "Náuseas/vômitos intensos, febre muito alta, vomitei o dia todo");
   assert.equal(campos.cardiovascular_detalhes, "Hipertensão, Arritmia, dor no peito ou falta de ar ao esforço, toma losartana");
   assert.equal(campos.respiratoria_detalhes, "Asma");
   assert.equal(campos.respiratoria_ultima_crise, "há 2 meses");
-  assert.equal(campos.diabetes_detalhes, "uso comprimido, Hipoglicemia recente");
+  assert.equal(campos.diabetes_detalhes, "comprimido, Hipoglicemia recente");
   assert.equal(campos.neurologica, "Não");
-  assert.equal(campos.outras_doencas_detalhes, "tireoide, não sei qual, Em diálise");
+  assert.equal(campos.outras_doencas_detalhes, "tireoide (não sei qual), Em diálise");
   assert.equal(campos.glaucoma, "Não sabe", "\"Não sei\" do paciente é o \"Não sabe\" da ficha");
   assert.equal(campos.gestacao, "Não");
   assert.equal(campos.capacidade_funcional, "< 4 METs");
@@ -106,7 +106,7 @@ test("questionário: os alertas que o médico vê primeiro", () => {
   const textos = alertasDoQuestionario(completa).map((a) => a.texto);
   assert.ok(textos.includes("Febre muito alta em anestesia anterior: investigar hipertermia maligna."));
   assert.ok(textos.includes("Alergia: Remédio, Dipirona, inchou o rosto"));
-  assert.ok(textos.includes("Afina o sangue: Rivaroxabana (Xarelto). Confirmar a última dose."));
+  assert.ok(textos.includes("Anticoagulante ou antiagregante: Rivaroxabana (Xarelto). Confirmar a última dose."));
   assert.ok(textos.includes("Remédio para emagrecer (GLP-1): Ozempic. Última dose em 02/11/2026."));
   assert.ok(textos.includes("Dor no peito ou falta de ar ao esforço."));
   assert.ok(textos.includes("Faz diálise: perguntar o dia da última sessão."));
@@ -124,6 +124,15 @@ test("questionário: o que falta responder em cada bloco", () => {
   assert.ok(!faltandoNoBloco(outras, {}, { sexo: "Masculino" }).includes("gravidez"), "homem não vê a pergunta");
 });
 
+test("questionário incompleto: as partes que faltaram", () => {
+  assert.deepEqual(partesQueFaltam(2), ["Coração, pulmão e diabetes", "Outras doenças", "Seu dia a dia", "Alergias e remédios"],
+    "\"Para terminar\" só tem campo opcional e não conta");
+  assert.deepEqual(partesQueFaltam(6), []);
+  assert.equal(partesQueFaltam(null).length, 6);
+  // Perguntas curtas, no estilo da ficha (11/11/2026).
+  assert.ok(BLOCOS.flatMap((b) => b.perguntas).every((p) => p.texto.length <= 50), "nenhuma pergunta longa");
+});
+
 test("questionário: o que não faz sentido sai antes de gravar", () => {
   const limpo = limparRespostas({
     cirurgias: "nao", "cirurgias.texto": "sobrou de antes", "anestesias.marcas": ["geral"],
@@ -136,9 +145,9 @@ test("questionário: o que não faz sentido sai antes de gravar", () => {
 test("questionário: o resumo mostra as respostas como o paciente deu", () => {
   const resumo = resumoDasRespostas(completa, ctx);
   const voce = resumo.find((b) => b.titulo === "Sobre você")!;
-  assert.deepEqual(voce.itens[0], { pergunta: "Quem está respondendo?", resposta: "Um familiar ou responsável — Maria Fictícia, filha" });
-  assert.deepEqual(voce.itens[1], { pergunta: "Qual é o seu peso?", resposta: "72,5 kg" });
-  assert.deepEqual(voce.itens[2], { pergunta: "Qual é a sua altura?", resposta: "163 cm (escreveu 1,63)" });
+  assert.deepEqual(voce.itens[0], { pergunta: "Quem está respondendo?", resposta: "Familiar ou responsável — Maria Fictícia, filha" });
+  assert.deepEqual(voce.itens[1], { pergunta: "Peso", resposta: "72,5 kg" });
+  assert.deepEqual(voce.itens[2], { pergunta: "Altura", resposta: "163 cm (escreveu 1,63)" });
   assert.equal(resumoDasRespostas({ peso: "900" }, ctx)[0].itens[0].resposta, "900 (fora da faixa: confirmar)");
   const remedios = resumo.find((b) => b.titulo === "Alergias e remédios")!;
   assert.ok(remedios.itens.some((i) => i.resposta === "Sim — Losartana 50 mg, Metformina 850"));
