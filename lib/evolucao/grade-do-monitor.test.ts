@@ -31,6 +31,22 @@ function deitada(o: { horas?: Array<string | null>; selos?: Array<string | null>
   ];
 }
 
+test("tabela deitada: o 'PNI' dos botões embaixo da tela não apaga a primeira coluna sem horário", () => {
+  // A foto do monitor inteiro: a hora da primeira coluna não foi lida, e os
+  // botões de baixo ("Medida de PNI") ficam na mesma vertical dela.
+  const xs = [0.3, 0.45, 0.6, 0.75];
+  const palavras = [
+    p("11-11-2026", 0.08, 0.27, 0.1), p("09:40", 0.45, 0.27), p("09:45", 0.6, 0.27), p("09:50", 0.75, 0.27),
+    p("FC", 0.12, 0.33), p("SpO2", 0.12, 0.41),
+    ...xs.flatMap((x, i) => [p(["64", "65", "61", "52"][i], x, 0.33), p("99", x, 0.41)]),
+    p("Medida", 0.24, 0.85), p("de", 0.27, 0.85, 0.02), p("PNI", 0.3, 0.85),
+  ];
+  const plano = planejar(palavras);
+  assert.deepEqual(plano?.colunas, [null, "09:40", "09:45", "09:50"]);
+  const linhas = montar(plano!, {});
+  assert.deepEqual(linhas.find((l) => l.hora === "09:35"), { hora: "09:35", fc: 64, spo2: 99 });
+});
+
 test("tabela deitada: FC e SpO₂ na hora da coluna, a PA na hora do selo", () => {
   const plano = planejar(deitada());
   assert.equal(plano?.forma, "deitada");
