@@ -4,11 +4,17 @@
 // lida pelo Tesseract do próprio navegador, como a foto do monitor e a do
 // laudo — a promessa da página de privacidade ("a foto é lida no próprio
 // aparelho e não é enviada"). Só o que o médico conferir vai para a ficha.
+//
+// A FOTO DE LADO (11/11/2026): com o celular deitado, a folha chega girada, e
+// o OCR não lê nada de lado. Antes de ler, a direção das linhas de texto diz
+// se a folha está de pé ou deitada (direcaoDoTexto); deitada, uma leitura
+// rápida em miniatura nos dois giros possíveis diz para qual lado girar.
 
-import { cinzaDoRgba, escalaDaFicha, prepararFicha } from "./imagem-da-ficha";
-import { juntarComConfianca, lerFichaDoHospital, type FichaDoHospital, type PalavraComConfianca } from "./ficha-do-hospital";
+import { binarizar, cinzaDoRgba, direcaoDoTexto, escalaDaFicha, prepararFicha } from "./imagem-da-ficha";
+import { juntarComConfianca, lerFichaDoHospital, propostaDaFicha, type FichaDoHospital, type PalavraComConfianca } from "./ficha-do-hospital";
 
 type Trabalhador = Awaited<ReturnType<typeof import("tesseract.js")["createWorker"]>>;
+type Giro = 0 | 90 | 180 | 270;
 
 async function palavrasDa(worker: Trabalhador, imagem: HTMLCanvasElement): Promise<PalavraComConfianca[]> {
   const { data } = await worker.recognize(imagem, {}, { blocks: true });
@@ -25,19 +31,31 @@ async function palavrasDa(worker: Trabalhador, imagem: HTMLCanvasElement): Promi
   return palavras;
 }
 
-/** A foto na escala de leitura, em preto e branco e sem as bordas das caixas. */
-async function preparada(arquivo: Blob): Promise<HTMLCanvasElement> {
-  const bitmap = await createImageBitmap(arquivo);
-  const k = escalaDaFicha(bitmap.width, bitmap.height);
+/** A foto desenhada num canvas, girada no sentido horário e na escala pedida. */
+function desenhar(bitmap: ImageBitmap, escala: number, giro: Giro): HTMLCanvasElement {
+  const w = Math.round(bitmap.width * escala), h = Math.round(bitmap.height * escala);
+  const deitado = giro === 90 || giro === 270;
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * k);
-  canvas.height = Math.round(bitmap.height * k);
+  canvas.width = deitado ? h : w;
+  canvas.height = deitado ? w : h;
   const g = canvas.getContext("2d", { willReadFrequently: true });
   if (!g) throw new Error("Sem canvas");
   g.imageSmoothingQuality = "high";
-  g.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const dados = g.getImageData(0, 0, canvas.width, canvas.height);
+  if (giro === 90) { g.translate(canvas.width, 0); g.rotate(Math.PI / 2); }
+  if (giro === 180) { g.translate(canvas.width, canvas.height); g.rotate(Math.PI); }
+  if (giro === 270) { g.translate(0, canvas.height); g.rotate(-Math.PI / 2); }
+  g.drawImage(bitmap, 0, 0, w, h);
+  return canvas;
+}
+
+function pontosDo(canvas: HTMLCanvasElement) {
+  const g = canvas.getContext("2d", { willReadFrequently: true })!;
+  return { g, dados: g.getImageData(0, 0, canvas.width, canvas.height) };
+}
+
+/** Em preto e branco e sem as bordas das caixas, no próprio canvas. */
+function preparar(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const { g, dados } = pontosDo(canvas);
   const pronta = prepararFicha(cinzaDoRgba(dados.data, canvas.width, canvas.height));
   for (let i = 0; i < pronta.pontos.length; i++) {
     const v = pronta.pontos[i];
@@ -45,6 +63,28 @@ async function preparada(arquivo: Blob): Promise<HTMLCanvasElement> {
   }
   g.putImageData(dados, 0, 0);
   return canvas;
+}
+
+/** Quantas palavras a leitura rápida achou com confiança: no giro certo, dezenas; de lado, quase nenhuma. */
+async function pontuar(worker: Trabalhador, bitmap: ImageBitmap, giro: Giro): Promise<number> {
+  const miniatura = desenhar(bitmap, Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height)), giro);
+  const palavras = await palavrasDa(worker, miniatura);
+  return palavras.filter((p) => p.c >= 80 && /\p{L}{3,}/u.test(p.t)).length;
+}
+
+/** Para que lado girar a foto antes de ler. */
+async function giroDaFoto(worker: Trabalhador, bitmap: ImageBitmap): Promise<Giro> {
+  const amostra = desenhar(bitmap, Math.min(1, 900 / Math.max(bitmap.width, bitmap.height)), 0);
+  const { dados } = pontosDo(amostra);
+  const direcao = direcaoDoTexto(binarizar(cinzaDoRgba(dados.data, amostra.width, amostra.height)));
+  if (direcao === "horizontal") return 0;
+  const candidatos: Giro[] = direcao === "vertical" ? [270, 90] : [0, 270, 90];
+  let melhor: Giro = candidatos[0], pontos = -1;
+  for (const g of candidatos) {
+    const p = await pontuar(worker, bitmap, g);
+    if (p > pontos) { melhor = g; pontos = p; }
+  }
+  return melhor;
 }
 
 /** O PDF do sistema do hospital tem texto de verdade: cada pedaço com a sua posição. */
@@ -79,7 +119,7 @@ async function palavrasDoPdf(arquivo: File): Promise<PalavraComConfianca[]> {
 
 /**
  * Lê a ficha do hospital. `avancar` recebe de 0 a 1, para a barra de
- * "Lendo a ficha…". Duas leituras da mesma imagem (automática e texto
+ * "Lendo a foto…". Duas leituras da mesma imagem (automática e texto
  * esparso): cada uma acha respostas que a outra perde.
  */
 export async function lerFotoDaFicha(arquivo: File, avancar: (fracao: number) => void = () => {}): Promise<FichaDoHospital> {
@@ -89,24 +129,38 @@ export async function lerFotoDaFicha(arquivo: File, avancar: (fracao: number) =>
     // PDF que é só imagem (escaneado): não há texto para ler.
     throw new Error("PDF sem texto");
   }
-  avancar(0.05);
-  const imagem = await preparada(arquivo);
-  avancar(0.12);
+  avancar(0.03);
+  const bitmap = await createImageBitmap(arquivo);
   const { createWorker, PSM } = await import("tesseract.js");
-  let leitura = 0;
+  let fase = 0;
   const worker = await createWorker("por", undefined, {
     logger: (m: { status?: string; progress?: number }) => {
-      if (m.status === "recognizing text" && m.progress != null) avancar(0.12 + 0.88 * ((leitura + m.progress) / 2));
+      if (m.status === "recognizing text" && m.progress != null && fase > 0) avancar(0.15 + 0.85 * ((fase - 1 + m.progress) / 2));
     },
   });
   try {
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
-    const automatica = await palavrasDa(worker, imagem);
-    leitura = 1;
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
-    const esparsa = await palavrasDa(worker, imagem);
-    return lerFichaDoHospital(juntarComConfianca(automatica, esparsa));
+    const ler = async (giro: Giro) => {
+      const imagem = preparar(desenhar(bitmap, escalaDaFicha(bitmap.width, bitmap.height), giro));
+      fase = 1;
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+      const automatica = await palavrasDa(worker, imagem);
+      fase = 2;
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
+      const esparsa = await palavrasDa(worker, imagem);
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+      fase = 0;
+      return lerFichaDoHospital(juntarComConfianca(automatica, esparsa));
+    };
+    const giro = await giroDaFoto(worker, bitmap);
+    avancar(0.15);
+    const lida = await ler(giro);
+    // De pé, mas de cabeça para baixo: quase nada lido. Tenta virada.
+    if (giro === 0 && propostaDaFicha(lida).length < 3 && (await pontuar(worker, bitmap, 180)) > (await pontuar(worker, bitmap, 0))) {
+      return await ler(180);
+    }
+    return lida;
   } finally {
+    bitmap.close();
     await worker.terminate();
   }
 }

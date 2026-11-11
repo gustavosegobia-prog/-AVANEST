@@ -100,6 +100,12 @@ test("ficha do hospital: o nome e o nascimento mesmo com o cabeçalho mal lido",
     [140, [[100, "Data de Nasclmentu 07/08/1975"], [1500, "Atendimento: 10/11/2026"]]],
   ]);
   assert.equal(semRotulo.nascimento, "1975-08-07");
+  // A data partida em duas palavras pela leitura ("07/08/1 975").
+  const partida = variante([
+    [100, [[100, "Paciente: MARIA FICTÍCIA DA SILVA"], [1500, "Prontuário: 12.345"]]],
+    [140, [[100, "Data de Nascimento:07/08/1 975"], [900, "Idade: 51a"]]],
+  ]);
+  assert.equal(partida.nascimento, "1975-08-07");
 });
 
 test("ficha do hospital: cada resposta na sua coluna, mesmo com três perguntas lado a lado e a foto torta", () => {
