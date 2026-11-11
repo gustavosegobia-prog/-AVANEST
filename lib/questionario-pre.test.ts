@@ -11,7 +11,7 @@ const completa: Respostas = {
   peso: "72,5", altura: "1,63", cirurgia: "Vesícula", cirurgiao: "Dr. Fictício",
   cirurgias: "sim", "cirurgias.texto": "Cesárea em 1998", "anestesias.marcas": ["raqui"],
   problema: "sim", "problema.marcas": ["enjoo", "febre"], "problema.texto": "vomitei o dia todo",
-  familia: "nao", viagem: "sim",
+  viagem: "sim",
   coracao: "sim", "coracao.marcas": ["pressao", "arritmia"], "coracao.texto": "toma losartana",
   esforco: "sim",
   pulmao: "sim", "pulmao.marcas": ["asma"], crise: "há 2 meses",
@@ -85,12 +85,29 @@ test("questionário: só preenche o vazio, e respeita o critério que o médico 
   assert.ok(trazidos.includes("altura") && !trazidos.includes("peso"));
 });
 
-test("questionário: a família entra na pergunta da reação anestésica", () => {
-  const { campos } = respostasParaAvaliacao({ problema: "nao", familia: "sim", "familia.texto": "tio teve febre alta" }, {});
+test("questionário: a família entra na pergunta 2, como na ficha", () => {
+  const r = { problema: "sim", "problema.marcas": ["familia"], "problema.texto": "tio teve febre alta" };
+  const { campos } = respostasParaAvaliacao(r, {});
   assert.equal(campos.reacao_anestesica, "Sim");
-  assert.equal(campos.reacao_anestesica_detalhes, "família: tio teve febre alta");
-  assert.equal(respostasParaAvaliacao({ problema: "nao", familia: "nao" }, {}).campos.reacao_anestesica, "Não");
-  assert.equal(respostasParaAvaliacao({ problema: "nao", familia: "naosei" }, {}).campos.reacao_anestesica, "Não sabe");
+  assert.equal(campos.reacao_anestesica_detalhes, "caso na família, tio teve febre alta");
+  assert.ok(alertasDoQuestionario(r).some((a) => a.texto === "Complicação anestésica na família: tio teve febre alta" && a.grave));
+  assert.equal(respostasParaAvaliacao({ problema: "nao" }, {}).campos.reacao_anestesica, "Não");
+  assert.equal(respostasParaAvaliacao({ cirurgias: "sim", "anestesias.marcas": ["bloqueio", "sedacao"] }, {}).campos.cirurgias_anteriores_anestesia,
+    "bloqueio, sedação");
+});
+
+test("questionário: as respostas do formato antigo continuam valendo para o médico", () => {
+  // Antes de 11/11/2026, a família era uma pergunta à parte e havia opções separadas.
+  const antigo = limparRespostas({
+    problema: "nao", familia: "sim", "familia.texto": "mãe com febre alta", outras: "sim", "outras.marcas": ["hepatite", "lupus"],
+    cirurgiao: "Dr. X",
+  }, ctx);
+  assert.equal(antigo.problema, "sim");
+  assert.deepEqual(antigo["problema.marcas"], ["familia"]);
+  assert.equal(antigo["problema.texto"], "família: mãe com febre alta");
+  assert.deepEqual(antigo["outras.marcas"], ["figado", "reumato"]);
+  assert.equal(antigo.familia, undefined, "a pergunta antiga sai");
+  assert.equal(limparRespostas({ problema: "nao", familia: "naosei" }, ctx).problema, "naosei");
 });
 
 test("questionário: medida digitada do jeito do paciente", () => {
@@ -114,23 +131,34 @@ test("questionário: os alertas que o médico vê primeiro", () => {
 });
 
 test("questionário: o que falta responder em cada bloco", () => {
-  const [voce, anest, , outras, , remedios] = BLOCOS;
+  const [voce, anamnese1, anamnese2, remedios, escores] = BLOCOS;
   assert.deepEqual(faltandoNoBloco(voce, {}, ctx), ["quem"], "peso, altura e cirurgia podem ficar em branco");
   assert.deepEqual(faltandoNoBloco(voce, { quem: "familiar" }, ctx), ["quem"], "familiar diz quem é");
-  assert.deepEqual(faltandoNoBloco(anest, { cirurgias: "nao", problema: "nao", familia: "nao", viagem: "nao" }, ctx), []);
-  assert.deepEqual(faltandoNoBloco(remedios, { alergia: "sim", remedios: "nao", sangue: "nao", caneta: "nao" }, ctx), ["alergia"],
-    "alergia com Sim pede o nome");
-  assert.ok(faltandoNoBloco(outras, {}, ctx).includes("gravidez"));
-  assert.ok(!faltandoNoBloco(outras, {}, { sexo: "Masculino" }).includes("gravidez"), "homem não vê a pergunta");
+  const nao = { cirurgias: "nao", problema: "nao", coracao: "nao", pulmao: "nao", diabetes: "nao", neuro: "nao", outras: "nao" };
+  assert.deepEqual(faltandoNoBloco(anamnese1, nao, ctx), []);
+  assert.deepEqual(faltandoNoBloco(anamnese2, { aguda: "nao", dentes: "nao", alergia: "sim", habitos: "nao", glaucoma: "nao", gravidez: "nao" }, ctx),
+    ["alergia"], "alergia com Sim pede o nome");
+  assert.ok(faltandoNoBloco(anamnese2, {}, ctx).includes("gravidez"));
+  assert.ok(!faltandoNoBloco(anamnese2, {}, { sexo: "Masculino" }).includes("gravidez"), "homem não vê a pergunta");
+  assert.deepEqual(faltandoNoBloco(remedios, {}, ctx), ["remedios", "caneta", "sangue"]);
+  assert.deepEqual(faltandoNoBloco(escores, {}, ctx), ["ronco", "sono", "parada", "viagem", "escada", "esforco"]);
+});
+
+test("questionário: a ordem e os nomes da ficha (modelo aprovado em 11/11/2026)", () => {
+  assert.deepEqual(BLOCOS.map((b) => b.titulo),
+    ["Identificação", "Anamnese", "Anamnese (continuação)", "Medicamentos", "Sono, enjoo e esforço"]);
+  const numeradas = BLOCOS.flatMap((b) => b.perguntas).map((p) => p.texto).filter((t) => /^\d+\. /.test(t));
+  assert.equal(numeradas.length, 22);
+  assert.deepEqual(numeradas.map((t) => Number(t.split(".")[0])), Array.from({ length: 22 }, (_, i) => i + 1), "1 a 22, em ordem");
+  assert.equal(numeradas[9], "10. Alergias?");
 });
 
 test("questionário incompleto: as partes que faltaram", () => {
-  assert.deepEqual(partesQueFaltam(2), ["Coração, pulmão e diabetes", "Outras doenças", "Seu dia a dia", "Alergias e remédios"],
-    "\"Para terminar\" só tem campo opcional e não conta");
-  assert.deepEqual(partesQueFaltam(6), []);
-  assert.equal(partesQueFaltam(null).length, 6);
+  assert.deepEqual(partesQueFaltam(2), ["Anamnese (continuação)", "Medicamentos", "Sono, enjoo e esforço"]);
+  assert.deepEqual(partesQueFaltam(5), []);
+  assert.equal(partesQueFaltam(null).length, 5);
   // Perguntas curtas, no estilo da ficha (11/11/2026).
-  assert.ok(BLOCOS.flatMap((b) => b.perguntas).every((p) => p.texto.length <= 50), "nenhuma pergunta longa");
+  assert.ok(BLOCOS.flatMap((b) => b.perguntas).every((p) => p.texto.length <= 60), "nenhuma pergunta longa");
 });
 
 test("questionário: o que não faz sentido sai antes de gravar", () => {
@@ -144,12 +172,12 @@ test("questionário: o que não faz sentido sai antes de gravar", () => {
 
 test("questionário: o resumo mostra as respostas como o paciente deu", () => {
   const resumo = resumoDasRespostas(completa, ctx);
-  const voce = resumo.find((b) => b.titulo === "Sobre você")!;
+  const voce = resumo.find((b) => b.titulo === "Identificação")!;
   assert.deepEqual(voce.itens[0], { pergunta: "Quem está respondendo?", resposta: "Familiar ou responsável — Maria Fictícia, filha" });
   assert.deepEqual(voce.itens[1], { pergunta: "Peso", resposta: "72,5 kg" });
   assert.deepEqual(voce.itens[2], { pergunta: "Altura", resposta: "163 cm (escreveu 1,63)" });
   assert.equal(resumoDasRespostas({ peso: "900" }, ctx)[0].itens[0].resposta, "900 (fora da faixa: confirmar)");
-  const remedios = resumo.find((b) => b.titulo === "Alergias e remédios")!;
+  const remedios = resumo.find((b) => b.titulo === "Medicamentos")!;
   assert.ok(remedios.itens.some((i) => i.resposta === "Sim — Losartana 50 mg, Metformina 850"));
   assert.ok(remedios.itens.some((i) => i.resposta === "02/11/2026"));
 });
