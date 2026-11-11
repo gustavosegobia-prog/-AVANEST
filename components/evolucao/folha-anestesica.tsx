@@ -18,7 +18,7 @@ import { consumoSevoflurano, formatarMl, lerAjuste, type AjusteDeGas } from "@/l
 import { montarInfusoes, totalDaInfusao, type Infusao } from "@/lib/evolucao/infusoes";
 import { LIQUIDOS_RAPIDOS, VOLUMES_RAPIDOS, balancoHidrico } from "@/lib/evolucao/liquidos";
 import {
-  EVENTOS_DA_TELA, conferirEncerramento, duracaoEmMinutos, fimDaAnestesia, horarioDoMarco, imcDaFolha, minutosDeTorniquete,
+  EVENTOS_DA_TELA, conferirEncerramento, duracaoEmMinutos, fimDaAnestesia, horarioDoMarco, imcDaFolha, minutosDeTorniquete, registroDoMarco,
   periodosDeTorniquete,
   rotuloDoEvento, type Profissional,
 } from "@/lib/evolucao/folha";
@@ -254,11 +254,16 @@ export function FolhaAnestesica({
   const torniqueteInsuflado = torniquete.length > 0 && !torniquete[torniquete.length - 1].fim;
   const minutosTorniquete = minutosDeTorniquete(torniquete, agora);
 
+  // O marco já registrado: o toque abre o horário para corrigir (o relógio
+  // do iPhone), em vez de marcar de novo. Esqueceu de tocar na hora? Toca
+  // agora e corrige para a hora certa.
   function botaoDeEvento(codigo: string) {
-    const feito = horarioDoMarco(atuais, codigo);
+    const feito = registroDoMarco(atuais, codigo);
     return (
-      <button type="button" key={codigo} className={`evoEventoBotao marco${feito ? " feito" : ""}`} onClick={() => evento(codigo)}>
-        {rotuloDoEvento(codigo)}{feito && <small>{hora(feito)}</small>}
+      <button type="button" key={codigo} className={`evoEventoBotao marco${feito ? " feito" : ""}`}
+        aria-label={feito ? `${rotuloDoEvento(codigo)} às ${hora(feito.momento)}: corrigir o horário` : undefined}
+        onClick={() => (feito ? setAbrir({ tipo: "registro", registro: feito }) : evento(codigo))}>
+        {rotuloDoEvento(codigo)}{feito && <small>{hora(feito.momento)} ✎</small>}
       </button>
     );
   }
@@ -284,7 +289,9 @@ export function FolhaAnestesica({
     setAviso({
       texto: saiu && !horarioDoMarco(atuais, "fim_anestesia")
         ? `${rotuloDoEvento(codigo)} às ${hora(momento)} — fim da anestesia marcado no mesmo horário`
-        : `${rotuloDoEvento(codigo)} às ${hora(momento)}`,
+        : ([...EVENTOS_DA_TELA.antes, ...EVENTOS_DA_TELA.depois] as string[]).includes(codigo)
+          ? `${rotuloDoEvento(codigo)} às ${hora(momento)} · toque de novo para mudar a hora`
+          : `${rotuloDoEvento(codigo)} às ${hora(momento)}`,
       desfazer: !saiu,
     });
   }
