@@ -26,6 +26,7 @@ import { fraseDoPrecoDeEntrada, precoDeEntrada } from "@/lib/preco-de-entrada";
 import { ARQUIVO_DA_FOTO, QUEM_FAZ, mostrarQuemFaz } from "@/lib/quem-faz";
 import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 import { QUANTOS_DE_CRISE } from "@/lib/intercorrencias/catalogo";
+import { mensagemDoQuestionario } from "@/lib/questionario-pre";
 import { RodapePublico } from "@/components/rodape-publico";
 
 // O que o site é, em linguagem de máquina.
@@ -59,6 +60,7 @@ const DADOS_ESTRUTURADOS = {
     + "e o financeiro do grupo e de cada médico.",
   featureList: [
     "Recepção: agenda do dia, chegada e etapas do atendimento",
+    "Questionário pré-anestésico pelo WhatsApp, respondido pelo paciente antes da consulta",
     "Avaliação pré-anestésica digital com ficha, termo e orientações para impressão",
     "Escores de risco: ASA, STOP-BANG, Apfel e índice de Lee (RCRI)",
     "Ficha anestésica do intraoperatório no tablet, impressa em A4",
@@ -97,7 +99,8 @@ const MODULOS: Modulo[] = [
     nome: "Recepção",
     texto: "A agenda do dia por médico e por hospital. A recepção marca, registra a chegada e acompanha cada paciente até a consulta terminar, sem abrir o conteúdo clínico.",
     itens: ["Agendado, aguardando, em atendimento e concluído na mesma lista", "Busca por nome, CPF ou telefone",
-      "Falta, desmarcação e reagendamento ficam no histórico"],
+      "Falta, desmarcação e reagendamento ficam no histórico",
+      "O questionário pré-anestésico vai pelo WhatsApp, e a agenda mostra quem já respondeu"],
     tela: ["/capa/recepcao.webp", 1600, 956],
     alt: "Recepção do AVANEST: a agenda do dia com pacientes concluídos, em atendimento e aguardando (dados fictícios)",
   },
@@ -105,7 +108,8 @@ const MODULOS: Modulo[] = [
     nome: "Consulta pré-anestésica",
     texto: "Nove etapas no celular ou no computador. Lee, STOP-Bang e Apfel saem calculados do que já foi respondido, e a ASA é você quem escolhe.",
     itens: ["Ficha, termo de consentimento e orientações impressos no timbre do hospital",
-      "O medicamento a suspender sai com o prazo escrito", "Os dados da consulta seguem para a ficha anestésica"],
+      "O medicamento a suspender sai com o prazo escrito", "Os dados da consulta seguem para a ficha anestésica",
+      "As respostas do questionário do paciente entram só nos campos vazios"],
     link: ["/avaliacao-pre-anestesica", "Guia da avaliação pré-anestésica"],
     tela: ["/capa/avaliacao-computador.webp", 1600, 1025],
     alt: "Avaliação pré-anestésica no AVANEST: as nove etapas e a identificação da paciente (dados fictícios)",
@@ -147,6 +151,44 @@ const MODULOS: Modulo[] = [
     segunda: ["/capa/financeiro-pessoal.webp", 1600, 956, "Meu financeiro: o total do mês e o gráfico do ano do médico (dados fictícios)"],
   },
 ];
+
+/** A validade que a mensagem mostra: a de um link enviado agora. */
+const validadeDeHoje = () => new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+
+/** *negrito* do WhatsApp em <b>. */
+function comNegrito(linha: string) {
+  return linha.split(/(\*[^*]+\*)/).map((parte, i) =>
+    /^\*[^*]+\*$/.test(parte) ? <b key={i}>{parte.slice(1, -1)}</b> : parte);
+}
+
+/**
+ * A mensagem que o paciente recebe, como no WhatsApp. O texto sai de
+ * mensagemDoQuestionario, a mesma função do botão da recepção: mudou a
+ * mensagem, muda aqui. O link de verdade é longo e pessoal; aqui, encurtado.
+ */
+function MensagemDoQuestionario() {
+  const LINK = "{link}";
+  const texto = mensagemDoQuestionario({
+    paciente: "Maria", organizacao: "Clínica Fictícia de Anestesia", link: LINK, validade: validadeDeHoje(),
+  });
+  return (
+    <figure className="avnZap" aria-label="A mensagem que o paciente recebe no WhatsApp (dados fictícios)">
+      <div className="avnZapBalao">
+        {texto.split("\n\n").map((bloco) => (
+          <p key={bloco}>
+            {bloco.split("\n").map((linha, i) => (
+              <span key={i}>
+                {i > 0 && <br />}
+                {linha === LINK ? <span className="avnZapLink">avanest.com.br/q/7f3a…c21e</span> : comNegrito(linha)}
+              </span>
+            ))}
+          </p>
+        ))}
+        <small className="avnZapHora">09:12</small>
+      </div>
+    </figure>
+  );
+}
 
 // A capa continua estática: o preço de entrada (lib/preco-de-entrada.ts) vem
 // da tabela de planos pelo cache de uma hora, e a página é refeita no mesmo
@@ -200,6 +242,12 @@ export default async function HomePage() {
           com uma paciente fictícia (public/capa). */}
       <section className="avnHero avnHeroComTelas">
         <div className="avnHeroContent">
+          {/* A NOVIDADE NA PRIMEIRA TELA, um toque leva à seção que mostra. */}
+          <a className="avnNovidadeCapa" href="#questionario-whatsapp">
+            <b>Novo</b>
+            <span className="avnSoLargo">Questionário pré-anestésico pelo WhatsApp</span>
+            <span className="avnSoEstreito">Questionário pelo WhatsApp</span>
+          </a>
           <p className="avnEyebrow">GESTÃO INTELIGENTE EM ANESTESIOLOGIA</p>
           {/* O BENEFÍCIO PRIMEIRO, a lista de funções depois. O título anterior
               ("Da avaliação pré-anestésica ao fluxo de caixa do serviço")
@@ -259,6 +307,51 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* O QUESTIONÁRIO PELO WHATSAPP, logo depois da primeira tela: é a
+          novidade, e o colega entende em três passos, cada um com o que ele
+          vai ver de fato. A mensagem é a mesma que o sistema monta
+          (lib/questionario-pre.ts), e as duas telas são capturas reais com
+          paciente fictícia (public/capa). */}
+      <section className="avnPreConsulta" id="questionario-whatsapp" aria-labelledby="avn-pre-consulta">
+        <p className="avnNovoSelo">Novo</p>
+        <h2 id="avn-pre-consulta">O paciente responde a anamnese pelo WhatsApp, antes da consulta.</h2>
+        <p className="avnPreConsultaLead">
+          A recepção manda um link pessoal, e o paciente responde no celular em menos de 10 minutos.
+          Você abre a avaliação pré-anestésica com as respostas e os alertas na tela.
+        </p>
+        <ol className="avnPreConsultaPassos" role="list">
+          <li>
+            <div className="avnPalco avnPalcoZap"><MensagemDoQuestionario /></div>
+            <h3>A recepção manda o link</h3>
+            <p>Pela agenda, com a mensagem pronta no WhatsApp do paciente. O link é pessoal e vale 7 dias.</p>
+          </li>
+          <li>
+            <div className="avnPalco">
+              <figure className="avnPalcoCelular">
+                <Image src="/capa/questionario-paciente.webp" width={780} height={1360} loading="lazy"
+                  sizes="(min-width: 761px) 210px, 200px"
+                  alt="O questionário no celular do paciente: parte 2 de 5, Anamnese, com Sim, Não e Não sei (dados fictícios)" />
+              </figure>
+            </div>
+            <h3>O paciente responde no celular</h3>
+            <p>As 22 perguntas da anamnese, na ordem da ficha. Abre no navegador, sem aplicativo nem senha, e cada parte fica salva.</p>
+          </li>
+          <li>
+            <div className="avnPalco">
+              <figure className="avnPalcoAlertas">
+                <Image src="/capa/questionario-alertas.webp" width={840} height={722} loading="lazy"
+                  sizes="(min-width: 1101px) 330px, (min-width: 761px) 30vw, calc(100vw - 88px)"
+                  alt="Na avaliação, o questionário respondido com os alertas de alergia, anticoagulante e remédio para emagrecer (dados fictícios)" />
+              </figure>
+            </div>
+            <h3>Você confere e traz para a ficha</h3>
+            <p>Alergia, anticoagulante e caneta emagrecedora aparecem em destaque. Trazer as respostas preenche só os campos vazios, e você revisa antes de concluir.</p>
+          </li>
+        </ol>
+        <div className="avnActions">
+          <a className="avnPrimary" href={`${CAMINHO_DA_CAMPANHA}?de=questionario-whatsapp`}>Começar {OFERTA_DO_TESTE}</a>
+        </div>
+      </section>
       {/* DOIS CAMINHOS, logo depois da primeira tela. O AVANEST serve ao
           anestesiologista que trabalha sozinho e ao grupo que tem escala,
           recepção e financeiro — e cada um decide por motivos diferentes. Um
@@ -396,6 +489,13 @@ export default async function HomePage() {
             <p>Registrar a avaliação pré-anestésica e a ficha de anestesia com o que a Resolução
               CFM 2.174/2017 pede, apoiar a equipe numa crise, organizar a escala e mostrar o que
               foi produzido e recebido. O AVANEST faz isso no mesmo lugar, com a recepção junto.</p>
+          </article>
+          <article>
+            <h3>O paciente pode responder antes da consulta?</h3>
+            <p>Pode. A recepção manda pelo WhatsApp um link pessoal, que vale 7 dias. O paciente
+              responde no celular, em menos de 10 minutos, e pode mandar a foto da receita. As
+              respostas aparecem na avaliação pré-anestésica com os alertas em destaque e só entram
+              na ficha quando você toca em Trazer as respostas.</p>
           </article>
           <article>
             <h3>O AVANEST faz a ficha anestésica?</h3>
