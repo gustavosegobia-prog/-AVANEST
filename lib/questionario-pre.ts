@@ -62,14 +62,15 @@ const marcou = (r: Respostas, pergunta: string, opcao: string) => {
 };
 const disse = (r: Respostas, pergunta: string, valor: string) => r[pergunta] === valor;
 
-// Perguntas curtas, no estilo da ficha impressa (11/11/2026: "tem como ser
-// mais diretos nas perguntas"). O exemplo, quando ajuda, fica na linha de
-// baixo, em letra menor. O `id` de cada pergunta e de cada opção não muda:
-// é ele que leva a resposta ao campo da avaliação.
+// O modelo aprovado pelo Dr. Gustavo em 11/11/2026: as perguntas na MESMA
+// ORDEM e com os MESMOS NOMES da ficha, para cada resposta cair no item certo
+// da avaliação. Os itens 1 a 13 são os da anamnese; 14 a 16, os de
+// medicamentos; 17 a 22, os escores e o alerta de esforço. O `id` de cada
+// pergunta e de cada opção é o que leva a resposta ao campo da avaliação.
 export const BLOCOS: Bloco[] = [
   {
     id: "voce",
-    titulo: "Sobre você",
+    titulo: "Identificação",
     perguntas: [
       {
         id: "quem", tipo: "escolha", texto: "Quem está respondendo?",
@@ -82,67 +83,59 @@ export const BLOCOS: Bloco[] = [
       { id: "peso", tipo: "numero", texto: "Peso", unidade: "kg", opcional: true, ajuda: "Se não souber, deixe em branco." },
       { id: "altura", tipo: "numero", texto: "Altura", unidade: "cm", opcional: true, ajuda: "Ex.: 1,65 m = 165" },
       { id: "cirurgia", tipo: "texto", texto: "Cirurgia que vai fazer", opcional: true },
-      { id: "cirurgiao", tipo: "texto", texto: "Cirurgião", opcional: true, ajuda: "Se souber." },
     ],
   },
   {
-    id: "anestesias",
-    titulo: "Cirurgias e anestesias",
+    id: "anamnese1",
+    titulo: "Anamnese",
     perguntas: [
-      { id: "cirurgias", tipo: "simnao", texto: "Já fez cirurgia?", detalhe: "Quais e quando" },
+      { id: "cirurgias", tipo: "simnao", texto: "1. Cirurgias prévias?", detalhe: "Qual e quando" },
       {
         id: "anestesias", tipo: "marcar", texto: "Tipo de anestesia", opcional: true,
         se: (r) => disse(r, "cirurgias", SIM),
         opcoes: [
-          { id: "geral", texto: "Geral (dormiu)" },
-          { id: "raqui", texto: "Raqui ou peridural" },
+          { id: "geral", texto: "Geral" },
+          { id: "raqui", texto: "Raqui / peridural" },
+          { id: "bloqueio", texto: "Bloqueio" },
           { id: "sedacao", texto: "Sedação" },
           { id: "local", texto: "Local" },
           { id: "naosei", texto: "Não sei" },
         ],
       },
       {
-        id: "problema", tipo: "simnao", texto: "Problema com anestesia?", detalhe: "O que aconteceu",
+        id: "problema", tipo: "simnao", texto: "2. Reação ou complicação com anestesia (sua ou da família)?",
+        detalhe: "O que aconteceu",
         opcoes: [
-          { id: "enjoo", texto: "Enjoo ou vômito forte", ficha: "Náuseas/vômitos intensos" },
-          { id: "tubo", texto: "Difícil colocar o tubo", ficha: "Intubação difícil" },
+          { id: "enjoo", texto: "Enjoo / vômito forte", ficha: "Náuseas/vômitos intensos" },
+          { id: "tubo", texto: "Intubação difícil", ficha: "Intubação difícil" },
           { id: "alergia", texto: "Alergia", ficha: "Alergia" },
           { id: "febre", texto: "Febre muito alta" },
           { id: "cefaleia", texto: "Dor de cabeça após raqui", ficha: "Cefaleia pós-raqui" },
-          { id: "acordar", texto: "Demorou para acordar" },
-          { id: "uti", texto: "Foi para a UTI", ficha: "UTI" },
+          { id: "uti", texto: "UTI", ficha: "UTI" },
+          { id: "familia", texto: "Caso na família" },
+          { id: "outra", texto: "Outra", ficha: "Outra" },
         ],
       },
       {
-        id: "familia", tipo: "simnao", texto: "Problema grave com anestesia na família?",
-        ajuda: "Ex.: febre muito alta, UTI ou morte.", detalhe: "Quem e o que aconteceu",
-      },
-      { id: "viagem", tipo: "simnao", texto: "Enjoa em viagem?" },
-    ],
-  },
-  {
-    id: "coracao",
-    titulo: "Coração, pulmão e diabetes",
-    perguntas: [
-      {
-        id: "coracao", tipo: "simnao", texto: "Pressão alta ou doença do coração?", detalhe: "Outra ou detalhe",
+        id: "coracao", tipo: "simnao", texto: "3. Doença do coração ou pressão alta?", detalhe: "Detalhe",
         opcoes: [
           { id: "pressao", texto: "Pressão alta", ficha: "Hipertensão" },
           { id: "infarto", texto: "Infarto", ficha: "Infarto" },
-          { id: "stent", texto: "Stent ou ponte de safena", ficha: "Coronariopatia" },
+          { id: "stent", texto: "Stent / ponte", ficha: "Coronariopatia" },
           { id: "fraco", texto: "Insuficiência cardíaca", ficha: "Insuficiência cardíaca" },
           { id: "arritmia", texto: "Arritmia", ficha: "Arritmia" },
-          { id: "valvula", texto: "Doença de válvula", ficha: "Valvopatia" },
+          { id: "valvula", texto: "Válvula", ficha: "Valvopatia" },
           { id: "marcapasso", texto: "Marca-passo", ficha: "Marca-passo/CDI" },
+          { id: "outra", texto: "Outra", ficha: "Outra" },
         ],
       },
-      { id: "esforco", tipo: "simnao", texto: "Dor no peito ou falta de ar ao esforço?" },
       {
-        id: "pulmao", tipo: "simnao", texto: "Doença no pulmão?", ajuda: "Ex.: asma, bronquite, enfisema.", detalhe: "Outra ou detalhe",
+        id: "pulmao", tipo: "simnao", texto: "4. Doença respiratória?", detalhe: "Detalhe",
         opcoes: [
           { id: "asma", texto: "Asma", ficha: "Asma" },
-          { id: "dpoc", texto: "Bronquite crônica ou enfisema", ficha: "DPOC" },
+          { id: "dpoc", texto: "Bronquite crônica / enfisema", ficha: "DPOC" },
           { id: "apneia", texto: "Apneia do sono", ficha: "Apneia do sono" },
+          { id: "outra", texto: "Outra", ficha: "Outra" },
         ],
       },
       {
@@ -150,103 +143,60 @@ export const BLOCOS: Bloco[] = [
         se: (r) => disse(r, "pulmao", SIM) && (marcou(r, "pulmao", "asma") || marcou(r, "pulmao", "dpoc")),
       },
       {
-        id: "diabetes", tipo: "simnao", texto: "Diabetes?", detalhe: "Detalhe",
+        id: "diabetes", tipo: "simnao", texto: "5. Diabetes?", detalhe: "Detalhe",
         opcoes: [
           { id: "insulina", texto: "Insulina", ficha: "Insulina" },
           { id: "comprimido", texto: "Comprimido" },
           { id: "hipo", texto: "Hipoglicemia recente", ficha: "Hipoglicemia recente" },
         ],
       },
-    ],
-  },
-  {
-    id: "outras",
-    titulo: "Outras doenças",
-    perguntas: [
       {
-        id: "neuro", tipo: "simnao", texto: "Doença neurológica ou psiquiátrica?",
-        ajuda: "Ex.: convulsão, derrame, Parkinson, depressão.", detalhe: "Outra ou detalhe",
+        id: "neuro", tipo: "simnao", texto: "6. Doença neurológica ou psiquiátrica?", detalhe: "Detalhe",
         opcoes: [
-          { id: "epilepsia", texto: "Convulsão / epilepsia", ficha: "Epilepsia" },
-          { id: "avc", texto: "Derrame (AVC)", ficha: "AVC/AIT" },
+          { id: "epilepsia", texto: "Convulsão", ficha: "Epilepsia" },
+          { id: "avc", texto: "AVC", ficha: "AVC/AIT" },
           { id: "parkinson", texto: "Parkinson", ficha: "Parkinson" },
           { id: "demencia", texto: "Demência", ficha: "Demência" },
           { id: "depressao", texto: "Depressão", ficha: "Depressão" },
           { id: "ansiedade", texto: "Ansiedade", ficha: "Ansiedade" },
-          { id: "bipolar", texto: "Transtorno bipolar", ficha: "Transtorno bipolar" },
+          { id: "bipolar", texto: "Bipolar", ficha: "Transtorno bipolar" },
+          { id: "outra", texto: "Outra", ficha: "Outra" },
         ],
       },
       {
-        id: "outras", tipo: "simnao", texto: "Outra doença?", ajuda: "Ex.: tireoide, rins, fígado.", detalhe: "Outra ou detalhe",
+        id: "outras", tipo: "simnao", texto: "7. Outras doenças?", detalhe: "Detalhe",
         opcoes: [
           { id: "hipotireoidismo", texto: "Hipotireoidismo", ficha: "Hipotireoidismo" },
           { id: "hipertireoidismo", texto: "Hipertireoidismo", ficha: "Hipertireoidismo" },
           { id: "tireoide", texto: "Tireoide (não sei qual)" },
-          { id: "rins", texto: "Doença nos rins", ficha: "Doença renal crônica" },
+          { id: "rins", texto: "Rins", ficha: "Doença renal crônica" },
           { id: "dialise", texto: "Diálise", ficha: "Em diálise" },
-          { id: "hepatite", texto: "Hepatite", ficha: "Hepatite" },
-          { id: "cirrose", texto: "Cirrose", ficha: "Cirrose" },
-          { id: "refluxo", texto: "Refluxo / azia", ficha: "Refluxo (DRGE)" },
-          { id: "artrite", texto: "Artrite reumatoide", ficha: "Artrite reumatoide" },
-          { id: "lupus", texto: "Lúpus", ficha: "Lúpus" },
+          { id: "figado", texto: "Hepatite / cirrose" },
+          { id: "refluxo", texto: "Refluxo", ficha: "Refluxo (DRGE)" },
+          { id: "reumato", texto: "Reumatológica" },
           { id: "cancer", texto: "Câncer", ficha: "Câncer" },
+          { id: "outra", texto: "Outra", ficha: "Outra" },
         ],
       },
+    ],
+  },
+  {
+    id: "anamnese2",
+    titulo: "Anamnese (continuação)",
+    perguntas: [
       {
-        id: "aguda", tipo: "simnao", texto: "Gripe, febre ou infecção nas últimas 2 semanas?", detalhe: "Detalhe",
+        id: "aguda", tipo: "simnao", texto: "8. Doença aguda agora?",
+        ajuda: "Gripe, febre, tosse, infecção de urina ou diarreia.", detalhe: "Detalhe",
         opcoes: [
           { id: "gripe", texto: "Gripe", ficha: "Gripe" },
           { id: "febre", texto: "Febre", ficha: "Febre" },
           { id: "tosse", texto: "Tosse", ficha: "Tosse" },
           { id: "urina", texto: "Infecção de urina", ficha: "ITU" },
-          { id: "diarreia", texto: "Diarreia ou vômitos", ficha: "Diarreia/vômitos" },
-        ],
-      },
-      { id: "glaucoma", tipo: "simnao", texto: "Glaucoma?" },
-      {
-        id: "gravidez", tipo: "escolha", texto: "Grávida ou pode estar?",
-        se: (_r, ctx) => String(ctx.sexo ?? "").toLowerCase() !== "masculino",
-        opcoes: [
-          { id: SIM, texto: "Sim" },
-          { id: NAO, texto: "Não" },
-          { id: NAO_SEI, texto: "Não sei" },
-          { id: "naoaplica", texto: "Não se aplica" },
+          { id: "diarreia", texto: "Diarreia / vômitos", ficha: "Diarreia/vômitos" },
         ],
       },
       {
-        id: "semanas", tipo: "texto", texto: "Quantas semanas?", opcional: true,
-        se: (r) => disse(r, "gravidez", SIM),
-      },
-    ],
-  },
-  {
-    id: "diaadia",
-    titulo: "Seu dia a dia",
-    perguntas: [
-      {
-        id: "escada", tipo: "escolha", texto: "Sobe 2 andares de escada sem parar?",
-        opcoes: [
-          { id: "sim", texto: "Sim" },
-          { id: "cansa", texto: "Não: paro por cansaço ou falta de ar" },
-          { id: "outro", texto: "Não: por outro motivo (dor, joelho…)" },
-          { id: NAO_SEI, texto: "Não sei" },
-        ],
-      },
-      { id: "ronco", tipo: "simnao", texto: "Ronca alto?" },
-      { id: "sono", tipo: "simnao", texto: "Muito sono ou cansaço durante o dia?" },
-      { id: "parada", tipo: "simnao", texto: "Já viram você parar de respirar dormindo?" },
-      {
-        id: "habitos", tipo: "simnao", texto: "Fuma, bebe ou usa drogas?",
-        detalhe: "Quanto. Se parou, quando.",
-        opcoes: [
-          { id: "fumo", texto: "Fumo / vape", ficha: "Tabagismo" },
-          { id: "alcool", texto: "Álcool", ficha: "Álcool" },
-          { id: "maconha", texto: "Maconha", ficha: "Cannabis" },
-          { id: "cocaina", texto: "Cocaína ou estimulante", ficha: "Cocaína/estimulantes" },
-        ],
-      },
-      {
-        id: "dentes", tipo: "simnao", texto: "Prótese dentária, aparelho ou dente mole?", detalhe: "Detalhe",
+        id: "dentes", tipo: "simnao", texto: "9. Prótese ou problema nos dentes?", detalhe: "Detalhe",
         opcoes: [
           { id: "dentadura", texto: "Dentadura / ponte móvel", ficha: "Prótese removível" },
           { id: "fixa", texto: "Prótese fixa / implante", ficha: "Prótese fixa" },
@@ -256,30 +206,64 @@ export const BLOCOS: Bloco[] = [
           { id: "semdentes", texto: "Sem dentes", ficha: "Edentado" },
         ],
       },
-    ],
-  },
-  {
-    id: "remedios",
-    titulo: "Alergias e remédios",
-    perguntas: [
       {
-        id: "alergia", tipo: "simnao", texto: "Alergia?", ajuda: "A remédio, látex, alimento ou outra coisa.",
-        detalhe: "Nome de cada um e o que aconteceu", detalheObrigatorio: true,
+        id: "alergia", tipo: "simnao", texto: "10. Alergias?",
+        detalhe: "Nome e reação", detalheObrigatorio: true,
         opcoes: [
           { id: "remedio", texto: "Remédio", ficha: "Medicamentos" },
           { id: "latex", texto: "Látex", ficha: "Látex" },
-          { id: "contraste", texto: "Contraste de exame", ficha: "Contraste iodado" },
+          { id: "contraste", texto: "Contraste", ficha: "Contraste iodado" },
           { id: "alimento", texto: "Alimento", ficha: "Alimentos" },
           { id: "antisseptico", texto: "Esparadrapo / iodo", ficha: "Antissépticos" },
           { id: "outra", texto: "Outra", ficha: "Outros" },
         ],
       },
       {
-        id: "remedios", tipo: "simnao", texto: "Remédio de uso diário?",
-        detalhe: "Nome e dose (ou mande a foto da receita abaixo)",
+        id: "habitos", tipo: "simnao", texto: "11. Cigarro, álcool ou outras substâncias?",
+        detalhe: "Quanto (se parou, quando)",
+        opcoes: [
+          { id: "fumo", texto: "Cigarro / vape", ficha: "Tabagismo" },
+          { id: "alcool", texto: "Álcool", ficha: "Álcool" },
+          { id: "maconha", texto: "Maconha", ficha: "Cannabis" },
+          { id: "cocaina", texto: "Cocaína / outras", ficha: "Cocaína/estimulantes" },
+        ],
+      },
+      { id: "glaucoma", tipo: "simnao", texto: "12. Glaucoma?" },
+      {
+        id: "gravidez", tipo: "escolha", texto: "13. Gestação?",
+        se: (_r, ctx) => String(ctx.sexo ?? "").toLowerCase() !== "masculino",
+        opcoes: [
+          { id: SIM, texto: "Sim" },
+          { id: NAO, texto: "Não" },
+          { id: NAO_SEI, texto: "Não sei" },
+          { id: "naoaplica", texto: "Não se aplica" },
+        ],
       },
       {
-        id: "sangue", tipo: "simnao", texto: "Remédio para afinar o sangue?", detalhe: "Outro ou detalhe",
+        id: "semanas", tipo: "texto", texto: "Semanas", opcional: true,
+        se: (r) => disse(r, "gravidez", SIM),
+      },
+    ],
+  },
+  {
+    id: "remedios",
+    titulo: "Medicamentos",
+    perguntas: [
+      {
+        id: "remedios", tipo: "simnao", texto: "14. Remédio de uso contínuo?",
+        detalhe: "Nome e dose (ou a foto da receita abaixo)",
+      },
+      {
+        id: "caneta", tipo: "simnao", texto: "15. Caneta ou remédio para emagrecer?",
+        ajuda: "Ex.: Ozempic, Mounjaro, Wegovy, Saxenda.", detalhe: "Qual",
+      },
+      {
+        id: "caneta_dia", tipo: "data", texto: "Data da última dose", opcional: true,
+        se: (r) => disse(r, "caneta", SIM),
+      },
+      {
+        id: "sangue", tipo: "simnao", texto: "16. Anticoagulante ou antiagregante?",
+        ajuda: "Ex.: AAS, clopidogrel, Xarelto, Marevan.", detalhe: "Outro",
         opcoes: [
           { id: "aas", texto: "AAS (aspirina)" },
           { id: "clopidogrel", texto: "Clopidogrel" },
@@ -289,20 +273,26 @@ export const BLOCOS: Bloco[] = [
           { id: "dabigatrana", texto: "Dabigatrana (Pradaxa)" },
         ],
       },
-      {
-        id: "caneta", tipo: "simnao", texto: "Remédio para emagrecer?",
-        ajuda: "Ex.: Ozempic, Mounjaro, Wegovy, Saxenda, Rybelsus.", detalhe: "Qual",
-      },
-      {
-        id: "caneta_dia", tipo: "data", texto: "Data da última dose", opcional: true,
-        se: (r) => disse(r, "caneta", SIM),
-      },
     ],
   },
   {
-    id: "fim",
-    titulo: "Para terminar",
+    id: "escores",
+    titulo: "Sono, enjoo e esforço",
     perguntas: [
+      { id: "ronco", tipo: "simnao", texto: "17. Ronca alto?" },
+      { id: "sono", tipo: "simnao", texto: "18. Cansaço ou sono durante o dia?" },
+      { id: "parada", tipo: "simnao", texto: "19. Já viram você parar de respirar dormindo?" },
+      { id: "viagem", tipo: "simnao", texto: "20. Enjoa em viagem?" },
+      {
+        id: "escada", tipo: "escolha", texto: "21. Sobe 2 andares de escada sem parar?",
+        opcoes: [
+          { id: "sim", texto: "Sim" },
+          { id: "cansa", texto: "Não: cansaço ou falta de ar" },
+          { id: "outro", texto: "Não: outro motivo" },
+          { id: NAO_SEI, texto: "Não sei" },
+        ],
+      },
+      { id: "esforco", tipo: "simnao", texto: "22. Dor no peito ou falta de ar ao esforço?" },
       { id: "mais", tipo: "texto", texto: "Algo mais para o anestesiologista?", opcional: true },
     ],
   },
@@ -349,8 +339,34 @@ export function faltandoNoBloco(bloco: Bloco, r: Respostas, ctx: Contexto): stri
   }).map((p) => p.id);
 }
 
+/**
+ * As respostas dadas no questionário de antes do modelo de 11/11/2026, no
+ * formato de agora. A família era uma pergunta à parte (hoje é uma opção da
+ * pergunta 2), e algumas opções viraram uma só (hepatite e cirrose; artrite
+ * e lúpus). Sem isto, o médico perderia essas respostas.
+ */
+function doFormatoAntigo(r: Respostas): Respostas {
+  const n: Respostas = { ...r };
+  const lista = (k: string) => (Array.isArray(n[k]) ? (n[k] as string[]) : []);
+  const juntar = (...partes: string[]) => partes.filter(Boolean).join("; ");
+  if (r.familia === SIM) {
+    n.problema = SIM;
+    n["problema.marcas"] = [...new Set([...lista("problema.marcas"), "familia"])];
+    const fam = texto(r, "familia.texto");
+    n["problema.texto"] = juntar(texto(r, "problema.texto"), fam ? `família: ${fam}` : "");
+  } else if (r.familia === NAO_SEI && r.problema !== SIM) n.problema = NAO_SEI;
+  if (lista("problema.marcas").includes("acordar")) {
+    n["problema.marcas"] = lista("problema.marcas").filter((x) => x !== "acordar");
+    n["problema.texto"] = juntar(texto(n, "problema.texto"), "demorou para acordar");
+  }
+  const novo: Record<string, string> = { hepatite: "figado", cirrose: "figado", artrite: "reumato", lupus: "reumato" };
+  if (lista("outras.marcas").length) n["outras.marcas"] = [...new Set(lista("outras.marcas").map((x) => novo[x] ?? x))];
+  return n;
+}
+
 /** Respostas soltas sem sentido (perguntas que sumiram, valores trocados) saem antes de gravar. */
-export function limparRespostas(r: Respostas, ctx: Contexto): Respostas {
+export function limparRespostas(antigas: Respostas, ctx: Contexto): Respostas {
+  const r = doFormatoAntigo(antigas);
   const limpo: Respostas = {};
   for (const bloco of BLOCOS) {
     for (const p of perguntasDoBloco(bloco, r, ctx)) {
@@ -403,7 +419,7 @@ export function lerMedida(valor: string, unidade: "kg" | "cm"): string {
 
 const ESCADA: Record<string, string> = { sim: "4–10 METs", cansa: "< 4 METs", outro: "Não avaliável" };
 const ANESTESIA_CURTA: Record<string, string> = {
-  geral: "geral", raqui: "raqui/peridural", sedacao: "sedação", local: "local", naosei: "não sabe",
+  geral: "geral", raqui: "raqui/peridural", bloqueio: "bloqueio", sedacao: "sedação", local: "local", naosei: "não sabe",
 };
 
 /**
@@ -448,17 +464,8 @@ export function respostasParaAvaliacao(
     por("cirurgias_anteriores_anestesia", marcas(r, "anestesias").map((m) => ANESTESIA_CURTA[m]).join(", "));
   }
 
-  // A pergunta da ficha junta o próprio paciente e a família.
-  const prob = texto(r, "problema"), fam = texto(r, "familia");
-  const reacao = prob === SIM || fam === SIM ? "Sim"
-    : prob === NAO && fam === NAO ? "Não"
-    : prob || fam ? "Não sabe" : undefined;
-  por("reacao_anestesica", reacao);
-  if (reacao === "Sim" && fichaDizSim("reacao_anestesica")) {
-    const daFamilia = fam === SIM ? [`família: ${texto(r, "familia.texto") || "caso grave com anestesia"}`] : [];
-    const doPaciente = prob === SIM ? detalheNaFicha(r, "problema") : "";
-    por("reacao_anestesica_detalhes", [doPaciente, ...daFamilia].filter(Boolean).join(", "));
-  }
+  // A pergunta 2 é a da ficha: do próprio paciente e da família.
+  anamnese("reacao_anestesica", "problema");
 
   anamnese("cardiovascular", "coracao", r.esforco === SIM ? ["dor no peito ou falta de ar ao esforço"] : []);
   anamnese("respiratoria", "pulmao");
@@ -512,8 +519,8 @@ export function alertasDoQuestionario(r: Respostas): Alerta[] {
   const com = (base: string, extra: string) => (extra ? `${base}: ${extra}` : base);
   if (r.problema === SIM && marcas(r, "problema").includes("febre"))
     a.push({ texto: "Febre muito alta em anestesia anterior: investigar hipertermia maligna.", grave: true });
-  if (r.familia === SIM)
-    a.push({ texto: com("Problema grave com anestesia na família", texto(r, "familia.texto")), grave: true });
+  if (r.problema === SIM && marcas(r, "problema").includes("familia"))
+    a.push({ texto: com("Complicação anestésica na família", texto(r, "problema.texto")), grave: true });
   if (r.problema === SIM && marcas(r, "problema").includes("tubo"))
     a.push({ texto: "Relata intubação difícil em anestesia anterior.", grave: true });
   if (r.alergia === SIM) a.push({ texto: com("Alergia", nomes(r, "alergia")), grave: true });
