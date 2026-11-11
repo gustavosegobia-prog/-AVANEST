@@ -60,6 +60,7 @@ const ChatFlutuante = dynamic(() => import("@/components/chat-flutuante").then((
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
 import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
 import { NovidadeNoPainel } from "@/components/novidade-no-painel";
+import { PixDaOrganizacao } from "@/components/pagamento/pix-da-organizacao";
 import { iniciais, plural } from "@/lib/escala";
 import { DIAS_ADIADO, DIAS_VISTO, chaveDeVisto, chaveDoAviso, type Aviso } from "@/lib/avisos";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
@@ -1176,6 +1177,7 @@ export function DashboardClient({
            etapas do atendimento e as ações de balcão. O cadastro completo do
            paciente continua sendo o PatientModal daqui, o mesmo do Médico. */
         <RecepcaoView perfilId={perfil.id} institutionId={perfil.institution_id}
+          podeReceber={(()=>{ const m=modulosDaOrganizacao(organizacao?.modulos); return m===null||m.includes("financeiro"); })()}
           pacientes={pacientes} agendamentos={agendamentos} erroExterno={open ? "" : error}
           onNovoPaciente={()=>setOpen(true)} onAtualizar={()=>router.refresh()} />
       ) : view==="financeiro" ? <FinanceView perfil={perfil} pacientes={pacientes} avaliacoes={avaliacoes} financeiro={financeiro} pagamentos={pagamentos} periodos={periodos} convenioValores={convenioValores} producaoDaReceita={producaoDaReceita} despesas={despesas} perfis={perfis} ehGrupo={organizacao?.tipo==="grupo"} onRefresh={()=>router.refresh()} nomeDaOrganizacao={organizacao?.nome??null} carregadoEm={carregadoEm} tarefaInicial={tarefaDoFinanceiro}/>
@@ -2954,6 +2956,7 @@ function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefres
               {podeAdministrar&&<button className="primaryClinical compact" disabled={busyOrg||!orgAlterada} onClick={saveOrganizacao}>{busyOrg?"Salvando…":"Salvar dados"}</button>}
             </div>
           </div>}
+          {subOrg==="dados"&&<PixDaOrganizacao podeAdministrar={podeAdministrar} nomeDaOrganizacao={org.nome}/>}
           {subOrg==="locais"&&<div className="locaisAdminCaixa">
             <EtiquetaDeEscopo escopo="organizacao"/>
             <LocaisAdmin

@@ -8,6 +8,8 @@ import { PainelRecolhivel } from "@/components/painel-recolhivel";
 import { AvisoFlutuante } from "@/components/aviso-flutuante";
 import { dataLocal, hoje as hojeNoBrasil } from "@/lib/data-local";
 import { EnviarQuestionario, rotuloDoEnvio, SeloDoQuestionario, useQuestionarios } from "@/components/questionario/na-recepcao";
+import { CobrarPix, RegistrarPagamento, usePixDaOrganizacao, type Pagamento } from "@/components/pagamento/na-recepcao";
+import { rotuloDoPagamento } from "@/lib/pix";
 import {
   acoesDaConsulta, buscarPacientes, confirmacaoDaConsulta, dataCurtaBr, dataPorExtenso, DESTINO_DA_ACAO,
   ETAPAS_DO_FLUXO, etapaDaConsulta, formatarCPF, formatarTelefone, horaCurta, horaDoInstante, horarioOcupado,
@@ -33,6 +35,8 @@ export type ConsultaDaRecepcao = {
   status: string; hospital: string | null; procedimento: string | null; convenio: string | null;
   observacoes: string | null; created_at: string;
   medico_id?: string | null; status_at?: string | null; status_by?: string | null; reagendado_de?: string | null;
+  /** O pagamento registrado na agenda (migração 202611110002). */
+  pago_em?: string | null; pago_valor?: number | null; pago_metodo?: string | null; pago_referencia?: string | null;
 };
 
 type Evento = {
@@ -54,8 +58,10 @@ const ICONE_DA_ETAPA: Record<Etapa, Parameters<typeof Icone>[0]["nome"]> = {
 type FiltroDeEtapa = "todas" | Etapa | "fora";
 
 export function RecepcaoView({
-  perfilId, institutionId, pacientes, agendamentos, onNovoPaciente, onAtualizar, erroExterno = "",
+  perfilId, institutionId, pacientes, agendamentos, onNovoPaciente, onAtualizar, erroExterno = "", podeReceber = false,
 }: {
+  /** A organização tem o Financeiro: a agenda registra e cobra o pagamento da consulta. */
+  podeReceber?: boolean;
   /** Aviso vindo do cadastro (ex.: consulta marcada, recebimento não registrado). */
   erroExterno?: string;
   perfilId: string;
@@ -84,6 +90,9 @@ export function RecepcaoView({
   const [historicoDe, setHistoricoDe] = useState<ConsultaDaRecepcao | null>(null);
   // O questionário pré-anestésico, pelo WhatsApp (components/questionario).
   const [questionarioDe, setQuestionarioDe] = useState<ConsultaDaRecepcao | null>(null);
+  // O pagamento da consulta: registrar (maquininha, dinheiro…) ou cobrar por Pix.
+  const [pagamentoDe, setPagamentoDe] = useState<{ consulta: ConsultaDaRecepcao; modo: "registrar" | "pix" } | null>(null);
+  const { pix, pronto: pagamentoPronto } = usePixDaOrganizacao(podeReceber);
   const buscaRef = useRef<HTMLInputElement>(null);
 
   // A mudança aparece na hora, e é desfeita se o banco recusar. Some quando a
@@ -446,6 +455,9 @@ export function RecepcaoView({
                       </span>
                     )}
                     <SeloDoQuestionario linha={questionarios.get(c.patient_id)} />
+                    {c.pago_em && (
+                      <span className="recPago"><Icone nome="dinheiro" tamanho={12} /> {rotuloDoPagamento(c.pago_metodo, c.pago_referencia, c.pago_valor)}</span>
+                    )}
                     {marca && <small className="recCarimbo">{marca}</small>}
                   </div>
                   <div className="recAcoes">
@@ -472,6 +484,16 @@ export function RecepcaoView({
                             <button type="button" role="menuitem" autoFocus={outras.length === 0}
                               onClick={() => { setMenu(""); setErroIndicando(""); setIndicando({ consulta: c, medico: c.medico_id ?? "" }); }}>
                               {c.medico_id ? "Trocar médico…" : "Indicar médico…"}
+                            </button>
+                          )}
+                          {podeReceber && pagamentoPronto && !c.pago_em && !FORA_DO_FLUXO(c.status) && p && (
+                            <button type="button" role="menuitem" onClick={() => { setMenu(""); setPagamentoDe({ consulta: c, modo: "registrar" }); }}>
+                              Registrar pagamento…
+                            </button>
+                          )}
+                          {podeReceber && pix && !c.pago_em && !FORA_DO_FLUXO(c.status) && p && (
+                            <button type="button" role="menuitem" onClick={() => { setMenu(""); setPagamentoDe({ consulta: c, modo: "pix" }); }}>
+                              Cobrar por Pix (WhatsApp)…
                             </button>
                           )}
                           {questionarioPronto && !FORA_DO_FLUXO(c.status) && p && (
@@ -577,6 +599,21 @@ export function RecepcaoView({
         <Historico consulta={historicoDe} nome={pacientePorId.get(historicoDe.patient_id)?.nome ?? "Paciente"}
           nomes={nomes} perfilId={perfilId} onFechar={() => setHistoricoDe(null)} />
       )}
+
+      {pagamentoDe && pacientePorId.get(pagamentoDe.consulta.patient_id) && (() => {
+        const consulta = pagamentoDe.consulta;
+        const paciente = pacientePorId.get(consulta.patient_id)!;
+        const registrou = (pg: Pagamento) => {
+          // Aparece na hora; a lista nova do servidor confirma em seguida.
+          setAjustes((a) => ({ ...a, [consulta.id]: { ...a[consulta.id], ...pg } }));
+          setPagamentoDe(null);
+          setAviso(`${rotuloDoPagamento(pg.pago_metodo, pg.pago_referencia, pg.pago_valor)}: ${paciente.nome}. O valor já está no Financeiro.`);
+          onAtualizar();
+        };
+        return pagamentoDe.modo === "pix" && pix
+          ? <CobrarPix consulta={consulta} paciente={paciente} pix={pix} onFechar={() => setPagamentoDe(null)} onRegistrou={registrou} />
+          : <RegistrarPagamento consulta={consulta} paciente={paciente} onFechar={() => setPagamentoDe(null)} onRegistrou={registrou} />;
+      })()}
 
       {questionarioDe && pacientePorId.get(questionarioDe.patient_id) && (
         <EnviarQuestionario paciente={pacientePorId.get(questionarioDe.patient_id)!} agendamentoId={questionarioDe.id}
