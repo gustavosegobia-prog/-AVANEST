@@ -198,7 +198,7 @@ export default function PrivacidadePage() {
         </li>
         <li>
           <b>jsDelivr</b> — rede pública de onde o navegador baixa o programa gratuito que lê fotos de
-          laudos (Tesseract). Só o programa é baixado; a foto é lida no próprio aparelho e não é
+          laudos e da ficha pré-anestésica do hospital (Tesseract). Só o programa é baixado; a foto é lida no próprio aparelho e não é
           enviada (seção {n("aparelho")}).
         </li>
         <li>
@@ -236,8 +236,8 @@ export default function PrivacidadePage() {
           evite grupos pessoais.
         </li>
         <li>
-          <b>Fotos de laudos.</b> A leitura do texto da foto acontece no navegador; a imagem não é
-          enviada a nenhum serviço de terceiros.
+          <b>Fotos de laudos e da ficha do hospital.</b> A leitura do texto da foto acontece no
+          navegador; a imagem não é enviada a nenhum serviço de terceiros nem fica guardada.
         </li>
         <li>
           <b>Mensagens da sala da equipe.</b> Para quem ligou as notificações, o começo da mensagem

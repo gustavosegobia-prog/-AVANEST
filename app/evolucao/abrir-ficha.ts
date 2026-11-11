@@ -11,15 +11,18 @@ import { createClient } from "@/utils/supabase/client";
 import { cabecalhoInicial, type DoMapa, type PacienteDaFolha } from "@/lib/evolucao/importar";
 import { motivoAoAbrirFolha } from "@/lib/evolucao/fila";
 import type { HorarioDaFicha } from "@/lib/evolucao/folha";
+import { preencherAFolha, type ChaveDaProposta, type FichaDoHospital } from "@/lib/evolucao/ficha-do-hospital";
 
 export type PacienteParaAbrir = PacienteDaFolha & { id: string };
 
-export async function abrirFicha({ institutionId, local, paciente, horario = null, doMapa }: {
+export async function abrirFicha({ institutionId, local, paciente, horario = null, doMapa, daFoto }: {
   institutionId: string;
   local: { id: string; nome: string } | null;
   paciente: PacienteParaAbrir;
   horario?: Extract<HorarioDaFicha, { ok: true }> | null;
   doMapa?: DoMapa;
+  /** A ficha pré-anestésica do hospital, lida da foto e conferida: preenche o que a avaliação do sistema não trouxe. */
+  daFoto?: { ficha: FichaDoHospital; campos: Array<{ chave: ChaveDaProposta; valor: string }> };
 }): Promise<{ id: string } | { erro: string }> {
   const supabase = createClient();
   const { data: avaliacao } = await supabase
@@ -35,6 +38,7 @@ export async function abrirFicha({ institutionId, local, paciente, horario = nul
     ...(local ? { local_atendimento_id: local.id, local_atendimento: local.nome } : {}),
     ...(horario ? { data_procedimento: horario.data } : {}),
   };
+  if (daFoto) Object.assign(dados, preencherAFolha(dados, daFoto.campos, new Date(), daFoto.ficha));
   const { data, error } = await supabase
     .from("evolucoes_anestesicas")
     .insert({
