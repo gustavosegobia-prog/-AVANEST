@@ -16,7 +16,7 @@
 // (sentado, manta térmica, máscara laríngea…) continua aparecendo, marcada,
 // no fim da linha dela — para ser vista e, se for o caso, desmarcada.
 
-import { BLOQUEIOS, FUNCOES, type Profissional } from "@/lib/evolucao/folha";
+import { BLOQUEIOS, FUNCOES, carimboDe, numeroDoConselho, type Profissional } from "@/lib/evolucao/folha";
 import { ALDRETE, somaAldrete } from "@/lib/evolucao/lista-da-folha";
 import { hora } from "@/lib/evolucao/impressao";
 import { Linha, Op, Txt, type Modo } from "./papel";
@@ -49,7 +49,23 @@ const BLOQUEIOS_DO_PAPEL: Array<[string, string]> = [
 const OUTROS_BLOQUEIOS = BLOQUEIOS.filter((x) => !BLOQUEIOS_DO_PAPEL.some(([v]) => v === x));
 
 /** "29156" → "29.156", como no carimbo. Número com letra fica como veio. */
-const crmEscrito = (crm: string) => (/^\d{4,}$/.test(crm) ? crm.replace(/\B(?=(\d{3})+$)/g, ".") : crm);
+const crmEscrito = numeroDoConselho;
+
+// O último preceptor digitado neste aparelho: o "+ preceptor" da próxima ficha
+// já vem com ele (o mesmo preceptor na sala, dia após dia). Só conveniência:
+// sem armazenamento, o campo vem em branco.
+const CHAVE_PRECEPTOR = "avanest:ultimo-preceptor";
+function ultimoPreceptor(): Partial<Profissional> {
+  try {
+    const p = JSON.parse(localStorage.getItem(CHAVE_PRECEPTOR) ?? "null") as Partial<Profissional> | null;
+    return p && typeof p.nome === "string" ? { nome: p.nome, crm: p.crm ?? "", uf: p.uf ?? "PR", rqe: p.rqe ?? "" } : {};
+  } catch { return {}; }
+}
+function lembrarPreceptor(p: Profissional) {
+  try {
+    if (p.nome.trim()) localStorage.setItem(CHAVE_PRECEPTOR, JSON.stringify({ nome: p.nome, crm: p.crm, uf: p.uf, rqe: p.rqe ?? "" }));
+  } catch { /* sem armazenamento: só não lembra */ }
+}
 
 export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos = [], tubo = null }: {
   dados: Dados;
@@ -99,8 +115,10 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
     mudarSaida({ aldrete_pontos: novos, aldrete: soma !== null ? String(soma) : t(saida.aldrete) });
   }
   const mudarEquipe = (nova: Profissional[]) => mudar({ equipe: nova });
-  const trocarProfissional = (alvo: Profissional, x: Partial<Profissional>) =>
+  const trocarProfissional = (alvo: Profissional, x: Partial<Profissional>) => {
+    if (alvo.funcao === "preceptor") lembrarPreceptor({ ...alvo, ...x });
     mudarEquipe(equipe.map((y) => (y === alvo ? { ...y, ...x } : y)));
+  };
 
   // Espaço da raqui no desenho do papel: L__-L__.
   const espaco = /^L?(\d*)\s*-\s*L?(\d*)$/i.exec(t(r.espaco)) ?? ["", "", ""];
@@ -134,6 +152,13 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
         :
         <input className="crm" value={x.crm} disabled={leitura} aria-label={`Número do CRM — ${FUNCOES[x.funcao]}`} inputMode="numeric"
           onChange={(e) => trocarProfissional(x, { crm: e.target.value })} />
+        {x.funcao === "preceptor" && (
+          <>
+            {" / RQE:"}
+            <input className="crm" value={x.rqe ?? ""} disabled={leitura} aria-label="RQE do preceptor" inputMode="numeric"
+              onChange={(e) => trocarProfissional(x, { rqe: e.target.value })} />
+          </>
+        )}
         {x.funcao === "residente" && (
           <select value={x.ano_residencia ?? "R1"} disabled={leitura} aria-label="Ano da residência"
             onChange={(e) => trocarProfissional(x, { ano_residencia: e.target.value as "R1" })}>
@@ -357,7 +382,7 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
               {demais.filter((x) => x.nome.trim()).map((x) => (
                 <span key={`${x.funcao}${x.nome}`} className="evoRDemais">
                   {FUNCOES[x.funcao]}{x.funcao === "residente" && x.ano_residencia ? ` ${x.ano_residencia}` : ""}: {x.nome}
-                  {x.crm ? ` · CRM-${x.uf || "—"} ${crmEscrito(x.crm)}` : ""}
+                  {carimboDe(x) ? ` · ${carimboDe(x)}` : ""}
                 </span>
               ))}
             </>
@@ -391,7 +416,7 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
             <button type="button" className="evoOp" onClick={() => mudarEquipe([...equipe, { perfil_id: null, nome: "", crm: "", uf: "PR", funcao: "residente", ano_residencia: "R1" }])}>+ residente</button>
           )}
           {!leitura && !equipe.some((x) => x.funcao === "preceptor") && (
-            <button type="button" className="evoOp" onClick={() => mudarEquipe([...equipe, { perfil_id: null, nome: "", crm: "", uf: "PR", funcao: "preceptor" }])}>+ preceptor</button>
+            <button type="button" className="evoOp" onClick={() => mudarEquipe([...equipe, { perfil_id: null, nome: "", crm: "", uf: "PR", funcao: "preceptor", ...ultimoPreceptor() }])}>+ preceptor</button>
           )}
         </div>
       )}
