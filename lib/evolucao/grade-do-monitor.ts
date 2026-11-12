@@ -352,7 +352,10 @@ function planoDeitado(palavras: Palavra[], cabecalho: Hora[], altura: number, ro
       if (l.tipo === "pressao") {
         const linha = doPlano[k * 2 + 1];
         linha.valores.push({ oque: "pressao", celula: valor });
-        linha.celulaDaHora = nova(`${k}-hora`, { ...x, y0: yc + 0.26 * altLinha, y1: yc + 0.74 * altLinha }, "hora");
+        // O selo da hora logo embaixo do valor. Começando em 0,26 da linha, o
+        // recorte cortava o alto dos algarismos (12/11/2026: "09:51" lido
+        // "941"); um pouco mais alto e mais fundo, o selo vem inteiro.
+        linha.celulaDaHora = nova(`${k}-hora`, { ...x, y0: yc + 0.18 * altLinha, y1: yc + 0.82 * altLinha }, "hora");
       } else {
         doPlano[k * 2].valores.push({ oque: l.tipo as Exclude<OQue, "pressao">, celula: valor });
       }
@@ -567,6 +570,23 @@ const paraHora = (m: number) => {
 /** A diferença b − a em minutos, atravessando a meia-noite pelo caminho curto. */
 const diferenca = (a: string, b: string) => ((minutos(b) - minutos(a) + 2160) % 1440) - 720;
 
+/**
+ * Os algarismos que o OCR troca na letra da tela: 5 e 6, 0 e 8… Um 1 lido no
+ * lugar do 0 não é troca — é outra hora.
+ */
+const TROCAS = new Set(["56", "53", "58", "59", "08", "06", "09", "17", "38", "68", "89", "49"]);
+const trocaveis = (a: string, b: string) => TROCAS.has(a < b ? `${a}${b}` : `${b}${a}`);
+
+/**
+ * A hora lida no selo só difere da esperada por algarismos que o OCR costuma
+ * trocar ("09:46" no lugar de "09:45"). "08:51" no lugar de "08:50" não: é a
+ * PNI medida à mão fora do ciclo (12/11/2026, duas fotos do mesmo monitor).
+ */
+export function trocaDeOcr(lida: string, esperada: string): boolean {
+  if (lida.length !== esperada.length || lida === esperada) return false;
+  return [...lida].every((ch, i) => ch === esperada[i] || trocaveis(ch, esperada[i]));
+}
+
 /** O mais lido entre as leituras; no empate, o que veio primeiro. */
 function votar<T>(textos: string[], ler: (t: string) => T | undefined, chave: (v: T) => string = String): T | undefined {
   const conta = new Map<string, { v: T; n: number; i: number }>();
@@ -641,9 +661,12 @@ export function montar(plano: Plano, lidos: Record<string, string[]>): LinhaDoMo
         if (!l.celulaDaHora || !col) continue;
         const esperada = paraHora(minutos(col) + afastamento);
         const lidas = textos(l.celulaDaHora).map((t) => horaDoTexto(t, true)).filter((h): h is string => Boolean(h));
-        // Um minuto de diferença é o 5 lido 6 (ou 4): fica a do padrão.
-        // Mais que isso pode ser uma PNI feita à mão: fica a lida.
-        if (lidas.some((h) => Math.abs(diferenca(esperada, h)) <= 1)) selos.set(l, esperada);
+        // Um minuto de diferença por uma troca típica do OCR (o 5 lido 6): fica
+        // a do padrão. Outra diferença — "08:51" na coluna das 08:55, lido
+        // e relido igual — é a PNI medida à mão fora do ciclo: fica a lida.
+        if (lidas.includes(esperada) || lidas.some((h) => Math.abs(diferenca(esperada, h)) <= 1 && trocaDeOcr(h, esperada))) {
+          selos.set(l, esperada);
+        }
       }
     }
     // Há selo (algarismos lidos ali) mas nenhum legível: a PA fica sem hora,

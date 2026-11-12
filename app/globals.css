@@ -7420,15 +7420,16 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .imprLegendas:empty{display:none}
 .imprLegendas p+p{margin-top:.5mm}
 .imprObservacoes{flex:1;min-height:20mm;padding:.8mm 1.5mm;border:.3mm solid #111;border-top:0}
-.imprMedicacao{padding:1.2mm 1.6mm;border:.35mm solid #111;border-left:0;font-size:6.8pt}
-.imprMedicacao h2{margin:0 0 .8mm;font-size:7.4pt;font-weight:700;text-align:center;letter-spacing:0}
-.imprMedicacao h3{margin:1.2mm 0 .3mm;font-size:7pt;font-weight:700;letter-spacing:0}
+/* 12/11/2026: a coluna da medicação também estava miúda (6,8 pt): nome em 8,2 pt, dose em 7,8 pt. */
+.imprMedicacao{padding:1.2mm 1.6mm;border:.35mm solid #111;border-left:0;font-size:8.2pt;line-height:1.25}
+.imprMedicacao h2{margin:0 0 .8mm;font-size:8.6pt;font-weight:700;text-align:center;letter-spacing:0}
+.imprMedicacao h3{margin:1.4mm 0 .4mm;font-size:8.2pt;font-weight:700;letter-spacing:0}
 .imprMedicacao ul{margin:0;padding:0;list-style:none}
-.imprMedicacao li{margin:0 0 .7mm;break-inside:avoid}
-.imprDose{display:block;padding-left:2mm;font-size:6.5pt}
+.imprMedicacao li{margin:0 0 .9mm;break-inside:avoid}
+.imprDose{display:block;padding-left:2mm;font-size:7.8pt}
 .imprDose em{display:block;font-style:normal;color:#7a2e0e}
-.imprTotal{font-size:6.5pt;color:#333}
-.imprVazio,.imprNotaPequena{font-size:6pt;color:#444}
+.imprTotal{font-size:7.6pt;color:#333}
+.imprVazio,.imprNotaPequena{font-size:7pt;color:#444}
 .imprMedicacao .imprNotaPequena{margin-top:1.4mm}
 
 .imprLinhaAssinar{display:block;align-self:stretch;height:7mm;margin:0 3mm .6mm;border-bottom:.25mm solid #111}
@@ -8353,9 +8354,10 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 /* A ficha impressa é uma folha só. Quando nem o gráfico no mínimo faz caber
    (lista de medicação muito longa), as listas ficam com a letra um pouco
    menor (components/evolucao/registro-que-enche.tsx). */
-.imprCompacta .imprMedicacao{font-size:6pt}
+.imprCompacta .imprMedicacao{font-size:7.2pt}
 .imprCompacta .imprMedicacao li{margin-bottom:.3mm}
-.imprCompacta .imprDose,.imprCompacta .imprTotal{font-size:5.8pt}
+.imprCompacta .imprMedicacao h3{margin-top:1mm;font-size:7.4pt}
+.imprCompacta .imprDose,.imprCompacta .imprTotal{font-size:6.8pt}
 .imprCompacta .imprLegendas{font-size:5.8pt}
 /* E o quadro de observações cede o espaço extra (de 20 para 10 mm). */
 .imprCompacta .imprObservacoes{min-height:10mm}
