@@ -49,6 +49,8 @@ export type LinhaDoPlano = {
 };
 export type Plano = {
   forma: "deitada" | "em-linhas";
+  /** Na tabela em linhas com a data na linha: só "08:30" com dois-pontos é hora ("12-11" é a data). */
+  horaComDoisPontos?: boolean;
   celulas: Celula[];
   linhas: LinhaDoPlano[];
   /** Na tabela deitada: os horários do alto, na ordem (null onde não deu para ler). */
@@ -78,17 +80,23 @@ const limitar = (c: Caixa): Caixa => ({
 
 // ---- O texto de cada palavra ------------------------------------------------
 
-/** A hora escrita na palavra ("08:15", "[08:25]", "08.35"). Sem separador só quando `solta`. */
-export function horaDoTexto(t: string, solta = false): string | null {
+/**
+ * A hora escrita na palavra ("08:15", "[08:25]", "08.35"). Sem separador só
+ * quando `solta`. Com `soDoisPontos`, o traço não separa hora: na tabela que
+ * traz a data na linha ("12-11-2026 08:30"), "12-11" é o dia e o mês.
+ */
+export function horaDoTexto(t: string, solta = false, soDoisPontos = false): string | null {
   // A data na mesma célula ("2026-03-02 09:42") sai antes: "03-02" não é hora.
+  // Também a data cortada pela leitura ("12-11-2", "12-11-": 12/11/2026,
+  // no monitor Comen — 12/11/2026), que virava 12:11.
   const s = t.replace(/[Oo]/g, "0").replace(/[lI|]/g, "1")
-    .replace(/\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|20\d\d[-/.]\d{0,2}[-/.]?\d{0,2}/g, " ")
+    .replace(/\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{0,4}|20\d\d[-/.]\d{0,2}[-/.]?\d{0,2}/g, " ")
     .replace(/\s+/g, " ");
   // Com dois-pontos, os dois algarismos colados antes dele são a hora — mesmo
   // grudados no resto da data ("-03-0209:39"). Com ponto, vírgula ou traço
   // ("[08-25", "08.35"), só a hora solta: senão pega data e decimal.
   const comDoisPontos = [...s.matchAll(/(\d{1,2}) ?[:;h] ?(\d{2})(?!\d)/g)];
-  const outras = [...s.matchAll(/(?:^|[^\d])(\d{1,2})[.,-](\d{2})(?![\d])/g)];
+  const outras = soDoisPontos ? [] : [...s.matchAll(/(?:^|[^\d])(\d{1,2})[.,-](\d{2})(?![\d])/g)];
   let m: RegExpMatchArray | undefined = comDoisPontos[comDoisPontos.length - 1] ?? outras[outras.length - 1];
   // Sem separador ("1015"), só a célula que é só hora.
   if (!m && solta) m = s.match(/^\D*(\d{2})(\d{2})\D*$/) ?? undefined;
@@ -99,7 +107,7 @@ export function horaDoTexto(t: string, solta = false): string | null {
 }
 
 /** A data na linha ("2026-03-02", "02/03/2026", ou o começo dela, "2026-0"). */
-const ehData = (t: string) => /^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$/.test(t) || /^20\d\d([-/.]\d{0,2})*$/.test(t);
+const ehData = (t: string) => /^\d{1,2}[-/.]\d{1,2}[-/.]\d{0,4}$/.test(t) || /^20\d\d([-/.]\d{0,2})*$/.test(t);
 
 /** O que o OCR troca nos algarismos de tela. */
 const algarismos = (t: string) => t.replace(/[OoDQ]/g, "0").replace(/[lI|!]/g, "1").replace(/[Ss]/g, "5")
@@ -425,8 +433,13 @@ function planoEmLinhas(palavras: Palavra[], coluna: Palavra[], altura: number): 
   const ancX0 = Math.min(...ancoras.map((w) => w.x0)) - altura * 0.6;
   const ancX1 = Math.max(...ancoras.map((w) => w.x1)) + altura * 0.6;
   // A hora fica à direita da data, quando as duas estão na célula.
-  const soHoras = ancoras.filter((w) => horaDoTexto(w.t) && !ehData(w.t));
+  const comData = ancoras.some((w) => ehData(w.t));
+  const soHoras = ancoras.filter((w) => horaDoTexto(w.t, false, comData) && !ehData(w.t));
   const horaX0 = soHoras.length ? Math.min(...soHoras.map((w) => w.x0)) - altura * 0.6 : ancX0;
+  // Só a data lida, e a hora não (o monitor Comen, 12/11/2026: "12-11-2026
+  // 08:30" e a foto inteira só leu "12-11-"): a hora está logo à direita, e o
+  // recorte vai até ela — antes parava no fim da data, e a hora nunca era lida.
+  const horaX1 = soHoras.length ? ancX1 : Math.min(1, ancX1 + Math.max(0.15, (ancX1 - ancX0) * 1.2));
 
   // As colunas de valores: os números lidos, agrupados pelo x; e os nomes no alto.
   // Só os de 2 ou 3 algarismos de verdade: um traço da grade lido como "1" não abre coluna.
@@ -483,9 +496,9 @@ function planoEmLinhas(palavras: Palavra[], coluna: Palavra[], altura: number): 
     .sort((a, b) => a.x0 - b.x0).map((w) => w.t).join(" ");
   const linhas: LinhaDoPlano[] = ys.map((y, r) => {
     const yy = { y0: y - passo * 0.42, y1: y + passo * 0.42 };
-    const caixaHora = limitar({ x0: horaX0, x1: ancX1, ...yy });
+    const caixaHora = limitar({ x0: horaX0, x1: horaX1, ...yy });
     celulas.push({ id: `${r}-hora`, caixa: caixaHora, alfabeto: "hora", primeiraLeitura: primeira(caixaHora) });
-    const lida = ancoras.filter((w) => Math.abs(cy(w) - y) < passo * 0.4).map((w) => horaDoTexto(w.t)).find(Boolean) ?? null;
+    const lida = ancoras.filter((w) => Math.abs(cy(w) - y) < passo * 0.4).map((w) => horaDoTexto(w.t, false, comData)).find(Boolean) ?? null;
     return {
       hora: lida, celulaDaHora: `${r}-hora`, ...(especulativas.has(r) ? { especulativa: true } : {}),
       valores: validas.map((c) => {
@@ -497,7 +510,7 @@ function planoEmLinhas(palavras: Palavra[], coluna: Palavra[], altura: number): 
       }),
     };
   });
-  return { forma: "em-linhas", celulas, linhas };
+  return { forma: "em-linhas", celulas, linhas, ...(comData ? { horaComDoisPontos: true } : {}) };
 }
 
 // ---- As linhas, com o texto relido de cada célula ---------------------------------
@@ -684,7 +697,8 @@ export function montar(plano: Plano, lidos: Record<string, string[]>): LinhaDoMo
       horas.set(l, hora);
     }
   } else {
-    const lidas = plano.linhas.map((l) => (l.celulaDaHora ? votar(textos(l.celulaDaHora), (t) => horaDoTexto(t, true) ?? undefined) : undefined) ?? l.hora);
+    const lidas = plano.linhas.map((l) => (l.celulaDaHora
+      ? votar(textos(l.celulaDaHora), (t) => horaDoTexto(t, true, plano.horaComDoisPontos) ?? undefined) : undefined) ?? l.hora);
     // Uma medida por linha, em ordem: a hora que briga com as duas vizinhas foi mal lida.
     const sentido = Math.sign(lidas.reduce((s, h, i) => {
       const ant = lidas[i - 1];

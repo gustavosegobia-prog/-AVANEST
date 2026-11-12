@@ -185,3 +185,35 @@ test("as duas leituras da foto inteira: a mesma palavra fica uma vez, a que é n
   const juntas = juntarPalavras([p("58", 0.5, 0.5, 0.04, 0.024, 40)], [p("5B", 0.5, 0.5, 0.04, 0.024, 45), p("FC", 0.1, 0.5)]);
   assert.deepEqual(juntas.map((w) => w.t), ["58", "FC"]);
 });
+
+test("Revis PNI (Comen): a data na linha não vira hora, e a hora à direita dela é lida", () => {
+  // A foto inteira leu os nomes das colunas, os valores e só o começo das datas
+  // ("12-11-"); a hora ("08:30"), à direita da data, ninguém leu.
+  const ys = [0.59, 0.645, 0.7, 0.755];
+  const valores = [["88", "55", "69", "66"], ["75", "36", "48", "69"], ["123", "64", "76", "82"], ["123", "60", "75", "71"]];
+  const palavras = [
+    p("Revis", 0.08, 0.485, 0.08), p("PNI", 0.15, 0.485),
+    p("SIS", 0.19, 0.546), p("DIA", 0.32, 0.546), p("PAM", 0.44, 0.546), p("FP", 0.57, 0.546),
+    ...ys.flatMap((y, i) => [
+      p(String(i + 1), 0.08, y, 0.015),
+      ...valores[i].map((v, k) => p(v, [0.19, 0.32, 0.44, 0.57][k], y)),
+      p(i === 1 ? '12-11"' : "12-11-", 0.7, y, 0.09),
+    ]),
+  ];
+  const plano = planejar(palavras)!;
+  assert.equal(plano.forma, "em-linhas");
+  assert.equal(plano.horaComDoisPontos, true);
+  const caixa = plano.celulas.find((c) => c.id === "0-hora")!.caixa;
+  assert.ok(caixa.x1 > 0.85, "o recorte da hora vai além da data, até a hora");
+  // Sem releitura, nenhuma hora: "12-11" é a data, não 12:11.
+  assert.ok(montar(plano, {}).every((l) => l.hora !== "12:11"));
+  const horas = ["08:30", "08:25", "08:15", "08:06"];
+  const lidos = Object.fromEntries(plano.linhas.filter((l) => !l.especulativa)
+    .map((l, i) => [l.celulaDaHora!, [`12-11-2026${horas[i]}`, `12-11-2026 ${horas[i].replace(":", "")}`]]));
+  const linhas = montar(plano, lidos);
+  assert.deepEqual(linhas.find((l) => l.hora === "08:30"), { hora: "08:30", pas: 88, pad: 55, pam: 69, fc: 66 });
+  assert.deepEqual(linhas.find((l) => l.hora === "08:06"), { hora: "08:06", pas: 123, pad: 60, pam: 75, fc: 71 });
+  assert.equal(horaDoTexto("12-11-2"), null);
+  assert.equal(horaDoTexto("12-11-2026 08:30"), "08:30");
+  assert.equal(horaDoTexto('12-11"', false, true), null);
+});

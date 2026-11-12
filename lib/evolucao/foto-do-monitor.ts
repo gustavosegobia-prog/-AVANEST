@@ -206,6 +206,47 @@ function tratada(tela: Tela): HTMLCanvasElement {
  */
 type Modo = "cinza" | "pb" | "espacado";
 
+/**
+ * O recorte borrado de leve (duas passadas de média 3×3, como um gaussiano de
+ * raio 1). A letra de tela feita de pontos — o "8" quadrado do monitor Comen
+ * (12/11/2026), que o OCR lia "6" ou nem lia — fica com o traço contínuo.
+ */
+function borrar(fonte: HTMLCanvasElement): HTMLCanvasElement {
+  const W = fonte.width, H = fonte.height;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const g = canvas.getContext("2d", { willReadFrequently: true })!;
+  g.drawImage(fonte, 0, 0);
+  const d = g.getImageData(0, 0, W, H);
+  let a = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) a[i] = d.data[i * 4];
+  for (let passada = 0; passada < 2; passada++) {
+    const b = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        let soma = 0, n = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= H) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= W) continue;
+            soma += a[yy * W + xx]; n++;
+          }
+        }
+        b[y * W + x] = soma / n;
+      }
+    }
+    a = b;
+  }
+  for (let i = 0; i < W * H; i++) {
+    d.data[i * 4] = d.data[i * 4 + 1] = d.data[i * 4 + 2] = a[i];
+    d.data[i * 4 + 3] = 255;
+  }
+  g.putImageData(d, 0, 0);
+  return canvas;
+}
+
 /** Os recortes em que apareceu o selo escuro da hora. */
 const comSelo = new WeakSet<HTMLCanvasElement>();
 
@@ -462,6 +503,7 @@ export async function lerFotoDoMonitor(arquivo: Blob, avancar: (fracao: number) 
         // fica com o valor lido mais vezes.
         const lidas: string[] = [];
         let viuSelo = false;
+        let confirmada = false;
         const chaves = [chaveDaLeitura(alfabeto, c.primeiraLeitura)];
         for (const modo of ["cinza", "pb", "espacado"] as const) {
           const imagem = recorte(cheia, c.caixa, modo, alfabeto);
@@ -472,8 +514,21 @@ export async function lerFotoDoMonitor(arquivo: Blob, avancar: (fracao: number) 
           lidas.push(texto);
           espiar?.(c, imagem, `${modo}: ${texto}`);
           const chave = chaveDaLeitura(alfabeto, texto);
-          if (leituraBoa(alfabeto, texto) && chaves.includes(chave)) break;
+          if (leituraBoa(alfabeto, texto) && chaves.includes(chave)) { confirmada = true; break; }
           chaves.push(chave);
+        }
+        // Nenhuma leitura se confirmou: o algarismo de pontos ("82" lido "",
+        // "2" e "62"). Borrado de leve e lido como palavra solta, ele sai —
+        // duas vezes, para pesar na votação.
+        if (!confirmada && alfabeto !== "hora") {
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_WORD });
+          for (const modo of ["pb", "espacado"] as const) {
+            const imagem = borrar(recorte(cheia, c.caixa, modo, alfabeto));
+            const texto = (await worker.recognize(imagem)).data.text.trim().replace(/\s+/g, "");
+            lidas.push(texto);
+            espiar?.(c, imagem, `${modo} borrado: ${texto}`);
+          }
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE });
         }
         // Empate entre dois valores que fazem sentido ("86" e "88"): mais
         // leituras, com a letra menor e maior, até um ganhar.
