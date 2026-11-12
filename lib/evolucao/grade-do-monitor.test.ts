@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  chaveDaLeitura, consertarSequencia, horaDoTexto, juntarPalavras, montar, planejar, SELO_ILEGIVEL, type Palavra,
+  chaveDaLeitura, consertarSequencia, horaDoTexto, juntarPalavras, montar, planejar, SELO_ILEGIVEL, trocaDeOcr, type Palavra,
 } from "./grade-do-monitor.ts";
 
 // Palavras de mentira, como o OCR devolve: texto e retângulo de 0 a 1.
@@ -72,6 +72,21 @@ test("a releitura de cada célula vence a foto inteira, e o selo lido 1 min fora
   const linhas = montar(plano, { "0-fc": ["73", "73"], "2-hora": ["08:26", "08:26"] });
   assert.equal(linhas.find((l) => l.hora === "08:10")?.fc, 73);
   assert.ok(linhas.some((l) => l.hora === "08:25" && l.pas === 105), "08:26 lido, mas os outros selos estão 5 min antes da coluna");
+});
+
+test("PNI medida fora do ciclo ('08:21' na coluna das 08:30) fica na hora lida; o 6 no lugar do 5 volta ao padrão", () => {
+  // A foto inteira não leu o 3º selo; os outros estão 5 min antes da coluna, e
+  // a releitura do 3º diz 08:21, lido e relido igual.
+  const plano = planejar(deitada({ selos: ["[08:05]", "[08:15]", null] }))!;
+  let linhas = montar(plano, { "2-hora": ["08:21", "0821"] });
+  assert.ok(linhas.some((l) => l.hora === "08:21" && l.pas === 105), "a PNI das 08:21 não vai para 08:25... nem para 08:20");
+  // O mesmo selo lido 08:26 (o 5 virou 6): é o 08:25 do padrão.
+  linhas = montar(plano, { "2-hora": ["08:26", "0826"] });
+  assert.ok(linhas.some((l) => l.hora === "08:25" && l.pas === 105));
+  assert.equal(trocaDeOcr("09:46", "09:45"), true);
+  assert.equal(trocaDeOcr("08:51", "08:50"), false);
+  assert.equal(trocaDeOcr("09:58", "09:50"), true);
+  assert.equal(trocaDeOcr("09:44", "09:45"), false);
 });
 
 test("há selo, mas nenhum se lê: a PA vem sem hora, para o médico escrever", () => {
