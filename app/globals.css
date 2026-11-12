@@ -7325,9 +7325,11 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .evoCatalogo strong{font-size:14.5px}
 .evoCatalogo span{font-size:12px;color:var(--cor-tinta-fraca)}
 
-.evoAviso{position:fixed;left:50%;bottom:20px;z-index:60;transform:translateX(-50%);display:flex;align-items:center;gap:14px;
-  max-width:calc(100vw - 24px);padding:12px 16px;border-radius:12px;background:var(--cor-tinta-forte);color:var(--cor-superficie);
+.evoAviso{position:fixed;left:50%;bottom:20px;z-index:60;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;
+  width:max-content;max-width:calc(100vw - 24px);padding:12px 16px;border-radius:12px;background:var(--cor-tinta-forte);color:var(--cor-superficie);
   font-size:14.5px;font-weight:600;box-shadow:0 10px 26px rgba(8,25,42,.25)}
+/* Com dois botões (Mudar hora · Desfazer): o texto numa linha, os botões lado a lado embaixo. */
+.evoAviso:has(button + button)>span{flex-basis:100%}
 .evoAviso button{min-height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:inherit;
   font-weight:750;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 
@@ -7401,8 +7403,9 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .imprTopo{display:grid;grid-template-columns:50mm 1fr 50mm;border:.35mm solid #111}
 .imprInstituicao{display:flex;align-items:center;padding:1.4mm 2mm;font-weight:700;font-size:8pt;line-height:1.15}
 .imprTopo h1{margin:0;padding:1.6mm 2mm;background:#5f6670;color:#fff;font-size:15pt;letter-spacing:.05em;text-align:center}
-.imprResponsavel{display:flex;align-items:center;justify-content:center;padding:1.4mm 2mm;background:#5f6670;color:#fff;
-  border-left:.35mm solid #fff;font-weight:700;font-size:8pt;text-align:center}
+.imprResponsavel{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4mm;padding:1.2mm 2mm;
+  background:#5f6670;color:#fff;border-left:.35mm solid #fff;font-weight:700;font-size:8pt;line-height:1.2;text-align:center}
+.imprResponsavel span{font-size:7pt;font-weight:700;letter-spacing:.01em}
 
 .imprPaciente{display:flex;border:.3mm solid #111}
 .imprPaciente span{flex:0 0 30mm;padding:.7mm 1.5mm;border-left:.15mm solid #9aa1ab;font-weight:700;font-size:8pt}

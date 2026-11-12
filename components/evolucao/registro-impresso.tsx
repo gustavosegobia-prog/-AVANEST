@@ -22,8 +22,30 @@ const ROT = 34;          // coluna dos rótulos
 const FAIXA = 4.6;       // a tira vertical com o nome da seção (Gases, Infusões…)
 const AREA = W - ROT;
 const COL = AREA / COLUNAS_POR_FOLHA;
-const LINHA = 3.9;
-const CAB = 5;
+// 12/11/2026: "ficou muito pequeno: os números, a saturação, os volumes de
+// líquido". As linhas cresceram (3,9 → 4,8 mm) e os valores escritos nas
+// colunas saem com 2,8 mm (≈ 8 pt) em negrito; os rótulos, com 2,3 mm.
+const LINHA = 4.8;
+const CAB = 5.6;
+/** A linha de base do texto dentro de uma linha da faixa. */
+const BASE = LINHA / 2 + 0.95;
+/** Valor numa coluna: 2,8 mm, menor só o que não caberia na largura da coluna. */
+const VALOR = 2.8;
+const fonteQueCabe = (texto: string, max = VALOR) => Math.min(max, (COL - 0.9) / (Math.max(1, texto.length) * 0.56));
+
+/** O nome do líquido na coluna dos rótulos, com a letra maior: as abreviações da sala. */
+const ABREVIACOES: Array<[RegExp, string]> = [
+  [/^soro fisiol[óo]gico\s*0[,.]9\s*%?/i, "SF 0,9%"],
+  [/^concentrado de hem[áa]cias/i, "Conc. hemácias"],
+  [/^concentrado de plaquetas/i, "Conc. plaquetas"],
+  [/^plasma fresco congelado/i, "PFC"],
+  [/^crioprecipitado/i, "Crioprecip."],
+];
+function rotuloCurto(nome: string): string {
+  let r = nome;
+  for (const [re, curto] of ABREVIACOES) r = r.replace(re, curto);
+  return r.length > 17 ? `${r.slice(0, 16)}.` : r;
+}
 const EVENTOS = 7;          // duas pistas
 /** A altura do gráfico de 0 a 240 quando nada sobra na folha: 0,29 mm por mmHg. */
 export const GRAFICO_PADRAO = 70;
@@ -108,7 +130,7 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
               strokeDasharray={aberto && i === lista.length - 1 ? "0.8 0.6" : undefined} />
           )}
           <line x1={x(p.ms)} x2={x(p.ms)} y1={y0 + 0.7} y2={y0 + LINHA - 0.35} stroke={COR.texto} strokeWidth={0.25} />
-          <text x={x(p.ms) + 0.5} y={y0 + 2.45} fontSize={1.9}>{p.texto}</text>
+          <text x={x(p.ms) + 0.5} y={y0 + LINHA / 2 + 0.6} fontSize={2.5} fontWeight={700}>{p.texto}</text>
         </g>
       );
     });
@@ -126,10 +148,10 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
       </defs>
 
       {/* Cabeçalho do tempo */}
-      <text x={1} y={3.4} fontSize={2.1} fontWeight={700}>REGISTRO ANESTÉSICO</text>
-      <text x={ROT - 1} y={3.4} fontSize={1.9} textAnchor="end">Hora</text>
+      <text x={1} y={3.9} fontSize={2} fontWeight={700}>REGISTRO ANESTÉSICO</text>
+      <text x={ROT - 1} y={3.9} fontSize={2.1} textAnchor="end">Hora</text>
       {colunas.slice(0, -1).map((ms) => (
-        <text key={ms} x={x(ms) + 0.5} y={3.5} fontSize={2} fontWeight={new Date(ms).getUTCMinutes() === 0 ? 700 : 400}>{hora(ms)}</text>
+        <text key={ms} x={x(ms) + 0.5} y={4} fontSize={2.4} fontWeight={new Date(ms).getUTCMinutes() === 0 ? 700 : 400}>{hora(ms)}</text>
       ))}
 
       {/* Linhas horizontais das faixas */}
@@ -143,14 +165,14 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
       {/* Gases */}
       {tira(yGases, linhasDeGases, "Gases", "Gás")}
       {gases.map((g, i) => (
-        <text key={g.chave} x={FAIXA + 1} y={yGases + i * LINHA + 2.75} fontSize={2}>{g.rotulo}</text>
+        <text key={g.chave} x={FAIXA + 1} y={yGases + i * LINHA + BASE} fontSize={2.3}>{g.rotulo}</text>
       ))}
 
       {/* Infusões */}
       {tira(yInf, linhasDeInfusao, "Infusões", "Inf.")}
       {infusoes.map((inf, i) => (
-        <text key={inf.id} x={FAIXA + 1} y={yInf + i * LINHA + 2.75} fontSize={2}>
-          {inf.nome.slice(0, 18)}<tspan fontSize={1.6} fill="#4a5563"> {inf.passos[0]?.unidade ?? ""}</tspan>
+        <text key={inf.id} x={FAIXA + 1} y={yInf + i * LINHA + BASE} fontSize={2.3}>
+          {rotuloCurto(inf.nome)}<tspan fontSize={1.8} fill="#4a5563"> {inf.passos[0]?.unidade ?? ""}</tspan>
         </text>
       ))}
 
@@ -158,19 +180,19 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
       {tira(yLiq, linhasDeLiq, "Líquidos", "Líq.")}
       {liquidos.map((l, i) => (
         <g key={`${l.sentido}${l.rotulo}`}>
-          <text x={FAIXA + 1} y={yLiq + i * LINHA + 2.75} fontSize={2}>{l.rotulo.slice(0, 20)}</text>
-          {l.total > 0 && <text x={ROT - 1} y={yLiq + i * LINHA + 2.75} fontSize={1.8} textAnchor="end">{numero(l.total, 0)} mL</text>}
+          <text x={FAIXA + 1} y={yLiq + i * LINHA + BASE} fontSize={2.3}>{rotuloCurto(l.rotulo)}</text>
+          {l.total > 0 && <text x={ROT - 1} y={yLiq + i * LINHA + BASE} fontSize={2.3} fontWeight={700} textAnchor="end">{numero(l.total, 0)} mL</text>}
         </g>
       ))}
 
       {/* SpO₂, EtCO₂, temperatura */}
       {(["spo2", "etco2", "temp"] as const).map((p, i) => (
-        <text key={p} x={1} y={ySinais + i * LINHA + 2.75} fontSize={2}>
+        <text key={p} x={1} y={ySinais + i * LINHA + BASE} fontSize={2.3}>
           {p === "temp" ? "Temperatura (°C)" : `${PARAMETROS[p].curto} (${PARAMETROS[p].unidade})`}
         </text>
       ))}
-      <text x={1} y={ySinais + 3 * LINHA + 2.75} fontSize={2}>Diurese (mL)</text>
-      {diurese.total > 0 && <text x={ROT - 1} y={ySinais + 3 * LINHA + 2.75} fontSize={1.8} textAnchor="end">{numero(diurese.total, 0)} mL</text>}
+      <text x={1} y={ySinais + 3 * LINHA + BASE} fontSize={2.3}>Diurese (mL)</text>
+      {diurese.total > 0 && <text x={ROT - 1} y={ySinais + 3 * LINHA + BASE} fontSize={2.3} fontWeight={700} textAnchor="end">{numero(diurese.total, 0)} mL</text>}
 
       {/* Eixo do gráfico e o código dos símbolos, como no papel */}
       {Array.from({ length: (EIXO_Y.max - EIXO_Y.min) / EIXO_Y.passoFino + 1 }, (_, i) => EIXO_Y.min + i * EIXO_Y.passoFino).map((v) => (
@@ -178,7 +200,7 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
           <line x1={ROT} x2={W} y1={y(v)} y2={y(v)} stroke={v % EIXO_Y.passoForte === 0 ? COR.gradeForte : COR.grade}
             strokeWidth={v % EIXO_Y.passoForte === 0 ? 0.2 : 0.08} />
           {v % EIXO_Y.passoForte === 0 && v > 0 && (
-            <text x={ROT - 1} y={y(v) + 0.7} fontSize={1.9} textAnchor="end">{v}</text>
+            <text x={ROT - 1} y={y(v) + 0.8} fontSize={2.3} textAnchor="end">{v}</text>
           )}
         </g>
       ))}
@@ -243,8 +265,8 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
                 inf.fim === null,
               )}
               {inf.fim
-                ? <text x={x(Date.parse(inf.fim)) + 0.4} y={yInf + i * LINHA + 2.45} fontSize={1.6}>fim</text>
-                : <text x={x(Date.parse(inf.ultimoRegistro)) + 0.4} y={yInf + i * LINHA + 2.45} fontSize={1.6}>sem término</text>}
+                ? <text x={x(Date.parse(inf.fim)) + 0.4} y={yInf + i * LINHA + LINHA / 2 + 0.6} fontSize={1.9}>fim</text>
+                : <text x={x(Date.parse(inf.ultimoRegistro)) + 0.4} y={yInf + i * LINHA + LINHA / 2 + 0.6} fontSize={1.9}>sem término</text>}
             </g>
           );
         })}
@@ -259,15 +281,22 @@ export function RegistroImpresso({ vigentes, janela, fimMs, intervalo, chave, gr
             porColuna.set(c, (porColuna.get(c) ?? 0) + it.volume);
           }
           return [...porColuna].map(([c, v]) => (
-            <text key={`${l.rotulo}${c}`} x={ROT + c * COL + COL / 2} y={y0 + 2.75} fontSize={2} textAnchor="middle">{numero(v, 0)}</text>
+            <text key={`${l.rotulo}${c}`} x={ROT + c * COL + COL / 2} y={y0 + BASE} fontSize={fonteQueCabe(numero(v, 0))} fontWeight={700}
+              textAnchor="middle">{numero(v, 0)}</text>
           ));
         })}
 
         {/* SpO₂, EtCO₂, temperatura: um texto por coluna */}
-        {(["spo2", "etco2", "temp"] as const).map((p, i) => colunasDeValores(vigentes, p, janela).map((vals, c) => vals.length > 0 && (
-          <text key={`${p}${c}`} x={ROT + c * COL + COL / 2} y={ySinais + i * LINHA + 2.75}
-            fontSize={vals.length > 1 ? 1.75 : 2} textAnchor="middle">{textoDaColuna(vals, p === "temp" ? 1 : 0)}</text>
-        )))}
+        {/* Vários valores na coluna saem como faixa ("99–100"), não enfileirados
+            ("99 100 99") em letra miúda. */}
+        {(["spo2", "etco2", "temp"] as const).map((p, i) => colunasDeValores(vigentes, p, janela).map((vals, c) => {
+          if (!vals.length) return null;
+          const texto = textoDaColuna(vals, p === "temp" ? 1 : 0, 6);
+          return (
+            <text key={`${p}${c}`} x={ROT + c * COL + COL / 2} y={ySinais + i * LINHA + BASE}
+              fontSize={fonteQueCabe(texto)} fontWeight={700} textAnchor="middle">{texto}</text>
+          );
+        }))}
 
         {/* Eventos: X e O dos marcos, números para o resto (a legenda vem embaixo) */}
         {eventos.map((ev, i) => {

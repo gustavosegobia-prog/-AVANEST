@@ -3,7 +3,7 @@ import { RodapeDaFolha } from "./rodape-da-folha";
 import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { administrados, dosePorKg, exposicaoAnestesicoLocal, type Administracao } from "@/lib/evolucao/medicamentos";
 import {
-  duracaoEmMinutos, equipeParaImpressao, fimDaAnestesia, horarioDoMarco, minutosDeTorniquete, periodosDeTorniquete,
+  carimboDe, duracaoEmMinutos, equipeParaImpressao, fimDaAnestesia, horarioDoMarco, medicoDoCabecalho, minutosDeTorniquete, periodosDeTorniquete,
   type PeriodoDeTorniquete,
   type Profissional,
 } from "@/lib/evolucao/folha";
@@ -76,6 +76,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
   const locais = exposicaoAnestesicoLocal(meds, peso);
   const equipe = equipeParaImpressao((d.equipe as Profissional[] | undefined) ?? []);
   const responsavel = equipe.find((e) => e.funcao === "responsavel") ?? null;
+  const doCabecalho = medicoDoCabecalho(equipe);
   const eventos = marcasDeEvento(vigentes).filter((e) => e.simbolo !== "X" && e.simbolo !== "O");
   const intercorrencias = vigentes.filter((r) => r.tipo === "evento" && r.dados.codigo === "intercorrencia");
 
@@ -87,7 +88,11 @@ export function FolhaImpressa(p: DadosDaImpressao) {
       <header className="imprTopo">
         <div className="imprInstituicao">{p.instituicao || t(d.hospital) || "Serviço de anestesiologia"}</div>
         <h1>FICHA ANESTÉSICA</h1>
-        <div className="imprResponsavel">{responsavel?.nome.toUpperCase() ?? ""}</div>
+        {/* O preceptor, como no papel do serviço com residência; sem ele, o responsável. */}
+        <div className="imprResponsavel">
+          {doCabecalho && <b>{doCabecalho.nome.toUpperCase()}</b>}
+          {doCabecalho && carimboDe(doCabecalho) && <span>{carimboDe(doCabecalho)}</span>}
+        </div>
       </header>
       {/* Na primeira página a linha do paciente vem junto da pré-anestésica, como no papel. */}
       {n > 0 && (

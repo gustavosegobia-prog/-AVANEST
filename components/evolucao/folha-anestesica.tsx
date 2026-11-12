@@ -104,7 +104,8 @@ export function FolhaAnestesica({
   const [zoom, setZoom] = useState(120);
   const [desloc, setDesloc] = useState<number | null>(null);
   const [abrir, setAbrir] = useState<Abrir | null>(null);
-  const [aviso, setAviso] = useState<{ texto: string; desfazer: boolean } | null>(null);
+  /** `mudarHora`: o id do marco recém-registrado — o aviso oferece "Mudar hora". */
+  const [aviso, setAviso] = useState<{ texto: string; desfazer: boolean; mudarHora?: string } | null>(null);
   const [encerrando, setEncerrando] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [favoritos, setFavoritos] = useState<string[]>([]);
@@ -328,7 +329,7 @@ export function FolhaAnestesica({
       return;
     }
     const momento = minutoAtual();
-    f.registrar({ tipo: "evento", momento, dados: { codigo } });
+    const id = f.registrar({ tipo: "evento", momento, dados: { codigo } });
     // A transferência encerra o tempo da sala: sem "Fim da anestesia" marcado,
     // ele entra no mesmo minuto, e o destino da saída se preenche sozinho.
     const saiu = codigo === "transferencia_rpa" || codigo === "transferencia_uti";
@@ -342,10 +343,11 @@ export function FolhaAnestesica({
     setAviso({
       texto: saiu && !horarioDoMarco(atuais, "fim_anestesia")
         ? `${rotuloDoEvento(codigo)} às ${hora(momento)} — fim da anestesia marcado no mesmo horário`
-        : ([...EVENTOS_DA_TELA.antes, ...EVENTOS_DA_TELA.depois] as string[]).includes(codigo)
-          ? `${rotuloDoEvento(codigo)} às ${hora(momento)} · toque de novo para mudar a hora`
-          : `${rotuloDoEvento(codigo)} às ${hora(momento)}`,
+        : `${rotuloDoEvento(codigo)} às ${hora(momento)}`,
       desfazer: !saiu,
+      // O marco da tela: "Mudar hora" no próprio aviso (11/11/2026: "quero
+      // alterar o início da anestesia, como faço?"). Depois, o botão com ✎.
+      mudarHora: ([...EVENTOS_DA_TELA.antes, ...EVENTOS_DA_TELA.depois] as string[]).includes(codigo) ? id : undefined,
     });
   }
 
@@ -787,6 +789,12 @@ export function FolhaAnestesica({
       {aviso && (
         <div className="evoAviso" role="status">
           <span>{aviso.texto}</span>
+          {(() => {
+            const marco = aviso.mudarHora ? atuais.find((r) => r.id === aviso.mudarHora) : undefined;
+            return marco && aberta && (
+              <button type="button" onClick={() => { setAbrir({ tipo: "registro", registro: marco }); setAviso(null); }}>Mudar hora</button>
+            );
+          })()}
           {aviso.desfazer && f.podeDesfazer && (
             <button type="button" onClick={() => { f.desfazerUltimo(); setAviso(null); }}>Desfazer</button>
           )}

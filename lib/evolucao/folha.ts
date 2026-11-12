@@ -154,6 +154,8 @@ export type Profissional = {
   uf: string;
   funcao: "responsavel" | "residente" | "preceptor" | "outro";
   ano_residencia?: "R1" | "R2" | "R3" | null;
+  /** Registro de Qualificação de Especialista — o do preceptor sai no alto da ficha impressa. */
+  rqe?: string;
 };
 
 export const FUNCOES: Record<Profissional["funcao"], string> = {
@@ -170,6 +172,30 @@ export const FUNCOES: Record<Profissional["funcao"], string> = {
 export function equipeParaImpressao(equipe: readonly Profissional[]): Profissional[] {
   const ordem: Profissional["funcao"][] = ["responsavel", "preceptor", "residente", "outro"];
   return equipe.filter((p) => p.nome.trim()).sort((a, b) => ordem.indexOf(a.funcao) - ordem.indexOf(b.funcao));
+}
+
+/** O número do conselho como no carimbo: "45000" → "45.000"; o que já vem escrito fica. */
+export const numeroDoConselho = (n: string) => {
+  const v = n.trim();
+  return /^\d{4,}$/.test(v) ? v.replace(/\B(?=(\d{3})+$)/g, ".") : v;
+};
+
+/** O carimbo do médico: "CRM-PR: 45.000 / RQE: 36.000" (o que faltar não sai). */
+export function carimboDe(p: Profissional): string {
+  const partes: string[] = [];
+  if (p.crm.trim()) partes.push(`CRM-${p.uf || "—"}: ${numeroDoConselho(p.crm)}`);
+  if (p.rqe?.trim()) partes.push(`RQE: ${numeroDoConselho(p.rqe)}`);
+  return partes.join(" / ");
+}
+
+/**
+ * O médico da faixa escura no alto da ficha impressa (12/11/2026: "é o nome
+ * do preceptor que tem que sair aqui em cima"). No serviço com residência, o
+ * papel traz o preceptor; sem preceptor na equipe, o responsável.
+ */
+export function medicoDoCabecalho(equipe: readonly Profissional[]): Profissional | null {
+  const comNome = equipe.filter((p) => p.nome.trim());
+  return comNome.find((p) => p.funcao === "preceptor") ?? comNome.find((p) => p.funcao === "responsavel") ?? null;
 }
 
 // ---------------------------------------------------------------------------

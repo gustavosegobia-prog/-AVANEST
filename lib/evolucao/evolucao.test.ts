@@ -552,3 +552,19 @@ test("a PAM estimada acompanha a PAS e a PAD corrigidas à mão", () => {
   assert.deepEqual(ajustesDaPam([pas(40, 120), pad(40, 60), e1, e2], [em(40), em(40)]),
     [{ tipo: "corrigir", registro: e1, valor: 80 }, { tipo: "excluir", registro: e2 }]);
 });
+
+test("o preceptor sai no alto da ficha impressa, com CRM e RQE do carimbo", async () => {
+  const { carimboDe, medicoDoCabecalho, numeroDoConselho } = await import("./folha.ts");
+  type P = Parameters<typeof carimboDe>[0];
+  const responsavel: P = { perfil_id: "u1", nome: "Médica Fictícia", crm: "12345", uf: "PR", funcao: "responsavel" };
+  const preceptor: P = { perfil_id: null, nome: "Preceptor Fictício", crm: "45000", uf: "PR", funcao: "preceptor", rqe: "36000" };
+  assert.equal(medicoDoCabecalho([responsavel, preceptor])?.nome, "Preceptor Fictício");
+  assert.equal(medicoDoCabecalho([responsavel])?.nome, "Médica Fictícia", "sem preceptor, o responsável");
+  assert.equal(medicoDoCabecalho([responsavel, { ...preceptor, nome: " " }])?.nome, "Médica Fictícia", "preceptor sem nome não conta");
+  assert.equal(medicoDoCabecalho([]), null);
+  assert.equal(carimboDe(preceptor), "CRM-PR: 45.000 / RQE: 36.000");
+  assert.equal(carimboDe({ ...preceptor, rqe: "36.000" }), "CRM-PR: 45.000 / RQE: 36.000", "o que já vem com ponto fica");
+  assert.equal(carimboDe(responsavel), "CRM-PR: 12.345");
+  assert.equal(carimboDe({ ...responsavel, crm: "" }), "");
+  assert.equal(numeroDoConselho("123"), "123");
+});
