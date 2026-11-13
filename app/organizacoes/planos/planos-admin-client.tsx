@@ -100,7 +100,6 @@ export function PlanosAdminClient({
 
   const ocupadas = Number(vagas?.ocupadas ?? 0);
   const limiteAtual = Number(vagas?.limite ?? 0);
-  const restantes = Number(vagas?.restantes ?? 0);
   // A campanha passou a fechar por data, não por vaga. O `ativa` que a função
   // devolve já leva o prazo em conta. Os meses grátis dela saíram (04/11/2026):
   // o período grátis é o teste de 15 dias, para todo mundo.

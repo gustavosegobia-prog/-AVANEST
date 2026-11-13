@@ -256,7 +256,6 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
   // paciente foi visto. Sem local ou sem logo, o cabeçalho segue em texto,
   // como sempre foi.
   const local=avaliacao.local_snapshot??null;
-  const logo=String(local?.logo_url||"").trim();
 
   // O termo que vale para ESTA avaliação.
   //
