@@ -1310,7 +1310,6 @@ function Scores({draft,set,age,sex,imc}:{draft:Draft;set:(name:string,value:stri
   const sugestoes=useMemo(()=>sugerirEscores(draft,readMedications(draft.medicamentos_json)),[draft]);
   const recusados=String(draft.escores_recusados||"").split(",").filter(Boolean);
   const pendentes=Object.keys(sugestoes).filter(chave=>draft[chave]!==true&&!recusados.includes(chave));
-  const aplicados=Object.keys(sugestoes).filter(chave=>draft[chave]===true);
 
   useEffect(()=>{
     if(!pendentes.length) return;
@@ -1418,22 +1417,6 @@ function Conclusion({draft,set,paciente,age,idadeMeses,conclude,retrySave,saveSt
     :[];
   const requestsBlood=["Sim","Solicitar"].includes(String(draft.concentrado_hemacias??""));
   const conclusions=["Apto para o procedimento proposto","Apto com ressalvas","Necessita otimização clínica","Necessita exames complementares","Necessita avaliação de outra especialidade","Avaliação inconclusiva"];
-  // Gestação só é exibida para paciente feminina; portanto não pode bloquear
-  // indevidamente a conclusão de uma avaliação masculina.
-  const anamnesisKeys = getAnamnesisKeys(draft.sexo || paciente.sexo);
-  const anamnesisLabels:Record<string,string>={
-    cirurgias_anteriores:"histórico cirúrgico", reacao_anestesica:"reações anestésicas",
-    cardiovascular:"doença cardiovascular", respiratoria:"doença respiratória",
-    diabetes:"diabetes", neurologica:"doença neurológica/psiquiátrica", outras_doencas:"outras doenças",
-    doenca_aguda:"doença aguda", dentaria:"alterações dentárias", alergias:"alergias", habitos:"tabagismo/álcool/substâncias",
-    glaucoma:"glaucoma", gestacao:"gestante",
-  };
-  const missingAnamnesis=[
-    ...anamnesisKeys.filter(key=>!isFilled(draft[key])).map(key=>anamnesisLabels[key]),
-    ...(draft.alergias==="Sim"&&!isFilled(draft.alergias_detalhes)
-      ? ["nome completo da medicação ou do agente causador da alergia"]
-      : []),
-  ];
   // Somente o essencial para uma avaliação válida bloqueia a conclusão. Todo o
   // restante é opcional: o que não for preenchido simplesmente não é impresso.
   const requirementGroups = [

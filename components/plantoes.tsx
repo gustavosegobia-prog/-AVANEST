@@ -1229,7 +1229,7 @@ export function Plantoes({
     } else {
       setPlantoesDeTrocas([]);
     }
-  }, [mes]);
+  }, [mes, perfilId]);
 
   // Carga inicial. O estado só muda depois da volta do banco (tudo o que
   // `carregar` grava vem depois do primeiro await), e não em cascata de
