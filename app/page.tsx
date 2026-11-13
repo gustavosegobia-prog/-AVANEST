@@ -18,6 +18,7 @@ export const metadata: Metadata = paginaPublica({
 });
 
 import Image from "next/image";
+import { Inter, Manrope } from "next/font/google";
 import { AppLogo } from "@/components/app-logo";
 import { AbrirNoLogin } from "@/components/abrir-no-login";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
@@ -196,13 +197,22 @@ function MensagemDoQuestionario() {
 // código —, e o teste confere que ele é o mesmo da consulta.
 export const revalidate = 3600;
 
+/* A TIPOGRAFIA DA CAPA (13/11/2026). Manrope nos títulos, Inter no texto, nos
+   menus e nos botões — só nesta página: o sistema por dentro segue com a dele.
+   Antes, a capa pedia "Inter" sem carregar a fonte, e cada aparelho mostrava a
+   do sistema (San Francisco no iPhone, Segoe no Windows). Pelo next/font as
+   duas vêm do próprio avanest.com.br, sem pedido ao Google, com a métrica de
+   reserva ajustada (o texto não pula quando a fonte chega). */
+const fonteDosTitulos = Manrope({ subsets: ["latin"], weight: "600", variable: "--fonte-capa-titulo", display: "swap" });
+const fonteDoTexto = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--fonte-capa-texto", display: "swap" });
+
 export default async function HomePage() {
   const precoDosPlanos = fraseDoPrecoDeEntrada(await precoDeEntrada());
   const whatsappUrl =
     "https://wa.me/5541997870810?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20conversa%20de%2015%20minutos%20sobre%20o%20AVANEST.";
 
   return (
-    <main className="avnLanding avnCapa">
+    <main className={`avnLanding avnCapa ${fonteDosTitulos.variable} ${fonteDoTexto.variable}`}>
       {/* Aberto pelo atalho da tela de início, vai direto para o login. */}
       <AbrirNoLogin />
       <script
@@ -253,10 +263,15 @@ export default async function HomePage() {
               ("Da avaliação pré-anestésica ao fluxo de caixa do serviço")
               dizia o que o sistema cobre; este diz o que ele devolve a quem
               usa. O que ele cobre vem logo abaixo, nos seis módulos. */}
-          <h1>Menos burocracia. Mais tempo para o que realmente importa.</h1>
+          {/* Uma frase por linha no computador: a quebra cai no ponto, e não
+              no meio de "Mais tempo para / o que". */}
+          <h1>
+            <span className="avnTituloLinha">Menos burocracia.</span>{" "}
+            <span className="avnTituloLinha">Mais tempo para o que realmente importa.</span>
+          </h1>
           <p className="avnLead">
-            Gestão clínica, escalas e finanças em uma única plataforma,
-            desenvolvida dentro de um serviço de anestesiologia, para anestesiologistas.
+            Da avaliação pré-anestésica ao controle financeiro. Toda a sua rotina em
+            anestesiologia integrada em uma única plataforma.
           </p>
           {/* OS SEIS MÓDULOS, um por linha curta, em duas colunas no computador.
               Cada um tem a sua tela real mais abaixo, em "O sistema por dentro". */}
