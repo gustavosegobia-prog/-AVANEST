@@ -258,7 +258,9 @@ export default async function HomePage() {
             <span className="avnSoLargo">Questionário pré-anestésico pelo WhatsApp</span>
             <span className="avnSoEstreito">Questionário pelo WhatsApp</span>
           </a>
-          <p className="avnEyebrow">GESTÃO INTELIGENTE EM ANESTESIOLOGIA</p>
+          {/* Sem a linha "GESTÃO INTELIGENTE EM ANESTESIOLOGIA" acima do título
+              (13/11/2026): ela repetia o que o logo já diz, e o título fala
+              melhor sozinho. */}
           {/* O BENEFÍCIO PRIMEIRO, a lista de funções depois. O título anterior
               ("Da avaliação pré-anestésica ao fluxo de caixa do serviço")
               dizia o que o sistema cobre; este diz o que ele devolve a quem
