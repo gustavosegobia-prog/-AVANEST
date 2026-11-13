@@ -8641,8 +8641,10 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 
 /* Os títulos */
 .avnCapa h1,.avnCapa h2,.avnCapa h3{font-family:var(--capa-titulo);font-weight:600;text-wrap:balance}
+/* O selo "Novo" fica logo acima do título, sem a linha em maiúsculas no meio. */
+.avnCapa .avnHero .avnNovidadeCapa{margin-bottom:22px}
 .avnCapa .avnHero h1{
-  max-width:none;margin:18px 0 20px;
+  max-width:none;margin:0 0 20px;
   font-size:clamp(32px,1.6vw + 24px,48px);line-height:1.12;letter-spacing:-.022em;color:#fff;
 }
 /* Uma frase por linha, quando cabe; a segunda se divide em duas linhas iguais. */
@@ -8669,7 +8671,6 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 .avnCapa :is(.avnPerfisGrade,.avnModuloTexto) li{font-size:17px;line-height:1.55;font-weight:400}
 
 /* A primeira tela */
-.avnCapa .avnEyebrow{font-size:12.5px;font-weight:600;letter-spacing:.16em;line-height:1.5}
 .avnCapa .avnNovidadeCapa{font-weight:500}
 .avnCapa .avnNovidadeCapa b{font-weight:600;letter-spacing:.08em}
 .avnCapa .avnHeroComTelas .avnLead{
@@ -8713,8 +8714,8 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 
 /* Celular: a segunda frase do título quebra onde couber. */
 @media(max-width:560px){
-  .avnCapa .avnHero h1{margin:14px 0 16px;line-height:1.15}
+  .avnCapa .avnHero h1{margin:0 0 16px;line-height:1.15}
+  .avnCapa .avnHero .avnNovidadeCapa{margin-bottom:18px}
   .avnCapa .avnModulosLista{row-gap:11px}
   .avnCapa .avnOferta{margin-top:26px}
-  .avnCapa .avnEyebrow{letter-spacing:.1em}
 }
