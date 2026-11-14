@@ -15,10 +15,11 @@ export const metadata: Metadata = {
 };
 
 // Só o que a lista mostra: o cabeçalho inteiro da ficha fica no banco.
-const CAMPOS = "id, patient_id, versao, inicio_em, encerrada_em, procedimento:dados->>procedimento, sala:dados->>sala, pacientes(nome)";
+const CAMPOS = "id, patient_id, versao, inicio_em, encerrada_em, encerrada_por, procedimento:dados->>procedimento, sala:dados->>sala, pacientes(nome)";
 
 type Linha = {
   id: string; patient_id: string; versao: number; inicio_em: string; encerrada_em: string | null;
+  encerrada_por: string | null;
   procedimento: string | null; sala: string | null;
   pacientes: { nome?: string } | Array<{ nome?: string }> | null;
 };
@@ -27,6 +28,8 @@ const resumo = (l: Linha, fim: string | null = null): FolhaResumo => {
   const p = Array.isArray(l.pacientes) ? l.pacientes[0] : l.pacientes;
   return {
     id: l.id, versao: l.versao, inicio_em: l.inicio_em, encerrada_em: l.encerrada_em,
+    // Encerrada e sem quem encerrou: foi a rotina da virada do dia.
+    sozinha: Boolean(l.encerrada_em) && !l.encerrada_por,
     paciente: p?.nome || "Paciente", procedimento: l.procedimento?.trim() ?? "", sala: l.sala?.trim() ?? "", fim,
   };
 };

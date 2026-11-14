@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Icone } from "@/components/icone";
 import { createClient } from "@/utils/supabase/client";
 import { Janela } from "@/components/janela";
 import {
@@ -18,8 +19,9 @@ const DATA_CURTA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-d
 const nomeDoDia = (d: string) => DATA_CURTA.format(new Date(`${d}T12:00:00Z`));
 
 /**
- * Importar o mapa que o centro cirúrgico já faz — a planilha, o PDF ou o print
- * do grupo.
+ * Importar o mapa que o centro cirúrgico já faz — a planilha, o PDF, o print
+ * do grupo ou a FOTO da folha impressa (14/11/2026: "às vezes não tem um
+ * arquivo e tem impresso aqui, só tirar a foto").
  *
  * Três passos: escolher o arquivo, conferir, pôr no mapa. A conferência é o
  * centro da tela, porque a leitura de foto erra letra: cada linha tem a sua
@@ -27,8 +29,10 @@ const nomeDoDia = (d: string) => DATA_CURTA.format(new Date(`${d}T12:00:00Z`));
  * junto), e o paciente que já está no mapa daquele dia vem desmarcado — subir
  * o mesmo arquivo duas vezes não duplica ninguém.
  */
-export function JanelaDeImportar({ institutionId, localId = null, diaAberto, salas, anestesistas, dePlantao, onFechar, onImportado }: {
+export function JanelaDeImportar({ institutionId, localId = null, diaAberto, salas, anestesistas, dePlantao, arquivoInicial, onFechar, onImportado }: {
   institutionId: string;
+  /** A foto tirada no botão "Foto do mapa": a janela já abre lendo. */
+  arquivoInicial?: File;
   /** O hospital do mapa: os pacientes e as salas novas nascem nele. */
   localId?: string | null;
   diaAberto: string;
@@ -39,7 +43,8 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
   onImportado: (data: string, quantos: number) => void;
 }) {
   const entrada = useRef<HTMLInputElement>(null);
-  const [lendo, setLendo] = useState<number | null>(null);
+  const camera = useRef<HTMLInputElement>(null);
+  const [lendo, setLendo] = useState<number | null>(arquivoInicial ? 0 : null);
   const [erro, setErro] = useState("");
   const [mapa, setMapa] = useState<MapaImportado | null>(null);
   const [data, setData] = useState(diaAberto);
@@ -89,6 +94,16 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
       setLendo(null);
     }
   }
+
+  // A foto do botão começa a ser lida sozinha, uma vez só (o modo de
+  // desenvolvimento roda o efeito duas vezes).
+  const comecou = useRef(false);
+  useEffect(() => {
+    if (!arquivoInicial || comecou.current) return;
+    comecou.current = true;
+    void escolher(arquivoInicial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arquivoInicial]);
 
   const escolhidas = useMemo(() => (mapa?.linhas ?? []).filter((l) => marcadas.has(l.linha)), [mapa, marcadas]);
   // Na ordem do número, e não na do arquivo: a sala criada primeiro vira a
@@ -145,7 +160,7 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
 
   return (
     <Janela titulo="Importar o mapa" largura="larga" onFechar={onFechar}
-      subtitulo="A planilha (.xlsx), o PDF ou o print do mapa do grupo. Nada é salvo antes da sua conferência."
+      subtitulo="A foto da folha impressa, a planilha (.xlsx), o PDF ou o print do grupo. Nada é salvo antes da sua conferência."
       rodape={mapa ? (
         <>
           <button type="button" className="outlineClinical compact" onClick={onFechar} disabled={ocupado}>Voltar</button>
@@ -157,15 +172,28 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
       <div className={estilos.importarArquivo}>
         <input ref={entrada} type="file" accept={TIPOS_ACEITOS} hidden
           onChange={(e) => { void escolher(e.target.files?.[0]); e.target.value = ""; }} />
-        <button type="button" className={mapa ? "outlineClinical compact" : "primaryClinical compact"}
-          onClick={() => entrada.current?.click()} disabled={lendo != null || ocupado} data-foco-inicial>
-          {mapa ? "Escolher outro arquivo" : "Escolher o arquivo do mapa"}
-        </button>
-        {lendo != null && <p className={estilos.dica} role="status">Lendo o arquivo{lendo > 0 ? ` (${Math.round(lendo * 100)}%)` : "…"}</p>}
+        {/* No celular, a câmera abre direto; no computador, o seletor de imagem. */}
+        <input ref={camera} type="file" accept="image/*" capture="environment" hidden
+          onChange={(e) => { void escolher(e.target.files?.[0]); e.target.value = ""; }} />
+        <div className={estilos.importarBotoes}>
+          <button type="button" className={mapa ? "outlineClinical compact" : "primaryClinical compact"}
+            onClick={() => camera.current?.click()} disabled={lendo != null || ocupado} data-foco-inicial>
+            <Icone nome="camera" tamanho={16} /> {mapa ? "Tirar outra foto" : "Tirar foto do mapa"}
+          </button>
+          <button type="button" className="outlineClinical compact"
+            onClick={() => entrada.current?.click()} disabled={lendo != null || ocupado}>
+            <Icone nome="nota" tamanho={16} /> {mapa ? "Escolher outro arquivo" : "Escolher arquivo"}
+          </button>
+        </div>
+        {lendo != null && (
+          <p className={estilos.dica} role="status">
+            {`Lendo${lendo > 0 ? ` (${Math.round(lendo * 100)}%)` : ""}… a foto leva alguns segundos.`}
+          </p>
+        )}
         {!mapa && lendo == null && (
           <p className={estilos.dica}>
-            Do Excel, a planilha é o melhor: entra sem erro. A foto e o print também funcionam, mas confira os nomes —
-            a leitura de imagem pode trocar uma letra.
+            Na foto, pegue a folha inteira, de frente e com boa luz. Ela é lida neste aparelho e não fica guardada. A planilha
+            do Excel entra sem erro; a foto e o print funcionam, mas confira os nomes — a leitura de imagem pode trocar uma letra.
           </p>
         )}
       </div>

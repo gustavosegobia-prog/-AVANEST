@@ -65,6 +65,7 @@ export default async function ImprimirFolhaPage({ params, searchParams }: {
         instituicao={localDaFicha || local?.nome || instituicao?.nome || ""}
         impressoPor={perfil.nome ?? ""}
         encerradaPor={(quemEncerrou as { nome?: string } | null)?.nome ?? null}
+        encerradaSozinha={folha.status === "encerrada" && !folha.encerrada_por}
         agora={new Date().toISOString()}
       />
     </main>

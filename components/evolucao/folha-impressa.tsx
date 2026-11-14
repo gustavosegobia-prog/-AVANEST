@@ -44,6 +44,8 @@ export type DadosDaImpressao = {
   instituicao: string;
   impressoPor: string;
   encerradaPor: string | null;
+  /** Encerrada pela rotina da virada do dia, e não por alguém (migração 202611140001). */
+  encerradaSozinha?: boolean;
   agora: string;
 };
 
@@ -112,7 +114,9 @@ export function FolhaImpressa(p: DadosDaImpressao) {
       <span>
         Gerado pelo AVANEST a partir dos registros da folha · impresso em {dataHora(agora)} por {p.impressoPor}
         {folha.status === "encerrada" && folha.encerrada_em
-          ? ` · versão ${folha.versao}, encerrada em ${dataHora(folha.encerrada_em)}${p.encerradaPor ? ` por ${p.encerradaPor}` : ""}`
+          ? p.encerradaSozinha
+            ? ` · versão ${folha.versao}, encerrada automaticamente depois da virada do dia (último registro em ${dataHora(folha.encerrada_em)})`
+            : ` · versão ${folha.versao}, encerrada em ${dataHora(folha.encerrada_em)}${p.encerradaPor ? ` por ${p.encerradaPor}` : ""}`
           : " · ficha aberta"}
       </span>
       <span>Página {n + 1} de {janelas.length}</span>

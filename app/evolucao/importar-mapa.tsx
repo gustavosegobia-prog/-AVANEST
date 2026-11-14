@@ -12,11 +12,13 @@ type Pronto = {
   salas: Sala[];
   anestesistas: Array<{ id: string; nome: string; apelido: string }>;
   plantoes: PlantaoDaEscala[];
+  /** A foto tirada no botão "Foto do mapa": a janela já abre lendo. */
+  arquivo?: File;
 };
 
 // IMPORTAR O MAPA DE DENTRO DA FICHA ANESTÉSICA (07/11/2026: "pôr por dentro
 // da ficha anestésica"). A mesma janela da tela do centro cirúrgico
-// (components/centro/importar.tsx): a planilha, o PDF ou a foto do mapa, a
+// (components/centro/importar.tsx): a planilha, o PDF, a foto ou o print do mapa, a
 // conferência, e só então grava — no hospital desta sessão. As salas, a equipe
 // e a escala só são buscadas no toque: quem só abre a ficha não paga por isso.
 export function ImportarMapaNaFicha({ institutionId, localId, aoImportar }: {
@@ -28,7 +30,7 @@ export function ImportarMapaNaFicha({ institutionId, localId, aoImportar }: {
   const [pronto, setPronto] = useState<Pronto | null>(null);
   const [erro, setErro] = useState("");
 
-  async function abrir() {
+  async function abrir(arquivo?: File) {
     setErro("");
     setCarregando(true);
     const dia = hoje();
@@ -50,6 +52,7 @@ export function ImportarMapaNaFicha({ institutionId, localId, aoImportar }: {
       salas: (salas.data ?? []) as Sala[],
       anestesistas: anestesistasDaEquipe((equipe.data ?? []) as Parameters<typeof anestesistasDaEquipe>[0]),
       plantoes: (plantoes.data ?? []) as PlantaoDaEscala[],
+      arquivo,
     });
   }
 
@@ -58,11 +61,18 @@ export function ImportarMapaNaFicha({ institutionId, localId, aoImportar }: {
       <button type="button" className="fcAtalho" onClick={() => void abrir()} disabled={carregando} aria-busy={carregando}>
         <Icone nome="nota" tamanho={16} /> {carregando ? "Abrindo…" : "Importar mapa"}
       </button>
+      {/* A folha impressa (14/11/2026: "só tirar a foto"): a câmera abre no
+          toque, e a janela de importar já abre lendo. */}
+      <label className="fcAtalho evoFHEscolher" aria-disabled={carregando}>
+        <Icone nome="camera" tamanho={16} /> Foto do mapa
+        <input type="file" accept="image/*" capture="environment" className="evoFHArquivo" disabled={carregando}
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void abrir(f); }} />
+      </label>
       {erro && <p className="fcErro fcAtalhoErro" role="alert">{erro}</p>}
       {pronto && (
         <JanelaDeImportar
           institutionId={institutionId} localId={localId} diaAberto={pronto.dia} salas={pronto.salas}
-          anestesistas={pronto.anestesistas}
+          anestesistas={pronto.anestesistas} arquivoInicial={pronto.arquivo}
           dePlantao={(data, horario) => anestesistasDePlantao(pronto.plantoes, data, horario)}
           onFechar={() => setPronto(null)}
           onImportado={(data, quantos) => { setPronto(null); aoImportar(data, quantos); }}
