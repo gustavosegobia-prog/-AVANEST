@@ -69,7 +69,7 @@ test("entrada: o mapa cirúrgico de dentro da ficha — importar daqui e o atalh
   const importar = ler("app/evolucao/importar-mapa.tsx");
   // A mesma janela da tela do centro, no hospital da sessão; salas, equipe e escala só no toque.
   assert.match(importar, /<JanelaDeImportar\s+institutionId=\{institutionId\} localId=\{localId\}/);
-  assert.match(importar, /async function abrir\(\)[\s\S]*from\("centro_salas"\)[\s\S]*from\("perfis"\)[\s\S]*from\("plantoes"\)/);
+  assert.match(importar, /async function abrir\(arquivo\?: File\)[\s\S]*from\("centro_salas"\)[\s\S]*from\("perfis"\)[\s\S]*from\("plantoes"\)/);
 });
 
 test("entrada: a sala da ficha em andamento não sai \"Sala Sala 2\"", async () => {

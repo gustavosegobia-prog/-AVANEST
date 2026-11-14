@@ -26,7 +26,7 @@ type Aberta =
   | { tipo: "passo"; caso: Caso; acao: Passo["acao"] }
   | { tipo: "cancelar"; caso: Caso }
   | { tipo: "salas" }
-  | { tipo: "importar" }
+  | { tipo: "importar"; arquivo?: File }
   | null;
 
 const DIA_LONGO = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
@@ -179,6 +179,14 @@ export function MapaCirurgico({
               <Icone nome="nota" tamanho={16} /> Importar mapa
             </button>
           )}
+          {/* A folha impressa (14/11/2026): a câmera abre no toque e a janela já abre lendo. */}
+          {podeMontar && (
+            <label className="outlineClinical compact evoFHEscolher">
+              <Icone nome="camera" tamanho={16} /> Foto do mapa
+              <input type="file" accept="image/*" capture="environment" className="evoFHArquivo"
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setAberta({ tipo: "importar", arquivo: f }); }} />
+            </label>
+          )}
           {podeMontar && (
             <button type="button" className="primaryClinical compact" disabled={!salasAtivas.length}
               onClick={() => setAberta({ tipo: "novo", salaId: salasAtivas[0]?.id ?? "" })}>
@@ -321,7 +329,7 @@ export function MapaCirurgico({
       )}
       {aberta?.tipo === "importar" && (
         <JanelaDeImportar institutionId={institutionId} localId={localId} diaAberto={dia} salas={salas} anestesistas={anestesistas}
-          dePlantao={(data, horario) => anestesistasDePlantao(plantoes, data, horario)}
+          dePlantao={(data, horario) => anestesistasDePlantao(plantoes, data, horario)} arquivoInicial={aberta.arquivo}
           onFechar={() => setAberta(null)}
           onImportado={(data, quantos) => {
             setAberta(null);

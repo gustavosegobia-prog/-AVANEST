@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
     auth: { persistSession: false },
   });
   const { data, error } = await admin.rpc("fechar_fichas_esquecidas");
+  // Antes da migração 202611140001 entrar no banco, a função não existe: nada a fazer.
+  if (error?.code === "PGRST202") return NextResponse.json({ ok: true, motivo: "sem-funcao" });
   if (error) {
     console.error("[api/evolucao/fechar-do-dia]", error);
     return NextResponse.json({ ok: false, motivo: "falha" }, { status: 500 });

@@ -266,6 +266,147 @@ export function gradeDePalavras(palavras: Palavra[]): string[][] | null {
   return grade;
 }
 
+/**
+ * A tabela sem os títulos das colunas: a foto do mapa IMPRESSO (14/11/2026).
+ * Na folha, HORA, PACIENTE, CONVÊNIO… vêm em letra miúda, e a foto de celular
+ * já reduzida (a do WhatsApp, a da galeria) não tem pixel para eles — mas lê
+ * bem o que está nas células. Então cada coluna é reconhecida pelo que tem:
+ *   - a HORA, pelos horários ("07:30") e "A/S" — e cada horário é uma linha;
+ *   - a SALA, pelo "SALA 2"; o CIRURGIÃO, pelo "DR."/"DRA.";
+ *   - a IDADE, pelo número curto; o CONVÊNIO, pelo nome de convênio conhecido;
+ *   - o PACIENTE é o primeiro texto depois da hora; a CIRURGIA, o primeiro
+ *     depois da sala (ou do cirurgião); a OBSERVAÇÃO, o que vem depois dela.
+ * As colunas são os corredores vazios entre os textos, olhando a tabela inteira.
+ * Sem horário nenhum, ou sem paciente e cirurgia, não há tabela: nulo.
+ */
+export function gradeSemTitulos(palavras: Palavra[]): string[][] | null {
+  const todas = palavras.map((p) => ({ ...p, t: p.t.trim().replace(/^[|¦]+|[|¦]+$/g, "") })).filter((p) => p.t);
+  if (!todas.length) return null;
+  const alturas = todas.map((p) => p.y1 - p.y0).sort((a, b) => a - b);
+  const alt = alturas[Math.floor(alturas.length / 2)] || 1;
+  // Os títulos miúdos que o OCR transformou em lixo ("convemo", "sa") ficam fora.
+  const limpas = todas.filter((p) => p.y1 - p.y0 >= alt * 0.6);
+
+  // A coluna da hora: o maior grupo de horários um embaixo do outro.
+  const ehHora = (t: string) => /^(a\s*\/\s*s|a\/5|ais)$/i.test(t) || horaDaCelula(t) !== null && /^\d{1,2}[:h.]\d{2}$/i.test(t);
+  const horas = limpas.filter((p) => ehHora(p.t));
+  if (!horas.length) return null;
+  const grupos: Palavra[][] = [];
+  for (const h of [...horas].sort((a, b) => meioX(a) - meioX(b))) {
+    const g = grupos.at(-1);
+    if (g && meioX(h) - meioX(g[0]) < alt * 3) g.push(h); else grupos.push([h]);
+  }
+  const colunaDaHora = grupos.reduce((m, g) => (g.length > m.length ? g : m));
+  let ancoras: number[] = [];
+  for (const y of colunaDaHora.map(meioY).sort((a, b) => a - b)) {
+    if (!ancoras.length || y - ancoras.at(-1)! > alt * 0.9) ancoras.push(y);
+  }
+  const vaoDasHoras = ancoras.length > 1 ? Math.min(...ancoras.slice(1).map((y, i) => y - ancoras[i])) : alt * 3;
+  const topo = ancoras[0] - Math.min(vaoDasHoras, alt * 3) * 0.6;
+  const dados = limpas.filter((p) => meioY(p) >= topo);
+  const acima = todas.filter((p) => meioY(p) < topo);
+
+  // As colunas: faixas de texto separadas por corredor vazio.
+  const faixas: Array<{ x0: number; x1: number }> = [];
+  for (const p of [...dados].sort((a, b) => a.x0 - b.x0)) {
+    const f = faixas.at(-1);
+    if (f && p.x0 <= f.x1 + alt * 0.5) f.x1 = Math.max(f.x1, p.x1);
+    else faixas.push({ x0: p.x0, x1: p.x1 });
+  }
+  const faixaDe = (p: Palavra) => faixas.findIndex((f) => meioX(p) >= f.x0 && meioX(p) <= f.x1);
+  const iHora = faixaDe(colunaDaHora[0]);
+  if (iHora < 0) return null;
+
+  // O paciente sem horário lido (o "A/S" que o OCR perdeu) vira linha também.
+  const iPaciente0 = faixas.findIndex((_, i) => i > iHora && dados.some((p) => faixaDe(p) === i && /\p{L}{3}/u.test(p.t)));
+  if (iPaciente0 >= 0) {
+    for (const p of dados.filter((q) => faixaDe(q) === iPaciente0).sort((a, b) => meioY(a) - meioY(b))) {
+      if (ancoras.every((a) => Math.abs(a - meioY(p)) > alt * 1.5)) ancoras = [...ancoras, meioY(p)].sort((a, b) => a - b);
+    }
+  }
+  const vao = ancoras.length > 1 ? Math.min(...ancoras.slice(1).map((y, i) => y - ancoras[i])) : alt * 3;
+
+  const celulas = ancoras.map(() => new Map<number, Palavra[]>());
+  for (const p of dados) {
+    let melhor = -1, dist = Infinity;
+    ancoras.forEach((y, i) => { const d = Math.abs(meioY(p) - y); if (d < dist) { dist = d; melhor = i; } });
+    const f = faixaDe(p);
+    if (melhor < 0 || f < 0 || dist > Math.max(vao * 0.75, alt)) continue;
+    celulas[melhor].set(f, [...(celulas[melhor].get(f) ?? []), p]);
+  }
+  const texto = (lista: Palavra[] | undefined) => (lista ?? [])
+    .sort((a, b) => (Math.abs(meioY(a) - meioY(b)) < alt * 0.6 ? a.x0 - b.x0 : meioY(a) - meioY(b)))
+    .map((p) => p.t).join(" ").replace(/\s+/g, " ").trim();
+  const colunaInteira = (i: number) => celulas.map((c) => texto(c.get(i))).filter(Boolean);
+  const parte = (i: number, teste: (t: string) => boolean) => {
+    const v = colunaInteira(i);
+    return v.length ? v.filter(teste).length / v.length : 0;
+  };
+
+  // Cada faixa, pelo que tem.
+  const campo = new Map<number, Campo>();
+  faixas.forEach((_, i) => { if (i < iHora) campo.set(i, "numero"); });
+  campo.set(iHora, "hora");
+  const depois = faixas.map((_, i) => i).filter((i) => i > iHora);
+  const melhorFaixa = (teste: (t: string) => boolean, minimo: number) => {
+    // Empate fica com a da esquerda: o convênio vem antes da observação que repete o convênio.
+    let melhor = -1, nota = minimo - 1e-9;
+    for (const i of depois) if (!campo.has(i)) { const n = parte(i, teste); if (n > nota) { nota = n; melhor = i; } }
+    return melhor;
+  };
+  const marcar = (i: number, c: Campo) => { if (i >= 0) campo.set(i, c); };
+  marcar(melhorFaixa((t) => /^sala\b|^sala\S{1,2}$/i.test(t), 0.5), "sala");
+  marcar(melhorFaixa((t) => /^dra?\b\.?/i.test(t), 0.5), "cirurgiao");
+  marcar(melhorFaixa((t) => /^\S{1,3}( ?(anos?|a|m|meses))?$/i.test(t) && idadeDaCelula(t.split(" ")[0]) !== null, 0.6), "idade");
+  marcar(melhorFaixa((t) => CONHECIDOS.some((c) => normalizar(c) === normalizar(convenioLimpo(t)) || normalizar(c).split(" ")[0] === normalizar(t)), 0.5), "convenio");
+  const temTexto = (i: number) => colunaInteira(i).some((t) => /\p{L}{3}/u.test(t));
+  const livres = (de: number) => depois.filter((i) => i > de && !campo.has(i) && temTexto(i));
+  const iPaciente = livres(iHora)[0] ?? -1;
+  marcar(iPaciente, "paciente");
+  const depoisDe = [...campo.entries()].filter(([, c]) => c === "sala" || c === "cirurgiao").map(([i]) => i);
+  const base = depoisDe.length ? Math.max(...depoisDe) : iPaciente;
+  const [iCirurgia, iObs] = livres(base);
+  marcar(iCirurgia ?? -1, "procedimento");
+  marcar(iObs ?? -1, "leito");
+  // O que sobrou entre o paciente e o cirurgião, sem convênio achado, é o convênio.
+  if (![...campo.values()].includes("convenio")) {
+    const ate = [...campo.entries()].find(([, c]) => c === "cirurgiao")?.[0] ?? Infinity;
+    marcar(livres(iPaciente).find((i) => i < ate) ?? -1, "convenio");
+  }
+  if (iPaciente < 0 || iCirurgia == null) return null;
+
+  // O título: só as linhas com a data ou a anestesista, sem o lixo dos títulos miúdos.
+  const linhasDoTitulo: Palavra[][] = [];
+  for (const p of [...acima].sort((a, b) => meioY(a) - meioY(b))) {
+    const l = linhasDoTitulo.at(-1);
+    if (l && Math.abs(meioY(p) - meioY(l[0])) < alt * 0.8) l.push(p); else linhasDoTitulo.push([p]);
+  }
+  const titulo = linhasDoTitulo.map((l) => l.sort((a, b) => a.x0 - b.x0).map((p) => p.t).join(" "))
+    .filter((t) => dataDoTexto(t) || /anestesista/i.test(normalizar(t))).join(" ");
+
+  const ordem = faixas.map((_, i) => i).filter((i) => campo.has(i));
+  const grade: string[][] = [];
+  if (titulo.trim()) grade.push([titulo.trim()]);
+  grade.push(ordem.map((i) => TITULO_PADRAO[campo.get(i)!]));
+  for (const c of celulas) grade.push(ordem.map((i) => texto(c.get(i))));
+  return grade;
+}
+
+/**
+ * A grade da foto: pelos títulos (`gradeDePalavras`) e pelo conteúdo
+ * (`gradeSemTitulos`), e fica a que rendeu mais. Na foto, os títulos miúdos
+ * às vezes saem só em parte — três achados, o resto grudado numa coluna — e
+ * aí a leitura pelos títulos traz os pacientes sem cirurgia. Empate fica com a
+ * dos títulos, que é a que diz o que cada coluna é.
+ */
+export function gradeDaFoto(palavras: Palavra[], hoje?: string): string[][] | null {
+  const nota = (g: string[][] | null) => (lerMapa(g ?? [], hoje)?.linhas ?? []).reduce((s, l) => s + 2
+    + [l.horario, l.idade, l.convenio, l.cirurgiao, l.sala, l.leito].filter((v) => v != null).length, 0);
+  const pelosTitulos = gradeDePalavras(palavras);
+  const peloConteudo = gradeSemTitulos(palavras);
+  return nota(peloConteudo) > nota(pelosTitulos) ? peloConteudo : pelosTitulos ?? peloConteudo;
+}
+
 const TITULO_PADRAO: Record<Campo, string> = {
   numero: "#", hora: "HORA", paciente: "PACIENTE", idade: "IDADE", nascimento: "NASCIMENTO", convenio: "CONVENIO",
   cirurgiao: "MEDICO", sala: "SALA", procedimento: "PROCEDIMENTO", leito: "OBSERVACAO", anestesia: "ANESTESIA",
@@ -312,6 +453,13 @@ export function nomeDaSala(s: string): string | null {
   const t = s.trim();
   if (!t || /^[-_—–]+$/.test(t) || normalizar(t) === "sala") return null;
   if (/^\d+$/.test(t)) return `Sala ${t}`;
+  // A foto do impresso cola o número na palavra ("SALA1") ou troca o dígito
+  // pela letra parecida ("SALA l").
+  const colada = t.match(/^sala\s*(\S{1,2})$/i);
+  if (colada) {
+    const n = [...colada[1]].map((ch) => DIGITO_PARECIDO[ch] ?? ch).join("");
+    if (/^\d+$/.test(n)) return `Sala ${Number(n)}`;
+  }
   return nomeProprio(t);
 }
 
