@@ -390,9 +390,11 @@ test("ondansetrona e dexametasona são fixas; nenhuma multiplica por quilo", () 
   }
   const onda = acharMedicamento("ondansetrona-adulto")!;
   const c = calcular(onda.dose!, 70, onda.apresentacoes[0]);
-  assert.equal(c.length, 1);
-  assert.equal(c[0].doseTotal, 4);
-  assert.equal(c[0].volume, 2); // 4 mg ÷ 2 mg/mL
+  // A dose do serviço (14/11/2026): 8 mg; os 4 mg à vista como a menor.
+  assert.deepEqual(c.map((x) => [x.nivel, x.doseTotal, x.volume]), [["minima", 4, 2], ["usual", 8, 4]]); // ÷ 2 mg/mL
+  const dexa = acharMedicamento("dexametasona-adulto")!;
+  assert.deepEqual(calcular(dexa.dose!, 70, dexa.apresentacoes[0]).map((x) => [x.nivel, x.doseTotal, x.volume]),
+    [["minima", 4, 1], ["usual", 10, 2.5]]); // ÷ 4 mg/mL
 });
 
 /* ---------------- valores do adulto, conferidos a 70 kg ---------------- */

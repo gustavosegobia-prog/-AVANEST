@@ -30,7 +30,9 @@ test("criança: a dose sai do peso e da faixa etária, na unidade da ficha", () 
 
 test("dose fixa não vê o peso, e a regra da cefazolina segue o peso", () => {
   const ond = sugerirDoses("Ondansetrona", { idadeMeses: 600, pesoKg: null }, { unidade: "mg" });
-  assert.deepEqual(doses(ond, "Ondansetrona"), [4]);
+  // A do serviço é 8 mg (14/11/2026), com os 4 mg à vista; a dexametasona, 10 mg.
+  assert.deepEqual(doses(ond, "Ondansetrona"), [4, 8]);
+  assert.deepEqual(doses(sugerirDoses("Dexametasona", { idadeMeses: 600, pesoKg: null }, { unidade: "mg" }), "Dexametasona"), [4, 10]);
   assert.equal(doses(sugerirDoses("Cefazolina", adulto, { unidade: "g" }), "Cefazolina — profilaxia")?.[0], 2);
   const pesado = sugerirDoses("Kefazol", { idadeMeses: 600, pesoKg: 130 }, { unidade: "g" });
   assert.equal(doses(pesado, "Cefazolina — profilaxia")?.[0], 3);

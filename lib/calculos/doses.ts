@@ -885,17 +885,19 @@ export const CATALOGO: Medicamento[] = [
 
   /* ---------------- Adulto — antieméticos e profilaxia ---------------- */
   {
+    // A dose do serviço é 8 mg (14/11/2026); os 4 mg ficam à vista como a menor.
     id: "ondansetrona-adulto", nome: "Ondansetrona", grupo: "antiemeticos", populacoes: ["adulto"], via: "IV",
-    dose: { usual: 4, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(2)],
-    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
-    observacao: "Dose fixa. Não se multiplica pelo peso.",
+    dose: { min: 4, usual: 8, unidade: "mg", por: "fixa" }, apresentacoes: [mgml(2)],
+    fonte: SERVICO, situacao: "validado", revisao: "14/11/2026",
+    observacao: "Dose fixa. Não se multiplica pelo peso. No serviço, 8 mg.",
   },
   {
+    // A dose do serviço é 10 mg (14/11/2026); os 4 mg ficam à vista como a menor.
     id: "dexametasona-adulto", nome: "Dexametasona", grupo: "antiemeticos", populacoes: ["adulto"], via: "IV",
-    dose: { min: 4, max: 8, unidade: "mg", por: "fixa" },
+    dose: { min: 4, usual: 10, unidade: "mg", por: "fixa" },
     apresentacoes: [mgml(4), mgml(2)],
-    fonte: SERVICO, situacao: "validado", revisao: REVISAO,
-    observacao: "Dose fixa. Não se multiplica pelo peso.",
+    fonte: SERVICO, situacao: "validado", revisao: "14/11/2026",
+    observacao: "Dose fixa. Não se multiplica pelo peso. No serviço, 10 mg.",
   },
 
   /* ---------------- Adulto — analgesia ---------------- */

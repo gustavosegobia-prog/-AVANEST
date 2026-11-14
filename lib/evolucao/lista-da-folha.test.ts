@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CATALOGO } from "./medicamentos.ts";
+import { CATALOGO, itemDoCatalogo } from "./medicamentos.ts";
 import {
   ALDRETE, INFUSOES_DA_FOLHA, LISTA_DA_FOLHA, grupoDaAdministracao, itemDaAdministracao, somaAldrete,
 } from "./lista-da-folha.ts";
@@ -13,6 +13,11 @@ const reg = (dados: Record<string, unknown>): Registro => ({
 
 test("Lista do papel — seis grupos na ordem da ficha, e nenhum valor de dose", () => {
   assert.deepEqual(LISTA_DA_FOLHA.map((g) => g.codigo), ["antibiotico", "sedacao", "neuroeixo", "geral", "bloqueio", "outras"]);
+  // Pedidos do serviço (14/11/2026): ceftriaxona e metronidazol na profilaxia, cetoprofeno nas outras.
+  const nomes = (c: string) => LISTA_DA_FOLHA.find((g) => g.codigo === c)!.itens.map((i) => i.nome);
+  assert.deepEqual(nomes("antibiotico"), ["Cefazolina", "Ceftriaxona", "Metronidazol"]);
+  assert.ok(nomes("outras").includes("Cetoprofeno"));
+  for (const g of LISTA_DA_FOLHA) for (const i of g.itens) assert.ok(itemDoCatalogo(i.nome), `${i.nome} está no catálogo da busca`);
   for (const g of LISTA_DA_FOLHA) {
     for (const it of g.itens) {
       assert.deepEqual(Object.keys(it).filter((k) => !["nome", "rotulo", "unidade", "via", "apresentacao"].includes(k)), [], it.nome);
