@@ -42,6 +42,8 @@ export type ItemDoCatalogo = {
 
 export const CATALOGO: ItemDoCatalogo[] = [
   { id: "cefazolina", nome: "Cefazolina", categoria: "antibiotico", sinonimos: ["Kefazol"], unidade: "g" },
+  { id: "ceftriaxona", nome: "Ceftriaxona", categoria: "antibiotico", sinonimos: ["Rocefin", "Triaxin"], unidade: "g" },
+  { id: "metronidazol", nome: "Metronidazol", categoria: "antibiotico", sinonimos: ["Flagyl"], unidade: "mg" },
   { id: "propofol", nome: "Propofol", categoria: "inducao", sinonimos: ["Diprivan"], unidade: "mg" },
   { id: "etomidato", nome: "Etomidato", categoria: "inducao", sinonimos: ["Hypnomidate"], unidade: "mg" },
   { id: "cetamina", nome: "Cetamina", categoria: "inducao", sinonimos: ["Ketamina", "Ketalar"], unidade: "mg" },
@@ -71,6 +73,7 @@ export const CATALOGO: ItemDoCatalogo[] = [
   { id: "dipirona", nome: "Dipirona", categoria: "analgesico", sinonimos: ["Metamizol", "Novalgina"], unidade: "g" },
   { id: "cetorolaco", nome: "Cetorolaco", categoria: "analgesico", sinonimos: ["Toradol"], unidade: "mg" },
   { id: "tenoxicam", nome: "Tenoxicam", categoria: "analgesico", sinonimos: ["Tilatil"], unidade: "mg" },
+  { id: "cetoprofeno", nome: "Cetoprofeno", categoria: "analgesico", sinonimos: ["Profenid"], unidade: "mg" },
   { id: "paracetamol", nome: "Paracetamol", categoria: "analgesico", sinonimos: ["Acetaminofeno"], unidade: "mg" },
   { id: "ondansetrona", nome: "Ondansetrona", categoria: "antiemetico", sinonimos: ["Vonau", "Zofran"], unidade: "mg" },
   { id: "dexametasona", nome: "Dexametasona", categoria: "antiemetico", sinonimos: ["Decadron"], unidade: "mg" },

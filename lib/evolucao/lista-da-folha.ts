@@ -36,7 +36,12 @@ export type GrupoDaLista = {
 export const LISTA_DA_FOLHA: GrupoDaLista[] = [
   {
     codigo: "antibiotico", titulo: "Antibioticoprofilaxia", via: "EV", forma: "bolus", indicacao: "Antibioticoprofilaxia",
-    itens: [{ nome: "Cefazolina", rotulo: "Cefazolina (Kefazol)", unidade: "g" }],
+    // Ceftriaxona e metronidazol a pedido do serviço (14/11/2026).
+    itens: [
+      { nome: "Cefazolina", rotulo: "Cefazolina (Kefazol)", unidade: "g" },
+      { nome: "Ceftriaxona", rotulo: "Ceftriaxona (Rocefin)", unidade: "g" },
+      { nome: "Metronidazol", rotulo: "Metronidazol (Flagyl)", unidade: "mg" },
+    ],
   },
   {
     codigo: "sedacao", titulo: "Sedação", via: "EV", forma: "bolus",
@@ -97,6 +102,7 @@ export const LISTA_DA_FOLHA: GrupoDaLista[] = [
       { nome: "Ondansetrona", rotulo: "Ondansetrona (Vonau)", unidade: "mg" },
       { nome: "Dipirona", unidade: "g" },
       { nome: "Tenoxicam", rotulo: "Tenoxicam (Tilatil)", unidade: "mg" },
+      { nome: "Cetoprofeno", rotulo: "Cetoprofeno (Profenid)", unidade: "mg" },
       { nome: "Cetorolaco", unidade: "mg" },
       { nome: "Ocitocina", unidade: "UI" },
       { nome: "Metilergometrina", unidade: "mg", via: "IM" },
