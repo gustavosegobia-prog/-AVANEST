@@ -15,6 +15,10 @@
     {
       "path": "/api/producao/enviar-do-dia",
       "schedule": "10 3 * * *"
+    },
+    {
+      "path": "/api/evolucao/fechar-do-dia",
+      "schedule": "20 * * * *"
     }
   ]
 }

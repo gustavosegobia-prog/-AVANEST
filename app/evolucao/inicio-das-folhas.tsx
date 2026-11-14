@@ -17,6 +17,8 @@ export type FolhaResumo = {
   sala: string;
   /** Fim da anestesia ou saída da sala, já registrados: o relógio para aqui. */
   fim?: string | null;
+  /** Encerrada pela rotina da virada do dia, e não por alguém. */
+  sozinha?: boolean;
 };
 
 const HORA = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -118,7 +120,8 @@ export function InicioDasFolhas({
                       <Link href={`/evolucao/${f.id}`} className="fcLinha">
                         <span className="fcQuem">
                           <strong>{f.paciente}</strong>
-                          <span>{[f.procedimento || "Procedimento não informado", f.versao > 1 && `versão ${f.versao}`]
+                          <span>{[f.procedimento || "Procedimento não informado", f.versao > 1 && `versão ${f.versao}`,
+                            f.sozinha && "encerrada automaticamente"]
                             .filter(Boolean).join(" · ")}</span>
                         </span>
                         <span className="fcQuando">
