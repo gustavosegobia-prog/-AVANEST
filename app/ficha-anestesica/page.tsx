@@ -111,12 +111,16 @@ function Opcoes({ rotulo, opcoes }: { rotulo: string; opcoes: string[] }) {
   );
 }
 
+// AS DUAS FOLHAS são simples de propósito (revisão de 15/11/2026): um campo por
+// assunto, poucas opções para circular e linha larga para escrever à mão. O que
+// a resolução exige continua todo lá; o que era detalhe de preenchimento (FR,
+// dor, mobilidade atlanto-occipital, BIS, tubo nº) cabe nos campos livres.
 function ModeloDeFicha() {
   return (
     <div className="fichaModelo" aria-label="Modelo de ficha de avaliação pré-anestésica em branco">
       <div className="fmTopo">
-        <strong>Ficha de avaliação pré-anestésica</strong>
-        <span>Data da avaliação: ____/____/______</span>
+        <strong>Avaliação pré-anestésica</strong>
+        <span>Data: ____/____/______</span>
       </div>
 
       <div className="fmLinha">
@@ -125,66 +129,56 @@ function ModeloDeFicha() {
         <Campo rotulo="Sexo" classe="fmCurto" />
       </div>
       <div className="fmLinha">
-        <Campo rotulo="Procedimento proposto" classe="fmLargo" />
+        <Campo rotulo="Cirurgia proposta" classe="fmLargo" />
         <Campo rotulo="Cirurgião" />
       </div>
       <div className="fmLinha">
-        <Campo rotulo="Peso (kg)" /><Campo rotulo="Altura (m)" /><Campo rotulo="IMC (kg/m²)" />
-        <Campo rotulo="PA (mmHg)" /><Campo rotulo="FC (bpm)" /><Campo rotulo="FR (irpm)" />
-        <Campo rotulo="Temp. (°C)" /><Campo rotulo="Dor (0–10)" />
+        <Campo rotulo="Peso (kg)" /><Campo rotulo="Altura (m)" /><Campo rotulo="IMC" />
+        <Campo rotulo="PA (mmHg)" /><Campo rotulo="FC (bpm)" /><Campo rotulo="SpO₂ (%)" />
       </div>
 
-      <Bloco rotulo="Diagnóstico cirúrgico e doenças associadas" linhas={2} />
-      <Bloco rotulo="Antecedentes pessoais e familiares · cirurgias e anestesias anteriores" linhas={2} />
-      <Bloco rotulo="Medicamentos de uso atual ou recente · conduta (manter / suspender em __ / __)" linhas={3} />
-      <Bloco rotulo="Alergias (fármacos, látex) · efeitos adversos em anestesia na família · hipertermia" linhas={1} />
+      <Bloco rotulo="Doenças associadas · cirurgias e anestesias anteriores · história familiar" linhas={3} />
+      <Bloco rotulo="Medicamentos em uso · conduta (manter / suspender)" linhas={2} />
       <div className="fmLinha">
-        <Campo rotulo="Tabagismo (cigarros/dia · anos)" /><Campo rotulo="Etilismo (frequência · quantidade)" />
-        <Campo rotulo="Outros hábitos" />
+        <Campo rotulo="Alergias" classe="fmLargo" />
+        <Campo rotulo="Tabagismo · álcool · outras drogas" classe="fmLargo" />
       </div>
 
-      <div className="fmSecao">Via aérea</div>
       <div className="fmLinha">
         <Opcoes rotulo="Mallampati" opcoes={["I", "II", "III", "IV"]} />
-        <Campo rotulo="Abertura de boca (cm)" /><Campo rotulo="Dist. tireomentoniana (cm)" />
+        <Campo rotulo="Abertura de boca · distância tireomentoniana · dentes" classe="fmLargo" />
       </div>
-      <div className="fmLinha">
-        <Campo rotulo="Mobilidade atlanto-occipital" /><Campo rotulo="Dentes · prótese dentária" />
-        <Campo rotulo="Circunferência cervical (cm)" />
-      </div>
-
-      <Bloco rotulo="Exame físico: cardiovascular · respiratório · outros sistemas com alteração" linhas={3} />
-      <Bloco rotulo="Exames complementares (com data) e pareceres de especialistas" linhas={2} />
+      <Bloco rotulo="Exame físico" linhas={2} />
+      <Bloco rotulo="Exames complementares e pareceres" linhas={2} />
 
       <div className="fmLinha">
-        <Opcoes rotulo="ASA" opcoes={["I", "II", "III", "IV", "V", "VI", "E"]} />
-        <Campo rotulo="Jejum de sólidos (h)" /><Campo rotulo="Líquidos claros (h)" />
+        <Opcoes rotulo="ASA" opcoes={["I", "II", "III", "IV", "V", "E"]} />
+        <Campo rotulo="Jejum: sólidos · líquidos claros (h)" classe="fmLargo" />
       </div>
-      <Bloco rotulo="Medicação pré-anestésica · plano anestésico · orientações" linhas={2} />
+      <Bloco rotulo="Plano anestésico · medicação pré-anestésica · orientações" linhas={2} />
 
       <div className="fmLinha fmAssinatura">
-        <Campo rotulo="Anestesista" classe="fmLargo" /><Campo rotulo="CRM" /><Campo rotulo="RQE" />
+        <Campo rotulo="Anestesista" classe="fmLargo" /><Campo rotulo="CRM" />
         <Campo rotulo="Assinatura" classe="fmLargo" />
       </div>
 
       <p className="fmRodape">
         Itens do Anexo II da Resolução CFM nº 2.174/2017. Jejum mínimo: líquidos claros 2 h ·
-        leite materno 4 h · leite não humano ou fórmula 6 h · refeição leve 6 h · dieta geral 8 h.
-        Modelo livre de avanest.com.br.
+        leite materno 4 h · fórmula e refeição leve 6 h · dieta geral 8 h. Modelo livre de
+        avanest.com.br.
       </p>
     </div>
   );
 }
 
 // A FOLHA DO INTRAOPERATÓRIO. Quem pesquisa "ficha de anestesia" quase sempre
-// quer esta, e a página só tinha a da avaliação. Os itens são os do Anexo III
-// (a até h); a grade cobre 4 horas em colunas de 10 minutos, que é o intervalo
-// máximo da resolução para PA, FC, SpO₂, EtCO₂ e temperatura. Sem linha de
-// horários no topo: a grade começa direto na escala (pedido do Gustavo).
+// quer esta. Itens do Anexo III; a grade cobre 4 horas em colunas de 10 minutos,
+// o intervalo máximo da resolução para PA, FC, SpO₂, EtCO₂ e temperatura. Sem
+// linha de horários no topo: a grade começa direto na escala (pedido do Gustavo).
 const COLUNAS_DA_GRADE = 24;
 const ESCALA_DA_GRADE = [220, 200, 180, 160, 140, 120, 100, 80, 60, 40, 20];
-const LINHAS_NUMERICAS = ["SpO₂ (%)", "EtCO₂ (mmHg)", "Temp. (°C)", "BIS / profund."];
-const LINHAS_DE_FARMACO = 7;
+const LINHAS_NUMERICAS = ["SpO₂ (%)", "EtCO₂ (mmHg)", "Temp. (°C)"];
+const LINHAS_DE_FARMACO = 6;
 
 function LinhaDaGrade({ rotulo, classe = "" }: { rotulo: string; classe?: string }) {
   return (
@@ -199,80 +193,60 @@ function ModeloDeFichaIntraoperatoria() {
   return (
     <div className="fichaModelo fichaIntra" aria-label="Modelo de ficha de anestesia do intraoperatório em branco">
       <div className="fmTopo">
-        <strong>Ficha de anestesia · intraoperatório</strong>
-        <span>Data: ____/____/______ · Sala: ______</span>
+        <strong>Ficha de anestesia</strong>
+        <span>Data: ____/____/______</span>
       </div>
 
       <div className="fmLinha">
         <Campo rotulo="Paciente" classe="fmLargo" />
         <Campo rotulo="Nascimento" />
-        <Campo rotulo="Sexo" classe="fmCurto" />
-        <Campo rotulo="Registro" />
-      </div>
-      <div className="fmLinha">
-        <Campo rotulo="Procedimento" classe="fmLargo" />
-        <Campo rotulo="Cirurgião" />
         <Campo rotulo="Peso (kg)" classe="fmCurto" />
-        <Opcoes rotulo="ASA" opcoes={["I", "II", "III", "IV", "V", "E"]} />
+        <Campo rotulo="ASA" classe="fmCurto" />
       </div>
       <div className="fmLinha">
-        <Campo rotulo="Anestesista responsável · CRM" classe="fmLargo" />
-        <Campo rotulo="Transferência de responsabilidade (hora · para quem)" classe="fmLargo" />
+        <Campo rotulo="Cirurgia" classe="fmLargo" />
+        <Campo rotulo="Cirurgião" />
       </div>
       <div className="fmLinha">
-        <Campo rotulo="Entrada na sala" /><Campo rotulo="Início anestesia" /><Campo rotulo="Início cirurgia" />
-        <Campo rotulo="Fim cirurgia" /><Campo rotulo="Fim anestesia" /><Campo rotulo="Saída da sala" />
-      </div>
-
-      <div className="fmLinha">
-        <Opcoes rotulo="Técnica" opcoes={["Geral bal.", "TIVA", "Raqui", "Peridural", "Bloqueio", "Sedação", "Local"]} />
+        <Campo rotulo="Início anestesia" /><Campo rotulo="Início cirurgia" />
+        <Campo rotulo="Fim cirurgia" /><Campo rotulo="Fim anestesia" />
       </div>
       <div className="fmLinha">
-        <Opcoes rotulo="Via aérea" opcoes={["Máscara", "ML", "IOT", "Videolaring."]} />
-        <Campo rotulo="Tubo nº · Cormack" /><Campo rotulo="Punção: nível · agulha" />
+        <Campo rotulo="Técnica" classe="fmLargo" />
+        <Campo rotulo="Via aérea" classe="fmLargo" />
       </div>
-      <div className="fmLinha">
-        <Opcoes rotulo="Monitorização" opcoes={["ECG", "PANI", "PAI", "SpO₂", "EtCO₂", "Temp.", "BIS", "TOF", "PVC", "SVD"]} />
-      </div>
+      <div className="fmLinha"><Campo rotulo="Monitorização" /></div>
 
       <div className="fmGradeRolagem" tabIndex={0} role="region" aria-label="Grade de registro do intraoperatório">
         <table className="fmGrade">
           <colgroup><col className="fmGradeRotulo" /></colgroup>
           <tbody>
-            {ESCALA_DA_GRADE.map((v, i) => (
-              <LinhaDaGrade key={v} rotulo={String(v)} classe={i === 0 ? "fmGradeInicio" : ""} />
-            ))}
+            {ESCALA_DA_GRADE.map((v) => <LinhaDaGrade key={v} rotulo={String(v)} />)}
             {LINHAS_NUMERICAS.map((r, i) => (
               <LinhaDaGrade key={r} rotulo={r} classe={i === 0 ? "fmGradeSeparador" : ""} />
             ))}
             {Array.from({ length: LINHAS_DE_FARMACO }, (_, i) => (
-              <LinhaDaGrade key={`f${i}`} rotulo={i === 0 ? "Fármacos · infusões" : ""} classe={i === 0 ? "fmGradeSeparador fmGradeFarmaco" : "fmGradeFarmaco"} />
+              <LinhaDaGrade key={`f${i}`} rotulo={i === 0 ? "Fármacos" : ""} classe={i === 0 ? "fmGradeSeparador fmGradeFarmaco" : "fmGradeFarmaco"} />
             ))}
-            <LinhaDaGrade rotulo="Eventos (nº)" classe="fmGradeSeparador" />
           </tbody>
         </table>
       </div>
-      <p className="fmLegenda">PAS ∨ · PAD ∧ · FC • · PAM ✕ — cada coluna vale 10 min; as linhas grossas marcam 1 hora.</p>
+      <p className="fmLegenda">PAS ∨ · PAD ∧ · FC • — cada coluna vale 10 min; as linhas grossas marcam 1 hora.</p>
 
       <div className="fmLinha">
-        <Campo rotulo="Cristaloide (mL)" /><Campo rotulo="Coloide (mL)" /><Campo rotulo="Hemocomponentes" />
-        <Campo rotulo="Diurese (mL)" /><Campo rotulo="Sangramento (mL)" />
+        <Campo rotulo="Hidratação (mL)" /><Campo rotulo="Diurese (mL)" /><Campo rotulo="Sangramento (mL)" />
       </div>
-      <Bloco rotulo="Eventos, intercorrências e condutas (nº · hora · descrição)" linhas={3} />
-      <div className="fmLinha">
-        <Opcoes rotulo="Destino" opcoes={["SRPA", "CTI", "Enfermaria"]} />
-        <Campo rotulo="Condições na saída da sala" classe="fmLargo" />
-      </div>
+      <Bloco rotulo="Intercorrências, condutas e transferência de responsabilidade" linhas={3} />
 
       <div className="fmLinha fmAssinatura">
-        <Campo rotulo="Anestesista" classe="fmLargo" /><Campo rotulo="CRM" /><Campo rotulo="RQE" />
+        <Campo rotulo="Destino" />
+        <Campo rotulo="Anestesista · CRM" classe="fmLargo" />
         <Campo rotulo="Assinatura" classe="fmLargo" />
       </div>
 
       <p className="fmRodape">
-        Itens do Anexo III da Resolução CFM nº 2.174/2017. Registro a no máximo cada 10 min:
-        SpO₂, EtCO₂ (quando usado), PA, FC, temperatura e profundidade anestésica (quando
-        monitorizada); monitorização invasiva a cada 15 min. Modelo livre de avanest.com.br.
+        Itens do Anexo III da Resolução CFM nº 2.174/2017: registro a no máximo cada 10 min de
+        SpO₂, EtCO₂, PA, FC e temperatura. Modelo livre de avanest.com.br.
       </p>
     </div>
   );
@@ -381,8 +355,8 @@ export default function FichaAnestesicaPage() {
         <section className="recBloco blocoDoModelo" id="modelo-intra">
           <h2>Modelo de ficha de anestesia do intraoperatório para imprimir</h2>
           <p>
-            Uma folha A4 com os itens do Anexo III: horários, técnica, monitorização, a grade de
-            4 horas para PA, FC e os parâmetros a cada 10 minutos, fármacos, balanço e
+            Uma folha A4, simples, com os itens do Anexo III: horários, técnica, via aérea, a
+            grade de 4 horas para PA, FC, SpO₂, EtCO₂ e temperatura, fármacos, balanço e
             intercorrências. Livre para imprimir, copiar e adaptar. Para ter em PDF, escolha
             “Salvar como PDF” na janela de impressão.
           </p>
