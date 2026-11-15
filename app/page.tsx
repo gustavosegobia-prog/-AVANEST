@@ -42,9 +42,23 @@ import { RodapePublico } from "@/components/rodape-publico";
 // escrito num campo chamado `applicationSubCategory` é uma afirmação; a mesma
 // frase solta no meio de um parágrafo é um palpite.
 //
-// `offers` sem preço de propósito: o valor vem do banco e muda com a campanha,
-// e preço escrito à mão aqui viraria mentira no primeiro reajuste — com o
-// agravante de o Google mostrar o número velho no resultado da busca.
+// O PREÇO DA OFERTA vem do banco, o mesmo "a partir de" da primeira tela
+// (lib/preco-de-entrada.ts), e nunca é escrito aqui: preço à mão viraria
+// mentira no primeiro reajuste. Sem ele, o Google recusa o resultado rico de
+// software ("falta o campo price" — auditoria de SEO de 15/11/2026). Quando a
+// tabela não responde, a oferta sai sem preço, como antes.
+function dadosEstruturados(precoDeEntrada: number | null) {
+  return {
+    ...DADOS_ESTRUTURADOS,
+    offers: precoDeEntrada == null ? DADOS_ESTRUTURADOS.offers : {
+      ...DADOS_ESTRUTURADOS.offers,
+      price: String(precoDeEntrada),
+      // O Google pede validade para oferta com preço; o fim do ano, calculado.
+      priceValidUntil: `${new Date().getFullYear()}-12-31`,
+    },
+  };
+}
+
 const DADOS_ESTRUTURADOS = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -207,7 +221,8 @@ const fonteDosTitulos = Manrope({ subsets: ["latin"], weight: "600", variable: "
 const fonteDoTexto = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--fonte-capa-texto", display: "swap" });
 
 export default async function HomePage() {
-  const precoDosPlanos = fraseDoPrecoDeEntrada(await precoDeEntrada());
+  const preco = await precoDeEntrada();
+  const precoDosPlanos = fraseDoPrecoDeEntrada(preco);
   const whatsappUrl =
     "https://wa.me/5541997870810?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20conversa%20de%2015%20minutos%20sobre%20o%20AVANEST.";
 
@@ -217,10 +232,10 @@ export default async function HomePage() {
       <AbrirNoLogin />
       <script
         type="application/ld+json"
-        // O conteúdo é a constante logo acima, escrita à mão neste arquivo:
-        // nada aqui vem de usuário, de banco ou de URL, então não há entrada
-        // externa para escapar.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(DADOS_ESTRUTURADOS) }}
+        // O conteúdo é a constante logo acima, escrita à mão neste arquivo, e
+        // o preço, um número da tabela de planos: nada vem de usuário ou de
+        // URL, então não há entrada externa para escapar.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(dadosEstruturados(preco)) }}
       />
       {/* `avnNavCapa`: no computador esta barra acompanha a moldura do hero,
           que é mais larga que a caixa central das outras páginas. Sem a classe,

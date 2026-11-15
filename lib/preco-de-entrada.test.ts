@@ -42,7 +42,8 @@ test("preço da capa: vem da tabela, com cache, e a capa continua estática", ()
   const capa = ler("app/page.tsx");
   // O número nunca é digitado na capa.
   assert.doesNotMatch(capa, /a partir de R\$/i);
-  assert.match(capa, /fraseDoPrecoDeEntrada\(await precoDeEntrada\(\)\)/);
+  // O mesmo número vai à frase da primeira tela e à oferta dos dados estruturados.
+  assert.match(capa, /const preco = await precoDeEntrada\(\);\s*const precoDosPlanos = fraseDoPrecoDeEntrada\(preco\);/);
   assert.match(capa, /\{precoDosPlanos && <p className="avnOfertaPreco">/);
   // A capa refaz no mesmo ritmo da consulta, e não pede cookie (que a tornaria dinâmica).
   assert.match(capa, new RegExp(`export const revalidate = ${REVALIDAR_PRECO_DA_CAPA};`));

@@ -36,7 +36,7 @@ export function PaginaDeEscore({
   return (
     <main className="avnLanding">
       <header className="avnNav">
-        <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
+        <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
           {/* Dois rótulos, e o CSS escolhe — o mesmo arranjo da capa. O texto
               longo não cabe em 390px junto com "Ver planos", e a barra passava

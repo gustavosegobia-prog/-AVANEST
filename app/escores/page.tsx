@@ -88,7 +88,7 @@ export default function EscoresPage() {
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <header className="avnNav">
-        <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
+        <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
           <a className="avnLogin" href="/recursos">
             <span className="avnSoLargo">O que o sistema faz</span>
