@@ -176,9 +176,11 @@ function ModeloDeFicha() {
 // o intervalo máximo da resolução para PA, FC, SpO₂, EtCO₂ e temperatura. Sem
 // linha de horários no topo: a grade começa direto na escala (pedido do Gustavo).
 const COLUNAS_DA_GRADE = 24;
-const ESCALA_DA_GRADE = [220, 200, 180, 160, 140, 120, 100, 80, 60, 40, 20];
+// Sem números na escala (pedido do Gustavo): cada um anota a faixa que usa.
+const LINHAS_DO_GRAFICO = 11;
 const LINHAS_NUMERICAS = ["SpO₂ (%)", "EtCO₂ (mmHg)", "Temp. (°C)"];
-const LINHAS_DE_FARMACO = 6;
+const LINHAS_DE_GAS = ["O₂ (L/min)", "Ar comprimido", "Sevoflurano (%)"];
+const LINHAS_DE_FARMACO = 5;
 
 function LinhaDaGrade({ rotulo, classe = "" }: { rotulo: string; classe?: string }) {
   return (
@@ -221,8 +223,11 @@ function ModeloDeFichaIntraoperatoria() {
         <table className="fmGrade">
           <colgroup><col className="fmGradeRotulo" /></colgroup>
           <tbody>
-            {ESCALA_DA_GRADE.map((v) => <LinhaDaGrade key={v} rotulo={String(v)} />)}
+            {Array.from({ length: LINHAS_DO_GRAFICO }, (_, i) => <LinhaDaGrade key={`g${i}`} rotulo="" />)}
             {LINHAS_NUMERICAS.map((r, i) => (
+              <LinhaDaGrade key={r} rotulo={r} classe={i === 0 ? "fmGradeSeparador" : ""} />
+            ))}
+            {LINHAS_DE_GAS.map((r, i) => (
               <LinhaDaGrade key={r} rotulo={r} classe={i === 0 ? "fmGradeSeparador" : ""} />
             ))}
             {Array.from({ length: LINHAS_DE_FARMACO }, (_, i) => (
@@ -356,7 +361,7 @@ export default function FichaAnestesicaPage() {
           <h2>Modelo de ficha de anestesia do intraoperatório para imprimir</h2>
           <p>
             Uma folha A4, simples, com os itens do Anexo III: horários, técnica, via aérea, a
-            grade de 4 horas para PA, FC, SpO₂, EtCO₂ e temperatura, fármacos, balanço e
+            grade de 4 horas para PA, FC, SpO₂, EtCO₂, temperatura, gases, fármacos, balanço e
             intercorrências. Livre para imprimir, copiar e adaptar. Para ter em PDF, escolha
             “Salvar como PDF” na janela de impressão.
           </p>

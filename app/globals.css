@@ -6922,7 +6922,7 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .fmGrade th,.fmGrade td{border:1px solid #bbb;padding:0;height:13px}
 .fmGrade th[scope=row]{padding:0 4px;text-align:right;font-weight:600;color:#333;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;border-color:#888}
-.fmGrade col.fmGradeRotulo{width:104px}
+.fmGrade col.fmGradeRotulo{width:88px}
 .fmGrade tr:first-child>*{border-top:1.5px solid #444}
 .fmGrade td:nth-child(6n+1){border-right-color:#666}
 .fmGrade .fmGradeSeparador>*{border-top:1.5px solid #444}
