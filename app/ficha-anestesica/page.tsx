@@ -244,6 +244,10 @@ function ModeloDeFichaIntraoperatoria() {
         <Campo rotulo="Via aérea" />
         <Campo rotulo="Monitorização" />
       </div>
+      <div className="fmLinha">
+        <Campo rotulo="Início anestesia" /><Campo rotulo="Início cirurgia" />
+        <Campo rotulo="Fim cirurgia" /><Campo rotulo="Fim anestesia" />
+      </div>
 
       <div className="fmCorpo">
         <div className="fmPrincipal">
