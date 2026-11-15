@@ -110,3 +110,11 @@ test("sexo abreviado como no papel", () => {
   assert.equal(sexoAbreviado("Não informado"), "");
   assert.equal(sexoAbreviado(null), "");
 });
+
+test("a célula da pré-anestésica guarda o espaço digitado: dá para escrever a segunda palavra", () => {
+  // 15/11/2026: no diagnóstico pré-operatório, "Fratura" + espaço voltava a "Fratura".
+  for (const campo of ["diagnostico", "medicacao_uso", "observacoes_pre", "ap_endocrino", "anestesia_anterior"] as const) {
+    assert.equal(camposDoPapel({ [chaveDoCampo(campo)]: "Fratura " })[campo], "Fratura ", campo);
+    assert.equal(camposDoPapel({ [chaveDoCampo(campo)]: "Fratura de fêmur" })[campo], "Fratura de fêmur", campo);
+  }
+});
