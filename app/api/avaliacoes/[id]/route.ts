@@ -64,6 +64,20 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   // os documentos gerados e a referência "avaliação anterior" de uma
   // reavaliação posterior.
   await admin.from("documentos").delete().eq("assessment_id", assessment.id);
+  // A ficha anestésica aberta a partir desta avaliação (15/11/2026: "não
+  // apaga"). A ligação não tinha ON DELETE e travava a exclusão. A ficha não
+  // perde nada: a pré-anestésica foi COPIADA para ela na abertura
+  // (preanestesica_origem, lib/evolucao/importar.ts). Só deixa de apontar
+  // para a avaliação apagada, como o agendamento e o financeiro.
+  const { error: erroDaFicha } = await admin
+    .from("evolucoes_anestesicas")
+    .update({ avaliacao_id: null })
+    .eq("avaliacao_id", assessment.id)
+    .eq("institution_id", actor.institution_id);
+  if (erroDaFicha) {
+    console.error("[api/avaliacoes/delete] ficha", erroDaFicha);
+    return NextResponse.json({ error: "Não foi possível desligar a ficha anestésica desta avaliação. Tente novamente." }, { status: 500 });
+  }
   await admin
     .from("avaliacoes")
     .update({ avaliacao_anterior_id: null })
@@ -75,7 +89,12 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     .delete()
     .eq("id", assessment.id)
     .eq("institution_id", actor.institution_id);
-  if (deleteError) return NextResponse.json({ error: "Não foi possível excluir a avaliação. Tente novamente." }, { status: 500 });
+  if (deleteError) {
+    // O motivo fica no log do servidor: a mensagem genérica sozinha escondeu
+    // por dias que era a ficha anestésica travando a exclusão.
+    console.error("[api/avaliacoes/delete]", deleteError);
+    return NextResponse.json({ error: "Não foi possível excluir a avaliação. Tente novamente." }, { status: 500 });
+  }
 
   // O histórico responde "quem apagou o quê, e de quem era": o nome entra
   // por escrito porque o perfil do autor pode ser excluído depois, e aí o

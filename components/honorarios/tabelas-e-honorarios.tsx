@@ -124,13 +124,12 @@ export function TabelasEHonorarios({
             </dl>
           )}
         </header>
-        {/* Liberado para todos ainda em desenvolvimento: o aviso fica no alto,
-            à vista, e não escondido num rodapé. */}
+        {/* O "em desenvolvimento" saiu em 15/11/2026, a pedido do responsável.
+            Fica o que vale sempre: o contrato do plano é quem manda no valor. */}
         <p className={estilos.emDesenvolvimento} role="note">
-          <Icone nome="ampulheta" tamanho={16} />
+          <Icone nome="alerta" tamanho={16} />
           <span>
-            <b>Em desenvolvimento.</b> O cálculo do honorário ainda está sendo ajustado: use o valor como previsão e
-            confira com o contrato do plano antes de cobrar. Achou algo errado? Conte pelo balão de conversa.
+            Confira o valor com o contrato do plano antes de cobrar. Achou algo errado? Conte pelo balão de conversa.
           </span>
         </p>
 

@@ -2312,6 +2312,8 @@ button:disabled{cursor:not-allowed}
 /* Honorário previsto do mês na Produção (só o super-admin, enquanto o módulo é conferido). */
 /* O honorário previsto do mês: o valor, em quantas anestesias ele se baseia,
    a diferença para o anotado e o botão que calcula o que falta. */
+.producaoEmDesenvolvimento{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-style:normal;
+  background:var(--cor-atencao-suave);color:var(--cor-atencao);font-size:11.5px;font-weight:800;vertical-align:1px}
 
 /* ── Indicadores do Financeiro ───────────────────────────────────────────── */
 
@@ -3662,6 +3664,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* Link do menu para outra página (Tabelas e honorários): o desenho de um
    item direto do menu, e não o de um link de texto. */
 /* Módulo aberto ainda em desenvolvimento: a etiqueta vai no próprio item do menu. */
+.finMenuDesenvolvimento{flex:none;padding:1px 7px;border-radius:999px;background:var(--cor-atencao-suave);
+  color:var(--cor-atencao);font-size:10.5px;font-weight:800;white-space:nowrap}
 
 /* Título de grupo que não é botão (Escala): o mesmo peso do título de grupo
    do Financeiro — é o pai das opções de baixo, e tem de parecer. */

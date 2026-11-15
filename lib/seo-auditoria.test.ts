@@ -27,3 +27,13 @@ test("seo: o logo que leva à capa tem o nome que se lê na tela", () => {
 test("seo: a volta do login fica fora da busca", () => {
   assert.match(ler("app/robots.ts"), /"\/auth\/"/);
 });
+
+test("excluir avaliação: a ficha anestésica ligada a ela é desligada antes, e não trava mais", () => {
+  // 15/11/2026: "não apaga" — evolucoes_anestesicas.avaliacao_id não tem ON
+  // DELETE e o banco recusava. A ficha guarda a cópia da pré-anestésica.
+  const rota = ler("app/api/avaliacoes/[id]/route.ts");
+  const desliga = rota.indexOf('.from("evolucoes_anestesicas")\n    .update({ avaliacao_id: null })');
+  const apaga = rota.indexOf('.from("avaliacoes")\n    .delete()');
+  assert.ok(desliga > 0 && apaga > desliga, "a ficha é desligada antes do delete da avaliação");
+  assert.match(ler("lib/evolucao/importar.ts"), /preanestesica_origem: avaliacao \? \{ avaliacao_id: avaliacao\.id/);
+});
