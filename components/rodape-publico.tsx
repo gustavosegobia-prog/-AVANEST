@@ -23,6 +23,20 @@ export const PAGINAS_DE_CONTEUDO = [
   { href: "/escores", nome: "Escores da avaliação" },
 ] as const;
 
+/**
+ * Os quatro escores, um por um (15/11/2026). No Search Console, Apfel,
+ * Lee e ASA estavam "detectadas, mas não indexadas": o rodapé só levava ao
+ * índice dos escores, e o STOP-Bang — o único com links de várias páginas —
+ * era o único indexado. Aqui cada página pública passa a ligar a cada um, com
+ * o nome que se pesquisa.
+ */
+export const ESCORES_NO_RODAPE = [
+  { href: "/escores/stop-bang", nome: "STOP-Bang" },
+  { href: "/escores/apfel", nome: "Escore de Apfel" },
+  { href: "/escores/indice-de-lee", nome: "Índice de Lee (RCRI)" },
+  { href: "/escores/classificacao-asa", nome: "Classificação ASA" },
+] as const;
+
 export function RodapePublico() {
   return (
     <footer className="avnFooter rodapePublico">
@@ -30,6 +44,7 @@ export function RodapePublico() {
         <nav aria-label="Para anestesiologistas">
           <b>Para anestesiologistas</b>
           {PAGINAS_DE_CONTEUDO.map((p) => <Link key={p.href} href={p.href}>{p.nome}</Link>)}
+          {ESCORES_NO_RODAPE.map((p) => <Link key={p.href} href={p.href}>{p.nome}</Link>)}
         </nav>
         <nav aria-label="O sistema">
           <b>O sistema</b>

@@ -37,3 +37,12 @@ test("excluir avaliação: a ficha anestésica ligada a ela é desligada antes, 
   assert.ok(desliga > 0 && apaga > desliga, "a ficha é desligada antes do delete da avaliação");
   assert.match(ler("lib/evolucao/importar.ts"), /preanestesica_origem: avaliacao \? \{ avaliacao_id: avaliacao\.id/);
 });
+
+test("seo: o rodapé de todas as páginas públicas liga a cada escore (Search Console, 15/11/2026)", () => {
+  const rodape = ler("components/rodape-publico.tsx");
+  for (const c of ["/escores/stop-bang", "/escores/apfel", "/escores/indice-de-lee", "/escores/classificacao-asa"]) {
+    assert.match(rodape, new RegExp(`href: "${c}"`), c);
+    assert.match(ler("app/sitemap.ts"), new RegExp(`caminho: "${c}"`), `${c} no sitemap`);
+  }
+  assert.match(rodape, /\{ESCORES_NO_RODAPE\.map\(\(p\) => <Link key=\{p\.href\} href=\{p\.href\}>\{p\.nome\}<\/Link>\)\}/);
+});
