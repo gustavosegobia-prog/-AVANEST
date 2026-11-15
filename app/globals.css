@@ -6892,6 +6892,9 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
 .fmOpcoes{flex:2 1 200px;display:flex;align-items:flex-end;gap:12px;min-height:30px;padding-bottom:3px;
   border-bottom:1px solid #444}
 .fmOpcoes b{padding:0 3px;font-size:12px;font-weight:600}
+/* O rótulo das opções em cima, na mesma altura do rótulo dos campos ao lado. */
+.fmOpcoes{flex-wrap:wrap;align-content:space-between;column-gap:14px}
+.fmOpcoes span{flex:0 0 100%;margin-bottom:auto}
 .fmAssinatura{margin-top:14px}
 .fmAssinatura .fmCampo{min-height:38px}
 .fichaModelo .fmRodape{max-width:none;margin:10px 0 0;font-size:9.5px;line-height:1.4;color:#444}
@@ -6931,17 +6934,20 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
   html[data-imprimir="pre"] .blocoDoModelo:not(#modelo),
   html[data-imprimir="intra"] .blocoDoModelo:not(#modelo-intra){display:none!important}
   html:not([data-imprimir]) #modelo{break-before:page}
-  /* A do intraoperatório não cabe em uma A4 com as linhas altas da outra: medida própria. */
-  .fichaIntra .fmCampo,.fichaIntra .fmOpcoes{min-height:27px}
-  .fichaIntra .fmLinha,.fichaIntra .fmBloco{margin-bottom:5px}
-  .fichaIntra .fmBloco i{height:19px}
-  .fichaIntra .fmAssinatura{margin-top:8px}
-  .fichaIntra .fmAssinatura .fmCampo{min-height:32px}
   .fmGradeRolagem{overflow:visible}
   .fmGrade{min-width:0}
-  .fmGrade th,.fmGrade td{height:15px}
-  .fmGrade .fmGradeFarmaco th,.fmGrade .fmGradeFarmaco td,.fmGrade .fmGradeSeparador th,.fmGrade .fmGradeSeparador td{height:20px}
+  .fmGrade th,.fmGrade td{height:17px}
+  .fmGrade .fmGradeFarmaco th,.fmGrade .fmGradeFarmaco td,.fmGrade .fmGradeSeparador th,.fmGrade .fmGradeSeparador td{height:22px}
   .fmGrade th,.fmGrade td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  /* As folhas simples sobram espaço na A4: ele vira linha mais alta para escrever. */
+  .fichaModelo .fmCampo,.fichaModelo .fmOpcoes{min-height:44px}
+  .fichaModelo .fmBloco i{height:31px}
+  .fichaModelo .fmLinha,.fichaModelo .fmBloco{margin-bottom:12px}
+  .fichaIntra .fmCampo{min-height:40px}
+  .fichaIntra .fmLinha,.fichaIntra .fmBloco{margin-bottom:9px}
+  .fichaIntra .fmBloco i{height:28px}
+  .fichaIntra .fmGrade th,.fichaIntra .fmGrade td{height:21px}
+  .fichaIntra .fmGrade .fmGradeFarmaco th,.fichaIntra .fmGrade .fmGradeFarmaco td,.fichaIntra .fmGrade .fmGradeSeparador th,.fichaIntra .fmGrade .fmGradeSeparador td{height:26px}
 }
 
 /* ── O rodapé das páginas públicas (components/rodape-publico.tsx) ──────────
