@@ -278,10 +278,12 @@ test("os alvos das etapas novas existem na interface", () => {
     "o painel precisa passar ao tutorial o que a pessoa tem");
 });
 
-test("Tabelas e honorários: ensinado ao Financeiro, com o aviso de desenvolvimento", () => {
+test("Tabelas e honorários: ensinado ao Financeiro, com o lembrete do contrato", () => {
   const passo = passosDoTutorial(tudo).find((e) => e.titulo === "Tabelas e honorários");
   assert.ok(passo, "quem tem o Financeiro aprende onde ficam as tabelas dos planos");
   assert.equal(passo!.area, "financeiro");
-  assert.match(passo!.texto, /em desenvolvimento/);
+  // O "em desenvolvimento" saiu em 15/11/2026; o lembrete do contrato fica.
+  assert.doesNotMatch(passo!.texto, /em desenvolvimento/);
+  assert.match(passo!.texto, /Confira o valor com o contrato antes de cobrar\./);
   assert.ok(!passosDoTutorial(medico).some((e) => e.titulo === "Tabelas e honorários"), "sem Financeiro, sem a etapa");
 });

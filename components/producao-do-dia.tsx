@@ -771,7 +771,7 @@ export function ProducaoDoMes({
   const [salvandoBaixa, setSalvandoBaixa] = useState(false);
   /**
    * O honorário previsto de cada anestesia (Tabelas e honorários). Aberto a
-   * todos desde 27/10/2026, com a etiqueta de "em desenvolvimento"; e só
+   * todos desde 27/10/2026 (a etiqueta de "em desenvolvimento" saiu em 15/11/2026); e só
    * depois que o banco tem as colunas — antes disso a linha continua
    * exatamente como era.
    */
@@ -1075,7 +1075,7 @@ export function ProducaoDoMes({
         // ele se baseia, e a diferença para o anotado só onde dá para comparar.
         <section className="clinicalPanel producaoHonorarioMes" aria-label="Honorário previsto no mês">
           <div className="producaoHonorarioValor">
-            <span>Honorário previsto pelas tabelas dos planos <em className="producaoEmDesenvolvimento">em desenvolvimento</em></span>
+            <span>Honorário previsto pelas tabelas dos planos</span>
             <strong>{mascara(money(honorarioDoMes.previsto))}</strong>
             <small>
               {honorarioDoMes.calculadas === honorarioDoMes.total
@@ -1602,7 +1602,7 @@ export function ProducaoRecebida({ mes, nomeMes, ano }: {
       {comHonorario && linhas.length > 0 && (
         <section className="clinicalPanel producaoHonorarioMes" aria-label="Honorário da produção enviada">
           <div className="producaoHonorarioValor">
-            <span>Honorário pelas tabelas dos planos <em className="producaoEmDesenvolvimento">em desenvolvimento</em></span>
+            <span>Honorário pelas tabelas dos planos</span>
             <strong>{mascara(money(honorario.previsto))}</strong>
             <small>
               {honorario.calculadas === honorario.total

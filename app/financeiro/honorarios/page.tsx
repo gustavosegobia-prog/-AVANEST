@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 // Tabelas e honorários: TUSS, CBHPM, contratos dos convênios e as regras do
 // cálculo do honorário anestésico (migração 202610230011, lib/honorarios.ts).
 //
-// Liberado para o Financeiro de cada clínica (27/10/2026), ainda com o aviso
-// de "em desenvolvimento" no alto. Quem entra: quem tem o Financeiro da
+// Liberado para o Financeiro de cada clínica (27/10/2026); o aviso de "em
+// desenvolvimento" saiu em 15/11/2026, e fica o lembrete do contrato. Quem entra: quem tem o Financeiro da
 // própria organização (pode_tabelas_honorarios) e o super-admin. A trava de
 // verdade continua sendo o banco: as tabelas da clínica só se leem com
 // pode_tabelas_honorarios(), e a TUSS — que vale para todas — só se grava como

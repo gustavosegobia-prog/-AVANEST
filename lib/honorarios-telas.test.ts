@@ -282,7 +282,10 @@ describe("tabelas e honorários: liberado às clínicas", () => {
     assert.doesNotMatch(ler("components/producao-do-dia.tsx"), /superAdmin && itens\.some/);
     const pagina = ler("app/financeiro/honorarios/page.tsx");
     assert.match(pagina, /pode_tabelas_honorarios/, "quem não tem o Financeiro continua de fora");
-    assert.match(ler("components/honorarios/tabelas-e-honorarios.tsx"), /Em desenvolvimento\./);
+    // O "Em desenvolvimento." saiu em 15/11/2026; o lembrete do contrato fica à vista.
+    const tela = ler("components/honorarios/tabelas-e-honorarios.tsx");
+    assert.doesNotMatch(tela, /Em desenvolvimento\./);
+    assert.match(tela, /Confira o valor com o contrato do plano antes de cobrar\./);
   });
 });
 
