@@ -13,7 +13,7 @@ const TRILHA = [
 const REVISADO_EM = "2026-08-27";
 
 export const metadata: Metadata = paginaPublica({
-  titulo: "Escore de Apfel: risco de náusea e vômito pós-operatório | AVANEST",
+  titulo: "Escore de Apfel: calculadora de risco de NVPO | AVANEST",
   descricao: "Calculadora do escore de Apfel para NVPO: os quatro fatores, a incidência esperada "
     + "de cada total e como a profilaxia costuma acompanhar o número.",
   caminho: CAMINHO,

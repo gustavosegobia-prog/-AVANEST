@@ -3774,6 +3774,40 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
   .fichaModelo .fmBloco i{height:24px}
   .fichaModelo .fmLinha,.fichaModelo .fmBloco{margin-bottom:9px}
 }
+/* ── A folha do intraoperatório (app/ficha-anestesica, ModeloDeFichaIntraoperatoria) ──
+   Mesma linguagem da folha pré-anestésica, mais a grade: 24 colunas de 10 min
+   (4 h), a escala de PA/FC de 20 a 220 e as linhas de parâmetros e fármacos. */
+.fichaIntra .fmOpcoes{flex-wrap:wrap;row-gap:2px}
+.fmGradeRolagem{overflow-x:auto;margin:10px 0 2px}
+.fmGrade{width:100%;min-width:640px;border-collapse:collapse;table-layout:fixed;font-size:9px}
+.fmGrade th,.fmGrade td{border:1px solid #bbb;padding:0;height:13px}
+.fmGrade th[scope=row]{padding:0 4px;text-align:right;font-weight:600;color:#333;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;border-color:#888}
+.fmGrade thead th{height:17px;border-bottom:1.5px solid #444}
+.fmGrade thead th:first-child{width:104px;text-align:right;padding:0 4px;font-weight:700}
+.fmGrade td:nth-child(6n+1){border-right-color:#666}
+.fmGrade .fmGradeSeparador>*{border-top:1.5px solid #444}
+.fmGrade .fmGradeFarmaco th,.fmGrade .fmGradeFarmaco td,.fmGrade .fmGradeSeparador th,.fmGrade .fmGradeSeparador td{height:17px}
+.fmGrade .fmGradeFarmaco th{text-align:left;font-weight:600}
+.fichaModelo .fmLegenda{max-width:none;margin:2px 0 8px;font-size:9.5px;color:#444}
+@media print{
+  /* As duas folhas na mesma página: o botão diz qual imprimir (components/botao-imprimir.tsx). */
+  html[data-imprimir="pre"] .blocoDoModelo:not(#modelo),
+  html[data-imprimir="intra"] .blocoDoModelo:not(#modelo-intra){display:none!important}
+  html:not([data-imprimir]) #modelo{break-before:page}
+  /* A do intraoperatório não cabe em uma A4 com as linhas altas da outra: medida própria. */
+  .fichaIntra .fmCampo,.fichaIntra .fmOpcoes{min-height:27px}
+  .fichaIntra .fmLinha,.fichaIntra .fmBloco{margin-bottom:5px}
+  .fichaIntra .fmBloco i{height:19px}
+  .fichaIntra .fmAssinatura{margin-top:8px}
+  .fichaIntra .fmAssinatura .fmCampo{min-height:32px}
+  .fmGradeRolagem{overflow:visible}
+  .fmGrade{min-width:0}
+  .fmGrade th,.fmGrade td{height:15px}
+  .fmGrade thead th{height:19px}
+  .fmGrade .fmGradeFarmaco th,.fmGrade .fmGradeFarmaco td,.fmGrade .fmGradeSeparador th,.fmGrade .fmGradeSeparador td{height:20px}
+  .fmGrade th,.fmGrade td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 
 /* ── O rodapé das páginas públicas (components/rodape-publico.tsx) ──────────
    Três colunas de links em vez de uma fila: com nove destinos a fila quebrava
