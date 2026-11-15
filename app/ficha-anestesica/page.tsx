@@ -179,8 +179,8 @@ function ModeloDeFicha() {
 // A FOLHA DO INTRAOPERATÓRIO. Quem pesquisa "ficha de anestesia" quase sempre
 // quer esta, e a página só tinha a da avaliação. Os itens são os do Anexo III
 // (a até h); a grade cobre 4 horas em colunas de 10 minutos, que é o intervalo
-// máximo da resolução para PA, FC, SpO₂, EtCO₂ e temperatura. Os horários do
-// topo da grade ficam em branco: a folha serve para qualquer hora do dia.
+// máximo da resolução para PA, FC, SpO₂, EtCO₂ e temperatura. Sem linha de
+// horários no topo: a grade começa direto na escala (pedido do Gustavo).
 const COLUNAS_DA_GRADE = 24;
 const ESCALA_DA_GRADE = [220, 200, 180, 160, 140, 120, 100, 80, 60, 40, 20];
 const LINHAS_NUMERICAS = ["SpO₂ (%)", "EtCO₂ (mmHg)", "Temp. (°C)", "BIS / profund."];
@@ -237,9 +237,7 @@ function ModeloDeFichaIntraoperatoria() {
 
       <div className="fmGradeRolagem" tabIndex={0} role="region" aria-label="Grade de registro do intraoperatório">
         <table className="fmGrade">
-          <thead>
-            <tr><th scope="col">Horário</th>{Array.from({ length: COLUNAS_DA_GRADE }, (_, i) => <th key={i} scope="col" />)}</tr>
-          </thead>
+          <colgroup><col className="fmGradeRotulo" /></colgroup>
           <tbody>
             {ESCALA_DA_GRADE.map((v, i) => (
               <LinhaDaGrade key={v} rotulo={String(v)} classe={i === 0 ? "fmGradeInicio" : ""} />
@@ -254,7 +252,7 @@ function ModeloDeFichaIntraoperatoria() {
           </tbody>
         </table>
       </div>
-      <p className="fmLegenda">PAS ∨ · PAD ∧ · FC • · PAM ✕ — escreva a hora no topo das colunas (uma a cada 10 min).</p>
+      <p className="fmLegenda">PAS ∨ · PAD ∧ · FC • · PAM ✕ — cada coluna vale 10 min; as linhas grossas marcam 1 hora.</p>
 
       <div className="fmLinha">
         <Campo rotulo="Cristaloide (mL)" /><Campo rotulo="Coloide (mL)" /><Campo rotulo="Hemocomponentes" />
