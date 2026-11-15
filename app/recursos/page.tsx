@@ -254,7 +254,7 @@ export default function RecursosPage() {
       />
     <main className="avnLanding">
       <header className="avnNav">
-        <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
+        <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
           <a className="avnLogin" href="/login">Login</a>
           <a className="avnPrimary" href="/planos">Ver planos</a>

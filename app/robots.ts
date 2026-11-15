@@ -18,6 +18,8 @@ import type { MetadataRoute } from "next";
 
 const PRIVADO = [
   "/api/",
+  // A volta do login por e-mail: só redireciona, nada a ler.
+  "/auth/",
   "/dashboard",
   "/avaliacoes",
   "/pacientes",
