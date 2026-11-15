@@ -105,7 +105,12 @@ export function camposDoPapel(d: Dados): Record<CampoDoPapel, string> {
     const v = d[chaveDoCampo(c)];
     if (typeof v !== "string") continue;
     if (c === "ap_respiratorio" && respiratorioAntigo && v.trim() === respiratorioAntigo) continue;
-    saida[c] = v.trim();
+    // Como foi digitado, SEM aparar: a célula da tela mostra este valor a cada
+    // tecla, e aparar aqui apagava o espaço no fim assim que ele era digitado
+    // — "Fratura" + espaço voltava a "Fratura", e não dava para escrever a
+    // segunda palavra (15/11/2026, no diagnóstico pré-operatório). No papel,
+    // espaço sobrando não aparece.
+    saida[c] = v;
   }
   return saida;
 }
