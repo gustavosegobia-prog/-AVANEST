@@ -20,11 +20,12 @@ import { BotaoImprimir } from "@/components/botao-imprimir";
 // primeira semana.
 //
 // O MODELO PARA IMPRIMIR é o que faz esta página merecer o primeiro resultado:
-// quem pesquisa "ficha anestésica" muitas vezes quer a folha, e a folha está
-// aqui, com os itens do Anexo II, sem cadastro.
+// quem pesquisa "ficha anestésica" muitas vezes quer a folha, e as folhas estão
+// aqui, sem cadastro: a do intraoperatório (Anexo III) e a pré-anestésica
+// (Anexo II), cada uma com o seu botão de imprimir.
 
 const CAMINHO = "/ficha-anestesica";
-const REVISADO_EM = "2026-10-10";
+const REVISADO_EM = "2026-11-15";
 const RESOLUCAO = "https://sistemas.cfm.org.br/normas/arquivos/resolucoes/BR/2017/2174_2017.pdf";
 
 // O TÍTULO E A DESCRIÇÃO falam a língua da busca, não a do índice da página.
@@ -36,8 +37,8 @@ const RESOLUCAO = "https://sistemas.cfm.org.br/normas/arquivos/resolucoes/BR/201
 // texto porque não há arquivo Word aqui — só o que a página entrega de fato.
 const TITULO = "Ficha anestésica: modelo grátis para imprimir";
 const DESCRICAO =
-  "Modelo de ficha anestésica grátis para imprimir ou salvar em PDF, sem cadastro. "
-  + "E o que a ficha de anestesia deve conter segundo a Resolução CFM 2.174/2017.";
+  "Modelos de ficha anestésica grátis (intraoperatório e pré-anestésica) para imprimir "
+  + "ou salvar em PDF, sem cadastro, com os itens da Resolução CFM 2.174/2017.";
 
 export const metadata: Metadata = paginaPublica({
   titulo: `${TITULO} | AVANEST`,
@@ -54,9 +55,10 @@ const TRILHA = [
 const INDICE = [
   { id: "tres-fichas", titulo: "As três fichas" },
   { id: "intraoperatorio", titulo: "Ficha de anestesia" },
+  { id: "modelo-intra", titulo: "Modelo da ficha de anestesia" },
   { id: "recuperacao", titulo: "Recuperação pós-anestésica" },
   { id: "pre-anestesica", titulo: "Ficha pré-anestésica" },
-  { id: "modelo", titulo: "Modelo para imprimir" },
+  { id: "modelo", titulo: "Modelo da ficha pré-anestésica" },
   { id: "papel-ou-sistema", titulo: "Papel ou sistema" },
 ];
 
@@ -174,6 +176,110 @@ function ModeloDeFicha() {
   );
 }
 
+// A FOLHA DO INTRAOPERATÓRIO. Quem pesquisa "ficha de anestesia" quase sempre
+// quer esta, e a página só tinha a da avaliação. Os itens são os do Anexo III
+// (a até h); a grade cobre 4 horas em colunas de 10 minutos, que é o intervalo
+// máximo da resolução para PA, FC, SpO₂, EtCO₂ e temperatura. Os horários do
+// topo da grade ficam em branco: a folha serve para qualquer hora do dia.
+const COLUNAS_DA_GRADE = 24;
+const ESCALA_DA_GRADE = [220, 200, 180, 160, 140, 120, 100, 80, 60, 40, 20];
+const LINHAS_NUMERICAS = ["SpO₂ (%)", "EtCO₂ (mmHg)", "Temp. (°C)", "BIS / profund."];
+const LINHAS_DE_FARMACO = 7;
+
+function LinhaDaGrade({ rotulo, classe = "" }: { rotulo: string; classe?: string }) {
+  return (
+    <tr className={classe}>
+      <th scope="row">{rotulo}</th>
+      {Array.from({ length: COLUNAS_DA_GRADE }, (_, i) => <td key={i} />)}
+    </tr>
+  );
+}
+
+function ModeloDeFichaIntraoperatoria() {
+  return (
+    <div className="fichaModelo fichaIntra" aria-label="Modelo de ficha de anestesia do intraoperatório em branco">
+      <div className="fmTopo">
+        <strong>Ficha de anestesia · intraoperatório</strong>
+        <span>Data: ____/____/______ · Sala: ______</span>
+      </div>
+
+      <div className="fmLinha">
+        <Campo rotulo="Paciente" classe="fmLargo" />
+        <Campo rotulo="Nascimento" />
+        <Campo rotulo="Sexo" classe="fmCurto" />
+        <Campo rotulo="Registro" />
+      </div>
+      <div className="fmLinha">
+        <Campo rotulo="Procedimento" classe="fmLargo" />
+        <Campo rotulo="Cirurgião" />
+        <Campo rotulo="Peso (kg)" classe="fmCurto" />
+        <Opcoes rotulo="ASA" opcoes={["I", "II", "III", "IV", "V", "E"]} />
+      </div>
+      <div className="fmLinha">
+        <Campo rotulo="Anestesista responsável · CRM" classe="fmLargo" />
+        <Campo rotulo="Transferência de responsabilidade (hora · para quem)" classe="fmLargo" />
+      </div>
+      <div className="fmLinha">
+        <Campo rotulo="Entrada na sala" /><Campo rotulo="Início anestesia" /><Campo rotulo="Início cirurgia" />
+        <Campo rotulo="Fim cirurgia" /><Campo rotulo="Fim anestesia" /><Campo rotulo="Saída da sala" />
+      </div>
+
+      <div className="fmLinha">
+        <Opcoes rotulo="Técnica" opcoes={["Geral bal.", "TIVA", "Raqui", "Peridural", "Bloqueio", "Sedação", "Local"]} />
+      </div>
+      <div className="fmLinha">
+        <Opcoes rotulo="Via aérea" opcoes={["Máscara", "ML", "IOT", "Videolaring."]} />
+        <Campo rotulo="Tubo nº · Cormack" /><Campo rotulo="Punção: nível · agulha" />
+      </div>
+      <div className="fmLinha">
+        <Opcoes rotulo="Monitorização" opcoes={["ECG", "PANI", "PAI", "SpO₂", "EtCO₂", "Temp.", "BIS", "TOF", "PVC", "SVD"]} />
+      </div>
+
+      <div className="fmGradeRolagem" tabIndex={0} role="region" aria-label="Grade de registro do intraoperatório">
+        <table className="fmGrade">
+          <thead>
+            <tr><th scope="col">Horário</th>{Array.from({ length: COLUNAS_DA_GRADE }, (_, i) => <th key={i} scope="col" />)}</tr>
+          </thead>
+          <tbody>
+            {ESCALA_DA_GRADE.map((v, i) => (
+              <LinhaDaGrade key={v} rotulo={String(v)} classe={i === 0 ? "fmGradeInicio" : ""} />
+            ))}
+            {LINHAS_NUMERICAS.map((r, i) => (
+              <LinhaDaGrade key={r} rotulo={r} classe={i === 0 ? "fmGradeSeparador" : ""} />
+            ))}
+            {Array.from({ length: LINHAS_DE_FARMACO }, (_, i) => (
+              <LinhaDaGrade key={`f${i}`} rotulo={i === 0 ? "Fármacos · infusões" : ""} classe={i === 0 ? "fmGradeSeparador fmGradeFarmaco" : "fmGradeFarmaco"} />
+            ))}
+            <LinhaDaGrade rotulo="Eventos (nº)" classe="fmGradeSeparador" />
+          </tbody>
+        </table>
+      </div>
+      <p className="fmLegenda">PAS ∨ · PAD ∧ · FC • · PAM ✕ — escreva a hora no topo das colunas (uma a cada 10 min).</p>
+
+      <div className="fmLinha">
+        <Campo rotulo="Cristaloide (mL)" /><Campo rotulo="Coloide (mL)" /><Campo rotulo="Hemocomponentes" />
+        <Campo rotulo="Diurese (mL)" /><Campo rotulo="Sangramento (mL)" />
+      </div>
+      <Bloco rotulo="Eventos, intercorrências e condutas (nº · hora · descrição)" linhas={3} />
+      <div className="fmLinha">
+        <Opcoes rotulo="Destino" opcoes={["SRPA", "CTI", "Enfermaria"]} />
+        <Campo rotulo="Condições na saída da sala" classe="fmLargo" />
+      </div>
+
+      <div className="fmLinha fmAssinatura">
+        <Campo rotulo="Anestesista" classe="fmLargo" /><Campo rotulo="CRM" /><Campo rotulo="RQE" />
+        <Campo rotulo="Assinatura" classe="fmLargo" />
+      </div>
+
+      <p className="fmRodape">
+        Itens do Anexo III da Resolução CFM nº 2.174/2017. Registro a no máximo cada 10 min:
+        SpO₂, EtCO₂ (quando usado), PA, FC, temperatura e profundidade anestésica (quando
+        monitorizada); monitorização invasiva a cada 15 min. Modelo livre de avanest.com.br.
+      </p>
+    </div>
+  );
+}
+
 export default function FichaAnestesicaPage() {
   return (
     <>
@@ -192,8 +298,8 @@ export default function FichaAnestesicaPage() {
         titulo="Ficha anestésica"
         resumo={"A anestesia é documentada em três fichas: a de avaliação pré-anestésica, a ficha "
           + "de anestesia do intraoperatório e a de recuperação pós-anestésica. Abaixo, o que a "
-          + "Resolução CFM nº 2.174/2017 exige em cada uma, e um modelo da ficha pré-anestésica "
-          + "para imprimir."}
+          + "Resolução CFM nº 2.174/2017 exige em cada uma, e modelos para imprimir da ficha de "
+          + "anestesia do intraoperatório e da ficha pré-anestésica."}
         revisadoEm={REVISADO_EM}
         indice={INDICE}
         origem="ficha-anestesica"
@@ -274,6 +380,20 @@ export default function FichaAnestesicaPage() {
           </div>
         </section>
 
+        <section className="recBloco blocoDoModelo" id="modelo-intra">
+          <h2>Modelo de ficha de anestesia do intraoperatório para imprimir</h2>
+          <p>
+            Uma folha A4 com os itens do Anexo III: horários, técnica, monitorização, a grade de
+            4 horas para PA, FC e os parâmetros a cada 10 minutos, fármacos, balanço e
+            intercorrências. Livre para imprimir, copiar e adaptar. Para ter em PDF, escolha
+            “Salvar como PDF” na janela de impressão.
+          </p>
+          <div className="avnActions fmAcoes">
+            <BotaoImprimir rotulo="Imprimir a ficha de anestesia" alvo="intra" />
+          </div>
+          <ModeloDeFichaIntraoperatoria />
+        </section>
+
         <section className="recBloco" id="recuperacao">
           <h2>Ficha de recuperação pós-anestésica</h2>
           <p>
@@ -304,7 +424,7 @@ export default function FichaAnestesicaPage() {
             janela de impressão.
           </p>
           <div className="avnActions fmAcoes">
-            <BotaoImprimir rotulo="Imprimir o modelo" />
+            <BotaoImprimir rotulo="Imprimir o modelo" alvo="pre" />
           </div>
           <ModeloDeFicha />
         </section>
