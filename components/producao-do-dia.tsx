@@ -763,7 +763,9 @@ export function ProducaoDoMes({
    */
   const [soConvenios, setSoConvenios] = useState<Set<string>>(new Set());
   /** A linha em correção: o convênio (ou a cirurgia) que veio errado do cadastro. */
-  const [corrigindo, setCorrigindo] = useState<{ id: string; convenio: string; procedimento: string } | null>(null);
+  // `antes`: o convênio que estava escrito, guardado enquanto o campo fica
+  // vazio para a lista mostrar todos (ver o onFocus da correção).
+  const [corrigindo, setCorrigindo] = useState<{ id: string; convenio: string; procedimento: string; antes?: string } | null>(null);
   /** O dia do carimbo. Vale para todos os marcados — por isso fica acima deles. */
   const [dataDaBaixa, setDataDaBaixa] = useState(hojeLocal());
   const [salvandoBaixa, setSalvandoBaixa] = useState(false);
@@ -956,7 +958,7 @@ export function ProducaoDoMes({
     const i = itens.find((x) => x.id === corrigindo.id);
     if (!i) { setCorrigindo(null); return; }
     const conhecidos = [...new Set([...conveniosConhecidos, ...itens.map((x) => x.convenio)])];
-    const convenio = grafiaConhecida(corrigindo.convenio.trim(), conhecidos) || i.convenio;
+    const convenio = grafiaConhecida(corrigindo.convenio.trim() || corrigindo.antes || "", conhecidos) || i.convenio;
     const procedimento = corrigindo.procedimento.trim() || null;
     setCorrigindo(null);
     if (convenio === i.convenio && procedimento === (i.procedimento ?? null)) return;
@@ -1377,8 +1379,15 @@ export function ProducaoDoMes({
                   <form className="producaoCorrigir" onSubmit={(e) => { e.preventDefault(); void salvarCorrecao(); }}
                     onKeyDown={(e) => { if (e.key === "Escape") setCorrigindo(null); }}>
                     <label><span>Convênio</span>
+                      {/* Com "Particular" escrito, o navegador só oferece o que combina
+                          com "Particular" (15/11/2026: "travado, não aparece as opções, só
+                          se apagar"). No toque, o atual vira a dica cinza e a lista vem
+                          inteira; saiu sem escolher, ele volta. */}
                       <input value={corrigindo.convenio} list="producao-mes-convenios" autoFocus
+                        placeholder={corrigindo.antes ?? ""}
                         aria-label={`Convênio de ${i.paciente}`}
+                        onFocus={() => setCorrigindo((c) => (c && c.convenio.trim() ? { ...c, antes: c.convenio, convenio: "" } : c))}
+                        onBlur={() => setCorrigindo((c) => (c && !c.convenio.trim() && c.antes ? { ...c, convenio: c.antes, antes: undefined } : c))}
                         onChange={(e) => setCorrigindo({ ...corrigindo, convenio: e.target.value })} />
                     </label>
                     <label><span>Cirurgia</span>

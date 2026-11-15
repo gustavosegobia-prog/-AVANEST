@@ -22,7 +22,7 @@ test("produção do mês: o filtro de convênio vale para a lista, o marcar todo
 
 test("produção do mês: corrigir o convênio na linha, com a grafia do cadastro e o honorário refeito", () => {
   assert.match(tela, /aria-label=\{`Corrigir convênio ou cirurgia de \$\{i\.paciente\}`\}/);
-  assert.match(tela, /const convenio = grafiaConhecida\(corrigindo\.convenio\.trim\(\), conhecidos\) \|\| i\.convenio;/);
+  assert.match(tela, /const convenio = grafiaConhecida\(corrigindo\.convenio\.trim\(\) \|\| corrigindo\.antes \|\| "", conhecidos\) \|\| i\.convenio;/);
   assert.match(tela, /await definir\(i\.id, \{ convenio, procedimento \}\);/);
   // O banco devolve o honorário para "calcular" quando o convênio muda
   // (migração 202610230013); a tela mostra isso na hora.
@@ -30,4 +30,12 @@ test("produção do mês: corrigir o convênio na linha, com a grafia do cadastr
   assert.match(ler("supabase/migrations/202610230013_honorario_na_producao.sql"),
     /new\.convenio is distinct from old\.convenio[\s\S]{0,200}new\.honorario_situacao := 'nao_calculado';/);
   assert.match(ler("components/plantoes.tsx"), /<ProducaoDoMes\s+mes=\{mes\} nomeMes=\{MESES\[m - 1\]\} ano=\{ano\} conveniosConhecidos=\{conveniosConhecidos\}/);
+});
+
+test("produção do mês: o campo do convênio na correção mostra a lista inteira no toque", () => {
+  // Com o atual escrito, o navegador filtrava a lista por ele; o atual vira a
+  // dica e volta se ninguém escolher outro.
+  assert.match(tela, /onFocus=\{\(\) => setCorrigindo\(\(c\) => \(c && c\.convenio\.trim\(\) \? \{ \.\.\.c, antes: c\.convenio, convenio: "" \} : c\)\)\}/);
+  assert.match(tela, /onBlur=\{\(\) => setCorrigindo\(\(c\) => \(c && !c\.convenio\.trim\(\) && c\.antes \? \{ \.\.\.c, convenio: c\.antes, antes: undefined \} : c\)\)\}/);
+  assert.match(tela, /grafiaConhecida\(corrigindo\.convenio\.trim\(\) \|\| corrigindo\.antes \|\| "", conhecidos\)/);
 });
