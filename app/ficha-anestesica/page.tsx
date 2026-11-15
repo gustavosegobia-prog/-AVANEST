@@ -27,10 +27,17 @@ const CAMINHO = "/ficha-anestesica";
 const REVISADO_EM = "2026-10-10";
 const RESOLUCAO = "https://sistemas.cfm.org.br/normas/arquivos/resolucoes/BR/2017/2174_2017.pdf";
 
-const TITULO = "Ficha anestésica: o que deve conter, com modelo";
+// O TÍTULO E A DESCRIÇÃO falam a língua da busca, não a do índice da página.
+// No Search Console (90 dias até 15/11/2026) esta página apareceu 817 vezes,
+// em média na 6ª posição, e teve 2,6% de cliques. As buscas que a trazem são
+// "ficha anestésica", "ficha de anestesia modelo", "pdf para imprimir": quem
+// pesquisa quer a folha. O título anterior ("o que deve conter, com modelo")
+// prometia uma explicação e deixava o modelo para o fim. Word não entra no
+// texto porque não há arquivo Word aqui — só o que a página entrega de fato.
+const TITULO = "Ficha anestésica: modelo grátis para imprimir";
 const DESCRICAO =
-  "As três fichas da anestesia segundo a Resolução CFM 2.174/2017 (pré, intra e "
-  + "pós-operatório) e um modelo de ficha pré-anestésica para imprimir.";
+  "Modelo de ficha anestésica grátis para imprimir ou salvar em PDF, sem cadastro. "
+  + "E o que a ficha de anestesia deve conter segundo a Resolução CFM 2.174/2017.";
 
 export const metadata: Metadata = paginaPublica({
   titulo: `${TITULO} | AVANEST`,
@@ -293,7 +300,8 @@ export default function FichaAnestesicaPage() {
           <h2>Modelo de ficha de avaliação pré-anestésica para imprimir</h2>
           <p>
             Uma folha A4 com os itens do Anexo II, para usar no consultório ou no serviço. É livre:
-            imprima, copie e adapte ao seu timbre.
+            imprima, copie e adapte ao seu timbre. Para ter em PDF, escolha “Salvar como PDF” na
+            janela de impressão.
           </p>
           <div className="avnActions fmAcoes">
             <BotaoImprimir rotulo="Imprimir o modelo" />
