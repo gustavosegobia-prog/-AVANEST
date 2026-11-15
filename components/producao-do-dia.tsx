@@ -669,9 +669,11 @@ export function ProducaoDoDia({
 export function ProducaoDoMes({
   mes, nomeMes, ano, locais, lugarPeloPlantao, onMudarMes, onEscolherMes,
   onImprimir, onImprimirFaturamento, onPlanilhaConvenio, onImprimirPlantoes,
-  onPlanilhaPlantoes, onPlanilhaFaturamento,
+  onPlanilhaPlantoes, onPlanilhaFaturamento, conveniosConhecidos = [],
 }: {
   mes: string; nomeMes: string; ano: number;
+  /** A grafia dos convênios do cadastro, para a correção na linha (Unimed, e não UNIMED). */
+  conveniosConhecidos?: string[];
   /**
    * Trocar de mês sem sair da aba.
    *
@@ -753,6 +755,15 @@ export function ProducaoDoMes({
    * aí a coluna "faturado" nunca dizia a verdade.
    */
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  /**
+   * Os convênios que entram (15/11/2026: "imprimir só com o filtro de um
+   * plano ou dois, sem aparecer o restante"). Vazio é todos. Vale para a
+   * lista, para o "Marcar todos" e para as folhas do mês: o que se vê é o que
+   * se imprime.
+   */
+  const [soConvenios, setSoConvenios] = useState<Set<string>>(new Set());
+  /** A linha em correção: o convênio (ou a cirurgia) que veio errado do cadastro. */
+  const [corrigindo, setCorrigindo] = useState<{ id: string; convenio: string; procedimento: string } | null>(null);
   /** O dia do carimbo. Vale para todos os marcados — por isso fica acima deles. */
   const [dataDaBaixa, setDataDaBaixa] = useState(hojeLocal());
   const [salvandoBaixa, setSalvandoBaixa] = useState(false);
@@ -915,7 +926,48 @@ export function ProducaoDoMes({
   // pode contar para nada — nem para o total, nem para a nota, nem para o
   // "Marcar todos". Filtrar resolve os três de uma vez, e sem o efeito que
   // apagava a marcação a cada render do mês.
-  const selecionados = itens.filter((i) => marcados.has(i.id));
+  // Os convênios do mês, para o filtro: a chave junta "UNIMED" e "Unimed".
+  const conveniosDoMes = useMemo(() => {
+    const rotulos = rotulosDePagador(itens.map((i) => i.convenio));
+    const n = new Map<string, number>();
+    for (const i of itens) n.set(chaveDoPagador(i.convenio), (n.get(chaveDoPagador(i.convenio)) ?? 0) + 1);
+    return [...n.entries()].map(([chave, quantos]) => ({ chave, rotulo: rotulos.get(chave) ?? chave, quantos }))
+      .sort((a, b) => b.quantos - a.quantos || a.rotulo.localeCompare(b.rotulo, "pt-BR"));
+  }, [itens]);
+  // Só os convênios que existem neste mês: trocar de mês não deixa filtro fantasma.
+  const filtroAtivo = conveniosDoMes.filter((c) => soConvenios.has(c.chave));
+  const visiveis = filtroAtivo.length
+    ? itens.filter((i) => soConvenios.has(chaveDoPagador(i.convenio)))
+    : itens;
+  const alternarConvenio = (chave: string) => setSoConvenios((antes) => {
+    const agora = new Set(antes);
+    if (agora.has(chave)) agora.delete(chave); else agora.add(chave);
+    return agora;
+  });
+
+  /**
+   * Corrigir o convênio (e a cirurgia) que veio errado do cadastro, na própria
+   * linha. A grafia vem do cadastro de convênios. Se o honorário já tinha sido
+   * calculado, o banco o devolve para "calcular" (o valor depende do plano), e
+   * a tela mostra isso na hora.
+   */
+  async function salvarCorrecao() {
+    if (!corrigindo) return;
+    const i = itens.find((x) => x.id === corrigindo.id);
+    if (!i) { setCorrigindo(null); return; }
+    const conhecidos = [...new Set([...conveniosConhecidos, ...itens.map((x) => x.convenio)])];
+    const convenio = grafiaConhecida(corrigindo.convenio.trim(), conhecidos) || i.convenio;
+    const procedimento = corrigindo.procedimento.trim() || null;
+    setCorrigindo(null);
+    if (convenio === i.convenio && procedimento === (i.procedimento ?? null)) return;
+    await definir(i.id, { convenio, procedimento });
+    if (convenio !== i.convenio && i.honorario_situacao !== undefined && i.honorario_situacao !== "nao_calculado") {
+      guardarHonorario(i.id, { honorario_situacao: "nao_calculado" });
+      setRecado(`Convênio de ${i.paciente} corrigido para ${convenio}. O honorário volta para calcular, pela tabela do plano novo.`);
+    }
+  }
+
+  const selecionados = visiveis.filter((i) => marcados.has(i.id));
   const quantosMarcados = selecionados.length;
   const valorMarcado = selecionados.reduce((s, i) => s + Number(i.valor), 0);
 
@@ -954,7 +1006,7 @@ export function ProducaoDoMes({
   // O escopo da nota: o que está marcado, ou o mês inteiro quando não há
   // marcação. Mesma regra da folha do contador na escala — sem nada marcado o
   // botão não pode virar um clique sem efeito.
-  const paraNota = selecionados.length ? selecionados : itens;
+  const paraNota = selecionados.length ? selecionados : visiveis;
   const recebido = itens.filter((i) => i.situacao === "recebido")
     .reduce((s, i) => s + Number(i.valor), 0);
 
@@ -1116,6 +1168,21 @@ export function ProducaoDoMes({
         <div className="panelTitle">
           <strong>Imprimir</strong>
         </div>
+        {/* Imprimir só um ou dois convênios. Nenhum escolhido é o mês inteiro. */}
+        {conveniosDoMes.length > 1 && (
+          <div className="producaoFiltroConvenio" role="group" aria-label="Convênios que entram">
+            <span>Convênios:</span>
+            <button type="button" aria-pressed={filtroAtivo.length === 0} onClick={() => setSoConvenios(new Set())}>
+              Todos
+            </button>
+            {conveniosDoMes.map((c) => (
+              <button key={c.chave} type="button" aria-pressed={soConvenios.has(c.chave)}
+                onClick={() => alternarConvenio(c.chave)}>
+                {c.rotulo} <small>{c.quantos}</small>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* A linha de baixo diz só a QUEBRA de cada folha, que é a única coisa
             que as distingue na hora de escolher. O resto — por que são duas
@@ -1145,7 +1212,9 @@ export function ProducaoDoMes({
             <small>
               {quantosMarcados > 0
                 ? `Só ${plural(quantosMarcados, "o marcado", "os marcados")} abaixo · ${money(valorMarcado)}`
-                : "Por hospital e por quem paga"}
+                : filtroAtivo.length
+                  ? `Só ${filtroAtivo.map((c) => c.rotulo).join(", ")} · por hospital e por quem paga`
+                  : "Por hospital e por quem paga"}
             </small>
           </span>
           <button className="outlineClinical" disabled={paraNota.length === 0}
@@ -1159,12 +1228,16 @@ export function ProducaoDoMes({
         <div className="producaoFolha">
           <span>
             <strong>Lista por convênio</strong>
-            <small>Por operadora</small>
+            <small>
+              {filtroAtivo.length
+                ? `Só ${filtroAtivo.map((c) => c.rotulo).join(", ")} · ${plural(visiveis.length, "paciente", "pacientes")}`
+                : "Por operadora"}
+            </small>
           </span>
-          <button className="outlineClinical" disabled={itens.length === 0}
-            onClick={() => onPlanilhaConvenio(itens)}>Planilha</button>
+          <button className="outlineClinical" disabled={visiveis.length === 0}
+            onClick={() => onPlanilhaConvenio(visiveis)}>Planilha</button>
           <button className="outlineClinical"
-            disabled={itens.length === 0} onClick={() => onImprimir(itens)}>
+            disabled={visiveis.length === 0} onClick={() => onImprimir(visiveis)}>
             Imprimir
           </button>
         </div>
@@ -1200,6 +1273,10 @@ export function ProducaoDoMes({
         )}
       </section>
 
+      <datalist id="producao-mes-convenios">
+        {[...new Set([...conveniosConhecidos, ...conveniosDoMes.map((c) => c.rotulo)])].map((c) => <option key={c} value={c} />)}
+      </datalist>
+
       {itens.length > 0 && (
         <section className="clinicalPanel">
           <div className="panelTitle">
@@ -1209,10 +1286,10 @@ export function ProducaoDoMes({
             <strong>Produção do mês</strong>
             <div className="producaoAcoesMes">
               <button type="button" className="outlineClinical compact"
-                onClick={() => setMarcados(quantosMarcados === itens.length
+                onClick={() => setMarcados(quantosMarcados === visiveis.length
                   ? new Set()
-                  : new Set(itens.map((i) => i.id)))}>
-                {quantosMarcados === itens.length ? "Desmarcar todos" : "Marcar todos"}
+                  : new Set(visiveis.map((i) => i.id)))}>
+                {quantosMarcados === visiveis.length ? "Desmarcar todos" : "Marcar todos"}
               </button>
             </div>
           </div>
@@ -1262,7 +1339,13 @@ export function ProducaoDoMes({
               </div>
             </div>
           )}
-          {itens.map((i) => {
+          {filtroAtivo.length > 0 && (
+            <p className="producaoFiltroAviso">
+              Mostrando só {filtroAtivo.map((c) => c.rotulo).join(", ")} ({plural(visiveis.length, "paciente", "pacientes")} de {itens.length}).{" "}
+              <button type="button" onClick={() => setSoConvenios(new Set())}>Mostrar todos</button>
+            </p>
+          )}
+          {visiveis.map((i) => {
             // O lugar que o plantão já sabe, para quem veio de plantão de
             // fora. Ele preenche a opção vazia em vez de "Sem hospital": o
             // paciente da sedação no consultório não está sem lugar — o lugar
@@ -1290,11 +1373,34 @@ export function ProducaoDoMes({
               </label>
               <span className="producaoNotaQuem">
                 <strong>{i.paciente}</strong>
-                <small>
-                  {i.convenio}{i.procedimento ? ` · ${i.procedimento}` : ""}
-                  {i.urgencia ? " · urgência" : ""}
-                  {(i.marcas ?? []).map((id) => nomesDasMarcas.get(id)).filter(Boolean).map((n) => ` · ${n}`).join("")}
-                </small>
+                {corrigindo?.id === i.id ? (
+                  <form className="producaoCorrigir" onSubmit={(e) => { e.preventDefault(); void salvarCorrecao(); }}
+                    onKeyDown={(e) => { if (e.key === "Escape") setCorrigindo(null); }}>
+                    <label><span>Convênio</span>
+                      <input value={corrigindo.convenio} list="producao-mes-convenios" autoFocus
+                        aria-label={`Convênio de ${i.paciente}`}
+                        onChange={(e) => setCorrigindo({ ...corrigindo, convenio: e.target.value })} />
+                    </label>
+                    <label><span>Cirurgia</span>
+                      <input value={corrigindo.procedimento} aria-label={`Cirurgia de ${i.paciente}`}
+                        onChange={(e) => setCorrigindo({ ...corrigindo, procedimento: e.target.value })} />
+                    </label>
+                    <button type="submit" className="primaryClinical compact">Salvar</button>
+                    <button type="button" className="outlineClinical compact" onClick={() => setCorrigindo(null)}>Cancelar</button>
+                  </form>
+                ) : (
+                  <small>
+                    {i.convenio}{i.procedimento ? ` · ${i.procedimento}` : ""}
+                    {i.urgencia ? " · urgência" : ""}
+                    {(i.marcas ?? []).map((id) => nomesDasMarcas.get(id)).filter(Boolean).map((n) => ` · ${n}`).join("")}
+                    {" "}
+                    <button type="button" className="producaoCorrigirAbrir"
+                      aria-label={`Corrigir convênio ou cirurgia de ${i.paciente}`}
+                      onClick={() => setCorrigindo({ id: i.id, convenio: i.convenio, procedimento: i.procedimento ?? "" })}>
+                      Corrigir
+                    </button>
+                  </small>
+                )}
                 {comHonorario && (
                   <SeloDoHonorario situacao={i.honorario_situacao} valor={i.honorario_valor_previsto} anotado={i.valor}
                     paciente={i.paciente} mascarar={mascara} onAbrir={() => setConferindo(i)} />

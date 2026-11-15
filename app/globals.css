@@ -4131,6 +4131,20 @@ button.localAtivoBadge{border:0;background:none;font:inherit;cursor:pointer;text
 }
 /* Enviar, desfazer e imprimir na mesma barra, encostados à direita do título. */
 .producaoAcoesMes{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
+/* Produção do mês (15/11/2026): imprimir só um ou dois convênios, e corrigir na linha o convênio que veio errado do cadastro. */
+.producaoFiltroConvenio{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:12px 25px;border-bottom:1px solid var(--cor-borda)}
+.producaoFiltroConvenio>span{font-size:13px;font-weight:700;color:var(--cor-tinta-fraca);margin-right:2px}
+.producaoFiltroConvenio button{min-height:36px;padding:0 12px;border:1px solid var(--cor-borda);border-radius:999px;background:var(--cor-superficie);color:var(--cor-tinta);font:inherit;font-size:13.5px;font-weight:650;cursor:pointer}
+.producaoFiltroConvenio button small{color:var(--cor-tinta-fraca);font-weight:600;margin-left:4px;font-size:12px}
+.producaoFiltroConvenio button[aria-pressed="true"]{border-color:var(--cor-marca);background:var(--cor-marca-suave);color:var(--cor-marca-forte)}
+.producaoFiltroConvenio button:focus-visible,.producaoCorrigirAbrir:focus-visible,.producaoFiltroAviso button:focus-visible{outline:2px solid var(--cor-marca);outline-offset:2px}
+.producaoFiltroAviso{margin:0;padding:10px 25px 0;font-size:13px;color:var(--cor-tinta-fraca)}
+@media(max-width:600px){.producaoFiltroConvenio{padding:12px 16px}.producaoFiltroAviso{padding:10px 16px 0}}
+.producaoFiltroAviso button{border:0;background:none;padding:0;color:var(--cor-marca);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+.producaoCorrigirAbrir{border:0;background:none;padding:2px 0 2px 4px;color:var(--cor-marca);font:inherit;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer}
+.producaoCorrigir{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;margin-top:6px}
+.producaoCorrigir label{display:grid;gap:3px;font-size:12px;color:var(--cor-tinta-fraca);font-weight:650}
+.producaoCorrigir input{min-height:38px;min-width:150px;padding:0 10px;border:1px solid var(--cor-borda);border-radius:10px;background:var(--cor-superficie);color:var(--cor-tinta);font:inherit;font-size:14px}
 /* O envio automático, por pessoa (07/11/2026): uma linha debaixo do título do mês. */
 .producaoSozinha{display:flex;align-items:flex-start;gap:10px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--cor-borda);border-radius:12px;background:var(--cor-superficie-suave);cursor:pointer}
 .producaoSozinha input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--cor-marca)}

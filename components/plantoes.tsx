@@ -3206,7 +3206,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
 
       {aba === "producao" && (
         <ProducaoDoMes
-          mes={mes} nomeMes={MESES[m - 1]} ano={ano}
+          mes={mes} nomeMes={MESES[m - 1]} ano={ano} conveniosConhecidos={conveniosConhecidos}
           locais={locais.map((l) => ({ id: l.id, nome: nomeDoLocal(l) }))}
           lugarPeloPlantao={lugarPeloPlantao} onMudarMes={mudarMes} onEscolherMes={setMes}
           onImprimir={imprimirProducao}
