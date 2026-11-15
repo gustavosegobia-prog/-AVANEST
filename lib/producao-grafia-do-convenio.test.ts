@@ -28,8 +28,10 @@ test("corrigir o convênio de uma anotação também grava a grafia do cadastro"
 });
 
 test("os dois totais por convênio agrupam pela chave, não pelo texto", () => {
-  const usos = [...tela.matchAll(/chaveDoPagador\((i|l)\.convenio\)/g)];
-  assert.equal(usos.length, 2, "algum total por convênio da Produção voltou a agrupar pelo texto cru");
+  // Os dois totais (o do mês e o do recebido) agrupam pela chave. O filtro de
+  // convênio (15/11/2026) também usa a chave, e não entra nesta conta.
+  assert.match(tela, /const k = chaveDoPagador\(i\.convenio\);/, "o total do mês voltou a agrupar pelo texto cru");
+  assert.match(tela, /const k = chaveDoPagador\(l\.convenio\);/, "o total do recebido voltou a agrupar pelo texto cru");
   assert.doesNotMatch(tela, /const k = (i|l)\.convenio \|\| "Particular";/,
     "voltou um agrupamento pelo texto cru");
 });

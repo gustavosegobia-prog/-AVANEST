@@ -2483,6 +2483,7 @@ button:disabled{cursor:not-allowed}
    corpo do número — em vez de deixar o valor quebrar, que era o que a regra
    acima foi corrigir. */
 /* Enviar, desfazer e imprimir na mesma barra, encostados à direita do título. */
+/* Produção do mês (15/11/2026): imprimir só um ou dois convênios, e corrigir na linha o convênio que veio errado do cadastro. */
 /* O envio automático, por pessoa (07/11/2026): uma linha debaixo do título do mês. */
 /* A linha do que a equipe enviou. Colunas fixas pelo motivo de sempre: cada
    linha é uma grade própria, e em largura automática nada bate com a de cima. */

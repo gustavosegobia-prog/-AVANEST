@@ -72,7 +72,8 @@ test("a nota impressa respeita o que está marcado", () => {
   // Emitir contra um hospital não é emitir o mês inteiro. Sem escopo, o botão
   // "Imprimir" da nota de faturamento levava sempre os quarenta pacientes.
   const tela = ler("components/producao-do-dia.tsx");
-  assert.ok(/const paraNota = selecionados\.length \? selecionados : itens;/.test(tela),
+  // Sem marcação, o mês — ou só os convênios do filtro, quando há (15/11/2026).
+  assert.ok(/const paraNota = selecionados\.length \? selecionados : visiveis;/.test(tela),
     "a nota de faturamento deixou de respeitar a marcação");
   assert.ok(!/onImprimirFaturamento\(itens\)/.test(tela),
     "a nota voltou a imprimir o mês inteiro mesmo com pacientes marcados");
