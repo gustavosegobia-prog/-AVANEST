@@ -3143,8 +3143,7 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                 <div className="plantaoLinha escalaLinha escalaLinhaLeitura" key={p.id}>
                   <span className="plantaoQuando">
                     <strong>{diaDaSemanaCurto(p.data)} {dataCurta(p.data)}</strong>
-                    {/* A virada do dia é escrita: "19h → 07h do dia seguinte".
-                        "19:00–07:00" parecia um horário ao contrário. */}
+                    {/* "19h–07h · 12h": sem "do dia seguinte" (26/11/2026). */}
                     <small>{horarioEscrito(p)}</small>
                   </span>
                   <span className="plantaoOnde">
