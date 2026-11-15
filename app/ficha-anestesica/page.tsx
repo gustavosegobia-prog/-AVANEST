@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { paginaPublica } from "@/lib/metadados";
 import Link from "next/link";
 import { comoJson, migalhas, paginaDeConteudo } from "@/lib/schema";
@@ -171,18 +172,46 @@ function ModeloDeFicha() {
   );
 }
 
-// A FOLHA DO INTRAOPERATÓRIO. Quem pesquisa "ficha de anestesia" quase sempre
-// quer esta. Itens do Anexo III; a grade cobre 4 horas em colunas de 10 minutos,
-// o intervalo máximo da resolução para PA, FC, SpO₂, EtCO₂ e temperatura. Sem
-// linha de horários no topo: a grade começa direto na escala (pedido do Gustavo).
-const COLUNAS_DA_GRADE = 24;
-// Sem números na escala (pedido do Gustavo): cada um anota a faixa que usa.
-const LINHAS_DO_GRAFICO = 11;
-const LINHAS_NUMERICAS = ["SpO₂ (%)", "EtCO₂ (mmHg)", "Temp. (°C)"];
-const LINHAS_DE_GAS = ["O₂ (L/min)", "Ar comprimido", "Sevoflurano (%)"];
-const LINHAS_DE_FARMACO = 5;
+// A FOLHA DO INTRAOPERATÓRIO, no desenho da folha do próprio AVANEST (tela da
+// evolução): gases e líquidos em cima, os parâmetros, o gráfico com a legenda à
+// esquerda e a lista de fármacos numa coluna à direita — versão de papel, simples
+// (pedido do Gustavo, 15/11/2026). Itens do Anexo III. 18 colunas de 10 min
+// (3 h): 10 min é o intervalo máximo da resolução para PA, FC, SpO₂, EtCO₂ e
+// temperatura. Sem números na escala e sem linha de horários.
+const COLUNAS_DA_GRADE = 18;
+const LINHAS_DO_GRAFICO = 14;
+const LEGENDA_DO_GRAFICO: [string, string][] = [
+  ["PAS", "∨"], ["PAD", "∧"], ["PAM", "✕"], ["FC", "•"], ["Anestesia", "X"], ["Operação", "O"],
+];
 
-function LinhaDaGrade({ rotulo, classe = "" }: { rotulo: string; classe?: string }) {
+// A lista é a da folha do sistema (lib/evolucao/lista-da-folha.ts), sem nome
+// comercial e sem repetir o fármaco que aparece em mais de um grupo.
+const FARMACOS_DA_FOLHA: { titulo: string; itens: [string, string][] }[] = [
+  { titulo: "Antibioticoprofilaxia", itens: [["Cefazolina", "g"], ["Ceftriaxona", "g"], ["Metronidazol", "mg"]] },
+  { titulo: "Sedação e indução", itens: [
+    ["Midazolam", "mg"], ["Fentanil", "mcg"], ["Propofol", "mg"], ["Cetamina", "mg"], ["Etomidato", "mg"],
+    ["Lidocaína s/ vaso", "mg"], ["Remifentanil", "mcg"], ["Dexmedetomidina", "mcg"], ["Droperidol", "mg"],
+  ] },
+  { titulo: "Bloqueador neuromuscular", itens: [
+    ["Succinilcolina", "mg"], ["Rocurônio", "mg"], ["Atracúrio", "mg"], ["Cisatracúrio", "mg"],
+  ] },
+  { titulo: "Raqui / peridural", itens: [
+    ["Bupivacaína pesada", "mg"], ["Bupivacaína isobárica", "mg"], ["+ Morfina", "mcg"], ["+ Fentanil", "mcg"], ["+ Clonidina", "mcg"],
+  ] },
+  { titulo: "Bloqueio", itens: [
+    ["Lidocaína", "mg"], ["Levobupivacaína", "mg"], ["Bupivacaína", "mg"], ["Ropivacaína", "mg"],
+  ] },
+  { titulo: "Outras drogas", itens: [
+    ["Metaraminol", "mg"], ["Efedrina", "mg"], ["Noradrenalina", "mcg"], ["Atropina", "mg"],
+    ["Dexametasona", "mg"], ["Ondansetrona", "mg"], ["Metoclopramida", "mg"], ["Bromoprida", "mg"],
+    ["Dipirona", "g"], ["Cetoprofeno", "mg"], ["Tenoxicam", "mg"], ["Cetorolaco", "mg"],
+    ["Morfina", "mg"], ["Metadona", "mg"], ["Neostigmina", "mg"], ["Sugamadex", "mg"],
+    ["Ácido tranexâmico", "g"], ["Ocitocina", "UI"], ["Metilergometrina", "mg"], ["Hidrocortisona", "mg"],
+    ["Escopolamina", "mg"],
+  ] },
+];
+
+function LinhaDaGrade({ rotulo, classe = "" }: { rotulo: ReactNode; classe?: string }) {
   return (
     <tr className={classe}>
       <th scope="row">{rotulo}</th>
@@ -208,45 +237,68 @@ function ModeloDeFichaIntraoperatoria() {
       <div className="fmLinha">
         <Campo rotulo="Cirurgia" classe="fmLargo" />
         <Campo rotulo="Cirurgião" />
+        <Campo rotulo="Anestesista · CRM" />
+      </div>
+      <div className="fmLinha">
+        <Campo rotulo="Técnica" classe="fmLargo" />
+        <Campo rotulo="Via aérea" />
+        <Campo rotulo="Monitorização" />
       </div>
       <div className="fmLinha">
         <Campo rotulo="Início anestesia" /><Campo rotulo="Início cirurgia" />
         <Campo rotulo="Fim cirurgia" /><Campo rotulo="Fim anestesia" />
       </div>
-      <div className="fmLinha">
-        <Campo rotulo="Técnica" classe="fmLargo" />
-        <Campo rotulo="Via aérea" classe="fmLargo" />
-      </div>
-      <div className="fmLinha"><Campo rotulo="Monitorização" /></div>
 
-      <div className="fmGradeRolagem" tabIndex={0} role="region" aria-label="Grade de registro do intraoperatório">
-        <table className="fmGrade">
-          <colgroup><col className="fmGradeRotulo" /></colgroup>
-          <tbody>
-            {Array.from({ length: LINHAS_DO_GRAFICO }, (_, i) => <LinhaDaGrade key={`g${i}`} rotulo="" />)}
-            {LINHAS_NUMERICAS.map((r, i) => (
-              <LinhaDaGrade key={r} rotulo={r} classe={i === 0 ? "fmGradeSeparador" : ""} />
-            ))}
-            {LINHAS_DE_GAS.map((r, i) => (
-              <LinhaDaGrade key={r} rotulo={r} classe={i === 0 ? "fmGradeSeparador" : ""} />
-            ))}
-            {Array.from({ length: LINHAS_DE_FARMACO }, (_, i) => (
-              <LinhaDaGrade key={`f${i}`} rotulo={i === 0 ? "Fármacos" : ""} classe={i === 0 ? "fmGradeSeparador fmGradeFarmaco" : "fmGradeFarmaco"} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="fmLegenda">PAS ∨ · PAD ∧ · FC • — cada coluna vale 10 min; as linhas grossas marcam 1 hora.</p>
+      <div className="fmCorpo">
+        <div className="fmPrincipal">
+          <div className="fmGradeRolagem" tabIndex={0} role="region" aria-label="Grade de registro do intraoperatório">
+            <table className="fmGrade">
+              <colgroup><col className="fmGradeRotulo" /></colgroup>
+              <tbody>
+                <LinhaDaGrade rotulo="O₂ L/min" />
+                <LinhaDaGrade rotulo="Ar L/min" />
+                <LinhaDaGrade rotulo="Sevoflurano %" />
+                <LinhaDaGrade rotulo="Líquidos" classe="fmGradeSeparador" />
+                <LinhaDaGrade rotulo="" />
+                <LinhaDaGrade rotulo="SpO₂ %" classe="fmGradeSeparador" />
+                <LinhaDaGrade rotulo="EtCO₂ mmHg" />
+                <LinhaDaGrade rotulo="Temp. °C" />
+                <LinhaDaGrade rotulo="Diurese" />
+                {Array.from({ length: LINHAS_DO_GRAFICO }, (_, i) => {
+                  const legenda = i === 0 ? <b>PA · FC</b>
+                    : LEGENDA_DO_GRAFICO[i - 1]
+                      ? <>{LEGENDA_DO_GRAFICO[i - 1][0]} <em>{LEGENDA_DO_GRAFICO[i - 1][1]}</em></>
+                      : "";
+                  return <LinhaDaGrade key={`g${i}`} rotulo={legenda} classe={`fmGradeGrafico${i === 0 ? " fmGradeSeparador" : ""}`} />;
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="fmLegenda">Cada coluna vale 10 min; as linhas grossas marcam 1 hora.</p>
 
-      <div className="fmLinha">
-        <Campo rotulo="Hidratação (mL)" /><Campo rotulo="Diurese (mL)" /><Campo rotulo="Sangramento (mL)" />
-      </div>
-      <Bloco rotulo="Intercorrências, condutas e transferência de responsabilidade" linhas={3} />
+          <div className="fmLinha">
+            <Campo rotulo="Entradas (mL)" /><Campo rotulo="Diurese (mL)" /><Campo rotulo="Sangramento (mL)" />
+          </div>
+          <Bloco rotulo="Observações, intercorrências e outras drogas" linhas={4} />
+          <div className="fmLinha fmAssinatura">
+            <Campo rotulo="Destino" />
+            <Campo rotulo="Assinatura" classe="fmLargo" />
+          </div>
+        </div>
 
-      <div className="fmLinha fmAssinatura">
-        <Campo rotulo="Destino" />
-        <Campo rotulo="Anestesista · CRM" classe="fmLargo" />
-        <Campo rotulo="Assinatura" classe="fmLargo" />
+        <aside className="fmMedicacao" aria-label="Medicação">
+          <strong>Medicação</strong>
+          {FARMACOS_DA_FOLHA.map((g) => (
+            <div key={g.titulo}>
+              <span>{g.titulo}</span>
+              <ul>
+                {g.itens.map(([nome, unidade]) => (
+                  <li key={g.titulo + nome}><b>{nome}</b><i /><em>{unidade}</em></li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </aside>
       </div>
 
       <p className="fmRodape">
@@ -361,7 +413,7 @@ export default function FichaAnestesicaPage() {
           <h2>Modelo de ficha de anestesia do intraoperatório para imprimir</h2>
           <p>
             Uma folha A4, simples, com os itens do Anexo III: horários, técnica, via aérea, a
-            grade de 4 horas para PA, FC, SpO₂, EtCO₂, temperatura, gases, fármacos, balanço e
+            grade de 3 horas para gases, líquidos, SpO₂, EtCO₂, temperatura, PA e FC, a lista de fármacos, balanço e
             intercorrências. Livre para imprimir, copiar e adaptar. Para ter em PDF, escolha
             “Salvar como PDF” na janela de impressão.
           </p>
