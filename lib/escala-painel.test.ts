@@ -51,8 +51,8 @@ describe("contagem: plantão é 12 horas, e sai das horas", () => {
 
 describe("horário: a virada do dia é dita", () => {
   it("24h e noturno viram o dia; diurno não", () => {
-    assert.equal(horarioEscrito({ hora_inicio: "07:00:00", hora_fim: "07:00:00", horas: 24 }), "07h → 07h do dia seguinte · 24h");
-    assert.equal(horarioEscrito({ hora_inicio: "19:00:00", hora_fim: "07:00:00", horas: 12 }), "19h → 07h do dia seguinte · 12h");
+    assert.equal(horarioEscrito({ hora_inicio: "07:00:00", hora_fim: "07:00:00", horas: 24 }), "07h–07h · 24h");
+    assert.equal(horarioEscrito({ hora_inicio: "19:00:00", hora_fim: "07:00:00", horas: 12 }), "19h–07h · 12h");
     assert.equal(horarioEscrito({ hora_inicio: "07:00:00", hora_fim: "19:00:00", horas: 12 }), "07h–19h · 12h");
     assert.equal(horarioEscrito({ hora_inicio: "07:30:00", hora_fim: "13:00:00", horas: 5.5 }), "07h30–13h · 5,5h");
   });

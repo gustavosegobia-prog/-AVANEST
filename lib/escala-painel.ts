@@ -70,15 +70,12 @@ export const atravessaMeiaNoite = (p: Pick<PlantaoDoPainel, "hora_inicio" | "hor
   emMinutos(p.hora_fim) <= emMinutos(p.hora_inicio);
 
 /**
- * "07h–19h · 12h" ou, quando vira o dia, "19h → 07h do dia seguinte · 12h".
- * O de 24h (fim igual ao início) também vira o dia: "07h → 07h do dia
- * seguinte · 24h".
+ * "07h–19h · 12h", e também "19h–07h · 12h" e "07h–07h · 24h": o
+ * "do dia seguinte" saiu (26/11/2026: "não precisa aparecer escrito dia
+ * seguinte") — no plantão, quem lê sabe que 19h–07h vira a noite.
  */
 export function horarioEscrito(p: Pick<PlantaoDoPainel, "hora_inicio" | "hora_fim" | "horas">): string {
-  const horas = `${numeroBr(Number(p.horas))}h`;
-  return atravessaMeiaNoite(p)
-    ? `${horaBr(p.hora_inicio)} → ${horaBr(p.hora_fim)} do dia seguinte · ${horas}`
-    : `${horaBr(p.hora_inicio)}–${horaBr(p.hora_fim)} · ${horas}`;
+  return `${horaBr(p.hora_inicio)}–${horaBr(p.hora_fim)} · ${numeroBr(Number(p.horas))}h`;
 }
 
 /** O intervalo real do plantão, em minutos desde a meia-noite do dia dele (em UTC, só para comparar). */
