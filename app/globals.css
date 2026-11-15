@@ -971,7 +971,7 @@ button:disabled{cursor:not-allowed}
 @media(max-width:900px){.billingPlanGrid{grid-template-columns:1fr 1fr}.noteAlertRow,.convenioRow{grid-template-columns:1fr auto}}
 @media(max-width:560px){.billingPlanGrid{grid-template-columns:1fr}.noteAlertRow,.convenioRow{padding:14px}.noteAlertRow button,.convenioRow button{width:100%}.convenioForm{padding:14px}}
 
-.avnBrand .brandBlue{color:var(--cor-marca-clara)}.avnBrand .brandMidA{background:linear-gradient(90deg,var(--cor-marca-clara) 0%,var(--cor-marca-clara) 48%,#2bc5a8 52%,#2bc5a8 100%);background-clip:text;-webkit-background-clip:text;color:transparent}.avnBrand .brandTeal{color:#2bc5a8}
+/* O logo fica sempre sobre o azul-marinho: #2e89d7 (4,67:1) em vez do #2b86d4 (4,49:1), que o Lighthouse reprovava por um centésimo (auditoria de SEO de 15/11/2026). A olho, a mesma cor. */.avnBrand .brandBlue{color:#2e89d7}.avnBrand .brandMidA{background:linear-gradient(90deg,#2e89d7 0%,#2e89d7 48%,#2bc5a8 52%,#2bc5a8 100%);background-clip:text;-webkit-background-clip:text;color:transparent}.avnBrand .brandTeal{color:#2bc5a8}
 
 /* Documento clínico e contato do paciente */
 .paperWeightSummary{display:grid;grid-template-columns:1fr 1fr;border:1px solid #222;border-top:0;font-size:10px}.paperWeightSummary span{padding:5px 7px}.paperWeightSummary span+span{border-left:1px solid #222}.guidancePaper{display:none!important}.documentsSidebar>section:first-child .docChoice:last-child{display:none}.avnInstagram{font-size:15px!important;gap:10px!important}.avnInstagram svg{width:20px;height:20px;color:var(--avn-teal);flex:none}.avnInstagram span{font-size:15px!important;color:#fff!important}
