@@ -7,7 +7,10 @@ import { MedicaoDeAnuncios } from "@/components/medicao-de-anuncios";
 import { comoJson, organizacao } from "@/lib/schema";
 import { IMAGEM_DE_COMPARTILHAMENTO } from "@/lib/metadados";
 import { ROTEIRO_DO_TEMA } from "@/lib/tema";
-import "./globals.css";
+// As páginas públicas carregam só o pedaço do CSS que usam (app/site.css,
+// gerado por scripts/gerar-css-do-site.mjs); as áreas do sistema carregam o
+// globals.css inteiro no layout de cada uma. Auditoria de SEO de 15/11/2026.
+import "./site.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.avanest.com.br"),
