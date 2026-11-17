@@ -3,6 +3,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 import { hoje } from "@/lib/data-local";
+import { regraDaConsulta } from "@/lib/precos-do-convenio";
 
 type RouteContext = { params: Promise<{ id: string }> };
 const UUID_PATTERN =
@@ -85,22 +86,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const convenio = patient.convenio?.trim() || "Particular";
   const procedimento = patient.procedimento?.trim() || patient.cirurgia?.trim() || "";
   const hospital = patient.hospital?.trim() || "";
+  // A regra do preço é a mesma do botão que preenche os lançamentos em R$ 0,00
+  // (lib/precos-do-convenio.ts): o convênio casa sem caixa e sem acento
+  // ("UNIMED" do cadastro e "Unimed" da tabela), e no empate vale a regra
+  // mais recente.
   const { data: rules } = await admin
     .from("convenio_valores")
-    .select("id,procedimento,hospital,valor,repasse_percentual")
+    .select("id,convenio,procedimento,hospital,valor,repasse_percentual,ativo,updated_at,created_at")
     .eq("institution_id", actor.institution_id)
-    .eq("convenio", convenio)
     .eq("ativo", true);
 
-  const rule = (rules ?? [])
-    .filter((item) =>
-      (!item.procedimento || item.procedimento === procedimento) &&
-      (!item.hospital || item.hospital === hospital),
-    )
-    .sort((a, b) =>
-      Number(Boolean(b.procedimento)) + Number(Boolean(b.hospital)) -
-      Number(Boolean(a.procedimento)) - Number(Boolean(a.hospital)),
-    )[0];
+  const rule = regraDaConsulta(rules ?? [], { convenio, procedimento, hospital });
 
   const valor = Number(rule?.valor ?? 0);
   const repassePercentual = Number(rule?.repasse_percentual ?? 0);

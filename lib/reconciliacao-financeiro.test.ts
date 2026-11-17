@@ -130,7 +130,8 @@ test("convênio ativo com preço zero avisa \"preço pendente\", não \"ativo\""
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const i = tela.indexOf("function ConvenioValoresPanel");
   assert.notEqual(i, -1, "não achei o painel de valores por convênio");
-  const painel = tela.slice(i, i + 6000);
+  // O painel ganhou o preço na linha e o "Aplicar aos em R$ 0,00" (17/11/2026).
+  const painel = tela.slice(i, i + 16000);
   // A regra ganhou um terceiro caso — gratuito, por decisão, que NÃO conta
   // como pendente — mas o núcleo continua o mesmo: zero é suspeito até
   // provar o contrário.
