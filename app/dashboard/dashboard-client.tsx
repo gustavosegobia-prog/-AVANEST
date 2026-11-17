@@ -112,6 +112,7 @@ import { AceiteDosTermos } from "@/components/aceite-dos-termos";
 import { RecepcaoView } from "@/components/recepcao";
 import { AreaMedica } from "@/components/area-medica";
 import { Janela, useTravaDeRolagem } from "@/components/janela";
+import { ehJaExiste, mesmoPacienteSemCpf } from "@/lib/fluxo-sem-duplicado";
 const PreferenciasDeAvisoPainel = dynamic(
   () => import("@/components/preferencias-de-aviso").then((m) => m.PreferenciasDeAvisoPainel),
   { ssr: false, loading: carregando("as preferências") });
@@ -578,6 +579,28 @@ export function DashboardClient({
         return;
       }
     }
+    // O mesmo paciente que nasceu sem CPF pela ficha anestésica ou pelo mapa
+    // cirúrgico (17/11/2026: "não quero nada duplicado"): mesmo nome e mesma
+    // data de nascimento. A janela oferece marcar a consulta para ele.
+    if(patientName && birthDate){
+      const {data:mesmoDia}=await supabase.from("pacientes").select("id,nome,cpf").eq("data_nascimento",birthDate).limit(30);
+      const semCpf=mesmoPacienteSemCpf(mesmoDia??[],patientName);
+      if(semCpf){
+        setDuplicadoNoCadastro({
+          id: semCpf.id, nome: semCpf.nome,
+          consulta: {
+            data: appointmentDate, horario: String(text("horario")??"").trim(),
+            hospital: text("hospital"), procedimento: text("cirurgia"), convenio: convenio,
+            observacoes: text("observacoes"), medico_id: text("medico_id"),
+            valorParticular: convenio===PRIVATE_PAY_CONVENIO ? (lerDinheiro(text("valor_particular")??"") || null) : null,
+            metodoParticular: text("metodo_particular") || "PIX",
+          },
+        });
+        setError(`${semCpf.nome}, com esta data de nascimento, já tem cadastro (feito pela ficha anestésica ou pelo mapa, sem CPF). Não é preciso cadastrar de novo — marque a consulta para o cadastro dele.`);
+        setBusy(false);
+        return;
+      }
+    }
     const {data:appointmentsForDate,error:appointmentsError}=await supabase
       .from("agendamentos")
       .select("horario,status")
@@ -744,6 +767,20 @@ export function DashboardClient({
       versao:previous?.status==="concluida"?Number(previous.versao||1)+1:1,
       avaliacao_anterior_id:previous?.status==="concluida"?previous.id:null,
     }).select("id").single();
+    // Uma avaliação em rascunho por paciente (202611170001): outro aparelho
+    // começou a mesma consulta um instante antes. Em vez de erro, abre a dele.
+    if (ehJaExiste(createError)) {
+      const { data: rascunho } = await supabase.from("avaliacoes").select("id")
+        .eq("patient_id", patientId).eq("status", "rascunho").limit(1).maybeSingle();
+      if (rascunho) {
+        if (appointmentId) {
+          await supabase.from("agendamentos").update({ avaliacao_id: rascunho.id, updated_at: new Date().toISOString() })
+            .eq("id", appointmentId).is("avaliacao_id", null);
+        }
+        router.push(`/avaliacoes/${rascunho.id}`);
+        return;
+      }
+    }
     if (createError || !data) { setError(createError?.message ?? "Falha ao iniciar avaliação."); setBusy(false); return; }
     // O agendamento aponta para a avaliação que acabou de nascer. Se esta
     // ligação falha em silêncio, a avaliação existe e a fila da recepção
@@ -3283,10 +3320,11 @@ function PatientModal({ busy, error, duplicado = null, onAgendarDuplicado, onCpf
   // grupos com título: o preenchimento segue a ordem natural da conversa com
   // o paciente, e o que falta fica visível sem rolar tudo.
   return <div className="patientModalBackdrop">
-    {/* Mexer no CPF depois do aviso de duplicado desfaz a oferta de agendar
-        para o cadastro existente: ela valia para aquele CPF. */}
+    {/* Mexer no CPF (ou no nome e no nascimento, a outra forma de achar o
+        mesmo paciente) depois do aviso de duplicado desfaz a oferta de agendar
+        para o cadastro existente: ela valia para aqueles dados. */}
     <form className="patientModal" onSubmit={onSubmit} role="dialog" aria-modal="true" aria-labelledby="titulo-novo-paciente"
-      onChange={(e)=>{ if(duplicado && (e.target as unknown as HTMLInputElement).name==="cpf") onCpfMudou?.(); }}>
+      onChange={(e)=>{ if(duplicado && ["cpf","nome","data_nascimento"].includes((e.target as unknown as HTMLInputElement).name)) onCpfMudou?.(); }}>
       <div className="patientModalHead">
         <div><h2 id="titulo-novo-paciente">Nova avaliação pré-anestésica</h2><p>Cadastro do paciente e agendamento da consulta, numa etapa só. Campos com <b>*</b> são obrigatórios.</p></div>
         <button type="button" onClick={onClose} aria-label="Fechar sem salvar">×</button>

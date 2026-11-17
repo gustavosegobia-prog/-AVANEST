@@ -14,6 +14,8 @@ import { HonorarioDaAnestesia, SeloDoHonorario } from "@/components/honorarios/h
 import { CalcularOMes } from "@/components/honorarios/calcular-o-mes";
 import { conferirNoServidor, marcasDaClinica } from "@/components/honorarios/calculo-da-anestesia";
 import { resumoDoHonorarioDoMes, type MarcaDaClinica } from "@/lib/honorarios-telas";
+import { avisoDeAnotacaoRepetida, jaAnotadoNoDia } from "@/lib/fluxo-sem-duplicado";
+import { nomeSimples } from "@/lib/honorarios";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -286,6 +288,8 @@ export function ProducaoDoDia({
   const [salvando, setSalvando] = useState(false);
   const vazio = { paciente: "", convenio: "Particular", procedimento: "", valor: "", urgencia: false, marcas: [] as string[] };
   const [novo, setNovo] = useState(vazio);
+  /** O paciente repetido que já foi avisado: o próximo "+ Anotar" com ele confirma. */
+  const [repetidoConfirmado, setRepetidoConfirmado] = useState("");
   // A LISTA INTEIRA AO TOCAR NO CONVÊNIO (06/11/2026: "não está respondendo
   // quando aperta"). O navegador só mostra as opções que combinam com o que já
   // está escrito, e o campo começa com "Particular": a seta mostrava só
@@ -308,6 +312,7 @@ export function ProducaoDoDia({
     setErro("");
     setNovo(vazio);
     setConvenioAntes("");
+    setRepetidoConfirmado("");
   }
   const pedidoAtual = useRef(0);
   // A urgência e as marcas da clínica (um bloqueio, um cateter): cada marca
@@ -446,6 +451,17 @@ export function ProducaoDoDia({
       document.getElementById("producao-paciente")?.focus();
       return;
     }
+    // O mesmo paciente já na lista do dia (17/11/2026: "não quero nada
+    // duplicado"): a ficha anestésica encerrada lança a linha sozinha, e
+    // anotar à mão depois contava o paciente duas vezes. Avisa; o segundo
+    // toque confirma — dois procedimentos do mesmo paciente no dia existem.
+    const repetido = jaAnotadoNoDia(itens, paciente);
+    if (repetido && repetidoConfirmado !== nomeSimples(paciente)) {
+      setRepetidoConfirmado(nomeSimples(paciente));
+      setErro(avisoDeAnotacaoRepetida(repetido));
+      return;
+    }
+    setRepetidoConfirmado("");
     setSalvando(true); setErro("");
     const { error } = await createClient().from("producao_do_dia").insert({
       institution_id: institutionId, perfil_id: perfilId, plantao_id: plantaoId,
