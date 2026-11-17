@@ -928,6 +928,28 @@ export const CATALOGO: Medicamento[] = [
     fonte: SERVICO, situacao: "validado", revisao: REVISAO, regra: "cefazolina",
     observacao: "Dose fixa de 2 g; 3 g acima de 120 kg. Não se multiplica pelo peso.",
   },
+  {
+    // As doses do serviço (17/11/2026): ataque de 2 g, manutenção de 1 g.
+    id: "ceftriaxona-ataque-adulto", nome: "Ceftriaxona — ataque", grupo: "antibioticos", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 2, unidade: "g", por: "fixa" },
+    apresentacoes: [{ rotulo: "1 g reconstituído em 10 mL", quantidade: 1, unidade: "g", mL: 10 }],
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Primeira dose: 2 g. Dose fixa, não se multiplica pelo peso.",
+  },
+  {
+    id: "ceftriaxona-manutencao-adulto", nome: "Ceftriaxona — manutenção", grupo: "antibioticos", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 1, unidade: "g", por: "fixa" },
+    apresentacoes: [{ rotulo: "1 g reconstituído em 10 mL", quantidade: 1, unidade: "g", mL: 10 }],
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Doses seguintes: 1 g. Dose fixa, não se multiplica pelo peso.",
+  },
+  {
+    id: "metronidazol-adulto", nome: "Metronidazol", grupo: "antibioticos", populacoes: ["adulto"], via: "IV",
+    dose: { usual: 500, unidade: "mg", por: "fixa" },
+    apresentacoes: [{ rotulo: "500 mg em 100 mL (5 mg/mL)", quantidade: 5, unidade: "mg", mL: 1 }],
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Dose fixa de 500 mg. Não se multiplica pelo peso.",
+  },
 
   /* ---------------- Criança — antibióticos (17/11/2026) ----------------
      As doses que o responsável técnico mandou: ceftriaxona 50–80 mg/kg/dia,
