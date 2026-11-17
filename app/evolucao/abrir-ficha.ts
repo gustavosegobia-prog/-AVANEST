@@ -12,6 +12,7 @@ import { cabecalhoInicial, type DoMapa, type PacienteDaFolha } from "@/lib/evolu
 import { motivoAoAbrirFolha } from "@/lib/evolucao/fila";
 import type { HorarioDaFicha } from "@/lib/evolucao/folha";
 import { preencherAFolha, type ChaveDaProposta, type FichaDoHospital } from "@/lib/evolucao/ficha-do-hospital";
+import { destinoDaFichaAberta, ehJaExiste } from "@/lib/fluxo-sem-duplicado";
 
 export type PacienteParaAbrir = PacienteDaFolha & { id: string };
 
@@ -47,6 +48,21 @@ export async function abrirFicha({ institutionId, local, paciente, horario = nul
     })
     .select("id")
     .single();
+  // Uma ficha aberta por paciente (202611170001): o residente e o preceptor
+  // abrindo o mesmo paciente ao mesmo tempo caem na mesma ficha, em vez de
+  // duas. No mesmo hospital, continua-se na que já existe.
+  if (ehJaExiste(error)) {
+    const { data: aberta } = await supabase
+      .from("evolucoes_anestesicas")
+      .select("id, local_id:dados->>local_atendimento_id, local_nome:dados->>local_atendimento")
+      .eq("patient_id", paciente.id).eq("status", "aberta")
+      .limit(1).maybeSingle();
+    if (aberta) {
+      return destinoDaFichaAberta(
+        { id: aberta.id as string, localId: (aberta.local_id as string | null) || null, localNome: (aberta.local_nome as string | null) || null },
+        local?.id ?? null);
+    }
+  }
   if (error || !data) return { erro: motivoAoAbrirFolha(error) };
 
   // Ficha de outro horário: início e fim da anestesia já marcados.
