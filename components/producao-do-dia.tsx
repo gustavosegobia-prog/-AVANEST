@@ -16,6 +16,7 @@ import { conferirNoServidor, marcasDaClinica } from "@/components/honorarios/cal
 import { resumoDoHonorarioDoMes, type MarcaDaClinica } from "@/lib/honorarios-telas";
 import { avisoDeAnotacaoRepetida, jaAnotadoNoDia } from "@/lib/fluxo-sem-duplicado";
 import { nomeSimples } from "@/lib/honorarios";
+import { mesesSemEnviar, nomeDoMesDaProducao } from "@/lib/producao-sem-enviar";
 
 // Produção do dia: o caderninho do bolso do pijama.
 //
@@ -589,8 +590,14 @@ export function ProducaoDoDia({
                       if (v !== Number(i.valor)) void mudar(i.id, { valor: v });
                     }}
                   />
+                  {/* As datas da nota e do recebimento vão junto, pela mesma
+                      regra da Produção do mês (lib/baixa-da-producao.ts).
+                      Daqui só ia a situação: "recebido" sem dia de
+                      recebimento, que o fechamento não sabe em que mês
+                      somar (17/11/2026: 6 casos no banco). */}
                   <select value={i.situacao} aria-label="Situação"
-                    onChange={(e) => void mudar(i.id, { situacao: e.target.value })}>
+                    onChange={(e) => void mudar(i.id,
+                      camposDaBaixa(e.target.value as SituacaoDaProducao, i, hojeLocal()))}>
                     {SITUACOES.map(([id, rot]) => <option key={id} value={id}>{rot}</option>)}
                   </select>
                   <button type="button" className="producaoApagar"
@@ -740,6 +747,22 @@ export function ProducaoDoMes({
    */
   const [vaiSozinha, setVaiSozinha] = useState<boolean | null>(null);
   const [mudandoSozinha, setMudandoSozinha] = useState(false);
+  /**
+   * Os meses anteriores com anotação que ainda não foi ao Financeiro
+   * (lib/producao-sem-enviar.ts). Só as suas: a lista é de quem anota até ele
+   * enviar. Recarrega quando o mês aberto muda e depois de cada envio.
+   */
+  const [linhasSemEnviar, setLinhasSemEnviar] = useState<Array<{ data: string; enviado_em: string | null }>>([]);
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const { data, error } = await createClient().from("producao_do_dia")
+        .select("data, enviado_em").is("enviado_em", null).lt("data", `${hojeLocal().slice(0, 7)}-01`).limit(500);
+      if (vivo && !error) setLinhasSemEnviar((data ?? []) as Array<{ data: string; enviado_em: string | null }>);
+    })();
+    return () => { vivo = false; };
+  }, [mes, recarregar, recado]);
+  const atrasados = mesesSemEnviar(linhasSemEnviar, mes, hojeLocal().slice(0, 7));
   useEffect(() => {
     let vivo = true;
     void (async () => {
@@ -1159,6 +1182,18 @@ export function ProducaoDoMes({
               <small>Depois da meia-noite, o que é de ontem para trás vai ao financeiro. Você continua podendo corrigir.</small>
             </span>
           </label>
+        )}
+        {atrasados.length > 0 && (
+          <p className="financeNota producaoMesesSemEnviar" role="status">
+            <span>Ainda não foram ao financeiro:</span>
+            {atrasados.map(({ mes: m, n }) => (
+              <button key={m} type="button" className="outlineClinical compacto"
+                onClick={() => onEscolherMes ? onEscolherMes(m) : undefined} disabled={!onEscolherMes}>
+                {nomeDoMesDaProducao(m, Number(hojeLocal().slice(0, 4)))} ({n})
+              </button>
+            ))}
+            <small>Abra o mês e toque em “Enviar ao financeiro”.</small>
+          </p>
         )}
         {porConvenio.length === 0
           ? <div className="emptyClinical compactEmpty">

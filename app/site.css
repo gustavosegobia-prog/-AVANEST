@@ -1172,6 +1172,7 @@ button:disabled{cursor:not-allowed}
    ========================================================================== */
 
 /* Linha de convenio: acao compacta a direita, nao um botao de linha inteira. */
+/* O preço direto na linha da tabela (17/11/2026). */
 
 @media(max-width:760px){
   /* UMA COLUNA, e não duas. Com duas colunas e quatro filhos (nome, valor,
@@ -2487,6 +2488,7 @@ button:disabled{cursor:not-allowed}
 /* Enviar, desfazer e imprimir na mesma barra, encostados à direita do título. */
 /* Produção do mês (15/11/2026): imprimir só um ou dois convênios, e corrigir na linha o convênio que veio errado do cadastro. */
 /* O envio automático, por pessoa (07/11/2026): uma linha debaixo do título do mês. */
+/* Os meses que ficaram sem ir ao financeiro (17/11/2026). */
 /* A linha do que a equipe enviou. Colunas fixas pelo motivo de sempre: cada
    linha é uma grade própria, e em largura automática nada bate com a de cima. */
 

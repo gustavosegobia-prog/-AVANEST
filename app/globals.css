@@ -1794,6 +1794,9 @@ button:disabled{cursor:not-allowed}
 .convenioRow{display:grid;grid-template-columns:minmax(0,1fr) 120px 158px auto;align-items:center;gap:var(--esp-3);padding:var(--esp-3) var(--esp-5);border-top:1px solid var(--cor-borda)}
 .convenioRow>b{text-align:right;font-variant-numeric:tabular-nums}
 .convenioRowAcoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+/* O preço direto na linha da tabela (17/11/2026). */
+.convenioRow .convenioValorNaLinha{width:120px}
+.convenioRow .convenioValorNaLinha input{height:40px;text-align:right;font-weight:750}
 .outlineClinical.compacto{height:32px;padding:0 var(--esp-3);font-size:13px}
 
 .auditRow{display:grid;grid-template-columns:180px minmax(0,1fr);gap:var(--esp-3);padding:var(--esp-2) var(--esp-5);border-top:1px solid var(--cor-borda);font-size:13px}
@@ -4149,6 +4152,9 @@ button.localAtivoBadge{border:0;background:none;font:inherit;cursor:pointer;text
 .producaoSozinha{display:flex;align-items:flex-start;gap:10px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--cor-borda);border-radius:12px;background:var(--cor-superficie-suave);cursor:pointer}
 .producaoSozinha input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--cor-marca)}
 .producaoSozinha span{display:grid;gap:2px;min-width:0}
+/* Os meses que ficaram sem ir ao financeiro (17/11/2026). */
+.producaoMesesSemEnviar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--cor-borda);border-radius:12px;background:var(--cor-superficie-suave)}
+.producaoMesesSemEnviar small{flex-basis:100%;color:var(--cor-tinta-fraca)}
 .producaoSozinha strong{font-size:14.5px;color:var(--cor-tinta-forte)}
 .producaoSozinha small{font-size:13px;line-height:1.35;color:var(--cor-tinta-fraca)}
 /* A linha do que a equipe enviou. Colunas fixas pelo motivo de sempre: cada

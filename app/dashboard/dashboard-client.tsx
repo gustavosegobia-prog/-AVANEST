@@ -113,6 +113,7 @@ import { RecepcaoView } from "@/components/recepcao";
 import { AreaMedica } from "@/components/area-medica";
 import { Janela, useTravaDeRolagem } from "@/components/janela";
 import { ehJaExiste, mesmoPacienteSemCpf } from "@/lib/fluxo-sem-duplicado";
+import { lancamentosQueOPrecoPreenche, mesmaRegra, repasseDoValor, type LancamentoSemPreco } from "@/lib/precos-do-convenio";
 const PreferenciasDeAvisoPainel = dynamic(
   () => import("@/components/preferencias-de-aviso").then((m) => m.PreferenciasDeAvisoPainel),
   { ssr: false, loading: carregando("as preferências") });
@@ -1530,6 +1531,16 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
   // a fila de "Atenção hoje" da Visão geral. Uma cópia da conta em cada lugar
   // é como as duas comeriam divergir — a mesma lição de `glosasDe`.
   const convenioPendentes=convenioValores.filter(item=>item.ativo&&Number(item.valor)===0&&!item.gratuito).length;
+  // Para o botão que preenche os lançamentos em R$ 0,00 com o preço da tabela:
+  // o procedimento e o hospital que a rota de faturar usaria para escolher a regra.
+  const lancamentosParaPreco=useMemo<LancamentoSemPreco[]>(()=>{
+    const porId=new Map(pacientes.map(p=>[p.id,p]));
+    return financeiro.map(item=>{
+      const p=porId.get(item.patient_id);
+      return {id:item.id,convenio:item.convenio,valor:item.valor,status:item.status,fechado_at:item.fechado_at??null,
+        procedimento:p?.procedimento?.trim()||p?.cirurgia?.trim()||null,hospital:item.hospital?.trim()||p?.hospital?.trim()||null};
+    });
+  },[financeiro,pacientes]);
   const todayIso=hoje();
   const noteAlerts=financeiro.filter(item=>{
     if(!item.nota_fiscal||Number(item.recebido)>=Number(item.valor)||item.status==="cancelado") return false;
@@ -2576,7 +2587,7 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
     </PainelRecolhivel>
       </>}
       {tarefa==="valores"&&<>
-    <ConvenioValoresPanel perfil={perfil} convenioValores={convenioValores} pendentes={convenioPendentes} onRefresh={onRefresh}/>
+    <ConvenioValoresPanel perfil={perfil} convenioValores={convenioValores} pendentes={convenioPendentes} lancamentos={lancamentosParaPreco} onRefresh={onRefresh}/>
       </>}
       </div>
     </div>
@@ -3054,22 +3065,72 @@ function AdminView({perfil,organizacao,perfis,auditoria,localAtivo=null,onRefres
 // lançamento, então mora na tela do Financeiro. Quem grava continua sendo
 // admin ou proprietário — é o que a policy do banco permite; o financeiro
 // enxerga a referência, mas não a altera.
-function ConvenioValoresPanel({perfil,convenioValores,pendentes,onRefresh}:{perfil:Perfil;convenioValores:ConvenioValor[];pendentes:number;onRefresh:()=>void}) {
+function ConvenioValoresPanel({perfil,convenioValores,pendentes,lancamentos=[],onRefresh}:{perfil:Perfil;convenioValores:ConvenioValor[];pendentes:number;
+  /** Os lançamentos de consulta, para o botão que preenche os que nasceram em R$ 0,00. */
+  lancamentos?:LancamentoSemPreco[];onRefresh:()=>void}) {
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
   const podeEditar=["admin","owner"].includes(perfil.role);
+  // Os lançamentos em R$ 0,00 que cada preço da tabela sabe preencher.
+  const preenche=useMemo(()=>lancamentosQueOPrecoPreenche(convenioValores,lancamentos),[convenioValores,lancamentos]);
   async function saveConvenio(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setBusy("convenio");setMessage("");
-    const form=new FormData(event.currentTarget);
-    const valor=Number(String(form.get("valor")||"").replace(",","."));
-    if(!String(form.get("convenio")||"").trim()||!Number.isFinite(valor)||valor<0){setBusy("");setMessage("Informe convênio e um valor válido.");return}
+    // O formulário guardado antes do await: depois dele o React já soltou o
+    // evento, `event.currentTarget` vem nulo, o reset() quebrava e a lista
+    // não recarregava — o preço salvo só aparecia ao sair e voltar da aba.
+    const formulario=event.currentTarget;
+    const form=new FormData(formulario);
+    const valorDigitado=String(form.get("valor")||"").trim();
+    const valor=lerDinheiro(valorDigitado);
+    const convenio=String(form.get("convenio")||"").trim();
+    if(!convenio||!valorDigitado||(valor===0&&/[1-9]/.test(valorDigitado))){setBusy("");setMessage("Informe convênio e um valor válido.");return}
     // O checkbox só importa quando o valor digitado é zero — marcar "gratuito"
     // com um preço real cadastrado seria uma contradição que a tela aceitaria
     // calada. Fora desse caso, grava sempre `false`: gratuidade não é o
     // padrão, é exceção declarada.
     const gratuito=valor===0&&form.get("gratuito")==="on";
-    const {error}=await createClient().from("convenio_valores").insert({institution_id:perfil.institution_id,convenio:String(form.get("convenio")).trim(),procedimento:String(form.get("procedimento")||"").trim()||null,hospital:String(form.get("hospital")||"").trim()||null,valor,repasse_percentual:Number(String(form.get("repasse")||""))||null,ativo:true,gratuito});
-    setBusy("");if(error)setMessage(`Não foi possível salvar o valor: ${error.message}`);else{setMessage("Valor do convênio salvo. Os próximos lançamentos usarão esta referência.");event.currentTarget.reset();onRefresh()}
+    const procedimento=String(form.get("procedimento")||"").trim()||null;
+    const hospital=String(form.get("hospital")||"").trim()||null;
+    const repasse=lerDinheiro(String(form.get("repasse")||""))||null;
+    // O mesmo convênio, procedimento e hospital de novo é o preço mudando, e
+    // não uma segunda regra: com duas, o lançamento podia pegar a velha de
+    // R$ 0,00 em vez da nova (17/11/2026).
+    const existente=mesmaRegra(convenioValores,{convenio,procedimento,hospital});
+    const {error}=existente
+      ? await createClient().from("convenio_valores").update({valor,repasse_percentual:repasse,ativo:true,gratuito,updated_at:new Date().toISOString()}).eq("id",existente.id)
+      : await createClient().from("convenio_valores").insert({institution_id:perfil.institution_id,convenio,procedimento,hospital,valor,repasse_percentual:repasse,ativo:true,gratuito});
+    setBusy("");
+    if(error){setMessage(`Não foi possível salvar o valor: ${error.message}`);return}
+    setMessage(existente?`Valor de ${existente.convenio} atualizado. Os próximos lançamentos usarão este preço.`:"Valor do convênio salvo. Os próximos lançamentos usarão esta referência.");
+    formulario.reset();onRefresh();
+  }
+  /** O preço direto na linha: "Preço pendente" se resolve digitando o valor ali. */
+  async function mudarValor(item:ConvenioValor,texto:string){
+    const valor=lerDinheiro(texto);
+    if(valor===Number(item.valor)||(valor===0&&/[1-9]/.test(texto)))return;
+    setBusy(item.id);setMessage("");
+    const {error}=await createClient().from("convenio_valores").update({valor,gratuito:valor>0?false:item.gratuito,updated_at:new Date().toISOString()}).eq("id",item.id);
+    setBusy("");if(error)setMessage(`Não foi possível mudar o valor: ${error.message}`);else onRefresh();
+  }
+  /**
+   * Preencher os lançamentos que nasceram em R$ 0,00 porque o preço ainda não
+   * estava na tabela. Só os que esperam pagamento, de período aberto; o
+   * repasse vai junto, pelo percentual da regra.
+   */
+  async function aplicarPreco(item:ConvenioValor){
+    const ids=preenche.get(item.id)??[];
+    if(!ids.length)return;
+    const valor=Number(item.valor);
+    setBusy(item.id);setMessage("");
+    const sb=createClient();let feitos=0;let falha="";
+    for(const id of ids){
+      const {error}=await sb.from("financeiro_atendimentos").update({valor,repasse_valor:repasseDoValor(valor,item.repasse_percentual),updated_at:new Date().toISOString()}).eq("id",id).eq("valor",0);
+      if(error){falha=error.message;break}
+      feitos++;
+    }
+    setBusy("");
+    setMessage(falha?`Preenchidos ${feitos} de ${ids.length}. O resto não foi: ${falha}`:`${plural(feitos,"lançamento","lançamentos")} de ${item.convenio} passaram para ${valor.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}.`);
+    onRefresh();
   }
   async function toggleConvenio(item:ConvenioValor){
     setBusy(item.id);const {error}=await createClient().from("convenio_valores").update({ativo:!item.ativo,updated_at:new Date().toISOString()}).eq("id",item.id);setBusy("");if(error)setMessage(`Não foi possível atualizar: ${error.message}`);else onRefresh();
@@ -3127,7 +3188,13 @@ function ConvenioValoresPanel({perfil,convenioValores,pendentes,onRefresh}:{perf
         const gratuito=item.ativo&&zerado&&item.gratuito;
         const rotulo=!item.ativo?"INATIVO":semPreco?"PREÇO PENDENTE":gratuito?"GRATUITO":"ATIVO";
         const tom=!item.ativo?"paused":semPreco?"atencao":gratuito?"paused":"present";
-        return <div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span><b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span className={`statusChip ${tom}`}>{rotulo}</span>{podeEditar?<span className="convenioRowAcoes">
+        return <div className="convenioRow" key={item.id}><span><strong>{item.convenio}</strong><small>{item.procedimento||"Todos os procedimentos"} · {item.hospital||"Todos os hospitais"}{item.repasse_percentual?` · repasse ${item.repasse_percentual}%`:""}</small></span>{podeEditar
+          ? <label className="inlineMoney convenioValorNaLinha"><span className="sr-only">Valor de {item.convenio}</span>
+              <input key={`${item.id}-${item.valor}`} inputMode="decimal" defaultValue={Number(item.valor)>0?Number(item.valor).toLocaleString("pt-BR",{minimumFractionDigits:2}):""} placeholder="R$ 0,00"
+                aria-label={`Valor de ${item.convenio}`} disabled={busy===item.id} onBlur={e=>void mudarValor(item,e.target.value)}/></label>
+          : <b>{Number(item.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b>}<span className={`statusChip ${tom}`}>{rotulo}</span>{podeEditar?<span className="convenioRowAcoes">
+          {(preenche.get(item.id)?.length??0)>0&&<button className="primaryClinical compact" disabled={busy===item.id} onClick={()=>void aplicarPreco(item)}>
+            {busy===item.id?"Aplicando…":`Aplicar aos ${preenche.get(item.id)!.length} em R$ 0,00`}</button>}
           {/* A VOLTA MORA AO LADO, e não escondida num menu: quem marcou
               "gratuito" sem querer — ou o convênio deixou de ser cortesia —
               precisa desfazer com a mesma facilidade que marcou. Só aparece

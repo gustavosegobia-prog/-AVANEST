@@ -64,7 +64,9 @@ test("a produção tem a mesma seleção de nota que a escala", () => {
   // E OS DOIS CAMINHOS usam a mesma regra: o seletor da linha e o botão do
   // lote. Uma cópia da regra em cada lugar é como um dos dois acaba gravando
   // a data errada, e isso só aparece no fechamento, meses depois.
-  assert.equal((tela.match(/camposDaBaixa\(/g) ?? []).length, 3,
+  // Quatro usos desde 17/11/2026: o seletor da Produção do dia também (antes
+  // ele gravava só a situação, e "recebido" ficava sem o dia do recebimento).
+  assert.equal((tela.match(/camposDaBaixa\(/g) ?? []).length, 4,
     "alguém voltou a escrever situação e datas à mão nesta tela");
 });
 

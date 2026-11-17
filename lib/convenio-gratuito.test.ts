@@ -30,7 +30,8 @@ test("o formulário só grava gratuito quando o valor digitado é zero", () => {
   // a tela aceitaria calada: R$ 380,00 e gratuito ao mesmo tempo.
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const i = tela.indexOf("async function saveConvenio");
-  const trecho = tela.slice(i, i + 900);
+  // A função cresceu em 17/11/2026 (o preço repetido atualiza a regra): a janela também.
+  const trecho = tela.slice(i, i + 2400);
   assert.match(trecho, /const gratuito=valor===0&&form\.get\("gratuito"\)==="on";/,
     "o formulário deixou de condicionar gratuito ao valor ser zero");
 });
@@ -61,7 +62,8 @@ test("o botão de alternar só aparece quando o valor é zero", () => {
   // visível — o botão ali seria confuso, não uma opção real.
   const tela = ler("app/dashboard/dashboard-client.tsx");
   const i = tela.indexOf("function ConvenioValoresPanel");
-  const painel = tela.slice(i, i + 7500);
+  // O painel ganhou o preço na linha e o "Aplicar aos em R$ 0,00" (17/11/2026).
+  const painel = tela.slice(i, i + 16000);
   assert.match(painel, /\{zerado&&<button[^>]*onClick=\{\(\)=>toggleGratuito\(item\)\}/,
     "o botão de marcar/desmarcar gratuito deixou de ser condicionado a valor zero");
 });
