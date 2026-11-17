@@ -144,7 +144,7 @@ export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
   const peso = ok(paciente.pesoKg) ? paciente.pesoKg : null;
   const idadeAnos = (paciente.idadeMeses ?? 0) / 12;
 
-  let cartoes = TABELA.filter((m) => m.situacao === "validado" && !m.oculto && m.dose
+  let cartoes = TABELA.filter((m) => m.situacao === "validado" && (!m.oculto || m.naFicha) && m.dose
     && m.populacoes.includes(populacao) && farmacosDoCartao(m).some((f) => mesmoFarmaco(f, nome)));
 
   const cartoesSugeridos: CartaoSugerido[] = [];
@@ -197,11 +197,13 @@ export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
     const pc = pesoDoCartao(m, paciente);
     const peso = pesoDaBalanca === null ? null : pc.kg;
     if (opcoes.via && via !== opcoes.via) continue;
-    // A neostigmina depende da monitorização do bloqueio: a calculadora não dá
-    // número sem ela, e a ficha também não.
-    if (m.regra === "neostigmina") continue;
-
     let dose = m.dose!;
+    // A neostigmina: a ficha sugere a dose do serviço na descurarização
+    // (0,04 mg/kg, 17/11/2026), e não a faixa inteira da calculadora. O aviso
+    // da monitorização vai junto. Antes a ficha não dava número nenhum.
+    if (m.regra === "neostigmina" && dose.usual !== undefined) {
+      dose = { usual: dose.usual, unidade: dose.unidade, por: dose.por };
+    }
     let observacao = m.alerta ?? m.observacao;
     // Cefazolina e cetorolaco mudam de dose com peso e idade: a calculadora
     // escolhe, e diz por quê.

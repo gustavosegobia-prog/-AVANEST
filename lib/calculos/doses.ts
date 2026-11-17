@@ -358,6 +358,12 @@ export type Medicamento = {
   /** Sai da lista principal: aparece dentro do cartão de outro. */
   oculto?: boolean;
   /**
+   * Fora da lista da calculadora (oculto), mas sugerido na ficha anestésica:
+   * a atropina da reversão é calculada dentro do cartão da neostigmina na
+   * calculadora, e na ficha é escrita na sua própria linha.
+   */
+  naFicha?: boolean;
+  /**
    * No adulto, o peso da conta (lib/calculos/peso.ts): ideal, ajustado ou
    * magro no obeso. Sem ele, o peso atual.
    */
@@ -866,20 +872,23 @@ export const CATALOGO: Medicamento[] = [
 
   /* ---------------- Adulto — reversão ---------------- */
   {
+    // A dose do serviço na descurarização é 0,04 mg/kg, com atropina 0,02
+    // mg/kg (17/11/2026). A faixa fica à vista na calculadora; a ficha
+    // anestésica sugere só a do serviço (lib/evolucao/sugestoes.ts).
     id: "neostigmina-adulto", nome: "Neostigmina", grupo: "reversao", populacoes: ["adulto"], via: "IV",
-    dose: { min: 0.03, max: 0.07, unidade: "mg", por: "kg" },
+    dose: { min: 0.03, usual: 0.04, max: 0.07, unidade: "mg", por: "kg" },
     tetoAbsoluto: { valor: 5, unidade: "mg" }, apresentacoes: [mgml(0.5)],
-    fonte: SERVICO, situacao: "validado", revisao: REVISAO, regra: "neostigmina",
-    alerta: "A reversão se guia por monitorização neuromuscular. Peso e idade não escolhem a dose sozinhos — informe a profundidade do bloqueio.",
-    observacao: "Máximo absoluto de 5 mg, independente do peso. A atropina de reversão é calculada junto, dentro deste cartão.",
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026", regra: "neostigmina",
+    alerta: "Confirme a recuperação do bloqueio pela monitorização neuromuscular antes de reverter. Associar atropina 0,02 mg/kg.",
+    observacao: "Dose do serviço na descurarização: 0,04 mg/kg. Máximo absoluto de 5 mg, independente do peso. A atropina de reversão é calculada junto, dentro deste cartão.",
     pesoBase: "atual",
   },
   {
     id: "atropina-reversao-adulto", nome: "Atropina — associada à neostigmina", grupo: "reversao",
     populacoes: ["adulto"], via: "IV", indicacao: "Associada à reversão",
-    dose: { usual: 0.015, unidade: "mg", por: "kg" }, apresentacoes: [mgml(0.25)],
-    fonte: SERVICO, situacao: "validado", revisao: REVISAO, oculto: true,
-    observacao: "Calculada junto à neostigmina. Não é um reversor independente.",
+    dose: { usual: 0.02, unidade: "mg", por: "kg" }, apresentacoes: [mgml(0.25)],
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026", oculto: true, naFicha: true,
+    observacao: "Junto da neostigmina, na descurarização (0,02 mg/kg). Não é um reversor independente.",
     pesoBase: "atual",
   },
 
@@ -1612,7 +1621,7 @@ export function doseCetorolaco(a: {
 export const ID_ATROPINA_REVERSAO = "atropina-reversao-adulto";
 
 export const AVISO_NEOSTIGMINA =
-  "A dose de reversão se escolhe pela profundidade do bloqueio, medida com monitorização neuromuscular — não pelo peso isolado. O valor abaixo é a faixa por quilo, com o teto absoluto de 5 mg já aplicado.";
+  "A dose de reversão se escolhe pela profundidade do bloqueio, medida com monitorização neuromuscular — não pelo peso isolado. O valor abaixo é a faixa por quilo — a usual, 0,04 mg/kg, é a dose do serviço —, com o teto absoluto de 5 mg já aplicado.";
 
 /**
  * A trava é do AVANEST, não da tabela.

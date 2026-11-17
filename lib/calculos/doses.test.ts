@@ -465,7 +465,11 @@ test("neostigmina tem teto de 5 mg e exige monitorização", () => {
 test("a atropina de reversão não aparece sozinha na lista", () => {
   const atropina = acharMedicamento(ID_ATROPINA_REVERSAO)!;
   assert.equal(atropina.oculto, true);
-  assert.equal(atropina.dose!.usual, 0.015);
+  // A dose do serviço na descurarização (17/11/2026): 0,02 mg/kg. Fora da lista
+  // da calculadora, mas sugerida na linha da atropina da ficha anestésica.
+  assert.equal(atropina.dose!.usual, 0.02);
+  assert.equal(atropina.naFicha, true);
+  assert.equal(acharMedicamento("neostigmina-adulto")!.dose!.usual, 0.04);
   assert.equal(disponiveis("adulto").some((m) => m.id === ID_ATROPINA_REVERSAO), false);
 });
 

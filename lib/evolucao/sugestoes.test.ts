@@ -64,10 +64,9 @@ test("a via da linha filtra: raqui pediátrica e anestésico local como teto", (
   assert.equal(sugerirDoses("Midazolam", { idadeMeses: 48, pesoKg: 16 }, { unidade: "mg", via: "EV" }).cartoes.length, 0);
 });
 
-test("sedação mostra o cartão de sedação; neostigmina e bomba ficam de fora", () => {
+test("sedação mostra o cartão de sedação; a bomba fica de fora", () => {
   const sed = sugerirDoses("Fentanil", adulto, { unidade: "mcg", via: "EV", contexto: "sedacao" });
   assert.deepEqual(sed.cartoes.map((c) => c.titulo), ["Fentanil — sedação e titulação"]);
-  assert.equal(sugerirDoses("Neostigmina", adulto, { unidade: "mg" }).cartoes.length, 0);
   const remi = sugerirDoses("Remifentanil", { idadeMeses: 60, pesoKg: 20 }, { unidade: "mcg" });
   assert.equal(remi.cartoes.length, 0, "remifentanil é bomba, não bolus");
 });
@@ -226,8 +225,8 @@ test("a tabela pediátrica do serviço (17/11/2026): dose por quilo, teto do adu
   assert.deepEqual(d("Dipirona", "g", lactente), []);
   assert.deepEqual(d("Metoclopramida", "mg", lactente), []);
   assert.deepEqual(d("Atropina", "mg", lactente), [0.16]);
-  // O adulto não muda: neostigmina sem número, ondansetrona 8 mg.
-  assert.deepEqual(d("Neostigmina", "mg", adulto), []);
+  // O adulto: neostigmina 0,04 mg/kg desde 17/11/2026 (70 kg → 2,8 mg); ondansetrona 8 mg.
+  assert.deepEqual(d("Neostigmina", "mg", adulto), [2.8]);
   assert.deepEqual(d("Ondansetrona", "mg", adulto), [4, 8]);
 });
 
@@ -241,4 +240,19 @@ test("antibiótico no adulto (17/11/2026): ceftriaxona ataque 2 g e manutenção
   }
   // A criança continua com a dose por quilo.
   assert.deepEqual(doses(sugerirDoses("Ceftriaxona", { idadeMeses: 72, pesoKg: 20 }, { unidade: "g", via: "EV" }), "Ceftriaxona"), [1, 1.6]);
+});
+
+test("descurarização no adulto (17/11/2026): neostigmina 0,04 e atropina 0,02 mg/kg, com o aviso da monitorização", () => {
+  // A ficha não dava número de neostigmina no adulto, e a atropina só a de bradicardia (0,5–1 mg).
+  const p72 = { idadeMeses: 59 * 12, pesoKg: 72 };
+  const neo = sugerirDoses("Neostigmina", p72, { unidade: "mg", via: "EV" });
+  assert.deepEqual(neo.cartoes.map((c) => [c.titulo, c.doses.map((x) => x.dose)]), [["Neostigmina", [2.88]]]);
+  assert.match(neo.cartoes[0].observacao!, /monitorização neuromuscular[\s\S]*atropina 0,02 mg\/kg/);
+  const atr = sugerirDoses("Atropina", p72, { unidade: "mg", via: "EV" });
+  assert.deepEqual(atr.cartoes.map((c) => [c.titulo, c.doses.map((x) => x.dose)]),
+    [["Atropina — associada à neostigmina", [1.44]], ["Atropina — bradicardia", [0.5, 1]]]);
+  // O teto de 5 mg da neostigmina continua (150 kg daria 6 mg).
+  const pesado = sugerirDoses("Prostigmine", { idadeMeses: 480, pesoKg: 150 }, { unidade: "mg", via: "EV" });
+  assert.equal(pesado.cartoes[0].doses[0].dose, 5);
+  assert.equal(pesado.cartoes[0].doses[0].limitada, true);
 });
