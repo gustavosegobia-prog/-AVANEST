@@ -929,6 +929,28 @@ export const CATALOGO: Medicamento[] = [
     observacao: "Dose fixa de 2 g; 3 g acima de 120 kg. Não se multiplica pelo peso.",
   },
 
+  /* ---------------- Criança — antibióticos (17/11/2026) ----------------
+     As doses que o responsável técnico mandou: ceftriaxona 50–80 mg/kg/dia,
+     IV ou IM, de 24/24 h; metronidazol 7,5 mg/kg/dose IV, de 8/8 h. Lactente
+     e criança: no neonato a ceftriaxona tem contraindicações próprias
+     (hiperbilirrubinemia, cálcio IV) e o metronidazol muda de intervalo. O
+     teto é o da bula (4 g/dia; 500 mg por dose): a criança grande não passa
+     da dose do adulto. */
+  {
+    id: "ceftriaxona-ped", nome: "Ceftriaxona", grupo: "antibioticos", populacoes: ["lactente", "crianca"], via: "IV",
+    dose: { min: 50, max: 80, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 4, unidade: "g" },
+    apresentacoes: [{ rotulo: "1 g reconstituído em 10 mL", quantidade: 1, unidade: "g", mL: 10 }],
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Dose do dia inteiro, de 24/24 h (IV ou IM). Máximo de 4 g por dia, o teto da bula.",
+  },
+  {
+    id: "metronidazol-ped", nome: "Metronidazol", grupo: "antibioticos", populacoes: ["lactente", "crianca"], via: "IV",
+    dose: { usual: 7.5, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 500, unidade: "mg" },
+    apresentacoes: [{ rotulo: "500 mg em 100 mL (5 mg/mL)", quantidade: 5, unidade: "mg", mL: 1 }],
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Por dose, de 8/8 h. Máximo de 500 mg por dose, a dose do adulto.",
+  },
+
   /* ---------------- Adulto — corticoide de estresse ---------------- */
   {
     id: "hidrocortisona-inducao", nome: "Hidrocortisona — indução", grupo: "adjuvantes", populacoes: ["adulto"],
