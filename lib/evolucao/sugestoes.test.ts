@@ -246,11 +246,13 @@ test("descurarização no adulto (17/11/2026): neostigmina 0,04 e atropina 0,02 
   // A ficha não dava número de neostigmina no adulto, e a atropina só a de bradicardia (0,5–1 mg).
   const p72 = { idadeMeses: 59 * 12, pesoKg: 72 };
   const neo = sugerirDoses("Neostigmina", p72, { unidade: "mg", via: "EV" });
-  assert.deepEqual(neo.cartoes.map((c) => [c.titulo, c.doses.map((x) => x.dose)]), [["Neostigmina", [2.88]]]);
+  assert.deepEqual(neo.cartoes.map((c) => [c.titulo, c.doses.map((x) => x.dose)]), [["Neostigmina — descurarização", [2.88]]]);
+  // O nome que o serviço usa (17/11/2026: "Descurarizar").
+  assert.ok(neo.cartoes.every((c) => /descurarização/.test(c.titulo)));
   assert.match(neo.cartoes[0].observacao!, /monitorização neuromuscular[\s\S]*atropina 0,02 mg\/kg/);
   const atr = sugerirDoses("Atropina", p72, { unidade: "mg", via: "EV" });
   assert.deepEqual(atr.cartoes.map((c) => [c.titulo, c.doses.map((x) => x.dose)]),
-    [["Atropina — associada à neostigmina", [1.44]], ["Atropina — bradicardia", [0.5, 1]]]);
+    [["Atropina — descurarização", [1.44]], ["Atropina — bradicardia", [0.5, 1]]]);
   // O teto de 5 mg da neostigmina continua (150 kg daria 6 mg).
   const pesado = sugerirDoses("Prostigmine", { idadeMeses: 480, pesoKg: 150 }, { unidade: "mg", via: "EV" });
   assert.equal(pesado.cartoes[0].doses[0].dose, 5);
