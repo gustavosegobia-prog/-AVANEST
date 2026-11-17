@@ -199,3 +199,35 @@ test("antibiótico na criança (17/11/2026): ceftriaxona 50–80 mg/kg/dia em g,
   assert.equal(sugerirDoses("Ceftriaxona", { idadeMeses: 0.5, pesoKg: 3.2 }, { unidade: "g", via: "EV" }).cartoes.length, 0);
   assert.equal(sugerirDoses("Ceftriaxona", adulto, { unidade: "g", via: "EV" }).cartoes.length, 0);
 });
+
+test("a tabela pediátrica do serviço (17/11/2026): dose por quilo, teto do adulto ou o da criança, e o limite de idade da bula", () => {
+  const seis = { idadeMeses: 72, pesoKg: 20 };
+  const d = (nome: string, unidade: "mg" | "g", p = seis) => {
+    const r = sugerirDoses(nome, p, { unidade, via: "EV" });
+    return r.cartoes.flatMap((c) => c.doses.map((x) => x.dose));
+  };
+  assert.deepEqual(d("Kefazol", "g"), [0.6]);
+  assert.deepEqual(d("Ondansetrona", "mg"), [1, 2, 3]);
+  assert.deepEqual(d("Dexametasona", "mg"), [2, 3]);
+  assert.deepEqual(d("Dipirona", "g"), [0.4, 0.6]);
+  assert.deepEqual(d("Atropina", "mg"), [0.4]);
+  // A neostigmina da criança tem número na ficha (0,04 mg/kg, a pedido do serviço).
+  assert.deepEqual(d("Neostigmina", "mg"), [0.8]);
+  assert.deepEqual(d("Transamin", "g"), [0.2, 0.3]);
+  assert.deepEqual(d("Hidrocortisona", "mg"), [30, 40]);
+  assert.deepEqual(d("Plasil", "mg"), [3]);
+  // Os tetos: ondansetrona 4 mg e dexametasona 5 mg da criança; dipirona 1 g; atropina 0,5 mg.
+  const grande = { idadeMeses: 132, pesoKg: 45 };
+  assert.deepEqual(d("Ondansetrona", "mg", grande), [2.25, 4]);
+  assert.deepEqual(d("Dexametasona", "mg", grande), [4.5, 5]);
+  assert.deepEqual(d("Dipirona", "g", grande), [0.9, 1]);
+  assert.deepEqual(d("Atropina", "mg", grande), [0.5]);
+  // Abaixo de 1 ano: sem dipirona na veia e sem metoclopramida.
+  const lactente = { idadeMeses: 8, pesoKg: 8 };
+  assert.deepEqual(d("Dipirona", "g", lactente), []);
+  assert.deepEqual(d("Metoclopramida", "mg", lactente), []);
+  assert.deepEqual(d("Atropina", "mg", lactente), [0.16]);
+  // O adulto não muda: neostigmina sem número, ondansetrona 8 mg.
+  assert.deepEqual(d("Neostigmina", "mg", adulto), []);
+  assert.deepEqual(d("Ondansetrona", "mg", adulto), [4, 8]);
+});

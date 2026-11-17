@@ -951,6 +951,76 @@ export const CATALOGO: Medicamento[] = [
     observacao: "Por dose, de 8/8 h. Máximo de 500 mg por dose, a dose do adulto.",
   },
 
+  /* ---------------- Criança — a tabela do serviço (17/11/2026) ----------------
+     Lactente e criança (1 mês a 11 anos); o neonato fica de fora. O teto é o
+     do adulto, salvo onde a criança tem o próprio: ondansetrona 4 mg (bula) e
+     dexametasona 5 mg (consenso de náusea e vômito pediátrico, aceitos pelo
+     responsável técnico). Dipirona IV e metoclopramida só a partir de 1 ano,
+     pela bula. A neostigmina da criança é dose fixa por quilo (0,04 mg/kg), a
+     pedido do serviço: a do adulto continua dependendo da monitorização. */
+  {
+    id: "cefazolina-ped", nome: "Cefazolina — profilaxia", grupo: "antibioticos", populacoes: ["lactente", "crianca"], via: "IV",
+    dose: { usual: 30, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 2, unidade: "g" },
+    apresentacoes: [{ rotulo: "1 g reconstituído em 10 mL", quantidade: 1, unidade: "g", mL: 10 }],
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "30 mg/kg, até 2 g (a dose do adulto).",
+  },
+  {
+    id: "ondansetrona-ped", nome: "Ondansetrona", grupo: "antiemeticos", populacoes: ["lactente", "crianca"], via: "IV",
+    dose: { min: 0.05, usual: 0.1, max: 0.15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 4, unidade: "mg" },
+    apresentacoes: [mgml(2)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Máximo de 4 mg, o da bula para criança.",
+  },
+  {
+    id: "dexametasona-ped", nome: "Dexametasona", grupo: "antiemeticos", populacoes: ["lactente", "crianca"], via: "IV",
+    dose: { min: 0.1, max: 0.15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 5, unidade: "mg" },
+    apresentacoes: [mgml(4), mgml(2)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Máximo de 5 mg na prevenção de náusea e vômito da criança.",
+  },
+  {
+    id: "dipirona-ped", nome: "Dipirona", grupo: "analgesia", populacoes: ["crianca"], via: "IV",
+    dose: { min: 20, max: 30, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 1, unidade: "g" },
+    apresentacoes: [{ rotulo: "500 mg/mL (1 g em 2 mL)", quantidade: 500, unidade: "mg", mL: 1 }],
+    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Por dose, a cada 6 h. Máximo de 1 g por dose. Na veia só a partir de 1 ano (bula).",
+  },
+  {
+    id: "atropina-ped", nome: "Atropina", grupo: "reversao", populacoes: ["lactente", "crianca"], via: "IV",
+    indicacao: "Bradicardia; junto da neostigmina",
+    dose: { usual: 0.02, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 0.5, unidade: "mg" },
+    apresentacoes: [mgml(0.25), mgml(0.5)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Máximo de 0,5 mg por dose.",
+  },
+  {
+    id: "neostigmina-ped", nome: "Neostigmina", grupo: "reversao", populacoes: ["lactente", "crianca"], via: "IV",
+    dose: { usual: 0.04, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 5, unidade: "mg" },
+    apresentacoes: [mgml(0.5)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    alerta: "Confirme pela monitorização do bloqueio. Associar atropina 0,02 mg/kg.",
+    pesoBase: "atual",
+  },
+  {
+    id: "tranexamico-ped", nome: "Ácido tranexâmico", grupo: "obstetricia", populacoes: ["lactente", "crianca"], via: "IV",
+    indicacao: "Sangramento: cirurgia de grande porte, trauma",
+    dose: { min: 10, max: 15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 1, unidade: "g" },
+    apresentacoes: [mgml(50, "Ampola de 250 mg em 5 mL")], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    alerta: "Reduzir na insuficiência renal. Em dose alta pode causar convulsão.",
+    observacao: "Em 10 minutos. Máximo de 1 g (a dose do adulto).",
+  },
+  {
+    id: "hidrocortisona-ped", nome: "Hidrocortisona — indução", grupo: "adjuvantes", populacoes: ["lactente", "crianca"],
+    via: "IV", indicacao: "Cobertura de estresse / corticoterapia crônica",
+    dose: { min: 1.5, max: 2, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 100, unidade: "mg" },
+    apresentacoes: [mgml(50, "100 mg em 2 mL (50 mg/mL)")], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    alerta: "Não é profilaxia de rotina. Só entra em cobertura de estresse ou corticoterapia crônica.",
+    observacao: "Máximo de 100 mg (a dose do adulto).",
+  },
+  {
+    id: "metoclopramida-ped", nome: "Metoclopramida", grupo: "antiemeticos", populacoes: ["crianca"], via: "IV",
+    dose: { usual: 0.15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 10, unidade: "mg" },
+    apresentacoes: [mgml(5)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    observacao: "Máximo de 10 mg (a dose do adulto). Contraindicada abaixo de 1 ano (bula).",
+  },
+
   /* ---------------- Adulto — corticoide de estresse ---------------- */
   {
     id: "hidrocortisona-inducao", nome: "Hidrocortisona — indução", grupo: "adjuvantes", populacoes: ["adulto"],
