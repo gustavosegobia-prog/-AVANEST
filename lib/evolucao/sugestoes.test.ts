@@ -195,9 +195,8 @@ test("antibiótico na criança (17/11/2026): ceftriaxona 50–80 mg/kg/dia em g,
   assert.deepEqual(doses(cefGrande, "Ceftriaxona"), [3.5, 4]);
   assert.equal(cefGrande.cartoes[0].doses[1].limitada, true);
   assert.deepEqual(doses(sugerirDoses("Flagyl", grande, { unidade: "mg", via: "EV" }), "Metronidazol"), [500]);
-  // Neonato fica de fora (contraindicações próprias da ceftriaxona); o adulto ainda não tem cartão.
+  // Neonato fica de fora (contraindicações próprias da ceftriaxona).
   assert.equal(sugerirDoses("Ceftriaxona", { idadeMeses: 0.5, pesoKg: 3.2 }, { unidade: "g", via: "EV" }).cartoes.length, 0);
-  assert.equal(sugerirDoses("Ceftriaxona", adulto, { unidade: "g", via: "EV" }).cartoes.length, 0);
 });
 
 test("a tabela pediátrica do serviço (17/11/2026): dose por quilo, teto do adulto ou o da criança, e o limite de idade da bula", () => {
@@ -230,4 +229,16 @@ test("a tabela pediátrica do serviço (17/11/2026): dose por quilo, teto do adu
   // O adulto não muda: neostigmina sem número, ondansetrona 8 mg.
   assert.deepEqual(d("Neostigmina", "mg", adulto), []);
   assert.deepEqual(d("Ondansetrona", "mg", adulto), [4, 8]);
+});
+
+test("antibiótico no adulto (17/11/2026): ceftriaxona ataque 2 g e manutenção 1 g, metronidazol 500 mg, sem olhar o peso", () => {
+  for (const p of [adulto, { idadeMeses: 600, pesoKg: 130 }, { idadeMeses: 600, pesoKg: null }]) {
+    const cef = sugerirDoses("Rocefin", p, { unidade: "g", via: "EV" });
+    assert.deepEqual(cef.cartoes.map((c) => [c.titulo, c.doses.map((d) => d.dose)]),
+      [["Ceftriaxona — ataque", [2]], ["Ceftriaxona — manutenção", [1]]]);
+    assert.equal(cef.cartoes[0].doses[0].unidade, "g");
+    assert.deepEqual(doses(sugerirDoses("Flagyl", p, { unidade: "mg", via: "EV" }), "Metronidazol"), [500]);
+  }
+  // A criança continua com a dose por quilo.
+  assert.deepEqual(doses(sugerirDoses("Ceftriaxona", { idadeMeses: 72, pesoKg: 20 }, { unidade: "g", via: "EV" }), "Ceftriaxona"), [1, 1.6]);
 });
