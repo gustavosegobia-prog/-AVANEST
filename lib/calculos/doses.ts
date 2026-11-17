@@ -875,7 +875,7 @@ export const CATALOGO: Medicamento[] = [
     // A dose do serviço na descurarização é 0,04 mg/kg, com atropina 0,02
     // mg/kg (17/11/2026). A faixa fica à vista na calculadora; a ficha
     // anestésica sugere só a do serviço (lib/evolucao/sugestoes.ts).
-    id: "neostigmina-adulto", nome: "Neostigmina", grupo: "reversao", populacoes: ["adulto"], via: "IV",
+    id: "neostigmina-adulto", nome: "Neostigmina — descurarização", grupo: "reversao", populacoes: ["adulto"], via: "IV",
     dose: { min: 0.03, usual: 0.04, max: 0.07, unidade: "mg", por: "kg" },
     tetoAbsoluto: { valor: 5, unidade: "mg" }, apresentacoes: [mgml(0.5)],
     fonte: SERVICO, situacao: "validado", revisao: "17/11/2026", regra: "neostigmina",
@@ -884,8 +884,8 @@ export const CATALOGO: Medicamento[] = [
     pesoBase: "atual",
   },
   {
-    id: "atropina-reversao-adulto", nome: "Atropina — associada à neostigmina", grupo: "reversao",
-    populacoes: ["adulto"], via: "IV", indicacao: "Associada à reversão",
+    id: "atropina-reversao-adulto", nome: "Atropina — descurarização", grupo: "reversao",
+    populacoes: ["adulto"], via: "IV", indicacao: "Junto da neostigmina",
     dose: { usual: 0.02, unidade: "mg", por: "kg" }, apresentacoes: [mgml(0.25)],
     fonte: SERVICO, situacao: "validado", revisao: "17/11/2026", oculto: true, naFicha: true,
     observacao: "Junto da neostigmina, na descurarização (0,02 mg/kg). Não é um reversor independente.",
@@ -1016,14 +1016,14 @@ export const CATALOGO: Medicamento[] = [
     observacao: "Por dose, a cada 6 h. Máximo de 1 g por dose. Na veia só a partir de 1 ano (bula).",
   },
   {
-    id: "atropina-ped", nome: "Atropina", grupo: "reversao", populacoes: ["lactente", "crianca"], via: "IV",
-    indicacao: "Bradicardia; junto da neostigmina",
+    id: "atropina-ped", nome: "Atropina — descurarização", grupo: "reversao", populacoes: ["lactente", "crianca"], via: "IV",
+    indicacao: "Junto da neostigmina; a mesma dose na bradicardia",
     dose: { usual: 0.02, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 0.5, unidade: "mg" },
     apresentacoes: [mgml(0.25), mgml(0.5)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
     observacao: "Máximo de 0,5 mg por dose.",
   },
   {
-    id: "neostigmina-ped", nome: "Neostigmina", grupo: "reversao", populacoes: ["lactente", "crianca"], via: "IV",
+    id: "neostigmina-ped", nome: "Neostigmina — descurarização", grupo: "reversao", populacoes: ["lactente", "crianca"], via: "IV",
     dose: { usual: 0.04, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 5, unidade: "mg" },
     apresentacoes: [mgml(0.5)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
     alerta: "Confirme pela monitorização do bloqueio. Associar atropina 0,02 mg/kg.",
