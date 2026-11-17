@@ -176,3 +176,26 @@ test("emulsão lipídica na ficha em mL, dantroleno pelo peso da balança, ocito
   assert.deepEqual(oci.cartoes[0].opcoes.map((o) => [o.valor, o.unidade, o.mlPorHora]),
     [[2.5, "UI/h", 62.5], [7.5, "UI/h", 187.5], [15, "UI/h", 375]]);
 });
+
+test("antibiótico na criança (17/11/2026): ceftriaxona 50–80 mg/kg/dia em g, metronidazol 7,5 mg/kg/dose, com o teto do adulto", () => {
+  const crianca = { idadeMeses: 72, pesoKg: 20 };
+  const cef = sugerirDoses("Ceftriaxona", crianca, { unidade: "g", via: "EV" });
+  assert.equal(cef.populacao, "crianca");
+  assert.deepEqual(doses(cef, "Ceftriaxona"), [1, 1.6]);
+  assert.equal(cef.cartoes[0].doses[0].unidade, "g");
+  assert.match(cef.cartoes[0].observacao!, /24\/24 h/);
+  const met = sugerirDoses("Metronidazol", crianca, { unidade: "mg", via: "EV" });
+  assert.deepEqual(doses(met, "Metronidazol"), [150]);
+  assert.match(met.cartoes[0].observacao!, /8\/8 h/);
+  // Lactente também.
+  assert.deepEqual(doses(sugerirDoses("Rocefin", { idadeMeses: 8, pesoKg: 8 }, { unidade: "g", via: "EV" }), "Ceftriaxona"), [0.4, 0.64]);
+  // A criança grande não passa da dose do adulto: 4 g por dia, 500 mg por dose.
+  const grande = { idadeMeses: 132, pesoKg: 70 };
+  const cefGrande = sugerirDoses("Ceftriaxona", grande, { unidade: "g", via: "EV" });
+  assert.deepEqual(doses(cefGrande, "Ceftriaxona"), [3.5, 4]);
+  assert.equal(cefGrande.cartoes[0].doses[1].limitada, true);
+  assert.deepEqual(doses(sugerirDoses("Flagyl", grande, { unidade: "mg", via: "EV" }), "Metronidazol"), [500]);
+  // Neonato fica de fora (contraindicações próprias da ceftriaxona); o adulto ainda não tem cartão.
+  assert.equal(sugerirDoses("Ceftriaxona", { idadeMeses: 0.5, pesoKg: 3.2 }, { unidade: "g", via: "EV" }).cartoes.length, 0);
+  assert.equal(sugerirDoses("Ceftriaxona", adulto, { unidade: "g", via: "EV" }).cartoes.length, 0);
+});
