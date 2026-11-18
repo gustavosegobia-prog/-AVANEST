@@ -257,4 +257,10 @@ test("descurarização no adulto (17/11/2026): neostigmina 0,04 e atropina 0,02 
   const pesado = sugerirDoses("Prostigmine", { idadeMeses: 480, pesoKg: 150 }, { unidade: "mg", via: "EV" });
   assert.equal(pesado.cartoes[0].doses[0].dose, 5);
   assert.equal(pesado.cartoes[0].doses[0].limitada, true);
+  // A atropina é a metade, na dose e no teto (18/11/2026): 150 kg daria 3 mg; para em 2,5 mg.
+  const atrPesado = sugerirDoses("Atropina", { idadeMeses: 480, pesoKg: 150 }, { unidade: "mg", via: "EV" });
+  const desc = atrPesado.cartoes.find((c) => c.titulo === "Atropina — descurarização")!;
+  assert.equal(desc.doses[0].dose, 2.5);
+  assert.equal(desc.doses[0].limitada, true);
+  assert.match(desc.observacao!, /Máximo de 2,5 mg, a metade dos 5 mg da neostigmina/);
 });

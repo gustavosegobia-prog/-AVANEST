@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
@@ -469,6 +470,10 @@ test("a atropina de reversão não aparece sozinha na lista", () => {
   // da calculadora, mas sugerida na linha da atropina da ficha anestésica.
   assert.equal(atropina.dose!.usual, 0.02);
   assert.equal(atropina.naFicha, true);
+  // O teto é a metade do da neostigmina, e a calculadora o aplica também.
+  assert.deepEqual(atropina.tetoAbsoluto, { valor: 2.5, unidade: "mg" });
+  assert.match(fs.readFileSync(new URL("../../app/calculos/modulo-doses.tsx", import.meta.url), "utf8"),
+    /calcular\(atropina\.dose!, peso, atropina\.apresentacoes\[0\], atropina\.tetoAbsoluto\)/);
   assert.equal(acharMedicamento("neostigmina-adulto")!.dose!.usual, 0.04);
   assert.equal(disponiveis("adulto").some((m) => m.id === ID_ATROPINA_REVERSAO), false);
 });

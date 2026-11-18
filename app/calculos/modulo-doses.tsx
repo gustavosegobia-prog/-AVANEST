@@ -254,7 +254,7 @@ function Cartao({
 
   const atropina = m.regra === "neostigmina" && recuperado ? acharMedicamento(ID_ATROPINA_REVERSAO) : undefined;
   const contaAtropina = atropina
-    ? calcular(atropina.dose!, peso, atropina.apresentacoes[0])[0]
+    ? calcular(atropina.dose!, peso, atropina.apresentacoes[0], atropina.tetoAbsoluto)[0]
     : undefined;
 
   return (
