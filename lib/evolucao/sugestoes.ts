@@ -39,6 +39,8 @@ export type Sugestao = {
   observacao?: string;
   /** O teto absoluto da tabela cortou a conta. */
   limitada?: boolean;
+  /** O volume a aspirar, pela apresentação do cartão (18/11/2026: "dá em mL também"). */
+  volumeMl?: number;
 };
 
 /** Um cartão da tabela, com as doses dele lado a lado. */
@@ -50,6 +52,8 @@ export type CartaoSugerido = {
   observacao?: string;
   fonte: string;
   doses: Sugestao[];
+  /** A apresentação de onde sai o volume em mL das doses ("500 mg/mL (1 g em 2 mL)"). */
+  apresentacao?: string;
 };
 
 /** Anestésico local: a tabela dá o MÁXIMO, que não é dose a aplicar. */
@@ -134,6 +138,26 @@ export function idadeEmMesesDaFicha(idadeDias: number | null, idadeAnos: number 
  * só os cartões daquela via — a linha da lista tem via fixa. `contexto`
  * "sedacao" põe os cartões de sedação na frente (e só eles, se houver).
  */
+/** O volume da dose na apresentação (mL), com duas casas; nulo se as unidades não conversam. */
+export function volumeDaDose(dose: number, unidade: UnidadeDeDose, a: { quantidade: number; unidade: Unidade; mL: number }): number | null {
+  if (unidade === "mL") return null;
+  const naApresentacao = converter(dose, unidade as Unidade, a.unidade);
+  const conc = porMl(a as Parameters<typeof porMl>[0]);
+  if (naApresentacao === undefined || !(conc > 0)) return null;
+  return Math.round((naApresentacao / conc) * 100) / 100;
+}
+
+/**
+ * A unidade da linha da ficha para este paciente. Na criança, o que o adulto
+ * escreve em grama vai em mg (18/11/2026: "aqui em mg e não g") — 280 mg de
+ * dipirona, e não 0,28 g. Sem idade, fica a da lista.
+ */
+export function unidadeDaLinha(unidade: UnidadeDeDose, idadeMeses: number | null): UnidadeDeDose {
+  if (unidade !== "g" || idadeMeses === null) return unidade;
+  const faixa = faixaEtaria(idadeMeses);
+  return faixa && faixa !== "adulto" ? "mg" : unidade;
+}
+
 export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
   unidade: UnidadeDeDose; via?: string; contexto?: "sedacao" | "geral" | "neuroeixo" | "bloqueio" | "outro";
 }): SugestoesDaFicha {
@@ -229,20 +253,28 @@ export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
     if (peso === null && dose.por !== "fixa") { faltouPeso = true; continue; }
     const contas = calcular(dose, peso ?? 1, undefined, m.tetoAbsoluto);
     const doses: Sugestao[] = [];
+    // A primeira apresentação do cartão dá o volume em mL; a ficha que já
+    // escreve em mL (emulsão lipídica) não precisa dele.
+    const apresentacaoDoVolume = opcoes.unidade !== "mL" ? m.apresentacoes[0] : undefined;
     for (const c of contas) {
       const v = naUnidade(c.doseTotal, c.unidadeDose, m);
       if (!v) continue;
       const valor = arredondarDose(v.dose);
       // Duas doses iguais depois do arredondamento (ou do teto) viram uma só.
       if (doses.some((d) => d.dose === valor)) continue;
+      // O volume sai da dose já arredondada, a que vai para o campo.
+      const volumeMl = apresentacaoDoVolume ? volumeDaDose(valor, v.unidade, apresentacaoDoVolume) : null;
       doses.push({
         chave: `${m.id}-${c.nivel}`, titulo: m.nome, nivel: ROTULO_NIVEL[c.nivel], dose: valor, unidade: v.unidade,
         base: escreverBase(dose, c.dosePorKg), via, indicacao: m.indicacao, observacao,
         ...(c.limitada ? { limitada: true } : {}),
+        ...(volumeMl !== null ? { volumeMl } : {}),
       });
     }
     if (doses.length) {
-      cartoesSugeridos.push({ titulo: m.nome, base: `${escreverBase(dose)}${doPeso}`, via, indicacao: m.indicacao, observacao, fonte, doses });
+      const comVolume = doses.some((d) => d.volumeMl !== undefined);
+      cartoesSugeridos.push({ titulo: m.nome, base: `${escreverBase(dose)}${doPeso}`, via, indicacao: m.indicacao, observacao, fonte, doses,
+        ...(comVolume && apresentacaoDoVolume ? { apresentacao: apresentacaoDoVolume.rotulo } : {}) });
     }
   }
 

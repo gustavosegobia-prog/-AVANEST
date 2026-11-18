@@ -4113,6 +4113,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    Embaixo do campo da dose: os números da tabela revisada para a idade e o
    peso do paciente. Cada botão escreve a dose no campo; não grava. A fonte
    fica sempre à vista, pequena. */
+/* O volume a aspirar, pela apresentação do cartão (18/11/2026). */
 /* TOT calculado na criança, logo abaixo da linha da anestesia geral. */
 /* Janela de um sinal só (toque na linha de SpO₂, EtCO₂ ou temperatura) */
 

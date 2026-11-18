@@ -264,3 +264,29 @@ test("descurarização no adulto (17/11/2026): neostigmina 0,04 e atropina 0,02 
   assert.equal(desc.doses[0].limitada, true);
   assert.match(desc.observacao!, /Máximo de 2,5 mg, a metade dos 5 mg da neostigmina/);
 });
+
+test("criança (18/11/2026): o que o adulto escreve em grama vai em mg, e cada dose diz o volume em mL", async () => {
+  const { unidadeDaLinha } = await import("./sugestoes.ts");
+  const fs = await import("node:fs");
+  // 3 anos, 14 kg: dipirona 280–420 mg, e não 0,28–0,42 g; 500 mg/mL → 0,56–0,84 mL.
+  assert.equal(unidadeDaLinha("g", 36), "mg");
+  assert.equal(unidadeDaLinha("g", 8), "mg");
+  assert.equal(unidadeDaLinha("g", 480), "g", "no adulto continua em grama");
+  assert.equal(unidadeDaLinha("g", null), "g", "sem idade, a da lista");
+  assert.equal(unidadeDaLinha("mcg", 36), "mcg");
+  const dip = sugerirDoses("Dipirona", { idadeMeses: 36, pesoKg: 14 }, { unidade: unidadeDaLinha("g", 36), via: "EV" });
+  assert.deepEqual(dip.cartoes[0].doses.map((d) => [d.dose, d.unidade, d.volumeMl]), [[280, "mg", 0.56], [420, "mg", 0.84]]);
+  assert.equal(dip.cartoes[0].apresentacao, "500 mg/mL (1 g em 2 mL)");
+  // A fonte diz que a tabela é a pediátrica, e não "do adulto".
+  assert.match(dip.cartoes[0].fonte, /Tabela de doses pediátricas do serviço/);
+  // No adulto também: 1 g de dipirona = 2 mL; a emulsão lipídica, que a ficha já escreve em mL, não ganha volume.
+  const adulto = sugerirDoses("Dipirona", { idadeMeses: 480, pesoKg: 70 }, { unidade: "g", via: "EV" });
+  assert.equal(adulto.cartoes.find((c) => c.titulo === "Dipirona")!.doses[0].volumeMl, 2);
+  const lip = sugerirDoses("Emulsão lipídica 20%", { idadeMeses: 480, pesoKg: 60 }, { unidade: "mL", via: "EV" });
+  assert.equal(lip.cartoes[0].doses[0].volumeMl, undefined);
+  // A ficha e a janela usam a unidade do paciente; o botão mostra o volume.
+  const ler = (c: string) => fs.readFileSync(new URL(`../../${c}`, import.meta.url), "utf8");
+  assert.match(ler("components/evolucao/folha-anestesica.tsx"), /const it = \{ \.\.\.daLista, unidade: unidadeDaLinha\(daLista\.unidade, pacienteDaDose\.idadeMeses\) \};/);
+  assert.match(ler("components/evolucao/janela-medicamento.tsx"), /setUnidade\(unidadeDaLinha\(i\.unidade, paciente\?\.idadeMeses \?\? null\)\);/);
+  assert.match(ler("components/evolucao/sugestoes-de-dose.tsx"), /<span className="evoSugMl">\{fmt\(d\.volumeMl\)\} mL<\/span>/);
+});
