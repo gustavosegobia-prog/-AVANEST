@@ -56,7 +56,8 @@ export function SugestoesDeDose({ sugestoes, pesoKg, escolhida, mostrarVia = fal
       ))}
       {tetos.map((t) => (
         <p key={t.titulo} className="evoSugTeto">
-          <b>{t.titulo}:</b> no máximo {fmt(t.dose)} {t.unidade} ({t.base}).
+          <b>{t.titulo}:</b> no máximo {fmt(t.dose)} {t.unidade} ({t.base})
+          {t.volumes?.length ? <> = {t.volumes.map((v) => `${fmt(v.mL)} mL a ${v.rotulo}`).join(" · ")}</> : null}.
         </p>
       ))}
       {aviso && <p className="evoSugAviso">{aviso}</p>}
