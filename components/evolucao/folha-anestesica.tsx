@@ -39,7 +39,7 @@ import { PreAnestesicaDaFolha } from "./pre-da-folha";
 import { RodapeDaFolha } from "./rodape-da-folha";
 import { ImprimirFicha } from "./imprimir-ficha";
 import { SugestoesDeDose } from "./sugestoes-de-dose";
-import { idadeEmMesesDaFicha, sugerirDoses, tuboDaFicha, type PacienteDaFicha } from "@/lib/evolucao/sugestoes";
+import { idadeEmMesesDaFicha, sugerirDoses, tuboDaFicha, unidadeDaLinha, type PacienteDaFicha } from "@/lib/evolucao/sugestoes";
 
 // A folha de anestesia digital.
 //
@@ -720,7 +720,9 @@ export function FolhaAnestesica({
                 <section key={g.codigo} className="evoGrupoMed" aria-labelledby={`evo-g-${g.codigo}`}>
                   <h3 id={`evo-g-${g.codigo}`}>{gi + 1}. {g.titulo}</h3>
                   <ul>
-                    {g.itens.map((it, ii) => {
+                    {g.itens.map((daLista, ii) => {
+                      // Na criança, o que a lista escreve em grama vai em mg (dipirona, cefazolina…).
+                      const it = { ...daLista, unidade: unidadeDaLinha(daLista.unidade, pacienteDaDose.idadeMeses) };
                       const vezes = doGrupo.filter((a) => itemDaAdministracao(g, a, porId.get(a.id)) === ii);
                       const total = vezes.length > 1 ? agruparPorMedicamento(vezes)[0]?.total ?? null : null;
                       const chave = `${g.codigo}-${ii}`;

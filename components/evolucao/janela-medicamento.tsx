@@ -14,7 +14,7 @@ import { minutosEntre } from "@/lib/evolucao/registros";
 import { momentoDeHora } from "./use-folha";
 import { CampoHora, CampoNumero, Escolha, numero } from "./campos";
 import { SugestoesDeDose } from "./sugestoes-de-dose";
-import { sugerirDoses, type PacienteDaFicha } from "@/lib/evolucao/sugestoes";
+import { sugerirDoses, unidadeDaLinha, type PacienteDaFicha } from "@/lib/evolucao/sugestoes";
 
 // Registrar um medicamento.
 //
@@ -154,7 +154,7 @@ export function JanelaMedicamento({
 
   function escolher(i: ItemDoCatalogo) {
     setItem(i);
-    setUnidade(i.unidade);
+    setUnidade(unidadeDaLinha(i.unidade, paciente?.idadeMeses ?? null));
     if (i.anestesicoLocal) { setForma("bloqueio"); setVia("perineural"); }
   }
 

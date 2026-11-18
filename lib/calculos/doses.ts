@@ -42,6 +42,12 @@ const SERVICO: Fonte = {
   local: "revisada pelo responsável técnico do AVANEST",
 };
 
+/** As doses da criança que o responsável técnico mandou (17/11/2026). */
+const SERVICO_PED: Fonte = {
+  obra: "Tabela de doses pediátricas do serviço",
+  local: "revisada pelo responsável técnico do AVANEST",
+};
+
 /**
  * A lista de doses do adulto que o responsável técnico mandou (43 fármacos),
  * conferida com Miller, Morgan & Mikhail e as bulas. Onde a lista divergia da
@@ -973,14 +979,14 @@ export const CATALOGO: Medicamento[] = [
     id: "ceftriaxona-ped", nome: "Ceftriaxona", grupo: "antibioticos", populacoes: ["lactente", "crianca"], via: "IV",
     dose: { min: 50, max: 80, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 4, unidade: "g" },
     apresentacoes: [{ rotulo: "1 g reconstituído em 10 mL", quantidade: 1, unidade: "g", mL: 10 }],
-    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     observacao: "Dose do dia inteiro, de 24/24 h (IV ou IM). Máximo de 4 g por dia, o teto da bula.",
   },
   {
     id: "metronidazol-ped", nome: "Metronidazol", grupo: "antibioticos", populacoes: ["lactente", "crianca"], via: "IV",
     dose: { usual: 7.5, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 500, unidade: "mg" },
     apresentacoes: [{ rotulo: "500 mg em 100 mL (5 mg/mL)", quantidade: 5, unidade: "mg", mL: 1 }],
-    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     observacao: "Por dose, de 8/8 h. Máximo de 500 mg por dose, a dose do adulto.",
   },
 
@@ -995,39 +1001,39 @@ export const CATALOGO: Medicamento[] = [
     id: "cefazolina-ped", nome: "Cefazolina — profilaxia", grupo: "antibioticos", populacoes: ["lactente", "crianca"], via: "IV",
     dose: { usual: 30, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 2, unidade: "g" },
     apresentacoes: [{ rotulo: "1 g reconstituído em 10 mL", quantidade: 1, unidade: "g", mL: 10 }],
-    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     observacao: "30 mg/kg, até 2 g (a dose do adulto).",
   },
   {
     id: "ondansetrona-ped", nome: "Ondansetrona", grupo: "antiemeticos", populacoes: ["lactente", "crianca"], via: "IV",
     dose: { min: 0.05, usual: 0.1, max: 0.15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 4, unidade: "mg" },
-    apresentacoes: [mgml(2)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    apresentacoes: [mgml(2)], fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     observacao: "Máximo de 4 mg, o da bula para criança.",
   },
   {
     id: "dexametasona-ped", nome: "Dexametasona", grupo: "antiemeticos", populacoes: ["lactente", "crianca"], via: "IV",
     dose: { min: 0.1, max: 0.15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 5, unidade: "mg" },
-    apresentacoes: [mgml(4), mgml(2)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    apresentacoes: [mgml(4), mgml(2)], fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     observacao: "Máximo de 5 mg na prevenção de náusea e vômito da criança.",
   },
   {
     id: "dipirona-ped", nome: "Dipirona", grupo: "analgesia", populacoes: ["crianca"], via: "IV",
     dose: { min: 20, max: 30, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 1, unidade: "g" },
     apresentacoes: [{ rotulo: "500 mg/mL (1 g em 2 mL)", quantidade: 500, unidade: "mg", mL: 1 }],
-    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     observacao: "Por dose, a cada 6 h. Máximo de 1 g por dose. Na veia só a partir de 1 ano (bula).",
   },
   {
     id: "atropina-ped", nome: "Atropina — descurarização", grupo: "reversao", populacoes: ["lactente", "crianca"], via: "IV",
     indicacao: "Junto da neostigmina; a mesma dose na bradicardia",
     dose: { usual: 0.02, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 0.5, unidade: "mg" },
-    apresentacoes: [mgml(0.25), mgml(0.5)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    apresentacoes: [mgml(0.25), mgml(0.5)], fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     observacao: "Máximo de 0,5 mg por dose.",
   },
   {
     id: "neostigmina-ped", nome: "Neostigmina — descurarização", grupo: "reversao", populacoes: ["lactente", "crianca"], via: "IV",
     dose: { usual: 0.04, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 5, unidade: "mg" },
-    apresentacoes: [mgml(0.5)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    apresentacoes: [mgml(0.5)], fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     alerta: "Confirme pela monitorização do bloqueio. Associar atropina 0,02 mg/kg.",
     pesoBase: "atual",
   },
@@ -1035,7 +1041,7 @@ export const CATALOGO: Medicamento[] = [
     id: "tranexamico-ped", nome: "Ácido tranexâmico", grupo: "obstetricia", populacoes: ["lactente", "crianca"], via: "IV",
     indicacao: "Sangramento: cirurgia de grande porte, trauma",
     dose: { min: 10, max: 15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 1, unidade: "g" },
-    apresentacoes: [mgml(50, "Ampola de 250 mg em 5 mL")], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    apresentacoes: [mgml(50, "Ampola de 250 mg em 5 mL")], fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     alerta: "Reduzir na insuficiência renal. Em dose alta pode causar convulsão.",
     observacao: "Em 10 minutos. Máximo de 1 g (a dose do adulto).",
   },
@@ -1043,14 +1049,14 @@ export const CATALOGO: Medicamento[] = [
     id: "hidrocortisona-ped", nome: "Hidrocortisona — indução", grupo: "adjuvantes", populacoes: ["lactente", "crianca"],
     via: "IV", indicacao: "Cobertura de estresse / corticoterapia crônica",
     dose: { min: 1.5, max: 2, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 100, unidade: "mg" },
-    apresentacoes: [mgml(50, "100 mg em 2 mL (50 mg/mL)")], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    apresentacoes: [mgml(50, "100 mg em 2 mL (50 mg/mL)")], fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     alerta: "Não é profilaxia de rotina. Só entra em cobertura de estresse ou corticoterapia crônica.",
     observacao: "Máximo de 100 mg (a dose do adulto).",
   },
   {
     id: "metoclopramida-ped", nome: "Metoclopramida", grupo: "antiemeticos", populacoes: ["crianca"], via: "IV",
     dose: { usual: 0.15, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 10, unidade: "mg" },
-    apresentacoes: [mgml(5)], fonte: SERVICO, situacao: "validado", revisao: "17/11/2026",
+    apresentacoes: [mgml(5)], fonte: SERVICO_PED, situacao: "validado", revisao: "17/11/2026",
     observacao: "Máximo de 10 mg (a dose do adulto). Contraindicada abaixo de 1 ano (bula).",
   },
 

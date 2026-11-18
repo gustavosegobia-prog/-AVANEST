@@ -38,13 +38,15 @@ export function SugestoesDeDose({ sugestoes, pesoKg, escolhida, mostrarVia = fal
             <b>{c.titulo}</b>
             {c.indicacao && <span> — {c.indicacao}</span>}
             <small>{c.base}{mostrarVia ? ` · ${c.via}` : ""}</small>
+            {c.apresentacao && <small className="evoSugApresentacao">Volume pela apresentação {c.apresentacao}</small>}
           </p>
           <div className="evoSugDoses">
             {c.doses.map((d) => (
               <button key={d.chave} type="button" aria-pressed={escolhida === d.dose}
-                aria-label={`Usar ${fmt(d.dose)} ${d.unidade} (${d.base})`}
+                aria-label={`Usar ${fmt(d.dose)} ${d.unidade} (${d.base})${d.volumeMl !== undefined ? `, ${fmt(d.volumeMl)} mL` : ""}`}
                 onClick={() => onEscolher(d)}>
                 <b>{fmt(d.dose)} {d.unidade}</b>
+                {d.volumeMl !== undefined && <span className="evoSugMl">{fmt(d.volumeMl)} mL</span>}
                 <small>{d.base}{d.limitada ? " · teto" : ""}</small>
               </button>
             ))}
