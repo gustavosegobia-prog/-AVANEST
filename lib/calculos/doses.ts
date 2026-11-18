@@ -886,9 +886,11 @@ export const CATALOGO: Medicamento[] = [
   {
     id: "atropina-reversao-adulto", nome: "Atropina — descurarização", grupo: "reversao",
     populacoes: ["adulto"], via: "IV", indicacao: "Junto da neostigmina",
-    dose: { usual: 0.02, unidade: "mg", por: "kg" }, apresentacoes: [mgml(0.25)],
-    fonte: SERVICO, situacao: "validado", revisao: "17/11/2026", oculto: true, naFicha: true,
-    observacao: "Junto da neostigmina, na descurarização (0,02 mg/kg). Não é um reversor independente.",
+    // Metade da neostigmina, na dose e no teto (18/11/2026: "o máximo seria a
+    // metade da neostigmina"): 0,02 mg/kg, até 2,5 mg.
+    dose: { usual: 0.02, unidade: "mg", por: "kg" }, tetoAbsoluto: { valor: 2.5, unidade: "mg" }, apresentacoes: [mgml(0.25)],
+    fonte: SERVICO, situacao: "validado", revisao: "18/11/2026", oculto: true, naFicha: true,
+    observacao: "Junto da neostigmina, na descurarização: metade da dose dela (0,02 mg/kg). Máximo de 2,5 mg, a metade dos 5 mg da neostigmina.",
     pesoBase: "atual",
   },
 
