@@ -290,3 +290,18 @@ test("criança (18/11/2026): o que o adulto escreve em grama vai em mg, e cada d
   assert.match(ler("components/evolucao/janela-medicamento.tsx"), /setUnidade\(unidadeDaLinha\(i\.unidade, paciente\?\.idadeMeses \?\? null\)\);/);
   assert.match(ler("components/evolucao/sugestoes-de-dose.tsx"), /<span className="evoSugMl">\{fmt\(d\.volumeMl\)\} mL<\/span>/);
 });
+
+test("criança (18/11/2026): o máximo do anestésico local e a raqui também em mL", async () => {
+  const fs = await import("node:fs");
+  const c = { idadeMeses: 36, pesoKg: 14 };
+  // Bupivacaína sem vasoconstritor, 2 mg/kg × 14 = 28 mg: 5,6 mL a 0,5%, 11,2 mL a 0,25%.
+  const bupi = sugerirDoses("Bupivacaína", c, { unidade: "mg", via: "perineural" });
+  const sem = bupi.tetos.find((t) => t.dose === 28)!;
+  assert.deepEqual(sem.volumes?.slice(0, 2), [{ mL: 5.6, rotulo: "0,5%" }, { mL: 11.2, rotulo: "0,25%" }]);
+  // Raqui: 5,6 mg de bupivacaína pesada 0,5% = 1,12 mL.
+  const raqui = sugerirDoses("Bupivacaína", c, { unidade: "mg", via: "intratecal" });
+  assert.equal(raqui.cartoes[0].doses[0].volumeMl, 1.12);
+  assert.equal(raqui.cartoes[0].apresentacao, "Bupivacaína pesada 0,5%");
+  const tela = fs.readFileSync(new URL("../../components/evolucao/sugestoes-de-dose.tsx", import.meta.url), "utf8");
+  assert.match(tela, /t\.volumes\.map\(\(v\) => `\$\{fmt\(v\.mL\)\} mL a \$\{v\.rotulo\}`\)\.join\(" · "\)/);
+});

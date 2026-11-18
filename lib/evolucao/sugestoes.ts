@@ -14,7 +14,7 @@
 // gravado, e a alergia continua pedindo justificativa.
 
 import {
-  AVISO_TITULAVEL, CATALOGO as TABELA, ROTULO_NIVEL, ROTULO_POPULACAO, bupivacainaIntratecal, calcular, citar,
+  AVISO_TITULAVEL, APRESENTACAO_BUPIVACAINA_PESADA, CATALOGO as TABELA, ROTULO_NIVEL, ROTULO_POPULACAO, bupivacainaIntratecal, calcular, citar,
   converter, doseCefazolina, doseCetorolaco, faixaEtaria, porMl, virgula,
   type DosePorKg, type Medicamento, type Populacao, type Unidade,
 } from "../calculos/doses.ts";
@@ -57,7 +57,11 @@ export type CartaoSugerido = {
 };
 
 /** Anestésico local: a tabela dá o MÁXIMO, que não é dose a aplicar. */
-export type TetoSugerido = { titulo: string; dose: number; unidade: UnidadeDeDose; base: string; fonte: string };
+export type TetoSugerido = {
+  titulo: string; dose: number; unidade: UnidadeDeDose; base: string; fonte: string;
+  /** O máximo em mL em cada concentração do cartão (18/11/2026: "todas as doses da criança em mL"). */
+  volumes?: Array<{ mL: number; rotulo: string }>;
+};
 
 export type SugestoesDaFicha = {
   populacao: Populacao | null;
@@ -199,7 +203,9 @@ export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
           fonte: citar({ obra: "SAESP, Tratado de Anestesiologia", local: "capítulo pediátrico" }),
           observacao: `Referência prática para ${faixa.pesoMin}–${faixa.pesoMax} kg.`,
           doses: [{ chave: "raqui-ped", titulo: "Bupivacaína — raquianestesia pediátrica", nivel: "Usual",
-            dose: arredondarDose(conta.dose), unidade: conta.unidade, base: `${virgula(faixa.mgPorKg)} mg/kg`, via: "intratecal" }],
+            dose: arredondarDose(conta.dose), unidade: conta.unidade, base: `${virgula(faixa.mgPorKg)} mg/kg`, via: "intratecal",
+            ...(() => { const v = volumeDaDose(arredondarDose(conta.dose), conta.unidade, APRESENTACAO_BUPIVACAINA_PESADA); return v !== null ? { volumeMl: v } : {}; })() }],
+          apresentacao: APRESENTACAO_BUPIVACAINA_PESADA.rotulo,
         });
       }
     }
@@ -247,7 +253,15 @@ export function sugerirDoses(nome: string, paciente: PacienteDaFicha, opcoes: {
       if (peso === null && dose.por !== "fixa") { faltouPeso = true; continue; }
       const [conta] = calcular(dose, peso ?? 1, undefined, m.tetoAbsoluto);
       const v = conta && naUnidade(conta.doseTotal, conta.unidadeDose, m);
-      if (v) tetos.push({ titulo: m.nome, dose: arredondarDose(v.dose), unidade: v.unidade, base: `máximo ${escreverBase(dose)}${doPeso}`, fonte });
+      if (v) {
+        const maximo = arredondarDose(v.dose);
+        // O máximo em mL em cada concentração: 35 mg de bupivacaína = 14 mL a 0,25% ou 7 mL a 0,5%.
+        const volumes = v.unidade === "mL" ? [] : m.apresentacoes
+          .map((a) => ({ mL: volumeDaDose(maximo, v.unidade, a), rotulo: a.rotulo }))
+          .filter((x): x is { mL: number; rotulo: string } => x.mL !== null);
+        tetos.push({ titulo: m.nome, dose: maximo, unidade: v.unidade, base: `máximo ${escreverBase(dose)}${doPeso}`, fonte,
+          ...(volumes.length ? { volumes } : {}) });
+      }
       continue;
     }
     if (peso === null && dose.por !== "fixa") { faltouPeso = true; continue; }
