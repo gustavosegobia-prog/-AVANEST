@@ -463,6 +463,23 @@ test("linha pronta em cada coluna do intervalo: o último valor antes dela, a pr
   assert.deepEqual(colunasProntas(pam, {}, { inicioMs: ms("10:00"), ateMs: ms("10:05"), intervaloMin: 5 })[1].itens.map((r) => r.parametro), ["pam", "fc"]);
 });
 
+test("PAM pronta sempre sai da PAS e da PAD da coluna, nunca da última PAM (17/11/2026)", async () => {
+  const { colunasProntas } = await import("./sinais.ts");
+  const reg = (id: string, p: string, valor: number, hhmm: string) =>
+    ({ id, evolucao_id: "e", tipo: "sinal", momento: `2026-10-14T${hhmm}:00Z`, dados: { parametro: p, valor }, origem: "manual",
+      substitui_id: null, anulado: false, motivo: null, created_by: "u", created_at: `2026-10-14T${hhmm}:00Z` }) as Registro;
+  const ms = (hhmm: string) => Date.parse(`2026-10-14T${hhmm}:00Z`);
+  // 10:00: PA 140/90 e PAM 109. Às 10:05 a PAS cai para 74...
+  const vig = [reg("1", "pas", 140, "10:00"), reg("2", "pad", 90, "10:00"), reg("3", "pam", 109, "10:00"), reg("4", "pas", 74, "10:05")];
+  // ...com PAD 50 lançada na coluna, a PAM pronta é (74 + 2 × 50) / 3 = 58, não 109.
+  let col = colunasProntas([...vig, reg("5", "pad", 50, "10:05")], {}, { inicioMs: ms("10:00"), ateMs: ms("10:05"), intervaloMin: 5 })[1];
+  assert.deepEqual(col.itens.find((r) => r.parametro === "pam")!.valor, 58);
+  // Só a PAS lançada, a PAD pronta (anterior 60): a PAM pronta é (74 + 120) / 3 = 65.
+  const vig2 = [reg("1", "pas", 140, "10:00"), reg("2", "pad", 60, "10:00"), reg("3", "pam", 109, "10:00"), reg("4", "pas", 74, "10:05")];
+  col = colunasProntas(vig2, {}, { inicioMs: ms("10:00"), ateMs: ms("10:05"), intervaloMin: 5 })[1];
+  assert.deepEqual(col.itens.find((r) => r.parametro === "pam")!.valor, 65);
+});
+
 test("folha de 3 em 3 min: a grade forte e a lacuna seguem de 15 min", async () => {
   const { INTERVALOS, lacunaPadrao: lacuna, marcaForte } = await import("./sinais.ts");
   assert.deepEqual([...INTERVALOS], [3, 5, 10, 15]);

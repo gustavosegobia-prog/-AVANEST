@@ -254,14 +254,19 @@ export function colunasProntas(vigentes: readonly Registro[], pre: { pa?: string
       const pas = naColuna.get("pas"), pad = naColuna.get("pad");
       const estimada = pas && pad ? pamEstimada(pas.v, pad.v) : null;
       let item: Rascunho | null = null;
-      // A PAM pronta: com PAS e PAD lançadas na coluna, a estimada delas
-      // (o médico arrasta até a do monitor); senão a última PAM; senão a
-      // estimada da PAS e da PAD prontas.
-      if (p === "pam" && estimada !== null && pas!.lancado && pad!.lancado) item = { parametro: p, valor: estimada, origem: "anterior", estimada: true };
-      else if (antes) item = { parametro: p, valor: antes.v, origem: "anterior" };
-      else if (p === "pam" && estimada !== null && pas!.origem !== "padrao" && pad!.origem !== "padrao") {
-        item = { parametro: p, valor: estimada, origem: pas!.origem === "pre" || pad!.origem === "pre" ? "pre" : pas!.origem ?? "anterior", estimada: true };
-      } else if (valorPlausivel(p, doPre[p])) item = { parametro: p, valor: doPre[p]!, origem: "pre", ...(p === "pam" ? { estimada: true as const } : {}) };
+      // A PAM pronta é SEMPRE a estimada da PAS e da PAD da coluna — lançadas
+      // ou prontas (17/11/2026: "a média tem que já vir fixa de acordo com a
+      // pressão sistólica e diastólica"). Antes, sem as duas lançadas, vinha a
+      // última PAM, e mexer na PAS deixava a média velha no lugar. A última
+      // PAM só serve quando não dá para calcular (só PAM registrada, par
+      // impossível).
+      const pamDaPa = p === "pam" && estimada !== null && (pas!.lancado || pas!.origem !== "padrao") && (pad!.lancado || pad!.origem !== "padrao");
+      if (pamDaPa) {
+        const origem = pas!.lancado && pad!.lancado ? "anterior"
+          : pas!.origem === "pre" || pad!.origem === "pre" ? "pre" : (pas!.lancado ? pad!.origem : pas!.origem) ?? "anterior";
+        item = { parametro: p, valor: estimada, origem, estimada: true };
+      } else if (antes) item = { parametro: p, valor: antes.v, origem: "anterior" };
+      else if (valorPlausivel(p, doPre[p])) item = { parametro: p, valor: doPre[p]!, origem: "pre", ...(p === "pam" ? { estimada: true as const } : {}) };
       else if (depois) item = { parametro: p, valor: depois.v, origem: "seguinte" };
       else if (PONTO_NEUTRO[p] !== undefined) item = { parametro: p, valor: PONTO_NEUTRO[p]!, origem: "padrao" };
       if (!item) continue;
