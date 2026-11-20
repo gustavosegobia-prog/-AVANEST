@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { AVISO_CELULAR, celularValido } from "@/lib/celular";
 
 type Escolha = "individual" | "grupo" | "convite";
 
@@ -37,7 +38,10 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
       return;
     }
 
-    const { error } = await createClient().rpc("criar_organizacao", {
+    if (!celularValido(texto("celular"))) { setErro(AVISO_CELULAR); setBusy(false); return; }
+
+    const supabase = createClient();
+    const { error } = await supabase.rpc("criar_organizacao", {
       p_tipo: escolha,
       p_nome_organizacao: escolha === "grupo" ? texto("organizacao") : null,
       p_nome_usuario: texto("nome"),
@@ -45,6 +49,9 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
       p_rqe: texto("rqe") || null,
     });
     if (error) { setErro(error.message); setBusy(false); return; }
+    // O celular vai depois: o perfil só existe quando a organização é criada.
+    // Se falhar aqui, a conta segue; o celular não pode travar a entrada.
+    await supabase.rpc("definir_meu_celular", { p_celular: texto("celular") });
     // Toda organização nova passa pela assinatura antes de entrar: o teste
     // grátis começa com o cartão cadastrado, e a primeira cobrança só vence
     // no fim dele. Quem veio da vitrine com um plano já chega com ele marcado.
@@ -84,6 +91,9 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
           )}
           <label htmlFor="nome">Seu nome completo</label>
           <input id="nome" name="nome" required placeholder="Ex.: Dra. Helena Martins" />
+          <label htmlFor="celular">Celular com DDD</label>
+          <input id="celular" name="celular" type="tel" inputMode="tel" required autoComplete="tel-national"
+            placeholder="Ex.: (41) 99999-9999" />
           <label htmlFor="crm">CRM / UF <small className="optionalField">Opcional</small></label>
           <input id="crm" name="crm" placeholder="Ex.: CRM/PR 41235" />
           <label htmlFor="rqe">RQE <small className="optionalField">Opcional</small></label>
