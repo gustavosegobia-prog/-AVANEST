@@ -21,6 +21,7 @@ import { ALDRETE, somaAldrete } from "@/lib/evolucao/lista-da-folha";
 import { hora } from "@/lib/evolucao/impressao";
 import { Linha, Op, Txt, type Modo } from "./papel";
 import type { TuboSugerido } from "@/lib/evolucao/sugestoes";
+import type { SinaisDaSaida } from "@/lib/evolucao/sinais";
 
 type Dados = Record<string, unknown>;
 type Mudar = (m: Dados) => void;
@@ -67,8 +68,10 @@ function lembrarPreceptor(p: Profissional) {
   } catch { /* sem armazenamento: só não lembra */ }
 }
 
-export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos = [], tubo = null }: {
+export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos = [], tubo = null, sinais = null }: {
   dados: Dados;
+  /** O último PA, FC e SpO₂ lançados na ficha: a alta da sala começa com eles. */
+  sinais?: SinaisDaSaida | null;
   /** Criança: o TOT calculado pela idade (ou pelo peso), para escrever com um toque. Só na tela. */
   tubo?: TuboSugerido | null;
   /** Sem ele, a folha só para ler: é a impressão. */
@@ -124,7 +127,10 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
   const espaco = /^L?(\d*)\s*-\s*L?(\d*)$/i.exec(t(r.espaco)) ?? ["", "", ""];
   const mudarEspaco = (a: string, z: string) => raqui({ espaco: a || z ? `L${a}-L${z}` : "" });
   // PA da saída no desenho do papel: ___/___.
-  const [paS = "", paD = ""] = t(saida.pa).split("/");
+  // PA, FC e SAT da alta: o último lançado na ficha enquanto o campo nunca
+  // foi escrito (20/11/2026). Escrito — mesmo apagado —, vale o que está nele.
+  const daAlta = (k: "pa" | "fc" | "spo2") => (saida[k] == null ? sinais?.[k] ?? "" : t(saida[k]));
+  const [paS = "", paD = ""] = daAlta("pa").split("/");
   const mudarPa = (sist: string, diast: string) => mudarSaida({ pa: sist || diast ? `${sist}/${diast}` : "" });
 
   // O que a ficha tem marcado e o papel não traz.
@@ -357,9 +363,9 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
           <Txt>/</Txt>
           <Linha m={m} rotulo="PA diastólica na saída" valor={paD} largura={3} numerico onMudar={(v) => mudarPa(paS, v)} />
           <Txt>FC</Txt>
-          <Linha m={m} rotulo="FC na saída" valor={t(saida.fc)} largura={3} numerico onMudar={(v) => mudarSaida({ fc: v })} />
+          <Linha m={m} rotulo="FC na saída" valor={daAlta("fc")} largura={3} numerico onMudar={(v) => mudarSaida({ fc: v })} />
           <Txt>SAT</Txt>
-          <Linha m={m} rotulo="Saturação na saída" valor={t(saida.spo2).replace(/%$/, "")} largura={3} sufixo="%" numerico
+          <Linha m={m} rotulo="Saturação na saída" valor={daAlta("spo2").replace(/%$/, "")} largura={3} sufixo="%" numerico
             onMudar={(v) => mudarSaida({ spo2: v })} />
           {["Sem O₂", "Com O₂"].map((o) => (
             <Op key={o} m={m} rotulo={o.toUpperCase()} marcado={saida.oxigenio === o}
