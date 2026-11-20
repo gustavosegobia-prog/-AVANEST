@@ -16,6 +16,7 @@ import {
   janelasDaImpressao, marcasDeEvento, medicacaoPorGrupo, numero, type Janela,
 } from "@/lib/evolucao/impressao";
 import { num, type Registro } from "@/lib/evolucao/registros";
+import { sinaisDaSaida } from "@/lib/evolucao/sinais";
 
 // A folha de anestesia em A4 retrato, no desenho da ficha de papel do
 // serviço: cabeçalho, avaliação pré-anestésica, o registro no tempo com a
@@ -164,7 +165,7 @@ export function FolhaImpressa(p: DadosDaImpressao) {
             />
           </div>
 
-          {n === 0 && <RodapeDaFolha dados={{ ...d, equipe }} marcos={{ inicioAnestesia, fimAnestesia }} />}
+          {n === 0 && <RodapeDaFolha dados={{ ...d, equipe }} sinais={sinaisDaSaida(vigentes)} marcos={{ inicioAnestesia, fimAnestesia }} />}
 
           {n > 0 && (
             <div className="imprAssinaturaCurta">

@@ -339,3 +339,29 @@ export function linhasProntas(vigentes: readonly Registro[],
   }
   return saida;
 }
+
+/**
+ * OS SINAIS DA ALTA DA SALA, puxados da própria ficha (20/11/2026: "os sinais
+ * vitais têm que puxar lá do último que foi lançado na ficha").
+ *
+ * O último valor lançado de cada um: PAS, FC e SpO₂. A diastólica é a da
+ * mesma medida da sistólica (o mesmo minuto); sem ela ali, a última lançada.
+ * A PAM estimada não entra — a alta leva PAS/PAD. Números inteiros, como no
+ * papel. `momento` é o horário do mais recente dos que entraram.
+ *
+ * Só preenche o que a pessoa não escreveu: o rodapé usa estes valores
+ * enquanto o campo da alta nunca foi tocado (lib/evolucao/rodape-da-folha).
+ */
+export type SinaisDaSaida = { pa: string; fc: string; spo2: string; momento: string | null };
+
+export function sinaisDaSaida(vigentes: readonly Registro[]): SinaisDaSaida {
+  const ultimo = (p: Parametro) => pontosDe(vigentes, p).filter((x) => x.origem !== "estimado").pop() ?? null;
+  const pas = ultimo("pas"), fc = ultimo("fc"), spo2 = ultimo("spo2");
+  const pads = pontosDe(vigentes, "pad");
+  const pad = (pas ? pads.filter((x) => Math.abs(minutosEntre(x.momento, pas.momento)) < 1).pop() : undefined)
+    ?? pads[pads.length - 1] ?? null;
+  const inteiro = (pt: Ponto | null) => (pt ? String(Math.round(pt.valor)) : "");
+  const usados = [pas, pas ? pad : null, fc, spo2].filter((x): x is Ponto => x !== null);
+  const momento = usados.reduce<string | null>((m, x) => (m === null || Date.parse(x.momento) > Date.parse(m) ? x.momento : m), null);
+  return { pa: pas ? `${inteiro(pas)}/${inteiro(pad)}` : "", fc: inteiro(fc), spo2: inteiro(spo2), momento };
+}

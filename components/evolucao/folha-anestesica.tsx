@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
 import { janelaVisivel } from "@/lib/evolucao/grafico";
-import { ajustesDaPam, colunasProntas, INTERVALOS, linhasProntas, pamEstimadaCabe, PARAMETROS, pontosDe, type Parametro } from "@/lib/evolucao/sinais";
+import { ajustesDaPam, colunasProntas, INTERVALOS, linhasProntas, pamEstimadaCabe, PARAMETROS, pontosDe, sinaisDaSaida, type Parametro } from "@/lib/evolucao/sinais";
 import { historicoDe, minutosEntre, type Registro } from "@/lib/evolucao/registros";
 import {
   administrados, agruparPorMedicamento, doseAcumulada, exposicaoAnestesicoLocal, mesmoFarmaco, type Administracao,
@@ -783,7 +783,8 @@ export function FolhaAnestesica({
       </div>
 
       {/* O rodapé do papel: posições, técnica, cirurgia, alta e o médico — tudo de um toque */}
-      <RodapeDaFolha dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} tubo={tuboDaFicha(pacienteDaDose)} marcos={{
+      <RodapeDaFolha dados={dados} onMudar={f.mudarCabecalho} leitura={!aberta} medicos={medicos} tubo={tuboDaFicha(pacienteDaDose)}
+        sinais={sinaisDaSaida(atuais)} marcos={{
         inicioAnestesia: horarioDoMarco(atuais, "inicio_anestesia"), fimAnestesia: fimAnestesia,
       }} />
 
