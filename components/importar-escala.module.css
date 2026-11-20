@@ -1,0 +1,19 @@
+/* Importar escala: o "para quem / onde" e o horário de cada sigla.
+   O resto da janela usa as classes da importação do mapa (centro/mapa.module.css). */
+
+.onde { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 10px 14px; margin-bottom: 12px; }
+.onde :global(.plantaoFilaNomes) { margin-bottom: 4px; }
+
+.turnos { margin: 0 0 12px; padding: 10px 14px 12px; border: 1px solid var(--cor-borda); border-radius: 12px; display: grid; gap: 8px; }
+.turnos legend { padding: 0 6px; font-size: 13px; font-weight: 700; color: var(--cor-tinta-fraca); }
+/* Uma linha por sigla, também no celular: sigla, início, "às", fim. */
+.turno { display: grid; grid-template-columns: minmax(2.5rem, max-content) minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; font-size: 14px; }
+.turno b { display: grid; gap: 2px; min-width: 0; max-width: 6.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cor-tinta); }
+.turno input { width: 100%; min-width: 0; min-height: 40px; padding: 4px 6px; border: 1px solid var(--cor-borda); border-radius: 10px; font: inherit;
+  background: var(--cor-superficie, #fff); color: var(--cor-tinta); }
+.turno span { color: var(--cor-tinta-fraca); }
+.turno small { justify-self: start; padding: 1px 8px; border-radius: 999px; background: var(--cor-atencao-suave); font-size: 11.5px; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .onde { grid-template-columns: minmax(0, 1fr); }
+}
