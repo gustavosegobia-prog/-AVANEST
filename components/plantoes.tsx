@@ -39,6 +39,7 @@ import {
   type FiltroDeSituacao, type FiltrosDaEscala, type Situacao,
 } from "@/lib/escala-painel";
 import { Dialogo, useFocoPreso, useTravaDeRolagem } from "@/components/admin-ui";
+import { ImportarEscala } from "@/components/importar-escala";
 
 // Plantões: a escala, o valor e a troca.
 //
@@ -1032,6 +1033,8 @@ export function Plantoes({
   // aberto de dentro do atalho rápido — escolheu o colega, quer outro horário —
   // e reabrir com "Para mim" apagaria a escolha que a pessoa acabou de fazer.
   const [lancando, setLancando] = useState<{ dia: string; para: string } | null>(null);
+  // A escala recebida (planilha, PDF, print, foto) lida para a escala pessoal (20/11/2026).
+  const [importando, setImportando] = useState(false);
   /*
    * Como o período aparece: o mês em grade, a semana dia a dia, ou só a lista.
    * Sem escolha, o computador abre no mês e o celular na lista — sete colunas
@@ -2733,6 +2736,14 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     Fechamento do mês
                   </button>
                 )}
+                {/* Só na escala pessoal: o que entra são os plantões de QUEM
+                    importa. Na do grupo o botão prometeria a escala de todos. */}
+                {escopo === "minha" && (
+                  <button className="outlineClinical" onClick={() => { setErro(""); setAviso(""); setImportando(true); }}
+                    title="A escala que você recebeu — planilha, PDF, print ou foto: os seus plantões entram aqui">
+                    Importar escala
+                  </button>
+                )}
                 <button className="primaryClinical compact"
                   onClick={() => setLancando({
                     dia: hojeISO.startsWith(mes) ? hojeISO : `${mes}-01`, para: perfilId,
@@ -3270,6 +3281,21 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
         </Dialogo>
       )}
 
+      {importando && (
+        <ImportarEscala
+          perfilId={perfilId} institutionId={institutionId} ehAdmin={ehAdmin} locais={locais}
+          nome={nomePorId.get(perfilId) ?? ""} apelido={apelidos.get(perfilId) ?? null} mesAberto={mes}
+          valorDoLocal={(alvo) => valorDoHospital(perfilId, alvo, 0)}
+          onFechar={() => setImportando(false)}
+          onImportado={(quantos, primeiraData) => {
+            setImportando(false);
+            setAviso(`${quantos === 1 ? "1 plantão entrou" : `${quantos} plantões entraram`} na sua escala.`);
+            // A tela vai para o mês da escala importada, que pode não ser o aberto.
+            if (!primeiraData.startsWith(mes)) setMes(primeiraData.slice(0, 7));
+            void carregar();
+          }}
+        />
+      )}
       {lancando && (
         <LancarPlantao
           dia={lancando.dia} para={lancando.para} locais={locais} modelos={modelos}

@@ -24,6 +24,25 @@ export async function gradeDoArquivo(arquivo: File, avancar: (fracao: number) =>
   throw new Error("Envie a planilha do mapa (.xlsx), o PDF ou a foto.");
 }
 
+/**
+ * O arquivo em pedaços com posição, SEM procurar a tabela do mapa — para quem
+ * monta a própria leitura em cima dele (a escala, lib/escala-importar.ts). A
+ * planilha vem em grade; o PDF e a foto, em palavras com a posição de cada uma.
+ */
+export async function conteudoDoArquivo(arquivo: File, avancar: (fracao: number) => void = () => {}): Promise<{ grade: string[][] } | { palavras: Palavra[] }> {
+  const ext = extensao(arquivo);
+  if (ext === "xlsx") return { grade: await gradeDoXlsx(await arquivo.arrayBuffer()) };
+  if (ext === "xls") throw new Error("Esta é a planilha antiga (.xls). No Excel, use “Salvar como” .xlsx e envie de novo.");
+  if (ext === "csv" || arquivo.type === "text/csv") return { grade: gradeDoCsv(await arquivo.text()) };
+  if (ext === "pdf" || arquivo.type === "application/pdf") return { palavras: await palavrasDoPdf(arquivo) };
+  if (arquivo.type.startsWith("image/") || /^(jpe?g|png|heic|heif|webp)$/.test(ext)) {
+    const palavras = await palavrasDaFoto(await preparada(arquivo), avancar);
+    if (!palavras.length) throw new Error("A foto não gerou texto legível. Fotografe a folha inteira, de frente, com boa luz e sem sombra.");
+    return { palavras };
+  }
+  throw new Error("Envie a planilha (.xlsx), o PDF ou a foto.");
+}
+
 const SEM_TABELA = "Não achei a tabela do mapa: as colunas HORA, PACIENTE, PROCEDIMENTO… precisam aparecer no arquivo.";
 
 function exigirTabela(grade: string[][] | null): string[][] {
@@ -74,7 +93,7 @@ async function palavrasDoPdf(arquivo: File): Promise<Palavra[]> {
       }
       deslocamento += height;
     }
-    if (!palavras.length) throw new Error("Este PDF é uma imagem, sem texto. Envie a planilha (.xlsx) ou uma foto do mapa.");
+    if (!palavras.length) throw new Error("Este PDF é uma imagem, sem texto. Envie a planilha (.xlsx) ou uma foto dele.");
     return palavras;
   } finally {
     await tarefa.destroy();
