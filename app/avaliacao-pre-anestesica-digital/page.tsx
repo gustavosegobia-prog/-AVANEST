@@ -54,9 +54,15 @@ const NA_CONSULTA: [string, React.ReactNode][] = [
   ["Os exames lidos do laudo",
     "Anexe a foto ou o PDF do laboratório e os valores entram nos campos. Valor fora do que "
     + "existe em ser humano é descartado, e o que você já digitou nunca é sobrescrito."],
-  ["Medicamentos com orientação de suspensão",
-    "A base diz quantos dias antes suspender cada antitrombótico e quando reintroduzir. Você "
-    + "ajusta, e a orientação sai escrita para o paciente levar."],
+  ["Peso ideal, predito e ajustado, sem calculadora",
+    "Com peso, altura e sexo, a tela mostra o IMC, o peso ideal pela fórmula de Devine (o mesmo "
+    + "peso predito da ventilação) e o peso ajustado. Os mesmos números seguem para a ficha "
+    + "anestésica e para o cálculo das doses."],
+  ["Suspender ou manter: 59 medicamentos com referência",
+    "O guia diz, para cada medicamento de uso contínuo, se a conduta é manter, suspender ou "
+    + "individualizar, quantos dias antes suspender e quando retomar. Cada conduta cita a fonte "
+    + "(SAESP 2025, AHA/ACC 2024, ADA 2026, CHEST 2022 e ASRA 2025). Você confere e ajusta, e a "
+    + "orientação sai escrita para o paciente levar."],
   ["Via aérea pediátrica por idade, e por peso no neonato",
     "Acima de um ano, a fórmula da idade. Abaixo de um ano o tubo sai de tabela por peso, "
     + "porque a fórmula de criança maior erra para cima no recém-nascido."],

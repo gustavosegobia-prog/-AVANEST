@@ -70,8 +70,12 @@ const BLOCOS: Bloco[] = [
       ["Risco cardíaco pelo RCRI",
         "O índice de Lee com os seis critérios, calculado a partir do que já foi respondido na "
         + "anamnese — sem repetir pergunta que a tela já fez."],
-      ["Medicamentos de uso contínuo com orientação de suspensão",
-        "A base diz quantos dias antes suspender cada antitrombótico e quando reintroduzir. "
+      ["Peso ideal, predito e ajustado calculados",
+        "IMC, peso ideal pela fórmula de Devine (o mesmo peso predito da ventilação) e peso "
+        + "ajustado saem do peso e da altura, e seguem para a ficha anestésica e para as doses."],
+      ["59 medicamentos de uso contínuo com conduta e referência",
+        "Manter, suspender ou individualizar, com quantos dias antes suspender e quando retomar. "
+        + "Cada conduta cita a fonte (SAESP 2025, AHA/ACC 2024, ADA 2026, CHEST 2022 e ASRA 2025). "
         + "Você confere e ajusta; a orientação sai na ficha que o paciente leva para casa."],
       ["Via aérea pediátrica por idade — e por peso no neonato",
         "Acima de um ano vale a fórmula da idade. Abaixo de um ano, não: o tamanho do tubo passa "
