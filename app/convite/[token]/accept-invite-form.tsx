@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { AVISO_CELULAR, celularValido } from "@/lib/celular";
 
 export function AcceptInviteForm({ token, papel }: { token: string; papel: string }) {
   const router = useRouter();
@@ -17,13 +18,18 @@ export function AcceptInviteForm({ token, papel }: { token: string; papel: strin
     const form = new FormData(event.currentTarget);
     const texto = (campo: string) => String(form.get(campo) ?? "").trim();
 
-    const { error } = await createClient().rpc("aceitar_convite", {
+    if (!celularValido(texto("celular"))) { setErro(AVISO_CELULAR); setBusy(false); return; }
+
+    const supabase = createClient();
+    const { error } = await supabase.rpc("aceitar_convite", {
       p_token: token,
       p_nome_usuario: texto("nome"),
       p_crm: texto("crm") || null,
       p_rqe: texto("rqe") || null,
     });
     if (error) { setErro(error.message); setBusy(false); return; }
+    // Depois do aceite, quando o perfil já é da organização. Falha aqui não trava a entrada.
+    await supabase.rpc("definir_meu_celular", { p_celular: texto("celular") });
     router.replace("/dashboard");
     router.refresh();
   }
@@ -32,6 +38,9 @@ export function AcceptInviteForm({ token, papel }: { token: string; papel: strin
     <form className="loginForm" onSubmit={enviar}>
       <label htmlFor="nome">Seu nome completo</label>
       <input id="nome" name="nome" required placeholder="Ex.: Dra. Helena Martins" />
+      <label htmlFor="celular">Celular com DDD</label>
+      <input id="celular" name="celular" type="tel" inputMode="tel" required autoComplete="tel-national"
+        placeholder="Ex.: (41) 99999-9999" />
       {medico && (
         <>
           <label htmlFor="crm">CRM / UF <small className="optionalField">Opcional</small></label>
