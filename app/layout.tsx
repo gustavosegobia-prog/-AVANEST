@@ -7,6 +7,7 @@ import { MedicaoDeAnuncios } from "@/components/medicao-de-anuncios";
 import { comoJson, organizacao } from "@/lib/schema";
 import { IMAGEM_DE_COMPARTILHAMENTO } from "@/lib/metadados";
 import { ROTEIRO_DO_TEMA } from "@/lib/tema";
+import { ROTEIRO_SEM_ZOOM_NO_IPHONE } from "@/lib/sem-zoom-no-iphone";
 // As páginas públicas carregam só o pedaço do CSS que usam (app/site.css,
 // gerado por scripts/gerar-css-do-site.mjs); as áreas do sistema carregam o
 // globals.css inteiro no layout de cada uma. Auditoria de SEO de 15/11/2026.
@@ -64,6 +65,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: ROTEIRO_DO_TEMA }} />
+        {/* Só no iPhone e no iPad: tocar num campo não dá mais zoom na página
+            (lib/sem-zoom-no-iphone.ts). A pinça continua valendo. */}
+        <script dangerouslySetInnerHTML={{ __html: ROTEIRO_SEM_ZOOM_NO_IPHONE }} />
         {/* O rótulo que fica embaixo do ícone na tela de início do iPhone. Sem
             ele o iOS usa o <title> inteiro e corta no meio, virando
             "AvaNEST|Avaliaç...". O ícone em si vem de app/apple-icon.png. */}
