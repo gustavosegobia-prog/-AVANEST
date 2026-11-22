@@ -574,10 +574,10 @@ test("a folha de produção sai timbrada pela instituição escolhida", () => {
 
 const turnoDe = (
   perfilId: string, profissional: string, data: string,
-  { horas = 12, valor = 1100, confirmado = true } = {},
+  { horas = 12, valor = 1100, confirmado = true, situacao = "realizado" } = {},
 ): PlantaoDoFechamento => ({
   perfilId, profissional, data, hora_inicio: "07:00", hora_fim: "19:00",
-  horas, valor, situacao: "escalado", local: "Santa Casa",
+  horas, valor, situacao, local: "Santa Casa",
   confirmadoEm: confirmado ? `${data}T19:30:00Z` : null,
 });
 
@@ -628,40 +628,42 @@ test("emTurnos e turnosEscrito: a conta e como ela se lê", () => {
   assert.equal(turnosEscrito(948), "79");
 });
 
-test("só o CONFIRMADO entra no total a pagar", () => {
-  // É o ponto inteiro do relatório. A escala é um plano: o plantão trocado na
-  // véspera continua lá. Pagar pelo plano é pagar por trabalho que não houve.
+test("só o que JÁ ACONTECEU entra no total a pagar; o cancelado não conta (22/11/2026)", () => {
+  // A escala é um plano: o que ainda vai acontecer aparece ao lado, e não no
+  // total. O que passou sem ser cancelado conta como feito, confirmado ou não.
   const { corpo } = fechamento([
     turnoDe("a", "LUCAS QUEIROZ", "2026-08-03"),
     turnoDe("a", "LUCAS QUEIROZ", "2026-08-10", { confirmado: false }),
+    turnoDe("a", "LUCAS QUEIROZ", "2026-08-28", { situacao: "escalado" }),
+    turnoDe("a", "LUCAS QUEIROZ", "2026-08-29", { situacao: "cancelado" }),
   ]);
-  // Dois turnos, um confirmado, e o total é de um só.
-  assert.match(corpo, /<td>2<\/td><td>1 <b>de 2<\/b><\/td>/);
-  assert.ok(corpo.includes(`<td class="num">12h</td><td class="num">${money(1100)}</td>`));
+  // Três turnos previstos (o cancelado fora), dois feitos, e o total é dos dois.
+  assert.match(corpo, /<td>3<\/td><td>2 <b>de 3<\/b><\/td>/);
+  assert.ok(corpo.includes(`<td class="num">24h</td><td class="num">${money(2200)}</td>`));
 });
 
-test("o turno não confirmado aparece marcado, e não some", () => {
-  // Sumir seria pior do que aparecer: um plantão que a pessoa esqueceu de
-  // confirmar desapareceria da conta dela sem ninguém ver.
+test("o turno feito sem confirmação aparece marcado, e não some", () => {
   const { corpo } = fechamento([
     turnoDe("a", "LUCAS QUEIROZ", "2026-08-10", { confirmado: false }),
   ]);
   assert.match(corpo, /class="pendente"/);
-  assert.match(corpo, /Aguardando confirmação/);
+  assert.match(corpo, /Feito · sem confirmação/);
   assert.match(corpo, /10\/08/);
 });
 
-test("a folha avisa em cima quando há turno por confirmar", () => {
-  // O aviso muda o que se faz com o papel: pagar um fechamento com pendências
-  // é pagar um plano. Por isso é a primeira frase, e não uma nota de rodapé.
+test("a folha avisa em cima o que ainda vai acontecer e o que passou sem confirmação", () => {
+  // O aviso muda o que se faz com o papel: pagar um fechamento com turnos por
+  // vir é pagar um plano. Por isso é a primeira frase, e não uma nota de rodapé.
   const comPendencia = fechamento([
     turnoDe("a", "LUCAS QUEIROZ", "2026-08-03"),
     turnoDe("b", "MATHEUS GOMES", "2026-08-04", { confirmado: false }),
-    turnoDe("b", "MATHEUS GOMES", "2026-08-05", { confirmado: false }),
+    turnoDe("b", "MATHEUS GOMES", "2026-08-30", { situacao: "escalado" }),
+    turnoDe("b", "MATHEUS GOMES", "2026-08-31", { situacao: "escalado" }),
   ]);
-  assert.match(comPendencia.corpo, /2 turnos ainda não foram confirmados/);
+  assert.match(comPendencia.corpo, /2 turnos ainda vão acontecer — não entram no total/);
+  assert.match(comPendencia.corpo, /1 turno passou sem confirmação de quem estava escalado e conta como feito/);
   const limpa = fechamento([turnoDe("a", "LUCAS QUEIROZ", "2026-08-03")]);
-  assert.match(limpa.corpo, /Todos os turnos foram confirmados/);
+  assert.match(limpa.corpo, /Todos os turnos aconteceram e foram confirmados/);
 });
 
 test("a ordem é por NOME, nunca por valor", () => {
@@ -708,8 +710,9 @@ test("o plantão do dia confirma durante o dia", () => {
   assert.equal(podeConfirmar(diurno, em("2026-08-25T19:00:00")), true);
 });
 
-test("antes do dia não confirma — não aconteceu ainda", () => {
-  assert.equal(podeConfirmar(diurno, em("2026-08-24T23:59:00")), false);
+test("antes do dia confirma: é o “eu faço” de quando a escala sai (22/11/2026)", () => {
+  assert.equal(podeConfirmar(diurno, em("2026-08-24T23:59:00")), true);
+  assert.equal(podeConfirmar(diurno, em("2026-07-30T10:00:00")), true, "a escala do mês seguinte também");
 });
 
 test("passou a janela, não confirma mais", () => {

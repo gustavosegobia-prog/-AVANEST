@@ -264,38 +264,43 @@ test("a virada do ano conta como mês fechado", () => {
 // Lembrete de confirmação
 // ---------------------------------------------------------------------------
 
-const paraConfirmar = (data: string, confirmado_em: string | null = null, situacao = "escalado") =>
-  ({ data, situacao, confirmado_em });
+const paraConfirmar = (data: string, confirmado_em: string | null = null, situacao = "escalado", privado = false) =>
+  ({ data, situacao, confirmado_em, privado });
 
-test("plantão de hoje ainda não confirmado avisa hoje", () => {
-  // A regra é o OPOSTO da do faturamento: ali o mês precisa fechar, aqui o dia
-  // é o que vale. Uma semana depois ninguém lembra se ficou até as 13h ou até
-  // as 19h — e a folha de pagamento sai de uma memória, não de um registro.
+// 22/11/2026: confirmar é o "eu faço" de quando a escala sai, e não um
+// check-in no dia. Pendente é o plantão de hoje em diante sem confirmação.
+
+test("plantão de hoje ainda não confirmado avisa", () => {
   const [a] = lembreteDeConfirmacao({ hoje: "2026-08-25", plantoes: [paraConfirmar("2026-08-25")] });
   assert.equal(a.titulo, "Confirme o plantão de hoje");
   assert.equal(a.acao, true);
-  assert.equal(a.detalhe, "Só o que você confirmar entra no fechamento do mês");
+  assert.equal(a.detalhe, "Confirme que vai fazer, ou passe para um colega");
 });
 
 test("plantão de outro dia diz que dia é", () => {
-  const [a] = lembreteDeConfirmacao({ hoje: "2026-08-25", plantoes: [paraConfirmar("2026-08-19")] });
-  assert.equal(a.titulo, "Confirme o plantão de 19/08");
+  const [a] = lembreteDeConfirmacao({ hoje: "2026-08-25", plantoes: [paraConfirmar("2026-09-02")] });
+  assert.equal(a.titulo, "Confirme o plantão de 02/09");
+  // Fica com a data de hoje: o plantão do mês que vem não ocupa o alto da caixa por semanas.
+  assert.equal(a.quando, "2026-08-25T12:00:00Z");
 });
 
-test("doze pendentes viram UM aviso, não doze", () => {
-  // Quem voltou de férias tem doze para confirmar, e doze linhas iguais
-  // empurram para fora da caixa tudo o mais que estava lá.
-  const doze = Array.from({ length: 12 }, (_, i) => paraConfirmar(`2026-08-${String(i + 1).padStart(2, "0")}`));
+test("a escala do mês vira UM aviso, não doze", () => {
+  const doze = Array.from({ length: 12 }, (_, i) => paraConfirmar(`2026-09-${String(i + 1).padStart(2, "0")}`));
   const avisos = lembreteDeConfirmacao({ hoje: "2026-08-25", plantoes: doze });
   assert.equal(avisos.length, 1);
   assert.equal(avisos[0].titulo, "12 plantões esperando sua confirmação");
 });
 
-test("o que ainda não aconteceu não pede confirmação", () => {
-  // O banco recusa confirmar plantão futuro. Pedir na tela o que o banco nega
-  // é ensinar um caminho que termina em erro.
+test("o que já passou, o confirmado, o cancelado e o só seu não pedem confirmação", () => {
   assert.deepEqual(lembreteDeConfirmacao({
-    hoje: "2026-08-25", plantoes: [paraConfirmar("2026-08-26")],
+    hoje: "2026-08-25",
+    plantoes: [
+      paraConfirmar("2026-08-24"),
+      paraConfirmar("2026-08-26", "2026-08-20T10:00:00Z"),
+      paraConfirmar("2026-08-27", null, "cancelado"),
+      paraConfirmar("2026-08-28", null, "escalado", true),
+      paraConfirmar("2026-08-20", null, "realizado"),
+    ],
   }), []);
 });
 

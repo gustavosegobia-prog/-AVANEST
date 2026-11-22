@@ -10,7 +10,7 @@ import {
 } from "@/lib/aviso-no-telefone";
 import { dataLocal, horaLocal, hoje as hojeNoBrasil, somarDias, somarMeses } from "@/lib/data-local";
 import {
-  chaveDoCheckin, chaveDoLembrete, destinoDoLembrete, deveAvisar, deveLembrarCheckin, textoDoCheckin, textoDoLembrete,
+  chaveDoLembrete, destinoDoLembrete, deveAvisar, textoDoLembrete,
   type PlantaoParaCheckin,
 } from "@/lib/lembrete-de-plantao";
 import { aceita, comPadrao, comoTocar } from "@/lib/preferencias-de-aviso";
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     { data: plantoesDaJanela },
   ] = await Promise.all([
     admin.from("perfis").select("id,preferencias_aviso").in("id", perfis).eq("status", "ativo"),
-    admin.from("plantoes").select("perfil_id,data,situacao,valor,confirmado_em")
+    admin.from("plantoes").select("perfil_id,data,situacao,valor,confirmado_em,privado")
       .in("perfil_id", perfis).gte("data", seisMesesAtras),
     admin.from("producao_do_dia").select("perfil_id,data,situacao,valor")
       .in("perfil_id", perfis).gte("data", seisMesesAtras),
@@ -217,7 +217,6 @@ export async function GET(request: NextRequest) {
   let pessoas = 0;
 
   let lembretesEnviados = 0;
-  let checkinsEnviados = 0;
 
   for (const perfilAtivo of ativos ?? []) {
     const perfilId = String(perfilAtivo.id);
@@ -292,21 +291,12 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // ── 1b. O CHECK-IN NO COMEÇO DO PLANTÃO (08/11/2026) ────────────────
+      // ── 1b. O CHECK-IN DO DIA SAIU (22/11/2026) ──────────────────────────
       //
-      // Toca no início do plantão, se a confirmação (o check-in) ainda não
-      // foi feita; uma vez por plantão. Mesma preferência do lembrete de
-      // véspera: é o mesmo assunto, o plantão. Ver lib/lembrete-de-plantao.
-      for (const { plantao } of lembretesDe.get(perfilId) ?? []) {
-        const chave = chaveDoCheckin(plantao);
-        if (jaEnviados.has(chave)) continue;
-        if (!deveLembrarCheckin(plantao, agoraLocal)) continue;
-        const { titulo, corpo } = textoDoCheckin(plantao);
-        if (await mandar({ titulo, corpo, url: destinoDoLembrete(plantao), tag: chave })) {
-          anotar(chave);
-          checkinsEnviados++;
-        }
-      }
+      // "Esse negócio de confirmar todo dia é ruim, a pessoa esquece." A
+      // confirmação passou para quando a escala sai — o aviso dela é a
+      // pendência "N plantões esperando sua confirmação", lá embaixo — e o
+      // plantão que termina vira realizado sozinho (api/escala/realizar-passados).
     }
 
     // ── 2. AS PENDÊNCIAS ──────────────────────────────────────────────────
@@ -369,7 +359,6 @@ export async function GET(request: NextRequest) {
     ok: true,
     enviadas,
     lembretesDePlantao: lembretesEnviados,
-    checkinsDePlantao: checkinsEnviados,
     pessoas,
     removidas: mortas.length,
     janelaDasPendencias,

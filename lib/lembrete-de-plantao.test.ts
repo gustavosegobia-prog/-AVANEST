@@ -215,11 +215,10 @@ test("check-in: toca no começo do plantão, só sem confirmação, por até 3 h
   });
 });
 
-test("check-in: a rotina de hora em hora manda o check-in, com o recibo e a preferência do lembrete de plantão", () => {
+test("check-in do dia: saiu da rotina de hora em hora (22/11/2026: confirmar é quando a escala sai)", () => {
   const rota = fs.readFileSync(new URL("../app/api/push/lembretes/route.ts", import.meta.url), "utf8");
-  assert.match(rota, /confirmado_em,privado"\)\s*\.in\("perfil_id", perfis\)\.gte\("data", somarDias\(hoje, -1\)\)/);
-  const bloco = rota.slice(rota.indexOf("1b. O CHECK-IN"));
-  assert.match(bloco, /if \(jaEnviados\.has\(chave\)\) continue;\s*if \(!deveLembrarCheckin\(plantao, agoraLocal\)\) continue;/);
-  assert.ok(rota.indexOf("1b. O CHECK-IN") > rota.indexOf('if (aceita(preferencias, "lembrete_plantao"))'), "dentro da preferência");
-  assert.ok(rota.indexOf("1b. O CHECK-IN") < rota.indexOf("2. AS PENDÊNCIAS"), "fora da janela das 8h às 21h: o plantão das 7h avisa às 7h");
+  assert.doesNotMatch(rota, /deveLembrarCheckin|textoDoCheckin|checkinsEnviados/);
+  assert.match(rota, /1b\. O CHECK-IN DO DIA SAIU \(22\/11\/2026\)/);
+  // O lembrete de véspera continua.
+  assert.match(rota, /if \(!deveAvisar\(plantao, agoraLocal\)\) continue;/);
 });

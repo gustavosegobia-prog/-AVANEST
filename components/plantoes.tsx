@@ -2339,12 +2339,13 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
   }
 
   /**
-   * Confirmar que o plantão aconteceu.
+   * Confirmar o plantão — o "eu faço" de quem recebeu a escala (22/11/2026) —,
+   * ou desfazer a confirmação, enquanto ele não acontece.
    *
-   * O banco recusa confirmar plantão de outra pessoa e plantão do futuro — as
-   * duas regras que dão valor ao documento estão lá, e não aqui, porque uma
-   * regra que só existe na tela é uma regra que some quando alguém chama a API
-   * direto. A tela só evita a tentativa e repete o que o banco disse.
+   * O banco recusa confirmar plantão de outra pessoa e plantão cancelado — as
+   * regras estão lá, e não aqui, porque uma regra que só existe na tela é uma
+   * regra que some quando alguém chama a API direto. A tela só evita a
+   * tentativa e repete o que o banco disse.
    */
   async function confirmar(plantao: Plantao) {
     setErro(""); setAviso("");
@@ -2352,6 +2353,23 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       .update({ confirmado_em: plantao.confirmado_em ? null : new Date().toISOString() })
       .eq("id", plantao.id);
     if (error) { setErro(error.message || "Não foi possível confirmar o plantão."); return; }
+    void carregar();
+    onAvisosMudaram?.();
+  }
+
+  /**
+   * Todos os pendentes de uma vez: a escala do mês saiu, e quem vai fazer os
+   * plantões diz isso num toque só, em vez de abrir dia por dia. O que não
+   * puder fazer, passa para um colega no próprio dia.
+   */
+  async function confirmarTodos(lista: { id: string }[]) {
+    if (!lista.length) return;
+    setErro(""); setAviso("");
+    const { error } = await createClient().from("plantoes")
+      .update({ confirmado_em: new Date().toISOString() })
+      .in("id", lista.map((p) => p.id)).is("confirmado_em", null);
+    if (error) { setErro(error.message || "Não foi possível confirmar os plantões."); return; }
+    setAviso(lista.length === 1 ? "Plantão confirmado." : `${lista.length} plantões confirmados.`);
     void carregar();
     onAvisosMudaram?.();
   }
@@ -2803,6 +2821,12 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     aria-pressed={filtros.situacao === "confirmacao_pendente"}>
                     <b>{pendencias.confirmacoes.length}</b>
                     {pendencias.confirmacoes.length === 1 ? " confirmação pendente" : " confirmações pendentes"}
+                  </button>
+                )}
+                {pendencias.confirmacoes.length > 1 && (
+                  <button type="button" onClick={() => void confirmarTodos(pendencias.confirmacoes)}
+                    title="Diz que você vai fazer todos estes plantões. O que não puder, passe para um colega no dia dele.">
+                    <Icone nome="confirmado" tamanho={14} /> Confirmar os {pendencias.confirmacoes.length}
                   </button>
                 )}
                 {pendencias.semValor.length > 0 && (
@@ -3536,45 +3560,59 @@ function DiaDetalhe({
               </label>
             </span>
           )}
-          {/* No SEU plantão, a ação do dia vem primeiro — e ela muda com o
-              dia: antes, passar adiante; no dia e depois, confirmar que
-              aconteceu. Só o confirmado entra no fechamento do mês, então
-              esconder esse botão aqui é esconder o passo que faz a pessoa
-              ser paga.
+          {/* No SEU plantão, as duas respostas à escala (22/11/2026: "na hora
+              que lançar os plantões da equipe, ele tem que olhar e já confirmar
+              o que ele quer. Se não confirmar, tem que anunciar ou passar para
+              algum colega"): CONFIRMAR — o "eu faço" —, a qualquer hora antes
+              do plantão; e PASSAR PLANTÃO, para o colega ou para o grupo. Depois
+              do fim, o plantão vira realizado sozinho; o que passou sem
+              confirmação fica marcado, e conta como feito.
 
-              Havia um defeito nesta escolha: quem administra caía no ramo do
-              "Remover" ANTES de qualquer coisa, e nunca via "Passar plantão"
-              no próprio turno — justamente quem monta a escala, e mais precisa
-              repassar. Agora o poder de administrador entra como botão a mais,
-              e não no lugar da ação de quem trabalhou.
+              Quem administra vê as mesmas ações no próprio turno; o poder de
+              administrador entra como botão a mais (Remover), e não no lugar
+              da ação de quem trabalha.
 
-              Plantão privado não confirma: ele não entra no fechamento do
-              grupo, e confirmar o que ninguém vai pagar é um passo sem fim.
+              Plantão privado não confirma: é só seu, e conta como feito quando
+              passa a data.
 
               O plantão do grupo não se apaga — sai passando para um colega que
               aceite, porque quem some de um turno sem avisar deixa o buraco
               para o dia da cirurgia. */}
           {p.perfil_id === perfilId ? (
             <span className="plantaoDetalheAcoes">
-              {p.privado ? null : p.data > hojeISO ? (
+              {p.privado || p.situacao === "cancelado" ? null
+                : p.situacao === "escalado" && podeConfirmar(p, new Date()) ? (
+                  p.confirmado_em ? (
+                    <>
+                      <span className="statusChip present" title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}>
+                        CONFIRMADO
+                      </span>
+                      <button className="outlineClinical" onClick={() => onConfirmar(p)}
+                        title="Desfaz a confirmação. Se não puder fazer o plantão, passe para um colega.">
+                        Desfazer
+                      </button>
+                    </>
+                  ) : (
+                    <button className="outlineClinical plantaoConfirmar" onClick={() => onConfirmar(p)}
+                      title="Diz que você vai fazer este plantão. Se não puder, passe para um colega.">
+                      Confirmar plantão
+                    </button>
+                  )
+                ) : p.confirmado_em ? (
+                  <span className="statusChip present" title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}>
+                    CONFIRMADO
+                  </span>
+                ) : (
+                  <span className="statusChip waiting"
+                    title="Passou sem confirmação e contou como feito. Se não aconteceu, quem monta a escala marca como cancelado.">
+                    SEM CONFIRMAÇÃO
+                  </span>
+                )}
+              {!p.privado && p.situacao === "escalado" && p.data > hojeISO && (
                 <button className="outlineClinical" onClick={() => onPassar(p)}
                   title="Este plantão é da escala do grupo: ele sai da sua escala quando um colega aceitar">
                   {p.aberto_para_troca ? "Trocar de novo" : "Passar plantão"}
                 </button>
-              ) : p.confirmado_em ? (
-                <span className="statusChip present" title={`Confirmado em ${new Date(p.confirmado_em).toLocaleDateString("pt-BR")}`}>
-                  CONFIRMADO
-                </span>
-              ) : podeConfirmar(p, new Date()) ? (
-                <button className="outlineClinical plantaoConfirmar" onClick={() => onConfirmar(p)}
-                  title="Confirma que você fez este plantão. É o que o fechamento do mês soma.">
-                  Confirmar plantão
-                </button>
-              ) : (
-                <span className="statusChip waiting"
-                  title="A confirmação era no dia do plantão. Ele continua no fechamento do mês, marcado como não confirmado.">
-                  NÃO CONFIRMADO
-                </span>
               )}
               {(ehAdmin || p.privado) && (
                 <button className="outlineClinical red" onClick={() => onRemover(p.id)}>Remover</button>

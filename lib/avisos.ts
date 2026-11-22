@@ -308,22 +308,23 @@ export function lembretesDoDinheiro(entrada: {
 
 export type PlantaoParaConfirmar = {
   data: string; situacao: string; confirmado_em: string | null;
+  /** O plantão só seu não tem confirmação: ele conta como feito quando passa. */
+  privado?: boolean | null;
 };
 
 /**
- * "Confirme o plantão que você fez."
+ * "Confirme os plantões da escala."
  *
- * Separado dos lembretes de dinheiro por causa de UMA regra que é o oposto da
- * de lá: aqui o mês corrente conta, e o dia de hoje conta mais que todos. O
- * lembrete de faturamento espera o mês fechar porque cobrar anteontem não é
- * atraso; a confirmação é o contrário — ela vale no dia, enquanto a pessoa
- * lembra se ficou até as 13h ou até as 19h, se trocou com alguém, se a sala
- * fechou. Uma semana depois ninguém lembra, e a folha de pagamento sai de uma
- * memória e não de um registro.
+ * Desde 22/11/2026 a confirmação é o "eu faço" de quando a escala sai, e não
+ * um check-in no dia ("esse negócio de confirmar todo dia é ruim, a pessoa
+ * esquece. Na hora que lançar os plantões da equipe, ele tem que olhar e já
+ * confirmar o que ele quer. Se não confirmar, tem que anunciar ou passar para
+ * algum colega"). Pendente é o plantão de hoje em diante, ainda escalado e sem
+ * confirmação; o que já passou virou realizado sozinho e não pede mais nada.
  *
- * Um aviso só para todos os pendentes, e não um por plantão. Quem voltou de
- * férias tem doze para confirmar, e doze linhas iguais na caixa empurram para
- * fora tudo o mais que estava lá.
+ * Um aviso só para todos os pendentes, e não um por plantão: a escala do mês
+ * são doze plantões, e doze linhas iguais na caixa empurram para fora tudo o
+ * mais que estava lá.
  */
 export function lembreteDeConfirmacao(entrada: {
   hoje: string;
@@ -331,21 +332,21 @@ export function lembreteDeConfirmacao(entrada: {
   plantoes: PlantaoParaConfirmar[];
 }): Aviso[] {
   const pendentes = entrada.plantoes.filter((p) =>
-    !p.confirmado_em && p.situacao !== "cancelado" && p.data <= entrada.hoje);
+    !p.confirmado_em && !p.privado && p.situacao === "escalado" && p.data >= entrada.hoje);
   if (pendentes.length === 0) return [];
 
-  // O mais recente decide a posição na lista: um plantão de hoje sobe para o
-  // alto da caixa, que é onde ele precisa estar hoje.
-  const maisNovo = pendentes.reduce((a, b) => (a.data > b.data ? a : b));
-  const deHoje = maisNovo.data === entrada.hoje;
+  const proximo = pendentes.reduce((a, b) => (a.data < b.data ? a : b));
+  const deHoje = proximo.data === entrada.hoje;
 
   return [{
     id: "confirmar", tipo: "a_confirmar", area: "plantoes", acao: true,
-    quando: `${maisNovo.data}T23:00:00Z`,
+    // Hoje, e não o dia do plantão: um plantão do mês que vem no alto da caixa
+    // ficaria lá por semanas, empurrando o que é de hoje para baixo.
+    quando: `${entrada.hoje}T12:00:00Z`,
     titulo: pendentes.length === 1
-      ? (deHoje ? "Confirme o plantão de hoje" : `Confirme o plantão de ${diaCurto(maisNovo.data)}`)
+      ? (deHoje ? "Confirme o plantão de hoje" : `Confirme o plantão de ${diaCurto(proximo.data)}`)
       : `${pendentes.length} plantões esperando sua confirmação`,
-    detalhe: "Só o que você confirmar entra no fechamento do mês",
+    detalhe: "Confirme que vai fazer, ou passe para um colega",
   }];
 }
 
