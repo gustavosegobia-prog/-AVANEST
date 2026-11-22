@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { DashboardClient, type DashboardView } from "./dashboard-client";
 import { COOKIE_LOCAL, decidirLocalDaSessao, type LocalDisponivel } from "@/lib/local-ativo";
 import { escalaPublicada, lembreteDeConfirmacao, lembretesDoDinheiro, montarAvisos, semOsAdiados } from "@/lib/avisos";
+import { mostrarPrimeirosPassos, noPrimeiroMes, primeirosPassos, type Passo } from "@/lib/primeiros-passos";
 import { nomeCurto } from "@/lib/escala";
 import { hoje as hojeNoBrasil, mesAtual, somarMeses } from "@/lib/data-local";
 import { areasLiberadas, areasNoTeste, modulosDaOrganizacao } from "@/lib/modulos";
@@ -462,6 +463,23 @@ export default async function DashboardPage({
   // montado tudo, e não dentro de cada montador. Espalhar o filtro por cinco
   // funções faria a sexta nascer sem ele, e o adiamento passaria a funcionar em
   // alguns avisos e não em outros, o que é pior que não existir.
+  // OS PRIMEIROS PASSOS (lib/primeiros-passos.ts): nos 30 primeiros dias da
+  // organização, para quem a administra. A contagem extra (há ficha com algum
+  // registro?) só roda para quem pode ver a lista — o resto não paga a consulta.
+  let passos: Passo[] | null = null;
+  if (["owner", "admin"].includes(perfil.role) && noPrimeiroMes(instituicao?.created_at, new Date())) {
+    const { count: registrosDeFicha } = podeFicha === true
+      ? await supabase.from("evolucao_registros").select("id", { count: "exact", head: true })
+      : { count: null };
+    const lista = primeirosPassos({
+      escala: (plantoesDoDinheiro?.length ?? 0) > 0,
+      avaliacao: (avaliacoes?.length ?? 0) > 0,
+      ficha: podeFicha === true ? (registrosDeFicha ?? 0) > 0 : null,
+      equipe: instituicao?.tipo === "individual" ? null : (perfis?.length ?? 0) > 1,
+    });
+    if (mostrarPrimeirosPassos({ criadaEm: instituicao?.created_at, agora: new Date(), papel: perfil.role, passos: lista })) passos = lista;
+  }
+
   const avisosVisiveis = semOsAdiados(
     avisos,
     new Map((adiadosDoAviso ?? []).map((a) => [a.chave as string, a.ate as string])),
@@ -480,6 +498,7 @@ export default async function DashboardPage({
       geradoEm={new Date().getTime()}
       podeFichaAnestesica={podeFicha === true}
       podeMapaCirurgico={abreOCentro(podeCentro)}
+      primeirosPassos={passos}
       tutorialNoPrimeiroAcesso={abreTutorialSozinho({ criadaEm: user.created_at, vistoEm: user.user_metadata?.tutorial_visto_em })}
       // Vem do servidor, que já tem a sessão. Buscar no navegador deixaria a
       // tela "carregando..." — e o botão de trocar senha travado — sempre que

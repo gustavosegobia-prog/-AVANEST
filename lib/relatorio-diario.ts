@@ -150,7 +150,51 @@ export type Relatorio = {
   totalGeral: number;
   /** Quem a rotina pausou hoje por inatividade. */
   pausados: Array<{ nome: string; email: string; dias: number }>;
+  /** Organizações que PAGAM e pararam de usar — de qualquer origem. */
+  assinantesParados: AssinanteParado[];
 };
+
+/**
+ * ASSINANTE QUE PAGA E PAROU (22/11/2026). O primeiro assinante pagou a primeira
+ * mensalidade num dia e não tinha entrado desde a primeira semana. Quem paga e
+ * não usa cancela na fatura seguinte — e a conversa que evita isso precisa
+ * acontecer antes dela. Por isso o relatório traz a organização (e não cada
+ * pessoa: num grupo, o colega que não entra não é sinal de nada se o resto da
+ * casa usa), os dias desde a última atividade de QUALQUER pessoa dela e a data
+ * da próxima cobrança. Vale para toda origem, campanha ou não.
+ */
+export type AssinanteParado = {
+  organizacao: string;
+  dias: number;
+  /** "19/12/2026": quando a próxima mensalidade sai. */
+  proximaCobranca: string | null;
+  contato: { nome: string; email: string };
+};
+
+/** A partir de quantos dias sem nenhum uso a organização que paga aparece. */
+export const DIAS_PARA_ASSINANTE_PARADO = 7;
+
+export function assinantesParados(usuarios: readonly UsuarioDoUso[], agora: Date): AssinanteParado[] {
+  const porOrganizacao = new Map<string, UsuarioDoUso[]>();
+  for (const u of usuarios) {
+    if (u.plano !== "ativo") continue;
+    porOrganizacao.set(u.organizacao, [...(porOrganizacao.get(u.organizacao) ?? []), u]);
+  }
+  return [...porOrganizacao].map(([organizacao, gente]) => {
+    // O mais recente da casa: se alguém usou, a organização não parou.
+    const maisRecente = gente.reduce((a, b) => (diasParado(b, agora) < diasParado(a, agora) ? b : a));
+    return {
+      organizacao,
+      dias: diasParado(maisRecente, agora),
+      proximaCobranca: maisRecente.teste_ate ? dataLocal(new Date(maisRecente.teste_ate)).split("-").reverse().join("/") : null,
+      contato: { nome: maisRecente.nome, email: maisRecente.email },
+    };
+  }).filter((a) => a.dias >= DIAS_PARA_ASSINANTE_PARADO).sort((a, b) => b.dias - a.dias);
+}
+
+const linhaDoAssinante = (a: AssinanteParado) =>
+  `${a.organizacao} — ${a.dias} dias sem uso${a.proximaCobranca ? ` · próxima cobrança em ${a.proximaCobranca}` : ""}`
+  + ` · ${a.contato.nome} (${a.contato.email})`;
 
 /**
  * A partir de quantos dias sem entrar alguém aparece na lista de parados.
@@ -175,7 +219,7 @@ export const DIAS_PARA_PAUSAR = 14;
  */
 export function montarRelatorio(
   usuarios: readonly UsuarioDoUso[], agora: Date,
-  extra: { totalGeral?: number; pausados?: Relatorio["pausados"] } = {},
+  extra: { totalGeral?: number; pausados?: Relatorio["pausados"]; assinantesParados?: AssinanteParado[] } = {},
 ): Relatorio {
   const emTeste = usuarios
     .filter((u) => u.plano === "trial" && u.teste_ate)
@@ -203,6 +247,7 @@ export function montarRelatorio(
     total: usuarios.length,
     totalGeral: extra.totalGeral ?? usuarios.length,
     pausados: extra.pausados ?? [],
+    assinantesParados: extra.assinantesParados ?? [],
   };
 }
 
@@ -217,6 +262,8 @@ export function assuntoDoRelatorio(r: Relatorio): string {
   const partes = [
     r.novos.length ? `${r.novos.length} nova${r.novos.length > 1 ? "s" : ""}` : "",
     r.ativos.length ? `${r.ativos.length} ativo${r.ativos.length > 1 ? "s" : ""}` : "",
+    r.assinantesParados.length
+      ? `${r.assinantesParados.length} assinante${r.assinantesParados.length > 1 ? "s" : ""} sem usar` : "",
   ].filter(Boolean);
   return `AVANEST ${r.dia} — ${partes.length ? partes.join(", ") : "nenhum movimento"}`;
 }
@@ -245,6 +292,8 @@ export function textoDoRelatorio(r: Relatorio): string {
         + r.pausados.map((x) => `  · ${x.nome} (${x.email}) — ${x.dias} dias sem entrar`).join("\n")
         + "\n  Elas veem a explicação no login e o caminho para falar com você.\n"
       : "",
+    // Logo no alto: é o único bloco em que há dinheiro entrando e indo embora.
+    bloco(`ASSINANTES QUE PAGAM E NÃO USAM HÁ ${DIAS_PARA_ASSINANTE_PARADO}+ DIAS`, r.assinantesParados.map(linhaDoAssinante)),
     bloco("CONTAS NOVAS (24h)", r.novos.map((u) =>
       `${linhaDoUsuario(u)}${u.origem ? ` [veio de: ${u.origem}]` : ""}`)),
     bloco("USARAM NAS ÚLTIMAS 24H", r.ativos.map(linhaDoUsuario)),
@@ -280,6 +329,7 @@ export function htmlDoRelatorio(r: Relatorio): string {
     + ` · ${r.totalGeral} usuários ativos no sistema.</p>`
     + bloco("Pausadas hoje por inatividade", r.pausados.map((x) =>
         `${x.nome} (${x.email}) — ${x.dias} dias sem entrar`))
+    + bloco(`Assinantes que pagam e não usam há ${DIAS_PARA_ASSINANTE_PARADO}+ dias`, r.assinantesParados.map(linhaDoAssinante))
     + bloco("Contas novas (24h)", r.novos.map((u) =>
         `${linhaDoUsuario(u)}${u.origem ? ` [veio de: ${u.origem}]` : ""}`))
     + bloco("Usaram nas últimas 24h", r.ativos.map(linhaDoUsuario))
