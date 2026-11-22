@@ -108,3 +108,18 @@ test("convênio: Companhia Melhoramentos com um nome só (CAMP/COMP eram o mesmo
   assert.match(sql, /nome_simples\('CAMP DE MELHORAMENTO'\), public\.nome_simples\('COMP MELHORAMENTO'\)/);
   assert.doesNotMatch(sql, /'SUS C'/, "SUS C não é tocado");
 });
+
+test("o paciente novo da ficha entra com a grafia do cadastro (22/11/2026)", async () => {
+  const { convenioDoCadastro } = await import("./convenios.ts");
+  assert.equal(convenioDoCadastro("Sus"), "SUS");
+  assert.equal(convenioDoCadastro(" UNIMED "), "Unimed");
+  assert.equal(convenioDoCadastro("sus c", ["SUS C"]), "SUS C");
+  // SUS e SUS C (SUS-Campanha) são convênios diferentes, com valores diferentes.
+  assert.equal(convenioDoCadastro("SUS", ["SUS C"]), "SUS");
+  // A grafia da organização vence a da lista fixa.
+  assert.equal(convenioDoCadastro("unimed", ["UNIMED"]), "UNIMED");
+  // Desconhecido entra como foi escrito; vazio continua vazio.
+  assert.equal(convenioDoCadastro("Plano Novo  Saúde"), "Plano Novo Saúde");
+  assert.equal(convenioDoCadastro("  "), null);
+  assert.equal(convenioDoCadastro(null), null);
+});
