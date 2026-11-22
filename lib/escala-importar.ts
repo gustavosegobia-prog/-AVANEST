@@ -195,26 +195,49 @@ function parecerNome(s: string): boolean {
 }
 
 /**
- * Qual dos nomes da escala é a pessoa que está importando. Conta as palavras
- * do nome do cadastro (inteiras valem 1, iniciais meio) e desconta as que
- * sobram — "Fulano Beltrano" não é "Fulano Ciclano". O nome da escala do grupo
- * (o apelido), quando bate inteiro, ganha.
+ * O quanto um nome da escala parece o nome de um cadastro. Conta as palavras
+ * da escala que estão no cadastro (inteiras valem 1, iniciais meio, uma letra
+ * trocada 0,8) e desconta as que sobram — "Fulano Beltrano" não é "Fulano
+ * Ciclano". O apelido da escala do grupo, quando bate inteiro, vale mais que
+ * qualquer nome.
  */
+export function notaDoNome(daEscala: string, nome: string, apelido?: string | null): number {
+  if (apelido && normalizar(apelido) === normalizar(daEscala)) return 100;
+  const doCadastro = palavrasDoNome(nome);
+  let n = 0;
+  for (const w of palavrasDoNome(daEscala)) {
+    if (doCadastro.includes(w)) n += 1;
+    else if (w.length === 1 && doCadastro.some((c) => c[0] === w)) n += 0.5;
+    else if (w.length >= 5 && doCadastro.some((c) => c.length >= 5 && distancia(c, w) <= 1)) n += 0.8;
+    else n -= 0.6;
+  }
+  return n;
+}
+
+/** Qual dos nomes da escala é a pessoa que está importando (nota 1 ou mais), ou nulo. */
 export function sugerirPessoa(pessoas: readonly string[], nome: string, apelido?: string | null): string | null {
-  const doCadastro = new Set(palavrasDoNome(nome));
   let melhor: string | null = null, nota = 0;
   for (const p of pessoas) {
-    if (apelido && normalizar(apelido) === normalizar(p)) return p;
-    let n = 0;
-    for (const w of palavrasDoNome(p)) {
-      if (doCadastro.has(w)) n += 1;
-      else if (w.length === 1 && [...doCadastro].some((c) => c[0] === w)) n += 0.5;
-      else if (w.length >= 5 && [...doCadastro].some((c) => c.length >= 5 && distancia(c, w) <= 1)) n += 0.8;
-      else n -= 0.6;
-    }
+    const n = notaDoNome(p, nome, apelido);
     if (n > nota) { nota = n; melhor = p; }
   }
   return nota >= 1 ? melhor : null;
+}
+
+/**
+ * A escala do GRUPO (22/11/2026): qual colega do cadastro é cada nome da
+ * escala. O de nota maior, desde que 1 ou mais; empate entre dois colegas não
+ * escolhe ninguém — "Dr. Fulano" com dois Fulanos na equipe é a pessoa quem
+ * decide. Dois nomes da escala podem dar no mesmo colega (ele aparece em duas
+ * tabelas, escrito de dois jeitos).
+ */
+export function colegaDaPessoa(
+  pessoa: string, colegas: ReadonlyArray<{ id: string; nome: string; apelido?: string | null }>,
+): string | null {
+  const notas = colegas.map((c) => ({ id: c.id, n: notaDoNome(pessoa, c.nome, c.apelido) }))
+    .filter((x) => x.n >= 1).sort((a, b) => b.n - a.n);
+  if (!notas.length || (notas[1] && notas[1].n === notas[0].n)) return null;
+  return notas[0].id;
 }
 
 // ─── Datas ──────────────────────────────────────────────────────────────────
@@ -413,17 +436,28 @@ function turnoDaLinha(celulas: readonly Celula[], legenda: Readonly<Record<strin
  */
 function separarColunas(celulas: readonly Celula[], ancoras: ReadonlyArray<{ x: number }>, passo: number): Celula[] {
   return celulas.flatMap((c) => {
-    const t = c.t.replace(/\s+/g, "");
-    if (c.x1 - c.x0 <= passo * 0.9 || t.length < 2 || c.t.includes(" ") || /[/+]/.test(t)) return [c];
+    const t = c.t.trim();
+    if (c.x1 - c.x0 <= passo * 0.9 || t.replace(/\s+/g, "").length < 2) return [c];
+    // Os pedaços, cada um na posição que ocupa no texto: com espaço, cada
+    // palavra ("D/N D/N", "D D" de dois dias vizinhos que o PDF apertado juntou);
+    // sem espaço, cada letra ("FTDN" da foto) — menos a sigla com barra, que é
+    // um plantão só.
+    const pedacos: Array<{ t: string; i: number }> = [];
+    if (/\s/.test(t)) {
+      let i = 0;
+      for (const w of t.split(/(\s+)/)) { if (w.trim()) pedacos.push({ t: w, i }); i += w.length; }
+    } else if (!/[/+]/.test(t)) [...t].forEach((letra, i) => pedacos.push({ t: letra, i }));
+    else return [c];
     const largura = (c.x1 - c.x0) / t.length;
+    const juntar = /\s/.test(t) ? " " : "";
     const porColuna = new Map<number, Celula>();
-    [...t].forEach((letra, i) => {
-      const x0 = c.x0 + i * largura, x1 = x0 + largura;
+    for (const p of pedacos) {
+      const x0 = c.x0 + p.i * largura, x1 = x0 + p.t.length * largura;
       const a = maisPerto(ancoras, (x0 + x1) / 2, Infinity);
-      if (!a) return;
+      if (!a) continue;
       const g = porColuna.get(a.x);
-      porColuna.set(a.x, g ? { t: g.t + letra, x0: g.x0, x1 } : { t: letra, x0, x1 });
-    });
+      porColuna.set(a.x, g ? { t: g.t + juntar + p.t, x0: g.x0, x1 } : { t: p.t, x0, x1 });
+    }
     return porColuna.size > 1 ? [...porColuna.values()] : [c];
   });
 }
