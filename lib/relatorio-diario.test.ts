@@ -257,3 +257,27 @@ test("a pausa no BANCO não olha mais o último login", () => {
   // E nem anônimo nem usuário logado alcançam a função nova.
   assert.match(sql, /revoke execute on function public\.ultima_atividade\(uuid\) from public, anon, authenticated/);
 });
+
+test("assinante que paga e parou: a organização inteira sem uso há 7+ dias, com a próxima cobrança (22/11/2026)", async () => {
+  const { assinantesParados, DIAS_PARA_ASSINANTE_PARADO } = await import("./relatorio-diario.ts");
+  assert.equal(DIAS_PARA_ASSINANTE_PARADO, 7);
+  const lista = assinantesParados([
+    // Paga e não entra há 12 dias: aparece, com a data da fatura.
+    u({ nome: "Fulano", email: "fulano@exemplo.com", organizacao: "Fulano — Individual", plano: "ativo",
+      ultimo_acesso: "2026-09-04T12:00:00Z", teste_ate: "2026-10-19T23:59:59Z" }),
+    // Grupo que paga: um parado, outro usando ontem — a casa não parou.
+    u({ nome: "Ana", organizacao: "Grupo X", plano: "ativo", ultimo_acesso: "2026-08-01T12:00:00Z" }),
+    u({ nome: "Bruno", organizacao: "Grupo X", plano: "ativo", ultimo_acesso: "2026-09-15T12:00:00Z" }),
+    // Em teste não é assinante.
+    u({ nome: "Teste", organizacao: "Teste", plano: "trial", ultimo_acesso: "2026-08-01T12:00:00Z" }),
+  ], AGORA);
+  assert.deepEqual(lista, [{
+    organizacao: "Fulano — Individual", dias: 12, proximaCobranca: "19/10/2026",
+    contato: { nome: "Fulano", email: "fulano@exemplo.com" },
+  }]);
+  const r = montarRelatorio([], AGORA, { assinantesParados: lista });
+  assert.match(textoDoRelatorio(r), /ASSINANTES QUE PAGAM E NÃO USAM HÁ 7\+ DIAS\n  · Fulano — Individual — 12 dias sem uso · próxima cobrança em 19\/10\/2026/);
+  assert.match(assuntoDoRelatorio(r), /1 assinante sem usar/);
+  // A rota passa TODOS (não só a campanha) para esta lista.
+  assert.match(ler("app/api/admin/relatorio-diario/route.ts"), /assinantesParados: assinantesParados\(todos, new Date\(\)\)/);
+});

@@ -59,6 +59,8 @@ const ChatFlutuante = dynamic(() => import("@/components/chat-flutuante").then((
 
 import { CaixaDeAvisos } from "@/components/caixa-de-avisos";
 import { TutorialInicial, reabrirTutorial } from "@/components/tutorial-inicial";
+import { PrimeirosPassos } from "@/components/primeiros-passos";
+import type { Passo } from "@/lib/primeiros-passos";
 import { NovidadeNoPainel } from "@/components/novidade-no-painel";
 import { PixDaOrganizacao } from "@/components/pagamento/pix-da-organizacao";
 import { iniciais, plural } from "@/lib/escala";
@@ -329,6 +331,7 @@ export function DashboardClient({
   podeFichaAnestesica = false,
   podeMapaCirurgico = false,
   tutorialNoPrimeiroAcesso = false,
+  primeirosPassos = null,
   testeAte,
   abaDaEscala,
   tarefaDoFinanceiro,
@@ -382,6 +385,8 @@ export function DashboardClient({
   podeMapaCirurgico?: boolean;
   /** O tutorial abre sozinho só no primeiro acesso da conta (lib/tutorial.ts). */
   tutorialNoPrimeiroAcesso?: boolean;
+  /** Os primeiros passos da organização nova (lib/primeiros-passos.ts); nulo quando não aparecem. */
+  primeirosPassos?: Passo[] | null;
   /** ISO do fim do teste grátis. Nulo para quem já assinou ou tem cortesia. */
   testeAte?: string | null;
   /** Aba em que a Escala abre quando o endereço pede — ver app/dashboard/page.tsx. */
@@ -1110,6 +1115,10 @@ export function DashboardClient({
             <Link className="testeFaixaBotao" href="/assinatura">Ver planos</Link>
           )}
         </div>
+      )}
+
+      {primeirosPassos && primeirosPassos.length > 0 && (
+        <PrimeirosPassos passos={primeirosPassos} onIrPara={(area) => changeView(area)} />
       )}
 
       {/* A novidade da área, uma por vez, até "Entendi" (lib/novidades.ts). */}

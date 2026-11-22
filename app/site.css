@@ -2882,6 +2882,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    para dizer. */
 /* Alvo de 44px como todo o resto do sistema: a faixa é fina, mas o botão
    dentro dela não pode ser. */
+/* PRIMEIROS PASSOS (22/11/2026): o que fazer primeiro, riscado pelo próprio
+   uso. Um cartão sob a faixa do teste, com o mesmo recuo lateral do painel. */
 
 /* A vitrine é escura e NÃO usa os tokens do painel: `--cor-tinta-fraca` é um
    cinza pensado para fundo branco, e `--cor-marca-forte` é o azul escuro da

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { emailConfigurado, enviarEmail } from "@/lib/email";
 import {
-  assuntoDoRelatorio, htmlDoRelatorio, montarRelatorio, textoDoRelatorio,
+  assinantesParados, assuntoDoRelatorio, htmlDoRelatorio, montarRelatorio, textoDoRelatorio,
   type UsuarioDoUso,
 } from "@/lib/relatorio-diario";
 import { segredoConfere } from "@/lib/portaria";
@@ -82,8 +82,9 @@ export async function GET(request: NextRequest) {
   // conhece. O total geral vai junto só para dar escala ao número.
   const daCampanha = todos.filter((u) => String(u.origem ?? "").trim() !== "");
 
+  // O assinante que paga e parou entra de qualquer origem: é dinheiro.
   const relatorio = montarRelatorio(daCampanha, new Date(),
-    { totalGeral: todos.length, pausados });
+    { totalGeral: todos.length, pausados, assinantesParados: assinantesParados(todos, new Date()) });
 
   // Para quem vai: os super-admins, lidos do banco. Um endereço escrito no
   // código vira e-mail perdido no dia em que ele mudar, e obriga a um deploy
