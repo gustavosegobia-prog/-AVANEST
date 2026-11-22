@@ -183,7 +183,7 @@ export function ImportarEscalaDoGrupo({
                   const repetidos = x.plantoes.length - n;
                   return (
                     <tr key={x.pessoa} className={mapa[x.pessoa] ? undefined : estilos.desmarcada}>
-                      <td data-rotulo="Paciente"><b>{x.pessoa}</b></td>
+                      <td data-rotulo="Na escala"><b>{x.pessoa}</b></td>
                       <td data-rotulo="Colega">
                         <select value={mapa[x.pessoa] ?? NINGUEM} aria-label={`Colega para ${x.pessoa}`}
                           onChange={(e) => setMapa((m) => ({ ...m, [x.pessoa]: e.target.value }))}>

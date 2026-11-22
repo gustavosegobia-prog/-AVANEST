@@ -4,7 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { enforceRateLimit, validateMutationRequest } from "@/lib/request-security";
 import { chavesDoAmbiente, enviar, type Inscricao, type Notificacao } from "@/lib/push";
 import { nomeCurto } from "@/lib/escala";
-import { ultimoDiaDoMes } from "@/lib/data-local";
+import { dataLocal, somarDias, ultimoDiaDoMes } from "@/lib/data-local";
+import { faltamConfirmar } from "@/lib/escala-painel";
 import { ondeEQuando, quantosPlantoes } from "@/lib/aviso-plantao";
 import { destinoDoLembrete } from "@/lib/lembrete-de-plantao";
 import { aceita, comPadrao, comoTocar } from "@/lib/preferencias-de-aviso";
@@ -48,10 +49,12 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Sua sessão expirou." }, { status: 401 });
 
   const corpo = await request.json().catch(() => null) as
-    { tipo?: unknown; id?: unknown; mes?: unknown } | null;
+    { tipo?: unknown; id?: unknown; mes?: unknown; local?: unknown } | null;
   const tipo = typeof corpo?.tipo === "string" ? corpo.tipo : "";
   const id = typeof corpo?.id === "string" ? corpo.id : "";
   const mes = typeof corpo?.mes === "string" ? corpo.mes : "";
+  // O hospital da escala aberta, no "Lembrar quem falta": "todos", "sem" ou o id.
+  const local = typeof corpo?.local === "string" ? corpo.local : "todos";
 
   const { data: euPerfil } = await supabase
     .from("perfis").select("id, nome, institution_id").eq("id", user.id).maybeSingle();
@@ -68,11 +71,13 @@ export async function POST(request: NextRequest) {
   // A regra é a MESMA que decide quem monta a escala, e vem do banco: avisar
   // que a escala saiu é parte de publicá-la, e duas regras diferentes para o
   // mesmo ato divergem na primeira mudança.
-  if (tipo === "escala") {
+  // "Lembrar quem falta" (22/11/2026) é a mesma coisa: um disparo para a
+  // escala do grupo, e só de quem a monta.
+  if (tipo === "escala" || tipo === "lembrar_confirmacao") {
     const { data: podePublicar } = await supabase.rpc("pode_montar_escala");
     if (podePublicar !== true) {
       return NextResponse.json(
-        { error: "Só quem monta a escala pode avisar a equipe." },
+        { error: tipo === "escala" ? "Só quem monta a escala pode avisar a equipe." : "Só quem monta a escala pode lembrar a equipe." },
         { status: 403 },
       );
     }
@@ -88,9 +93,13 @@ export async function POST(request: NextRequest) {
   // Os outros avisos acompanham o uso normal: montar a escala do mês são
   // trinta lançamentos, e cada um manda o seu. Um teto apertado aqui
   // silenciaria a metade de baixo do mês.
+  // O lembrete de confirmação tem o seu limite: lembrar a equipe não pode
+  // gastar o aviso de publicar a escala, e vice-versa.
   const excedeu = tipo === "escala"
     ? enforceRateLimit(`avisar-escala:${user.id}`, { limit: 5, windowMs: 3_600_000 })
-    : enforceRateLimit(`avisar:${user.id}`, { limit: 150, windowMs: 3_600_000 });
+    : tipo === "lembrar_confirmacao"
+      ? enforceRateLimit(`avisar-confirmacao:${user.id}`, { limit: 5, windowMs: 3_600_000 })
+      : enforceRateLimit(`avisar:${user.id}`, { limit: 150, windowMs: 3_600_000 });
   if (excedeu) return excedeu;
 
   const alvos: Alvo[] = [];
@@ -273,6 +282,50 @@ export async function POST(request: NextRequest) {
           // Uma tag por mês: republicar a escala substitui o aviso anterior em
           // vez de empilhar mais um.
           tag: `escala-${mes}`,
+        },
+      });
+    }
+  } else if (tipo === "lembrar_confirmacao") {
+    // LEMBRAR QUEM FALTA (22/11/2026): quem monta a escala vê quem ainda não
+    // confirmou e toca o telefone só dessas pessoas, cada uma com o número
+    // dela. A conta é a da tela (faltamConfirmar): o que ainda pode ser
+    // confirmado, do hospital aberto, sem o plantão só seu de ninguém.
+    if (!/^\d{4}-\d{2}$/.test(mes)) return NextResponse.json({ error: "Mês inválido." }, { status: 400 });
+    if (local !== "todos" && local !== "sem" && !/^[0-9a-f-]{36}$/i.test(local)) {
+      return NextResponse.json({ error: "Hospital inválido." }, { status: 400 });
+    }
+    // De ontem em diante: o plantão da noite de ontem ainda está correndo, e
+    // ainda pode ser confirmado até meia hora depois do fim.
+    const desde = [`${mes}-01`, somarDias(dataLocal(), -1)].sort()[1];
+    let consulta = supabase.from("plantoes")
+      .select("perfil_id, data, hora_inicio, hora_fim, situacao, privado, confirmado_em")
+      .gte("data", desde).lte("data", ultimoDiaDoMes(mes))
+      .eq("situacao", "escalado").is("confirmado_em", null).eq("privado", false);
+    if (local === "sem") consulta = consulta.is("local_id", null);
+    else if (local !== "todos") consulta = consulta.eq("local_id", local);
+    const { data: plantoes, error: erroPlantoes } = await consulta;
+    if (erroPlantoes) {
+      console.error("[api/push/avisar] plantões sem confirmação", erroPlantoes);
+      return NextResponse.json({ ok: true, enviadas: 0, motivo: "falha-consulta" });
+    }
+    let nomeDoHospital = "";
+    if (local !== "todos" && local !== "sem") {
+      const { data: hospital } = await supabase
+        .from("locais_atendimento").select("nome_fantasia, nome").eq("id", local).maybeSingle();
+      nomeDoHospital = String(hospital?.nome_fantasia || hospital?.nome || "").trim();
+    }
+    const nomeDoMes = new Date(`${mes}-02T12:00:00Z`)
+      .toLocaleDateString("pt-BR", { month: "long", timeZone: "UTC" });
+    for (const { perfilId, plantoes: n } of faltamConfirmar(plantoes ?? [], new Date(), euPerfil.id)) {
+      alvos.push({
+        perfilId,
+        notificacao: {
+          titulo: `${nomeCurto(euPerfil.nome ?? "")} pediu a sua confirmação`,
+          corpo: `${nomeDoHospital ? `${nomeDoHospital}: ` : ""}${n === 1 ? "1 plantão seu" : `${n} plantões seus`} de ${nomeDoMes} `
+            + `${n === 1 ? "está" : "estão"} sem confirmação. Confirme, ou passe para um colega o que não puder fazer.`,
+          url: "/dashboard?area=plantoes",
+          // Lembrar de novo substitui o lembrete anterior, em vez de empilhar.
+          tag: `confirmar-${mes}`,
         },
       });
     }

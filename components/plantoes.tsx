@@ -33,7 +33,7 @@ import {
 } from "@/lib/valor-do-hospital";
 import { hoje, dataLocal, mesAtual, somarMeses, ultimoDiaDoMes } from "@/lib/data-local";
 import {
-  contagem, contagemEscrita, dataCurta, diaDaSemanaCurto, diasDaSemana, emOrdemDoDia, filtrarEscala, filtrosAtivos,
+  contagem, contagemEscrita, dataCurta, diaDaSemanaCurto, diasDaSemana, emOrdemDoDia, faltamConfirmar, filtrarEscala, filtrosAtivos,
   horarioEscrito, inicioDaSemana, OPCOES_DE_SITUACAO, pendenciasDaEscala, semanaEscrita, situacaoDaConfirmacao,
   situacaoDaExecucao, situacaoDoPagamento, somarDias, valorAusente, FILTROS_DA_ESCALA,
   type FiltroDeSituacao, type FiltrosDaEscala, type Situacao,
@@ -1630,6 +1630,35 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     texto: () => "O aviso não saiu e o servidor não disse por quê. Me avise se repetir.",
   },
 };
+
+/**
+ * O mesmo zero, no "Lembrar quem falta" (22/11/2026). O pedido de confirmação
+ * aparece no sino de cada um ao abrir o AVANEST, com ou sem aparelho: o push só
+ * adianta. Por isso quase todo zero aqui é recado, e não alarme.
+ */
+const EXPLICA_ZERO_DO_LEMBRETE: Record<string, { texto: (alvos: number) => string; alarme: boolean }> = {
+  "sem-chave": EXPLICA_ZERO["sem-chave"],
+  "sem-alvo": {
+    alarme: false,
+    texto: () => "Ninguém mais está esperando confirmação neste mês.",
+  },
+  "sem-aparelho": {
+    alarme: false,
+    texto: (alvos) => `${alvos === 1 ? "Quem falta ainda não ligou" : `As ${alvos} pessoas que faltam ainda não ligaram`} `
+      + "o aviso no aparelho. O pedido de confirmação aparece no sino quando abrirem o AVANEST; "
+      + "peça que toquem em Ativar notificações.",
+  },
+  desligado: {
+    alarme: false,
+    texto: (alvos) => `${alvos === 1 ? "Quem falta desligou" : `As ${alvos} pessoas que faltam desligaram`} `
+      + "o lembrete de plantão nas preferências. O pedido de confirmação aparece no sino quando abrirem o AVANEST.",
+  },
+  "falha-consulta": {
+    alarme: true,
+    texto: () => "Não consegui ler a escala para saber quem falta. Tente de novo; se repetir, me avise.",
+  },
+  desconhecido: EXPLICA_ZERO.desconhecido,
+};
   /**
    * "A escala do mês está pronta" — dito de propósito, e não adivinhado.
    *
@@ -1679,6 +1708,35 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
       if (explicacao.alarme) setErro(texto); else setRecado(texto);
     } finally {
       setAvisando(false);
+    }
+  }
+
+  /**
+   * "Lembrar quem falta" (22/11/2026): toca o telefone só de quem ainda não
+   * confirmou, no mês e no hospital abertos. O servidor refaz a conta — a tela
+   * só diz o que está vendo.
+   */
+  const [lembrando, setLembrando] = useState(false);
+  async function lembrarQuemFalta() {
+    setErro(""); setAviso(""); setRecado(""); setLembrando(true);
+    try {
+      const resposta = await fetch("/api/push/avisar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "lembrar_confirmacao", mes, local: hospitalAtivo }),
+      });
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) { setErro(dados.error ?? "Não foi possível lembrar agora."); return; }
+      const aparelhos = Number(dados.enviadas ?? 0);
+      if (aparelhos) {
+        setAviso(`Lembrete enviado: ${plural(aparelhos, "aparelho", "aparelhos")}. `
+          + "Quem não tem o aviso ligado vê o pedido no sino ao abrir o AVANEST.");
+        return;
+      }
+      const explicacao = EXPLICA_ZERO_DO_LEMBRETE[String(dados.motivo ?? "")] ?? EXPLICA_ZERO_DO_LEMBRETE.desconhecido;
+      const texto = explicacao.texto(Number(dados.alvos ?? 0));
+      if (explicacao.alarme) setErro(texto); else setRecado(texto);
+    } finally {
+      setLembrando(false);
     }
   }
 
@@ -1872,6 +1930,11 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
     return { total, pago, aberto: total - pago };
   })();
   const pendencias = pendenciasDaEscala(doPeriodo, perfilId, agora);
+  // Quem ainda não confirmou, para quem monta a escala: o mês e o hospital
+  // abertos, sem os seus (que estão nas suas pendências).
+  const faltam = ehAdmin && escopo === "grupo" ? faltamConfirmar(daEscala, agora, perfilId) : [];
+  const faltamPlantoes = faltam.reduce((s, f) => s + f.plantoes, 0);
+  const nomeNaEscala = (id: string) => apelidos.get(id) ?? nomeCurto(nomePorId.get(id) ?? "");
   const locaisDaMinhaEscala = [...new Set(daEscala.map((p) => p.local_id ?? "sem"))]
     .sort((a, b) => (localPorId.get(a) ?? "~").localeCompare(localPorId.get(b) ?? "~", "pt-BR"));
   const nomeDoPeriodoAberto = visao === "semana"
@@ -2855,6 +2918,28 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     {pendencias.sobreposicoes.length === 1 ? " sobreposição de horário" : " sobreposições de horário"}
                   </button>
                 )}
+              </div>
+            )}
+            {/* QUEM AINDA NÃO CONFIRMOU (22/11/2026), para quem monta a escala.
+                Antes era abrir dia por dia. Os nomes vão escritos, do que mais
+                falta ao que menos; o número leva à lista filtrada, e o botão
+                toca o telefone só dessas pessoas. */}
+            {faltam.length > 0 && (
+              <div className="escalaPendencias" role="group" aria-label="Quem ainda não confirmou">
+                <span className="escalaPendenciasTitulo"><Icone nome="ampulheta" tamanho={14} /> Sem confirmação</span>
+                <button type="button" onClick={() => mostrarPendencia("confirmacao_pendente")}
+                  aria-pressed={filtros.situacao === "confirmacao_pendente"}
+                  title="Mostra na lista os plantões que ainda esperam o “eu faço”.">
+                  <b>{faltamPlantoes}</b> {faltamPlantoes === 1 ? "plantão" : "plantões"} de {plural(faltam.length, "colega", "colegas")}
+                </button>
+                <span className="escalaFaltam">
+                  {faltam.slice(0, 8).map((f) => `${nomeNaEscala(f.perfilId)} ${f.plantoes}`).join(" · ")}
+                  {faltam.length > 8 && ` · e mais ${faltam.length - 8}`}
+                </span>
+                <button type="button" disabled={lembrando} onClick={() => void lembrarQuemFalta()}
+                  title="Toca o telefone de quem ainda não confirmou, com o número de plantões de cada um">
+                  <Icone nome="sino" tamanho={14} /> {lembrando ? "Lembrando…" : "Lembrar quem falta"}
+                </button>
               </div>
             )}
             {/* A LEGENDA, e ela só aparece no telefone.

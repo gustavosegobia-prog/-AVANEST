@@ -52,6 +52,9 @@ export type PlantaoParaLembrar = {
   situacao?: string | null;
   /** O nome do hospital, já resolvido — de `local_texto` ou do cadastro. */
   local?: string | null;
+  /** Para o lembrete dizer se ainda falta confirmar (22/11/2026). */
+  confirmado_em?: string | null;
+  privado?: boolean | null;
 };
 
 /** A partir de que hora um plantão conta como turno da tarde/noite. */
@@ -159,7 +162,12 @@ export function textoDoLembrete(p: PlantaoParaLembrar, hojeISO: string): {
   // aviso diga hospital, DATA e horário sem depender de o leitor confiar na
   // palavra "hoje" — que, num telefone que ficou na mesa a noite inteira, pode
   // estar sendo lida no dia seguinte.
-  const corpo = [`${diaEscrito(data)}${hora ? `, às ${hora}` : ""}`.trim(), "Toque para ver os detalhes."]
+  // SEM CONFIRMAÇÃO, o lembrete pede a confirmação (22/11/2026): a escala do
+  // grupo conta com o "eu faço", e a véspera é a última chance de passar o
+  // plantão a um colega com tempo. O plantão só seu não tem confirmação.
+  const semConfirmar = !p.confirmado_em && !p.privado && (p.situacao ?? "escalado") === "escalado";
+  const corpo = [`${diaEscrito(data)}${hora ? `, às ${hora}` : ""}`.trim(),
+    semConfirmar ? "Você ainda não confirmou: toque para confirmar, ou passe para um colega." : "Toque para ver os detalhes."]
     .filter(Boolean).join(". ");
 
   return { titulo, corpo };

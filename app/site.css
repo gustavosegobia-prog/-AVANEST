@@ -3186,6 +3186,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* O seletor ocupa a largura do rótulo, e não a dele: sem isto, no iPhone o
    seletor de Hospital passava da própria coluna e a seta dele caía em cima do
    "Todos" do Turno. */
+/* O ícone ao lado do texto, e não em cima: "Confirmar os 2" e "Lembrar quem
+   falta" quebravam em duas linhas. O gap faz o espaço entre o número e a
+   palavra, que o flex apara. */
+/* Quem ainda não confirmou: os nomes, para quem monta a escala (22/11/2026). */
 
 /* A semana: um dia por linha, a data à esquerda e os plantões por extenso. */
 
