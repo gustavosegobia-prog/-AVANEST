@@ -301,14 +301,27 @@ export function useFolha(folhaInicial: Folha, registrosIniciais: Registro[]) {
   const lockRef = useRef(folhaInicial.lock_version);
   const gravarDeNovo = useRef<() => void>(() => {});
 
+  // UMA GRAVAÇÃO DE CADA VEZ (22/11/2026). Com a rede lenta do centro
+  // cirúrgico, a gravação demorava mais que os 700 ms do temporizador, e a
+  // seguinte saía com a MESMA versão da primeira: o banco recusava a segunda
+  // como conflito, a ficha dizia "Outra pessoa alterou o cabeçalho" — sendo a
+  // própria pessoa — e o "Recarregar" jogava fora o que ela tinha acabado de
+  // escrever. Quatro vezes em 21/11. Agora quem chega com uma gravação em
+  // curso só deixa o pendente guardado; a gravação em curso, ao terminar,
+  // manda o que ficou, já com a versão nova.
+  const gravando = useRef(false);
+
   const gravarCabecalho = useCallback(async () => {
+    if (gravando.current) return;
     const dados = cabecalhoPendente.current;
     if (!dados) return;
+    gravando.current = true;
     cabecalhoPendente.current = null;
     setCabecalhoSalvo("salvando");
     const { data, error } = await createClient().rpc("salvar_cabecalho_evolucao", {
       p_id: folhaInicial.id, p_lock_version: lockRef.current, p_dados: dados,
-    });
+    }).then((r) => r, (e: unknown) => ({ data: null, error: { message: e instanceof Error ? e.message : String(e) } }));
+    gravando.current = false;
     if (error) {
       if (error.message.includes("CONFLITO_DE_EDICAO")) setCabecalhoSalvo("conflito");
       else {
