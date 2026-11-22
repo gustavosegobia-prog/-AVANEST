@@ -5,7 +5,7 @@ import { saldoAReceber, saldoVencido } from "./financeiro-indicadores.ts";
 import { paraRecebivel } from "./receitas.ts";
 import {
   composicao, estadoDoFechamento, evolucaoFinanceira, montarAtencao, nomeDaCompetencia,
-  proximosVencimentos, recebimentosPorConvenio, situacaoDosAtendimentos, type EntradaDaAtencao,
+  marcarSemCobranca, proximosVencimentos, recebimentosPorConvenio, situacaoDosAtendimentos, type EntradaDaAtencao,
 } from "./painel-financeiro.ts";
 
 const r = (id: string, x: Partial<Receita>): Receita => ({
@@ -183,4 +183,32 @@ describe("Atenção hoje", () => {
 
 it("nomeDaCompetencia escreve o mês por extenso", () => {
   assert.equal(nomeDaCompetencia("2026-09"), "Setembro de 2026");
+});
+
+describe("convênio que não paga conta pela quantidade (22/11/2026)", () => {
+  const base = { origem: "producao" as const, data: "2026-11-21", competencia: "2026-11", donoId: "a", descricao: "x", recebido: 0 };
+  const receitas = [
+    { ...base, id: "1", pagador: "SUS", valor: 0 },
+    { ...base, id: "2", pagador: "Sus", valor: 0 },
+    { ...base, id: "3", pagador: "SUS C", valor: 250 },
+    { ...base, id: "4", pagador: "Unimed", valor: 0 },
+  ];
+  const regras = [
+    { convenio: "SUS", valor: "0.00", ativo: true, gratuito: true, procedimento: null, hospital: null },
+    { convenio: "SUS C", valor: "250.00", ativo: true, gratuito: false, procedimento: null, hospital: null },
+    { convenio: "Unimed", valor: "0.00", ativo: true, gratuito: false, procedimento: null, hospital: null },
+  ];
+  it("só o gratuito sai de “sem valor”, e entra no concluído", () => {
+    const marcadas = marcarSemCobranca(receitas, regras);
+    assert.deepEqual(marcadas.map((r) => Boolean(r.semCobranca)), [true, true, false, false]);
+    const s = situacaoDosAtendimentos(marcadas, 0);
+    assert.equal(s.semCobranca, 2);
+    assert.equal(s.semValor, 1, "a Unimed em R$ 0,00 continua sem preço");
+    assert.equal(s.percentualConcluido, 50);
+    const sus = recebimentosPorConvenio(marcadas).find((l) => l.rotulo.toUpperCase() === "SUS");
+    assert.deepEqual([sus?.lancamentos, sus?.semCobranca, sus?.semValor], [2, 2, 0]);
+  });
+  it("sem regra gratuita, nada muda", () => {
+    assert.equal(marcarSemCobranca(receitas, regras.slice(1)), receitas);
+  });
 });

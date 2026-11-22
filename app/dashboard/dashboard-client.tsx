@@ -81,7 +81,7 @@ import {
   totaisDoEnvelhecimento, variacao,
 } from "@/lib/financeiro-indicadores";
 import {
-  composicao, estadoDoFechamento, montarAtencao, proximosVencimentos, situacaoDosAtendimentos,
+  composicao, estadoDoFechamento, marcarSemCobranca, montarAtencao, proximosVencimentos, situacaoDosAtendimentos,
   type Pendencia, type TipoDeComposicao,
 } from "@/lib/painel-financeiro";
 import {
@@ -1464,9 +1464,11 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
       if(r) lista.push(r);
     }
     for(const item of producaoDaReceita){ const r=deProducao(item); if(r) lista.push(r); }
-    return lista;
+    // O convênio gratuito (o SUS no InovaNest) conta pela quantidade, e não
+    // como "sem valor" — ver marcarSemCobranca.
+    return marcarSemCobranca(lista,convenioValores);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[financeiro,producaoDaReceita,pacientes]);
+  },[financeiro,producaoDaReceita,pacientes,convenioValores]);
 
   const receitasDoMes=doMes(receitas,period);
   const receitaTotal=somar(receitasDoMes);

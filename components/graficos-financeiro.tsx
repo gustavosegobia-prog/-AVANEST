@@ -62,6 +62,7 @@ function RecebimentosPorConvenio({ receitasDoMes, valor }: { receitasDoMes: Rece
                 <small>
                   {l.lancamentos} {l.lancamentos === 1 ? "lançamento" : "lançamentos"}
                   {l.semValor > 0 && <em className="pfSemValor"> · {l.semValor} sem valor</em>}
+                  {l.semCobranca > 0 && l.semCobranca === l.lancamentos && " · sem cobrança"}
                 </small>
               </div>
               {/* A pista mostra o quanto do faturado já entrou; os três números
@@ -179,6 +180,7 @@ function SituacaoDosAtendimentos({ receitasDoMes, aguardandoLancamento }: {
     { rotulo: "Parciais", n: s.parciais, cor: "var(--cor-atencao)" },
     { rotulo: "Em aberto", n: s.emAberto, cor: "var(--cor-perigo)" },
     { rotulo: "Sem valor", n: s.semValor, cor: "var(--cor-tinta-fraca)" },
+    { rotulo: "Sem cobrança", n: s.semCobranca, cor: "var(--cor-sucesso-suave)" },
     { rotulo: "Aguardando lançamento", n: s.aguardandoLancamento, cor: "var(--cor-borda-forte)" },
   ].filter((f) => f.n > 0);
   return (
