@@ -40,6 +40,7 @@ import {
 } from "@/lib/escala-painel";
 import { Dialogo, useFocoPreso, useTravaDeRolagem } from "@/components/admin-ui";
 import { ImportarEscala } from "@/components/importar-escala";
+import { ImportarEscalaDoGrupo } from "@/components/importar-escala-do-grupo";
 
 // Plantões: a escala, o valor e a troca.
 //
@@ -1035,6 +1036,8 @@ export function Plantoes({
   const [lancando, setLancando] = useState<{ dia: string; para: string } | null>(null);
   // A escala recebida (planilha, PDF, print, foto) lida para a escala pessoal (20/11/2026).
   const [importando, setImportando] = useState(false);
+  // A escala do mês inteiro, de todos, por quem monta a escala (22/11/2026).
+  const [importandoGrupo, setImportandoGrupo] = useState(false);
   /*
    * Como o período aparece: o mês em grade, a semana dia a dia, ou só a lista.
    * Sem escolha, o computador abre no mês e o celular na lista — sete colunas
@@ -2754,11 +2757,18 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
                     Fechamento do mês
                   </button>
                 )}
-                {/* Só na escala pessoal: o que entra são os plantões de QUEM
-                    importa. Na do grupo o botão prometeria a escala de todos. */}
+                {/* Na escala pessoal, os plantões de QUEM importa. Na do grupo,
+                    só para quem monta a escala: a escala do mês de todos, cada
+                    nome no colega certo. */}
                 {escopo === "minha" && (
                   <button className="outlineClinical" onClick={() => { setErro(""); setAviso(""); setImportando(true); }}
                     title="A escala que você recebeu — planilha, PDF, print ou foto: os seus plantões entram aqui">
+                    Importar escala
+                  </button>
+                )}
+                {ehAdmin && escopo === "grupo" && (
+                  <button className="outlineClinical" onClick={() => { setErro(""); setAviso(""); setImportandoGrupo(true); }}
+                    title="A escala do mês — planilha, PDF, print ou foto: cada nome vira os plantões do colega">
                     Importar escala
                   </button>
                 )}
@@ -3315,6 +3325,22 @@ const EXPLICA_ZERO: Record<string, { texto: (alvos: number) => string; alarme: b
             setImportando(false);
             setAviso(`${quantos === 1 ? "1 plantão entrou" : `${quantos} plantões entraram`} na sua escala.`);
             // A tela vai para o mês da escala importada, que pode não ser o aberto.
+            if (!primeiraData.startsWith(mes)) setMes(primeiraData.slice(0, 7));
+            void carregar();
+          }}
+        />
+      )}
+      {importandoGrupo && (
+        <ImportarEscalaDoGrupo
+          perfilId={perfilId} institutionId={institutionId} locais={locais} mesAberto={mes}
+          colegas={escalaveis.map((c) => ({ id: c.id, nome: c.nome, apelido: apelidos.get(c.id) ?? null }))}
+          localSugerido={["todos", "sem"].includes(hospitalAtivo) ? "" : hospitalAtivo}
+          valorDoColega={(dono, alvo) => valorDoHospital(dono, alvo, 0)}
+          onFechar={() => setImportandoGrupo(false)}
+          onImportado={(quantos, primeiraData) => {
+            setImportandoGrupo(false);
+            setAviso(`${quantos === 1 ? "1 plantão lançado" : `${quantos} plantões lançados`} na escala do grupo. `
+              + "Conferida a escala, toque em Avisar a equipe: cada um recebe os seus para confirmar ou passar.");
             if (!primeiraData.startsWith(mes)) setMes(primeiraData.slice(0, 7));
             void carregar();
           }}

@@ -187,3 +187,50 @@ test("tela: importar só na Minha escala, do próprio médico, sem duplicar", as
   // O mesmo padrão do lançamento à mão: quem não monta a escala começa em "Só meu".
   assert.match(janela, /const \[privado, setPrivado\] = useState\(!ehAdmin\);/);
 });
+
+test("escala do grupo: cada nome da escala vai para o colega certo, e o empate não escolhe", async () => {
+  const { colegaDaPessoa } = await import("./escala-importar.ts");
+  const colegas = [
+    { id: "f", nome: "Fulano Beltrano da Silva", apelido: "Fulano" },
+    { id: "a", nome: "Ana Paula Souza", apelido: "Ana" },
+    { id: "b", nome: "Bruno Costa", apelido: null },
+    { id: "c", nome: "Carla Dias" },
+  ];
+  assert.equal(colegaDaPessoa("Dr. Fulano B.", colegas), "f");
+  assert.equal(colegaDaPessoa("Fulano", colegas), "f", "o apelido ganha");
+  assert.equal(colegaDaPessoa("Dra. Ana Paula", colegas), "a");
+  assert.equal(colegaDaPessoa("BRUNO C.", colegas), "b");
+  assert.equal(colegaDaPessoa("Dr. Diego E.", colegas), null, "quem não é da equipe fica sem colega");
+  // Dois Fulanos na equipe e a escala diz só "Dr. Fulano": a pessoa escolhe.
+  assert.equal(colegaDaPessoa("Dr. Fulano", [{ id: "1", nome: "Fulano Silva" }, { id: "2", nome: "Fulano Souza" }]), null);
+});
+
+test("PDF apertado: dois dias vizinhos com a mesma sigla, juntados numa célula \"D D\", voltam a ser dois", () => {
+  const y = (l: number) => ({ y0: 100 + l * 30, y1: 112 + l * 30 });
+  const palavras = [{ t: "Nome", x0: 10, x1: 40, ...y(0) }];
+  for (let d = 1; d <= 8; d++) palavras.push({ t: String(d), x0: 100 + d * 30, x1: 108 + d * 30, ...y(0) });
+  palavras.push({ t: "Fulano", x0: 10, x1: 50, ...y(1) }, { t: "D D", x0: 219, x1: 251, ...y(1) });
+  const e = lerEscala([...linhasDePalavras(palavras.slice(0, 9)), [{ t: "Fulano", x0: 10, x1: 50 }, { t: "D D", x0: 219, x1: 251 }]])!;
+  assert.deepEqual(plantoesDaPessoa(e, "Fulano", "2026-12").map((p) => `${p.data.slice(8)} ${p.codigo}`), ["04 D", "05 D"]);
+});
+
+test("PDF apertado: \"D/N D/N\" de dois dias vizinhos são dois plantões de 24 h", () => {
+  const cab = [{ t: "Nome", x0: 10, x1: 40 }, ...Array.from({ length: 8 }, (_, i) => ({ t: String(i + 1), x0: 130 + i * 30, x1: 138 + i * 30 }))];
+  const e = lerEscala([cab, [{ t: "Fulano", x0: 10, x1: 50 }, { t: "D/N D/N", x0: 158, x1: 202 }]])!;
+  assert.deepEqual(plantoesDaPessoa(e, "Fulano", "2026-12").map((p) => `${p.data.slice(8)} ${p.codigo} ${p.horario?.fim}`), ["02 D/N 07:00", "03 D/N 07:00"]);
+});
+
+test("tela: a escala do grupo só para quem monta a escala, cada um com o seu valor, sem duplicar", async () => {
+  const fs = await import("node:fs");
+  const ler = (c: string) => fs.readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+  const plantoes = ler("components/plantoes.tsx");
+  assert.match(plantoes, /\{ehAdmin && escopo === "grupo" && \(\s*<button className="outlineClinical" onClick=\{\(\) => \{ setErro\(""\); setAviso\(""\); setImportandoGrupo\(true\); \}\}/);
+  assert.match(plantoes, /colegas=\{escalaveis\.map\(\(c\) => \(\{ id: c\.id, nome: c\.nome, apelido: apelidos\.get\(c\.id\) \?\? null \}\)\)\}/);
+  assert.match(plantoes, /valorDoColega=\{\(dono, alvo\) => valorDoHospital\(dono, alvo, 0\)\}/);
+  const janela = ler("components/importar-escala-do-grupo.tsx");
+  assert.match(janela, /institution_id: institutionId, perfil_id: dono, \.\.\.lugar, privado: false,/);
+  assert.match(janela, /valor, created_by: perfilId,/);
+  assert.match(janela, /\.in\("perfil_id", lista\.split\(","\)\)\.neq\("situacao", "cancelado"\)\.gte\("data", de\)\.lte\("data", ate\)/);
+  assert.match(janela, /else if \(e\.code !== "23505"\) throw e;/);
+  assert.match(janela, /setMapa\(Object\.fromEntries\(lida\.pessoas\.map\(\(p\) => \[p, colegaDaPessoa\(p, colegas\) \?\? NINGUEM\]\)\)\);/);
+});

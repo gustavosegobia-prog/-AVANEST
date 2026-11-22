@@ -22,14 +22,89 @@ import proprios from "./importar-escala.module.css";
 // o plantão que já está na escala dela vem desmarcado.
 
 const OUTRO = "__outro__";
-const PADRAO: Horario = { inicio: "07:00", fim: "19:00" };
+/** A sigla que a escala não explica começa como plantão de 12 horas de dia; a tela pede para conferir. */
+export const PADRAO: Horario = { inicio: "07:00", fim: "19:00" };
 const DIA = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" });
 const nomeDoDia = (d: string) => DIA.format(new Date(`${d}T12:00:00Z`)).replace(".", "");
 const chave = (p: { data: string; codigo: string }) => `${p.data}|${p.codigo}`;
-const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+export const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+
+/** O arquivo lido e entendido como escala; sem escala nele, um erro que a pessoa entende. */
+export async function lerArquivoDaEscala(arquivo: File, avancar: (fracao: number) => void): Promise<{ escala: EscalaLida; linhas: Linha[] }> {
+  const conteudo = await conteudoDoArquivo(arquivo, avancar);
+  const linhas = "grade" in conteudo ? linhasDaGrade(conteudo.grade) : linhasDePalavras(conteudo.palavras);
+  const escala = lerEscala(linhas);
+  if (!escala || !escala.pessoas.length) {
+    throw new Error("Não achei uma escala neste arquivo. Ela precisa ter os dias (na linha de cima ou na primeira coluna) e os nomes. Se for foto, pegue a folha inteira, de frente.");
+  }
+  return { escala, linhas };
+}
+
+/** Escolher o arquivo ou tirar a foto, e o "Lendo…" enquanto a foto é lida. */
+export function ArquivoDaEscala({ lido, lendo, ocupado, onArquivo }: {
+  lido: boolean; lendo: number | null; ocupado: boolean; onArquivo: (arquivo: File | undefined) => void;
+}) {
+  const entrada = useRef<HTMLInputElement>(null);
+  const camera = useRef<HTMLInputElement>(null);
+  return (
+    <div className={estilos.importarArquivo}>
+      <input ref={entrada} type="file" accept={TIPOS_ACEITOS} hidden
+        onChange={(e) => { onArquivo(e.target.files?.[0]); e.target.value = ""; }} />
+      <input ref={camera} type="file" accept="image/*" capture="environment" hidden
+        onChange={(e) => { onArquivo(e.target.files?.[0]); e.target.value = ""; }} />
+      <div className={estilos.importarBotoes}>
+        <button type="button" className={lido ? "outlineClinical compact" : "primaryClinical compact"}
+          onClick={() => entrada.current?.click()} disabled={lendo != null || ocupado} data-foco-inicial>
+          <Icone nome="nota" tamanho={16} /> {lido ? "Escolher outro arquivo" : "Escolher arquivo ou print"}
+        </button>
+        <button type="button" className="outlineClinical compact"
+          onClick={() => camera.current?.click()} disabled={lendo != null || ocupado}>
+          <Icone nome="camera" tamanho={16} /> {lido ? "Tirar outra foto" : "Tirar foto da escala"}
+        </button>
+      </div>
+      {lendo != null && (
+        <p className={estilos.dica} role="status">
+          {`Lendo${lendo > 0 ? ` (${Math.round(lendo * 100)}%)` : ""}… a foto leva alguns segundos.`}
+        </p>
+      )}
+      {!lido && lendo == null && (
+        <p className={estilos.dica}>
+          O arquivo é lido neste aparelho e não fica guardado. A planilha do Excel entra sem erro; o PDF, o print e a foto
+          funcionam, mas confira os dias — a leitura de imagem pode trocar uma letra.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** O horário de cada sigla da escala, que a pessoa confere e corrige. */
+export function HorariosDosTurnos({ siglas, horarios, onMudar }: {
+  siglas: ReadonlyArray<readonly [string, Horario | null]>;
+  horarios: Readonly<Record<string, Horario>>;
+  onMudar: (codigo: string, h: Horario) => void;
+}) {
+  if (!siglas.length) return null;
+  return (
+    <fieldset className={proprios.turnos}>
+      <legend>Horário de cada turno</legend>
+      {siglas.map(([codigo, lido]) => {
+        const h = horarios[codigo] ?? lido ?? PADRAO;
+        const mudar = (x: Partial<Horario>) => onMudar(codigo, { ...h, ...x });
+        return (
+          <div key={codigo} className={proprios.turno}>
+            <b title={codigo}>{codigo}{!lido && !horarios[codigo] && <small>confira</small>}</b>
+            <input type="time" value={h.inicio} aria-label={`Início do turno ${codigo}`} onChange={(e) => mudar({ inicio: e.target.value })} />
+            <span>às</span>
+            <input type="time" value={h.fim} aria-label={`Fim do turno ${codigo}`} onChange={(e) => mudar({ fim: e.target.value })} />
+          </div>
+        );
+      })}
+    </fieldset>
+  );
+}
 
 /** O hospital cujo nome aparece no arquivo ("ESCALA HOSPITAL TESTE — DEZ"). */
-function localDoArquivo(linhas: readonly Linha[], locais: readonly LocalDisponivel[]): string {
+export function localDoArquivo(linhas: readonly Linha[], locais: readonly LocalDisponivel[]): string {
   const texto = ` ${normalizar(linhas.slice(0, 6).flat().map((c) => c.t).join(" "))} `;
   const achado = locais.find((l) => [l.nome, l.nome_fantasia ?? ""].some((n) => {
     const k = normalizar(n);
@@ -56,8 +131,6 @@ export function ImportarEscala({
   onFechar: () => void;
   onImportado: (quantos: number, primeiraData: string) => void;
 }) {
-  const entrada = useRef<HTMLInputElement>(null);
-  const camera = useRef<HTMLInputElement>(null);
   const [lendo, setLendo] = useState<number | null>(null);
   const [erro, setErro] = useState("");
   const [escala, setEscala] = useState<EscalaLida | null>(null);
@@ -78,13 +151,7 @@ export function ImportarEscala({
     if (!arquivo) return;
     setErro(""); setEscala(null); setLendo(0);
     try {
-      const conteudo = await conteudoDoArquivo(arquivo, (f) => setLendo(f));
-      const linhas = "grade" in conteudo ? linhasDaGrade(conteudo.grade) : linhasDePalavras(conteudo.palavras);
-      const lida = lerEscala(linhas);
-      if (!lida || !lida.pessoas.length) {
-        setErro("Não achei uma escala neste arquivo. Ela precisa ter os dias (na linha de cima ou na primeira coluna) e os nomes. Se for foto, pegue a folha inteira, de frente.");
-        return;
-      }
+      const { escala: lida, linhas } = await lerArquivoDaEscala(arquivo, (f) => setLendo(f));
       setEscala(lida);
       setMes(lida.mes ?? mesAberto);
       const sugerida = sugerirPessoa(lida.pessoas, nome, apelido);
@@ -182,33 +249,7 @@ export function ImportarEscala({
           </button>
         </>
       ) : undefined}>
-      <div className={estilos.importarArquivo}>
-        <input ref={entrada} type="file" accept={TIPOS_ACEITOS} hidden
-          onChange={(e) => { void escolher(e.target.files?.[0]); e.target.value = ""; }} />
-        <input ref={camera} type="file" accept="image/*" capture="environment" hidden
-          onChange={(e) => { void escolher(e.target.files?.[0]); e.target.value = ""; }} />
-        <div className={estilos.importarBotoes}>
-          <button type="button" className={escala ? "outlineClinical compact" : "primaryClinical compact"}
-            onClick={() => entrada.current?.click()} disabled={lendo != null || ocupado} data-foco-inicial>
-            <Icone nome="nota" tamanho={16} /> {escala ? "Escolher outro arquivo" : "Escolher arquivo ou print"}
-          </button>
-          <button type="button" className="outlineClinical compact"
-            onClick={() => camera.current?.click()} disabled={lendo != null || ocupado}>
-            <Icone nome="camera" tamanho={16} /> {escala ? "Tirar outra foto" : "Tirar foto da escala"}
-          </button>
-        </div>
-        {lendo != null && (
-          <p className={estilos.dica} role="status">
-            {`Lendo${lendo > 0 ? ` (${Math.round(lendo * 100)}%)` : ""}… a foto leva alguns segundos.`}
-          </p>
-        )}
-        {!escala && lendo == null && (
-          <p className={estilos.dica}>
-            O arquivo é lido neste aparelho e não fica guardado. A planilha do Excel entra sem erro; o PDF, o print e a foto
-            funcionam, mas confira os dias — a leitura de imagem pode trocar uma letra.
-          </p>
-        )}
-      </div>
+      <ArquivoDaEscala lido={Boolean(escala)} lendo={lendo} ocupado={ocupado} onArquivo={(a) => void escolher(a)} />
 
       {escala && (
         <>
@@ -258,23 +299,8 @@ export function ImportarEscala({
             )}
           </div>
 
-          {siglas.length > 0 && (
-            <fieldset className={proprios.turnos}>
-              <legend>Horário de cada turno</legend>
-              {siglas.map(([codigo, lido]) => {
-                const h = horarios[codigo] ?? lido ?? PADRAO;
-                const mudar = (x: Partial<Horario>) => setHorarios((a) => ({ ...a, [codigo]: { ...h, ...x } }));
-                return (
-                  <div key={codigo} className={proprios.turno}>
-                    <b title={codigo}>{codigo}{!lido && !horarios[codigo] && <small>confira</small>}</b>
-                    <input type="time" value={h.inicio} aria-label={`Início do turno ${codigo}`} onChange={(e) => mudar({ inicio: e.target.value })} />
-                    <span>às</span>
-                    <input type="time" value={h.fim} aria-label={`Fim do turno ${codigo}`} onChange={(e) => mudar({ fim: e.target.value })} />
-                  </div>
-                );
-              })}
-            </fieldset>
-          )}
+          <HorariosDosTurnos siglas={siglas} horarios={horarios}
+            onMudar={(codigo, h) => setHorarios((a) => ({ ...a, [codigo]: h }))} />
 
           {repetidos > 0 && (
             <ul className={estilos.importarAvisos}>
