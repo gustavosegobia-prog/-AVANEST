@@ -70,10 +70,12 @@ describe("situações separadas", () => {
     assert.equal(situacaoDaExecucao(pago).rotulo, "Realizado");
   });
 
-  it("confirmação: pendente na janela, não confirmado depois, aguardando antes", () => {
+  it("confirmação: pendente até o fim do plantão (inclusive antes do dia), não confirmado depois", () => {
     assert.equal(situacaoDaConfirmacao(p({ data: "2026-09-30" }), agora).rotulo, "Pendente");
     assert.equal(situacaoDaConfirmacao(p({ data: "2026-09-20" }), agora).rotulo, "Não confirmado");
-    assert.equal(situacaoDaConfirmacao(p({ data: "2026-10-02" }), agora).rotulo, "Aguardando o dia");
+    // 22/11/2026: confirma-se quando a escala sai, e não no dia.
+    assert.equal(situacaoDaConfirmacao(p({ data: "2026-10-02" }), agora).rotulo, "Pendente");
+    assert.equal(situacaoDaConfirmacao(p({ data: "2026-10-02", situacao: "cancelado" }), agora).rotulo, "Não se aplica");
     // O noturno de ontem ainda está na janela até 07h30 de hoje.
     assert.equal(situacaoDaConfirmacao(p({ data: "2026-09-29", hora_inicio: "19:00:00", hora_fim: "07:00:00" }), new Date(2026, 8, 30, 7, 20)).rotulo, "Pendente");
     assert.equal(situacaoDaConfirmacao(p({ privado: true }), agora).rotulo, "Não se aplica");

@@ -354,7 +354,7 @@ export default async function DashboardPage({
     // que alguém acabou de lançar. `created_at` e `created_by` são deste
     // último — é a diferença entre "entrou plantão meu" e "eu lancei um
     // plantão", e sem o autor o coordenador receberia aviso da própria escala.
-    supabase.from("plantoes").select("data,situacao,valor,confirmado_em,created_at,created_by")
+    supabase.from("plantoes").select("data,situacao,valor,confirmado_em,privado,created_at,created_by")
       .eq("perfil_id", user.id).gte("data", seisMesesAtras),
 
     // A OUTRA fonte de receita do serviço, para o Financeiro. Era duas.

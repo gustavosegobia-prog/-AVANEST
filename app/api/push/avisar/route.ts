@@ -266,7 +266,9 @@ export async function POST(request: NextRequest) {
         perfilId,
         notificacao: {
           titulo: `Escala de ${nomeDoMes} publicada`,
-          corpo: `${quantosPlantoes(total, mes)} Toque para conferir.`,
+          // O "eu faço" é dado aqui, quando a escala sai (22/11/2026), e não
+          // mais no dia de cada plantão.
+          corpo: `${quantosPlantoes(total, mes)} Confirme os seus, ou passe para um colega o que não puder fazer.`,
           url: "/dashboard?area=plantoes",
           // Uma tag por mês: republicar a escala substitui o aviso anterior em
           // vez de empilhar mais um.

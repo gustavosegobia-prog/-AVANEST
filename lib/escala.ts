@@ -360,19 +360,21 @@ export function plantaoNaEscala(localDoPlantao: string | null, escala: string): 
 }
 
 /**
- * Dá para confirmar este plantão AGORA?
+ * Pode confirmar o plantão AGORA?
  *
- * A janela vai do começo do dia do plantão até o fim do turno, com meia hora de
- * folga. Não é do dia inteiro: um turno de 19h às 7h termina no dia seguinte, e
- * cortar à meia-noite tornaria impossível confirmar o noturno — justamente o
- * turno em que a pessoa está mais cansada e mais precisa que seja um toque.
+ * Desde 22/11/2026 a confirmação é o "eu faço" de quem recebeu a escala, e não
+ * mais um check-in no dia ("esse negócio de confirmar todo dia é ruim, a pessoa
+ * esquece. Na hora que lançar os plantões da equipe, ele tem que olhar e já
+ * confirmar"). Vale desde que o plantão está na escala até o fim do turno, com
+ * meia hora de folga. Depois dele, o plantão vira realizado sozinho
+ * (realizar_plantoes_passados, migração 202611220001) e a confirmação não muda
+ * mais nada.
  *
- * A meia hora depois do fim é o tempo de tirar a luva e pegar o telefone.
+ * O dia do plantão é o de quem trabalha: datas locais, e o noturno termina no
+ * dia seguinte.
  *
- * A regra vive no banco, que é quem decide de verdade. Esta cópia existe para a
- * tela não OFERECER o que o banco vai recusar: botão que só serve para dar erro
- * é pior do que botão nenhum. As duas precisam concordar, e é isto que os
- * testes daqui prendem.
+ * A regra vive no banco (confirmacao_de_plantao_honesta); esta cópia existe para
+ * a tela não OFERECER o que o banco vai recusar.
  */
 export function podeConfirmar(
   plantao: { data: string; hora_inicio: string; hora_fim: string },
@@ -383,15 +385,11 @@ export function podeConfirmar(
     const [h, m] = hhmmss.split(":").map(Number);
     return h * 60 + (m || 0);
   };
-  // Datas locais, e não UTC: o dia do plantão é o dia de quem trabalhou. Com
-  // Date.UTC, um turno que começa às 21h em Brasília só ficaria confirmável
-  // depois da meia-noite de lá.
-  const comeco = new Date(ano, mes - 1, dia, 0, 0, 0, 0);
   const viraODia = emMinutos(plantao.hora_fim) <= emMinutos(plantao.hora_inicio);
   const fim = new Date(ano, mes - 1, dia + (viraODia ? 1 : 0),
     Math.floor(emMinutos(plantao.hora_fim) / 60),
     emMinutos(plantao.hora_fim) % 60 + 30, 0, 0);
-  return agora >= comeco && agora <= fim;
+  return agora <= fim;
 }
 
 // ---------------------------------------------------------------------------
@@ -1025,9 +1023,12 @@ export function plantoesEscrito(horas: number): string {
 
 export type PlantaoDoFechamento = PlantaoImpresso & {
   perfilId: string;
-  /** ISO, ou null enquanto ninguém confirmou que trabalhou. */
+  /** ISO, ou null se quem estava no plantão não confirmou. */
   confirmadoEm: string | null;
 };
+
+/** O plantão já aconteceu (realizado, com nota ou pago)? O cancelado e o que ainda está por vir, não. */
+const aconteceu = (p: { situacao: string }) => p.situacao !== "escalado" && p.situacao !== "cancelado";
 
 /**
  * O fechamento do mês, por profissional — a folha que vai para o financeiro.
@@ -1038,13 +1039,12 @@ export type PlantaoDoFechamento = PlantaoImpresso & {
  * que é quem paga. Foi por isso que a tabela por pessoa saiu da folha do grupo:
  * afixada, ela vira ranking; entregue ao financeiro, ela é a conta.
  *
- * A CONFIRMAÇÃO é o que dá valor a este papel. A escala é um plano — o plantão
- * trocado na véspera, o cancelado por sala fechada, o que virou meio turno
- * continuam lá do mesmo jeito. Sem separar confirmado de previsto, quem monta a
- * folha ou paga pelo plano e erra, ou liga para doze pessoas perguntando o que
- * aconteceu. Aqui os dois números aparecem lado a lado, e o que não foi
- * confirmado aparece marcado em vez de sumir: um plantão que a pessoa esqueceu
- * de confirmar não pode desaparecer da conta dela sem ninguém ver.
+ * O QUE ENTRA NA CONTA é o plantão que JÁ ACONTECEU (22/11/2026). A
+ * confirmação passou a ser o "eu faço" de quando a escala é lançada, e o
+ * plantão que termina sem ser cancelado vira realizado sozinho — "todo plantão
+ * passado que não foi cancelado conta como feito; quem não fez corrige marcando
+ * cancelado". O que ainda vai acontecer aparece ao lado, e não no total; o que
+ * passou sem confirmação aparece marcado, para quem paga conferir.
  *
  * Ordenado por nome, e não por total. Ordem por dinheiro é ranking, e ranking é
  * o que faz um documento de pagamento circular por motivo errado.
@@ -1062,7 +1062,8 @@ export function folhaDeFechamento(
 
   const gente = [...porPessoa.entries()]
     .map(([id, lista]) => {
-      const confirmados = lista.filter((p) => p.confirmadoEm);
+      const previstos = lista.filter((p) => p.situacao !== "cancelado");
+      const feitos = previstos.filter(aconteceu);
       const somar = (ls: PlantaoDoFechamento[], campo: "horas" | "valor") =>
         ls.reduce((s, p) => s + Number(p[campo] || 0), 0);
       return {
@@ -1070,12 +1071,13 @@ export function folhaDeFechamento(
         nome: nomeCurto(lista[0].profissional) || "Profissional",
         // Turnos, e não linhas: um plantão de 24 horas são dois turnos, e dois
         // de 6 horas são um. Ver `emTurnos`.
-        turnos: emTurnos(somar(lista, "horas")),
-        confirmados: emTurnos(somar(confirmados, "horas")),
-        horas: somar(confirmados, "horas"),
-        valor: somar(confirmados, "valor"),
-        horasPrevistas: somar(lista, "horas"),
-        valorPrevisto: somar(lista, "valor"),
+        turnos: emTurnos(somar(previstos, "horas")),
+        feitos: emTurnos(somar(feitos, "horas")),
+        horas: somar(feitos, "horas"),
+        valor: somar(feitos, "valor"),
+        horasPrevistas: somar(previstos, "horas"),
+        valorPrevisto: somar(previstos, "valor"),
+        horasSemConfirmacao: somar(feitos.filter((p) => !p.confirmadoEm), "horas"),
       };
     })
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -1087,15 +1089,15 @@ export function folhaDeFechamento(
     plural(gente.length, "profissional", "profissionais")}</small></h2>`
     + '<table class="lista"><colgroup><col><col style="width:12%"><col style="width:12%">'
     + '<col style="width:14%"><col style="width:16%"></colgroup>'
-    + "<thead><tr><th>Profissional</th><th>Turnos</th><th>Confirmados</th>"
+    + "<thead><tr><th>Profissional</th><th>Turnos</th><th>Feitos</th>"
     + '<th class="num">Horas</th><th class="num">A pagar</th></tr></thead><tbody>'
     + gente.map((g) => "<tr>"
       + `<td>${escaparHTML(g.nome)}</td>`
       + `<td>${turnosEscrito(g.horasPrevistas)}</td>`
-      // O pendente aparece ao lado do confirmado, e não no lugar dele: "8 de
-      // 10" diz de uma vez que falta confirmar dois, sem uma segunda tabela.
+      // O que falta acontecer aparece ao lado do feito, e não no lugar dele:
+      // "8 de 10" diz de uma vez que dois ainda vêm, sem uma segunda tabela.
       + `<td>${turnosEscrito(g.horas)}${
-        g.confirmados < g.turnos ? ` <b>de ${turnosEscrito(g.horasPrevistas)}</b>` : ""}</td>`
+        g.feitos < g.turnos ? ` <b>de ${turnosEscrito(g.horasPrevistas)}</b>` : ""}</td>`
       + `<td class="num">${g.horas.toLocaleString("pt-BR")}h</td>`
       + `<td class="num">${escaparHTML(money(g.valor))}</td></tr>`).join("")
     + "</tbody><tfoot><tr>"
@@ -1108,15 +1110,17 @@ export function folhaDeFechamento(
   const detalhe = gente.map((g) => {
     const linhas = [...g.lista]
       .sort((a, b) => a.data.localeCompare(b.data) || a.hora_inicio.localeCompare(b.hora_inicio))
-      .map((p) => `<tr${p.confirmadoEm ? "" : ' class="pendente"'}>`
+      .map((p) => `<tr${aconteceu(p) && p.confirmadoEm ? "" : ' class="pendente"'}>`
         + `<td>${Number(p.data.slice(8, 10))}/${p.data.slice(5, 7)}</td>`
         + `<td>${escaparHTML(`${hhmm(p.hora_inicio)}–${hhmm(p.hora_fim)}`)}</td>`
         + `<td>${p.horas}h</td>`
         + `<td>${escaparHTML(p.local || "—")}</td>`
-        + `<td>${p.confirmadoEm ? "Confirmado" : "Aguardando confirmação"}</td>`
+        + `<td>${p.situacao === "cancelado" ? "Cancelado"
+          : !aconteceu(p) ? (p.confirmadoEm ? "Vai acontecer · confirmado" : "Vai acontecer")
+          : p.confirmadoEm ? "Feito · confirmado" : "Feito · sem confirmação"}</td>`
         + `<td class="num">${escaparHTML(money(p.valor))}</td></tr>`).join("");
     return `<h2>${escaparHTML(g.nome)} <small>${turnosEscrito(g.horas)} ${
-      g.confirmados === 1 ? "turno confirmado" : "turnos confirmados"} · ${
+      g.feitos === 1 ? "turno feito" : "turnos feitos"} · ${
       g.horas.toLocaleString("pt-BR")}h · ${escaparHTML(money(g.valor))}</small></h2>`
       + '<table class="lista"><colgroup><col style="width:9%"><col style="width:16%">'
       + '<col style="width:9%"><col><col style="width:21%"><col style="width:15%">'
@@ -1125,22 +1129,25 @@ export function folhaDeFechamento(
       + `<tbody>${linhas}</tbody></table>`;
   }).join("");
 
-  const horasAConfirmar = gente.reduce((s, g) => s + (g.horasPrevistas - g.horas), 0);
-  const aConfirmar = emTurnos(horasAConfirmar);
+  const horasPorVir = gente.reduce((s, g) => s + (g.horasPrevistas - g.horas), 0);
+  const horasSemConfirmacao = gente.reduce((s, g) => s + g.horasSemConfirmacao, 0);
+  const avisos = [
+    // O aviso é o primeiro texto da folha porque muda o que se faz com ela:
+    // pagar um fechamento com turnos por vir é pagar um plano.
+    horasPorVir > 0 && `<b>${turnosEscrito(horasPorVir)} ${
+      emTurnos(horasPorVir) === 1 ? "turno ainda vai acontecer" : "turnos ainda vão acontecer"} — não entram no total.</b>`,
+    horasSemConfirmacao > 0 && `${turnosEscrito(horasSemConfirmacao)} ${
+      emTurnos(horasSemConfirmacao) === 1 ? "turno passou" : "turnos passaram"} sem confirmação de quem estava escalado e ${
+      emTurnos(horasSemConfirmacao) === 1 ? "conta" : "contam"} como feito; se algum não aconteceu, marque-o como cancelado na escala.`,
+  ].filter(Boolean).join(" ");
 
   const corpo = `${timbreDaFolha(instituicao)}<h1>${escaparHTML(titulo)}</h1>
 <p class="sub">Plantões por profissional, para o fechamento do mês.${
-    aConfirmar > 0
-      // O aviso é o primeiro texto da folha porque muda o que se faz com ela:
-      // pagar um fechamento com turnos pendentes é pagar um plano.
-      ? ` <b>${turnosEscrito(horasAConfirmar)} ${
-        aConfirmar === 1 ? "turno ainda não foi confirmado" : "turnos ainda não foram confirmados"
-        } por quem trabalhou — esses valores não entram no total.</b>`
-      : " Todos os turnos foram confirmados por quem trabalhou."}</p>
+    avisos ? ` ${avisos}` : " Todos os turnos aconteceram e foram confirmados."}</p>
 ${gente.length ? resumo + detalhe : '<p class="sub">Nenhum plantão neste mês.</p>'}
 <div class="rodape"><span>${turnosEscrito(
     gente.reduce((s, g) => s + g.horasPrevistas, 0))} turnos · ${
-    gente.reduce((s, g) => s + g.horas, 0).toLocaleString("pt-BR")}h confirmadas de ${
+    gente.reduce((s, g) => s + g.horas, 0).toLocaleString("pt-BR")}h feitas de ${
     gente.reduce((s, g) => s + g.horasPrevistas, 0).toLocaleString("pt-BR")}h previstas</span></div>`;
 
   return { titulo, corpo };

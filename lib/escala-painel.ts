@@ -95,19 +95,20 @@ export type Situacao = { rotulo: string; tom: Tom; detalhe?: string };
 const dataBr = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
 
 /**
- * Confirmação — quem trabalhou dizendo que trabalhou (confirmado_em).
- * A janela é a do banco (confirmacao_de_plantao_honesta): do começo do dia
- * do plantão até meia hora depois do fim.
+ * Confirmação — o "eu faço" de quem está escalado (confirmado_em). Desde
+ * 22/11/2026 ela é dada quando a escala sai, a qualquer hora antes do plantão,
+ * e não mais no dia; a janela é a do banco (confirmacao_de_plantao_honesta).
+ * O que termina sem confirmação vira realizado do mesmo jeito, e fica marcado
+ * para quem monta a escala.
  */
 export function situacaoDaConfirmacao(p: PlantaoDoPainel, agora: Date): Situacao {
   if (p.situacao === "cancelado") return { rotulo: "Não se aplica", tom: "neutro" };
-  if (p.privado) return { rotulo: "Não se aplica", tom: "neutro", detalhe: "Plantão só seu não passa por confirmação." };
+  if (p.privado) return { rotulo: "Não se aplica", tom: "neutro", detalhe: "Plantão só seu conta como feito quando passa a data." };
   if (p.confirmado_em) return { rotulo: "Confirmado", tom: "ok", detalhe: `Confirmado em ${dataBr(p.confirmado_em)}.` };
-  if (podeConfirmar(p, agora)) return { rotulo: "Pendente", tom: "atencao", detalhe: "Confirme até meia hora depois do fim do plantão." };
-  const [ini] = intervalo(p);
-  const agoraMin = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate(), agora.getHours(), agora.getMinutes()) / 60_000;
-  if (agoraMin < ini) return { rotulo: "Aguardando o dia", tom: "neutro" };
-  return { rotulo: "Não confirmado", tom: "perigo", detalhe: "A janela de confirmação fechou. O plantão continua no fechamento, marcado como não confirmado." };
+  if (p.situacao === "escalado" && podeConfirmar(p, agora)) {
+    return { rotulo: "Pendente", tom: "atencao", detalhe: "Confirme que você vai fazer — ou passe para um colega." };
+  }
+  return { rotulo: "Não confirmado", tom: "atencao", detalhe: "Passou sem confirmação e contou como feito. Se não aconteceu, quem monta a escala marca como cancelado." };
 }
 
 /** Execução — o que aconteceu com o turno (situacao: escalado, realizado, cancelado). */
