@@ -130,6 +130,25 @@ export function composicao(
   };
 }
 
+// ── Convênio que não paga ──────────────────────────────────────────────────
+
+/**
+ * Marca as receitas dos convênios gratuitos da tabela de preços — regra geral
+ * (sem procedimento nem hospital), ativa, em R$ 0,00 e marcada "gratuito".
+ * 22/11/2026: no InovaNest o SUS não paga e conta só pela quantidade; sem a
+ * marca, cada anestesia do SUS aparecia como "sem valor", um preço a preencher.
+ */
+export function marcarSemCobranca<T extends Receita>(
+  receitas: T[],
+  regras: { convenio: string; valor: number | string; ativo: boolean; gratuito?: boolean | null; procedimento?: string | null; hospital?: string | null }[],
+): T[] {
+  const gratuitos = new Set(regras
+    .filter((r) => r.ativo && r.gratuito && Number(r.valor) === 0 && !r.procedimento && !r.hospital)
+    .map((r) => chaveDoPagador(r.convenio)));
+  if (!gratuitos.size) return receitas;
+  return receitas.map((r) => (gratuitos.has(chaveDoPagador(r.pagador)) ? { ...r, semCobranca: true } : r));
+}
+
 // ── Situação dos atendimentos ──────────────────────────────────────────────
 
 export type SituacaoDosAtendimentos = {
@@ -141,6 +160,8 @@ export type SituacaoDosAtendimentos = {
   faturados: number;
   /** Lançados em R$ 0,00 — sem preço, não "pagos". */
   semValor: number;
+  /** Do convênio que não paga (gratuito): contam pela quantidade e já estão concluídos. */
+  semCobranca: number;
   /** Com valor, e todo ele recebido. */
   quitados: number;
   parciais: number;
@@ -160,9 +181,9 @@ export type SituacaoDosAtendimentos = {
 export function situacaoDosAtendimentos(
   receitasDoMes: Receita[], aguardandoLancamento: number,
 ): SituacaoDosAtendimentos {
-  let faturados = 0, semValor = 0, quitados = 0, parciais = 0, emAberto = 0;
+  let faturados = 0, semValor = 0, semCobranca = 0, quitados = 0, parciais = 0, emAberto = 0;
   for (const r of receitasDoMes) {
-    if (r.valor <= 0) { semValor++; continue; }
+    if (r.valor <= 0) { if (r.semCobranca) semCobranca++; else semValor++; continue; }
     faturados++;
     if (r.recebido >= r.valor) quitados++;
     else if (r.recebido > 0) parciais++;
@@ -170,8 +191,9 @@ export function situacaoDosAtendimentos(
   }
   const realizados = receitasDoMes.length + aguardandoLancamento;
   return {
-    realizados, aguardandoLancamento, faturados, semValor, quitados, parciais, emAberto,
-    percentualConcluido: realizados ? Math.round((quitados / realizados) * 100) : null,
+    realizados, aguardandoLancamento, faturados, semValor, semCobranca, quitados, parciais, emAberto,
+    // Sem cobrança não tem nada a receber: está concluído como o quitado.
+    percentualConcluido: realizados ? Math.round(((quitados + semCobranca) / realizados) * 100) : null,
   };
 }
 
@@ -184,6 +206,7 @@ export type LinhaPorConvenio = {
   saldo: number;
   lancamentos: number;
   semValor: number;
+  semCobranca: number;
 };
 
 /**
@@ -199,12 +222,12 @@ export function recebimentosPorConvenio(receitasDoMes: Receita[]): LinhaPorConve
   for (const r of receitasDoMes) {
     const chave = chaveDoPagador(r.pagador);
     const l = linhas.get(chave)
-      ?? { rotulo: rotulos.get(chave) ?? chave, faturado: 0, recebido: 0, saldo: 0, lancamentos: 0, semValor: 0 };
+      ?? { rotulo: rotulos.get(chave) ?? chave, faturado: 0, recebido: 0, saldo: 0, lancamentos: 0, semValor: 0, semCobranca: 0 };
     l.faturado += r.valor;
     l.recebido += r.recebido;
     l.saldo += saldoDe(r);
     l.lancamentos += 1;
-    if (r.valor <= 0) l.semValor += 1;
+    if (r.valor <= 0) { if (r.semCobranca) l.semCobranca += 1; else l.semValor += 1; }
     linhas.set(chave, l);
   }
   return [...linhas.values()].sort((a, b) => b.saldo - a.saldo || b.faturado - a.faturado);

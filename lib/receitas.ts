@@ -55,6 +55,12 @@ export type Receita = {
   emissao?: string | null;
   vencimento?: string | null;
   /**
+   * Convênio marcado como gratuito na tabela de preços (22/11/2026: o SUS no
+   * InovaNest não paga). O lançamento em R$ 0,00 conta pela quantidade e não
+   * é "sem valor": não falta preencher preço nenhum.
+   */
+  semCobranca?: boolean;
+  /**
    * O quanto o convênio recusou pagar, quando essa informação existe.
    *
    * SÓ A CONSULTA TRAZ ISTO HOJE. A produção anestésica também tem um estado
