@@ -4,4 +4,7 @@
 export const CONVENIOS = [
   "Particular","Unimed","FUPS","SAS","CISCOMCAM","Humana Saúde","Bradesco Saúde",
   "SulAmérica","Amil","CASSI","SANEPAR","COPEL",
+  // O nome como o mapa do hospital escreve (22/11/2026: "CAMP DE MELHORAMENTO" e
+  // "COMP MELHORAMENTO" eram o mesmo convênio, digitado de dois jeitos).
+  "Companhia Melhoramentos",
 ];

@@ -99,3 +99,12 @@ test("banco: a baixa sem data recebe o dia, um convênio tem uma grafia, e a fic
   // Continua achando a anotação à mão pelo nome simples (202611170001).
   assert.match(sql, /and public\.nome_simples\(x\.paciente\) = public\.nome_simples\(v_paciente\)/);
 });
+
+test("convênio: Companhia Melhoramentos com um nome só (CAMP/COMP eram o mesmo; SUS e SUS C seguem separados)", async () => {
+  const { CONVENIOS } = await import("./convenios.ts");
+  assert.ok(CONVENIOS.includes("Companhia Melhoramentos"));
+  const sql = ler("supabase/migrations/202611220003_convenio_companhia_melhoramentos.sql");
+  assert.match(sql, /set convenio = 'Companhia Melhoramentos'/);
+  assert.match(sql, /nome_simples\('CAMP DE MELHORAMENTO'\), public\.nome_simples\('COMP MELHORAMENTO'\)/);
+  assert.doesNotMatch(sql, /'SUS C'/, "SUS C não é tocado");
+});
