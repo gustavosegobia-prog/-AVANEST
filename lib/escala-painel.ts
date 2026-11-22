@@ -111,6 +111,32 @@ export function situacaoDaConfirmacao(p: PlantaoDoPainel, agora: Date): Situacao
   return { rotulo: "Não confirmado", tom: "atencao", detalhe: "Passou sem confirmação e contou como feito. Se não aconteceu, quem monta a escala marca como cancelado." };
 }
 
+type ParaConfirmar = Pick<PlantaoDoPainel, "data" | "hora_inicio" | "hora_fim" | "situacao" | "privado" | "confirmado_em">;
+
+/** O "eu faço" ainda pode ser dado, e ninguém deu: é o "Pendente" acima. */
+export const confirmacaoPendente = (p: ParaConfirmar, agora: Date) =>
+  !p.privado && !p.confirmado_em && p.situacao === "escalado" && podeConfirmar(p, agora);
+
+export type QuemFalta = { perfilId: string; plantoes: number };
+
+/**
+ * QUEM AINDA NÃO CONFIRMOU, para quem monta a escala (22/11/2026): quantos
+ * plantões de cada colega esperam o "eu faço", do que mais falta ao que menos.
+ * A tela e o aviso "Lembrar quem falta" contam com esta mesma regra — se cada
+ * um contasse do seu jeito, a faixa diria 3 e o telefone do colega, 5.
+ * `exceto` é quem monta: os dele estão nas pendências dele.
+ */
+export function faltamConfirmar(
+  plantoes: (ParaConfirmar & { perfil_id: string | null })[], agora: Date, exceto?: string,
+): QuemFalta[] {
+  const conta = new Map<string, number>();
+  for (const p of plantoes) {
+    if (!p.perfil_id || p.perfil_id === exceto || !confirmacaoPendente(p, agora)) continue;
+    conta.set(p.perfil_id, (conta.get(p.perfil_id) ?? 0) + 1);
+  }
+  return [...conta].map(([perfilId, n]) => ({ perfilId, plantoes: n })).sort((a, b) => b.plantoes - a.plantoes);
+}
+
 /** Execução — o que aconteceu com o turno (situacao: escalado, realizado, cancelado). */
 export function situacaoDaExecucao(p: PlantaoDoPainel): Situacao {
   switch (p.situacao) {

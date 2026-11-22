@@ -104,10 +104,29 @@ test("o hospital vai no título, porque é a linha que não some", () => {
   // Quem cobre três casas na mesma semana precisa saber QUAL antes de qualquer
   // outra coisa. E o corpo não repete o nome: gastaria metade da segunda linha
   // dizendo de novo o que a primeira já disse.
-  const { titulo, corpo } = textoDoLembrete(plantao(), "2026-09-17");
+  const { titulo, corpo } = textoDoLembrete(plantao({ confirmado_em: "2026-09-01T10:00:00Z" }), "2026-09-17");
   assert.equal(titulo, "🏥 Plantão hoje — Santa Casa");
   assert.equal(corpo, "Quinta, 17/09, às 19h. Toque para ver os detalhes.");
   assert.doesNotMatch(corpo, /Santa Casa/);
+});
+
+test("sem confirmação, o lembrete pede a confirmação (22/11/2026)", () => {
+  // A véspera é a última chance de passar o plantão a um colega com tempo. O
+  // toque já abre o próprio plantão, onde estão Confirmar e Passar plantão.
+  const p = plantao({ data: "2026-09-18", hora_inicio: "07:00" });
+  const { titulo, corpo } = textoDoLembrete(p, "2026-09-17");
+  assert.equal(titulo, "🏥 Plantão amanhã — Santa Casa");
+  assert.equal(corpo, "Sexta, 18/09, às 7h. Você ainda não confirmou: toque para confirmar, ou passe para um colega.");
+  assert.equal(destinoDoLembrete(p), "/dashboard?area=plantoes&plantao=p1");
+  // Confirmado, só seu (sem confirmação) ou já feito: o lembrete de sempre.
+  for (const extra of [{ confirmado_em: "2026-09-10T12:00:00Z" }, { privado: true }, { situacao: "realizado" }]) {
+    assert.match(textoDoLembrete(plantao({ ...p, ...extra }), "2026-09-17").corpo, /Toque para ver os detalhes\.$/);
+  }
+});
+
+test("a rotina manda a confirmação para o texto do lembrete", () => {
+  const rota = fs.readFileSync(new URL("../app/api/push/lembretes/route.ts", import.meta.url), "utf8");
+  assert.match(rota, /confirmado_em: p\.confirmado_em, privado: p\.privado/);
 });
 
 test("o aviso da véspera diz amanhã", () => {

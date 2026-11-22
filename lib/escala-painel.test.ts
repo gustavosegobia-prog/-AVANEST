@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  contagem, contagemEscrita, diasDaSemana, filtrarEscala, filtrosAtivos, horarioEscrito, inicioDaSemana,
+  confirmacaoPendente, contagem, contagemEscrita, diasDaSemana, faltamConfirmar, filtrarEscala, filtrosAtivos, horarioEscrito, inicioDaSemana,
   pendenciasDaEscala, semanaEscrita, situacaoDaConfirmacao, situacaoDaExecucao, situacaoDoPagamento,
   sobreposicoes, somarDias, valorAusente, FILTROS_DA_ESCALA,
   type PlantaoDoPainel,
@@ -187,4 +187,32 @@ it("dentro do dia: manhã em cima, depois tarde e noite — a ordem M, T, N (04/
   const tela = readFileSync(new URL("../components/plantoes.tsx", import.meta.url), "utf8");
   assert.match(tela, /setPlantoes\(\(\(plans \?\? \[\]\) as Plantao\[\]\)\.sort\(emOrdemDoDia\)\)/);
   assert.match(tela, /setForaDoMes\(\(\(data \?\? \[\]\) as Plantao\[\]\)\.sort\(emOrdemDoDia\)\)/);
+});
+
+describe("quem ainda não confirmou, para quem monta a escala (22/11/2026)", () => {
+  const agora = new Date("2026-09-25T12:00:00-03:00");
+  it("conta por colega o que ainda pode ser confirmado, do que mais falta ao que menos", () => {
+    const mes = [
+      p({ perfil_id: "ana", data: "2026-09-28" }),
+      p({ perfil_id: "bia", data: "2026-09-26" }), p({ perfil_id: "bia", data: "2026-09-29" }),
+      // Não entram: já confirmado, só dela, cancelado, já passou, feito.
+      p({ perfil_id: "ana", data: "2026-09-27", confirmado_em: "2026-09-02T10:00:00Z" }),
+      p({ perfil_id: "ana", data: "2026-09-27", privado: true }),
+      p({ perfil_id: "ana", data: "2026-09-27", situacao: "cancelado" }),
+      p({ perfil_id: "ana", data: "2026-09-20" }),
+      p({ perfil_id: "ana", data: "2026-09-20", situacao: "realizado" }),
+      // Os de quem monta estão nas pendências dele.
+      p({ perfil_id: EU, data: "2026-09-28" }),
+    ];
+    assert.deepEqual(faltamConfirmar(mes, agora, EU), [
+      { perfilId: "bia", plantoes: 2 }, { perfilId: "ana", plantoes: 1 },
+    ]);
+  });
+  it("é a mesma regra do selo “Pendente”", () => {
+    const casos = [p({}), p({ data: "2026-09-30" }), p({ data: "2026-09-30", privado: true }),
+      p({ data: "2026-09-30", confirmado_em: "2026-09-01T00:00:00Z" }), p({ data: "2026-09-30", situacao: "cancelado" })];
+    for (const x of casos) {
+      assert.equal(confirmacaoPendente(x, agora), situacaoDaConfirmacao(x, agora).rotulo === "Pendente");
+    }
+  });
 });

@@ -368,7 +368,7 @@ export function NotificacoesNoMenu({ chavePublica, aoMudar }: {
  */
 export function avisarPush(carga: {
   tipo: "troca" | "troca_resolvida" | "escala" | "chat"
-      | "plantao_novo" | "plantao_alterado" | "plantao_cancelado";
+      | "plantao_novo" | "plantao_alterado" | "plantao_cancelado" | "lembrar_confirmacao";
   id?: string; mes?: string;
 }) {
   void fetch("/api/push/avisar", {

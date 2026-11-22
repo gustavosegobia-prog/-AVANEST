@@ -104,6 +104,9 @@ export function paraGravar(escolhas: PreferenciasDeAviso): Record<string, boolea
 export const INTERRUPTOR: Record<string, keyof PreferenciasDeAviso> = {
   escala: "escala_publicada",
   lembrete_plantao: "lembrete_plantao",
+  // "Lembrar quem falta" (22/11/2026), de quem monta a escala, é um lembrete
+  // de plantão: quem desligou os lembretes não recebe este também.
+  lembrar_confirmacao: "lembrete_plantao",
   plantao_alterado: "plantao_alterado",
   // Um plantão APARECER na sua escala é a forma mais forte de ela ser
   // alterada, e por isso divide o mesmo interruptor: separar os dois daria

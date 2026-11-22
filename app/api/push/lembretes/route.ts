@@ -205,6 +205,7 @@ export async function GET(request: NextRequest) {
       id: String(p.id), data: String(p.data),
       hora_inicio: p.hora_inicio, hora_fim: p.hora_fim, situacao: p.situacao,
       local: (p.local_texto || (p.local_id ? nomeDoLocal.get(String(p.local_id)) : "") || "").trim(),
+      confirmado_em: p.confirmado_em, privado: p.privado,
     } as PlantaoParaLembrar,
   })), "perfil_id");
 
