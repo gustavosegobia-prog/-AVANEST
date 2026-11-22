@@ -11,7 +11,7 @@ import {
 import { dataLocal, horaLocal, hoje as hojeNoBrasil, somarDias, somarMeses } from "@/lib/data-local";
 import {
   chaveDoLembrete, destinoDoLembrete, deveAvisar, textoDoLembrete,
-  type PlantaoParaCheckin,
+  type PlantaoParaLembrar,
 } from "@/lib/lembrete-de-plantao";
 import { aceita, comPadrao, comoTocar } from "@/lib/preferencias-de-aviso";
 import { segredoConfere } from "@/lib/portaria";
@@ -155,8 +155,7 @@ export async function GET(request: NextRequest) {
     // Os plantões de ontem a amanhã, com o que for preciso para escrever o
     // aviso. `cancelado` fica de fora já na consulta: plantão cancelado não
     // tem lembrete, e é assim que cancelar um plantão apaga o aviso dele sem
-    // haver nada agendado para cancelar. Ontem entra pelo check-in: o plantão
-    // das 22h ainda pede check-in à 0h do dia seguinte.
+    // haver nada agendado para cancelar.
     admin.from("plantoes")
       .select("id,perfil_id,data,hora_inicio,hora_fim,situacao,local_texto,local_id,confirmado_em,privado")
       .in("perfil_id", perfis).gte("data", somarDias(hoje, -1)).lte("data", amanha)
@@ -206,8 +205,7 @@ export async function GET(request: NextRequest) {
       id: String(p.id), data: String(p.data),
       hora_inicio: p.hora_inicio, hora_fim: p.hora_fim, situacao: p.situacao,
       local: (p.local_texto || (p.local_id ? nomeDoLocal.get(String(p.local_id)) : "") || "").trim(),
-      confirmado_em: p.confirmado_em, privado: p.privado,
-    } as PlantaoParaCheckin,
+    } as PlantaoParaLembrar,
   })), "perfil_id");
 
   const mortas: string[] = [];
