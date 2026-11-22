@@ -16,6 +16,7 @@ import { MapaDoDia } from "./mapa-do-dia";
 import { ImportarMapaNaFicha } from "./importar-mapa";
 import { horarioDaFicha } from "@/lib/evolucao/folha";
 import { dataLocal, horaLocal } from "@/lib/data-local";
+import { CONVENIOS, convenioDoCadastro } from "@/lib/convenios";
 
 type Encontrado = Omit<PacienteAchado, "avaliacao" | "aberta">;
 
@@ -83,6 +84,16 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
   const [pelaFoto, setPelaFoto] = useState<File | null>(null);
   const [abrindoPelaFoto, setAbrindoPelaFoto] = useState(false);
   const [erroDaFoto, setErroDaFoto] = useState("");
+  // Os convênios da organização, para gravar o paciente novo na grafia que o
+  // cadastro já usa e sugerir enquanto se digita (lib/convenios.ts).
+  const [conveniosDaOrganizacao, setConveniosDaOrganizacao] = useState<string[]>([]);
+  useEffect(() => {
+    let vale = true;
+    void createClient().rpc("convenios_da_organizacao").then(({ data }) => {
+      if (vale) setConveniosDaOrganizacao(((data ?? []) as { convenio: string }[]).map((c) => c.convenio).filter(Boolean));
+    });
+    return () => { vale = false; };
+  }, []);
 
   useEffect(() => {
     const termo = busca.trim();
@@ -146,7 +157,7 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
     const { data, error } = await supabase.from("pacientes").insert({
       institution_id: institutionId, created_by: user?.id ?? null, nome: novo.nome.trim(),
       idade_anos: Number.isInteger(idade) && idade >= 0 && idade <= 120 && novo.idade.trim() ? idade : null,
-      sexo: novo.sexo || null, convenio: novo.convenio.trim() || null, cirurgia: novo.cirurgia.trim() || null,
+      sexo: novo.sexo || null, convenio: convenioDoCadastro(novo.convenio, conveniosDaOrganizacao), cirurgia: novo.cirurgia.trim() || null,
     }).select(CAMPOS).single();
     setCadastrando(false);
     if (error || !data) { setErro("Não foi possível cadastrar o paciente. Confira a conexão e tente de novo."); return; }
@@ -187,7 +198,7 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
       const { data, error: erroNovo } = await supabase.from("pacientes").insert({
         institution_id: institutionId, created_by: user?.id ?? null, nome,
         data_nascimento: paciente.nascimento || null, idade_anos: idadeHoje(paciente.nascimento),
-        sexo: paciente.sexo || null, convenio: paciente.convenio.trim() || null, cirurgia,
+        sexo: paciente.sexo || null, convenio: convenioDoCadastro(paciente.convenio, conveniosDaOrganizacao), cirurgia,
       }).select(CAMPOS).single();
       if (erroNovo || !data) { setAbrindoPelaFoto(false); setErroDaFoto("Não foi possível cadastrar o paciente. Confira a conexão e tente de novo."); return; }
       p = data as Encontrado;
@@ -371,7 +382,11 @@ export function NovaFolha({ institutionId, local = null, mapa = [], avaliadosHoj
             </div>
           </div>
           <label className="fcNovoCampo"><span>Convênio</span>
-            <input value={novo.convenio} onChange={(e) => setNovo({ ...novo, convenio: e.target.value })} placeholder="Particular" />
+            <input value={novo.convenio} onChange={(e) => setNovo({ ...novo, convenio: e.target.value })} placeholder="Particular"
+              list="fc-novo-convenios" />
+            <datalist id="fc-novo-convenios">
+              {[...new Set([...conveniosDaOrganizacao, "SUS", ...CONVENIOS])].map((c) => <option key={c} value={c} />)}
+            </datalist>
           </label>
           <label className="fcNovoCampo largo"><span>Cirurgia</span>
             <input value={novo.cirurgia} onChange={(e) => setNovo({ ...novo, cirurgia: e.target.value })} />
