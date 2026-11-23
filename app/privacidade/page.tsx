@@ -104,7 +104,7 @@ export default function PrivacidadePage() {
         <li>Documentos anexados ao atendimento.</li>
         <li>Registros financeiros do atendimento: valor, convênio, nota fiscal, pagamentos.</li>
       </ul>
-      <p><b>De usuários do sistema:</b> nome, e-mail, CRM, RQE, perfil de acesso, situação, escala de plantões e mensagens trocadas na sala da equipe.</p>
+      <p><b>De usuários do sistema:</b> nome, e-mail, celular, CPF, CRM, RQE, perfil de acesso, situação, escala de plantões e mensagens trocadas na sala da equipe. O CPF serve para identificar quem tem acesso ao sistema; dentro do AVANEST, só a própria pessoa o vê.</p>
       <p>
         <b>Dados técnicos de acesso:</b> endereço IP, data e hora, navegador e aparelho. Fazem parte
         dos registros de auditoria — quem fez o quê e quando —, que existem para rastreabilidade e

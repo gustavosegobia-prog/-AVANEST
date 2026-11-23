@@ -8842,3 +8842,5 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 .pularConteudo:focus{top:12px;outline:3px solid var(--avn-teal,#2dd4bf);outline-offset:2px}
 #conteudo:focus{outline:none}
 @media(prefers-reduced-motion:reduce){.pularConteudo{transition:none}}
+/* Dica curta embaixo de um campo do cadastro ("Só você vê o seu CPF."). */
+.loginForm .loginDica{font-size:12.5px;line-height:1.4;color:var(--cor-tinta-fraca);margin:-8px 0 4px}
