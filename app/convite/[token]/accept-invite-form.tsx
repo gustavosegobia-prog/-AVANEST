@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { AVISO_CELULAR, celularValido } from "@/lib/celular";
+import { avisoDoCpf, digitosDoCpf } from "@/lib/cpf";
 
 export function AcceptInviteForm({ token, papel }: { token: string; papel: string }) {
   const router = useRouter();
@@ -19,6 +20,8 @@ export function AcceptInviteForm({ token, papel }: { token: string; papel: strin
     const texto = (campo: string) => String(form.get(campo) ?? "").trim();
 
     if (!celularValido(texto("celular"))) { setErro(AVISO_CELULAR); setBusy(false); return; }
+    const avisoCpf = avisoDoCpf(texto("cpf"));
+    if (avisoCpf) { setErro(avisoCpf); setBusy(false); return; }
 
     const supabase = createClient();
     const { error } = await supabase.rpc("aceitar_convite", {
@@ -30,6 +33,7 @@ export function AcceptInviteForm({ token, papel }: { token: string; papel: strin
     if (error) { setErro(error.message); setBusy(false); return; }
     // Depois do aceite, quando o perfil já é da organização. Falha aqui não trava a entrada.
     await supabase.rpc("definir_meu_celular", { p_celular: texto("celular") });
+    await supabase.rpc("definir_meu_cpf", { p_cpf: digitosDoCpf(texto("cpf")) });
     router.replace("/dashboard");
     router.refresh();
   }
@@ -38,6 +42,10 @@ export function AcceptInviteForm({ token, papel }: { token: string; papel: strin
     <form className="loginForm" onSubmit={enviar}>
       <label htmlFor="nome">Seu nome completo</label>
       <input id="nome" name="nome" required placeholder="Ex.: Dra. Helena Martins" />
+      <label htmlFor="cpf">CPF</label>
+      <input id="cpf" name="cpf" required inputMode="numeric" maxLength={14} autoComplete="off"
+        placeholder="000.000.000-00" aria-describedby="cpf-dica" />
+      <small id="cpf-dica" className="loginDica">Só você vê o seu CPF.</small>
       <label htmlFor="celular">Celular com DDD</label>
       <input id="celular" name="celular" type="tel" inputMode="tel" required autoComplete="tel-national"
         placeholder="Ex.: (41) 99999-9999" />

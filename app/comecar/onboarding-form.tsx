@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { AVISO_CELULAR, celularValido } from "@/lib/celular";
+import { avisoDoCpf, digitosDoCpf } from "@/lib/cpf";
 
 type Escolha = "individual" | "grupo" | "convite";
 
@@ -39,6 +40,10 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
     }
 
     if (!celularValido(texto("celular"))) { setErro(AVISO_CELULAR); setBusy(false); return; }
+    // O CPF é conferido aqui pelos dígitos, antes de criar a organização: um
+    // número digitado errado não chega a abrir conta (lib/cpf.ts).
+    const avisoCpf = avisoDoCpf(texto("cpf"));
+    if (avisoCpf) { setErro(avisoCpf); setBusy(false); return; }
 
     const supabase = createClient();
     const { error } = await supabase.rpc("criar_organizacao", {
@@ -52,6 +57,7 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
     // O celular vai depois: o perfil só existe quando a organização é criada.
     // Se falhar aqui, a conta segue; o celular não pode travar a entrada.
     await supabase.rpc("definir_meu_celular", { p_celular: texto("celular") });
+    await supabase.rpc("definir_meu_cpf", { p_cpf: digitosDoCpf(texto("cpf")) });
     // Toda organização nova passa pela assinatura antes de entrar: o teste
     // grátis começa com o cartão cadastrado, e a primeira cobrança só vence
     // no fim dele. Quem veio da vitrine com um plano já chega com ele marcado.
@@ -91,6 +97,10 @@ export function OnboardingForm({ email, plano = "" }: { email: string; plano?: s
           )}
           <label htmlFor="nome">Seu nome completo</label>
           <input id="nome" name="nome" required placeholder="Ex.: Dra. Helena Martins" />
+          <label htmlFor="cpf">CPF</label>
+          <input id="cpf" name="cpf" required inputMode="numeric" maxLength={14} autoComplete="off"
+            placeholder="000.000.000-00" aria-describedby="cpf-dica" />
+          <small id="cpf-dica" className="loginDica">Só você vê o seu CPF.</small>
           <label htmlFor="celular">Celular com DDD</label>
           <input id="celular" name="celular" type="tel" inputMode="tel" required autoComplete="tel-national"
             placeholder="Ex.: (41) 99999-9999" />
