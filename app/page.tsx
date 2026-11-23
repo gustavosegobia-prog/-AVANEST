@@ -29,6 +29,7 @@ import { ID_DA_ORGANIZACAO } from "@/lib/schema";
 import { QUANTOS_DE_CRISE } from "@/lib/intercorrencias/catalogo";
 import { mensagemDoQuestionario } from "@/lib/questionario-pre";
 import { RodapePublico } from "@/components/rodape-publico";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 // O que o site é, em linguagem de máquina.
 //
@@ -237,6 +238,7 @@ export default async function HomePage() {
         // URL, então não há entrada externa para escapar.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(dadosEstruturados(preco)) }}
       />
+      <PularParaOConteudo />
       {/* `avnNavCapa`: no computador esta barra acompanha a moldura do hero,
           que é mais larga que a caixa central das outras páginas. Sem a classe,
           o logo nasce à direita do começo do título. */}
@@ -265,7 +267,7 @@ export default async function HomePage() {
           confiar a avaliação pré-anestésica a um sistema, a primeira imagem
           dele não pode ser inventada. Estas são capturas da avaliação real,
           com uma paciente fictícia (public/capa). */}
-      <section className="avnHero avnHeroComTelas">
+      <section className="avnHero avnHeroComTelas" id="conteudo" tabIndex={-1}>
         <div className="avnHeroContent">
           {/* A NOVIDADE NA PRIMEIRA TELA, um toque leva à seção que mostra. */}
           <a className="avnNovidadeCapa" href="#questionario-whatsapp">

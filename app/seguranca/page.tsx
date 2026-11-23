@@ -5,6 +5,7 @@ import { comoJson, migalhas } from "@/lib/schema";
 import { AppLogo } from "@/components/app-logo";
 import { RodapePublico } from "@/components/rodape-publico";
 import { ENCARREGADO, MEDIDAS_DE_SEGURANCA } from "@/lib/seguranca";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 // A SEGURANÇA DOS DADOS, EM UMA PÁGINA.
 //
@@ -39,6 +40,7 @@ export default function SegurancaPage() {
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
       <main className="avnLanding">
+        <PularParaOConteudo />
         <header className="avnNav">
           <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
           <nav aria-label="Principal">
@@ -50,7 +52,7 @@ export default function SegurancaPage() {
           </nav>
         </header>
 
-        <section className="recHero">
+        <section className="recHero" id="conteudo" tabIndex={-1}>
           <p className="avnEyebrow">SEGURANÇA DOS DADOS</p>
           <h1>Como o AVANEST protege os dados dos pacientes</h1>
           <p className="avnLead">

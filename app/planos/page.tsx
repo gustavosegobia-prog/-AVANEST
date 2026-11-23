@@ -8,6 +8,7 @@ import { Icone } from "@/components/icone";
 import { DIAS_DE_TESTE, OFERTA_DO_TESTE } from "@/lib/teste-gratis";
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
 import { RodapePublico } from "@/components/rodape-publico";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 // Vitrine pública de preços.
 //
@@ -161,6 +162,7 @@ export default async function PlanosPage() {
         />
       )}
     <main className="avnLanding planosPage">
+      <PularParaOConteudo />
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
@@ -169,7 +171,7 @@ export default async function PlanosPage() {
         </nav>
       </header>
 
-      <section className="planosHero">
+      <section className="planosHero" id="conteudo" tabIndex={-1}>
         <h1>Um preço para cada tamanho de equipe.</h1>
         {/* UMA OFERTA SÓ, dita uma vez. Antes eram quatro frases de grátis ao
             mesmo tempo — a faixa da campanha, "use por 2 meses", um selo em

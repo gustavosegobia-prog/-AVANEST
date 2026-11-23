@@ -5,6 +5,7 @@ import Image from "next/image";
 import { AppLogo } from "@/components/app-logo";
 import { GlifoDoPasso } from "@/components/icones-de-instalacao";
 import { RodapePublico } from "@/components/rodape-publico";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 // Onde o botão "Baixar o app AVANEST" chega.
 //
@@ -197,6 +198,7 @@ function Passo({ passo, numero, primeiro }: {
 export default function InstalarNoCelular() {
   return (
     <main className="avnLanding">
+      <PularParaOConteudo />
       <header className="avnNav">
         <Link href="/" aria-label="AVANEST"><AppLogo /></Link>
         <nav aria-label="Principal">
@@ -204,7 +206,7 @@ export default function InstalarNoCelular() {
         </nav>
       </header>
 
-      <section className="recHero">
+      <section className="recHero" id="conteudo" tabIndex={-1}>
         <p className="avnEyebrow">NO SEU CELULAR</p>
         <h1>Tenha sua escala sempre à mão.</h1>
         <p className="avnLead">

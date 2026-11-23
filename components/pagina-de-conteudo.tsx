@@ -4,6 +4,7 @@ import { PAGINAS_DE_CONTEUDO, RodapePublico } from "@/components/rodape-publico"
 import { CAMINHO_DA_CAMPANHA } from "@/lib/link-da-campanha";
 import { DIAS_DE_TESTE, OFERTA_DO_TESTE } from "@/lib/teste-gratis";
 import { dataPorExtenso, nomeCompleto, registro } from "@/lib/autoria";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 // A moldura das páginas que respondem a uma busca — avaliação pré-anestésica,
 // ficha anestésica, escala médica.
@@ -41,6 +42,7 @@ export function PaginaDeConteudo({
   const teste = `${CAMINHO_DA_CAMPANHA}?de=${origem}`;
   return (
     <main className="avnLanding">
+      <PularParaOConteudo />
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
@@ -52,7 +54,7 @@ export function PaginaDeConteudo({
         </nav>
       </header>
 
-      <section className="recHero">
+      <section className="recHero" id="conteudo" tabIndex={-1}>
         <p className="avnEyebrow">{sobretitulo}</p>
         <h1>{titulo}</h1>
         <p className="avnLead">{resumo}</p>

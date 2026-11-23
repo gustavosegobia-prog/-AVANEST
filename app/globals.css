@@ -8832,3 +8832,13 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
   .avnCapa .avnModulosLista{row-gap:11px}
   .avnCapa .avnOferta{margin-top:26px}
 }
+
+/* "Pular para o conteúdo" (components/pular-para-o-conteudo.tsx): escondido
+   acima da tela até o primeiro Tab. O destino recebe o foco sem contorno — o
+   contorno num bloco inteiro de página parece defeito, e o próximo Tab já
+   cai no primeiro link do conteúdo. */
+.pularConteudo{position:absolute;left:16px;top:-80px;z-index:1000;background:#fff;color:#062c2a;padding:12px 18px;
+  border-radius:10px;font-weight:750;text-decoration:none;box-shadow:0 6px 24px #0416264d;transition:top .15s}
+.pularConteudo:focus{top:12px;outline:3px solid var(--avn-teal,#2dd4bf);outline-offset:2px}
+#conteudo:focus{outline:none}
+@media(prefers-reduced-motion:reduce){.pularConteudo{transition:none}}
