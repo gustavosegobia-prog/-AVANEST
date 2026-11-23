@@ -6,6 +6,7 @@ import { AppLogo } from "@/components/app-logo";
 import { RodapePublico } from "@/components/rodape-publico";
 import { MEDIDAS_DE_SEGURANCA } from "@/lib/seguranca";
 import { QUANTOS_DE_APOIO, QUANTOS_DE_CRISE } from "@/lib/intercorrencias/catalogo";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 // A trilha que aparece no lugar da URL crua no resultado do Google.
 // Breadcrumb é dos poucos dados estruturados que ainda mudam o que se
@@ -257,6 +258,7 @@ export default function RecursosPage() {
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
     <main className="avnLanding">
+      <PularParaOConteudo />
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
@@ -265,7 +267,7 @@ export default function RecursosPage() {
         </nav>
       </header>
 
-      <section className="recHero">
+      <section className="recHero" id="conteudo" tabIndex={-1}>
         <p className="avnEyebrow">O SISTEMA POR DENTRO</p>
         <h1>O dia inteiro do anestesiologista, em um sistema só.</h1>
         <p className="avnLead">

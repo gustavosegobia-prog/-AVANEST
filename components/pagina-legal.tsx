@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { RodapePublico } from "@/components/rodape-publico";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 // Moldura compartilhada de /termos, /privacidade e /cookies. Os dois documentos têm a
 // mesma estrutura de leitura — cabeçalho, data de vigência, corpo em seções
@@ -20,6 +21,7 @@ export function PaginaLegal({
 }) {
   return (
     <main className="legalPage">
+      <PularParaOConteudo />
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
@@ -28,7 +30,7 @@ export function PaginaLegal({
         </nav>
       </header>
 
-      <article className="legalCorpo">
+      <article className="legalCorpo" id="conteudo" tabIndex={-1}>
         <h1>{titulo}</h1>
         <p className="legalResumo">{resumo}</p>
         <p className="legalVigencia">Em vigor desde {vigencia}.</p>

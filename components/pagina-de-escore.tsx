@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { autorEmSchema, dataPorExtenso, nomeCompleto, registro } from "@/lib/autoria";
 import { RodapePublico } from "@/components/rodape-publico";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 // A moldura das páginas públicas de escore.
 //
@@ -35,6 +36,7 @@ export function PaginaDeEscore({
 }) {
   return (
     <main className="avnLanding">
+      <PularParaOConteudo />
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
@@ -49,7 +51,7 @@ export function PaginaDeEscore({
         </nav>
       </header>
 
-      <section className="recHero">
+      <section className="recHero" id="conteudo" tabIndex={-1}>
         <p className="avnEyebrow">{sobretitulo}</p>
         <h1>{titulo}</h1>
         <p className="avnLead">{resumo}</p>

@@ -4,6 +4,7 @@ import { comoJson, migalhas } from "@/lib/schema";
 import Link from "next/link";
 import { AppLogo } from "@/components/app-logo";
 import { RodapePublico } from "@/components/rodape-publico";
+import { PularParaOConteudo } from "@/components/pular-para-o-conteudo";
 
 const CAMINHO = "/escores";
 
@@ -87,6 +88,7 @@ export default function EscoresPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: comoJson(migalhas(TRILHA)) }}
       />
+      <PularParaOConteudo />
       <header className="avnNav">
         <Link href="/"><AppLogo /></Link>
         <nav aria-label="Principal">
@@ -98,7 +100,7 @@ export default function EscoresPage() {
         </nav>
       </header>
 
-      <section className="recHero">
+      <section className="recHero" id="conteudo" tabIndex={-1}>
         <p className="avnEyebrow">REFERÊNCIA LIVRE</p>
         <h1>Os escores da avaliação pré-anestésica.</h1>
         <p className="avnLead">
