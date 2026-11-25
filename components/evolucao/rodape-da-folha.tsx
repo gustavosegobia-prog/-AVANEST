@@ -40,6 +40,11 @@ const COXINS: Array<[string, string]> = [
   ["Coxim — cabeça", "Cabeça"], ["Coxim — face", "Face"], ["Coxim — braços", "Braços"], ["Coxim — pernas", "Pernas"],
   ["Colchão inflável", "Colchão inflável"],
 ];
+/** Uma opção da técnica: impressa com técnica marcada, a não escolhida não sai. */
+function OpT({ esconder, ...p }: Parameters<typeof Op>[0] & { esconder: boolean }) {
+  return esconder && !p.marcado ? null : <Op {...p} />;
+}
+
 const GERAIS: Array<[string, string]> = [["geral_balanceada", "Balanceada"], ["geral_inalatoria", "Inalatória"], ["geral_venosa_total", "Venosa total,"]];
 const VENTILACAO: Array<[string, string]> = [
   ["Espontânea sob cateter de O₂", "espontânea sob cateter de O₂"], ["Assistida sob máscara", "Assistida sob máscara"],
@@ -102,6 +107,15 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
   const demais = equipe.filter((x) => x !== responsavel);
 
   const tem = (c: string) => tecnicas.includes(c);
+  // IMPRESSA, SÓ A TÉCNICA USADA (25/11/2026): com alguma técnica marcada, a
+  // folha impressa não leva as linhas das técnicas que não foram feitas, nem
+  // as opções não escolhidas das que foram. Sem nenhuma marcada, sai a folha
+  // inteira, para preencher à mão. Na tela tudo continua à mão.
+  const soAUsada = m.impresso && tecnicas.length > 0;
+  const usaNeuraxial = tem("raquianestesia") || tem("peridural") || tem("combinada");
+  const usaGeral = tecnicas.some((c) => c.startsWith("geral"));
+  const usaSedacao = tem("sedacao") || tem("local_assistida");
+  const usaBloqueio = tem("bloqueio_periferico");
   const gerais = tecnicas.filter((c) => c.startsWith("geral"));
   const alternarTecnica = (c: string) => mudar({ tecnicas: alternar(tecnicas, c) });
   const comTecnica = (c: string) => (tem(c) ? tecnicas : [...tecnicas, c]);
@@ -216,51 +230,55 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
       <div className="evoRTecnica">
         <div className="evoRTira" aria-hidden="true">Técnica</div>
         <div className="evoRTecnicaLinhas">
-          <div className="evoRLinha">
-            <Op m={m} rotulo="Raquianestesia," marcado={tem("raquianestesia")} onClick={() => alternarTecnica("raquianestesia")} />
-            <Txt>L</Txt>
-            <Linha m={m} rotulo="Espaço, de" valor={espaco[1]} largura={2} numerico onMudar={(v) => mudarEspaco(v, espaco[2])} />
-            <Txt>-L</Txt>
-            <Linha m={m} rotulo="Espaço, até" valor={espaco[2]} largura={2} sufixo="," numerico onMudar={(v) => mudarEspaco(espaco[1], v)} />
-            <Op m={m} rotulo="paramediana" marcado={r.abordagem === "Paramediana"}
-              onClick={() => raqui({ abordagem: r.abordagem === "Paramediana" ? "" : "Paramediana" })} />
-            <Op m={m} rotulo="mediana," marcado={r.abordagem === "Mediana"}
-              onClick={() => raqui({ abordagem: r.abordagem === "Mediana" ? "" : "Mediana" })} />
-            <Txt>Agulha</Txt>
-            <Linha m={m} rotulo="Agulha da raqui, em gauge" valor={t(r.agulha)} largura={4} sufixo="G ," onMudar={(v) => raqui({ agulha: v })} />
-            <Op m={m} rotulo="LCRC," marcado={r.lcr_claro === true} onClick={() => raqui({ lcr_claro: r.lcr_claro !== true })} />
-            <Op m={m} rotulo="Punção única" marcado={r.puncao_unica === true} onClick={() => raqui({ puncao_unica: r.puncao_unica !== true })} />
-            <span className="evoREspaco" aria-hidden="true" />
-            <Op m={m} rotulo="Peridural" marcado={tem("peridural")} onClick={() => alternarTecnica("peridural")} />
-            {tem("combinada") && <Op m={m} rotulo="combinada" marcado onClick={() => alternarTecnica("combinada")} />}
-          </div>
+          {(!soAUsada || usaNeuraxial) && (
+            <div className="evoRLinha">
+              <OpT esconder={soAUsada} m={m} rotulo="Raquianestesia," marcado={tem("raquianestesia")} onClick={() => alternarTecnica("raquianestesia")} />
+              <Txt>L</Txt>
+              <Linha m={m} rotulo="Espaço, de" valor={espaco[1]} largura={2} numerico onMudar={(v) => mudarEspaco(v, espaco[2])} />
+              <Txt>-L</Txt>
+              <Linha m={m} rotulo="Espaço, até" valor={espaco[2]} largura={2} sufixo="," numerico onMudar={(v) => mudarEspaco(espaco[1], v)} />
+              <OpT esconder={soAUsada} m={m} rotulo="paramediana" marcado={r.abordagem === "Paramediana"}
+                onClick={() => raqui({ abordagem: r.abordagem === "Paramediana" ? "" : "Paramediana" })} />
+              <OpT esconder={soAUsada} m={m} rotulo="mediana," marcado={r.abordagem === "Mediana"}
+                onClick={() => raqui({ abordagem: r.abordagem === "Mediana" ? "" : "Mediana" })} />
+              <Txt>Agulha</Txt>
+              <Linha m={m} rotulo="Agulha da raqui, em gauge" valor={t(r.agulha)} largura={4} sufixo="G ," onMudar={(v) => raqui({ agulha: v })} />
+              <OpT esconder={soAUsada} m={m} rotulo="LCRC," marcado={r.lcr_claro === true} onClick={() => raqui({ lcr_claro: r.lcr_claro !== true })} />
+              <OpT esconder={soAUsada} m={m} rotulo="Punção única" marcado={r.puncao_unica === true} onClick={() => raqui({ puncao_unica: r.puncao_unica !== true })} />
+              <span className="evoREspaco" aria-hidden="true" />
+              <OpT esconder={soAUsada} m={m} rotulo="Peridural" marcado={tem("peridural")} onClick={() => alternarTecnica("peridural")} />
+              {tem("combinada") && <OpT esconder={soAUsada} m={m} rotulo="combinada" marcado onClick={() => alternarTecnica("combinada")} />}
+            </div>
+          )}
 
-          <div className="evoRLinha">
-            <Op m={m} rotulo="Anestesia Geral" marcado={gerais.length > 0} onClick={alternarGeral} />
-            {GERAIS.map(([c, rot]) => (
-              <Op key={c} m={m} rotulo={rot} marcado={tem(c)} onClick={() => alternarTipoDeGeral(c)} />
-            ))}
-            <Txt>TOT</Txt>
-            <Linha m={m} rotulo="Número do tubo" valor={!dispositivo || dispositivo === "TOT" ? t(g.numero) : ""}
-              largura={Math.max(5, t(g.numero).length)} sufixo=","
-              onMudar={(v) => geral({ numero: v, dispositivo: v ? "TOT" : "" })} />
-            {dispositivo && dispositivo !== "TOT" && (
-              <Op m={m} rotulo={`${dispositivo}${t(g.numero) ? ` ${t(g.numero)}` : ""}`} marcado
-                onClick={() => geral({ dispositivo: "", numero: "" })} />
-            )}
-            <Txt>VM:</Txt>
-            <Op m={m} rotulo="VCV" marcado={modo === "VCV"} onClick={() => geral({ modo: modo === "VCV" ? "" : "VCV" })} />
-            <Linha m={m} rotulo="Volume corrente, em mL" valor={t(g.vc)} largura={4} sufixo="ml" numerico
-              onMudar={(v) => geral({ vc: v, modo: v && !modo ? "VCV" : modo })} />
-            <Op m={m} rotulo="PCV" marcado={modo === "PCV"} onClick={() => geral({ modo: modo === "PCV" ? "" : "PCV" })} />
-            <Linha m={m} rotulo="Pressão inspiratória (PCV)" valor={t(g.pcv)} largura={3} sufixo="," numerico
-              onMudar={(v) => geral({ pcv: v, modo: v && !modo ? "PCV" : modo })} />
-            {modo && modo !== "VCV" && modo !== "PCV" && <Op m={m} rotulo={modo} marcado onClick={() => geral({ modo: "" })} />}
-            <Txt>PEEP</Txt>
-            <Linha m={m} rotulo="PEEP" valor={t(g.peep)} largura={3} sufixo="," numerico onMudar={(v) => geral({ peep: v })} />
-            <Txt>FR</Txt>
-            <Linha m={m} rotulo="Frequência respiratória" valor={t(g.fr)} largura={3} sufixo="." numerico onMudar={(v) => geral({ fr: v })} />
-          </div>
+          {(!soAUsada || usaGeral) && (
+            <div className="evoRLinha">
+              <OpT esconder={soAUsada} m={m} rotulo="Anestesia Geral" marcado={gerais.length > 0} onClick={alternarGeral} />
+              {GERAIS.map(([c, rot]) => (
+                <OpT esconder={soAUsada} key={c} m={m} rotulo={rot} marcado={tem(c)} onClick={() => alternarTipoDeGeral(c)} />
+              ))}
+              <Txt>TOT</Txt>
+              <Linha m={m} rotulo="Número do tubo" valor={!dispositivo || dispositivo === "TOT" ? t(g.numero) : ""}
+                largura={Math.max(5, t(g.numero).length)} sufixo=","
+                onMudar={(v) => geral({ numero: v, dispositivo: v ? "TOT" : "" })} />
+              {dispositivo && dispositivo !== "TOT" && (
+                <OpT esconder={soAUsada} m={m} rotulo={`${dispositivo}${t(g.numero) ? ` ${t(g.numero)}` : ""}`} marcado
+                  onClick={() => geral({ dispositivo: "", numero: "" })} />
+              )}
+              {(!soAUsada || modo || t(g.vc) || t(g.pcv)) && <Txt>VM:</Txt>}
+              <OpT esconder={soAUsada} m={m} rotulo="VCV" marcado={modo === "VCV"} onClick={() => geral({ modo: modo === "VCV" ? "" : "VCV" })} />
+              {(!soAUsada || modo === "VCV" || t(g.vc)) && <Linha m={m} rotulo="Volume corrente, em mL" valor={t(g.vc)} largura={4} sufixo="ml" numerico
+                onMudar={(v) => geral({ vc: v, modo: v && !modo ? "VCV" : modo })} />}
+              <OpT esconder={soAUsada} m={m} rotulo="PCV" marcado={modo === "PCV"} onClick={() => geral({ modo: modo === "PCV" ? "" : "PCV" })} />
+              {(!soAUsada || modo === "PCV" || t(g.pcv)) && <Linha m={m} rotulo="Pressão inspiratória (PCV)" valor={t(g.pcv)} largura={3} sufixo="," numerico
+                onMudar={(v) => geral({ pcv: v, modo: v && !modo ? "PCV" : modo })} />}
+              {modo && modo !== "VCV" && modo !== "PCV" && <OpT esconder={soAUsada} m={m} rotulo={modo} marcado onClick={() => geral({ modo: "" })} />}
+              <Txt>PEEP</Txt>
+              <Linha m={m} rotulo="PEEP" valor={t(g.peep)} largura={3} sufixo="," numerico onMudar={(v) => geral({ peep: v })} />
+              <Txt>FR</Txt>
+              <Linha m={m} rotulo="Frequência respiratória" valor={t(g.fr)} largura={3} sufixo="." numerico onMudar={(v) => geral({ fr: v })} />
+            </div>
+          )}
           {tubo && !m.impresso && !m.leitura && (
             <div className="evoRTubo">
               <span className="evoRTuboTitulo">TOT calculado <small>({tubo.origem})</small></span>
@@ -276,31 +294,35 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
             </div>
           )}
 
-          <div className="evoRLinha">
-            <Op m={m} rotulo="Sedação, com ventilação:" marcado={tem("sedacao")} onClick={() => alternarTecnica("sedacao")} />
-            {VENTILACAO.map(([v, rot]) => (
-              <Op key={v} m={m} rotulo={rot} marcado={ventilacao.includes(v)} onClick={() => sedacao({ ventilacao: alternar(ventilacao, v) })} />
-            ))}
-            <Txt>e</Txt>
-            <Op m={m} rotulo="guedel" marcado={ventilacao.includes("Guedel")} onClick={() => sedacao({ ventilacao: alternar(ventilacao, "Guedel") })} />
-            {tem("local_assistida") && <Op m={m} rotulo="local assistida" marcado onClick={() => alternarTecnica("local_assistida")} />}
-          </div>
+          {(!soAUsada || usaSedacao) && (
+            <div className="evoRLinha">
+              <OpT esconder={soAUsada} m={m} rotulo="Sedação, com ventilação:" marcado={tem("sedacao")} onClick={() => alternarTecnica("sedacao")} />
+              {VENTILACAO.map(([v, rot]) => (
+                <OpT esconder={soAUsada} key={v} m={m} rotulo={rot} marcado={ventilacao.includes(v)} onClick={() => sedacao({ ventilacao: alternar(ventilacao, v) })} />
+              ))}
+              <Txt>e</Txt>
+              <OpT esconder={soAUsada} m={m} rotulo="guedel" marcado={ventilacao.includes("Guedel")} onClick={() => sedacao({ ventilacao: alternar(ventilacao, "Guedel") })} />
+              {tem("local_assistida") && <OpT esconder={soAUsada} m={m} rotulo="local assistida" marcado onClick={() => alternarTecnica("local_assistida")} />}
+            </div>
+          )}
 
-          <div className="evoRLinha">
-            <Op m={m} rotulo="Bloqueio:" marcado={tem("bloqueio_periferico")} onClick={() => alternarTecnica("bloqueio_periferico")} />
-            <Op m={m} rotulo="com Auxílio de USG" marcado={b.usg === true} onClick={() => bloqueio({ usg: b.usg !== true })} />
-            {BLOQUEIOS_DO_PAPEL.map(([v, rot]) => (
-              <Op key={v} m={m} rotulo={rot} marcado={tiposDeBloqueio.includes(v)} onClick={() => bloqueio({ tipos: alternar(tiposDeBloqueio, v) })} />
-            ))}
-            <Linha m={m} rotulo="Outro bloqueio" valor={t(b.outro)} largura={16} sugestoes="evoOutrosBloqueios"
-              onMudar={(v) => bloqueio({
-                outro: v,
-                tipos: v.trim() && !tiposDeBloqueio.includes("Outro") ? [...tiposDeBloqueio, "Outro"] : tiposDeBloqueio,
-              })} />
-            {extrasBloqueio.map((x) => (
-              <Op key={x} m={m} rotulo={x} marcado onClick={() => bloqueio({ tipos: alternar(tiposDeBloqueio, x) })} />
-            ))}
-          </div>
+          {(!soAUsada || usaBloqueio) && (
+            <div className="evoRLinha">
+              <OpT esconder={soAUsada} m={m} rotulo="Bloqueio:" marcado={tem("bloqueio_periferico")} onClick={() => alternarTecnica("bloqueio_periferico")} />
+              <OpT esconder={soAUsada} m={m} rotulo="com Auxílio de USG" marcado={b.usg === true} onClick={() => bloqueio({ usg: b.usg !== true })} />
+              {BLOQUEIOS_DO_PAPEL.map(([v, rot]) => (
+                <OpT esconder={soAUsada} key={v} m={m} rotulo={rot} marcado={tiposDeBloqueio.includes(v)} onClick={() => bloqueio({ tipos: alternar(tiposDeBloqueio, v) })} />
+              ))}
+              {(!soAUsada || t(b.outro)) && <Linha m={m} rotulo="Outro bloqueio" valor={t(b.outro)} largura={16} sugestoes="evoOutrosBloqueios"
+                onMudar={(v) => bloqueio({
+                  outro: v,
+                  tipos: v.trim() && !tiposDeBloqueio.includes("Outro") ? [...tiposDeBloqueio, "Outro"] : tiposDeBloqueio,
+                })} />}
+              {extrasBloqueio.map((x) => (
+                <OpT esconder={soAUsada} key={x} m={m} rotulo={x} marcado onClick={() => bloqueio({ tipos: alternar(tiposDeBloqueio, x) })} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
