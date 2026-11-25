@@ -83,8 +83,19 @@ export async function GET(request: NextRequest) {
   const daCampanha = todos.filter((u) => String(u.origem ?? "").trim() !== "");
 
   // O assinante que paga e parou entra de qualquer origem: é dinheiro.
+  // Os cancelamentos das últimas 24h, de qualquer origem (25/11/2026).
+  const { data: canceladas } = await admin
+    .from("instituicoes").select("nome, cancelada_em, reembolso_devido, cancelamento_motivo, assinatura_ate")
+    .gte("cancelada_em", new Date(Date.now() - 86_400_000).toISOString())
+    .order("cancelada_em", { ascending: false });
+  const cancelamentos = (canceladas ?? []).map((c) => ({
+    organizacao: String(c.nome ?? ""), canceladaEm: String(c.cancelada_em),
+    reembolsoDevido: c.reembolso_devido === true, motivo: c.cancelamento_motivo ?? null,
+    acessoAte: c.assinatura_ate ?? null,
+  }));
+
   const relatorio = montarRelatorio(daCampanha, new Date(),
-    { totalGeral: todos.length, pausados, assinantesParados: assinantesParados(todos, new Date()) });
+    { totalGeral: todos.length, pausados, assinantesParados: assinantesParados(todos, new Date()), cancelamentos });
 
   // Para quem vai: os super-admins, lidos do banco. Um endereço escrito no
   // código vira e-mail perdido no dia em que ele mudar, e obriga a um deploy

@@ -152,7 +152,28 @@ export type Relatorio = {
   pausados: Array<{ nome: string; email: string; dias: number }>;
   /** Organizações que PAGAM e pararam de usar — de qualquer origem. */
   assinantesParados: AssinanteParado[];
+  /** Quem cancelou nas últimas 24h (25/11/2026), com a devolução a fazer. */
+  cancelamentos: CancelamentoDoDia[];
 };
+
+/**
+ * CANCELAMENTO NO RELATÓRIO (25/11/2026). O e-mail da hora pode cair no spam
+ * ou passar despercebido; o relatório do dia repete, no alto, com o que fazer.
+ */
+export type CancelamentoDoDia = {
+  organizacao: string;
+  /** ISO de quando cancelou. */
+  canceladaEm: string;
+  reembolsoDevido: boolean;
+  motivo: string | null;
+  acessoAte: string | null;
+};
+
+const dataBrDe = (iso: string | null) => (iso ? dataLocal(new Date(iso)).split("-").reverse().join("/") : null);
+const linhaDoCancelamento = (c: CancelamentoDoDia) =>
+  `${c.reembolsoDevido ? "[DEVOLVER] " : ""}${c.organizacao} — cancelou em ${dataBrDe(c.canceladaEm)}`
+  + `${c.acessoAte ? ` · acesso até ${dataBrDe(c.acessoAte)}` : ""}`
+  + ` · motivo: ${c.motivo?.trim() || "não informado"}`;
 
 /**
  * ASSINANTE QUE PAGA E PAROU (22/11/2026). O primeiro assinante pagou a primeira
@@ -219,7 +240,7 @@ export const DIAS_PARA_PAUSAR = 14;
  */
 export function montarRelatorio(
   usuarios: readonly UsuarioDoUso[], agora: Date,
-  extra: { totalGeral?: number; pausados?: Relatorio["pausados"]; assinantesParados?: AssinanteParado[] } = {},
+  extra: { totalGeral?: number; pausados?: Relatorio["pausados"]; assinantesParados?: AssinanteParado[]; cancelamentos?: CancelamentoDoDia[] } = {},
 ): Relatorio {
   const emTeste = usuarios
     .filter((u) => u.plano === "trial" && u.teste_ate)
@@ -248,6 +269,7 @@ export function montarRelatorio(
     totalGeral: extra.totalGeral ?? usuarios.length,
     pausados: extra.pausados ?? [],
     assinantesParados: extra.assinantesParados ?? [],
+    cancelamentos: extra.cancelamentos ?? [],
   };
 }
 
@@ -260,6 +282,8 @@ export function montarRelatorio(
  */
 export function assuntoDoRelatorio(r: Relatorio): string {
   const partes = [
+    r.cancelamentos.length
+      ? `${r.cancelamentos.length} cancelamento${r.cancelamentos.length > 1 ? "s" : ""}` : "",
     r.novos.length ? `${r.novos.length} nova${r.novos.length > 1 ? "s" : ""}` : "",
     r.ativos.length ? `${r.ativos.length} ativo${r.ativos.length > 1 ? "s" : ""}` : "",
     r.assinantesParados.length
@@ -293,6 +317,7 @@ export function textoDoRelatorio(r: Relatorio): string {
         + "\n  Elas veem a explicação no login e o caminho para falar com você.\n"
       : "",
     // Logo no alto: é o único bloco em que há dinheiro entrando e indo embora.
+    bloco("CANCELAMENTOS (24h)", r.cancelamentos.map(linhaDoCancelamento)),
     bloco(`ASSINANTES QUE PAGAM E NÃO USAM HÁ ${DIAS_PARA_ASSINANTE_PARADO}+ DIAS`, r.assinantesParados.map(linhaDoAssinante)),
     bloco("CONTAS NOVAS (24h)", r.novos.map((u) =>
       `${linhaDoUsuario(u)}${u.origem ? ` [veio de: ${u.origem}]` : ""}`)),
@@ -329,6 +354,7 @@ export function htmlDoRelatorio(r: Relatorio): string {
     + ` · ${r.totalGeral} usuários ativos no sistema.</p>`
     + bloco("Pausadas hoje por inatividade", r.pausados.map((x) =>
         `${x.nome} (${x.email}) — ${x.dias} dias sem entrar`))
+    + bloco("Cancelamentos (24h)", r.cancelamentos.map(linhaDoCancelamento))
     + bloco(`Assinantes que pagam e não usam há ${DIAS_PARA_ASSINANTE_PARADO}+ dias`, r.assinantesParados.map(linhaDoAssinante))
     + bloco("Contas novas (24h)", r.novos.map((u) =>
         `${linhaDoUsuario(u)}${u.origem ? ` [veio de: ${u.origem}]` : ""}`))
