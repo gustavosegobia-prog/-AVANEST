@@ -219,10 +219,9 @@ type Assinatura = {
   organizacao: string; plano: string; assinatura_ate: string | null;
   dias_restantes: number | null; profissionais: number; valor_mensal: number;
   liberada: boolean; cancelada_em: string | null;
-  // Ainda ativa, é a previsão de como seria cancelando agora. Já cancelada, é
-  // a decisão que foi tomada na hora e não muda mais.
-  reembolso_devido: boolean; dias_de_uso: number | null; prazo_de_reembolso: number;
-  /** No período grátis (25/11/2026): nada foi cobrado, e não há o que devolver. */
+  /** Tem cobrança no cartão (Stripe). Cortesia e campanha sem cartão: false. */
+  tem_cobranca?: boolean;
+  /** No período grátis (25/11/2026): nada foi cobrado, e nada será se cancelar. */
   em_teste?: boolean;
 };
 type Paciente = {
@@ -2651,6 +2650,10 @@ function FinanceView({perfil,pacientes,avaliacoes,financeiro,pagamentos,periodos
  * saber que não vai perder o sistema na mesma hora, senão adia a decisão e
  * pede reembolso depois.
  *
+ * SEM DEVOLUÇÃO (25/11/2026, regra do dono, item 5 dos Termos): no período
+ * grátis nada é cobrado; depois dele, cancelar só suspende as próximas
+ * cobranças. O que já foi pago não volta, e a tela diz isso antes do botão.
+ *
  * A confirmação é digitada, não é um "tem certeza?". Numa clínica, quem clica
  * pode ser o administrador contratado, e o clique derruba a cobrança de todo
  * mundo.
@@ -2690,8 +2693,6 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
     setConfirmacao(""); setMotivo("");
     setAviso(corpo?.aviso||(dados?.em_teste
       ?"Assinatura cancelada no período grátis. O cartão não será cobrado."
-      :corpo?.reembolsoDevido
-      ?"Assinatura cancelada. Não haverá nova cobrança, e o valor deste mês será devolvido."
       :"Assinatura cancelada. Não haverá nova cobrança."));
     setVersao(v=>v+1);
     onRefresh();
@@ -2752,15 +2753,8 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
         </p>
         {dados?.em_teste
           ? <p className="assinaturaReembolso dentro">Cancelado no período grátis: nada foi cobrado e nada será.</p>
-          : dados?.reembolso_devido
-          ? <p className="assinaturaReembolso dentro">
-              O cancelamento entrou no prazo de {dados.prazo_de_reembolso} dias: o valor deste mês
-              será devolvido pela mesma forma de pagamento.
-            </p>
-          : <p className="assinaturaReembolso fora">
-              Fora do prazo de {dados?.prazo_de_reembolso??14} dias de devolução — o valor deste mês
-              não é reembolsado, e o acesso segue até o fim dele.
-            </p>}
+          : dados?.tem_cobranca!==false&&
+            <p className="assinaturaReembolso fora">Não haverá nova cobrança. O valor já pago não é devolvido.</p>}
         <button className="outlineClinical" disabled={encerrando} onClick={reativar}>
           {encerrando?"Reativando…":"Voltar atrás e continuar assinando"}
         </button>
@@ -2768,31 +2762,22 @@ function PainelAssinatura({onRefresh}:{onRefresh:()=>void}) {
     ) : (
       <div className="assinaturaBloco">
         <p>
-          Sem fidelidade e sem multa. Ao cancelar, não há nova cobrança
+          Sem fidelidade e sem multa. Ao cancelar, a próxima cobrança não acontece
           {ate?`, e o acesso continua até ${ate}`:""} — nada é desligado na hora.
         </p>
-        {/* O aviso do reembolso vem ANTES do botão, e não depois: descobrir
-            que o dinheiro não volta só na tela de confirmação é o tipo de
-            surpresa que vira reclamação. */}
-        {/* No período grátis não se fala de devolução: nada foi pago. Antes a
-            tela contava os dias desde o cadastro do cartão (um "pagamento" de
-            R$ 0,00) e dizia "o valor deste mês é devolvido" — ou, no 15º dia,
-            "o valor já pago não volta". */}
+        {/* O "não é devolvido" vem ANTES do botão, e não depois: descobrir
+            que o dinheiro não volta só depois de confirmar é o tipo de
+            surpresa que vira reclamação. No período grátis não se fala de
+            devolução: nada foi pago. Sem cobrança no cartão (cortesia,
+            campanha), também não. */}
         {dados?.em_teste ? (
           <p className="assinaturaReembolso dentro">
             Você está no período grátis{ate?` até ${ate}`:""}. Cancelando agora, o cartão não é cobrado: nada foi pago e nada será.
           </p>
-        ) : dados?.dias_de_uso!=null&&(
-          dados.reembolso_devido
-            ? <p className="assinaturaReembolso dentro">
-                Você está no dia {dados.dias_de_uso} deste mês. Cancelando agora, dentro dos
-                primeiros {dados.prazo_de_reembolso} dias, o valor deste mês é devolvido.
-              </p>
-            : <p className="assinaturaReembolso fora">
-                Você está no dia {dados.dias_de_uso} deste mês. O prazo de devolução é de
-                {" "}{dados.prazo_de_reembolso} dias, então o valor já pago não volta — mas o
-                acesso continua até o fim do mês{ate?`, em ${ate}`:""}.
-              </p>
+        ) : dados?.tem_cobranca!==false&&(
+          <p className="assinaturaReembolso fora">
+            O cancelamento vale para as próximas cobranças: o valor já pago não é devolvido.
+          </p>
         )}
         <label className="clinicalField">
           <span>Por que está cancelando? (opcional, ajuda a melhorar)</span>

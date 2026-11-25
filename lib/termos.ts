@@ -11,13 +11,15 @@
 // texto novo valer sem aceite.
 
 /**
+ * 25/11/2026: cancelar depois do período grátis suspende as próximas cobranças,
+ *             sem devolução do que já foi pago (item 5). Antes: devolução em 14 dias.
  * 27/10/2026: período grátis de 15 dias (item 6), no lugar dos dois meses.
  * 23/10/2026: cláusula de propriedade intelectual e confidencialidade.
  */
-export const VERSAO_DOS_TERMOS = "2026-10-27";
+export const VERSAO_DOS_TERMOS = "2026-11-25";
 
 /** Para quem já usava o AVANEST antes desta versão: o texto novo vale do aceite ou desta data, o que vier primeiro. */
-export const TERMOS_VALEM_PARA_QUEM_JA_USAVA = "2026-11-26";
+export const TERMOS_VALEM_PARA_QUEM_JA_USAVA = "2026-12-25";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
   "agosto", "setembro", "outubro", "novembro", "dezembro"];
