@@ -49,6 +49,9 @@ test("a ficha pergunta a equipe e deixa corrigir a idade", () => {
   const rodape = ler("components/evolucao/rodape-da-folha.tsx");
   for (const chave of ["segundo_cirurgiao", "auxiliar", "pediatra"]) assert.match(rodape, new RegExp(`mudar\\(\\{ ${chave}: v \\}\\)`));
   assert.match(rodape, /ehCesarea\(dados\.procedimento\)/);
+  // Só aparecem quando o médico põe: na tela pelo "+", e nunca vazios na impressão.
+  assert.match(rodape, /editandoEquipe \? typeof dados\[chave\] === "string" : t\(dados\[chave\]\)\.trim\(\) !== ""/);
+  assert.match(rodape, /onClick=\{\(\) => mudar\(\{ \[chave\]: "" \}\)\}>\+ \{rotulo\}/);
   const folha = ler("components/evolucao/folha-anestesica.tsx");
   assert.match(folha, /onEditarIdade=\{aberta \? /);
   assert.match(folha, /from\("pacientes"\)\.update\(r\.valor\)\.eq\("id", paciente\.id\)/);

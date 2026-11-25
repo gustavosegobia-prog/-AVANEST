@@ -91,8 +91,20 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
 
   // A equipe cirúrgica: o pediatra só aparece na cesárea (ou se já foi
   // escrito, para não sumir quando a cirurgia muda de nome).
-  const cesarea = ehCesarea(dados.procedimento) || t(dados.pediatra).trim() !== "";
-  const mostrarNaLinha = (v: unknown) => !m.impresso || t(v).trim() !== "";
+  const cesarea = ehCesarea(dados.procedimento) || typeof dados.pediatra === "string";
+  // 2º cirurgião, auxiliar e pediatra só aparecem quando o médico os põe
+  // (25/11/2026): na tela, um "+ Auxiliar" abre o campo e o "×" tira; ficha
+  // encerrada e impressa mostram só o que foi preenchido — nunca campo vazio.
+  const editandoEquipe = !m.impresso && !m.leitura;
+  const mostrarNaLinha = (chave: string) => (editandoEquipe ? typeof dados[chave] === "string" : t(dados[chave]).trim() !== "");
+  const extrasParaAbrir = editandoEquipe
+    ? ([["segundo_cirurgiao", "2º cirurgião"], ["auxiliar", "Auxiliar"], ...(cesarea ? [["pediatra", "Pediatra"]] : [])] as Array<[string, string]>)
+      .filter(([chave]) => typeof dados[chave] !== "string")
+    : [];
+  const tirar = (chave: string, rotulo: string) => editandoEquipe && (
+    <button type="button" className="evoOp evoRRemover" aria-label={`Tirar ${rotulo.toLowerCase()}`}
+      onClick={() => mudar({ [chave]: undefined })}>×</button>
+  );
   const temEquipe = [dados.segundo_cirurgiao, dados.auxiliar, cesarea ? dados.pediatra : ""].some((v) => t(v).trim() !== "");
 
   const tecnicas = lista(dados.tecnicas);
@@ -340,21 +352,27 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
           <Linha m={m} rotulo="Cirurgião" valor={t(dados.cirurgiao)} largura={m.impresso && !temEquipe ? 36 : 22}
             onMudar={(v) => mudar({ cirurgiao: v })} />
         </span>
-        {mostrarNaLinha(dados.segundo_cirurgiao) && <span className="evoRPar">
+        {mostrarNaLinha("segundo_cirurgiao") && <span className="evoRPar">
           <b>2º cirurgião:</b>
           <Linha m={m} rotulo="Segundo cirurgião" valor={t(dados.segundo_cirurgiao)} largura={18}
             onMudar={(v) => mudar({ segundo_cirurgiao: v })} />
+          {tirar("segundo_cirurgiao", "2º cirurgião")}
         </span>}
-        {mostrarNaLinha(dados.auxiliar) && <span className="evoRPar">
+        {mostrarNaLinha("auxiliar") && <span className="evoRPar">
           <b>Auxiliar:</b>
           <Linha m={m} rotulo="Auxiliar" valor={t(dados.auxiliar)} largura={18}
             onMudar={(v) => mudar({ auxiliar: v })} />
+          {tirar("auxiliar", "Auxiliar")}
         </span>}
-        {cesarea && mostrarNaLinha(dados.pediatra) && <span className="evoRPar">
+        {cesarea && mostrarNaLinha("pediatra") && <span className="evoRPar">
           <b>Pediatra:</b>
           <Linha m={m} rotulo="Pediatra" valor={t(dados.pediatra)} largura={18}
             onMudar={(v) => mudar({ pediatra: v })} />
+          {tirar("pediatra", "Pediatra")}
         </span>}
+        {extrasParaAbrir.map(([chave, rotulo]) => (
+          <button key={chave} type="button" className="evoOp" onClick={() => mudar({ [chave]: "" })}>+ {rotulo}</button>
+        ))}
       </div>
 
       <div className="evoRBase">
