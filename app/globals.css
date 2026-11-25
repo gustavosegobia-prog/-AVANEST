@@ -8844,3 +8844,11 @@ button.fcImprimir:disabled{cursor:progress;opacity:.7}
 @media(prefers-reduced-motion:reduce){.pularConteudo{transition:none}}
 /* Dica curta embaixo de um campo do cadastro ("Só você vê o seu CPF."). */
 .loginForm .loginDica{font-size:12.5px;line-height:1.4;color:var(--cor-tinta-fraca);margin:-8px 0 4px}
+/* A idade na ficha aberta é um botão discreto: corrige no cadastro (25/11/2026). */
+.evoPFIdade{border:0;background:none;padding:0;font:inherit;font-weight:700;color:inherit;cursor:pointer;
+  text-decoration:underline dotted;text-underline-offset:3px}
+.evoPFIdade:focus-visible{outline:0;box-shadow:var(--foco);border-radius:4px}
+/* Cirurgião, 2º cirurgião, auxiliar e pediatra: cada rótulo quebra de linha
+   junto do seu campo — no celular um por linha, no computador lado a lado. */
+.evoRCirurgica .evoRPar{display:flex;align-items:center;gap:2px 4px;flex:1 1 230px;min-width:0}
+.evoRCirurgica .evoRPar .evoLinhaCampo{flex:1;min-width:0}

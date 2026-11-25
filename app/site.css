@@ -4601,3 +4601,6 @@ html[data-tema=escuro]:has(.temaApp),html[data-tema=escuro]:has(.temaApp) body{b
 @media(prefers-reduced-motion:reduce){.pularConteudo{transition:none}}
 /* Dica curta embaixo de um campo do cadastro ("Só você vê o seu CPF."). */
 .loginForm .loginDica{font-size:12.5px;line-height:1.4;color:var(--cor-tinta-fraca);margin:-8px 0 4px}
+/* A idade na ficha aberta é um botão discreto: corrige no cadastro (25/11/2026). */
+/* Cirurgião, 2º cirurgião, auxiliar e pediatra: cada rótulo quebra de linha
+   junto do seu campo — no celular um por linha, no computador lado a lado. */
