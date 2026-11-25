@@ -47,14 +47,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // A função devolve uma linha com o que foi decidido: até quando vai o acesso
-  // e se o cancelamento caiu dentro do prazo de devolução. Quem decide é o
-  // banco — a rota só repassa, para a tela e o navegador não terem versão
-  // própria da regra.
+  // A função devolve uma linha com o que foi decidido: até quando vai o acesso.
+  // Quem decide é o banco — a rota só repassa. Não há devolução (25/11/2026,
+  // item 5 dos Termos): cancelar suspende as próximas cobranças, e só.
   const decidido = (Array.isArray(instituicaoData) ? instituicaoData[0] : instituicaoData) as
-    { acesso_ate?: string | null; reembolso_devido?: boolean | null } | null;
+    { acesso_ate?: string | null } | null;
   const acessoAte = decidido?.acesso_ate ?? null;
-  const reembolsoDevido = decidido?.reembolso_devido === true;
 
   // Daqui para baixo é a cobrança. Nada que falhe aqui desfaz o cancelamento
   // acima: o cliente já saiu, e o que sobra é uma conta para fechar.
@@ -103,27 +101,27 @@ export async function POST(request: NextRequest) {
       }
     }
     // AVISA O DONO DO AVANEST (25/11/2026): antes ninguém sabia do
-    // cancelamento, e a devolução prometida na tela dependia de alguém abrir o
-    // Stripe por acaso. Falha no aviso não desfaz nada do que já foi feito.
+    // cancelamento, nem da cobrança que não encerrou sozinha. Falha no aviso
+    // não desfaz nada do que já foi feito.
     try {
       await avisarODono(admin, supabase, {
         institutionId: perfil?.institution_id ?? null,
         quem: perfil ? { nome: String(perfil.nome ?? ""), email: String(perfil.email ?? "") } : null,
-        motivo, acessoAte, reembolsoDevido, cobrancaEncerrada,
+        motivo, acessoAte, cobrancaEncerrada,
       });
     } catch (e) {
       console.error("[api/assinatura/cancelar] aviso ao dono", e);
     }
   }
 
-  return NextResponse.json({ ok: true, acessoAte, reembolsoDevido, cobrancaEncerrada, ...(aviso ? { aviso } : {}) });
+  return NextResponse.json({ ok: true, acessoAte, cobrancaEncerrada, ...(aviso ? { aviso } : {}) });
 }
 
 type Sessao = Awaited<ReturnType<typeof createClient>>;
 
 async function avisarODono(admin: SupabaseClient, supabase: Sessao, c: {
   institutionId: string | null; quem: { nome: string; email: string } | null; motivo: string;
-  acessoAte: string | null; reembolsoDevido: boolean; cobrancaEncerrada: boolean;
+  acessoAte: string | null; cobrancaEncerrada: boolean;
 }) {
   if (!emailConfigurado() || !c.institutionId) return;
   const [{ data: donos }, { data: assinaturaData }, { data: pagamento }] = await Promise.all([
@@ -142,7 +140,6 @@ async function avisarODono(admin: SupabaseClient, supabase: Sessao, c: {
     plano: assinatura?.plano ?? null,
     quem: c.quem, motivo: c.motivo || null, acessoAte: c.acessoAte,
     emTeste: assinatura?.em_teste === true,
-    reembolsoDevido: c.reembolsoDevido,
     ultimoPagamento: pagamento?.valor != null ? Number(pagamento.valor) : null,
     cobrancaEncerrada: c.cobrancaEncerrada,
   });

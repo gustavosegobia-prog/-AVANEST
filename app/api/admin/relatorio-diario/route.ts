@@ -85,12 +85,12 @@ export async function GET(request: NextRequest) {
   // O assinante que paga e parou entra de qualquer origem: é dinheiro.
   // Os cancelamentos das últimas 24h, de qualquer origem (25/11/2026).
   const { data: canceladas } = await admin
-    .from("instituicoes").select("nome, cancelada_em, reembolso_devido, cancelamento_motivo, assinatura_ate")
+    .from("instituicoes").select("nome, cancelada_em, cancelamento_motivo, assinatura_ate")
     .gte("cancelada_em", new Date(Date.now() - 86_400_000).toISOString())
     .order("cancelada_em", { ascending: false });
   const cancelamentos = (canceladas ?? []).map((c) => ({
     organizacao: String(c.nome ?? ""), canceladaEm: String(c.cancelada_em),
-    reembolsoDevido: c.reembolso_devido === true, motivo: c.cancelamento_motivo ?? null,
+    motivo: c.cancelamento_motivo ?? null,
     acessoAte: c.assinatura_ate ?? null,
   }));
 

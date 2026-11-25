@@ -77,10 +77,11 @@ export default function TermosPage() {
       </p>
       <p>
         <b>Cancelamento:</b> pode ser feito a qualquer momento pela própria conta, em
-        <b>Assinatura</b>, sem passar por atendimento. O acesso permanece até o fim do período já
-        pago. Não há multa nem fidelidade. O valor do mês em curso é devolvido quando o cancelamento
-        ocorre em até <b>14 dias</b> do último pagamento; depois desse prazo não há devolução
-        proporcional.
+        <b>Assinatura</b>, sem passar por atendimento. Não há multa nem fidelidade. Cancelando
+        durante o período grátis (item 6), nada é cobrado. Depois dele, o cancelamento suspende as
+        cobranças seguintes: o acesso permanece até o fim do período já pago, e o valor já pago
+        <b>não é devolvido</b>, nem de forma proporcional, ressalvados os casos em que a lei
+        garanta a devolução.
       </p>
       <p>
         <b>Falta de pagamento:</b> vencida a assinatura, o acesso ao sistema é bloqueado. Os dados

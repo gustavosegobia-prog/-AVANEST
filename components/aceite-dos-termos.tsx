@@ -67,14 +67,14 @@ export function AceiteDosTermos() {
     <Dialogo titulo="Os Termos de Uso mudaram" confirmar="Li e aceito" cancelar="Ler depois"
       ocupado={ocupado} erro={erro} onConfirmar={aceitar} onCancelar={depois}>
       <p>
-        Entrou o item 12, <b>Propriedade intelectual e confidencialidade</b>. O AVANEST e o que há
-        nele — telas, textos, protocolos e modelos — não podem ser copiados para distribuir ou
-        vender, nem usados para criar um produto concorrente, no período grátis ou na assinatura.
+        Mudou o item 5, <b>Cancelamento</b>. No período grátis, cancelar continua sem custo: nada
+        é cobrado. Depois dele, o cancelamento suspende as próximas cobranças e o acesso vai até o
+        fim do mês já pago, mas o valor pago não é devolvido.
       </p>
       <p className="aceiteResumo"><b>{CONSEQUENCIA_DA_COPIA}</b> {CANCELAR_SEM_MULTA}</p>
       <p>
-        Imprimir os documentos e os protocolos para a equipe continua normal, e os seus dados
-        continuam seus.
+        O item 12, <b>Propriedade intelectual e confidencialidade</b>, segue valendo. Imprimir os
+        documentos e os protocolos para a equipe continua normal, e os seus dados continuam seus.
       </p>
       <p>
         Para quem já usava o AVANEST, a mudança vale a partir do aceite ou de{" "}

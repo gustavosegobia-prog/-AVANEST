@@ -59,7 +59,10 @@ const perguntas = () => [
   },
   {
     p: "Se eu cancelar, recebo o dinheiro de volta?",
-    r: "Cancelando nos primeiros 14 dias depois da cobrança, o valor daquele mês é devolvido pela mesma forma de pagamento. Depois disso o mês em curso não é reembolsado, mas o acesso continua até o fim dele e não há nova cobrança. A tela mostra em que dia do mês você está antes de confirmar o cancelamento.",
+    r:
+      `Nos ${DIAS_DE_TESTE} dias grátis não há o que devolver: cancelando neles, o cartão não é cobrado. ` +
+      `Depois deles, cada mês é cobrado no início, e o valor já pago não é devolvido. ` +
+      `Cancelar suspende as próximas cobranças, e o acesso continua até o fim do mês pago.`,
   },
   {
     p: `Como funcionam os ${OFERTA_DO_TESTE}?`,

@@ -152,7 +152,7 @@ export type Relatorio = {
   pausados: Array<{ nome: string; email: string; dias: number }>;
   /** Organizações que PAGAM e pararam de usar — de qualquer origem. */
   assinantesParados: AssinanteParado[];
-  /** Quem cancelou nas últimas 24h (25/11/2026), com a devolução a fazer. */
+  /** Quem cancelou nas últimas 24h (25/11/2026). */
   cancelamentos: CancelamentoDoDia[];
 };
 
@@ -164,14 +164,13 @@ export type CancelamentoDoDia = {
   organizacao: string;
   /** ISO de quando cancelou. */
   canceladaEm: string;
-  reembolsoDevido: boolean;
   motivo: string | null;
   acessoAte: string | null;
 };
 
 const dataBrDe = (iso: string | null) => (iso ? dataLocal(new Date(iso)).split("-").reverse().join("/") : null);
 const linhaDoCancelamento = (c: CancelamentoDoDia) =>
-  `${c.reembolsoDevido ? "[DEVOLVER] " : ""}${c.organizacao} — cancelou em ${dataBrDe(c.canceladaEm)}`
+  `${c.organizacao} — cancelou em ${dataBrDe(c.canceladaEm)}`
   + `${c.acessoAte ? ` · acesso até ${dataBrDe(c.acessoAte)}` : ""}`
   + ` · motivo: ${c.motivo?.trim() || "não informado"}`;
 
