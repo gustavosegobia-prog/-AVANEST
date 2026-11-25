@@ -55,7 +55,7 @@ function NumeroAsa({ m, n, marcado, onClick }: { m: Modo; n: number; marcado: bo
   );
 }
 
-export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null, onMudar, leitura = false, aberta = true, onAlternar }: {
+export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null, onMudar, leitura = false, aberta = true, onAlternar, onEditarIdade }: {
   dados: Dados;
   paciente: { nome: string; sexo: string | null };
   /** A idade como se escreve na ficha ("28 anos", "1 ano e 3 meses"). */
@@ -67,6 +67,8 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
   /** Na tela, a avaliação pode ficar recolhida numa linha só. */
   aberta?: boolean;
   onAlternar?: () => void;
+  /** Corrigir a idade no cadastro do paciente (só na tela, com a ficha aberta). */
+  onEditarIdade?: () => void;
 }) {
   const m: Modo = { impresso: !onMudar, leitura };
   const mudar: Mudar = onMudar ?? (() => {});
@@ -93,7 +95,12 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
   const linhaDoPaciente = (
     <>
       <div className="evoPFCel nome"><span className="r">Nome do paciente:</span><b className="v">{paciente.nome}</b></div>
-      <div className="evoPFCel idade"><span className="r">Idade:</span><b className="v">{idade}</b></div>
+      <div className="evoPFCel idade"><span className="r">Idade:</span>
+        {onEditarIdade && !m.impresso && !m.leitura
+          ? <button type="button" className="v evoPFIdade" onClick={onEditarIdade} title="Corrigir a idade do paciente"
+              aria-label={`Idade: ${idade || "não informada"}. Corrigir`}>{idade || "Informar"}</button>
+          : <b className="v">{idade}</b>}
+      </div>
       <div className="evoPFCel data"><span className="r">Data:</span><b className="v">{dataDoDia(t(dados.data_procedimento))}</b></div>
     </>
   );

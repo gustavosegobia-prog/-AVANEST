@@ -22,6 +22,7 @@ import { hora } from "@/lib/evolucao/impressao";
 import { Linha, Op, Txt, type Modo } from "./papel";
 import type { TuboSugerido } from "@/lib/evolucao/sugestoes";
 import type { SinaisDaSaida } from "@/lib/evolucao/sinais";
+import { ehCesarea } from "@/lib/evolucao/idade-e-equipe";
 
 type Dados = Record<string, unknown>;
 type Mudar = (m: Dados) => void;
@@ -82,6 +83,12 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
 }) {
   const m: Modo = { impresso: !onMudar, leitura };
   const mudar: Mudar = onMudar ?? (() => {});
+
+  // A equipe cirúrgica: o pediatra só aparece na cesárea (ou se já foi
+  // escrito, para não sumir quando a cirurgia muda de nome).
+  const cesarea = ehCesarea(dados.procedimento) || t(dados.pediatra).trim() !== "";
+  const mostrarNaLinha = (v: unknown) => !m.impresso || t(v).trim() !== "";
+  const temEquipe = [dados.segundo_cirurgiao, dados.auxiliar, cesarea ? dados.pediatra : ""].some((v) => t(v).trim() !== "");
 
   const tecnicas = lista(dados.tecnicas);
   const det = sub(dados, "tecnica_detalhes");
@@ -301,9 +308,31 @@ export function RodapeDaFolha({ dados, onMudar, leitura = false, marcos, medicos
         <b>Cirurgia:</b>
         <Linha m={m} rotulo="Cirurgia" valor={t(dados.procedimento)} largura={48} onMudar={(v) => mudar({ procedimento: v })} />
       </div>
-      <div className="evoRLinha larga">
-        <b>Cirurgião:</b>
-        <Linha m={m} rotulo="Cirurgião" valor={t(dados.cirurgiao)} largura={36} onMudar={(v) => mudar({ cirurgiao: v })} />
+      {/* A EQUIPE CIRÚRGICA (25/11/2026): cirurgião, 2º cirurgião e auxiliar
+          e, na cesárea, o pediatra que recebe o recém-nascido. Na tela os
+          campos ficam sempre à mão; impressa, a linha só leva o que foi
+          preenchido — a folha de papel tinha só o cirurgião. */}
+      <div className="evoRLinha larga evoRCirurgica">
+        <span className="evoRPar">
+          <b>Cirurgião:</b>
+          <Linha m={m} rotulo="Cirurgião" valor={t(dados.cirurgiao)} largura={m.impresso && !temEquipe ? 36 : 22}
+            onMudar={(v) => mudar({ cirurgiao: v })} />
+        </span>
+        {mostrarNaLinha(dados.segundo_cirurgiao) && <span className="evoRPar">
+          <b>2º cirurgião:</b>
+          <Linha m={m} rotulo="Segundo cirurgião" valor={t(dados.segundo_cirurgiao)} largura={18}
+            onMudar={(v) => mudar({ segundo_cirurgiao: v })} />
+        </span>}
+        {mostrarNaLinha(dados.auxiliar) && <span className="evoRPar">
+          <b>Auxiliar:</b>
+          <Linha m={m} rotulo="Auxiliar" valor={t(dados.auxiliar)} largura={18}
+            onMudar={(v) => mudar({ auxiliar: v })} />
+        </span>}
+        {cesarea && mostrarNaLinha(dados.pediatra) && <span className="evoRPar">
+          <b>Pediatra:</b>
+          <Linha m={m} rotulo="Pediatra" valor={t(dados.pediatra)} largura={18}
+            onMudar={(v) => mudar({ pediatra: v })} />
+        </span>}
       </div>
 
       <div className="evoRBase">

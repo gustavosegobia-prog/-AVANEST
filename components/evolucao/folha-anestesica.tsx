@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { horaLocal } from "@/lib/data-local";
+import { dataLocal, horaLocal } from "@/lib/data-local";
 import { Janela } from "@/components/janela";
 import { janelaVisivel } from "@/lib/evolucao/grafico";
 import { ajustesDaPam, colunasProntas, INTERVALOS, linhasProntas, pamEstimadaCabe, PARAMETROS, pontosDe, sinaisDaSaida, type Parametro } from "@/lib/evolucao/sinais";
@@ -26,6 +27,7 @@ import { asaRomana, camposDoPapel, sexoAbreviado } from "@/lib/evolucao/pre-pape
 import { conferirAlergia } from "@/lib/evolucao/alergias";
 import { marcasDeEvento } from "@/lib/evolucao/impressao";
 import { avaliarDose, idadeEmDias, type RegraDeDose } from "@/lib/evolucao/doses";
+import { idadeParaGravar } from "@/lib/evolucao/idade-e-equipe";
 import type { PacienteDaFolha } from "@/lib/evolucao/importar";
 import { useFolha, type Folha, type NovoRegistro, type Passo } from "./use-folha";
 import { GraficoSinais, type AlvoDaFaixa, type Toque } from "./grafico-sinais";
@@ -104,6 +106,9 @@ export function FolhaAnestesica({
   const [zoom, setZoom] = useState(120);
   const [desloc, setDesloc] = useState<number | null>(null);
   const [abrir, setAbrir] = useState<Abrir | null>(null);
+  const router = useRouter();
+  // A janela de corrigir a idade: o que se digitou, e o estado do envio.
+  const [editandoIdade, setEditandoIdade] = useState<{ nascimento: string; anos: string; erro: string; salvando: boolean } | null>(null);
   /** `mudarHora`: o id do marco recém-registrado — o aviso oferece "Mudar hora". */
   const [aviso, setAviso] = useState<{ texto: string; desfazer: boolean; mudarHora?: string } | null>(null);
   const [encerrando, setEncerrando] = useState(false);
@@ -456,6 +461,23 @@ export function FolhaAnestesica({
     await f.recarregarTudo();
   }
 
+  // CORRIGIR A IDADE (25/11/2026): grava no cadastro do paciente, que é de
+  // onde a tela, a impressão e as doses por idade leem; o refresh traz o
+  // paciente atualizado sem perder o que está aberto na ficha.
+  async function salvarIdade() {
+    if (!editandoIdade) return;
+    const r = idadeParaGravar(editandoIdade.nascimento, editandoIdade.anos, dataLocal());
+    if (!r.ok) { setEditandoIdade({ ...editandoIdade, erro: r.erro }); return; }
+    setEditandoIdade({ ...editandoIdade, salvando: true, erro: "" });
+    const { error } = await createClient().from("pacientes").update(r.valor).eq("id", paciente.id);
+    if (error) {
+      setEditandoIdade({ ...editandoIdade, salvando: false, erro: "Não foi possível corrigir a idade. Confira a conexão e tente de novo." });
+      return;
+    }
+    setEditandoIdade(null);
+    router.refresh();
+  }
+
   const pendenciasEncerrar = abrir?.tipo === "encerrar" ? conferirEncerramento(dados, atuais, folha.intervalo_minutos) : [];
   const idade = paciente.idade_anos ?? (idadeDias !== null ? Math.floor(idadeDias / 365.25) : null);
   const responsavel = ((dados.equipe as Profissional[] | undefined) ?? []).find((x) => x.funcao === "responsavel");
@@ -519,7 +541,28 @@ export function FolhaAnestesica({
         <div className="evoCabResp">{responsavelNome || "—"}</div>
       </div>
       <PreAnestesicaDaFolha dados={dados} paciente={paciente} idade={idade !== null ? `${idade} ${idade === 1 ? "ano" : "anos"}` : ""}
-        idadeAnos={idade} onMudar={f.mudarCabecalho} leitura={!aberta} aberta={preAberta} onAlternar={() => mudarPreAberta(!preAberta)} />
+        idadeAnos={idade} onMudar={f.mudarCabecalho} leitura={!aberta} aberta={preAberta} onAlternar={() => mudarPreAberta(!preAberta)}
+        onEditarIdade={aberta ? () => setEditandoIdade({ nascimento: paciente.data_nascimento ?? "", anos: paciente.data_nascimento ? "" : (paciente.idade_anos != null ? String(paciente.idade_anos) : ""), erro: "", salvando: false }) : undefined} />
+      {editandoIdade && (
+        <Janela titulo="Idade do paciente" largura="estreita" onFechar={() => setEditandoIdade(null)}
+          subtitulo="Corrige no cadastro do paciente: a ficha, a impressão e as doses por idade passam a usar a nova."
+          rodape={<>
+            <button type="button" className="evoBotao secundario" onClick={() => setEditandoIdade(null)} disabled={editandoIdade.salvando}>Cancelar</button>
+            <button type="button" className="evoBotao" onClick={() => void salvarIdade()} disabled={editandoIdade.salvando}>
+              {editandoIdade.salvando ? "Salvando…" : "Salvar"}</button>
+          </>}>
+          <label className="clinicalField"><span>Data de nascimento</span>
+            <input type="date" value={editandoIdade.nascimento} max={dataLocal()}
+              onChange={(e) => setEditandoIdade({ ...editandoIdade, nascimento: e.target.value, erro: "" })} />
+          </label>
+          <label className="clinicalField"><span>Ou só a idade, em anos</span>
+            <input inputMode="numeric" value={editandoIdade.anos} disabled={Boolean(editandoIdade.nascimento)}
+              placeholder={editandoIdade.nascimento ? "Calculada pela data" : "Ex.: 42"}
+              onChange={(e) => setEditandoIdade({ ...editandoIdade, anos: e.target.value, erro: "" })} />
+          </label>
+          {editandoIdade.erro && <p className="clinicalError" role="alert">{editandoIdade.erro}</p>}
+        </Janela>
+      )}
 
       <div className="evoCorpo">
         <section className="evoCentro" aria-label="Registro anestésico">
