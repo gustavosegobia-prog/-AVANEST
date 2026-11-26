@@ -320,7 +320,7 @@ export function PainelTv({ institutionId, localId = null, dia, nomeDaCasa, salas
               Tela cheia
             </button>
           )}
-          <AssinaturaAvanest naTv />
+          <AssinaturaAvanest />
         </div>
       </div>
     </div>
