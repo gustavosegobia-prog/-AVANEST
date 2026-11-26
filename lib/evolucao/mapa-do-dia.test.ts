@@ -25,6 +25,20 @@ test("mapa na ficha: os do anestesista logado primeiro, depois a ordem do mapa; 
   assert.deepEqual(lista.map((c) => c.id), ["b", "c", "a", "e"]);
 });
 
+test("mapa na ficha: o que já foi realizado desce para o fim do grupo, na ordem do mapa", () => {
+  const lista = ordenarMapaDaFicha([
+    caso({ id: "feito1", ordem: 1, horario: "07:00", ficha: { id: "f1", status: "encerrada" } }),
+    caso({ id: "feito2", ordem: 2, horario: null, etapa: "concluido" }),
+    caso({ id: "aberta", ordem: 3, horario: "07:30", ficha: { id: "f3", status: "aberta" } }),
+    caso({ id: "rpa", ordem: 4, horario: "08:00", etapa: "rpa" }),
+    caso({ id: "falta", ordem: 5, horario: "09:00" }),
+    caso({ id: "meuFeito", ordem: 6, horario: "10:00", meu: true, ficha: { id: "f6", status: "encerrada" } }),
+    caso({ id: "meuFalta", ordem: 7, horario: "11:00", meu: true }),
+  ]);
+  // Os do anestesista logado continuam primeiro; em cada grupo, o que falta em cima.
+  assert.deepEqual(lista.map((c) => c.id), ["meuFalta", "meuFeito", "aberta", "rpa", "falta", "feito1", "feito2"]);
+});
+
 test("mapa na ficha: o que é do dia vem do mapa; o resto, da avaliação", () => {
   const paciente = { nome: "Paciente Fictício", data_nascimento: null, idade_anos: 52, sexo: "Masculino", convenio: "Unimed",
     hospital: null, cirurgia: "Hérnia", procedimento: null };
