@@ -43,7 +43,6 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
   onImportado: (data: string, quantos: number) => void;
 }) {
   const entrada = useRef<HTMLInputElement>(null);
-  const camera = useRef<HTMLInputElement>(null);
   const [lendo, setLendo] = useState<number | null>(arquivoInicial ? 0 : null);
   const [erro, setErro] = useState("");
   const [mapa, setMapa] = useState<MapaImportado | null>(null);
@@ -172,16 +171,12 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
       <div className={estilos.importarArquivo}>
         <input ref={entrada} type="file" accept={TIPOS_ACEITOS} hidden
           onChange={(e) => { void escolher(e.target.files?.[0]); e.target.value = ""; }} />
-        {/* No celular, a câmera abre direto; no computador, o seletor de imagem. */}
-        <input ref={camera} type="file" accept="image/*" capture="environment" hidden
-          onChange={(e) => { void escolher(e.target.files?.[0]); e.target.value = ""; }} />
+        {/* Um botão só (26/11/2026). A câmera fica no "Foto do mapa" da tela,
+            que já abre esta janela lendo; ter "Tirar foto" aqui também era a
+            mesma coisa em dois lugares. */}
         <div className={estilos.importarBotoes}>
           <button type="button" className={mapa ? "outlineClinical compact" : "primaryClinical compact"}
-            onClick={() => camera.current?.click()} disabled={lendo != null || ocupado} data-foco-inicial>
-            <Icone nome="camera" tamanho={16} /> {mapa ? "Tirar outra foto" : "Tirar foto do mapa"}
-          </button>
-          <button type="button" className="outlineClinical compact"
-            onClick={() => entrada.current?.click()} disabled={lendo != null || ocupado}>
+            onClick={() => entrada.current?.click()} disabled={lendo != null || ocupado} data-foco-inicial>
             <Icone nome="nota" tamanho={16} /> {mapa ? "Escolher outro arquivo" : "Escolher arquivo"}
           </button>
         </div>
@@ -192,8 +187,9 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
         )}
         {!mapa && lendo == null && (
           <p className={estilos.dica}>
-            Na foto, pegue a folha inteira, de frente e com boa luz. Ela é lida neste aparelho e não fica guardada. A planilha
-            do Excel entra sem erro; a foto e o print funcionam, mas confira os nomes — a leitura de imagem pode trocar uma letra.
+            A planilha do Excel entra sem erro. Foto, print e PDF também funcionam, mas confira os nomes: a leitura de imagem
+            pode trocar uma letra. A imagem é lida neste aparelho e não fica guardada. Para fotografar a folha agora, use o
+            botão &ldquo;Foto do mapa&rdquo; da tela.
           </p>
         )}
       </div>
