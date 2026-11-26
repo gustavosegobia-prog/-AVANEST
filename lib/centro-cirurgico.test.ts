@@ -399,6 +399,13 @@ test("tipo de anestesia: a tela mostra o tipo, a local tem o selo, e a coluna s�
   const importar = ler("components/centro/importar.tsx");
   assert.match(importar, /\.\.\.comTipoDeAnestesia\(l\.anestesia\)/);
   assert.match(importar, /anestesista_id: l\.anestesia === "local" \? null : anestesistaId \|\| null/);
+  // Na conferência, nome, convênio e cirurgia em negrito; o rótulo continua normal.
+  assert.match(importar, /<td data-rotulo="Paciente"><b>\{l\.paciente\}<\/b>/);
+  assert.match(importar, /<td data-rotulo="Convênio" className=\{estilos\.destaque\}>/);
+  assert.match(importar, /<td data-rotulo="Cirurgia" className=\{estilos\.destaque\}>/);
+  const cssDoMapa = ler("components/centro/mapa.module.css");
+  assert.match(cssDoMapa, /\.importarTabela td\.destaque \{ font-weight: 750; \}/);
+  assert.match(cssDoMapa, /::before \{ content: attr\(data-rotulo\) ": "; color: var\(--cor-tinta-fraca\); font-weight: 400; \}/);
   const sql = ler("supabase/migrations/202611070002_tipo_de_anestesia_no_mapa.sql");
   assert.match(sql, /add column if not exists tipo_anestesia text/);
   for (const t of TIPOS_DE_ANESTESIA) assert.match(sql, new RegExp(`'${t.valor}'`), `o banco aceita ${t.valor}`);
