@@ -241,10 +241,10 @@ export function JanelaDeImportar({ institutionId, localId = null, diaAberto, sal
                       <td data-rotulo="Hora">{l.horario ?? "A/S"}</td>
                       <td data-rotulo="Paciente"><b>{l.paciente}</b>{jaNoMapa.has(l.linha) && <small> já está no mapa</small>}</td>
                       <td data-rotulo="Idade">{l.idade ?? ""}</td>
-                      <td data-rotulo="Convênio">{l.convenio ?? ""}</td>
+                      <td data-rotulo="Convênio" className={estilos.destaque}>{l.convenio ?? ""}</td>
                       <td data-rotulo="Cirurgião">{l.cirurgiao ?? ""}</td>
                       <td data-rotulo="Sala">{sala}{nova && <small> nova</small>}</td>
-                      <td data-rotulo="Cirurgia">{l.procedimento}</td>
+                      <td data-rotulo="Cirurgia" className={estilos.destaque}>{l.procedimento}</td>
                       <td data-rotulo="Anestesia">{l.anestesia ? NOME_DA_ANESTESIA[l.anestesia] : ""}</td>
                       <td data-rotulo="Leito">{l.leito ?? ""}</td>
                     </tr>

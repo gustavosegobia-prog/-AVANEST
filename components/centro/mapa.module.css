@@ -305,6 +305,9 @@
   color: var(--cor-atencao); font-size: 11px; font-weight: 750; }
 .importarTabela input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--cor-marca); }
 .desmarcada td { opacity: .5; }
+/* Na conferência, o que o anestesista procura de relance: quem é (o nome já
+   vem em <b>), o convênio e a cirurgia (26/11/2026). */
+.importarTabela td.destaque { font-weight: 750; }
 @media (max-width: 640px) {
   .importarTopo { grid-template-columns: minmax(0, 1fr); }
   .importarTabela { max-height: none; }
@@ -312,6 +315,6 @@
   .importarTabela tr { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 2px 8px; padding: 10px; border-top: 1px solid var(--cor-borda); }
   .importarTabela td { padding: 0; border: 0; grid-column: 2; }
   .importarTabela td:first-child { grid-column: 1; grid-row: 1 / span 9; }
-  .importarTabela td[data-rotulo]:not([data-rotulo="Paciente"]):not(:empty)::before { content: attr(data-rotulo) ": "; color: var(--cor-tinta-fraca); }
+  .importarTabela td[data-rotulo]:not([data-rotulo="Paciente"]):not(:empty)::before { content: attr(data-rotulo) ": "; color: var(--cor-tinta-fraca); font-weight: 400; }
   .importarTabela td:empty { display: none; }
 }
