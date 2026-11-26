@@ -411,3 +411,18 @@ test("tipo de anestesia: a tela mostra o tipo, a local tem o selo, e a coluna s�
   for (const t of TIPOS_DE_ANESTESIA) assert.match(sql, new RegExp(`'${t.valor}'`), `o banco aceita ${t.valor}`);
   assert.doesNotMatch(sql.replace(/--.*$/gm, ""), /drop |delete |update /i, "só acrescenta");
 });
+
+test("a assinatura do AVANEST: só no Modo TV, e a frase termina junto com o nome", () => {
+  // 26/11/2026: no mapa do celular ela flutuava por cima dos cartões.
+  const ler = (c: string) => fs.readFileSync(new URL(`../${c}`, import.meta.url), "utf8");
+  assert.match(ler("components/centro/painel-tv.tsx"), /<AssinaturaAvanest \/>/);
+  for (const tela of ["components/centro/mapa-cirurgico.tsx", "app/centro-cirurgico/relatorio/page.tsx"]) {
+    assert.doesNotMatch(ler(tela), /AssinaturaAvanest/, tela);
+  }
+  // As medidas da marca do site, feitas para a Outfit.
+  const css = ler("components/centro/assinatura.module.css");
+  assert.match(css, /font-family: "Outfit"/);
+  assert.match(css, /\.texto strong \{ font-size: var\(--marca\); font-weight: 600; letter-spacing: \.16em;/);
+  assert.match(css, /font-size: calc\(var\(--marca\) \* 9 \/ 26\); font-weight: 500; letter-spacing: \.0676em;/);
+  assert.doesNotMatch(css, /position: fixed/);
+});

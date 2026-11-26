@@ -15,7 +15,6 @@ import {
 import { JanelaDoCaso, JanelaDoPasso, JanelaDeCancelar, JanelaDasSalas, mensagemDoBanco } from "./janelas";
 import { JanelaDeImportar } from "./importar";
 import { MarcaDagua } from "./marca-dagua";
-import { AssinaturaAvanest } from "./assinatura";
 import estilos from "./mapa.module.css";
 
 export type Anestesista = { id: string; nome: string; apelido: string };
@@ -363,7 +362,6 @@ function Casca({ children, marca, soMapa }: { children: React.ReactNode; marca: 
         </header>
         {children}
       </main>
-      <AssinaturaAvanest />
     </div>
   );
 }

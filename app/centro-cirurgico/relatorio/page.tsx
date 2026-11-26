@@ -7,7 +7,6 @@ import { CAMPOS_DO_CASO, abreOCentro, noHospital, type Caso, type Sala } from "@
 import { diasDoMes, mesValido, planilhaDoRelatorio, relatorioDoMes } from "@/lib/centro-relatorio";
 import { Icone } from "@/components/icone";
 import { RelatorioDoMes } from "@/components/centro/relatorio";
-import { AssinaturaAvanest } from "@/components/centro/assinatura";
 import estilos from "@/components/centro/relatorio.module.css";
 import { casaDaSessao } from "../casa";
 
@@ -66,7 +65,6 @@ export default async function RelatorioDoCentroPage({ searchParams }: { searchPa
         <RelatorioDoMes r={r} nomeDaCasa={casa.nome} mesDeHoje={mesDeHoje}
           planilha={planilhaDoRelatorio(r)} />
       </main>
-      <AssinaturaAvanest />
     </div>
   );
 }
