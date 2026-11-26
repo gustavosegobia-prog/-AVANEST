@@ -111,15 +111,22 @@ const minutos = (h: string | null) => {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
 
+/** Já realizada: a ficha foi encerrada, ou o centro cirúrgico marcou a cirurgia como concluída. */
+export const jaRealizada = (c: Pick<CasoDoMapaNaFicha, "ficha" | "etapa">) =>
+  c.ficha?.status === "encerrada" || c.etapa === "concluido";
+
 /**
  * A ordem da lista: os do anestesista logado primeiro, e dentro de cada grupo
  * a ordem do mapa — o horário, e o "a seguir" (sem horário) logo depois de
  * quem vem antes dele na mesma ordem do papel. Cancelados não chegam aqui.
+ *
+ * O que já foi realizado desce para o fim do grupo (26/11/2026): no meio do
+ * dia, o que falta fazer fica em cima, sem rolar por cima do que acabou.
  */
 export function ordenarMapaDaFicha<T extends CasoDoMapaNaFicha>(casos: T[]): T[] {
   // A anestesia local (do cirurgião) vai para o fim: está no mapa, mas raramente é do anestesista.
   const chave = (c: CasoDoMapaNaFicha) =>
-    [c.meu ? 0 : 1, c.soLocal ? 1 : 0, c.ordem ?? Number.MAX_SAFE_INTEGER, minutos(c.horario) ?? 24 * 60] as const;
+    [c.meu ? 0 : 1, jaRealizada(c) ? 1 : 0, c.soLocal ? 1 : 0, c.ordem ?? Number.MAX_SAFE_INTEGER, minutos(c.horario) ?? 24 * 60] as const;
   return casos
     .filter((c) => c.etapa !== "cancelado")
     .sort((a, b) => {
