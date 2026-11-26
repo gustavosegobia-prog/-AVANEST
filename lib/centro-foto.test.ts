@@ -105,8 +105,10 @@ test("a sala colada no número ou com a letra no lugar do dígito", () => {
 
 test("foto do mapa: o botão abre a câmera e a janela já abre lendo", () => {
   const importar = ler("components/centro/importar.tsx");
-  assert.match(importar, /<input ref=\{camera\} type="file" accept="image\/\*" capture="environment" hidden/);
-  assert.match(importar, /\{mapa \? "Tirar outra foto" : "Tirar foto do mapa"\}/);
+  // A câmera fica só no botão "Foto do mapa" da tela (26/11/2026): dentro
+  // da janela era a mesma coisa repetida.
+  assert.doesNotMatch(importar, /capture="environment"|Tirar foto do mapa|Tirar outra foto/);
+  assert.match(importar, /\{mapa \? "Escolher outro arquivo" : "Escolher arquivo"\}/);
   assert.match(importar, /if \(!arquivoInicial \|\| comecou\.current\) return;/);
   for (const tela of ["components/centro/mapa-cirurgico.tsx", "app/evolucao/importar-mapa.tsx"]) {
     const c = ler(tela);
