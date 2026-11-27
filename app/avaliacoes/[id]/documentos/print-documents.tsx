@@ -9,6 +9,7 @@ import {frasePreditores,preditoresMarcados,resumoViaAerea,riscoNoMasculino} from
 import {BrandMark, NomeDaMarca} from "@/components/brand-mark";
 import {aplicarDados,termoVigenteEm,type VersaoDoTermo} from "@/lib/termo-consentimento";
 import { antropometriaPlausivel } from "@/lib/numero-clinico";
+import { sangueDaGestanteTexto } from "@/lib/sangue-da-gestante";
 import { EnvioAoProntuario } from "./envio-ao-prontuario";
 
 type Data=Record<string,string|boolean>;
@@ -483,7 +484,7 @@ export function PrintDocuments({avaliacao,paciente,perfil,organizacao,versoesDoT
       {deleteError&&<p className="deleteAssessmentError" role="alert">{deleteError}</p>}
       <div className="documentInfo">Paciente: <b>{paciente.nome}</b> · Avaliação de {formatDate(avaliacao.concluida_at||avaliacao.updated_at)} · {text(dados.anestesiologista,perfil.nome)} ({text(dados.crm,perfil.crm||"CRM não informado")})</div>
       <div className="documentsLayout"><div className="paperStack">
-        <article className={`printPaper assessmentPaper${rascunho?" rascunho":""} ${selected.assessment?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA" referencia={`AVA-${avaliacao.id.slice(0,8)} · v${avaliacao.versao}`}/>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}
+        <article className={`printPaper assessmentPaper${rascunho?" rascunho":""} ${selected.assessment?"":"notSelected"}`}><CabecalhoInstitucional local={local} clinica={clinica} titulo="FICHA DE AVALIAÇÃO PRÉ-ANESTÉSICA" referencia={`AVA-${avaliacao.id.slice(0,8)} · v${avaliacao.versao}`}/>{dados.alergias==="Sim"&&dados.alergias_detalhes&&<div className="paperAllergy">⚠ ALERGIA: {text(dados.alergias_detalhes).toUpperCase()}</div>}{sangueDaGestanteTexto(dados)&&<div className="paperAllergy paperSangue">⚠ GESTANTE · {sangueDaGestanteTexto(dados).toUpperCase()}</div>}
           {/* Duas linhas, e a divisão é de propósito: em cima quem é o
               paciente — nome, CPF, idade, sexo —, embaixo as medidas e o
               convênio. Deixar a quebra por conta do acaso jogava o CPF para

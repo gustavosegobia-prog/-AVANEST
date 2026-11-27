@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { sangueDaGestanteTexto } from "@/lib/sangue-da-gestante";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -360,6 +361,9 @@ export function AssessmentForm({ avaliacao, paciente, perfil, questionario = nul
     ? idealWeight + 0.4 * (weight - idealWeight)
     : weight || idealWeight;
   const allergy = String(draft.alergias_detalhes || "");
+  // Tipo sanguíneo e Rh da gestante em alerta vermelho, junto da alergia
+  // (27/11/2026): o Rh negativo pede imunoglobulina anti-D e muda a reserva.
+  const sangueDaGestante = sangueDaGestanteTexto(draft);
   const anamnesisKeys = getAnamnesisKeys(draft.sexo || paciente.sexo);
   const anamnesisComplete = anamnesisKeys.every((key) => isFilled(draft[key])) &&
     (draft.alergias !== "Sim" || isFilled(draft.alergias_detalhes));
@@ -445,8 +449,12 @@ export function AssessmentForm({ avaliacao, paciente, perfil, questionario = nul
     </header>
     {/* Alergia é informação de alta prioridade: acompanha a rolagem em vez de
         sumir na primeira etapa. Ícone, rótulo e valor — sem caixa alta no
-        texto inteiro, que atrapalha a leitura. */}
-    {allergy && <div className="allergyBanner" role="alert"><Icone nome="alerta" tamanho={17}/> <b>Alerta de alergia:</b> {allergy}</div>}
+        texto inteiro, que atrapalha a leitura. O tipo sanguíneo e o Rh da
+        gestante vão na mesma faixa vermelha (27/11/2026). */}
+    {(allergy||sangueDaGestante) && <div className="allergyBanner" role="alert">
+      {allergy && <span><Icone nome="alerta" tamanho={17}/> <b>Alerta de alergia:</b> {allergy}</span>}
+      {sangueDaGestante && <span className="alertaSangue"><Icone nome="alerta" tamanho={17}/> <b>Gestante:</b> {sangueDaGestante}</span>}
+    </div>}
     <div className="evalProgress" aria-label={`${progress}% da avaliação preenchida`}><i style={{width:`${progress}%`}}/></div>
     </div>
     <div className="evalMain">

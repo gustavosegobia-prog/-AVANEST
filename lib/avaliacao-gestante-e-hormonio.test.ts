@@ -27,3 +27,16 @@ test("gestante: tipo sanguíneo e fator Rh, de um toque, apagados no 'Não' e im
   const impressao = ler("app/avaliacoes/[id]/documentos/print-documents.tsx");
   assert.match(impressao, /\["gestacao_tipo_sanguineo","Tipo sanguíneo"\],\n {2}\["gestacao_fator_rh","Fator Rh"\]/);
 });
+
+test("gestante: tipo sanguíneo e Rh em alerta vermelho, na tela e na folha", async () => {
+  const { sangueDaGestanteTexto } = await import("./sangue-da-gestante.ts");
+  assert.equal(sangueDaGestanteTexto({ gestacao: "Sim", gestacao_tipo_sanguineo: "O", gestacao_fator_rh: "Negativo" }), "tipo sanguíneo O · Rh negativo");
+  assert.equal(sangueDaGestanteTexto({ gestacao: "Sim", gestacao_fator_rh: "Positivo" }), "Rh positivo");
+  assert.equal(sangueDaGestanteTexto({ gestacao: "Não", gestacao_tipo_sanguineo: "A" }), "", "sem gestação, sem alerta");
+  assert.equal(sangueDaGestanteTexto({ gestacao: "Sim" }), "", "nada marcado, sem alerta");
+  const ficha = ler("app/avaliacoes/[id]/assessment-form.tsx");
+  assert.match(ficha, /\{sangueDaGestante && <span className="alertaSangue"><Icone nome="alerta" tamanho=\{17\}\/> <b>Gestante:<\/b> \{sangueDaGestante\}<\/span>\}/);
+  const folha = ler("app/avaliacoes/[id]/documentos/print-documents.tsx");
+  assert.match(folha, /<div className="paperAllergy paperSangue">⚠ GESTANTE · \{sangueDaGestanteTexto\(dados\)\.toUpperCase\(\)\}<\/div>/);
+  assert.match(ler("app/globals.css"), /\.paperSangue\{border:2px solid #c00;color:#c00;text-align:center\}/);
+});
