@@ -5949,6 +5949,9 @@ td[data-rotulo="Acesso"] .admTextoFraco{display:block;margin-top:3px;font-size:1
 .recBusca{display:grid;gap:6px;padding:14px 18px;margin-top:var(--esp-3)}
 .recBuscaCampo{display:flex;align-items:center;gap:10px;border:1px solid var(--cor-borda-forte);border-radius:var(--raio-2);
   padding:0 12px;background:var(--cor-superficie);color:var(--cor-tinta-fraca)}
+.recSegundaVia{display:grid;gap:10px}
+.recSegundaViaDica{font-size:13px;color:var(--cor-tinta-fraca)}
+div.fcLinha:hover{background:none}
 .recBuscaCampo:focus-within{border-color:var(--cor-marca);box-shadow:var(--foco)}
 .recBuscaCampo input{border:0;outline:0;flex:1;min-width:0;height:44px;font-size:15px;background:transparent;color:var(--cor-tinta)}
 .recLimpar{border:0;background:none;cursor:pointer;color:var(--cor-tinta-fraca);padding:6px;border-radius:6px}

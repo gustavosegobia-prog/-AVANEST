@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Icone } from "@/components/icone";
 import { Dialogo, Gaveta } from "@/components/admin-ui";
 import { PainelRecolhivel } from "@/components/painel-recolhivel";
+import { SegundaViaDaFicha } from "@/components/segunda-via-da-ficha";
 import { AvisoFlutuante } from "@/components/aviso-flutuante";
 import { dataLocal, hoje as hojeNoBrasil } from "@/lib/data-local";
 import { EnviarQuestionario, rotuloDoEnvio, SeloDoQuestionario, useQuestionarios } from "@/components/questionario/na-recepcao";
@@ -24,6 +25,8 @@ import {
 // esta tela — nem pelo que ela pede ao banco: o andamento do atendimento vem
 // de andamento_da_agenda, que devolve só a etapa (em atendimento, concluído),
 // e as avaliações continuam fechadas para a recepção pelas regras da tabela.
+// A exceção, desde 27/11/2026: a segunda via da ficha anestésica ENCERRADA,
+// só para imprimir (components/segunda-via-da-ficha.tsx).
 
 export type PacienteDaRecepcao = {
   id: string; nome: string; cpf: string | null; telefone: string | null;
@@ -264,7 +267,7 @@ export function RecepcaoView({
       <section className="clinicalWelcome recTopo">
         <div>
           <h1>Recepção</h1>
-          <p>Agenda, chegada e cadastro — sem acesso a dados clínicos ou financeiros.</p>
+          <p>Agenda, chegada e cadastro. Da parte clínica, só a segunda via da ficha anestésica encerrada.</p>
         </div>
         {/* UMA AÇÃO SÓ NO TOPO, e ela faz tudo de uma vez: cadastra o paciente
             e marca a consulta. Se o CPF já existe, a própria janela oferece
@@ -515,6 +518,10 @@ export function RecepcaoView({
           </ol>
         )}
       </section>
+
+      {/* A segunda via da ficha anestésica (27/11/2026): o paciente perdeu a
+          ficha e volta ao balcão. Só aparece para quem pode (pode_segunda_via). */}
+      <SegundaViaDaFicha institutionId={institutionId} pacientes={pacientes} />
 
       {/* OS TOTAIS DO MÊS, recolhidos por padrão: servem para conferir, não
           para trabalhar no balcão. */}

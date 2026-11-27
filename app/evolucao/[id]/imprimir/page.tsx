@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigirAcessoAEvolucao, localDaSessao } from "@/lib/evolucao/acesso";
+import { exigirAcessoAImpressao, localDaSessao } from "@/lib/evolucao/acesso";
 import { vigentes, type Registro } from "@/lib/evolucao/registros";
 import { FolhaImpressa } from "@/components/evolucao/folha-impressa";
 import { BotaoImprimirFolha } from "@/components/evolucao/botao-imprimir-folha";
@@ -24,7 +24,7 @@ export default async function ImprimirFolhaPage({ params, searchParams }: {
   const { id } = await params;
   const { auto } = await searchParams;
   if (!UUID.test(id)) notFound();
-  const { supabase, perfil } = await exigirAcessoAEvolucao();
+  const { supabase, perfil, clinico } = await exigirAcessoAImpressao();
 
   const { data: folha } = await supabase
     .from("evolucoes_anestesicas")
@@ -43,6 +43,9 @@ export default async function ImprimirFolhaPage({ params, searchParams }: {
     localDaSessao(supabase),
   ]);
   if (!paciente) notFound();
+  // A segunda via pela recepção fica na auditoria (27/11/2026). Só chega
+  // aqui a ficha encerrada: a aberta a regra do banco não devolve a ela.
+  if (!clinico) await supabase.rpc("registrar_segunda_via", { p_evolucao_id: id });
   // O cabeçalho: o hospital em que a ficha foi feita; sem ele, o local desta
   // sessão; sem local, o nome do grupo.
   const localDaFicha = String((folha.dados as Record<string, unknown> | null)?.local_atendimento ?? "").trim();
@@ -51,7 +54,9 @@ export default async function ImprimirFolhaPage({ params, searchParams }: {
     <main className="imprPagina">
       {auto === "1" && <ImprimirAoAbrir />}
       <div className="imprBarra">
-        <Link href={`/evolucao/${id}`} className="evoBotao fantasma">← Voltar à ficha</Link>
+        {clinico
+          ? <Link href={`/evolucao/${id}`} className="evoBotao fantasma">← Voltar à ficha</Link>
+          : <Link href="/dashboard" className="evoBotao fantasma">← Voltar à recepção</Link>}
         <p>
           A4 retrato. Sai o que está salvo no servidor: lançamento ainda pendente na tela não entra.
           {folha.status === "aberta" && " A ficha ainda está aberta: o rodapé de cada página diz isso."}

@@ -4164,8 +4164,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
    regra do atalho nos botões, e o link (Mapa cirúrgico) saía diferente. */
 
 /* Em andamento e encerradas */
-.fcVazio{margin:0;padding:18px;background:var(--cor-superficie);border:1px solid var(--cor-borda);border-radius:14px;
-  font-size:14.5px;color:var(--cor-tinta-fraca)}
 
 /* O rodapé do papel na impressão: o mesmo desenho, em linhas pretas finas. */
 /* A largura do A4 cai abaixo do corte de 980px da tela: a grade do papel não empilha na impressão. */
