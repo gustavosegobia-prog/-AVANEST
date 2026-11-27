@@ -55,6 +55,14 @@ export const PREGNANCY_FIELDS: Array<[string, string]> = [
   ["gestacao_intercorrencias", "Outras intercorrências gestacionais"],
 ];
 
+// Tipo sanguíneo e fator Rh da gestante (27/11/2026): um toque, sem digitar.
+// O Rh negativo pede imunoglobulina anti-D e muda a reserva de sangue; ficar
+// junto da gestação é o que faz ser perguntado.
+export const PREGNANCY_BLOOD_FIELDS: Array<[string, string, string[]]> = [
+  ["gestacao_tipo_sanguineo", "Tipo sanguíneo", ["A", "B", "AB", "O"]],
+  ["gestacao_fator_rh", "Fator Rh", ["Positivo", "Negativo"]],
+];
+
 // Campos que saíram da tela. Continuam listados só para serem apagados
 // junto quando a resposta vira "Não": sem isso, uma avaliação antiga já
 // preenchida guardaria DHEG ou cesarianas numa ficha que afirma não haver
@@ -611,7 +619,7 @@ function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{nam
   // A resposta que veio do questionário do paciente, até o médico mudá-la.
   const doPaciente=String(draft.questionario_pre_campos??"").split(",");
   const informada=doPaciente.includes(name);
-  return <section className="questionCard"><div className="questionHead"><strong>{label}{informada&&<small className="doPaciente">informado pelo paciente</small>}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{if(informada)set("questionario_pre_campos",doPaciente.filter(item=>item!==name).join(","));onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="respiratoria"){set("respiratoria_ultima_crise","");set("respiratoria_controle","")}if(name==="gestacao"){for(const field of [...PREGNANCY_FIELDS.map(([f])=>f),...PREGNANCY_LEGACY_FIELDS])set(field,"")}}}} key={answer}>{answer}</button>)}</div></div>
+  return <section className="questionCard"><div className="questionHead"><strong>{label}{informada&&<small className="doPaciente">informado pelo paciente</small>}</strong><div className="answerButtons">{answerOptions.map(answer=><button type="button" className={value===answer?"active":""} onClick={()=>{if(informada)set("questionario_pre_campos",doPaciente.filter(item=>item!==name).join(","));onChange(answer);if(answer!=="Sim"){onDetail("");if(name==="cirurgias_anteriores"){set("cirurgias_anteriores_cirurgia","");set("cirurgias_anteriores_anestesia","")}if(name==="respiratoria"){set("respiratoria_ultima_crise","");set("respiratoria_controle","")}if(name==="gestacao"){for(const field of [...PREGNANCY_FIELDS.map(([f])=>f),...PREGNANCY_BLOOD_FIELDS.map(([f])=>f),...PREGNANCY_LEGACY_FIELDS])set(field,"")}}}} key={answer}>{answer}</button>)}</div></div>
     {value==="Sim"&&<><div className="detailChips">{chips.map(chip=><button type="button" className={selected.includes(chip)?"selected":""} onClick={()=>toggleChip(chip)} key={chip}>{chip}</button>)}</div>
       {name==="cirurgias_anteriores"&&<div className="conditionalDetails">
         <label><span>Qual cirurgia foi realizada?</span><input value={String(draft.cirurgias_anteriores_cirurgia??detail)} onChange={e=>set("cirurgias_anteriores_cirurgia",e.target.value)} placeholder="Ex.: cesárea, colecistectomia, herniorrafia"/></label>
@@ -627,7 +635,12 @@ function QuestionCard({name,label,value,detail,onChange,onDetail,draft,set}:{nam
         </select></label>
       </div>}
       {name==="gestacao"&&<div className="conditionalDetails pregnancyDetails">
-        {PREGNANCY_FIELDS.map(([field,fieldLabel])=><label key={field}><span>{fieldLabel}</span><input value={String(draft[field]??"")} onChange={e=>set(field,e.target.value)}/></label>)}
+        {PREGNANCY_FIELDS.map(([field,fieldLabel])=><label key={field} className={field==="gestacao_intercorrencias"?"largo":undefined}><span>{fieldLabel}</span><input value={String(draft[field]??"")} onChange={e=>set(field,e.target.value)}/></label>)}
+        {PREGNANCY_BLOOD_FIELDS.map(([field,fieldLabel,opcoes])=><div key={field} className="pregnancyBlood" role="group" aria-label={fieldLabel}>
+          <span>{fieldLabel}</span>
+          <div className="answerButtons">{opcoes.map(opcao=><button type="button" key={opcao} className={draft[field]===opcao?"active":""} aria-pressed={draft[field]===opcao}
+            onClick={()=>set(field,draft[field]===opcao?"":opcao)}>{opcao}</button>)}</div>
+        </div>)}
       </div>}
       {!["cirurgias_anteriores","gestacao"].includes(name)&&<input className="detailInput" value={detail} onChange={e=>onDetail(e.target.value)} placeholder={name==="alergias"?"Nome completo da medicação ou do agente causador — não use abreviações":name==="respiratoria"?"Detalhes: gravidade, medicação em uso, internações":"Detalhes e observações"}/>}</>}
   </section>;
@@ -926,7 +939,7 @@ function Medications({draft,set}:{draft:Draft;set:(name:string,value:string|bool
     </div>
     <p className="evalHint"><b>Base:</b> Guia Perioperatório de Medicamentos, versão 1.0, revisão 07/2026. As sugestões são apoio à decisão e devem ser revisadas e confirmadas individualmente pelo anestesiologista.</p>
     {showMedicationForm&&<><div className="medicationAdd"><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}} placeholder="Ex.: losartana, Xarelto, AAS, metformina…"/><button onClick={()=>add()}>Adicionar</button></div>
-    <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","Enalapril","Anlodipino","Hidroclorotiazida","Metoprolol","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Eliquis","Varfarina","Dabigatrana","Enoxaparina","Metformina","Ozempic","Dapagliflozina","Insulina NPH","Levotiroxina","Sinvastatina","Omeprazol","Sertralina"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div></>}
+    <div className="quickMedication"><span>Adição rápida:</span>{["Losartana","Enalapril","Anlodipino","Hidroclorotiazida","Metoprolol","AAS 100 mg","Clopidogrel","Xarelto 20 mg","Eliquis","Varfarina","Dabigatrana","Enoxaparina","Metformina","Ozempic","Dapagliflozina","Insulina NPH","Levotiroxina","Reposição hormonal","Sinvastatina","Omeprazol","Sertralina"].map(item=><button key={item} onClick={()=>add(item)}>{item}</button>)}</div></>}
   </section>
   {!showMedicationForm&&medicationAnswer&&<section className="emptyClinical">Resposta registrada: <b>{medicationAnswer}</b>.</section>}
   {showMedicationForm&&(medications.length===0?<section className="emptyClinical">Nenhum medicamento adicionado nesta avaliação.</section>:medications.map(item=>{const currentSuggested=calculateLastDoseDate(String(draft.data_cirurgia||""),findMedicationGuideEntry(item.nome)?.suspendDays);const aberto=abertos.has(item.id);return <section className={`medicationCard${aberto?" aberto":""}`} key={item.id}>

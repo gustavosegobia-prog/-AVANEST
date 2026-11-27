@@ -129,7 +129,7 @@ export function InicioDasFolhas({
                         </span>
                       </Link>
                       <ImprimirFicha id={f.id} className="fcImprimir" rotulo={`Imprimir a ficha de ${f.paciente}`}>
-                        <Icone nome="imprimir" tamanho={18} /> <span>Imprimir</span>
+                        <Icone nome="imprimir" tamanho={18} /> <span className="imprTexto">Imprimir</span>
                       </ImprimirFicha>
                     </li>
                   ))}

@@ -52,13 +52,15 @@ function formatarQuando(valor:string){
 }
 type Medication={id:string;nome:string;dose:string;frequencia:string;ultimaDose?:string;indicacao?:string;conduta:string;orientacao:string;reinicio?:string;fonte?:string;confirmada?:boolean;orientacaoEditada?:boolean};
 
-// Os três primeiros são os que a tela pergunta hoje. Os demais saíram do
+// Os cinco primeiros são os que a tela pergunta hoje (tipo sanguíneo e Rh desde 27/11/2026). Os demais saíram do
 // formulário, mas continuam sendo impressos quando têm conteúdo: avaliações
 // já concluídas os têm preenchidos, e a ficha delas precisa seguir mostrando
 // o que o anestesiologista de fato registrou. Em avaliação nova eles nascem
 // vazios e o filtro de conteúdo os descarta sozinho.
 const PREGNANCY_PRINT_FIELDS:Array<[string,string]>=[
   ["gestacao_idade_gestacional","Idade gestacional"],
+  ["gestacao_tipo_sanguineo","Tipo sanguíneo"],
+  ["gestacao_fator_rh","Fator Rh"],
   ["gestacao_historia_obstetrica","História obstétrica"],
   ["gestacao_intercorrencias","Intercorrências"],
   ["gestacao_dheg","DHEG"],

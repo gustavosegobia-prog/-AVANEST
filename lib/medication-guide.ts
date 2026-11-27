@@ -674,7 +674,8 @@ export const MEDICATION_GUIDE: MedicationGuideEntry[] = [
   },
   {
     key: "contraceptivo",
-    names: ["anticoncepcional", "etinilestradiol", "estradiol", "terapia hormonal", "tibolona", "ciproterona"],
+    // "Reposição hormonal" (27/11/2026): o botão da adição rápida vem escrito assim.
+    names: ["anticoncepcional", "etinilestradiol", "estradiol", "terapia hormonal", "reposição hormonal", "tibolona", "ciproterona"],
     displayName: "Estrogênio / contraceptivo hormonal",
     activeIngredient: "Estrogênio",
     medicationClass: "Hormônio",

@@ -4324,6 +4324,8 @@ html[data-tema=escuro]:has(.temaApp),html[data-tema=escuro]:has(.temaApp) body{b
 
 /* O botão de imprimir da lista das fichas é <button> (imprime sem abrir aba):
    sem o fundo e a borda de botão, igual ao link que era. */
+/* Imprimindo: um círculo girando do tamanho do ícone (27/11/2026). */
+@keyframes imprGira{to{transform:rotate(360deg)}}
 /* A abertura da marca nunca vai para o papel. */
 @media print{.abertura{display:none!important}}
 
