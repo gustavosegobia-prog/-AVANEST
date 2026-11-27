@@ -1606,6 +1606,13 @@ button:disabled{cursor:not-allowed}
 /* Alerta de alergia: acompanha a rolagem, mas sem ocupar a folha inteira. */
 .allergyBanner{height:auto;min-height:38px;display:flex;align-items:center;justify-content:center;gap:var(--esp-2);padding:var(--esp-2) var(--esp-5);background:var(--cor-perigo-suave);color:var(--cor-perigo-forte);border-bottom:1px solid var(--cor-perigo);font-weight:600;letter-spacing:0;font-size:14px;text-align:center;top:60px}
 .allergyBanner b{font-weight:800}
+/* Alergia e o sangue da gestante na mesma faixa (27/11/2026): uma linha cada,
+   lado a lado quando cabem. */
+.allergyBanner{flex-wrap:wrap;column-gap:var(--esp-5)}
+.allergyBanner>span{display:inline-flex;align-items:center;gap:6px}
+/* Na folha, o tipo sanguíneo e o Rh da gestante em vermelho. */
+.paperSangue{border:2px solid #c00;color:#c00;text-align:center}
+@media print{.paperSangue{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 
 /* Stepper: estado por símbolo, cor e palavra — nunca só por cor. */
 /* top:auto é a parte que importa. A barra de etapas já grudou no topo, com

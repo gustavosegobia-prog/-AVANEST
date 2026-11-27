@@ -1068,6 +1068,9 @@ button:disabled{cursor:not-allowed}
    o rascunho está seguro. */
 
 /* Alerta de alergia: acompanha a rolagem, mas sem ocupar a folha inteira. */
+/* Alergia e o sangue da gestante na mesma faixa (27/11/2026): uma linha cada,
+   lado a lado quando cabem. */
+/* Na folha, o tipo sanguíneo e o Rh da gestante em vermelho. */
 
 /* Stepper: estado por símbolo, cor e palavra — nunca só por cor. */
 /* top:auto é a parte que importa. A barra de etapas já grudou no topo, com
