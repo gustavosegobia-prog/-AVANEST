@@ -44,6 +44,7 @@ const ROTULOS: Record<string, string> = {
   avaliacao_concluida: "Avaliação concluída",
   concluida: "Avaliação concluída",
   documentos_impressos: "Documentos impressos",
+  segunda_via_impressa: "Segunda via da ficha anestésica impressa",
   presenca_confirmada: "Presença confirmada",
   status_alterado: "Situação do agendamento alterada",
   periodo_conferido: "Período conferido",
@@ -72,7 +73,7 @@ export const GRUPOS_DE_ACAO: { id: string; rotulo: string; entidades: string[] }
   { id: "equipe", rotulo: "Equipe e acessos", entidades: ["perfil", "convite"] },
   { id: "locais", rotulo: "Locais de atendimento", entidades: ["local_atendimento"] },
   { id: "organizacao", rotulo: "Organização e plano", entidades: ["instituicao", "campanha", "assinatura_mp"] },
-  { id: "clinico", rotulo: "Avaliações e agenda", entidades: ["avaliacao", "agendamento"] },
+  { id: "clinico", rotulo: "Avaliações, fichas e agenda", entidades: ["avaliacao", "agendamento", "evolucao_anestesica"] },
   { id: "escala", rotulo: "Escala e plantões", entidades: ["plantao"] },
   { id: "financeiro", rotulo: "Financeiro", entidades: ["financeiro_atendimento", "financeiro_periodo", "producao"] },
 ];

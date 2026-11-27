@@ -26,6 +26,31 @@ export async function exigirAcessoAEvolucao() {
   return { supabase, perfil };
 }
 
+/**
+ * Quem pode IMPRIMIR a ficha (27/11/2026): quem faz a ficha (pode_evolucao)
+ * ou a recepção, só a segunda via da ficha ENCERRADA (pode_segunda_via). A
+ * trava de verdade é a regra do banco: para a recepção, a ficha aberta nem
+ * volta da consulta. `clinico` diz se quem imprime é do acesso clínico — a
+ * página registra a segunda via na auditoria quando não é.
+ */
+export async function exigirAcessoAImpressao() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const { data: perfil } = await supabase
+    .from("perfis")
+    .select("id, nome, crm, rqe, role, status, super_admin, institution_id, permissoes")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!perfil || perfil.status !== "ativo") redirect("/dashboard");
+  const [{ data: clinico }, { data: segundaVia }] = await Promise.all([
+    supabase.rpc("pode_evolucao", { p_institution_id: perfil.institution_id }),
+    supabase.rpc("pode_segunda_via", { p_institution_id: perfil.institution_id }),
+  ]);
+  if (clinico !== true && segundaVia !== true) redirect("/dashboard");
+  return { supabase, perfil, clinico: clinico === true };
+}
+
 export type LocalDaSessao = { id: string; nome: string };
 
 /**
