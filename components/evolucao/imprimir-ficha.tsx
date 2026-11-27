@@ -129,7 +129,13 @@ export function ImprimirFicha({ id, className, rotulo, children, aguardar = fals
         disabled={estado === "preparando" || aguardar} aria-busy={estado === "preparando"}
         aria-label={estado === "pronto" ? rotulo : undefined}
         title={aguardar ? "Espere os lançamentos salvarem: o papel sai do que está no servidor." : undefined}>
-        {estado === "preparando" ? "Preparando…" : estado === "pdf" ? "Abrir PDF" : children}
+        {/* O que muda de estado vem em pedaços que a lista das encerradas
+            sabe esconder no celular (globals.css, .fcImprimir): lá a coluna
+            tem largura fixa, e o texto "Preparando…" a alargava e jogava a
+            data para fora da linha (27/11/2026). */}
+        {estado === "preparando"
+          ? <><span className="imprGira" aria-hidden="true" /><span className="imprTexto">Preparando…</span></>
+          : estado === "pdf" ? <span className="imprPdf">Abrir PDF</span> : children}
       </button>
       <span className="sr-only" role="status">{estado === "pdf" ? "PDF da ficha pronto. Toque em Abrir PDF para imprimir ou salvar." : ""}</span>
     </>
