@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { CabecalhoDeSecao } from "@/components/admin-ui";
 import {
-  GRUPOS_DE_ACAO, autorDoEvento, diferencas, rotuloDaAcao, sobreOEvento, type EventoDeAuditoria,
+  GRUPOS_DE_ACAO, agruparEventos, autorDoEvento, camposDoGrupo, diferencas, rotuloDaAcao, sobreOEvento,
+  type EventoDeAuditoria,
 } from "@/lib/auditoria";
 
 // O histórico de atividades, feito para investigar.
@@ -16,7 +17,9 @@ import {
 // carregados na tela, e onde o histórico começa. Nada anterior ao primeiro
 // evento gravado é inventado.
 
-const POR_PAGINA = 25;
+// 50, e não 25: as alterações seguidas da mesma ficha anestésica viram uma
+// linha só, e 25 eventos às vezes davam duas linhas na tela.
+const POR_PAGINA = 50;
 const PERIODOS = [["7", "Últimos 7 dias"], ["30", "Últimos 30 dias"], ["90", "Últimos 90 dias"], ["tudo", "Todo o histórico"]] as const;
 
 type Local = { id: string; nome: string; nome_fantasia: string | null };
@@ -43,6 +46,30 @@ export function HistoricoDeAtividades({
   const [locais, setLocais] = useState<Local[]>([]);
   const [aberto, setAberto] = useState("");
   const [tentativa, setTentativa] = useState(0);
+  // O paciente de cada ficha anestésica do histórico (28/11/2026): "ficha de
+  // Fulana" em vez de "evolucao anestesica".
+  const [pacienteDaFicha, setPacienteDaFicha] = useState<Map<string, string>>(new Map());
+  const grupos = useMemo(() => agruparEventos(eventos), [eventos]);
+
+  useEffect(() => {
+    const faltam = [...new Set(eventos.filter((e) => e.entidade === "evolucao_anestesica" && e.entidade_id)
+      .map((e) => e.entidade_id as string))].filter((id) => !pacienteDaFicha.has(id));
+    if (!faltam.length) return;
+    let vivo = true;
+    void createClient().from("evolucoes_anestesicas").select("id, paciente:pacientes(nome)").in("id", faltam.slice(0, 200))
+      .then(({ data }) => {
+        if (!vivo || !data) return;
+        setPacienteDaFicha((atual) => {
+          const novo = new Map(atual);
+          for (const f of data as Array<{ id: string; paciente: { nome?: string } | { nome?: string }[] | null }>) {
+            const p = Array.isArray(f.paciente) ? f.paciente[0] : f.paciente;
+            if (p?.nome) novo.set(f.id, p.nome);
+          }
+          return novo;
+        });
+      });
+    return () => { vivo = false; };
+  }, [eventos, pacienteDaFicha]);
 
   useEffect(() => {
     let vivo = true;
@@ -123,6 +150,7 @@ export function HistoricoDeAtividades({
         {total === null ? "Contando eventos…"
           : `${total} ${total === 1 ? "evento encontrado" : "eventos encontrados"} com estes filtros · ${eventos.length} carregado${eventos.length === 1 ? "" : "s"} na tela`}
         {inicio && ` · o histórico começa em ${new Date(inicio).toLocaleDateString("pt-BR")}`}
+        {grupos.length < eventos.length && " · alterações seguidas da mesma ficha anestésica aparecem numa linha só"}
       </p>
       {(afetado || local) && <p className="admNota">Filtrar por pessoa ou local mostra os eventos registrados sobre esse cadastro. Outras ações que envolvem o local (como plantões) aparecem em “Escala e plantões”.</p>}
 
@@ -131,20 +159,36 @@ export function HistoricoDeAtividades({
       {!erro && eventos.length === 0 && !carregando
         ? <div className="emptyClinical"><strong>Nenhum evento com estes filtros.</strong>{filtrado ? <button type="button" className="admLinkBotao" onClick={limpar}>Limpar filtros</button> : "Ações administrativas aparecem aqui assim que acontecem."}</div>
         : <ol className="admEventos">
-            {eventos.map((e) => {
+            {grupos.map((g) => {
+              const e = g.principal;
               const mudancas = diferencas(e);
+              // Os campos que a ficha anestésica mudou, do grupo inteiro.
+              const campos = camposDoGrupo(g);
+              const quantas = g.eventos.length;
               const expandido = aberto === e.id;
               const pessoa = e.entidade === "perfil" && e.entidade_id && nomes.has(e.entidade_id) ? e.entidade_id : null;
               const ehLocal = e.entidade === "local_atendimento";
+              const hora = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeStyle: "short" });
+              const primeiro = g.eventos[quantas - 1];
               return <li key={e.id}>
-                <time dateTime={e.created_at}>{new Date(e.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</time>
+                <time dateTime={e.created_at}>
+                  {new Date(quantas > 1 ? primeiro.created_at : e.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                  {quantas > 1 && hora(primeiro.created_at) !== hora(e.created_at) && `–${hora(e.created_at)}`}
+                </time>
                 <span className="admEventoTexto">
-                  <strong>{rotuloDaAcao(e)}</strong>
-                  <small>{(ehLocal && nomeDoLocal(e.entidade_id)) || sobreOEvento(e, nomes)} · por {autorDoEvento(e, nomes)}</small>
-                  {expandido && mudancas.length > 0 && <ul className="admDiferencas">
+                  <strong>{rotuloDaAcao(e)}{quantas > 1 && ` · ${quantas} alterações`}</strong>
+                  <small>{(ehLocal && nomeDoLocal(e.entidade_id)) || sobreOEvento(e, nomes, pacienteDaFicha)} · por {autorDoEvento(e, nomes)}</small>
+                  {!expandido && campos.length > 0 && <small className="admTextoFraco">
+                    Mudou: {campos.slice(0, 4).map((c) => c.campo).join(", ")}{campos.length > 4 && ` e mais ${campos.length - 4}`}
+                  </small>}
+                  {expandido && campos.length > 0 && <ul className="admDiferencas">
+                    {campos.map((c) => <li key={c.campo}><b>{c.campo}:</b> {c.valor}</li>)}
+                  </ul>}
+                  {expandido && campos.length === 0 && mudancas.length > 0 && <ul className="admDiferencas">
                     {mudancas.map((m) => <li key={m.campo}><b>{m.campo}:</b> {m.de} <span aria-hidden="true">→</span><span className="visuallyHidden">para</span> {m.para}</li>)}
                   </ul>}
-                  {expandido && mudancas.length === 0 && <small className="admTextoFraco">Este evento não guardou os valores anteriores.</small>}
+                  {expandido && campos.length === 0 && mudancas.length === 0 && <small className="admTextoFraco">Este evento não guardou os valores anteriores.</small>}
+                  {expandido && campos.length > 0 && <small className="admTextoFraco">O valor que ficou em cada campo; o anterior não é guardado.</small>}
                 </span>
                 <span className="admEventoAcoes">
                   <button type="button" className="admLinkBotao" aria-expanded={expandido} onClick={() => setAberto(expandido ? "" : e.id)}>
