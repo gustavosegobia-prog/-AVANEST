@@ -6400,6 +6400,8 @@ html.rolagemTravada,html.rolagemTravada body{overflow:hidden}
    passa calado — "725 kg" e "IMC 378583" iam para os cálculos sem nada. */
 .evalAvisoFaixa{display:block;margin-top:2px;font-size:13px;font-weight:650;color:var(--cor-atencao)}
 .evalField input[aria-invalid="true"]{border-color:var(--cor-atencao);box-shadow:0 0 0 1px var(--cor-atencao)}
+/* CPF do paciente que não confere (28/11/2026): a borda acompanha o aviso. */
+.clinicalField input[aria-invalid="true"]{border-color:#b4232c;box-shadow:0 0 0 1px #b4232c}
 /* Risco intermediário (STOP-Bang 3–4, Apfel 2) não é sucesso: âmbar claro,
    entre o azul neutro e o âmbar do alto risco. Antes saía em verde. */
 .scoreResult.atencao{background:color-mix(in srgb,var(--cor-atencao-suave) 60%,var(--cor-superficie));color:var(--cor-atencao)}
