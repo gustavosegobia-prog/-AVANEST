@@ -115,6 +115,7 @@ import { RecepcaoView } from "@/components/recepcao";
 import { AreaMedica } from "@/components/area-medica";
 import { Janela, useTravaDeRolagem } from "@/components/janela";
 import { ehJaExiste, mesmoPacienteSemCpf } from "@/lib/fluxo-sem-duplicado";
+import { avisoDoCpf, cpfValido } from "@/lib/cpf";
 import { lancamentosQueOPrecoPreenche, mesmaRegra, repasseDoValor, type LancamentoSemPreco } from "@/lib/precos-do-convenio";
 const PreferenciasDeAvisoPainel = dynamic(
   () => import("@/components/preferencias-de-aviso").then((m) => m.PreferenciasDeAvisoPainel),
@@ -513,8 +514,11 @@ export function DashboardClient({
       setBusy(false);
       return;
     }
-    if(cpfDigits.length!==11){
-      setError("Informe um CPF válido com 11 números.");
+    // Os dígitos verificadores do CPF (28/11/2026), de graça e sem consulta
+    // externa: dos CPFs de paciente já gravados, 1 em cada 4 não conferia.
+    const avisoCpf=avisoDoCpf(cpfDigits);
+    if(avisoCpf){
+      setError(avisoCpf);
       setBusy(false);
       return;
     }
@@ -3576,11 +3580,16 @@ function Field({name,label,type="text",wide=false,span2=false,required=false,def
   // sem depender de reescrever o valor dentro do evento.
   const [valor,setValor]=useState(defaultValue??"");
   const comum={name,type,required,autoComplete,inputMode,autoFocus,placeholder};
+  // CPF com os 11 números e os dígitos que não conferem: o aviso aparece na
+  // hora, embaixo do campo, antes de salvar (28/11/2026).
+  const cpfErrado=mask==="cpf"&&valor.replace(/\D/g,"").length===11&&!cpfValido(valor);
   return <label className={`clinicalField ${wide?"wide":""} ${span2?"span2":""} ${required?"obrigatorio":""}`.trim()}>
     <span>{label}</span>
     {mask
-      ? <input {...comum} value={valor} onChange={(evento)=>setValor(MASCARAS[mask](evento.target.value))}/>
+      ? <input {...comum} value={valor} onChange={(evento)=>setValor(MASCARAS[mask](evento.target.value))}
+          aria-invalid={cpfErrado||undefined} aria-describedby={cpfErrado?`${name}-aviso`:undefined}/>
       : <input {...comum} defaultValue={defaultValue}/>}
+    {cpfErrado&&<small id={`${name}-aviso`} className="fieldError" role="alert">Esse CPF não confere. Verifique os números.</small>}
   </label>;
 }
 function SelectField({name,label,options,required=false,placeholder,value,onChange,span2=false}:{name:string;label:string;options:string[];required?:boolean;placeholder?:string;value?:string;onChange?:(value:string)=>void;span2?:boolean}) {

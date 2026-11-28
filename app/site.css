@@ -3314,6 +3314,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* --- Aviso de faixa nos números clínicos (lib/numero-clinico.ts) ---------
    Avisa sem bloquear: o valor pode ser real (a criança de 3 kg), mas não
    passa calado — "725 kg" e "IMC 378583" iam para os cálculos sem nada. */
+/* CPF do paciente que não confere (28/11/2026): a borda acompanha o aviso. */
 /* Risco intermediário (STOP-Bang 3–4, Apfel 2) não é sucesso: âmbar claro,
    entre o azul neutro e o âmbar do alto risco. Antes saía em verde. */
 
