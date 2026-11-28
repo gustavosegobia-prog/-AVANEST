@@ -45,6 +45,11 @@ const ROTULOS: Record<string, string> = {
   concluida: "Avaliação concluída",
   documentos_impressos: "Documentos impressos",
   segunda_via_impressa: "Segunda via da ficha anestésica impressa",
+  // A ficha anestésica (28/11/2026): antes saía o nome técnico, "cabecalho".
+  "evolucao_anestesica:cabecalho": "Ficha anestésica alterada",
+  "evolucao_anestesica:encerrar": "Ficha anestésica encerrada",
+  "evolucao_anestesica:excluir": "Ficha anestésica excluída",
+  "evolucao_anestesica:reabrir": "Ficha anestésica reaberta",
   presenca_confirmada: "Presença confirmada",
   status_alterado: "Situação do agendamento alterada",
   periodo_conferido: "Período conferido",
@@ -84,8 +89,12 @@ export const ENTIDADES_ADMINISTRATIVAS = ["perfil", "convite", "local_atendiment
 const texto = (v: unknown) => (typeof v === "string" ? v : "");
 
 /** Sobre o quê — a pessoa, o local, o paciente, a competência. */
-export function sobreOEvento(e: EventoDeAuditoria, nomes: Map<string, string>): string {
+export function sobreOEvento(e: EventoDeAuditoria, nomes: Map<string, string>, pacienteDaFicha?: Map<string, string>): string {
   const d = e.detalhes ?? {};
+  if (e.entidade === "evolucao_anestesica") {
+    const paciente = e.entidade_id ? pacienteDaFicha?.get(e.entidade_id) : undefined;
+    return paciente ? `ficha de ${paciente}` : texto(d.paciente) ? `ficha de ${texto(d.paciente)}` : "ficha anestésica";
+  }
   if (texto(d.paciente)) return `paciente ${texto(d.paciente)}`;
   if (texto(d.periodo)) {
     const periodo = texto(d.periodo).split("-").reverse().join("/");
@@ -127,4 +136,91 @@ export function diferencas(e: EventoDeAuditoria): { campo: string; de: string; p
   return campos
     .filter((c) => JSON.stringify(antes[c] ?? null) !== JSON.stringify(depois[c] ?? null))
     .map((c) => ({ campo: ROTULO_DO_CAMPO[c] ?? c, de: legivel(c, antes[c]), para: legivel(c, depois[c]) }));
+}
+
+// ── A ficha anestésica no histórico (28/11/2026) ────────────────────────────
+// Cada campo mexido no cabeçalho da ficha grava um evento "cabecalho", com os
+// campos novos em `detalhes`: 2.565 eventos em 116 fichas, uns 22 por ficha,
+// que afogavam o resto do histórico. Aqui eles ganham nome em português e as
+// alterações seguidas da mesma ficha, pela mesma pessoa, viram uma linha só.
+
+const CAMPO_DA_FICHA: Record<string, string> = {
+  peso_kg: "Peso", altura_cm: "Altura", asa: "ASA", asa_emergencia: "Emergência", emergencia: "Emergência",
+  alergias: "Alergias", nega_alergia: "Nega alergia", cirurgiao: "Cirurgião", segundo_cirurgiao: "2º cirurgião",
+  auxiliar: "Auxiliar", equipe: "Equipe", procedimento: "Procedimento", local_atendimento: "Local",
+  local_atendimento_id: "Local", observacoes: "Observações", consumo: "Consumo", posicoes: "Posição",
+  protecoes: "Proteções", saida: "Saída da sala", tecnicas: "Técnica", tecnica_detalhes: "Detalhes da técnica",
+  anestesia_anterior: "Anestesia anterior", ap_circulatorio: "Ap. circulatório", ap_digestivo: "Ap. digestivo",
+  ap_endocrino: "Ap. endócrino", ap_respiratorio: "Ap. respiratório", convenio: "Convênio", creatinina: "Creatinina",
+  diagnostico: "Diagnóstico", estado_mental: "Estado mental", glicemia: "Glicemia", hematocrito: "Hematócrito",
+  hemoglobina: "Hemoglobina", jejum_horas: "Jejum", medicacao_uso: "Medicação em uso", observacoes_pre: "Obs. pré-anestésicas",
+  pa: "Pressão arterial", plaquetas: "Plaquetas", pulso: "Pulso", respiracao: "Respiração", tap_inr: "TAP/INR",
+  temperatura: "Temperatura", tipo_sanguineo: "Tipo sanguíneo",
+};
+
+/** "papel_pa" → "Pressão arterial"; o que não tem nome conhecido vai legível. */
+export function nomeDoCampoDaFicha(chave: string): string {
+  const k = chave.replace(/^papel_/, "");
+  return CAMPO_DA_FICHA[k] ?? k.replaceAll("_", " ");
+}
+
+/** O valor novo, curto: lista e objeto não viram JSON na tela. */
+function valorCurto(v: unknown): string {
+  if (v === null || v === undefined || v === "") return "apagado";
+  if (typeof v === "boolean") return v ? "sim" : "não";
+  if (Array.isArray(v)) return v.every((x) => typeof x === "string") ? (v.length ? v.join(", ") : "nenhum") : "alterado";
+  if (typeof v === "object") return "alterado";
+  const t = String(v);
+  return t.length > 80 ? `${t.slice(0, 79)}…` : t;
+}
+
+/** Os campos que o evento da ficha mudou, com o valor novo (o antigo não é gravado). */
+export function camposDaFicha(e: EventoDeAuditoria): { campo: string; valor: string }[] {
+  if (e.entidade !== "evolucao_anestesica" || e.acao !== "cabecalho") return [];
+  const vistos = new Set<string>();
+  const saida: { campo: string; valor: string }[] = [];
+  for (const [k, v] of Object.entries(e.detalhes ?? {})) {
+    const campo = nomeDoCampoDaFicha(k);
+    if (vistos.has(campo)) continue;
+    vistos.add(campo);
+    saida.push({ campo, valor: valorCurto(v) });
+  }
+  return saida;
+}
+
+export type GrupoDeEventos = { principal: EventoDeAuditoria; eventos: EventoDeAuditoria[] };
+
+/** Quanto tempo entre duas alterações ainda conta como a mesma sessão na ficha. */
+export const JANELA_DO_GRUPO_MS = 30 * 60_000;
+
+/**
+ * Junta as alterações seguidas do cabeçalho da mesma ficha, pela mesma pessoa,
+ * com menos de 30 minutos entre uma e outra. A lista vem do mais novo para o
+ * mais antigo; o principal do grupo é o mais novo. Qualquer outro evento fica
+ * sozinho, como antes.
+ */
+export function agruparEventos(eventos: readonly EventoDeAuditoria[]): GrupoDeEventos[] {
+  const grupos: GrupoDeEventos[] = [];
+  const juntavel = (e: EventoDeAuditoria) => e.entidade === "evolucao_anestesica" && e.acao === "cabecalho" && Boolean(e.entidade_id);
+  for (const e of eventos) {
+    const ultimo = grupos[grupos.length - 1];
+    const anterior = ultimo?.eventos[ultimo.eventos.length - 1];
+    if (ultimo && anterior && juntavel(e) && juntavel(ultimo.principal)
+      && e.entidade_id === ultimo.principal.entidade_id && e.actor_id === ultimo.principal.actor_id
+      && Date.parse(anterior.created_at) - Date.parse(e.created_at) <= JANELA_DO_GRUPO_MS) {
+      ultimo.eventos.push(e);
+      continue;
+    }
+    grupos.push({ principal: e, eventos: [e] });
+  }
+  return grupos;
+}
+
+/** Os campos do grupo inteiro, cada um com o valor mais recente. */
+export function camposDoGrupo(g: GrupoDeEventos): { campo: string; valor: string }[] {
+  const porCampo = new Map<string, string>();
+  for (const e of g.eventos) {
+    for (const { campo, valor } of camposDaFicha(e)) if (!porCampo.has(campo)) porCampo.set(campo, valor);
+  }
+  return [...porCampo].map(([campo, valor]) => ({ campo, valor }));
 }
