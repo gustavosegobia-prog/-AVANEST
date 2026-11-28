@@ -4172,6 +4172,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:auto}
 /* A largura do A4 cai abaixo do corte de 980px da tela: a grade do papel não empilha na impressão. */
 
 /* O topo do papel na impressão: a mesma grade, em linhas pretas finas. */
+/* O tipo sanguíneo sai em vermelho também no papel (28/11/2026). */
 
 /* A ficha anestésica no menu da área médica: é um link (leva a outra tela),
    com o mesmo desenho dos botões das seções. */

@@ -40,3 +40,22 @@ test("gestante: tipo sanguíneo e Rh em alerta vermelho, na tela e na folha", as
   assert.match(folha, /<div className="paperAllergy paperSangue">⚠ GESTANTE · \{sangueDaGestanteTexto\(dados\)\.toUpperCase\(\)\}<\/div>/);
   assert.match(ler("app/globals.css"), /\.paperSangue\{border:2px solid #c00;color:#c00;text-align:center\}/);
 });
+
+test("ficha anestésica: o tipo sanguíneo da gestante vem da avaliação, e a célula fica vermelha", async () => {
+  const { tipoSanguineoDaGestante } = await import("./sangue-da-gestante.ts");
+  assert.equal(tipoSanguineoDaGestante({ gestacao: "Sim", gestacao_tipo_sanguineo: "O", gestacao_fator_rh: "Negativo" }), "O negativo");
+  assert.equal(tipoSanguineoDaGestante({ gestacao: "Sim", gestacao_fator_rh: "Positivo" }), "Rh positivo");
+  assert.equal(tipoSanguineoDaGestante({ gestacao: "Sim", gestacao_tipo_sanguineo: "AB" }), "AB");
+  assert.equal(tipoSanguineoDaGestante({ gestacao: "Não", gestacao_tipo_sanguineo: "A" }), "");
+  const { cabecalhoInicial } = await import("./evolucao/importar.ts");
+  const paciente = { nome: "Paciente Fictícia", data_nascimento: null, idade_anos: 29, sexo: "Feminino", convenio: "SUS",
+    hospital: null, cirurgia: "Cesariana", procedimento: null };
+  const agora = new Date("2026-11-28T10:00:00Z");
+  const gestante = cabecalhoInicial(paciente, { id: "av1", dados: { gestacao: "Sim", gestacao_tipo_sanguineo: "O", gestacao_fator_rh: "Negativo" } }, agora);
+  assert.equal(gestante.papel_tipo_sanguineo, "O negativo");
+  const outra = cabecalhoInicial(paciente, { id: "av2", dados: { gestacao: "Não" } }, agora);
+  assert.equal(outra.papel_tipo_sanguineo, "");
+  const folha = ler("components/evolucao/pre-da-folha.tsx");
+  assert.match(folha, /rotulo="Tipo Sanguíneo:" valor=\{c\.tipo_sanguineo\} onMudar=\{campo\("tipo_sanguineo"\)\}\s+alerta=\{Boolean\(c\.tipo_sanguineo\.trim\(\)\)\}/);
+  assert.match(ler("app/globals.css"), /\.imprFolha \.evoPFCel\.tipo\.alerta \.v\{color:#c00;font-weight:700;/);
+});

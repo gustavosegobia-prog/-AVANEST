@@ -7923,7 +7923,7 @@ button.evoPFAsaN:disabled{cursor:default}
 .evoPFCel .evoOp{min-height:30px;padding:0 5px;font-size:13px}
 .evoPFNega{flex:none;margin-left:auto}
 .evoPFCel.alerta{background:var(--cor-perigo-suave)}
-.evoPFCel.alerta textarea,.evoPFCel.alerta .v{color:var(--cor-perigo-forte);-webkit-text-fill-color:var(--cor-perigo-forte);font-weight:800}
+.evoPFCel.alerta textarea,.evoPFCel.alerta input,.evoPFCel.alerta .v{color:var(--cor-perigo-forte);-webkit-text-fill-color:var(--cor-perigo-forte);font-weight:800}
 .evoPFCel.resumo{grid-area:resumo;flex-wrap:wrap;align-items:center;gap:4px 14px;border-right:0;border-bottom:0;font-size:13.5px}
 .evoPFResumo{color:var(--cor-tinta-fraca)}
 .evoPFCel.resumo .evoBotao{margin-left:auto}
@@ -8182,6 +8182,8 @@ a.fcAtalho{text-decoration:none}
 .imprFolha .evoPFImc{font-size:6.2pt;font-weight:400;letter-spacing:0;text-transform:none;color:#444}
 .imprFolha .evoPFCel.alerta{background:none}
 .imprFolha .evoPFCel.alerta .v{color:#111}
+/* O tipo sanguíneo sai em vermelho também no papel (28/11/2026). */
+.imprFolha .evoPFCel.tipo.alerta .v{color:#c00;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 
 /* A ficha anestésica no menu da área médica: é um link (leva a outra tela),
    com o mesmo desenho dos botões das seções. */

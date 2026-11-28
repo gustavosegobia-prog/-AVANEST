@@ -10,6 +10,7 @@
 // Campo vazio na avaliação continua vazio aqui. Nada é completado por
 // suposição.
 
+import { tipoSanguineoDaGestante } from "../sangue-da-gestante.ts";
 import { lerDecimal } from "../numero-clinico.ts";
 import { CAMPOS_DO_PAPEL, asaRomana, camposDoPapel, chaveDoCampo } from "./pre-papel.ts";
 
@@ -168,6 +169,10 @@ export function cabecalhoInicial(
   // As células da ficha de papel (PA, pulso, Hb, aparelhos…) já separadas,
   // pela mesma regra que lê as folhas antigas.
   const papel = camposDoPapel(cabecalho);
+  // O tipo sanguíneo e o Rh da gestante, marcados na avaliação, vão para a
+  // célula "Tipo Sanguíneo" do papel (28/11/2026); ali ficam em vermelho.
+  const sangue = tipoSanguineoDaGestante(d);
+  if (sangue) papel.tipo_sanguineo = sangue;
   return {
     ...cabecalho,
     ...Object.fromEntries(CAMPOS_DO_PAPEL.map((c) => [chaveDoCampo(c), papel[c]])),

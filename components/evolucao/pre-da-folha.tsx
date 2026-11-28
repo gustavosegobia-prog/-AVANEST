@@ -114,6 +114,7 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
             <span className={temAlergia ? "evoPreAlergia" : undefined}>
               {temAlergia ? `Alergias: ${alergias}` : nega ? "Nega alergia a medicamentos" : "Alergias não informadas"}
             </span>
+            {c.tipo_sanguineo.trim() && <span className="evoPreAlergia">Tipo sanguíneo: {c.tipo_sanguineo}</span>}
             <span className="evoPFResumo">
               {[decimal(dados.peso_kg) && `${decimal(dados.peso_kg)} kg`, imcTexto, asa && `ASA ${asa}${emergencia === "sim" ? " E" : ""}`,
                 c.jejum_horas && `jejum > ${c.jejum_horas} h`].filter(Boolean).join(" · ")}
@@ -168,7 +169,10 @@ export function PreAnestesicaDaFolha({ dados, paciente, idade, idadeAnos = null,
         <Celula m={m} area="pulso" rotulo="Pulso:" valor={c.pulso} onMudar={campo("pulso")} />
         <Celula m={m} area="fr" rotulo="Respiração:" valor={c.respiracao} onMudar={campo("respiracao")} />
         <Celula m={m} area="temp" rotulo="Temperatura:" valor={c.temperatura} onMudar={campo("temperatura")} />
-        <Celula m={m} area="tipo" rotulo="Tipo Sanguíneo:" valor={c.tipo_sanguineo} onMudar={campo("tipo_sanguineo")} />
+        {/* Em vermelho quando preenchido (28/11/2026), como a alergia: na
+            gestante ele vem da avaliação ("O negativo"). */}
+        <Celula m={m} area="tipo" rotulo="Tipo Sanguíneo:" valor={c.tipo_sanguineo} onMudar={campo("tipo_sanguineo")}
+          alerta={Boolean(c.tipo_sanguineo.trim())} />
         <Celula m={m} area="dig" rotulo="Ap. Digestivo:" valor={c.ap_digestivo} onMudar={campo("ap_digestivo")} longo>
           <span className="evoPFJejum">
             <Txt>jejum &gt;</Txt>
