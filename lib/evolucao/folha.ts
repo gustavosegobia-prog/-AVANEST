@@ -46,10 +46,13 @@ export const EVENTOS: Array<{ codigo: string; rotulo: string; marco?: boolean }>
  * Os botões da tela, na ordem da sala. O resto do catálogo acima continua
  * só para ler as fichas que já usaram aqueles eventos; o que não tem botão
  * entra pelo "Outro…". O torniquete tem botão próprio, entre a cirurgia.
+ * Sem "Transferência à RPA/UTI" (19/11/2026: "alta da RPA está repetindo"):
+ * o destino já se marca no rodapé, em "Alta da sala p/", e o "Fim da
+ * anestesia" dá o horário. As fichas antigas com esses eventos seguem lidas.
  */
 export const EVENTOS_DA_TELA = {
   antes: ["inicio_anestesia", "inicio_cirurgia"],
-  depois: ["fim_cirurgia", "fim_anestesia", "transferencia_rpa", "transferencia_uti"],
+  depois: ["fim_cirurgia", "fim_anestesia"],
 } as const;
 
 export type PeriodoDeTorniquete = { inicio: string; fim: string | null };
